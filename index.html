@@ -317,6 +317,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     .meta-box-val{font-size:.9rem;font-weight:900;color:var(--text);letter-spacing:-.01em}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+// elivandro daqui para baixo
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://ojuuzojwnyxdsavdosif.supabase.co";
+const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
+
+window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+console.log("Supabase conectado!");
+</script>
+// elivandro daqui para cima
+
 </head>
 <body>
 
