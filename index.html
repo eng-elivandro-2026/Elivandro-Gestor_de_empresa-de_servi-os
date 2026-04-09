@@ -13222,18 +13222,18 @@ function rExecTimeline(){
 const SUPABASE_URL = "https://ojuuzojwnyxdsavdosif.supabase.co";
 const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function testeConexao() {
-  const { data, error } = await supabase
+async function testeConexaoSupabase() {
+  const { data, error } = await window.sbClient
     .from('propostas')
     .select('*');
 
-  console.log("DADOS:", data);
-  console.log("ERRO:", error);
+  console.log("DADOS SUPABASE:", data);
+  console.log("ERRO SUPABASE:", error);
 }
 
-testeConexao();
+testeConexaoSupabase();
 </script>
   //elivandro eu que adicionei até aqui 08/04/26
 </body>
