@@ -3100,12 +3100,59 @@ function editP(id){
   }, 150);
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
-function saveP(){
+
+// elivandro daqui para baixo
+async function syncProposalToSupabase(sn){
+  if(!window.sbClient){
+    console.warn('Supabase não conectado.');
+    return;
+  }
+
+  var payload = {
+    app_id: String(sn.id || ''),
+    numero_proposta: String(sn.num || Q('pNum').value || '').trim(),
+    titulo: String(sn.tit || Q('pTit').value || '').trim(),
+    cliente: String(sn.cli || Q('pCli').value || '').trim(),
+    valor_total: Number(sn.totalGeral || sn.total || 0) || 0,
+    fase: String(sn.fas || Q('pFas').value || '').trim(),
+    dados_json: sn,
+    updated_at: new Date().toISOString()
+  };
+
+  const { data: existente, error: erroBusca } = await window.sbClient
+    .from('propostas')
+    .select('id, app_id')
+    .eq('app_id', payload.app_id)
+    .limit(1);
+
+  if(erroBusca) throw erroBusca;
+
+  if(existente && existente.length > 0){
+    const { error } = await window.sbClient
+      .from('propostas')
+      .update(payload)
+      .eq('app_id', payload.app_id);
+
+    if(error) throw error;
+  } else {
+    const { error } = await window.sbClient
+      .from('propostas')
+      .insert([payload]);
+
+    if(error) throw error;
+  }
+}
+// elivandro daqui para cima
+
+  
+// elivandro nova função saveP() daqui para baixo
+async function saveP(){
   var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
+
   var isNew=!editId;
   var sn=buildCurrentProposalSnapshot();
-  // ── V466: garante dtFech e dat2 ao salvar proposta fechada ──
+
   if(FAS_FECHADO.indexOf(sn.fas)>=0){
     if(!sn.dtFech){
       sn.dtFech=new Date().toISOString().slice(0,10);
@@ -3116,6 +3163,7 @@ function saveP(){
       sn.dat2=(_ps.length===3&&_ps[2].length===4)?(_ps[2]+'-'+_ps[1]+'-'+_ps[0]):new Date().toISOString().slice(0,10);
     }
   }
+
   if(editId){
     var idx=props.findIndex(function(x){return x.id===editId});
     if(idx>=0) props[idx]=sn; else props.push(sn);
@@ -3123,11 +3171,23 @@ function saveP(){
     props.push(sn);
     advN();
   }
-  editId=sn.id;saveAll();rDash();
-  try{showActionBar(sn);}catch(e){}
-  toast('✔Proposta salva!','ok');
-}
 
+  editId=sn.id;
+  saveAll();
+  rDash();
+
+  try{
+    await syncProposalToSupabase(sn);
+    try{showActionBar(sn);}catch(e){}
+    toast('✔ Proposta salva local + nuvem!','ok');
+  }catch(e){
+    console.error('Erro ao salvar no Supabase:', e);
+    try{showActionBar(sn);}catch(err){}
+    toast('⚠ Salvou local, mas falhou na nuvem.','err');
+  }
+}
+// elivandro nova função saveP() daqui para cima
+  
 // VALORES
 function cTot(){
   var vS=n2(Q('vS')&&Q('vS').value);
