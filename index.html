@@ -3101,8 +3101,8 @@ function editP(id){
   }, 150);
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
-  // elivandro  daqui 08/04/26
-  <script>
+// elivandro daqui 08/04/26
+<script>
 function getValorTotalAtualNumero() {
   var txt = (Q('vTD') && Q('vTD').textContent) ? Q('vTD').textContent : '0';
   txt = String(txt)
@@ -3162,11 +3162,8 @@ async function syncProposalToSupabase(sn) {
     return { ok: true, acao: 'insert', data: data };
   }
 }
-</script>
-
-  //elivandro até aqui 08/04/26
-  
-function saveP(){
+// elivandro até aqui 08/04/26
+  function saveP(){
   var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
   var isNew=!editId;
