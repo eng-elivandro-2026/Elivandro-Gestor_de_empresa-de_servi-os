@@ -3101,6 +3101,71 @@ function editP(id){
   }, 150);
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
+  // elivandro  daqui 08/04/26
+  <script>
+function getValorTotalAtualNumero() {
+  var txt = (Q('vTD') && Q('vTD').textContent) ? Q('vTD').textContent : '0';
+  txt = String(txt)
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  return Number(txt) || 0;
+}
+
+async function syncProposalToSupabase(sn) {
+  if (!window.sbClient) {
+    console.warn('Supabase não conectado.');
+    return { ok: false, motivo: 'sem_cliente_supabase' };
+  }
+
+  var payload = {
+    app_id: String(sn.id || ''),
+    numero_proposta: (Q('pNum').value || '').trim(),
+    titulo: (Q('pTit') && Q('pTit').value ? Q('pTit').value : '').trim(),
+    cliente: (Q('pCli').value || '').trim(),
+    valor_total: getValorTotalAtualNumero(),
+    fase: (Q('pFas') && Q('pFas').value ? Q('pFas').value : '').trim(),
+    dados_json: sn,
+    updated_at: new Date().toISOString()
+  };
+
+  if (!payload.app_id) {
+    throw new Error('A proposta está sem app_id interno.');
+  }
+
+  const { data: existente, error: erroBusca } = await window.sbClient
+    .from('propostas')
+    .select('id, app_id')
+    .eq('app_id', payload.app_id)
+    .limit(1);
+
+  if (erroBusca) {
+    throw erroBusca;
+  }
+
+  if (existente && existente.length > 0) {
+    const { data, error } = await window.sbClient
+      .from('propostas')
+      .update(payload)
+      .eq('app_id', payload.app_id)
+      .select();
+
+    if (error) throw error;
+    return { ok: true, acao: 'update', data: data };
+  } else {
+    const { data, error } = await window.sbClient
+      .from('propostas')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    return { ok: true, acao: 'insert', data: data };
+  }
+}
+</script>
+
+  //elivandro até aqui 08/04/26
+  
 function saveP(){
   var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
