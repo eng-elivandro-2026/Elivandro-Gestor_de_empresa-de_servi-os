@@ -13235,7 +13235,32 @@ async function testeConexaoSupabase() {
 
 testeConexaoSupabase();
 </script>
+
+  <script>
+async function salvarTesteProposta() {
+  const propostaTeste = {
+    numero_proposta: "TESTE-001",
+    titulo: "Proposta teste de integração",
+    cliente: "Cliente Teste",
+    valor_total: 1500,
+    fase: "Teste",
+    dados_json: {
+      origem: "teste manual",
+      data: new Date().toISOString()
+    }
+  };
+
+  const { data, error } = await window.sbClient
+    .from('propostas')
+    .insert([propostaTeste])
+    .select();
+
+  console.log("SALVOU:", data);
+  console.log("ERRO AO SALVAR:", error);
+}
+</script>
   //elivandro eu que adicionei até aqui 08/04/26
+  
 </body>
 </html>
 // persistência básica adicionada
