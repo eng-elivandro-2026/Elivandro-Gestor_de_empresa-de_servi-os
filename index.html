@@ -2004,7 +2004,48 @@ function atualizarValorSecaoEscopo(){
     toast('Não foi possível atualizar a seção VALOR.','err');
   }
 }
+// elivandro daqui para baixo (função que lê do banco)
+async function loadPropostasFromSupabase(){
+  if(!window.sbClient){
+    console.warn('Supabase não conectado para leitura.');
+    return;
+  }
 
+  const { data, error } = await window.sbClient
+    .from('propostas')
+    .select('dados_json, updated_at')
+    .order('updated_at', { ascending: false });
+
+  if(error){
+    console.error('Erro ao carregar propostas do Supabase:', error);
+    return;
+  }
+
+  if(!data || !data.length){
+    console.log('Nenhuma proposta encontrada no Supabase.');
+    return;
+  }
+
+  var lista = data
+    .map(function(row){ return row.dados_json; })
+    .filter(function(item){ return !!item && typeof item === 'object'; });
+
+  if(lista.length){
+    props = lista;
+    saveAll();
+    rDash();
+    rProps();
+    try{ rAnalise(); }catch(e){}
+    try{ rRegistro(); }catch(e){}
+    try{ rT(); }catch(e){}
+    try{ rS(); }catch(e){}
+    try{ refCat(); }catch(e){}
+    try{ rEsc(); }catch(e){}
+    console.log('Propostas carregadas do Supabase:', lista.length);
+  }
+}
+// elivandro daqui para cima (função que lê do banco)
+  
 function loadAll(){
   applyTheme(getTheme());
   // Restaurar alíquotas salvas no arquivo (se existir)
@@ -8166,8 +8207,13 @@ function bindProposalDraftAutoSave(){
   });
 }
 
-// INIT
-document.addEventListener('DOMContentLoaded',function(){
+// INIT Quando o sistema abrir: 
+//  1- ele continua carregando local como hoje
+//  2- depois busca no Supabase
+//  3- se encontrar propostas, joga elas em props
+//  4- salva local de novo
+//  5- redesenha as telas principais
+document.addEventListener('DOMContentLoaded',async function(){
   loadAll();
   renderPhaseControls();
   loadAliqUI();
@@ -8182,6 +8228,12 @@ document.addEventListener('DOMContentLoaded',function(){
   if(Q('eTF')) Q('eTF').addEventListener('input',rT);
   if(Q('eSF')) Q('eSF').addEventListener('input',rS);
   beLoadDB();
+
+  try{
+    await loadPropostasFromSupabase();
+  }catch(e){
+    console.error('Falha ao sincronizar propostas na abertura:', e);
+  }
 });
 // ══════════════════════════════════════════════
 // ANÁLISE FINANCEIRA
