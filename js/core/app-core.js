@@ -1,4 +1,3 @@
-// ============================================================
 // app-core.js — Sistema de Propostas V473_OFICIAL
 // Extraído do monolítico PROPOSTA_V473_OFICIAL.html
 // ============================================================
@@ -7929,6 +7928,8 @@ function salvarMeta(){
   Q('metaModal').style.display='none';
   rMeta();
   toast('✔ Metas salvas!','ok');
+  // Salvar metas na nuvem
+  if(typeof sbSalvarMeta === 'function') sbSalvarMeta(meta);
 }
 function abrirConfigMeta(){
   var m=getMeta()||{ano:2026,prop:142,fech:38,rec:0,antProp:109,antFech:29,antRec:0,antTicket:75000};
