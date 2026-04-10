@@ -394,27 +394,6 @@ function toggleSidebar(forceOpen){
   document.body.classList.toggle('sidebar-open', shouldOpen);
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = "https://ojuuzojwnyxdsavdosif.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
-  window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  window.logout = async function(){
-    await window.sbClient.auth.signOut();
-    window.location.href = "/login.html";
-  };
-  window.protegerPagina = async function(){
-    var res = await window.sbClient.auth.getUser();
-    if(!res || !res.data || !res.data.user) window.location.href = "/login.html";
-  };
-  function toggleSidebar(forceOpen){
-    var sb = document.getElementById('sidebar');
-    if(!sb) return;
-    if(forceOpen === true) sb.classList.add('open');
-    else if(forceOpen === false) sb.classList.remove('open');
-    else sb.classList.toggle('open');
-  }
-</script>
 <script src="js/config/supabase-sync.js"></script>
 </head>
 
