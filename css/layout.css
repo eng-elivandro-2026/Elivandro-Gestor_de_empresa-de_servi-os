@@ -1,0 +1,28 @@
+/* HEADER */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:52px;gap:1rem}
+.logo{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.logo-mk{width:32px;height:32px;background:var(--accent);border-radius:7px;display:grid;place-items:center;font-size:.85rem;font-weight:800;color:#000;flex-shrink:0}
+.logo-txt{font-size:.95rem;font-weight:700;line-height:1}
+.logo-sub{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;line-height:1.15}
+.nav{display:flex;gap:2px;flex-wrap:wrap}
+.nb{padding:.38rem .8rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.78rem;font-weight:500;transition:all .15s;white-space:nowrap;font-family:inherit}
+.nb:hover{background:var(--bg3);color:var(--text)}
+.nb.on{background:var(--accent);color:#000;font-weight:700}
+/* LAYOUT */
+.wrap{max-width:1300px;margin:0 auto;padding:1.25rem}
+.sec{display:none}.sec.on{display:block;animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;margin-bottom:1.1rem}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.ct{font-size:.82rem;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:.35rem;text-transform:uppercase;letter-spacing:.04em}
+/* GRID/FORM */
+.g{display:grid;gap:.8rem}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.ga{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+@media(max-width:650px){.g2,.g3,.g4,.ga{grid-template-columns:1fr}}
+.f{display:flex;flex-direction:column;gap:.28rem}
+.f label{font-size:.66rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.f input,.f select,.f textarea{padding:.48rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.83rem;font-family:inherit;width:100%;transition:border-color .15s}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(88,166,255,.1)}
+.f textarea{min-height:72px;resize:vertical;line-height:1.5}
+.f select{cursor:pointer}.f select option{background:var(--bg3)}
