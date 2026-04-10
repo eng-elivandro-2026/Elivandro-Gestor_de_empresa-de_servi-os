@@ -2011,9 +2011,17 @@ async function loadPropostasFromSupabase(){
     return;
   }
 
+  // Pega o user_id do usuário autenticado
+  const { data: { user } } = await window.sbClient.auth.getUser();
+  if(!user){
+    console.warn('Usuário não autenticado.');
+    return;
+  }
+
   const { data, error } = await window.sbClient
     .from('propostas')
     .select('dados_json, updated_at')
+    .eq('user_id', user.id)  // ← NOVO: só carrega propostas do usuário
     .order('updated_at', { ascending: false });
 
   if(error){
@@ -3163,6 +3171,13 @@ async function syncProposalToSupabase(sn){
     return;
   }
 
+  // Pega o user_id do usuário autenticado
+  const { data: { user } } = await window.sbClient.auth.getUser();
+  if(!user){
+    console.warn('Usuário não autenticado.');
+    return;
+  }
+
   var payload = {
     app_id: String(sn.id || ''),
     numero_proposta: String(sn.num || Q('pNum').value || '').trim(),
@@ -3171,6 +3186,7 @@ async function syncProposalToSupabase(sn){
     valor_total: Number(sn.totalGeral || sn.total || 0) || 0,
     fase: String(sn.fas || Q('pFas').value || '').trim(),
     dados_json: sn,
+    user_id: user.id,  // ← NOVO: vincula proposta ao usuário
     updated_at: new Date().toISOString()
   };
 
