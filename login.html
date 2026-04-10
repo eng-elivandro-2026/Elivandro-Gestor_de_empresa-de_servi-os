@@ -6,6 +6,10 @@
   <title>Login - Sistema de Propostas</title>
 
   <style>
+    *{
+      box-sizing:border-box;
+    }
+
     body{
       margin:0;
       font-family:Arial,sans-serif;
@@ -15,16 +19,18 @@
       align-items:center;
       justify-content:center;
       min-height:100vh;
+      padding:16px;
     }
 
     .container{
       display:flex;
       width:900px;
-      max-width:95%;
+      max-width:100%;
       background:#161b22;
       border:1px solid #30363d;
       border-radius:12px;
       overflow:hidden;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
 
     .left{
@@ -48,7 +54,7 @@
       background:#facc15;
       color:#000;
       font-weight:bold;
-      padding:10px;
+      padding:10px 12px;
       border-radius:6px;
     }
 
@@ -69,6 +75,7 @@
     .left p{
       font-size:14px;
       color:#8b949e;
+      line-height:1.6;
     }
 
     .right{
@@ -80,7 +87,7 @@
     }
 
     h1{
-      margin-bottom:20px;
+      margin:0 0 20px;
     }
 
     input{
@@ -91,6 +98,13 @@
       border-radius:8px;
       background:#21262d;
       color:#fff;
+      font-size:16px;
+      outline:none;
+    }
+
+    input:focus{
+      outline:2px solid #58a6ff;
+      outline-offset:1px;
     }
 
     button{
@@ -103,6 +117,11 @@
       font-weight:bold;
       cursor:pointer;
       margin-top:5px;
+      transition:opacity .2s ease;
+    }
+
+    button:hover{
+      opacity:.92;
     }
 
     .btn-secondary{
@@ -111,10 +130,11 @@
     }
 
     #msg{
-      margin-top:10px;
+      margin-top:12px;
       font-size:14px;
       color:#ff7b72;
-      min-height:18px;
+      min-height:20px;
+      line-height:1.4;
     }
 
     @media(max-width:768px){
@@ -126,15 +146,18 @@
         border-right:none;
         border-bottom:1px solid #30363d;
       }
+
+      .left,
+      .right{
+        padding:22px;
+      }
     }
   </style>
 </head>
 
 <body>
-
   <div class="container">
 
-    <!-- LADO ESQUERDO -->
     <div class="left">
       <div class="logo">
         <div class="logo-mk">EE</div>
@@ -148,12 +171,11 @@
       <p>Gerencie propostas, análises e pipeline da sua empresa em um único sistema.</p>
     </div>
 
-    <!-- LADO DIREITO -->
     <div class="right">
       <h1>Entrar</h1>
 
-      <input type="email" id="email" placeholder="Seu email" />
-      <input type="password" id="senha" placeholder="Sua senha" />
+      <input type="email" id="email" placeholder="Seu email" autocomplete="email" />
+      <input type="password" id="senha" placeholder="Sua senha" autocomplete="current-password" />
 
       <button id="btnLogin">Entrar</button>
       <button id="btnCadastro" class="btn-secondary">Criar conta</button>
@@ -173,6 +195,26 @@
     );
 
     const msg = document.getElementById("msg");
+    const emailInput = document.getElementById("email");
+    const senhaInput = document.getElementById("senha");
+    const btnLogin = document.getElementById("btnLogin");
+    const btnCadastro = document.getElementById("btnCadastro");
+    const btnReset = document.getElementById("btnReset");
+
+    function mostrarErro(texto) {
+      msg.style.color = "#ff7b72";
+      msg.textContent = texto;
+    }
+
+    function mostrarSucesso(texto) {
+      msg.style.color = "#3fb950";
+      msg.textContent = texto;
+    }
+
+    function limparMensagem() {
+      msg.style.color = "#ff7b72";
+      msg.textContent = "";
+    }
 
     async function verificarSessao() {
       const { data } = await supabase.auth.getUser();
@@ -182,10 +224,15 @@
     }
 
     async function login() {
-      msg.textContent = "";
+      limparMensagem();
 
-      const email = document.getElementById("email").value.trim();
-      const senha = document.getElementById("senha").value.trim();
+      const email = emailInput.value.trim();
+      const senha = senhaInput.value.trim();
+
+      if (!email || !senha) {
+        mostrarErro("Preencha email e senha.");
+        return;
+      }
 
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -193,7 +240,7 @@
       });
 
       if (error) {
-        msg.textContent = error.message;
+        mostrarErro(error.message);
         return;
       }
 
@@ -201,10 +248,15 @@
     }
 
     async function cadastrar() {
-      msg.textContent = "";
+      limparMensagem();
 
-      const email = document.getElementById("email").value.trim();
-      const senha = document.getElementById("senha").value.trim();
+      const email = emailInput.value.trim();
+      const senha = senhaInput.value.trim();
+
+      if (!email || !senha) {
+        mostrarErro("Preencha email e senha.");
+        return;
+      }
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -212,21 +264,20 @@
       });
 
       if (error) {
-        msg.textContent = error.message;
+        mostrarErro(error.message);
         return;
       }
 
-      msg.style.color = "#3fb950";
-      msg.textContent = "Conta criada. Verifique seu email.";
+      mostrarSucesso("Conta criada. Verifique seu email.");
     }
 
     async function redefinirSenha() {
-      msg.textContent = "";
+      limparMensagem();
 
-      const email = document.getElementById("email").value.trim();
+      const email = emailInput.value.trim();
 
       if (!email) {
-        msg.textContent = "Digite seu email primeiro.";
+        mostrarErro("Digite seu email primeiro.");
         return;
       }
 
@@ -235,20 +286,30 @@
       });
 
       if (error) {
-        msg.textContent = error.message;
+        mostrarErro(error.message);
         return;
       }
 
-      msg.style.color = "#3fb950";
-      msg.textContent = "Link de redefinição enviado!";
+      mostrarSucesso("Link de redefinição enviado!");
     }
 
-    document.getElementById("btnLogin").addEventListener("click", login);
-    document.getElementById("btnCadastro").addEventListener("click", cadastrar);
-    document.getElementById("btnReset").addEventListener("click", redefinirSenha);
+    btnLogin.addEventListener("click", login);
+    btnCadastro.addEventListener("click", cadastrar);
+    btnReset.addEventListener("click", redefinirSenha);
+
+    senhaInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        login();
+      }
+    });
+
+    emailInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        login();
+      }
+    });
 
     verificarSessao();
   </script>
-
 </body>
 </html>
