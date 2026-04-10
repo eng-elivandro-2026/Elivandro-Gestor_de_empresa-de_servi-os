@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <button id="btnReset">Esqueci minha senha</button>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
+
   <style>
     body{
       margin:0;
@@ -56,42 +56,22 @@
     }
   </style>
 </head>
+
 <body>
   <div class="box">
     <h1>Entrar</h1>
+
     <input type="email" id="email" placeholder="Seu email" />
     <input type="password" id="senha" placeholder="Sua senha" />
+
     <button id="btnLogin">Entrar</button>
     <button id="btnCadastro">Criar conta</button>
+    <button id="btnReset">Esqueci minha senha</button>
+
     <div id="msg"></div>
   </div>
 
   <script type="module">
-    async function redefinirSenha() {
-  msg.style.color = "#ff7b72";
-  msg.textContent = "";
-
-  const email = document.getElementById("email").value.trim();
-
-  if (!email) {
-    msg.textContent = "Digite seu email primeiro.";
-    return;
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://sistemas-propostas.vercel.app/login.html"
-  });
-
-  if (error) {
-    msg.textContent = error.message;
-    return;
-  }
-
-  msg.style.color = "#3fb950";
-  msg.textContent = "Enviei o link de redefinição para seu email.";
-}
-
-document.getElementById("btnReset").addEventListener("click", redefinirSenha);
     import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
     const supabase = createClient(
@@ -110,6 +90,7 @@ document.getElementById("btnReset").addEventListener("click", redefinirSenha);
 
     async function login() {
       msg.textContent = "";
+
       const email = document.getElementById("email").value.trim();
       const senha = document.getElementById("senha").value.trim();
 
@@ -128,6 +109,7 @@ document.getElementById("btnReset").addEventListener("click", redefinirSenha);
 
     async function cadastrar() {
       msg.textContent = "";
+
       const email = document.getElementById("email").value.trim();
       const senha = document.getElementById("senha").value.trim();
 
@@ -145,8 +127,33 @@ document.getElementById("btnReset").addEventListener("click", redefinirSenha);
       msg.textContent = "Conta criada. Agora clique em Entrar.";
     }
 
+    async function redefinirSenha() {
+      msg.style.color = "#ff7b72";
+      msg.textContent = "";
+
+      const email = document.getElementById("email").value.trim();
+
+      if (!email) {
+        msg.textContent = "Digite seu email primeiro.";
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://sistemas-propostas.vercel.app/login.html"
+      });
+
+      if (error) {
+        msg.textContent = error.message;
+        return;
+      }
+
+      msg.style.color = "#3fb950";
+      msg.textContent = "Enviei o link de redefinição para seu email.";
+    }
+
     document.getElementById("btnLogin").addEventListener("click", login);
     document.getElementById("btnCadastro").addEventListener("click", cadastrar);
+    document.getElementById("btnReset").addEventListener("click", redefinirSenha);
 
     verificarSessao();
   </script>
