@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <button id="btnReset">Esqueci minha senha</button>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
@@ -66,6 +67,31 @@
   </div>
 
   <script type="module">
+    async function redefinirSenha() {
+  msg.style.color = "#ff7b72";
+  msg.textContent = "";
+
+  const email = document.getElementById("email").value.trim();
+
+  if (!email) {
+    msg.textContent = "Digite seu email primeiro.";
+    return;
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://sistemas-propostas.vercel.app/login.html"
+  });
+
+  if (error) {
+    msg.textContent = error.message;
+    return;
+  }
+
+  msg.style.color = "#3fb950";
+  msg.textContent = "Enviei o link de redefinição para seu email.";
+}
+
+document.getElementById("btnReset").addEventListener("click", redefinirSenha);
     import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
     const supabase = createClient(
