@@ -386,7 +386,7 @@ window.logout = async function () {
   protegerPagina();
 </script>
 </head>
-<body>
+<body onload="protegerPagina()">
   <div class="mobile-overlay" onclick="toggleSidebar(false)"></div>
 
   <aside class="sidebar" id="sidebar">
@@ -4849,3 +4849,6 @@ function _cotMsgCopiado(){
   toast('📋 E-mail copiado! Cole no Outlook com Ctrl+V','ok');
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/config/supabase.js"></script>
+<script src="./js/core/app-core.js"></script>
