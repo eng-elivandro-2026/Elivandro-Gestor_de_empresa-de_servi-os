@@ -126,3 +126,298 @@
     .meta-box{background:var(--bg);border:2px solid var(--accent);border-radius:6px;padding:.25rem .65rem;text-align:center;min-width:54px}
     .meta-box-lbl{font-size:.55rem;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:700;opacity:.8}
     .meta-box-val{font-size:.9rem;font-weight:900;color:var(--text);letter-spacing:-.01em}
+
+/* =========================
+   RESPONSIVO MOBILE
+   Cole no final do app.css
+   ========================= */
+
+@media (max-width: 1024px) {
+  .wrap {
+    padding: 0.9rem;
+  }
+
+  .hdr {
+    height: auto;
+    padding: 0.75rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .logo {
+    width: 100%;
+  }
+
+  .nav {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  .nav::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .nb {
+    flex: 0 0 auto;
+  }
+
+  .br {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .kpi-g,
+  .pg,
+  .ph-g,
+  .tg,
+  .edb-cols,
+  .ga,
+  .g4,
+  .g3,
+  .g2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pc {
+    min-height: auto;
+  }
+
+  .an-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .an-disp {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .wrap {
+    padding: 0.7rem;
+  }
+
+  .card {
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .ch {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .ct {
+    font-size: 0.76rem;
+  }
+
+  .hdr {
+    gap: 0.6rem;
+  }
+
+  .logo-txt {
+    font-size: 0.88rem;
+  }
+
+  .logo-sub {
+    font-size: 0.52rem;
+  }
+
+  .btn,
+  .bsm,
+  .bxs {
+    font-size: 0.72rem !important;
+    padding: 0.5rem 0.7rem !important;
+  }
+
+  .br {
+    gap: 0.35rem;
+  }
+
+  .f input,
+  .f select,
+  .f textarea {
+    font-size: 16px; /* evita zoom automático no iPhone */
+  }
+
+  .sb {
+    flex-direction: column;
+  }
+
+  .sb input {
+    width: 100%;
+  }
+
+  .ft {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  .ftg {
+    flex: 0 0 auto;
+  }
+
+  .wz {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .ws {
+    flex: 0 0 auto;
+    min-width: 120px;
+  }
+
+  .snav {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .snav .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pc-top {
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+  }
+
+  .pc-act {
+    position: static;
+    opacity: 1;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .bt-w {
+    overflow-x: auto;
+  }
+
+  .bt {
+    min-width: 700px;
+  }
+
+  .tmt {
+    min-width: 700px;
+  }
+
+  .tot-amt {
+    font-size: 1.35rem;
+  }
+
+  .kpi-v {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  html {
+    font-size: 14px;
+  }
+
+  .wrap {
+    padding: 0.55rem;
+  }
+
+  .hdr {
+    padding: 0.6rem;
+  }
+
+  .logo-mk {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .nb {
+    font-size: 0.72rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .card {
+    padding: 0.7rem;
+  }
+
+  .kpi {
+    padding: 0.8rem;
+  }
+
+  .kpi-v {
+    font-size: 1.05rem;
+  }
+
+  .kpi-l {
+    font-size: 0.64rem;
+  }
+
+  .ph {
+    padding: 0.6rem;
+  }
+
+  .ph-n {
+    font-size: 1.1rem;
+  }
+
+  .pc {
+    padding: 0.8rem;
+  }
+
+  .pc-num {
+    font-size: 0.9rem;
+  }
+
+  .pc-tit {
+    font-size: 0.85rem;
+  }
+
+  .pc-val {
+    font-size: 0.95rem;
+  }
+
+  .btn,
+  .bsm,
+  .bxs {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .br .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .pv-page {
+    transform: scale(0.52) !important;
+    transform-origin: top left;
+    margin-right: -360px !important;
+  }
+
+  #pvWrap {
+    padding: 0.5rem;
+    overflow-x: auto;
+  }
+
+  .btt {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .emp {
+    padding: 1.5rem 0.8rem;
+  }
+}
