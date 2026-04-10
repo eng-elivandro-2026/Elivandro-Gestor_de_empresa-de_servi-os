@@ -6,6 +6,578 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Elivandro - Propostas</title>
 <style>
+  
+
+
+  
+/* ============================================
+   PAINEL MASTER/ADMIN - ESTILOS
+   ============================================ */
+
+.admin-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+.admin-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #e94560;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+}
+
+.admin-header h2 {
+  margin: 0;
+  color: #e94560;
+  font-size: 28px;
+  font-weight: 700;
+  text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-close-admin {
+  background: transparent;
+  border: 2px solid #e94560;
+  color: #e94560;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close-admin:hover {
+  background: #e94560;
+  color: white;
+  transform: rotate(90deg);
+}
+
+/* Tabs */
+.admin-tabs {
+  display: flex;
+  background: #0f0f1a;
+  border-bottom: 1px solid #333;
+  padding: 0 30px;
+  gap: 5px;
+}
+
+.admin-tab {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 18px 30px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-tab:hover {
+  color: #fff;
+  background: rgba(233, 69, 96, 0.1);
+}
+
+.admin-tab.active {
+  color: #e94560;
+  border-bottom-color: #e94560;
+  background: rgba(233, 69, 96, 0.05);
+}
+
+/* Conteúdo das abas */
+.admin-tab-content {
+  display: none;
+  flex: 1;
+  overflow: auto;
+  padding: 25px 30px;
+  animation: fadeIn 0.3s ease;
+}
+
+.admin-tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Toolbar */
+.admin-toolbar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 1px solid #333;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-toolbar input,
+.admin-toolbar select {
+  padding: 12px 16px;
+  background: #0f0f1a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  min-width: 200px;
+  transition: all 0.3s;
+}
+
+.admin-toolbar input:focus,
+.admin-toolbar select:focus {
+  outline: none;
+  border-color: #e94560;
+  box-shadow: 0 0 10px rgba(233, 69, 96, 0.3);
+}
+
+.btn-refresh {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-refresh:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+}
+
+/* Lista de usuários/propostas */
+.admin-list {
+  background: #1a1a2e;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+.admin-user-card,
+.admin-proposal-card {
+  display: grid;
+  grid-template-columns: 60px 2fr 1fr 1fr 120px 180px;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #333;
+  transition: all 0.3s ease;
+  gap: 15px;
+}
+
+.admin-user-card:hover,
+.admin-proposal-card:hover {
+  background: #252542;
+  transform: translateX(5px);
+}
+
+.admin-user-card.master {
+  border-left: 4px solid #ffd700;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, transparent 100%);
+}
+
+.user-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.user-avatar.master {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 0 20px rgba(245, 87, 108, 0.5);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 87, 108, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(245, 87, 108, 0.8); }
+}
+
+.user-info h4 {
+  margin: 0 0 6px 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-info p {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-master {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  color: #000;
+  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+}
+
+.role-admin {
+  background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+  color: #fff;
+}
+
+.role-user {
+  background: #4a4a6a;
+  color: #ccc;
+}
+
+.user-stats {
+  text-align: center;
+}
+
+.user-stats .count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e94560;
+  display: block;
+}
+
+.user-stats .label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  font-size: 16px;
+  background: #333;
+  color: #fff;
+}
+
+.btn-icon:hover {
+  transform: translateY(-2px) scale(1.1);
+}
+
+.btn-edit { background: #3498db; }
+.btn-edit:hover { background: #2980b9; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4); }
+
+.btn-reset { background: #f39c12; }
+.btn-reset:hover { background: #e67e22; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4); }
+
+.btn-delete { background: #e74c3c; }
+.btn-delete:hover { background: #c0392b; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); }
+
+/* Cards de propostas */
+.admin-proposal-card {
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 120px 150px;
+  cursor: pointer;
+}
+
+.proposal-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pendente { background: #f39c12; color: #000; }
+.status-aprovada { background: #4ade80; color: #000; }
+.status-reprovada { background: #e74c3c; color: #fff; }
+.status-em_execucao { background: #3498db; color: #fff; }
+
+.proposal-owner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #888;
+}
+
+.proposal-owner .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+.proposal-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4ade80;
+  text-align: right;
+}
+
+.proposal-info h4 {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.proposal-info p {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+}
+
+/* Botão flutuante Admin */
+.admin-toggle-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+  color: white;
+  border: none;
+  padding: 18px 30px;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.5);
+  z-index: 9998;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.admin-toggle-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(233, 69, 96, 0.7);
+}
+
+/* Estatísticas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 30px;
+  border-radius: 16px;
+  border: 1px solid #333;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #e94560 0%, #ff6b6b 100%);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  border-color: #e94560;
+  box-shadow: 0 10px 40px rgba(233, 69, 96, 0.2);
+}
+
+.stat-card h3 {
+  margin: 0 0 15px 0;
+  color: #888;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  font-size: 42px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  background: linear-gradient(135deg, #fff 0%, #e94560 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-change {
+  font-size: 13px;
+  color: #4ade80;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Modais do Admin */
+.admin-modal .modal-content {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #e94560;
+  border-radius: 16px;
+  max-width: 450px;
+}
+
+.admin-modal h3 {
+  margin: 0 0 20px 0;
+  color: #e94560;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.warning-text {
+  color: #e94560;
+  font-size: 14px;
+  margin: 15px 0;
+  padding: 12px;
+  background: rgba(233, 69, 96, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #e94560;
+}
+
+#newPasswordInput {
+  width: 100%;
+  padding: 14px;
+  background: #0f0f1a;
+  border: 2px solid #444;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  margin: 15px 0;
+  transition: all 0.3s;
+}
+
+#newPasswordInput:focus {
+  outline: none;
+  border-color: #e94560;
+  box-shadow: 0 0 15px rgba(233, 69, 96, 0.3);
+}
+
+/* Estados vazios/loading */
+.loading,
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #888;
+  font-size: 16px;
+}
+
+.empty-state {
+  background: transparent;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+  .admin-user-card {
+    grid-template-columns: 50px 1.5fr 1fr 100px 150px;
+  }
+  
+  .admin-user-card .user-stats {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+  
+  .admin-tabs {
+    padding: 0 15px;
+    overflow-x: auto;
+  }
+  
+  .admin-tab {
+    padding: 15px 20px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  .admin-user-card,
+  .admin-proposal-card {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .user-actions {
+    justify-content: flex-start;
+  }
+  
+  .admin-toggle-btn {
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    font-size: 14px;
+  }
+}
+
+
+  
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
@@ -10744,6 +11316,577 @@ function savePrcAtual(cfg){
   saveAll();
 }
 
+// ============================================
+// SISTEMA DE ADMIN/MASTER - JAVASCRIPT COMPLETO
+// ============================================
+
+let currentUserRole = null;
+let isMaster = false;
+let adminSelectedUser = null;
+let adminSelectedProposal = null;
+let allUsersData = []; // Cache para filtro
+
+// Verificar se usuário é master ao carregar
+async function checkMasterStatus() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, is_master')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) {
+      console.error('Erro ao buscar perfil:', error);
+      return;
+    }
+    
+    currentUserRole = profile?.role || 'user';
+    isMaster = profile?.is_master === true || currentUserRole === 'master';
+    
+    if (isMaster) {
+      const btn = document.getElementById('adminToggleBtn');
+      if (btn) btn.style.display = 'flex';
+      console.log('👑 Modo Master ativado para:', user.email);
+    }
+  } catch (err) {
+    console.error('Erro ao verificar master:', err);
+  }
+}
+
+// Toggle painel admin
+function toggleAdminPanel() {
+  const panel = document.getElementById('adminPanel');
+  const isVisible = panel.style.display === 'flex';
+  
+  if (isVisible) {
+    panel.style.display = 'none';
+    document.body.style.overflow = ''; // Restaurar scroll
+  } else {
+    panel.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Prevenir scroll do body
+    loadAllUsers(); // Carregar dados ao abrir
+  }
+}
+
+// Trocar abas do admin
+function showAdminTab(tabName, tabElement) {
+  // Remover active de todas as tabs
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+  
+  // Adicionar active na tab clicada
+  if (tabElement) tabElement.classList.add('active');
+  
+  // Mostrar conteúdo
+  const content = document.getElementById(`adminTab-${tabName}`);
+  if (content) content.classList.add('active');
+  
+  // Carregar dados específicos
+  if (tabName === 'users') loadAllUsers();
+  if (tabName === 'allProposals') {
+    loadAllProposals();
+    loadUserFilterOptions(); // Atualizar select de usuários
+  }
+  if (tabName === 'stats') loadAdminStats();
+}
+
+// ============================================
+// GERENCIAMENTO DE USUÁRIOS
+// ============================================
+
+async function loadAllUsers() {
+  const container = document.getElementById('adminUsersList');
+  if (!container) return;
+  
+  container.innerHTML = '<div class="loading">Carregando usuários...</div>';
+  
+  try {
+    const { data: users, error } = await supabase.rpc('admin_list_users');
+    
+    if (error) throw error;
+    
+    allUsersData = users || []; // Cache para filtro
+    
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhum usuário encontrado</div>';
+      return;
+    }
+    
+    renderUsersList(users);
+    
+    // Carregar contagem de propostas para cada usuário em paralelo
+    users.forEach(async (user) => {
+      const count = await getUserProposalCount(user.id);
+      const el = document.getElementById(`userCount-${user.id}`);
+      if (el) el.textContent = count;
+    });
+    
+  } catch (err) {
+    console.error('Erro ao carregar usuários:', err);
+    container.innerHTML = `<div class="empty-state">Erro: ${err.message}</div>`;
+  }
+}
+
+function renderUsersList(users) {
+  const container = document.getElementById('adminUsersList');
+  
+  container.innerHTML = users.map(user => `
+    <div class="admin-user-card ${user.is_master ? 'master' : ''}" data-email="${user.email.toLowerCase()}">
+      <div class="user-avatar ${user.is_master ? 'master' : ''}">
+        ${user.email.charAt(0).toUpperCase()}
+      </div>
+      <div class="user-info">
+        <h4>${user.email} ${user.is_master ? '👑' : ''}</h4>
+        <p>ID: ${user.id.substring(0, 8)}... • Criado: ${new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+        ${user.last_sign_in_at ? `<p>Último login: ${new Date(user.last_sign_in_at).toLocaleDateString('pt-BR')}</p>` : ''}
+      </div>
+      <div>
+        <span class="user-role role-${user.role}">${user.role}</span>
+      </div>
+      <div class="user-stats">
+        <span class="count" id="userCount-${user.id}">-</span>
+        <span class="label">Propostas</span>
+      </div>
+      <div class="user-actions">
+        <button class="btn-icon btn-reset" onclick="showResetPassword('${user.email}')" title="Resetar senha">
+          🔑
+        </button>
+        ${!user.is_master ? `
+          <button class="btn-icon btn-delete" onclick="showDeleteUser('${user.id}', '${user.email}')" title="Deletar usuário">
+            🗑️
+          </button>
+        ` : '<span style="color:#666;font-size:12px;">MASTER</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Filtro de usuários em tempo real
+function filterUsers() {
+  const searchTerm = document.getElementById('adminSearchUser').value.toLowerCase();
+  const cards = document.querySelectorAll('.admin-user-card');
+  
+  cards.forEach(card => {
+    const email = card.getAttribute('data-email');
+    if (email.includes(searchTerm)) {
+      card.style.display = 'grid';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+async function getUserProposalCount(userId) {
+  try {
+    const { count } = await supabase
+      .from('propostas')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    return count || 0;
+  } catch (err) {
+    return 0;
+  }
+}
+
+// ============================================
+// RESETAR SENHA
+// ============================================
+
+function showResetPassword(email) {
+  adminSelectedUser = email;
+  document.getElementById('resetTargetUser').textContent = email;
+  document.getElementById('newPasswordInput').value = '';
+  document.getElementById('adminResetPasswordModal').style.display = 'flex';
+}
+
+async function confirmResetPassword() {
+  const newPassword = document.getElementById('newPasswordInput').value;
+  
+  if (!newPassword || newPassword.length < 6) {
+    alert('❌ Senha deve ter pelo menos 6 caracteres');
+    return;
+  }
+  
+  try {
+    // Usar API do Supabase diretamente (mais confiável que RPC para reset)
+    const { data, error } = await supabase.auth.admin.updateUserById(
+      await getUserIdByEmail(adminSelectedUser),
+      { password: newPassword }
+    );
+    
+    if (error) throw error;
+    
+    alert(`✅ Senha de ${adminSelectedUser} atualizada com sucesso!`);
+    closeAdminModal('adminResetPasswordModal');
+    
+  } catch (err) {
+    console.error('Erro ao resetar senha:', err);
+    // Fallback: tentar via RPC
+    try {
+      const { data, error } = await supabase.rpc('admin_reset_password', {
+        target_email: adminSelectedUser,
+        new_password: newPassword
+      });
+      if (error) throw error;
+      if (data) {
+        alert(`✅ Senha de ${adminSelectedUser} resetada!`);
+        closeAdminModal('adminResetPasswordModal');
+      }
+    } catch (rpcErr) {
+      alert('❌ Erro: ' + (err.message || rpcErr.message));
+    }
+  }
+}
+
+async function getUserIdByEmail(email) {
+  const { data } = await supabase.rpc('admin_list_users');
+  const user = data?.find(u => u.email === email);
+  return user?.id;
+}
+
+// ============================================
+// DELETAR USUÁRIO
+// ============================================
+
+function showDeleteUser(userId, email) {
+  adminSelectedUser = { id: userId, email: email };
+  document.getElementById('deleteTargetUser').textContent = email;
+  document.getElementById('adminDeleteUserModal').style.display = 'flex';
+}
+
+async function confirmDeleteUser() {
+  try {
+    const { data, error } = await supabase.rpc('admin_delete_user', {
+      target_user_id: adminSelectedUser.id
+    });
+    
+    if (error) throw error;
+    
+    if (data) {
+      alert(`✅ Usuário ${adminSelectedUser.email} deletado com sucesso!`);
+      closeAdminModal('adminDeleteUserModal');
+      loadAllUsers(); // Recarregar lista
+    }
+  } catch (err) {
+    console.error('Erro ao deletar usuário:', err);
+    alert('❌ Erro: ' + err.message);
+  }
+}
+
+// ============================================
+// TODAS AS PROPOSTAS
+// ============================================
+
+async function loadUserFilterOptions() {
+  const select = document.getElementById('adminFilterUser');
+  if (!select) return;
+  
+  try {
+    const { data: users } = await supabase.rpc('admin_list_users');
+    const currentValue = select.value;
+    
+    select.innerHTML = '<option value="">Todos os usuários</option>' + 
+      (users || []).map(u => `<option value="${u.id}">${u.email}</option>`).join('');
+    
+    select.value = currentValue; // Preservar seleção
+  } catch (err) {
+    console.error('Erro ao carregar filtros:', err);
+  }
+}
+
+async function loadAllProposals() {
+  const container = document.getElementById('adminProposalsList');
+  if (!container) return;
+  
+  container.innerHTML = '<div class="loading">Carregando propostas...</div>';
+  
+  const filterUser = document.getElementById('adminFilterUser')?.value || '';
+  const filterStatus = document.getElementById('adminFilterStatus')?.value || '';
+  
+  try {
+    let query = supabase
+      .from('propostas')
+      .select(`
+        *,
+        profiles:user_id(email, role)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (filterUser) {
+      query = query.eq('user_id', filterUser);
+    }
+    
+    if (filterStatus) {
+      query = query.eq('status', filterStatus);
+    }
+    
+    const { data: propostas, error } = await query;
+    
+    if (error) throw error;
+    
+    if (!propostas || propostas.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhuma proposta encontrada</div>';
+      return;
+    }
+    
+    renderProposalsList(propostas);
+    
+  } catch (err) {
+    console.error('Erro ao carregar propostas:', err);
+    container.innerHTML = `<div class="empty-state">Erro: ${err.message}</div>`;
+  }
+}
+
+function renderProposalsList(propostas) {
+  const container = document.getElementById('adminProposalsList');
+  
+  container.innerHTML = propostas.map(p => `
+    <div class="admin-proposal-card" onclick="adminOpenProposal('${p.id}')">
+      <div class="proposal-info">
+        <h4>${p.numero_proposta || 'Sem número'} - ${p.cliente_nome || 'Sem cliente'}</h4>
+        <p>${p.descricao ? p.descricao.substring(0, 60) + '...' : 'Sem descrição'}</p>
+      </div>
+      <div>
+        <span class="proposal-status-badge status-${p.status || 'pendente'}">
+          ${getStatusIcon(p.status)} ${p.status || 'pendente'}
+        </span>
+      </div>
+      <div class="proposal-owner">
+        <div class="dot"></div>
+        ${p.profiles?.email || 'Sem usuário'}
+      </div>
+      <div class="proposal-value">
+        R$ ${formatMoney(p.valor_total || 0)}
+      </div>
+      <div class="proposal-info">
+        <p style="font-size:12px;color:#888;">${new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
+      </div>
+      <div class="user-actions">
+        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); adminEditProposal('${p.id}')" title="Editar">
+          ✏️
+        </button>
+        <button class="btn-icon btn-delete" onclick="event.stopPropagation(); showDeleteProposal('${p.id}', '${p.numero_proposta || 'Sem número'}')" title="Deletar">
+          🗑️
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusIcon(status) {
+  const icons = {
+    'pendente': '⏳',
+    'aprovada': '✅',
+    'reprovada': '❌',
+    'em_execucao': '🚀'
+  };
+  return icons[status] || '⏳';
+}
+
+// Master pode abrir qualquer proposta no wizard
+async function adminOpenProposal(proposalId) {
+  try {
+    // Carregar proposta no sistema normal
+    await carregarProposta(proposalId); // usa sua função existente
+    
+    // Fechar painel admin
+    toggleAdminPanel();
+    
+    // Opcional: mostrar indicador visual de "modo admin"
+    showAdminModeIndicator();
+    
+  } catch (err) {
+    console.error('Erro ao abrir proposta:', err);
+    alert('Erro ao carregar proposta');
+  }
+}
+
+async function adminEditProposal(proposalId) {
+  await adminOpenProposal(proposalId);
+  // Abrir direto na aba de orçamento (ajuste conforme seu sistema)
+  setTimeout(() => {
+    const tab = document.querySelector('[data-tab="orcamento"]') || 
+                document.getElementById('tab-orcamento');
+    if (tab) tab.click();
+  }, 300);
+}
+
+function showDeleteProposal(proposalId, numero) {
+  adminSelectedProposal = { id: proposalId, numero: numero };
+  document.getElementById('deleteTargetProposal').textContent = numero;
+  document.getElementById('adminDeleteProposalModal').style.display = 'flex';
+}
+
+async function confirmDeleteProposal() {
+  try {
+    // Deletar itens primeiro
+    await supabase.from('itens_proposta').delete().eq('proposta_id', adminSelectedProposal.id);
+    
+    // Deletar proposta
+    const { error } = await supabase.from('propostas').delete().eq('id', adminSelectedProposal.id);
+    
+    if (error) throw error;
+    
+    alert('✅ Proposta deletada com sucesso!');
+    closeAdminModal('adminDeleteProposalModal');
+    loadAllProposals(); // Recarregar
+    
+  } catch (err) {
+    console.error('Erro ao deletar:', err);
+    alert('❌ Erro: ' + err.message);
+  }
+}
+
+function showAdminModeIndicator() {
+  // Criar indicador visual se não existir
+  let indicator = document.getElementById('adminModeIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'adminModeIndicator';
+    indicator.innerHTML = '👑 MODO ADMIN';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 10000;
+      animation: pulse 2s infinite;
+    `;
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => {
+      if (indicator) indicator.remove();
+    }, 3000);
+  }
+}
+
+// ============================================
+// ESTATÍSTICAS DO SISTEMA
+// ============================================
+
+async function loadAdminStats() {
+  const container = document.getElementById('adminStatsGrid');
+  if (!container) return;
+  
+  container.innerHTML = '<div class="loading">Calculando estatísticas...</div>';
+  
+  try {
+    // Total de usuários
+    const { count: totalUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    
+    // Total de propostas
+    const { count: totalProposals } = await supabase
+      .from('propostas')
+      .select('*', { count: 'exact', head: true });
+    
+    // Valor total em propostas
+    const { data: valores } = await supabase.from('propostas').select('valor_total');
+    const valorTotal = valores?.reduce((sum, p) => sum + (p.valor_total || 0), 0) || 0;
+    
+    // Propostas por status
+    const { data: todasPropostas } = await supabase.from('propostas').select('status, valor_total');
+    
+    const stats = {
+      pendente: 0,
+      aprovada: 0,
+      reprovada: 0,
+      em_execucao: 0
+    };
+    
+    let valorAprovado = 0;
+    
+    todasPropostas?.forEach(p => {
+      stats[p.status || 'pendente']++;
+      if (p.status === 'aprovada') valorAprovado += (p.valor_total || 0);
+    });
+    
+    // Média de valor por proposta
+    const mediaValor = totalProposals > 0 ? valorTotal / totalProposals : 0;
+    
+    container.innerHTML = `
+      <div class="stat-card">
+        <h3>👥 Total de Usuários</h3>
+        <p class="stat-value">${totalUsers || 0}</p>
+        <p class="stat-change">Cadastrados no sistema</p>
+      </div>
+      <div class="stat-card">
+        <h3>📋 Total de Propostas</h3>
+        <p class="stat-value">${totalProposals || 0}</p>
+        <p class="stat-change">↳ ${stats.aprovada} aprovadas (${Math.round((stats.aprovada/totalProposals)*100) || 0}%)</p>
+      </div>
+      <div class="stat-card">
+        <h3>💰 Valor Total em Propostas</h3>
+        <p class="stat-value">R$ ${formatMoney(valorTotal)}</p>
+        <p class="stat-change">Média: R$ ${formatMoney(mediaValor)}</p>
+      </div>
+      <div class="stat-card">
+        <h3>✅ Valor Aprovado</h3>
+        <p class="stat-value">R$ ${formatMoney(valorAprovado)}</p>
+        <p class="stat-change">${Math.round((valorAprovado/valorTotal)*100) || 0}% do total</p>
+      </div>
+      <div class="stat-card">
+        <h3>⏳ Pendentes</h3>
+        <p class="stat-value">${stats.pendente}</p>
+        <p class="stat-change">Aguardando aprovação</p>
+      </div>
+      <div class="stat-card">
+        <h3>🚀 Em Execução</h3>
+        <p class="stat-value">${stats.em_execucao || 0}</p>
+        <p class="stat-change">Propostas ativas</p>
+      </div>
+    `;
+    
+  } catch (err) {
+    console.error('Erro ao carregar estatísticas:', err);
+    container.innerHTML = `<div class="empty-state">Erro: ${err.message}</div>`;
+  }
+}
+
+// ============================================
+// UTILITÁRIOS
+// ============================================
+
+function formatMoney(value) {
+  return (value || 0).toLocaleString('pt-BR', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+}
+
+function closeAdminModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.style.display = 'none';
+}
+
+// Fechar modais ao clicar fora
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('admin-modal')) {
+    e.target.style.display = 'none';
+  }
+});
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+// Chamar no carregamento da página
+document.addEventListener('DOMContentLoaded', () => {
+  checkMasterStatus();
+  
+  // Verificar periodicamente se o usuário logou (para mostrar botão admin)
+  setInterval(checkMasterStatus, 5000);
+});
+  
 </script>
 <div id="toast"></div>
 
@@ -13435,6 +14578,124 @@ function rExecTimeline(){
     </div>
   </div>
 </div>
+// elivandro daqui para baixo
+<!-- ============================================
+     PAINEL MASTER/ADMIN - APENAS PARA USUÁRIO MESTRE
+     ============================================ -->
+<div id="adminPanel" class="admin-panel" style="display: none;">
+  <div class="admin-header">
+    <h2>👑 PAINEL DO MESTRE</h2>
+    <button onclick="toggleAdminPanel()" class="btn-close-admin">✕</button>
+  </div>
+  
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="showAdminTab('users', this)">👥 Usuários</button>
+    <button class="admin-tab" onclick="showAdminTab('allProposals', this)">📋 Todas Propostas</button>
+    <button class="admin-tab" onclick="showAdminTab('stats', this)">📊 Estatísticas</button>
+  </div>
+  
+  <!-- ABA: USUÁRIOS -->
+  <div id="adminTab-users" class="admin-tab-content active">
+    <div class="admin-toolbar">
+      <button onclick="loadAllUsers()" class="btn-refresh">🔄 Atualizar</button>
+      <input type="text" id="adminSearchUser" placeholder="Buscar usuário..." onkeyup="filterUsers()" />
+    </div>
+    <div id="adminUsersList" class="admin-list">
+      <div class="loading">Carregando usuários...</div>
+    </div>
+  </div>
+  
+  <!-- ABA: TODAS AS PROPOSTAS -->
+  <div id="adminTab-allProposals" class="admin-tab-content">
+    <div class="admin-toolbar">
+      <select id="adminFilterUser" onchange="loadAllProposals()">
+        <option value="">Todos os usuários</option>
+      </select>
+      <select id="adminFilterStatus" onchange="loadAllProposals()">
+        <option value="">Todos os status</option>
+        <option value="pendente">Pendente</option>
+        <option value="aprovada">Aprovada</option>
+        <option value="reprovada">Reprovada</option>
+        <option value="em_execucao">Em Execução</option>
+      </select>
+      <button onclick="loadAllProposals()" class="btn-refresh">🔄 Atualizar</button>
+    </div>
+    <div id="adminProposalsList" class="admin-list">
+      <div class="loading">Carregando propostas...</div>
+    </div>
+  </div>
+  
+  <!-- ABA: ESTATÍSTICAS -->
+  <div id="adminTab-stats" class="admin-tab-content">
+    <div class="stats-grid" id="adminStatsGrid">
+      <div class="loading">Carregando estatísticas...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Botão flutuante para abrir painel (apenas master) -->
+<button id="adminToggleBtn" class="admin-toggle-btn" style="display: none;" onclick="toggleAdminPanel()">
+  👑 Admin
+</button>
+
+<!-- ============================================
+     MODAIS DO ADMIN
+     ============================================ -->
+
+<!-- Modal: Resetar Senha -->
+<div id="adminResetPasswordModal" class="modal admin-modal" style="display: none;">
+  <div class="modal-content admin-modal-content">
+    <h3>🔑 Resetar Senha</h3>
+    <p>Usuário: <strong id="resetTargetUser"></strong></p>
+    <input type="password" id="newPasswordInput" placeholder="Nova senha (mín. 6 caracteres)" />
+    <div class="modal-actions">
+      <button onclick="confirmResetPassword()" class="btn-confirm">Confirmar</button>
+      <button onclick="closeAdminModal('adminResetPasswordModal')" class="btn-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Delete Usuário -->
+<div id="adminDeleteUserModal" class="modal admin-modal" style="display: none;">
+  <div class="modal-content admin-modal-content">
+    <h3>⚠️ Deletar Usuário</h3>
+    <p>Tem certeza que deseja deletar <strong id="deleteTargetUser"></strong>?</p>
+    <p class="warning-text">Isso apagará TODOS os dados do usuário permanentemente!</p>
+    <div class="modal-actions">
+      <button onclick="confirmDeleteUser()" class="btn-danger">Deletar</button>
+      <button onclick="closeAdminModal('adminDeleteUserModal')" class="btn-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Delete Proposta -->
+<div id="adminDeleteProposalModal" class="modal admin-modal" style="display: none;">
+  <div class="modal-content admin-modal-content">
+    <h3>⚠️ Deletar Proposta</h3>
+    <p>Tem certeza que deseja deletar a proposta <strong id="deleteTargetProposal"></strong>?</p>
+    <p class="warning-text">Esta ação não pode ser desfeita!</p>
+    <div class="modal-actions">
+      <button onclick="confirmDeleteProposal()" class="btn-danger">Deletar</button>
+      <button onclick="closeAdminModal('adminDeleteProposalModal')" class="btn-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Editar Proposta (Quick Edit) -->
+<div id="adminQuickEditModal" class="modal admin-modal" style="display: none;">
+  <div class="modal-content admin-modal-content" style="max-width: 600px;">
+    <h3>✏️ Edição Rápida</h3>
+    <div id="adminQuickEditForm">
+      <!-- Form dinâmico -->
+    </div>
+    <div class="modal-actions">
+      <button onclick="saveQuickEdit()" class="btn-confirm">Salvar</button>
+      <button onclick="closeAdminModal('adminQuickEditModal')" class="btn-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+// elivandro daqui para cima
+  
 </body>
 </html>
 // persistência básica adicionada
