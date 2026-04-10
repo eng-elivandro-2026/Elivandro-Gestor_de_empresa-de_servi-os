@@ -383,31 +383,26 @@ window.protegerPagina = async function () {
   const { data } = await window.sbClient.auth.getUser();
   if (!data?.user) {
     window.location.href = "/login.html";
-  } else {
-    // Carrega propostas da nuvem sobrescrevendo localStorage
-    await sbCarregarNuvem();
-    // Recarrega a página para o app ler os dados novos
-    if(typeof loadAll === 'function') loadAll();
-    if(typeof rDash === 'function') rDash();
+    return;
+  }
+  // Carrega propostas da nuvem ao abrir (sincroniza com Supabase)
+  try {
+    var props = await sbCarregarNuvem();
+    if (props && props.length > 0) {
+      if (typeof loadAll === "function") loadAll();
+      if (typeof rDash === "function") rDash();
+    }
+  } catch(e) {
+    console.warn("[protegerPagina] erro ao carregar nuvem:", e);
   }
 };
 
 function toggleSidebar(forceOpen){
-  var sidebar=document.getElementById('sidebar');
+  var sidebar = document.getElementById("sidebar");
   if(!sidebar) return;
-  var shouldOpen = typeof forceOpen==='boolean' ? forceOpen : !sidebar.classList.contains('open');
-  sidebar.classList.toggle('open', shouldOpen);
-  document.body.classList.toggle('sidebar-open', shouldOpen);
-  // Carregar propostas da nuvem ao abrir
-window.protegerPagina = async function () {
-  const { data } = await window.sbClient.auth.getUser();
-  if (!data?.user) {
-    window.location.href = "/login.html";
-  } else {
-    // Usuário logado: carrega propostas da nuvem
-    await sbCarregarNuvem();
-  }
-};
+  var shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !sidebar.classList.contains("open");
+  sidebar.classList.toggle("open", shouldOpen);
+  document.body.classList.toggle("sidebar-open", shouldOpen);
 }
 </script>
 <script src="js/config/supabase-sync.js"></script>
