@@ -1832,7 +1832,6 @@ function toggleSidebar(forceOpen){
 
 <script src="app.js"></script>
 
-</script>
 <div id="toast"></div>
 
 <div id="formulasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;padding:20px">
@@ -2956,8 +2955,7 @@ function imprimirCategorias(){
     +'<style>'+estilos+'</style></head><body>'
     +'<h2>Tecfusion — Categorias de Orçamento</h2>'
     +'<table>'+thead+tbody+'</table>'
-    +'</div>
-</body></html>';
+  +'</div></body></html>';
   var w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},400);}
 }
