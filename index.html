@@ -4,15 +4,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Elivandro - Propostas</title>
+<title>FORTEX — Sistema de Propostas</title>
   <script>function Q(id){return document.getElementById(id);}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
-  --border:#30363d;--border2:#484f58;
-  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
-  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --bg:#0d1117;--bg2:#111418;--bg3:#1a1e24;
+  --border:#2a2e35;--border2:#3d4148;
+  --text:#f0f0f0;--text2:#9aa0a8;--text3:#6b7280;
+  --accent:#F05A1A;--accent2:#ff7a3d;
+  --green:#3fb950;--blue:#58a6ff;
   --red:#f85149;--purple:#bc8cff;--cyan:#39d353;
   --r:8px;--r2:6px;
 --conv-mark-color:#fff;}
@@ -20,7 +21,7 @@ body.light{
   --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
   --border:#d5dce6;--border2:#bfc9d7;
   --text:#111827;--text2:#4b5563;--text3:#6b7280;
-  --accent:#d97706;--green:#15803d;--blue:#2563eb;
+  --accent:#e04f0f;--green:#15803d;--blue:#2563eb;
   --red:#dc2626;--purple:#7c3aed;--cyan:#0891b2;
 --conv-mark-color:#111;}
 body.light .hdr{background:rgba(255,255,255,.95)}
@@ -32,15 +33,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 /* HEADER */
-.hdr{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:52px;gap:1rem}
+.hdr{position:sticky;top:0;z-index:100;background:rgba(10,12,16,.97);backdrop-filter:blur(10px);border-bottom:2px solid var(--accent);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:52px;gap:1rem}
 .logo{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
-.logo-mk{width:32px;height:32px;background:var(--accent);border-radius:7px;display:grid;place-items:center;font-size:.85rem;font-weight:800;color:#000;flex-shrink:0}
+.logo-mk{width:36px;height:36px;background:var(--accent);border-radius:5px;display:grid;place-items:center;font-size:.75rem;font-weight:900;color:#fff;flex-shrink:0;letter-spacing:.02em;font-family:inherit}
 .logo-txt{font-size:.95rem;font-weight:700;line-height:1}
 .logo-sub{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;line-height:1.15}
 .nav{display:flex;gap:2px;flex-wrap:wrap}
 .nb{padding:.38rem .8rem;border:none;border-left:3px solid transparent;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.78rem;font-weight:500;transition:all .15s;white-space:nowrap;font-family:inherit}
 .nb:hover{background:var(--bg3);color:var(--text)}
-.nb.on{background:rgba(240,165,0,.12);color:var(--accent);font-weight:700;border-left:3px solid var(--accent);padding-left:.6rem}
+.nb.on{background:rgba(240,90,26,.15);color:var(--accent);font-weight:700;border-left:3px solid var(--accent);padding-left:.6rem}
 
 /* LAYOUT */
 .wrap{max-width:1300px;margin:0 auto;padding:1.25rem}
@@ -335,10 +336,10 @@ body{overflow-x:hidden}
 .main-shell{min-height:100vh;padding-left:240px}
 .sidebar{
   position:fixed;left:0;top:0;bottom:0;width:240px;
-  background:var(--bg2);border-right:1px solid var(--border);
+  background:#0a0c10;border-right:2px solid var(--accent);
   padding:1rem .75rem;display:flex;flex-direction:column;gap:1rem;z-index:140;overflow-y:auto;
 }
-.sidebar-top{padding-bottom:.55rem;border-bottom:1px solid var(--border)}
+.sidebar-top{padding-bottom:.75rem;border-bottom:1px solid rgba(240,90,26,.3)}
 .sidebar-nav,.sidebar-tools{display:flex;flex-direction:column;gap:.35rem}
 .sidebar-nav .nb,.sidebar-tools .btn{width:100%;justify-content:flex-start;text-align:left}
 .mobile-overlay{
@@ -426,14 +427,16 @@ function toggleSidebar(forceOpen){
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <div class="logo">
-        <div class="logo-mk">EE</div>
-        <div>
-          <div class="logo-txt">Engenheiro Elivandro</div>
-          <div class="logo-sub">Elaborador de Propostas</div>
-          <div class="logo-sub">Versão: V473_OFICIAL</div>
-          <div class="logo-sub">Ano da versão: 2026</div>
+      <div class="logo" style="flex-direction:column;align-items:flex-start;gap:.3rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="logo-mk">FX</div>
+          <div>
+            <div style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:.04em;line-height:1;font-family:inherit">FORTEX</div>
+            <div style="width:100%;height:2px;background:var(--accent);margin:2px 0"></div>
+            <div style="font-size:.52rem;color:#aaa;letter-spacing:.18em;text-transform:uppercase;line-height:1">Tecnologia Industrial</div>
+          </div>
         </div>
+        <div style="font-size:.62rem;color:var(--text3);padding-top:.25rem;border-top:1px solid rgba(255,255,255,.06);width:100%">Sistema de Propostas Comerciais</div>
       </div>
     </div>
 
@@ -464,7 +467,7 @@ function toggleSidebar(forceOpen){
 <header class="hdr">
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-    <div class="topbar-title">Sistema de Propostas</div>
+    <div class="topbar-title" style="font-weight:800;letter-spacing:.04em">FORTEX <span style="font-weight:400;color:var(--text3);font-size:.8em">Propostas</span></div>
   </div>
 
   <div class="topbar-actions">
