@@ -417,8 +417,10 @@ window.protegerPagina = async function () {
     window.location.href = "/login.html";
     return;
   }
-  // Carrega propostas da nuvem ao abrir (sincroniza com Supabase)
+  // Carrega tudo da nuvem ao abrir
   try {
+    if (typeof sbCarregarMeta === 'function') await sbCarregarMeta();
+    if (typeof sbCarregarBackup === 'function') await sbCarregarBackup();
     var props = await sbCarregarNuvem();
     if (props && props.length > 0) {
       if (typeof loadAll === "function") loadAll();
