@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login</title>
+  <title>Login - Sistema de Propostas</title>
 
   <style>
     body{
@@ -16,27 +16,83 @@
       justify-content:center;
       min-height:100vh;
     }
-    .box{
-      width:320px;
+
+    .container{
+      display:flex;
+      width:900px;
+      max-width:95%;
       background:#161b22;
       border:1px solid #30363d;
-      border-radius:10px;
-      padding:24px;
+      border-radius:12px;
+      overflow:hidden;
     }
+
+    .left{
+      flex:1;
+      background:#0d1117;
+      padding:30px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      border-right:1px solid #30363d;
+    }
+
+    .logo{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:20px;
+    }
+
+    .logo-mk{
+      background:#facc15;
+      color:#000;
+      font-weight:bold;
+      padding:10px;
+      border-radius:6px;
+    }
+
+    .logo-text{
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .logo-sub{
+      font-size:12px;
+      color:#8b949e;
+    }
+
+    .left h2{
+      margin:20px 0 10px;
+    }
+
+    .left p{
+      font-size:14px;
+      color:#8b949e;
+    }
+
+    .right{
+      flex:1;
+      padding:30px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+
     h1{
-      font-size:22px;
-      margin:0 0 16px;
+      margin-bottom:20px;
     }
+
     input{
       width:100%;
-      box-sizing:border-box;
       padding:12px;
-      margin:0 0 10px;
+      margin-bottom:10px;
       border:none;
       border-radius:8px;
       background:#21262d;
       color:#fff;
     }
+
     button{
       width:100%;
       padding:12px;
@@ -44,31 +100,68 @@
       border-radius:8px;
       background:#58a6ff;
       color:#000;
-      font-weight:700;
+      font-weight:bold;
       cursor:pointer;
-      margin-top:6px;
+      margin-top:5px;
     }
+
+    .btn-secondary{
+      background:#30363d;
+      color:#fff;
+    }
+
     #msg{
-      margin-top:12px;
+      margin-top:10px;
       font-size:14px;
       color:#ff7b72;
       min-height:18px;
+    }
+
+    @media(max-width:768px){
+      .container{
+        flex-direction:column;
+      }
+
+      .left{
+        border-right:none;
+        border-bottom:1px solid #30363d;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="box">
-    <h1>Entrar</h1>
 
-    <input type="email" id="email" placeholder="Seu email" />
-    <input type="password" id="senha" placeholder="Sua senha" />
+  <div class="container">
 
-    <button id="btnLogin">Entrar</button>
-    <button id="btnCadastro">Criar conta</button>
-    <button id="btnReset">Esqueci minha senha</button>
+    <!-- LADO ESQUERDO -->
+    <div class="left">
+      <div class="logo">
+        <div class="logo-mk">EE</div>
+        <div>
+          <div class="logo-text">Eng. Elivandro</div>
+          <div class="logo-sub">Sistema de Propostas</div>
+        </div>
+      </div>
 
-    <div id="msg"></div>
+      <h2>Bem-vindo</h2>
+      <p>Gerencie propostas, análises e pipeline da sua empresa em um único sistema.</p>
+    </div>
+
+    <!-- LADO DIREITO -->
+    <div class="right">
+      <h1>Entrar</h1>
+
+      <input type="email" id="email" placeholder="Seu email" />
+      <input type="password" id="senha" placeholder="Sua senha" />
+
+      <button id="btnLogin">Entrar</button>
+      <button id="btnCadastro" class="btn-secondary">Criar conta</button>
+      <button id="btnReset" class="btn-secondary">Esqueci minha senha</button>
+
+      <div id="msg"></div>
+    </div>
+
   </div>
 
   <script type="module">
@@ -76,7 +169,7 @@
 
     const supabase = createClient(
       "https://ojuuzojwnyxdsavdosif.supabase.co",
-      "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u"
+      "COLE_AQUI_SUA_CHAVE"
     );
 
     const msg = document.getElementById("msg");
@@ -124,11 +217,10 @@
       }
 
       msg.style.color = "#3fb950";
-      msg.textContent = "Conta criada. Agora clique em Entrar.";
+      msg.textContent = "Conta criada. Verifique seu email.";
     }
 
     async function redefinirSenha() {
-      msg.style.color = "#ff7b72";
       msg.textContent = "";
 
       const email = document.getElementById("email").value.trim();
@@ -148,7 +240,7 @@
       }
 
       msg.style.color = "#3fb950";
-      msg.textContent = "Enviei o link de redefinição para seu email.";
+      msg.textContent = "Link de redefinição enviado!";
     }
 
     document.getElementById("btnLogin").addEventListener("click", login);
@@ -157,5 +249,6 @@
 
     verificarSessao();
   </script>
+
 </body>
 </html>
