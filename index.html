@@ -1,6 +1,21 @@
 
 <!DOCTYPE html>
 <html lang="pt-BR">
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+  const supabase = createClient(
+    "https://ojuuzojwnyxdsavdosif.supabase.co",
+    "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u"
+  );
+
+  const { data } = await supabase.auth.getUser();
+
+  if (!data?.user) {
+    window.location.href = "/login.html";
+  }
+</script>
+  
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
