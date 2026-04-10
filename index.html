@@ -383,6 +383,12 @@ window.protegerPagina = async function () {
   const { data } = await window.sbClient.auth.getUser();
   if (!data?.user) {
     window.location.href = "/login.html";
+  } else {
+    // Carrega propostas da nuvem sobrescrevendo localStorage
+    await sbCarregarNuvem();
+    // Recarrega a página para o app ler os dados novos
+    if(typeof loadAll === 'function') loadAll();
+    if(typeof rDash === 'function') rDash();
   }
 };
 
