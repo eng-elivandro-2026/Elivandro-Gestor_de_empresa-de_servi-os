@@ -363,28 +363,26 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   .sidebar{width:280px;max-width:85vw}
   .topbar-actions .btn{flex:0 0 auto}
 }
-
 </style>
+
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+
 <!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/config/supabase.js"></script>
 
+<!-- CORE -->
+<script src="./js/core/app-core.js"></script>
+
+<!-- PROTEÇÃO -->
 <script>
-const SUPABASE_URL = "https://ojuuzojwnyxdsavdosif.supabase.co";
-const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
-
-window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-console.log("Supabase conectado!");
-
-window.logout = async function () {
-  await window.sbClient.auth.signOut();
-  window.location.href = "/login.html";
-};
+  window.onload = function () {
+    if (window.protegerPagina) {
+      protegerPagina();
+    }
+  };
 </script>
-<script>
-  protegerPagina();
-</script>
+  
 </head>
 <body onload="protegerPagina()">
   <div class="mobile-overlay" onclick="toggleSidebar(false)"></div>
