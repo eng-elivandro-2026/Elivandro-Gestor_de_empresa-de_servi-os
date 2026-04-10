@@ -385,8 +385,11 @@ window.protegerPagina = async function () {
     window.location.href = "/login.html";
     return;
   }
-  // Carrega propostas da nuvem ao abrir (sincroniza com Supabase)
+  // Carrega propostas e metas da nuvem ao abrir
   try {
+    // Carregar metas primeiro
+    if (typeof sbCarregarMeta === 'function') await sbCarregarMeta();
+    // Carregar propostas
     var props = await sbCarregarNuvem();
     if (props && props.length > 0) {
       if (typeof loadAll === "function") loadAll();
