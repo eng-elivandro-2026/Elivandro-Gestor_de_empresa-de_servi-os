@@ -8942,3 +8942,13 @@ window.rTplMgr = rTplMgr;
 window.beInit = beInit;
 window.rAnalise = rAnalise;
 window.rRegistro = rRegistro;
+// ==========================
+// 🔐 PROTEGER PÁGINA (LOGIN)
+// ==========================
+window.protegerPagina = async function () {
+  const { data } = await window.sbClient.auth.getUser();
+
+  if (!data?.user) {
+    window.location.href = "/login.html";
+  }
+};
