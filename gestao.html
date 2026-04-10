@@ -2539,14 +2539,27 @@ function importarBackup(){
   const file=document.getElementById('backup-file').files[0];
   if(!file){toast('Selecione um arquivo .json');return;}
   const reader=new FileReader();
-  reader.onload=e=>{
+  reader.onload=async e=>{
     try{
       const importado=JSON.parse(e.target.result);
       dados=Object.assign({},importado);
-      save();
-      const st=document.getElementById('backup-status');
-      st.textContent='✅ Backup restaurado com sucesso! Recarregando...';st.style.display='block';
-      setTimeout(()=>location.reload(),1500);
+      save(); // salva localStorage
+      // Salvar imediatamente na nuvem (sem debounce)
+      try{
+        await _sb.from('configuracoes').upsert({
+          chave:'tf_planejador',
+          valor:dados,
+          updated_at:new Date().toISOString()
+        },{onConflict:'chave'});
+        const st=document.getElementById('backup-status');
+        st.textContent='✅ Backup restaurado e salvo na nuvem! Recarregando...';
+        st.style.display='block';
+      }catch(err2){
+        const st=document.getElementById('backup-status');
+        st.textContent='✅ Backup restaurado localmente (erro ao salvar nuvem). Recarregando...';
+        st.style.display='block';
+      }
+      setTimeout(()=>location.reload(),1800);
     }catch(err){
       const st=document.getElementById('backup-status');
       st.textContent='❌ Arquivo inválido. Verifique se é um backup correto.';
