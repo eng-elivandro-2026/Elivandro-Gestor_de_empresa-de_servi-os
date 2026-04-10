@@ -242,10 +242,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* DASHBOARD CLIENTES */
 .conv-wrap{display:grid;grid-template-columns:1.45fr .75fr;gap:.8rem}
 @media(max-width:980px){.conv-wrap{grid-template-columns:1fr}}
+.ranking-grid{display:grid;grid-template-columns:1.2fr 1fr .85fr;gap:.8rem}
+@media(max-width:860px){
+  .ranking-grid{grid-template-columns:1fr}
+  .conv-table{font-size:.7rem}
+  .conv-table th,.conv-table td{padding:.3rem .3rem}
+  .metric-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .conv-table th,.conv-table td{padding:.25rem .2rem;font-size:.68rem}
+  .metric-grid{grid-template-columns:1fr}
+}
 .conv-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem}
 .conv-title{font-size:.74rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem}
 .conv-table{width:100%;border-collapse:collapse;font-size:.74rem;table-layout:auto}
-.conv-table th,.conv-table td{padding:.42rem .4rem;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.conv-table th,.conv-table td{padding:.42rem .4rem;border-bottom:1px solid var(--border);text-align:left;white-space:normal;word-break:break-word}
 .conv-table th{font-size:.64rem;color:var(--text3);text-transform:uppercase}
 .conv-table tr:last-child td{border-bottom:none}
 .conv-good{color:var(--green);font-weight:700}
@@ -385,11 +396,8 @@ window.protegerPagina = async function () {
     window.location.href = "/login.html";
     return;
   }
-  // Carrega propostas e metas da nuvem ao abrir
+  // Carrega propostas da nuvem ao abrir (sincroniza com Supabase)
   try {
-    // Carregar metas primeiro
-    if (typeof sbCarregarMeta === 'function') await sbCarregarMeta();
-    // Carregar propostas
     var props = await sbCarregarNuvem();
     if (props && props.length > 0) {
       if (typeof loadAll === "function") loadAll();
@@ -571,7 +579,7 @@ function toggleSidebar(forceOpen){
       <span id="rankingChevron" style="font-size:.8rem;color:var(--text3)">▲</span>
     </div>
     <div id="rankingBody">
-    <div style="display:grid;grid-template-columns:1.2fr 1fr .85fr;gap:.8rem">
+    <div class="ranking-grid">
       <div class="conv-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem">
           <div class="conv-title" style="margin-bottom:0">🏢 Ranking por Cliente</div>
