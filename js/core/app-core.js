@@ -8916,3 +8916,29 @@ function savePrcAtual(cfg){
   LS('tf_prc',globalCfg);
   saveAll();
 }
+// ==========================
+// 🔗 TORNAR FUNÇÕES GLOBAIS
+// ==========================
+window.Q = Q;
+window.go = go;
+window.step = step;
+window.newProposal = newProposal;
+window.cancelEdit = cancelEdit;
+window.fecharProposta = fecharProposta;
+
+window.abrirAjuda = abrirAjuda;
+window.fecharAjuda = fecharAjuda;
+window.abrirFormulas = abrirFormulas;
+window.fecharFormulas = fecharFormulas;
+
+window.limparPropostasZero = limparPropostasZero;
+window.toggleTheme = toggleTheme;
+window.exportJSON = exportJSON;
+window.importJSON = importJSON;
+window.importP = importP;
+window.abrirImportProposta = abrirImportProposta;
+
+window.rTplMgr = rTplMgr;
+window.beInit = beInit;
+window.rAnalise = rAnalise;
+window.rRegistro = rRegistro;
