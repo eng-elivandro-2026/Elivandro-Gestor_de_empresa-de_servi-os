@@ -119,4 +119,70 @@
     console.log('%csupabase-sync.js carregado', 'color:green;font-weight:700');
   });
 
+
+// ════════════════════════════════════════════════════════
+  // BACKUP COMPLETO (propostas + templates + escopos + config)
+  // ════════════════════════════════════════════════════════
+
+  window.sbSalvarBackup = async function (backup) {
+    if (!window.sbClient || !backup) return;
+    // Salvar backup completo
+    var res = await window.sbClient
+      .from('configuracoes')
+      .upsert({
+        chave: 'tf_backup',
+        valor: backup,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    if (res.error) console.error('[supabase-sync] Erro ao salvar backup:', res.error.message);
+    else console.log('%cbackup salvo na nuvem', 'color:green');
+
+    // Salvar também templates e escopos separadamente para carregar mais fácil
+    if (backup.templates && backup.templates.length) {
+      await window.sbClient.from('configuracoes').upsert({
+        chave: 'tf_tpls',
+        valor: backup.templates,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    }
+    if (backup.escopos && backup.escopos.length) {
+      await window.sbClient.from('configuracoes').upsert({
+        chave: 'tf_etpl',
+        valor: backup.escopos,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    }
+    if (backup.config) {
+      await window.sbClient.from('configuracoes').upsert({
+        chave: 'tf_config',
+        valor: backup.config,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    }
+    return res;
+  };
+
+  window.sbCarregarBackup = async function () {
+    if (!window.sbClient) return null;
+    // Carregar templates
+    var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').single();
+    if (rTpl.data && rTpl.data.valor) {
+      try { localStorage.setItem('tf_tpls', JSON.stringify(rTpl.data.valor)); } catch(e) {}
+      console.log('%ctemplates carregados da nuvem', 'color:#58a6ff');
+    }
+    // Carregar escopos
+    var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').single();
+    if (rEsc.data && rEsc.data.valor) {
+      try { localStorage.setItem('tf_etpl', JSON.stringify(rEsc.data.valor)); } catch(e) {}
+      console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
+    }
+    // Carregar config
+    var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').single();
+    if (rCfg.data && rCfg.data.valor) {
+      try { localStorage.setItem('tf_prc', JSON.stringify(rCfg.data.valor)); } catch(e) {}
+      console.log('%cconfig carregada da nuvem', 'color:#58a6ff');
+    }
+    return true;
+  };
+
 })();
