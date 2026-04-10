@@ -315,128 +315,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     .meta-box{background:var(--bg);border:2px solid var(--accent);border-radius:6px;padding:.25rem .65rem;text-align:center;min-width:54px}
     .meta-box-lbl{font-size:.55rem;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:700;opacity:.8}
     .meta-box-val{font-size:.9rem;font-weight:900;color:var(--text);letter-spacing:-.01em}
-
-/* ===== Layout SaaS com Sidebar ===== */
-body{overflow-x:hidden}
-.main-shell{min-height:100vh;padding-left:240px}
-.sidebar{
-  position:fixed;left:0;top:0;bottom:0;width:240px;
-  background:var(--bg2);border-right:1px solid var(--border);
-  padding:1rem .75rem;display:flex;flex-direction:column;gap:1rem;z-index:140;
-}
-.sidebar-top{padding-bottom:.2rem;border-bottom:1px solid var(--border)}
-.sidebar-nav,.sidebar-tools{display:flex;flex-direction:column;gap:.35rem}
-.sidebar-nav .nb,.sidebar-tools .btn{
-  width:100%;justify-content:flex-start;text-align:left
-}
-.mobile-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  opacity:0;pointer-events:none;transition:.2s;z-index:130;
-}
-body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
-.topbar-left{display:flex;align-items:center;gap:.75rem;min-width:0}
-.topbar-title{
-  font-size:.95rem;font-weight:700;color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.menu-toggle{
-  display:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);
-  width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:1rem;
-}
-.topbar-actions{
-  display:flex;gap:.4rem;align-items:center;justify-content:flex-end;flex-wrap:wrap
-}
-
-@media (max-width: 1024px){
-  .main-shell{padding-left:0}
-  .sidebar{transform:translateX(-100%);transition:transform .25s ease}
-  .sidebar.open{transform:translateX(0)}
-  body.sidebar-open .sidebar{transform:translateX(0)}
-  .menu-toggle{display:inline-grid;place-items:center}
-  .hdr{padding:.65rem .75rem;height:auto;min-height:52px;align-items:flex-start;flex-direction:column}
-  .topbar-left,.topbar-actions{width:100%}
-  .topbar-actions{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
-}
-@media (max-width: 640px){
-  .wrap{padding:.75rem}
-  .topbar-title{font-size:.85rem}
-  .sidebar{width:280px;max-width:85vw}
-  .topbar-actions .btn{flex:0 0 auto}
-}
 </style>
-
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-
-<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./js/config/supabase.js"></script>
-
-<!-- CORE -->
-<script src="./js/core/app-core.js"></script>
-
-<!-- PROTEÇÃO -->
 <script>
-  window.onload = function () {
-    if (window.protegerPagina) {
-      protegerPagina();
+(function () {
+  if (!window.sbClient) {
+    const SUPABASE_URL = "https://ojuuzojwnyxdsavdosif.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
+    window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log("Supabase conectado!");
+  }
+
+  window.logout = async function () {
+    await window.sbClient.auth.signOut();
+    window.location.href = "/login.html";
+  };
+
+  window.protegerPagina = async function () {
+    const { data } = await window.sbClient.auth.getUser();
+    if (!data?.user) {
+      window.location.href = "/login.html";
     }
   };
+})();
 </script>
-  
+
 </head>
 <body onload="protegerPagina()">
-  <div class="mobile-overlay" onclick="toggleSidebar(false)"></div>
-
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-top">
-      <div class="logo">
-        <div class="logo-mk">EE</div>
-        <div>
-          <div class="logo-txt">Engenheiro Elivandro</div>
-          <div class="logo-sub">Elaborador de Propostas</div>
-          <div class="logo-sub">Versão: V473_OFICIAL</div>
-          <div class="logo-sub">Ano da versão: 2026</div>
-        </div>
-      </div>
-    </div>
-
-    <nav class="sidebar-nav">
-      <button class="nb on" onclick="go('dashboard',this);toggleSidebar(false)">📊 Dashboard</button>
-      <button class="nb" onclick="newProposal(this);toggleSidebar(false)">✏️ Nova Proposta</button>
-      <button class="nb" onclick="go('templates',this);rTplMgr();toggleSidebar(false)">📋 Templates</button>
-      <button class="nb" onclick="go('escopos',this);beInit();toggleSidebar(false)">🗂️ Banco de Escopos</button>
-      <button class="nb" onclick="go('analise',this);rAnalise();toggleSidebar(false)">📈 Análise</button>
-      <button class="nb" onclick="go('registro',this);rRegistro();toggleSidebar(false)">🔀 Pipeline</button>
-      <button class="nb" onclick="go('changelog',this);toggleSidebar(false)">📋 Versões</button>
-    </nav>
-
-    <div class="sidebar-tools">
-      <button class="btn bg bsm" onclick="abrirFormulas()">📐 Fórmulas</button>
-      <button class="btn bg bsm" onclick="abrirAjuda()">❓ Ajuda</button>
-      <button class="btn bd bsm" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00) do arquivo">🗑 Limpar R$0</button>
-      <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
-      <button class="btn bg bsm" onclick="exportJSON()">⬆️ Exportar JSON</button>
-      <button class="btn ba bsm" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
-      <button class="btn bp bsm" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
-      <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
-    </div>
-  </aside>
-
-  <div class="main-shell">
 
 <header class="hdr">
-  <div class="topbar-left">
-    <button class="menu-toggle" onclick="toggleSidebar(true)">☰</button>
-    <div class="topbar-title">Sistema de Propostas</div>
+  <div class="logo">
+    <div class="logo-mk">EE</div>
+    <div>
+      <div class="logo-txt">Engenheiro Elivandro</div>
+      <div class="logo-sub">Elaborador de Propostas</div>
+      <div class="logo-sub">Versão: V473_OFICIAL</div>
+      <div class="logo-sub">Ano da versão: 2026</div>
+    </div>
   </div>
-
-  <div class="topbar-actions">
+  <nav class="nav">
+    <button class="nb on" onclick="go('dashboard',this)">📊 Dashboard</button>
+    <button class="nb" onclick="newProposal(this)">✏️ Nova Proposta</button>
+    <button class="nb" onclick="go('templates',this);rTplMgr()">📋 Templates</button>
+    <button class="nb" onclick="go('escopos',this);beInit()">🗂️ Banco de Escopos</button>
+    <button class="nb" onclick="go('analise',this);rAnalise()">📈 Análise</button>
+    <button class="nb" onclick="go('registro',this);rRegistro()">🔀 Pipeline</button>
+    <button class="nb" onclick="go('changelog',this)">📋 Versões</button>
+    <button onclick="logout()">Sair</button>
+  </nav>
+  <div style="display:flex;gap:.4rem;padding:.35rem .8rem;background:var(--bg2);border-bottom:1px solid var(--border);justify-content:flex-end;align-items:center">
     <span style="font-size:.7rem;color:var(--text3);margin-right:.3rem">📦 Backup:</span>
+    <button onclick="logout()" style="background:#ff5c5c;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;">
+  Sair
+</button>
+    <button class="btn bg bsm" onclick="abrirFormulas()">📐 Fórmulas</button>
+    <button class="btn bg bsm" onclick="abrirAjuda()">❓ Ajuda</button>
+    <button class="btn bd bsm" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00) do arquivo">🗑 Limpar R$0</button>
     <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
-    <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
+    <button class="btn bg bsm" onclick="exportJSON()">⬆️ Exportar JSON</button>
+    <button class="btn ba bsm" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <span style="font-size:.7rem;color:var(--text3);margin-left:.6rem;margin-right:.3rem">|</span>
+    <button class="btn bp bsm" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
   </div>
-
-  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
   <input type="file" id="iFile" style="display:none" accept=".json" onchange="importP(event)">
 </header>
 
@@ -2944,29 +2886,7 @@ function imprimirCategorias(){
     +'<style>'+estilos+'</style></head><body>'
     +'<h2>Tecfusion — Categorias de Orçamento</h2>'
     +'<table>'+thead+tbody+'</table>'
-    +'
-  </div>
-
-<script>
-function toggleSidebar(forceOpen){
-  const sidebar = document.getElementById('sidebar');
-  const body = document.body;
-
-  if (!sidebar) return;
-
-  if (typeof forceOpen === 'boolean') {
-    sidebar.classList.toggle('open', forceOpen);
-    body.classList.toggle('sidebar-open', forceOpen);
-    return;
-  }
-
-  const isOpen = sidebar.classList.contains('open');
-  sidebar.classList.toggle('open', !isOpen);
-  body.classList.toggle('sidebar-open', !isOpen);
-}
-</script>
-
-</body></html>';
+    +'</body></html>';
   var w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},400);}
 }
@@ -4847,6 +4767,3 @@ function _cotMsgCopiado(){
   toast('📋 E-mail copiado! Cole no Outlook com Ctrl+V','ok');
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./js/config/supabase.js"></script>
-<script src="./js/core/app-core.js"></script>
