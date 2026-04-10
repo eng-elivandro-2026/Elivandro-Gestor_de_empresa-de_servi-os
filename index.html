@@ -242,21 +242,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* DASHBOARD CLIENTES */
 .conv-wrap{display:grid;grid-template-columns:1.45fr .75fr;gap:.8rem}
 @media(max-width:980px){.conv-wrap{grid-template-columns:1fr}}
-.ranking-grid{display:grid;grid-template-columns:1.2fr 1fr .85fr;gap:.8rem}
-@media(max-width:860px){
-  .ranking-grid{grid-template-columns:1fr}
-  .conv-table{font-size:.7rem}
-  .conv-table th,.conv-table td{padding:.3rem .3rem}
-  .metric-grid{grid-template-columns:1fr 1fr}
-}
-@media(max-width:480px){
-  .conv-table th,.conv-table td{padding:.25rem .2rem;font-size:.68rem}
-  .metric-grid{grid-template-columns:1fr}
-}
 .conv-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem}
 .conv-title{font-size:.74rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem}
 .conv-table{width:100%;border-collapse:collapse;font-size:.74rem;table-layout:auto}
-.conv-table th,.conv-table td{padding:.42rem .4rem;border-bottom:1px solid var(--border);text-align:left;white-space:normal;word-break:break-word}
+.conv-table th,.conv-table td{padding:.42rem .4rem;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 .conv-table th{font-size:.64rem;color:var(--text3);text-transform:uppercase}
 .conv-table tr:last-child td{border-bottom:none}
 .conv-good{color:var(--green);font-weight:700}
@@ -267,6 +256,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .metric-label{font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.18rem}
 .metric-val{font-size:1.05rem;font-weight:700}
 .metric-sub{font-size:.68rem;color:var(--text3);margin-top:.15rem}
+
+
+/* ── Botões sidebar-tools padronizados ── */
+.sb-tool{
+  width:100%;text-align:left;padding:.42rem .7rem;
+  background:transparent;border:1px solid var(--border);
+  border-radius:var(--r2);color:var(--text2);
+  font-size:.8rem;cursor:pointer;font-family:inherit;
+  transition:background .15s,color .15s;
+}
+.sb-tool:hover{background:var(--bg3);color:var(--text)}
+.sb-tool-sair{color:var(--red);border-color:rgba(248,81,73,.3)}
+.sb-tool-sair:hover{background:rgba(248,81,73,.1);color:var(--red)}
 
 /* TOAST */
 #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(20px);background:#222e3c;color:#fff;padding:.55rem 1.2rem;border-radius:20px;font-size:.82rem;font-weight:600;opacity:0;pointer-events:none;transition:all .25s;z-index:9999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
@@ -446,14 +448,14 @@ function toggleSidebar(forceOpen){
     </nav>
 
     <div class="sidebar-tools">
-      <button class="btn bg bsm" onclick="abrirFormulas()">📐 Fórmulas</button>
-      <button class="btn bg bsm" onclick="abrirAjuda()">❓ Ajuda</button>
-      <button class="btn bd bsm" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00) do arquivo">🗑 Limpar R$0</button>
-      <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
-      <button class="btn bg bsm" onclick="exportJSON()">⬆️ Exportar JSON</button>
-      <button class="btn ba bsm" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
-      <button class="btn bp bsm" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
-      <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
+      <button class="sb-tool" onclick="abrirFormulas()">📐 Fórmulas</button>
+      <button class="sb-tool" onclick="abrirAjuda()">❓ Ajuda</button>
+      <button class="sb-tool" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00)">🗑 Limpar R$0</button>
+      <button class="sb-tool" onclick="toggleTheme()">🌓 Tema</button>
+      <button class="sb-tool" onclick="exportJSON()">⬆️ Exportar JSON</button>
+      <button class="sb-tool" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
+      <button class="sb-tool" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
+      <button class="sb-tool sb-tool-sair" onclick="logout()">🚪 Sair</button>
     </div>
   </aside>
 
@@ -465,7 +467,11 @@ function toggleSidebar(forceOpen){
     <div class="topbar-title">Sistema de Propostas</div>
   </div>
 
-
+  <div class="topbar-actions">
+    <span style="font-size:.7rem;color:var(--text3);margin-right:.3rem">📦 Backup:</span>
+    <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
+    <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
+  </div>
 
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
   <input type="file" id="iFile" style="display:none" accept=".json" onchange="importP(event)">
@@ -575,7 +581,7 @@ function toggleSidebar(forceOpen){
       <span id="rankingChevron" style="font-size:.8rem;color:var(--text3)">▲</span>
     </div>
     <div id="rankingBody">
-    <div class="ranking-grid">
+    <div style="display:grid;grid-template-columns:1.2fr 1fr .85fr;gap:.8rem">
       <div class="conv-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem">
           <div class="conv-title" style="margin-bottom:0">🏢 Ranking por Cliente</div>
