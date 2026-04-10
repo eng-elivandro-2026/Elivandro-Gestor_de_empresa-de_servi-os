@@ -346,7 +346,14 @@ function loadAll(){
   saveCnt();
   eDB=LS('tf_edb')||{titulos:[],subtitulos:[]};
 }
-function saveAll(){LS('tf_props',props);try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}}
+function saveAll(){
+  LS('tf_props',props);
+  try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
+  // Auto-sync proposta por proposta na nuvem
+  if(typeof sbSalvarProposta === 'function' && props.length){
+    sbSalvarProposta(props[props.length-1]);
+  }
+}
 function saveEDB(){LS('tf_edb',eDB)}
 
 // REVISÕES
@@ -7819,12 +7826,15 @@ function exportJSON(){
     escopos:   (function(){ try{return JSON.parse(localStorage.getItem('tf_etpl')||'[]')}catch(e){return[]} })(),
     config:    cfg
   };
+  // Salvar backup na nuvem automaticamente
+  if(typeof sbSalvarBackup === 'function') sbSalvarBackup(backup);
+  // Download do arquivo local
   var json=JSON.stringify(backup, null, 2);
   var blob=new Blob([json],{type:'application/json'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   var d=new Date();
-  var fname='tecfusion_backup_'
+  var fname='fortex_backup_'
     +d.getFullYear()
     +String(d.getMonth()+1).padStart(2,'0')
     +String(d.getDate()).padStart(2,'0')
@@ -7835,7 +7845,7 @@ function exportJSON(){
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('✔ Exportado: '+fname,'ok');
+  toast('✔ Exportado e salvo na nuvem: '+fname,'ok');
 }
 
 function importJSON(input){
@@ -7928,8 +7938,6 @@ function salvarMeta(){
   Q('metaModal').style.display='none';
   rMeta();
   toast('✔ Metas salvas!','ok');
-  // Salvar metas na nuvem
-  if(typeof sbSalvarMeta === 'function') sbSalvarMeta(meta);
 }
 function abrirConfigMeta(){
   var m=getMeta()||{ano:2026,prop:142,fech:38,rec:0,antProp:109,antFech:29,antRec:0,antTicket:75000};
