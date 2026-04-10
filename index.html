@@ -376,6 +376,11 @@ const SUPABASE_KEY = "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u";
 window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 console.log("Supabase conectado!");
+
+window.logout = async function () {
+  await window.sbClient.auth.signOut();
+  window.location.href = "/login.html";
+};
 </script>
 
 </head>
@@ -427,17 +432,11 @@ console.log("Supabase conectado!");
 
   <div class="topbar-actions">
     <span style="font-size:.7rem;color:var(--text3);margin-right:.3rem">📦 Backup:</span>
-    <button class="btn bg bsm" onclick="abrirFormulas()">📐 Fórmulas</button>
-    <button class="btn bg bsm" onclick="abrirAjuda()">❓ Ajuda</button>
-    <button class="btn bd bsm" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00) do arquivo">🗑 Limpar R$0</button>
     <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
-    <button class="btn bg bsm" onclick="exportJSON()">⬆️ Exportar JSON</button>
-    <button class="btn ba bsm" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
-    <button class="btn bp bsm" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
     <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
   </div>
 
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
   <input type="file" id="iFile" style="display:none" accept=".json" onchange="importP(event)">
 </header>
 
