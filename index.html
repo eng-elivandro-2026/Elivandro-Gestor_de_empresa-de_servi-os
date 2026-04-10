@@ -394,7 +394,14 @@ function toggleSidebar(forceOpen){
   document.body.classList.toggle('sidebar-open', shouldOpen);
 }
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://ojuuzoj...";
+const SUPABASE_KEY = "sb_publishable_...";
+window.sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+...
+</script>
+<script src="js/config/supabase-sync.js"></script>  ← ADICIONAR AQUI
 </head>
 
 <body onload="protegerPagina()">
