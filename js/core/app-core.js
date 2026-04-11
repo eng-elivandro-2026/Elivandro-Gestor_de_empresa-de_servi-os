@@ -19,7 +19,16 @@ var fmtBRL=money;
 var fmtNumBr=function(v){ return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:4}).format(n2(v)); };
 var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}else{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
-function applyTheme(t){document.body.classList.toggle('light',t==='light')}
+function applyTheme(t){
+  document.body.classList.toggle('light',t==='light');
+  // Propagar tema para o iframe do gestão
+  try {
+    var frame = document.getElementById('gestao-frame');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'SET_TEMA', tema: t }, '*');
+    }
+  } catch(e) {}
+}
 function getTheme(){return LS('tf_theme')||'dark'}
 function toggleTheme(){var cur=getTheme(),nxt=cur==='light'?'dark':'light';LS('tf_theme',nxt);applyTheme(nxt)}
 var ANO=new Date().getFullYear().toString().slice(-2);
@@ -346,12 +355,12 @@ function loadAll(){
   saveCnt();
   eDB=LS('tf_edb')||{titulos:[],subtitulos:[]};
 }
-function saveAll(propSalva){
+function saveAll(){
   LS('tf_props',props);
   try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
-  // Auto-sync: salva a proposta específica se passada, senão a última
+  // Auto-sync proposta por proposta na nuvem
   if(typeof sbSalvarProposta === 'function' && props.length){
-    sbSalvarProposta(propSalva || props[props.length-1]);
+    sbSalvarProposta(props[props.length-1]);
   }
 }
 function saveEDB(){LS('tf_edb',eDB)}
@@ -1433,7 +1442,7 @@ var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
     props.push(sn);
     advN();
   }
-  editId=sn.id;saveAll(sn);rDash();
+  editId=sn.id;saveAll();rDash();
   try{showActionBar(sn);}catch(e){}
   toast('✔Proposta salva!','ok');
 }
