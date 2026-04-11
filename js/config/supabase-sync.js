@@ -185,4 +185,52 @@
     return true;
   };
 
+  // ════════════════════════════════════════════════════════
+  // REALTIME — Atualização automática entre dispositivos
+  // ════════════════════════════════════════════════════════
+  var _realtimeChannel = null;
+  var _ultimoUpdate = Date.now();
+
+  window.sbIniciarRealtime = function () {
+    if (!window.sbClient) return;
+    if (_realtimeChannel) return; // já iniciado
+
+    _realtimeChannel = window.sbClient
+      .channel('propostas-realtime')
+      .on('postgres_changes', {
+        event: '*',          // INSERT, UPDATE, DELETE
+        schema: 'public',
+        table: 'propostas'
+      }, function (payload) {
+        // Ignorar se a mudança veio deste próprio dispositivo (< 2 segundos)
+        var agora = Date.now();
+        if (agora - _ultimoUpdate < 2000) return;
+
+        console.log('%c[Realtime] proposta atualizada por outro dispositivo', 'color:#F05A1A;font-weight:700');
+
+        // Recarregar propostas da nuvem e re-renderizar
+        sbCarregarNuvem().then(function (props) {
+          if (!props) return;
+          if (typeof loadAll === 'function') loadAll();
+          if (typeof rDash === 'function') rDash();
+          if (typeof rProps === 'function') rProps();
+          // Toast discreto
+          if (typeof toast === 'function') toast('🔄 Atualizado por outro dispositivo', 'ok');
+        });
+      })
+      .subscribe(function (status) {
+        if (status === 'SUBSCRIBED') {
+          console.log('%c[Realtime] conectado — sync automático ativo', 'color:#F05A1A;font-weight:700');
+        }
+      });
+  };
+
+  // Marcar timestamp ao salvar para ignorar o próprio evento
+  var _sbSalvarPropostaOriginal = window.sbSalvarProposta;
+  window.sbSalvarProposta = async function (p) {
+    _ultimoUpdate = Date.now();
+    return _sbSalvarPropostaOriginal ? _sbSalvarPropostaOriginal(p) : null;
+  };
+
+
 })();
