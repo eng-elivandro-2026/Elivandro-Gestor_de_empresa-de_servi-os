@@ -470,14 +470,16 @@ function toggleSidebar(forceOpen){
       </button>
     </div>
     <div class="sidebar-top">
-      <div class="logo">
-        <div class="logo-mk">EE</div>
-        <div>
-          <div class="logo-txt">Engenheiro Elivandro</div>
-          <div class="logo-sub">Elaborador de Propostas</div>
-          <div class="logo-sub">Versão: V473_OFICIAL</div>
-          <div class="logo-sub">Ano da versão: 2026</div>
+      <div class="logo" style="flex-direction:column;align-items:flex-start;gap:.3rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="logo-mk" style="background:var(--accent);color:#fff;font-weight:900;font-size:.75rem;border-radius:5px;width:36px;height:36px">FX</div>
+          <div>
+            <div style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:.04em;line-height:1">FORTEX</div>
+            <div style="width:100%;height:2px;background:var(--accent);margin:2px 0"></div>
+            <div style="font-size:.52rem;color:#aaa;letter-spacing:.18em;text-transform:uppercase">Tecnologia Industrial</div>
+          </div>
         </div>
+        <div id="sidebar-subtitle" style="font-size:.62rem;color:var(--text3);padding-top:.25rem;border-top:1px solid rgba(255,255,255,.06);width:100%">Sistema de Propostas Comerciais</div>
       </div>
     </div>
 
@@ -500,6 +502,23 @@ function toggleSidebar(forceOpen){
       <button class="sb-tool" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
       <button class="sb-tool" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
       <button class="sb-tool sb-tool-sair" onclick="logout()">🚪 Sair</button>
+
+    <!-- Nav Gestão (visível só no ambiente Gestão) -->
+    <nav class="sidebar-nav" id="gestao-nav" style="display:none">
+      <button class="nb" onclick="gestaoShowSec('dia')">📅 Dia</button>
+      <button class="nb" onclick="gestaoShowSec('semana')">📆 Semana</button>
+      <button class="nb" onclick="gestaoShowSec('mes')">📊 Mês</button>
+      <button class="nb" onclick="gestaoShowSec('trimestre')">🎯 Trimestre</button>
+      <button class="nb" onclick="gestaoShowSec('calendario')">📆 Calendário</button>
+      <button class="nb" onclick="gestaoShowSec('versoes')">📋 Versões</button>
+    </nav>
+
+    <!-- Tools Gestão (visível só no ambiente Gestão) -->
+    <div class="sidebar-tools" id="gestao-tools" style="display:none">
+      <button class="sb-tool" onclick="toggleTheme()">🌓 Tema</button>
+      <button class="sb-tool" onclick="gestaoBackup()">💾 Backup</button>
+      <button class="sb-tool sb-tool-sair" onclick="logout()">🚪 Sair</button>
+    </div>
     </div>
   </aside>
 
@@ -509,12 +528,6 @@ function toggleSidebar(forceOpen){
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
     <div class="topbar-title" style="font-weight:800;letter-spacing:.04em">FORTEX <span id="amb-titulo" style="font-weight:400;color:var(--text3);font-size:.8em">Comercial</span></div>
-  </div>
-
-  <div class="topbar-actions">
-    <span style="font-size:.7rem;color:var(--text3);margin-right:.3rem">📦 Backup:</span>
-    <button class="btn bg bsm" onclick="toggleTheme()">🌓 Tema</button>
-    <button class="btn bd bsm" onclick="logout()">🚪 Sair</button>
   </div>
 
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
@@ -4606,28 +4619,59 @@ function setAmbiente(amb) {
   var comercial = document.getElementById('comercial-content');
   var tabC      = document.getElementById('amb-comercial');
   var tabG      = document.getElementById('amb-gestao');
-  var sidebar   = document.getElementById('sidebar');
-  var nav       = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
-  var tools     = sidebar ? sidebar.querySelector('.sidebar-tools') : null;
-  var sbtop     = sidebar ? sidebar.querySelector('.sidebar-top') : null;
+  var navC      = document.querySelector('.sidebar-nav');
+  var toolsC    = document.querySelector('.sidebar-tools');
+  var navG      = document.getElementById('gestao-nav');
+  var toolsG    = document.getElementById('gestao-tools');
+  var sbtop     = document.querySelector('.sidebar-top');
   var titulo    = document.getElementById('amb-titulo');
+  var subtitle  = document.getElementById('sidebar-subtitle');
 
   if (amb === 'gestao') {
     frame.classList.add('visible');
     comercial.classList.add('hidden');
     tabC.classList.remove('active'); tabG.classList.add('active');
-    if (nav)    nav.style.display = 'none';
-    if (tools)  tools.style.display = 'none';
-    if (sbtop)  sbtop.style.display = 'none';
-    if (titulo) titulo.textContent = 'Gestão';
+    if (navC)    navC.style.display = 'none';
+    if (toolsC)  toolsC.style.display = 'none';
+    if (navG)    navG.style.display = 'flex';
+    if (toolsG)  toolsG.style.display = 'flex';
+    if (titulo)  titulo.textContent = 'Gestão';
+    if (subtitle) subtitle.textContent = 'Gestão Empresas de Serviços';
+    // Resetar botões ativos da nav gestão
+    document.querySelectorAll('#gestao-nav .nb').forEach(function(b){ b.classList.remove('on'); });
+    var primeiro = document.querySelector('#gestao-nav .nb');
+    if (primeiro) primeiro.classList.add('on');
   } else {
     frame.classList.remove('visible');
     comercial.classList.remove('hidden');
     tabC.classList.add('active'); tabG.classList.remove('active');
-    if (nav)    nav.style.display = '';
-    if (tools)  tools.style.display = '';
-    if (sbtop)  sbtop.style.display = '';
-    if (titulo) titulo.textContent = 'Comercial';
+    if (navC)    navC.style.display = '';
+    if (toolsC)  toolsC.style.display = '';
+    if (navG)    navG.style.display = 'none';
+    if (toolsG)  toolsG.style.display = 'none';
+    if (titulo)  titulo.textContent = 'Comercial';
+    if (subtitle) subtitle.textContent = 'Sistema de Propostas Comerciais';
+  }
+}
+</script>
+<script>
+function gestaoShowSec(sec) {
+  var frame = document.getElementById('gestao-frame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({ type: 'SHOW_SEC', sec: sec }, '*');
+  }
+  // Atualizar botão ativo na nav gestão
+  document.querySelectorAll('#gestao-nav .nb').forEach(function(b){ b.classList.remove('on'); });
+  var secMap = { dia:0, semana:1, mes:2, trimestre:3, calendario:4, versoes:5 };
+  var btns = document.querySelectorAll('#gestao-nav .nb');
+  if (btns[secMap[sec]]) btns[secMap[sec]].classList.add('on');
+  toggleSidebar(false);
+}
+
+function gestaoBackup() {
+  var frame = document.getElementById('gestao-frame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({ type: 'OPEN_BACKUP' }, '*');
   }
 }
 </script>
