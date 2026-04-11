@@ -1344,10 +1344,9 @@ function renderDiaNav(){
     const hoje=diaHoje();
     const todosOsDias=Object.keys(dados.dias).sort();
     const idxAtual=todosOsDias.indexOf(d);
-    const temAnterior=idxAtual>0||(d>todosOsDias[0]);
     const temProximo=d<hoje;
     nav.innerHTML=`
-      <button class="btn bg btn-sm" onclick="navDia(-1)" title="Dia anterior" ${!temAnterior?'disabled':''}>‹</button>
+      <button class="btn bg btn-sm" onclick="navDia(-1)" title="Dia anterior">‹</button>
       <span style="font-size:.72rem;color:${isHoje?'var(--green)':'var(--accent)'};font-weight:600;cursor:pointer;min-width:60px;text-align:center" onclick="abrirDia(diaHoje())">${isHoje?'Hoje':d}</span>
       <button class="btn bg btn-sm" onclick="navDia(1)" title="Próximo dia" ${!temProximo?'disabled':''}>›</button>
     `;
