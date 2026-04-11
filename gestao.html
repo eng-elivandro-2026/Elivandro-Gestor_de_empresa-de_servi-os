@@ -45,43 +45,24 @@ body.light .hdr{background:rgba(255,255,255,.96)}
 .today-lbl{font-size:.7rem;color:var(--text3);white-space:nowrap}
 
 
-/* ===== SIDEBAR GESTÃO ===== */
-body{overflow-x:hidden}
-.main-shell-g{min-height:100vh;padding-left:240px}
-.sidebar-g{
-  position:fixed;left:0;top:0;bottom:0;width:240px;
-  background:#0a0c10;border-right:2px solid var(--accent);
-  padding:1rem .75rem;display:flex;flex-direction:column;gap:1rem;
-  z-index:140;overflow-y:auto;transition:transform .25s ease;
-}
-.sidebar-g-top{padding-bottom:.75rem;border-bottom:1px solid rgba(240,90,26,.3)}
-.sidebar-g-nav,.sidebar-g-tools{display:flex;flex-direction:column;gap:.35rem}
-.nb-g{
-  padding:.38rem .8rem;border:none;border-left:3px solid transparent;
-  background:transparent;color:var(--text2);border-radius:var(--r2);
-  cursor:pointer;font-size:.78rem;font-weight:500;transition:all .15s;
-  white-space:nowrap;font-family:inherit;width:100%;text-align:left;
-}
-.nb-g:hover{background:var(--bg3);color:var(--text)}
-.nb-g.on{background:rgba(240,90,26,.15);color:var(--accent);font-weight:700;border-left:3px solid var(--accent);padding-left:.6rem}
-.sb-tool-g{
-  width:100%;text-align:left;padding:.42rem .7rem;
-  background:transparent;border:none;border-radius:var(--r2);
-  color:var(--text2);font-size:.8rem;cursor:pointer;
-  font-family:inherit;transition:background .15s,color .15s;
-}
-.sb-tool-g:hover{background:var(--bg3);color:var(--text)}
-.sb-tool-g-sair{color:rgba(248,81,73,.7)}
-.sb-tool-g-sair:hover{background:rgba(248,81,73,.08);color:var(--red)}
-.mobile-overlay-g{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  z-index:139;display:none;
-}
-.mobile-overlay-g.open{display:block}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @media(max-width:768px){
-  .main-shell-g{padding-left:0}
-  .sidebar-g{transform:translateX(-100%)}
-  .sidebar-g.open{transform:translateX(0)}
+  
+  
+  
 }
 
 /* LAYOUT */
@@ -409,40 +390,6 @@ async function sbProtegerGestao() {
 </script>
 </head>
 <body>
-
-<div class="mobile-overlay-g" id="mob-overlay-g" onclick="toggleSidebarG(false)"></div>
-
-<aside class="sidebar-g" id="sidebar-g">
-  <div class="sidebar-g-top">
-    <div style="display:flex;align-items:center;gap:.5rem">
-      <div style="width:36px;height:36px;background:var(--accent);border-radius:5px;display:grid;place-items:center;font-size:.75rem;font-weight:900;color:#fff;flex-shrink:0">FX</div>
-      <div>
-        <div style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:.04em;line-height:1">FORTEX</div>
-        <div style="width:100%;height:2px;background:var(--accent);margin:2px 0"></div>
-        <div style="font-size:.52rem;color:#aaa;letter-spacing:.18em;text-transform:uppercase">Tecnologia Industrial</div>
-      </div>
-    </div>
-    <div style="font-size:.62rem;color:var(--text3);padding-top:.25rem;border-top:1px solid rgba(255,255,255,.06);margin-top:.4rem">Gestão Empresas de Serviços</div>
-    <div style="font-size:.65rem;color:var(--text3);margin-top:.3rem" id="todayLbl"></div>
-  </div>
-
-  <nav class="sidebar-g-nav">
-    <button class="nb-g on" id="nb-dia" onclick="showSecG('dia')">📅 Dia</button>
-    <button class="nb-g" id="nb-semana" onclick="showSecG('semana')">📆 Semana</button>
-    <button class="nb-g" id="nb-mes" onclick="showSecG('mes')">📊 Mês</button>
-    <button class="nb-g" id="nb-trimestre" onclick="showSecG('trimestre')">🎯 Trimestre</button>
-    <button class="nb-g" id="nb-calendario" onclick="showSecG('calendario')">📆 Calendário</button>
-    <button class="nb-g" id="nb-versoes" onclick="showSecG('versoes')">📋 Versões</button>
-  </nav>
-
-  <div class="sidebar-g-tools">
-    <button class="sb-tool-g" onclick="toggleTheme();updateThemeBtn()">🌓 Tema</button>
-    <button class="sb-tool-g" onclick="abrirModal('m-backup')">💾 Backup</button>
-    <button class="sb-tool-g sb-tool-g-sair" onclick="sbLogoutGestao()">🚪 Sair</button>
-  </div>
-</aside>
-
-<div class="main-shell-g">
 
 
 
@@ -2859,23 +2806,12 @@ document.getElementById('theme-btn').textContent=dados.theme==='light'?'🌙':'�
 // Atualizar janelas a cada minuto
 setInterval(()=>{renderJanelas();atualizarDataHoje();},60000);
 </script>
-</div><!-- /main-shell-g -->
 <script>
-// ── Sidebar Gestão ──
-function toggleSidebarG(forceOpen) {
-  var sb = document.getElementById('sidebar-g');
-  var ov = document.getElementById('mob-overlay-g');
-  if (!sb) return;
-  var open = typeof forceOpen === 'boolean' ? forceOpen : !sb.classList.contains('open');
-  sb.classList.toggle('open', open);
-  if (ov) ov.classList.toggle('open', open);
-}
-
 function showSecG(id) {
   // Chamar função original
   showSec(id);
   // Atualizar botões da sidebar
-  document.querySelectorAll('.nb-g').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll(');
   var btn = document.getElementById('nb-' + id);
   if (btn) btn.classList.add('on');
   // Fechar sidebar no mobile
@@ -2886,6 +2822,23 @@ function updateThemeBtn() {
   var btn = document.getElementById('theme-btn');
   if (btn) btn.textContent = dados.theme === 'light' ? '🌙' : '☀️';
 }
+</script>
+<script>
+// Receber comandos do index (via postMessage)
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'SHOW_SEC') {
+    showSec(e.data.sec);
+  }
+  if (e.data.type === 'OPEN_BACKUP') {
+    abrirModal('m-backup');
+  }
+  if (e.data.type === 'SET_TEMA') {
+    if (e.data.tema === 'light') document.body.classList.add('light');
+    else document.body.classList.remove('light');
+    if (dados) { dados.theme = e.data.tema; save(); }
+  }
+});
 </script>
 </body>
 </html>
