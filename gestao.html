@@ -370,28 +370,46 @@ async function sbProtegerGestao() {
 </head>
 <body>
 
-<div class="hdr">
-  <div class="logo">
-      <div class="logo-mk" style="background:var(--accent);color:#fff;font-weight:900;font-size:.7rem;border-radius:5px">FX</div>
+<div class="mobile-overlay-g" id="mob-overlay-g" onclick="toggleSidebarG(false)"></div>
+
+<aside class="sidebar-g" id="sidebar-g">
+  <div class="sidebar-g-top">
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <div style="width:36px;height:36px;background:var(--accent);border-radius:5px;display:grid;place-items:center;font-size:.75rem;font-weight:900;color:#fff;flex-shrink:0">FX</div>
       <div>
-        <div class="logo-txt" style="font-weight:900;letter-spacing:.04em">FORTEX</div>
+        <div style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:.04em;line-height:1">FORTEX</div>
         <div style="width:100%;height:2px;background:var(--accent);margin:2px 0"></div>
-        <div class="logo-sub">Gestão</div>
+        <div style="font-size:.52rem;color:#aaa;letter-spacing:.18em;text-transform:uppercase">Tecnologia Industrial</div>
       </div>
     </div>
+    <div style="font-size:.62rem;color:var(--text3);padding-top:.25rem;border-top:1px solid rgba(255,255,255,.06);margin-top:.4rem">Gestão Empresas de Serviços</div>
   </div>
-  <div class="nav">
-    <button class="nb on" onclick="showSec('dia')">📅 Dia</button>
-    <button class="nb" onclick="showSec('semana')">📆 Semana</button>
-    <button class="nb" onclick="showSec('mes')">📊 Mês</button>
-    <button class="nb" onclick="showSec('trimestre')">🎯 Trimestre</button>
-    <button class="nb" onclick="showSec('calendario')">📆 Calendário</button>
-    <button class="nb" onclick="showSec('versoes')">📋 Versões</button>
+
+  <nav class="sidebar-g-nav">
+    <button class="nb-g on" id="nb-dia" onclick="showSecG('dia')">📅 Dia</button>
+    <button class="nb-g" id="nb-semana" onclick="showSecG('semana')">📆 Semana</button>
+    <button class="nb-g" id="nb-mes" onclick="showSecG('mes')">📊 Mês</button>
+    <button class="nb-g" id="nb-trimestre" onclick="showSecG('trimestre')">🎯 Trimestre</button>
+    <button class="nb-g" id="nb-calendario" onclick="showSecG('calendario')">📆 Calendário</button>
+    <button class="nb-g" id="nb-versoes" onclick="showSecG('versoes')">📋 Versões</button>
+  </nav>
+
+  <div class="sidebar-g-tools">
+    <button class="sb-tool-g" onclick="toggleTheme();updateThemeBtn()">🌓 Tema</button>
+    <button class="sb-tool-g" onclick="abrirModal('m-backup')">💾 Backup</button>
+    <button class="sb-tool-g sb-tool-g-sair" onclick="sbLogoutGestao()">🚪 Sair</button>
   </div>
-  <div class="hdr-right">
-    <span class="today-lbl" id="todayLbl"></span>
-    <button class="theme-btn" onclick="abrirModal('m-backup')" title="Backup" style="margin-right:2px">💾</button>
-    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Alternar tema">🌙</button>
+</aside>
+
+<div class="main-shell-g">
+
+<div class="hdr" style="border-bottom:2px solid var(--accent);background:#0a0c10">
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <button onclick="toggleSidebarG()" style="background:transparent;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:.2rem .4rem;line-height:1">☰</button>
+    <span style="font-weight:800;letter-spacing:.04em;color:#fff">FORTEX <span style="font-weight:400;color:var(--text3);font-size:.85em">Gestão</span></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:.5rem">
+    <span class="today-lbl" id="todayLbl" style="font-size:.7rem;color:var(--text3)"></span>
   </div>
 </div>
 
@@ -2807,6 +2825,34 @@ renderFrases();
 document.getElementById('theme-btn').textContent=dados.theme==='light'?'🌙':'☀️';
 // Atualizar janelas a cada minuto
 setInterval(()=>{renderJanelas();atualizarDataHoje();},60000);
+</script>
+</div><!-- /main-shell-g -->
+<script>
+// ── Sidebar Gestão ──
+function toggleSidebarG(forceOpen) {
+  var sb = document.getElementById('sidebar-g');
+  var ov = document.getElementById('mob-overlay-g');
+  if (!sb) return;
+  var open = typeof forceOpen === 'boolean' ? forceOpen : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  if (ov) ov.classList.toggle('open', open);
+}
+
+function showSecG(id) {
+  // Chamar função original
+  showSec(id);
+  // Atualizar botões da sidebar
+  document.querySelectorAll('.nb-g').forEach(function(b){ b.classList.remove('on'); });
+  var btn = document.getElementById('nb-' + id);
+  if (btn) btn.classList.add('on');
+  // Fechar sidebar no mobile
+  if (window.innerWidth <= 768) toggleSidebarG(false);
+}
+
+function updateThemeBtn() {
+  var btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = dados.theme === 'light' ? '🌙' : '☀️';
+}
 </script>
 </body>
 </html>
