@@ -44,6 +44,46 @@ body.light .hdr{background:rgba(255,255,255,.96)}
 .theme-btn{padding:.3rem .5rem;border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.7rem;font-family:inherit}
 .today-lbl{font-size:.7rem;color:var(--text3);white-space:nowrap}
 
+
+/* ===== SIDEBAR GESTÃO ===== */
+body{overflow-x:hidden}
+.main-shell-g{min-height:100vh;padding-left:240px}
+.sidebar-g{
+  position:fixed;left:0;top:0;bottom:0;width:240px;
+  background:#0a0c10;border-right:2px solid var(--accent);
+  padding:1rem .75rem;display:flex;flex-direction:column;gap:1rem;
+  z-index:140;overflow-y:auto;transition:transform .25s ease;
+}
+.sidebar-g-top{padding-bottom:.75rem;border-bottom:1px solid rgba(240,90,26,.3)}
+.sidebar-g-nav,.sidebar-g-tools{display:flex;flex-direction:column;gap:.35rem}
+.nb-g{
+  padding:.38rem .8rem;border:none;border-left:3px solid transparent;
+  background:transparent;color:var(--text2);border-radius:var(--r2);
+  cursor:pointer;font-size:.78rem;font-weight:500;transition:all .15s;
+  white-space:nowrap;font-family:inherit;width:100%;text-align:left;
+}
+.nb-g:hover{background:var(--bg3);color:var(--text)}
+.nb-g.on{background:rgba(240,90,26,.15);color:var(--accent);font-weight:700;border-left:3px solid var(--accent);padding-left:.6rem}
+.sb-tool-g{
+  width:100%;text-align:left;padding:.42rem .7rem;
+  background:transparent;border:none;border-radius:var(--r2);
+  color:var(--text2);font-size:.8rem;cursor:pointer;
+  font-family:inherit;transition:background .15s,color .15s;
+}
+.sb-tool-g:hover{background:var(--bg3);color:var(--text)}
+.sb-tool-g-sair{color:rgba(248,81,73,.7)}
+.sb-tool-g-sair:hover{background:rgba(248,81,73,.08);color:var(--red)}
+.mobile-overlay-g{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  z-index:139;display:none;
+}
+.mobile-overlay-g.open{display:block}
+@media(max-width:768px){
+  .main-shell-g{padding-left:0}
+  .sidebar-g{transform:translateX(-100%)}
+  .sidebar-g.open{transform:translateX(0)}
+}
+
 /* LAYOUT */
 .wrap{max-width:1100px;margin:0 auto;padding:1.1rem}
 .sec{display:none}.sec.on{display:block;animation:fu .2s ease}
@@ -367,6 +407,22 @@ async function sbProtegerGestao() {
   if (!data?.user) { window.location.href = '/login.html'; }
 }
 </script>
+<script>
+// Sincronizar tema com o index (parent)
+(function() {
+  try {
+    var temaParent = window.parent && window.parent.document.body.classList.contains('light');
+    if (temaParent) document.body.classList.add('light');
+  } catch(e) {}
+  // Ouvir mensagem de troca de tema do parent
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'SET_TEMA') {
+      if (e.data.tema === 'light') document.body.classList.add('light');
+      else document.body.classList.remove('light');
+    }
+  });
+})();
+</script>
 </head>
 <body>
 
@@ -395,7 +451,6 @@ async function sbProtegerGestao() {
   </nav>
 
   <div class="sidebar-g-tools">
-    <button class="sb-tool-g" onclick="toggleTheme();updateThemeBtn()">🌓 Tema</button>
     <button class="sb-tool-g" onclick="abrirModal('m-backup')">💾 Backup</button>
     <button class="sb-tool-g sb-tool-g-sair" onclick="sbLogoutGestao()">🚪 Sair</button>
   </div>
