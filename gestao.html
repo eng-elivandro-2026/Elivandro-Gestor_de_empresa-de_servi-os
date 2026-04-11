@@ -407,22 +407,6 @@ async function sbProtegerGestao() {
   if (!data?.user) { window.location.href = '/login.html'; }
 }
 </script>
-<script>
-// Sincronizar tema com o index (parent)
-(function() {
-  try {
-    var temaParent = window.parent && window.parent.document.body.classList.contains('light');
-    if (temaParent) document.body.classList.add('light');
-  } catch(e) {}
-  // Ouvir mensagem de troca de tema do parent
-  window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'SET_TEMA') {
-      if (e.data.tema === 'light') document.body.classList.add('light');
-      else document.body.classList.remove('light');
-    }
-  });
-})();
-</script>
 </head>
 <body>
 
@@ -439,6 +423,7 @@ async function sbProtegerGestao() {
       </div>
     </div>
     <div style="font-size:.62rem;color:var(--text3);padding-top:.25rem;border-top:1px solid rgba(255,255,255,.06);margin-top:.4rem">Gestão Empresas de Serviços</div>
+    <div style="font-size:.65rem;color:var(--text3);margin-top:.3rem" id="todayLbl"></div>
   </div>
 
   <nav class="sidebar-g-nav">
@@ -451,6 +436,7 @@ async function sbProtegerGestao() {
   </nav>
 
   <div class="sidebar-g-tools">
+    <button class="sb-tool-g" onclick="toggleTheme();updateThemeBtn()">🌓 Tema</button>
     <button class="sb-tool-g" onclick="abrirModal('m-backup')">💾 Backup</button>
     <button class="sb-tool-g sb-tool-g-sair" onclick="sbLogoutGestao()">🚪 Sair</button>
   </div>
@@ -458,15 +444,7 @@ async function sbProtegerGestao() {
 
 <div class="main-shell-g">
 
-<div class="hdr" style="border-bottom:2px solid var(--accent);background:#0a0c10">
-  <div style="display:flex;align-items:center;gap:.75rem">
-    <button onclick="toggleSidebarG()" style="background:transparent;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:.2rem .4rem;line-height:1">☰</button>
-    <span style="font-weight:800;letter-spacing:.04em;color:#fff">FORTEX <span style="font-weight:400;color:var(--text3);font-size:.85em">Gestão</span></span>
-  </div>
-  <div style="display:flex;align-items:center;gap:.5rem">
-    <span class="today-lbl" id="todayLbl" style="font-size:.7rem;color:var(--text3)"></span>
-  </div>
-</div>
+
 
 <div class="wrap">
 
