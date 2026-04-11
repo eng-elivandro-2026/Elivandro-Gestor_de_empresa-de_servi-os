@@ -483,7 +483,7 @@ function toggleSidebar(forceOpen){
       </div>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" id="comercial-nav">
       <button class="nb on" onclick="go('dashboard',this);toggleSidebar(false)">📊 Dashboard</button>
       <button class="nb" onclick="newProposal(this);toggleSidebar(false)">✏️ Nova Proposta</button>
       <button class="nb" onclick="go('templates',this);rTplMgr();toggleSidebar(false)">📋 Templates</button>
@@ -493,7 +493,7 @@ function toggleSidebar(forceOpen){
       <button class="nb" onclick="go('changelog',this);toggleSidebar(false)">📋 Versões</button>
     </nav>
 
-    <div class="sidebar-tools">
+    <div class="sidebar-tools" id="comercial-tools">
       <button class="sb-tool" onclick="abrirFormulas()">📐 Fórmulas</button>
       <button class="sb-tool" onclick="abrirAjuda()">❓ Ajuda</button>
       <button class="sb-tool" onclick="limparPropostasZero()" title="Excluir propostas sem valor (R$0,00)">🗑 Limpar R$0</button>
@@ -502,6 +502,7 @@ function toggleSidebar(forceOpen){
       <button class="sb-tool" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
       <button class="sb-tool" onclick="abrirImportProposta()">📋 Colar Proposta JSON</button>
       <button class="sb-tool sb-tool-sair" onclick="logout()">🚪 Sair</button>
+    </div>
 
     <!-- Nav Gestão (visível só no ambiente Gestão) -->
     <nav class="sidebar-nav" id="gestao-nav" style="display:none">
@@ -513,12 +514,11 @@ function toggleSidebar(forceOpen){
       <button class="nb" onclick="gestaoShowSec('versoes')">📋 Versões</button>
     </nav>
 
-    <!-- Tools Gestão (visível só no ambiente Gestão) -->
+    <!-- Tools Gestão -->
     <div class="sidebar-tools" id="gestao-tools" style="display:none">
       <button class="sb-tool" onclick="toggleTheme()">🌓 Tema</button>
       <button class="sb-tool" onclick="gestaoBackup()">💾 Backup</button>
       <button class="sb-tool sb-tool-sair" onclick="logout()">🚪 Sair</button>
-    </div>
     </div>
   </aside>
 
@@ -4619,8 +4619,8 @@ function setAmbiente(amb) {
   var comercial = document.getElementById('comercial-content');
   var tabC      = document.getElementById('amb-comercial');
   var tabG      = document.getElementById('amb-gestao');
-  var navC      = document.querySelector('.sidebar-nav');
-  var toolsC    = document.querySelector('.sidebar-tools');
+  var navC      = document.getElementById('comercial-nav');
+  var toolsC    = document.getElementById('comercial-tools');
   var navG      = document.getElementById('gestao-nav');
   var toolsG    = document.getElementById('gestao-tools');
   var sbtop     = document.querySelector('.sidebar-top');
