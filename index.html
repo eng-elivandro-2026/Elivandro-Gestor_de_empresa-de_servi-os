@@ -508,7 +508,7 @@ function toggleSidebar(forceOpen){
 <header class="hdr">
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-    <div class="topbar-title">Sistema de Propostas</div>
+    <div class="topbar-title" style="font-weight:800;letter-spacing:.04em">FORTEX <span id="amb-titulo" style="font-weight:400;color:var(--text3);font-size:.8em">Comercial</span></div>
   </div>
 
   <div class="topbar-actions">
@@ -4602,31 +4602,32 @@ function rExecTimeline(){
 <script>
 // ── Alternância de Ambientes ──
 function setAmbiente(amb) {
-  var frame   = document.getElementById('gestao-frame');
+  var frame     = document.getElementById('gestao-frame');
   var comercial = document.getElementById('comercial-content');
-  var tabC    = document.getElementById('amb-comercial');
-  var tabG    = document.getElementById('amb-gestao');
-  var sidebar = document.getElementById('sidebar');
-  var nav     = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
-  var tools   = sidebar ? sidebar.querySelector('.sidebar-tools') : null;
-  var sbtop   = sidebar ? sidebar.querySelector('.sidebar-top') : null;
+  var tabC      = document.getElementById('amb-comercial');
+  var tabG      = document.getElementById('amb-gestao');
+  var sidebar   = document.getElementById('sidebar');
+  var nav       = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
+  var tools     = sidebar ? sidebar.querySelector('.sidebar-tools') : null;
+  var sbtop     = sidebar ? sidebar.querySelector('.sidebar-top') : null;
+  var titulo    = document.getElementById('amb-titulo');
 
   if (amb === 'gestao') {
     frame.classList.add('visible');
     comercial.classList.add('hidden');
-    tabC.classList.remove('active');
-    tabG.classList.add('active');
-    if (nav)   nav.style.display = 'none';
-    if (tools) tools.style.display = 'none';
-    if (sbtop) sbtop.style.display = 'none';
+    tabC.classList.remove('active'); tabG.classList.add('active');
+    if (nav)    nav.style.display = 'none';
+    if (tools)  tools.style.display = 'none';
+    if (sbtop)  sbtop.style.display = 'none';
+    if (titulo) titulo.textContent = 'Gestão';
   } else {
     frame.classList.remove('visible');
     comercial.classList.remove('hidden');
-    tabC.classList.add('active');
-    tabG.classList.remove('active');
-    if (nav)   nav.style.display = '';
-    if (tools) tools.style.display = '';
-    if (sbtop) sbtop.style.display = '';
+    tabC.classList.add('active'); tabG.classList.remove('active');
+    if (nav)    nav.style.display = '';
+    if (tools)  tools.style.display = '';
+    if (sbtop)  sbtop.style.display = '';
+    if (titulo) titulo.textContent = 'Comercial';
   }
 }
 </script>
