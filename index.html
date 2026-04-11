@@ -505,9 +505,6 @@ function toggleSidebar(forceOpen){
 
   <div class="main-shell">
 
-<iframe id="gestao-frame" src="gestao.html" title="FORTEX Gestão"></iframe>
-<div id="comercial-content">
-
 <header class="hdr">
   <div class="topbar-left">
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
@@ -523,6 +520,8 @@ function toggleSidebar(forceOpen){
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
   <input type="file" id="iFile" style="display:none" accept=".json" onchange="importP(event)">
 </header>
+<iframe id="gestao-frame" src="gestao.html" title="FORTEX Gestão"></iframe>
+<div id="comercial-content">
 
 <!-- ACTION BAR: aparece ao editar proposta -->
 <div id="actionBar">
