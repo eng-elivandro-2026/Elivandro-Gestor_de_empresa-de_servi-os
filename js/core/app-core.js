@@ -346,12 +346,12 @@ function loadAll(){
   saveCnt();
   eDB=LS('tf_edb')||{titulos:[],subtitulos:[]};
 }
-function saveAll(){
+function saveAll(propSalva){
   LS('tf_props',props);
   try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
-  // Auto-sync proposta por proposta na nuvem
+  // Auto-sync: salva a proposta específica se passada, senão a última
   if(typeof sbSalvarProposta === 'function' && props.length){
-    sbSalvarProposta(props[props.length-1]);
+    sbSalvarProposta(propSalva || props[props.length-1]);
   }
 }
 function saveEDB(){LS('tf_edb',eDB)}
@@ -1433,7 +1433,7 @@ var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
     props.push(sn);
     advN();
   }
-  editId=sn.id;saveAll();rDash();
+  editId=sn.id;saveAll(sn);rDash();
   try{showActionBar(sn);}catch(e){}
   toast('✔Proposta salva!','ok');
 }
