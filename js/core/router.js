@@ -19,7 +19,7 @@
         { label: 'Dashboard',       icon: '📊', action: "go('dashboard',this)" },
         { label: 'Nova Proposta',   icon: '✏️', action: "newProposal(this)" },
         { label: 'Templates',       icon: '📋', action: "go('templates',this);rTplMgr()" },
-        { label: 'Banco de Escopos',icon: '🗂️', action: "go('escopos',this);beInit()" },
+        { label: 'Banco de Escopos',icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
         { label: 'Análise',         icon: '📈', action: "go('analise',this);rAnalise()" },
         { label: 'Pipeline',        icon: '🔀', action: "go('registro',this);rRegistro()" },
         { label: 'Versões',         icon: '📋', action: "go('changelog',this)" },
