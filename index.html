@@ -4930,51 +4930,11 @@ window.addEventListener('router:change', function(e) {
 })();
 </script>
 
-<!-- ══ MODAL MEMORIAL FMF ══════════════════════════════════════ -->
-<div id="memorialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto" onclick="if(event.target===this)fecharMemorial()">
-  <div style="width:min(860px,100%);background:#fff;border-radius:12px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">
-    <!-- Header fixo -->
-    <div style="position:sticky;top:0;z-index:10;background:#1e3a5f;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:#fff">📐 Memorial de Cálculo do FMF</div>
-        <div id="memorialSubtitle" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-        <button onclick="imprimirMemorial()" style="padding:6px 14px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit">🖨️ Imprimir</button>
-        <button onclick="fecharMemorial()" style="padding:6px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:700">✕ Fechar</button>
-      </div>
-    </div>
-    <!-- Conteúdo gerado dinamicamente -->
-    <div id="memorialContent" style="padding:20px;font-family:Calibri,Arial,sans-serif;font-size:13px;color:#111827;background:#fff"></div>
-  </div>
-</div>
-
-
-// ── Memorial FMF — modal ──────────────────────────────────────
+<script>
 function fecharMemorial(){
   var m=document.getElementById('memorialModal');
-  if(m){ m.style.display='none'; document.getElementById('memorialContent').innerHTML=''; }
+  if(m) m.style.display='none';
 }
-function abrirMemorial(html, subtitulo){
-  var m=document.getElementById('memorialModal');
-  var c=document.getElementById('memorialContent');
-  var s=document.getElementById('memorialSubtitle');
-  if(!m||!c) return;
-  c.innerHTML=html;
-  if(s) s.textContent=subtitulo||'';
-  m.style.display='flex';
-  m.scrollTop=0;
-}
-function imprimirMemorial(){
-  var c=document.getElementById('memorialContent');
-  if(!c) return;
-  var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
-    +'<style>@page{size:A4;margin:14mm}body{font-family:Calibri,Arial,sans-serif;font-size:12px;color:#111}</style>'
-    +'</head><body>'+c.innerHTML+'</body></html>');
-  w.document.close();
-  w.print();
-}
-
+</script>
 </body>
 </html>
