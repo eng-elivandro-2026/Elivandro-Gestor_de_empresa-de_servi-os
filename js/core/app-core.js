@@ -2519,27 +2519,20 @@ function gerarMemorialFMF(){
 
   var agora = new Date().toLocaleString('pt-BR');
   var nomeProp = ((Q('pNum')&&Q('pNum').value)||'Sem número')+' — '+((Q('pCli')&&Q('pCli').value)||'Cliente');
-  var htmlDoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial de Cálculo FMF</title>'
-    +'<style>'
-    +'@page{size:A4;margin:14mm 14mm 16mm 14mm}'
-    +'body{font-family:Calibri,Arial,sans-serif;color:#111827;margin:0;font-size:12px;background:#fff}'
-    +'.wrap{padding:18px 20px}'
-    +'.top{border-bottom:3px solid #1e3a5f;padding-bottom:12px;margin-bottom:22px}'
-    +'.t1{font-size:22px;font-weight:700;color:#0f172a}'
-    +'.t2{font-size:13px;color:#475569;margin-top:4px}'
-    +'.meta{font-size:12px;color:#475569;margin-top:6px}'
-    +'</style></head><body><div class="wrap">'
-    +'<div class="top">'
-      +'<div class="t1">Memorial de Cálculo do FMF</div>'
-      +'<div class="t2">Dados → Fórmula → Substituição dos valores com resultado passo a passo</div>'
-      +'<div class="meta"><strong>Proposta:</strong> '+e(nomeProp)+' &nbsp;|&nbsp; <strong>Gerado em:</strong> '+e(agora)+'</div>'
-    +'</div>'
-    +blocos
-    +'</div></body></html>';
+  var subtitulo = e(nomeProp)+' · Gerado em: '+e(agora);
 
-  var w=window.open('','_blank');
-  if(!w){ alert('O navegador bloqueou a abertura da janela do memorial. Libere pop-ups para este arquivo.'); return; }
-  w.document.open(); w.document.write(htmlDoc); w.document.close();
+  // Abre no modal interno (sem nova aba)
+  if(typeof abrirMemorial === 'function'){
+    abrirMemorial(blocos, subtitulo);
+  } else {
+    // Fallback: nova aba se modal não existir
+    var w=window.open('','_blank');
+    if(!w){ alert('Não foi possível abrir o memorial.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
+      +'<style>body{font-family:Calibri,Arial,sans-serif;padding:20px;font-size:12px;color:#111}</style>'
+      +'</head><body>'+blocos+'</body></html>');
+    w.document.close();
+  }
 }
 
 
