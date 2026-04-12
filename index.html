@@ -4947,27 +4947,5 @@ function fecharMemorial(){
 }
 </script>
 
-// ── Navegação do Dashboard — rola e expande o painel ──────────
-function irParaPainel(cardId, togFn) {
-  // 1. Garante que está na seção dashboard
-  if (typeof go === 'function') go('dashboard', null);
-
-  setTimeout(function() {
-    var card = document.getElementById(cardId);
-    if (!card) return;
-
-    // 2. Expande o painel se estiver fechado
-    var body = card.querySelector('[id$="Body"]') || card.querySelector('[style*="display:none"]');
-    if (body && body.style.display === 'none') {
-      if (typeof window[togFn] === 'function') window[togFn]();
-    }
-
-    // 3. Rola suavemente até o card
-    setTimeout(function() {
-      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
-  }, 50);
-}
-
 </body>
 </html>
