@@ -32,11 +32,11 @@
       tipo: 'iframe',
       src: 'gestao.html',
       nav: [
-        { label: 'Hoje',        icon: '📅', action: "Router.iframeMsg('gestao','showSec','dia')" },
-        { label: 'Semana',      icon: '📆', action: "Router.iframeMsg('gestao','showSec','semana')" },
-        { label: 'Mês',         icon: '📊', action: "Router.iframeMsg('gestao','showSec','mes')" },
-        { label: 'Trimestre',   icon: '🎯', action: "Router.iframeMsg('gestao','showSec','trimestre')" },
-        { label: 'Calendário',  icon: '🗓️', action: "Router.iframeMsg('gestao','showSec','calendario')" },
+        { label: 'Hoje',        icon: '📅', action: "gestaoMsg('dia')" },
+        { label: 'Semana',      icon: '📆', action: "gestaoMsg('semana')" },
+        { label: 'Mês',         icon: '📊', action: "gestaoMsg('mes')" },
+        { label: 'Trimestre',   icon: '🎯', action: "gestaoMsg('trimestre')" },
+        { label: 'Calendário',  icon: '🗓️', action: "gestaoMsg('calendario')" },
       ]
     },
     {
