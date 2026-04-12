@@ -230,14 +230,59 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ACTION BAR */
 #actionBar{
-  display:none;position:sticky;top:52px;z-index:90;
-  background:rgba(21,74,21,.97);backdrop-filter:blur(8px);
+  display:none;position:sticky;top:var(--hdr-h,52px);z-index:90;
+  background:rgba(13,42,13,.98);backdrop-filter:blur(10px);
   border-bottom:2px solid #3fb950;
-  padding:.5rem 1.25rem;
-  align-items:center;gap:.6rem;flex-wrap:wrap;
+  flex-direction:column;gap:0;
 }
-#actionBar .ab-info{flex:1;font-size:.78rem;color:#aef7ae;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #actionBar.visible{display:flex}
+
+/* Linha 1 */
+.ab-row1{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.45rem 1rem;
+  border-bottom:1px solid rgba(63,185,80,.2);
+}
+.ab-info{
+  flex:1;font-size:.78rem;color:#aef7ae;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  min-width:0;
+}
+.ab-actions{display:flex;gap:.35rem;align-items:center;flex-shrink:0}
+.ab-save{font-size:.75rem;padding:.32rem .75rem}
+
+/* Linha 2 — etapas */
+.ab-steps{
+  display:flex;align-items:stretch;
+  overflow-x:auto;scrollbar-width:none;
+  gap:0;
+}
+.ab-steps::-webkit-scrollbar{display:none}
+.ab-step{
+  display:flex;align-items:center;gap:.3rem;
+  padding:.38rem .75rem;border:none;
+  background:transparent;color:rgba(163,230,163,.65);
+  cursor:pointer;font-size:.75rem;font-family:inherit;
+  white-space:nowrap;border-right:1px solid rgba(63,185,80,.15);
+  transition:all .15s;flex-shrink:0;
+}
+.ab-step:hover{background:rgba(63,185,80,.08);color:#aef7ae}
+.ab-step.ativo{background:rgba(63,185,80,.15);color:#3fb950;font-weight:700}
+.ab-sn{
+  width:18px;height:18px;border-radius:50%;
+  background:rgba(63,185,80,.2);border:1px solid rgba(63,185,80,.35);
+  display:grid;place-items:center;font-size:.65rem;font-weight:700;
+  color:#56d364;flex-shrink:0;
+}
+.ab-step.ativo .ab-sn{background:rgba(63,185,80,.4);border-color:#3fb950;color:#fff}
+.ab-sl{font-size:.74rem}
+
+@media(max-width:640px){
+  .ab-row1{padding:.4rem .75rem}
+  .ab-info{font-size:.72rem}
+  .ab-step{padding:.35rem .6rem}
+  .ab-sl{font-size:.7rem}
+}
 
 
 /* DASHBOARD CLIENTES */
@@ -581,16 +626,24 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <!-- ACTION BAR: aparece ao editar proposta -->
 <div id="actionBar">
-  <span id="abInfo" class="ab-info">✏️ Editando proposta</span>
-  <button class="btn ba bsm" onclick="step(1)">📋 Editar Dados</button>
-  <button class="btn bg bsm" onclick="step(2)">⚙️ Orçamento</button>
-  <button class="btn bg bsm" onclick="step(3)">📝 Editar Escopo</button>
-  <button class="btn bg bsm" onclick="step(4)">💰 Valores</button>
-  <button class="btn bp bsm" onclick="step(5);genPrev()">👁 Preview</button>
-  <button class="btn ba bsm" onclick="abrirLog()" title="Histórico Comercial e Relatório de Serviço">📋 Log</button>
-  <button class="btn bs" onclick="saveP()">💾 Salvar Proposta</button>
-  <button class="btn bg bsm" onclick="fecharProposta()" title="Salvar e voltar ao Dashboard">🏠 Fechar</button>
-  <button class="btn bd bsm" onclick="cancelEdit()">✕ Cancelar</button>
+  <!-- Linha 1: info + ações principais -->
+  <div class="ab-row1">
+    <span id="abInfo" class="ab-info">✏️ Editando proposta</span>
+    <div class="ab-actions">
+      <button class="btn bs ab-save" onclick="saveP()">💾 Salvar</button>
+      <button class="btn bg bsm" onclick="fecharProposta()" title="Salvar e voltar ao Dashboard">🏠 Fechar</button>
+      <button class="btn bd bsm" onclick="cancelEdit()">✕</button>
+    </div>
+  </div>
+  <!-- Linha 2: etapas de navegação -->
+  <div class="ab-steps">
+    <button class="ab-step" id="ab-s1" onclick="step(1)"><span class="ab-sn">1</span><span class="ab-sl">Dados</span></button>
+    <button class="ab-step" id="ab-s2" onclick="step(2)"><span class="ab-sn">2</span><span class="ab-sl">Orçamento</span></button>
+    <button class="ab-step" id="ab-s3" onclick="step(3)"><span class="ab-sn">3</span><span class="ab-sl">Escopo</span></button>
+    <button class="ab-step" id="ab-s4" onclick="step(4)"><span class="ab-sn">4</span><span class="ab-sl">Valores</span></button>
+    <button class="ab-step" id="ab-s5" onclick="step(5);genPrev()"><span class="ab-sn">5</span><span class="ab-sl">Preview</span></button>
+    <button class="ab-step" id="ab-log" onclick="abrirLog()"><span class="ab-sn">📋</span><span class="ab-sl">Log</span></button>
+  </div>
 </div>
 
 <div class="wrap">
@@ -4771,6 +4824,24 @@ function fecharSidebar() {
 }
 
 // Oculta ferramentas comercial quando muda de módulo
+// Destaca etapa ativa no actionBar
+function abSetStep(n) {
+  document.querySelectorAll('.ab-step').forEach(function(b){ b.classList.remove('ativo'); });
+  var el = document.getElementById('ab-s' + n);
+  if (el) el.classList.add('ativo');
+}
+// Hook na função step original para marcar etapa
+var _stepOrig = typeof step === 'function' ? step : null;
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof step === 'function') {
+    var _stepFn = step;
+    window.step = function(n) {
+      _stepFn(n);
+      abSetStep(n);
+    };
+  }
+});
+
 window.addEventListener('router:change', function(e) {
   var tc = document.getElementById('tools-comercial');
   if (tc) tc.style.display = e.detail.modulo === 'comercial' ? '' : 'none';
