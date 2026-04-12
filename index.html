@@ -4862,6 +4862,19 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// Envia mensagem para o iframe do Gestão CEO no formato correto
+function gestaoMsg(sec) {
+  var frame = document.getElementById('frame-gestao');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({ type: 'SHOW_SEC', sec: sec }, '*');
+  }
+  // Atualiza botão ativo no sidebar
+  document.querySelectorAll('#sidebar-nav-mod .nav-item').forEach(function(b){ b.classList.remove('on'); });
+  var btns = document.querySelectorAll('#sidebar-nav-mod .nav-item');
+  var map = { dia:0, semana:1, mes:2, trimestre:3, calendario:4 };
+  if (btns[map[sec]]) btns[map[sec]].classList.add('on');
+}
+
 window.addEventListener('router:change', function(e) {
   var tc = document.getElementById('tools-comercial');
   if (tc) tc.style.display = e.detail.modulo === 'comercial' ? '' : 'none';
