@@ -4759,7 +4759,12 @@ async function iniciarPlataforma() {
   // 1. Auth + propostas da nuvem
   if (typeof protegerPagina === 'function') await protegerPagina();
 
-  // 2. Carrega templates, escopos e config da nuvem
+  // 2. Carrega propostas da nuvem (fonte primária — garante dados atualizados em qualquer dispositivo)
+  if (typeof sbCarregarNuvem === 'function') {
+    await sbCarregarNuvem().catch(function(e){ console.warn('[init] propostas:', e); });
+  }
+
+  // 3. Carrega templates, escopos e config da nuvem
   if (typeof sbCarregarBackup === 'function') {
     await sbCarregarBackup().catch(function(e){ console.warn('[init] backup:', e); });
   }
@@ -4797,7 +4802,18 @@ async function iniciarPlataforma() {
   atualizarDataHeader();
   setInterval(atualizarDataHeader, 60000);
 
-  // 5. Router — restaura última rota
+  // 5. Recarrega variável props do localStorage (atualizada da nuvem)
+  try {
+    if (typeof props !== 'undefined' && typeof LS === 'function') {
+      var _propsNuvem = LS('tf_props');
+      if (_propsNuvem && _propsNuvem.length) {
+        props = _propsNuvem;
+        console.log('%c[init] ' + props.length + ' propostas carregadas', 'color:#3fb950;font-weight:700');
+      }
+    }
+  } catch(e) {}
+
+  // 6. Router — restaura última rota
   var ultimaRota = localStorage.getItem('tf_route') || 'comercial';
   Router.init(ultimaRota);
 
