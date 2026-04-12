@@ -358,9 +358,15 @@ function loadAll(){
 function saveAll(){
   LS('tf_props',props);
   try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
-  // Auto-sync proposta por proposta na nuvem
+  // Sync com Supabase — salva a proposta em edição ou todas se não houver editId
   if(typeof sbSalvarProposta === 'function' && props.length){
-    sbSalvarProposta(props[props.length-1]);
+    var _pToSync = editId ? props.find(function(x){return x.id===editId;}) : null;
+    if(_pToSync){
+      sbSalvarProposta(_pToSync);
+    } else {
+      // Sem proposta ativa — sincroniza em lote via migração
+      if(typeof sbMigrarLocal === 'function') sbMigrarLocal();
+    }
   }
 }
 function saveEDB(){LS('tf_edb',eDB)}
