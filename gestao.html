@@ -1346,10 +1346,10 @@ function renderDiaNav(){
     const idxAtual=todosOsDias.indexOf(d);
     const temProximo=d<hoje;
     nav.innerHTML=`
-      <button class="btn bg btn-sm" onclick="navDia(-1)" title="Dia anterior">‹</button>
-      <span style="font-size:.72rem;color:${isHoje?'var(--green)':'var(--accent)'};font-weight:600;cursor:pointer;min-width:60px;text-align:center" onclick="abrirDia(diaHoje())">${isHoje?'Hoje':d}</span>
-      <button class="btn bg btn-sm" onclick="navDia(1)" title="Próximo dia" ${!temProximo?'disabled':''}>›</button>
-    `;
+      <button onclick="navDia(-1)" title="Dia anterior" style="width:34px;height:34px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);border-radius:6px;cursor:pointer;font-size:1.1rem;display:grid;place-items:center">‹</button>
+      <span style="font-size:.82rem;color:${isHoje?'var(--green)':'var(--accent)'};font-weight:700;cursor:pointer;padding:.3rem .75rem;border-radius:5px;background:${isHoje?'rgba(63,185,80,.1)':'rgba(240,90,26,.1)'}" onclick="abrirDia(diaHoje())">${isHoje?'📅 Hoje':d}</span>
+      <button onclick="navDia(1)" title="Próximo dia" ${!temProximo?'disabled':''} style="width:34px;height:34px;border:1px solid var(--border2);background:var(--bg3);color:${temProximo?'var(--text)':'var(--text3)'};border-radius:6px;cursor:${temProximo?'pointer':'default'};font-size:1.1rem;display:grid;place-items:center">›</button>
+    `
   }
   // Indicador de histórico
   const hist=document.getElementById('dia-hist-badge');
