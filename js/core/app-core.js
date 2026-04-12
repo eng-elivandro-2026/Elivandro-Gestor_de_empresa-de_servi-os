@@ -2366,7 +2366,7 @@ function explainFMF(cfg,tipo,cat){
 function gerarMemorialFMF(){
   var cfg=getPrcAtual();
   var lista=(budg||[]).filter(function(it){ return !!it && it.inc!==false; });
-  if(!lista.length){ alert('Nenhum item incluído no orçamento para gerar o memorial de cálculo.'); return; }
+  if(!lista.length){ alert('Nenhum item incluido no orcamento para gerar o memorial de calculo.'); return; }
 
   var grupos={};
   lista.forEach(function(it){
@@ -2390,176 +2390,156 @@ function gerarMemorialFMF(){
     var descCat=(meta.desc||'');
     var isMat=(g.tipo==='material');
     var isMob=(!isMat && g.cat && g.cat.indexOf('MB-')===0);
-
     var nf=exp.nf, rs=exp.rs, com=exp.com, neg=exp.neg, mb=exp.margemBruta;
-    var somaAliq = nf+rs+com+neg;
-    var fmf = exp.fmf;
+    var somaAliq=nf+rs+com+neg;
+    var fmf=exp.fmf;
+    var rotuloMb=isMat?'mk (margem material)':isMob?'mm (margem mobilizacao)':'mb (margem servico)';
 
-    var rotuloMb = isMat ? 'mk (margem material)' : isMob ? 'mm (margem mobilização)' : 'mb (margem serviço)';
-    var origemMb = 'categoria '+g.cat;
+    var dadosHtml=''
+      +li('<strong>'+e(rotuloMb)+'</strong> = '+brPct(mb)+' = '+brN(mb)+' - categoria '+e(g.cat))
+      +li('<strong>NF '+(isMat?'Materiais':'Servicos')+'</strong> = '+brPct(nf)+' = '+brN(nf)+' - aliquotas da proposta')
+      +li('<strong>Risco Sacado (RS)</strong> = '+brPct(rs)+' = '+brN(rs)+' - aliquotas da proposta')
+      +li('<strong>Comissao (Com)</strong> = '+brPct(com)+' = '+brN(com)+' - aliquotas da proposta')
+      +li('<strong>Negociacao (Neg)</strong> = '+brPct(neg)+' = '+brN(neg)+' - aliquotas da proposta');
 
-    // ── 📋 DADOS ──────────────────────────────────────
-    var dadosHtml = ''
-      + li('<strong>'+e(rotuloMb)+'</strong> = '+brPct(mb)+' = '+brN(mb)+' → '+e(origemMb))
-      + li('<strong>NF '+(isMat?'Materiais':'Serviços')+'</strong> = '+brPct(nf)+' = '+brN(nf)+' → alíquotas da proposta')
-      + li('<strong>Risco Sacado (RS)</strong> = '+brPct(rs)+' = '+brN(rs)+' → alíquotas da proposta')
-      + li('<strong>Comissão (Com)</strong> = '+brPct(com)+' = '+brN(com)+' → alíquotas da proposta')
-      + li('<strong>Negociação (Neg)</strong> = '+brPct(neg)+' = '+brN(neg)+' → alíquotas da proposta');
-
-    // ── 📐 FÓRMULA ────────────────────────────────────
-    var formulaHtml;
+    var formulaHtml='';
     if(isMat){
-      formulaHtml = ''
-        + li('Total de alíquotas = NF + RS + Com + Neg')
-        + li('FMF = (1 + mk) ÷ (1 − alíquotas)')
-        + li('PV unitário = Custo unitário × FMF')
-        + li('PV total = PV unitário × Quantidade');
+      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = (1 + mk) / (1 - aliquotas)')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
     } else if(isMob){
-      formulaHtml = ''
-        + li('Total de alíquotas = NF + RS + Com + Neg')
-        + li('FMF = (1 + mm) ÷ (1 − alíquotas)')
-        + li('PV unitário = Custo unitário × FMF')
-        + li('PV total = PV unitário × Quantidade');
+      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = (1 + mm) / (1 - aliquotas)')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
     } else {
-      formulaHtml = ''
-        + li('Total de alíquotas = NF + RS + Com + Neg')
-        + li('FMF = 1 ÷ [ (1 − mb) × (1 − alíquotas) ]')
-        + li('PV unitário = Custo unitário × FMF')
-        + li('PV total = PV unitário × Quantidade');
+      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = 1 / [ (1 - mb) x (1 - aliquotas) ]')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
     }
 
-    // ── 🔢 SUBSTITUINDO OS VALORES ────────────────────
-    // Bloco do FMF
-    var fmfHtml = '';
-    if(isMat || isMob){
-      var rotuloM = isMat?'mk':'mm';
-      var num = 1+mb, den = 1-somaAliq;
-      fmfHtml = ''
-        + li('FMF = (1 + '+rotuloM+') ÷ (1 − alíquotas)')
-        + li('FMF = (1 + '+brN(mb)+') ÷ (1 − ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+'))')
-        + li('FMF = '+brN(num)+' ÷ (1 − '+brN(somaAliq)+')')
-        + li('FMF = '+brN(num)+' ÷ '+brN(den))
-        + li('<strong>FMF = '+brN(fmf,6)+'</strong>');
+    var fmfHtml='';
+    if(isMat||isMob){
+      var rotuloM=isMat?'mk':'mm';
+      var num=1+mb, den=1-somaAliq;
+      fmfHtml=li('FMF = (1 + '+rotuloM+') / (1 - aliquotas)')
+        +li('FMF = (1 + '+brN(mb)+') / (1 - ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+'))')
+        +li('FMF = '+brN(num)+' / (1 - '+brN(somaAliq)+')')
+        +li('FMF = '+brN(num)+' / '+brN(den))
+        +li('<strong>FMF = '+brN(fmf,6)+'</strong>');
     } else {
       var f1=1-mb, f2=1-somaAliq, prod=f1*f2;
-      fmfHtml = ''
-        + li('FMF = 1 ÷ [ (1 − mb) × (1 − alíquotas) ]')
-        + li('FMF = 1 ÷ [ (1 − '+brN(mb)+') × (1 − ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+')) ]')
-        + li('FMF = 1 ÷ [ (1 − '+brN(mb)+') × (1 − '+brN(somaAliq)+') ]')
-        + li('FMF = 1 ÷ [ '+brN(f1)+' × '+brN(f2)+' ]')
-        + li('FMF = 1 ÷ '+brN(prod))
-        + li('<strong>FMF = '+brN(fmf,6)+'</strong>');
+      fmfHtml=li('FMF = 1 / [ (1 - mb) x (1 - aliquotas) ]')
+        +li('FMF = 1 / [ (1 - '+brN(mb)+') x (1 - ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+')) ]')
+        +li('FMF = 1 / [ (1 - '+brN(mb)+') x (1 - '+brN(somaAliq)+') ]')
+        +li('FMF = 1 / [ '+brN(f1)+' x '+brN(f2)+' ]')
+        +li('FMF = 1 / '+brN(prod))
+        +li('<strong>FMF = '+brN(fmf,6)+'</strong>');
     }
 
-    // Blocos por item
-    var itensHtml = g.itens.map(function(it,ii){
+    var itensHtml=g.itens.map(function(it,ii){
       var cu=n2(it.cu), pvUnit=n2(it.pvu), pvTot=n2(it.pvt);
-      var itemHtml = '';
-
+      var ih='<div style="font-size:12px;font-weight:700;color:#166534;margin:12px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">';
       if(isMat){
         var qtd=n2(it.mult||1), un=e(it.un1||'un');
-        itemHtml = ''
-          +'<div style="font-size:12px;font-weight:700;color:#166534;margin:10px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div>'
-          +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'
-          + li('PV unitário = Custo unitário × FMF')
-          + li('PV unitário = '+brR(cu)+' × '+brN(fmf,6))
-          + li('<strong>PV unitário = '+brR(pvUnit)+'</strong>')
-          +'<li style="margin-top:6px;margin-bottom:4px">PV total = PV unitário × Quantidade</li>'
-          + li('PV total = '+brR(pvUnit)+' × '+qtd+' '+un)
-          + li('<strong>PV total = '+brR(pvTot)+'</strong>')
-          +'</ul>';
+        ih+=li('PV unitario = Custo unitario x FMF')
+          +li('PV unitario = '+brR(cu)+' x '+brN(fmf,6))
+          +li('<strong>PV unitario = '+brR(pvUnit)+'</strong>')
+          +li('PV total = PV unitario x Quantidade')
+          +li('PV total = '+brR(pvUnit)+' x '+qtd+' '+un)
+          +li('<strong>PV total = '+brR(pvTot)+'</strong>');
       } else {
         var tec=n2(it.tec||1), dias=n2(it.dias||0), hpd=n2(it.hpd||0);
-        var un1=e(it.un1||'Dias'), un2=e(it.un2||'Horas');
+        var un2=e(it.un2||'Horas');
         var qtdTotal=tec*dias*hpd;
-        itemHtml = ''
-          +'<div style="font-size:12px;font-weight:700;color:#166534;margin:10px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div>'
-          +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'
-          + li('PV unitário = Custo unitário × FMF')
-          + li('PV unitário = '+brR(cu)+' × '+brN(fmf,6))
-          + li('<strong>PV unitário = '+brR(pvUnit)+'</strong>')
-          +'<li style="margin-top:6px;margin-bottom:4px">PV total = PV unitário × Quantidade</li>'
-          + li('PV total = '+brR(pvUnit)+' × ('+tec+' × '+dias+' × '+hpd+')')
-          + li('PV total = '+brR(pvUnit)+' × '+qtdTotal+' '+un2)
-          + li('<strong>PV total = '+brR(pvTot)+'</strong>')
-          +'</ul>';
+        ih+=li('PV unitario = Custo unitario x FMF')
+          +li('PV unitario = '+brR(cu)+' x '+brN(fmf,6))
+          +li('<strong>PV unitario = '+brR(pvUnit)+'</strong>')
+          +li('PV total = PV unitario x Quantidade')
+          +li('PV total = '+brR(pvUnit)+' x ('+tec+' x '+dias+' x '+hpd+')')
+          +li('PV total = '+brR(pvUnit)+' x '+qtdTotal+' '+un2)
+          +li('<strong>PV total = '+brR(pvTot)+'</strong>');
       }
-      return itemHtml;
+      ih+='</ul>';
+      return ih;
     }).join('');
 
-    var substHtml = fmfHtml + itensHtml;
-
-    // ── MONTAR BLOCO ──────────────────────────────────
-    blocos += '<div style="page-break-inside:avoid;border:2px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin:0 0 28px 0">'
-
-      // Cabeçalho
-      +'<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">'+(gi+1)+'. '+e(g.cat)+' — '+e(nomeCat)+'</div>'
-      +'<div style="font-size:12px;color:#475569;margin-bottom:16px"><strong>Tipo:</strong> '+e(exp.tipoLabel)+(descCat?' &nbsp;|&nbsp; <strong>Escopo:</strong> '+e(descCat):'')+'</div>'
-
-      // DADOS
+    blocos+='<div style="page-break-inside:avoid;border:2px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin:0 0 28px 0">'
+      +'<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">'+(gi+1)+'. '+e(g.cat)+' - '+e(nomeCat)+'</div>'
+      +'<div style="font-size:12px;color:#475569;margin-bottom:16px"><strong>Tipo:</strong> '+e(exp.tipoLabel)+(descCat?' | <strong>Escopo:</strong> '+e(descCat):'')+'</div>'
       +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:12px">'
-        +'<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">📋 DADOS</div>'
+        +'<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">DADOS</div>'
         +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+dadosHtml+'</ul>'
       +'</div>'
-
-      // FÓRMULA
       +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;margin-bottom:12px">'
-        +'<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:8px">📐 FÓRMULA</div>'
+        +'<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:8px">FORMULA</div>'
         +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+formulaHtml+'</ul>'
       +'</div>'
-
-      // SUBSTITUINDO
       +'<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px">'
-        +'<div style="font-size:13px;font-weight:700;color:#854d0e;margin-bottom:8px">🔢 SUBSTITUINDO OS VALORES</div>'
-        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+substHtml+'</ul>'
+        +'<div style="font-size:13px;font-weight:700;color:#854d0e;margin-bottom:8px">SUBSTITUINDO OS VALORES</div>'
+        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+fmfHtml+'</ul>'
+        +itensHtml
       +'</div>'
-
       +'</div>';
   });
 
-  var agora = new Date().toLocaleString('pt-BR');
-  var nomeProp = ((Q('pNum')&&Q('pNum').value)||'Sem número')+' — '+((Q('pCli')&&Q('pCli').value)||'Cliente');
-  var subtitulo = e(nomeProp)+' · Gerado em: '+e(agora);
+  var agora=new Date().toLocaleString('pt-BR');
+  var numP=(Q('pNum')&&Q('pNum').value)||'Sem numero';
+  var cliP=(Q('pCli')&&Q('pCli').value)||'Cliente';
+  var subtitulo=e(numP+' - '+cliP)+' | Gerado em: '+e(agora);
 
-  // Abre no modal interno (cria se não existir)
-  var _mm = document.getElementById('memorialModal');
+  // Criar modal dinamicamente se nao existir
+  var _mm=document.getElementById('memorialModal');
   if(!_mm){
-    _mm = document.createElement('div');
-    _mm.id = 'memorialModal';
-    _mm.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto';
-    _mm.innerHTML = ''
-      +'<div style="width:min(860px,100%);background:#fff;border-radius:12px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
-        +'<div style="position:sticky;top:0;z-index:10;background:#1e3a5f;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
-          +'<div>'
-            +'<div style="font-size:16px;font-weight:700;color:#fff">📐 Memorial de Cálculo do FMF</div>'
-            +'<div id="memorialSubtitle" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px"></div>'
-          +'</div>'
-          +'<div style="display:flex;gap:8px;flex-shrink:0">'
-            +'<button onclick="imprimirMemorialFMF()" style="padding:6px 14px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit">🖨️ Imprimir</button>'
-            +'<button onclick="document.getElementById('memorialModal').style.display='none'" style="padding:6px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:700">✕ Fechar</button>'
-          +'</div>'
-        +'</div>'
-        +'<div id="memorialContent" style="padding:20px;font-family:Calibri,Arial,sans-serif;font-size:13px;color:#111827;background:#fff"></div>'
-      +'</div>';
-    _mm.addEventListener('click', function(ev){ if(ev.target===_mm) _mm.style.display='none'; });
-    document.body.appendChild(_mm);
+    _mm=document.createElement('div');
+    _mm.id='memorialModal';
+    _mm.setAttribute('style','display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto');
 
-    window.imprimirMemorialFMF = function(){
+    var _inner=document.createElement('div');
+    _inner.setAttribute('style','width:min(860px,100%);background:#fff;border-radius:12px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)');
+
+    var _hdr=document.createElement('div');
+    _hdr.setAttribute('style','position:sticky;top:0;z-index:10;background:#1e3a5f;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px');
+
+    var _titBox=document.createElement('div');
+    var _tit=document.createElement('div');
+    _tit.setAttribute('style','font-size:16px;font-weight:700;color:#fff');
+    _tit.textContent='Memorial de Calculo do FMF';
+    var _sub=document.createElement('div');
+    _sub.id='memorialSubtitle';
+    _sub.setAttribute('style','font-size:11px;color:rgba(255,255,255,.65);margin-top:2px');
+    _titBox.appendChild(_tit); _titBox.appendChild(_sub);
+
+    var _btnBox=document.createElement('div');
+    _btnBox.setAttribute('style','display:flex;gap:8px;flex-shrink:0');
+
+    var _btnImp=document.createElement('button');
+    _btnImp.setAttribute('style','padding:6px 14px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit');
+    _btnImp.textContent='Imprimir';
+    _btnImp.onclick=function(){
       var c=document.getElementById('memorialContent');
       if(!c) return;
       var w=window.open('','_blank');
-      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
-        +'<style>@page{size:A4;margin:14mm}body{font-family:Calibri,Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style>'
-        +'</head><body>'+c.innerHTML+'</body></html>');
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style></head><body>'+c.innerHTML+'</body></html>');
       w.document.close(); w.print();
     };
+
+    var _btnFch=document.createElement('button');
+    _btnFch.setAttribute('style','padding:6px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:700');
+    _btnFch.textContent='X Fechar';
+    _btnFch.onclick=function(){ _mm.style.display='none'; };
+
+    _btnBox.appendChild(_btnImp); _btnBox.appendChild(_btnFch);
+    _hdr.appendChild(_titBox); _hdr.appendChild(_btnBox);
+
+    var _body=document.createElement('div');
+    _body.id='memorialContent';
+    _body.setAttribute('style','padding:20px;font-family:Arial,sans-serif;font-size:13px;color:#111827;background:#fff');
+
+    _inner.appendChild(_hdr); _inner.appendChild(_body);
+    _mm.appendChild(_inner);
+    _mm.addEventListener('click',function(ev){ if(ev.target===_mm) _mm.style.display='none'; });
+    document.body.appendChild(_mm);
   }
 
-  document.getElementById('memorialContent').innerHTML = blocos;
-  var _ms = document.getElementById('memorialSubtitle');
-  if(_ms) _ms.textContent = subtitulo || '';
-  _mm.style.display = 'flex';
-  _mm.scrollTop = 0;
+  document.getElementById('memorialContent').innerHTML=blocos;
+  var _ms=document.getElementById('memorialSubtitle');
+  if(_ms) _ms.textContent=subtitulo;
+  _mm.style.display='flex';
+  _mm.scrollTop=0;
 }
 
 
