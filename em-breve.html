@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Em breve</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  background:#0d1117;color:#e6edf3;
+  height:100vh;display:flex;align-items:center;justify-content:center;
+}
+body.light{background:#f5f7fb;color:#111827}
+.box{text-align:center;max-width:420px;padding:2rem}
+.icon{font-size:3rem;margin-bottom:1.5rem;display:block}
+.titulo{font-size:1.4rem;font-weight:700;margin-bottom:.75rem}
+.sub{font-size:.9rem;color:#8b949e;line-height:1.6;margin-bottom:2rem}
+.badge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.5rem 1.2rem;border-radius:20px;
+  background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);
+  color:#f0a500;font-size:.8rem;font-weight:700;
+}
+.progress{
+  margin-top:2rem;background:#21262d;border-radius:8px;height:6px;overflow:hidden;
+}
+.progress-bar{
+  height:100%;background:linear-gradient(90deg,#f0a500,#f8c840);
+  border-radius:8px;width:15%;
+  animation:prog 2s ease-in-out infinite alternate;
+}
+@keyframes prog{to{width:25%}}
+body.light .progress{background:#eef2f7}
+body.light .sub{color:#6b7280}
+</style>
+</head>
+<body>
+<div class="box">
+  <span class="icon" id="mod-icon">🚧</span>
+  <div class="titulo" id="mod-titulo">Módulo em desenvolvimento</div>
+  <div class="sub" id="mod-sub">Este módulo está sendo construído e em breve estará disponível na plataforma TecFusion.</div>
+  <div class="badge">⏳ Em breve</div>
+  <div class="progress"><div class="progress-bar"></div></div>
+</div>
+<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'SET_TEMA') {
+    document.body.classList.toggle('light', e.data.tema === 'light');
+  }
+  if (e.data && e.data.type === 'SET_MOD') {
+    if (e.data.icon) document.getElementById('mod-icon').textContent = e.data.icon;
+    if (e.data.titulo) document.getElementById('mod-titulo').textContent = e.data.titulo;
+    if (e.data.sub) document.getElementById('mod-sub').textContent = e.data.sub;
+  }
+});
+// Herda tema do pai
+try {
+  var tema = window.parent.localStorage.getItem('tf_theme') || 'dark';
+  document.body.classList.toggle('light', tema === 'light');
+} catch(e) {}
+</script>
+</body>
+</html>
