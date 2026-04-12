@@ -25,6 +25,7 @@
         { label: '↳ KPIs Ciclos',     icon: '📊', action: "irParaPainel('ciclosCard','togCiclosDash')" },
         { label: '↳ Linha do Tempo',  icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
         { label: '↳ Fechamentos',     icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
+        { label: 'Propostas',          icon: '📁', action: "abrirPainelPropostas()" },
         { label: 'Nova Proposta',     icon: '✏️', action: "newProposal(this)" },
         { label: 'Templates',         icon: '📋', action: "go('templates',this);rTplMgr()" },
         { label: 'Banco de Escopos',  icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
