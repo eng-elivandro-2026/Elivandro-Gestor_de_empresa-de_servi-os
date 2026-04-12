@@ -4801,6 +4801,32 @@ async function iniciarPlataforma() {
   var ultimaRota = localStorage.getItem('tf_route') || 'comercial';
   Router.init(ultimaRota);
 
+  // 6. Intercepta beSaveDB para sincronizar escopos com Supabase automaticamente
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof beSaveDB === 'function') {
+      var _beSaveDBOrig = beSaveDB;
+      window.beSaveDB = function() {
+        _beSaveDBOrig();
+        // Sincroniza com Supabase após salvar localmente
+        try {
+          var escs = JSON.parse(localStorage.getItem('tf_bancoEscopos') || '[]');
+          if (window.sbClient && escs.length) {
+            window.sbClient.from('configuracoes').upsert({
+              chave: 'tf_etpl',
+              valor: escs,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'chave' })
+            .then(function(r){
+              if (r.error) console.error('[beSaveDB] sync erro:', r.error.message);
+              else console.log('%c[beSaveDB] escopos sincronizados: ' + escs.length, 'color:green');
+            });
+          }
+        } catch(e) { console.warn('[beSaveDB] sync:', e); }
+      };
+      console.log('%c[init] beSaveDB interceptado — sync automático ativo', 'color:#f0a500');
+    }
+  });
+
   // 6. Esconde loading
   setTimeout(function () {
     var l = document.getElementById('loading');
