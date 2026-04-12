@@ -1,0 +1,184 @@
+// ============================================================
+// multi-empresa.js — Controle de acesso multi-empresa
+// Gerencia qual empresa está ativa e o perfil do usuário
+// ============================================================
+
+(function () {
+
+  // Estado global da empresa ativa
+  window._empresaAtiva = null;
+  window._perfilUsuario = null;
+  window._empresasUsuario = [];
+
+  // ── Carregar empresas do usuário logado ──────────────────
+  window.carregarEmpresasUsuario = async function () {
+    if (!window.sbClient) return [];
+    try {
+      // Buscar perfil e empresas vinculadas ao usuário logado
+      var { data: authData } = await window.sbClient.auth.getUser();
+      if (!authData || !authData.user) return [];
+
+      var { data: usuario } = await window.sbClient
+        .from('usuarios')
+        .select('id, nome, perfil')
+        .eq('auth_id', authData.user.id)
+        .single();
+
+      if (!usuario) return [];
+      window._perfilUsuario = usuario.perfil;
+
+      var { data: vinculos } = await window.sbClient
+        .from('usuario_empresas')
+        .select('empresa_id, empresas(id, nome, nome_curto, cnpj, regime_fiscal, logo_url)')
+        .eq('usuario_id', usuario.id)
+        .eq('ativo', true);
+
+      var empresas = (vinculos || []).map(function (v) {
+        return v.empresas;
+      }).filter(Boolean);
+
+      window._empresasUsuario = empresas;
+      return empresas;
+
+    } catch (e) {
+      console.warn('[multi-empresa] erro ao carregar empresas:', e);
+      return [];
+    }
+  };
+
+  // ── Definir empresa ativa ────────────────────────────────
+  window.setEmpresaAtiva = function (empresa) {
+    window._empresaAtiva = empresa;
+
+    // Salvar no localStorage para restaurar na próxima visita
+    try {
+      localStorage.setItem('tf_empresa_ativa', JSON.stringify({
+        id: empresa.id,
+        nome: empresa.nome,
+        nome_curto: empresa.nome_curto,
+        cnpj: empresa.cnpj
+      }));
+    } catch (e) {}
+
+    // Atualizar visual do header
+    atualizarHeaderEmpresa(empresa);
+
+    // Recarregar propostas da empresa ativa
+    recarregarDadosEmpresa(empresa);
+
+    console.log('%c[Empresa] ' + empresa.nome_curto + ' ativa', 'color:#f0a500;font-weight:700');
+  };
+
+  // ── Atualizar header com empresa ativa ───────────────────
+  function atualizarHeaderEmpresa(empresa) {
+    var logoTxt = document.getElementById('hdr-logo-txt');
+    var logoSub = document.getElementById('hdr-logo-sub');
+    var logoMk  = document.getElementById('hdr-logo-mk');
+
+    if (logoTxt) logoTxt.textContent = empresa.nome_curto;
+    if (logoSub) logoSub.textContent = empresa.nome.replace(empresa.nome_curto, '').trim();
+
+    // Cor diferente por empresa
+    if (logoMk) {
+      if (empresa.nome_curto === 'Tecfusion') {
+        logoMk.style.background = '#f0a500'; // amarelo
+        logoMk.textContent = 'TC';
+      } else if (empresa.nome_curto === 'Fortex') {
+        logoMk.style.background = '#F05A1A'; // laranja
+        logoMk.textContent = 'FX';
+      } else {
+        logoMk.textContent = empresa.nome_curto.slice(0, 2).toUpperCase();
+      }
+    }
+
+    // Atualizar seletor
+    var sel = document.getElementById('seletor-empresa');
+    if (sel) sel.value = empresa.id;
+  }
+
+  // ── Recarregar dados ao trocar empresa ───────────────────
+  async function recarregarDadosEmpresa(empresa) {
+    // Recarregar propostas da empresa ativa da nuvem
+    if (typeof sbCarregarNuvem === 'function') {
+      var propsNuvem = await sbCarregarNuvem();
+      // Filtrar só as da empresa ativa
+      if (propsNuvem && propsNuvem.length) {
+        var propsFiltradas = propsNuvem.filter(function (p) {
+          return !p.empresa_id || p.empresa_id === empresa.id;
+        });
+        if (typeof props !== 'undefined') props = propsFiltradas;
+        try { localStorage.setItem('tf_props', JSON.stringify(propsFiltradas)); } catch (e) {}
+      }
+    }
+
+    // Re-renderizar dashboard se estiver visível
+    try { if (typeof rDash === 'function') rDash(); } catch (e) {}
+    try { if (typeof rProps === 'function') rProps(); } catch (e) {}
+  }
+
+  // ── Renderizar seletor de empresa no header ──────────────
+  window.renderizarSeletorEmpresa = function (empresas) {
+    var container = document.getElementById('seletor-empresa-container');
+    if (!container) return;
+
+    // Dono vê seletor — gestor e colaborador não veem
+    if (!empresas || empresas.length <= 1) {
+      // Só uma empresa — mostra nome fixo sem seletor
+      if (empresas && empresas.length === 1) {
+        setEmpresaAtiva(empresas[0]);
+      }
+      container.style.display = 'none';
+      return;
+    }
+
+    // Duas ou mais empresas — mostra seletor
+    var html = '<select id="seletor-empresa" onchange="trocarEmpresa(this.value)" '
+      + 'style="padding:.28rem .6rem;background:var(--bg3);border:1px solid var(--border);'
+      + 'border-radius:var(--r2);color:var(--text);font-size:.72rem;font-family:inherit;cursor:pointer;'
+      + 'max-width:160px;">';
+
+    empresas.forEach(function (e) {
+      html += '<option value="' + e.id + '">' + e.nome_curto + '</option>';
+    });
+
+    html += '</select>';
+    container.innerHTML = html;
+    container.style.display = 'flex';
+
+    // Restaurar empresa ativa do localStorage
+    try {
+      var saved = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      var inicial = saved
+        ? (empresas.find(function (e) { return e.id === saved.id; }) || empresas[0])
+        : empresas[0];
+      setEmpresaAtiva(inicial);
+    } catch (e) {
+      setEmpresaAtiva(empresas[0]);
+    }
+  };
+
+  // ── Trocar empresa ───────────────────────────────────────
+  window.trocarEmpresa = function (empresaId) {
+    var empresa = window._empresasUsuario.find(function (e) {
+      return e.id === empresaId;
+    });
+    if (!empresa) return;
+    setEmpresaAtiva(empresa);
+  };
+
+  // ── Getter da empresa ativa ──────────────────────────────
+  window.getEmpresaAtiva = function () {
+    return window._empresaAtiva;
+  };
+
+  window.getEmpresaAtivaId = function () {
+    return window._empresaAtiva ? window._empresaAtiva.id : null;
+  };
+
+  window.getPerfilUsuario = function () {
+    return window._perfilUsuario;
+  };
+
+  console.log('%c[multi-empresa] carregado', 'color:#f0a500;font-weight:700');
+
+})();
