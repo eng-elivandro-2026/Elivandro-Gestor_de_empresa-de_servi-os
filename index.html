@@ -658,9 +658,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <div class="br" onclick="event.stopPropagation()">
         <button class="btn bg bsm" onclick="abrirConfigMeta()">⚙️ Configurar</button>
       </div>
-      <span id="metaChevron" onclick="togMeta()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▲</span>
+      <span id="metaChevron" onclick="togMeta()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
     </div>
-    <div id="metaBody">
+    <div id="metaBody" style="display:none">
       <!-- linha 1: barras de progresso -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem" id="metaBars"></div>
     <!-- linha 2: mini KPIs divididos em Mensal e Anual -->
@@ -694,9 +694,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <div class="br" onclick="event.stopPropagation()">
         <span style="font-size:.68rem;color:var(--text3)">Histórico total de propostas</span>
       </div>
-      <span id="visaoGeralChevron" onclick="togVisaoGeral()" style="font-size:.8rem;color:var(--text3);margin-left:.6rem;cursor:pointer">▲</span>
+      <span id="visaoGeralChevron" onclick="togVisaoGeral()" style="font-size:.8rem;color:var(--text3);margin-left:.6rem;cursor:pointer">▼ expandir</span>
     </div>
-    <div id="visaoGeralBody">
+    <div id="visaoGeralBody" style="display:none">
     <div class="kpi-g" style="margin-bottom:0">
       <div class="kpi"><div class="kpi-v" id="kT">0</div><div class="kpi-l">Propostas<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">histórico total</span></div></div>
       <div class="kpi"><div class="kpi-v" id="kC" style="color:var(--blue)">R$0</div><div class="kpi-l">Carteira</div></div>
@@ -734,9 +734,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card">
     <div class="ch" style="cursor:pointer" onclick="togRanking()">
       <span class="ct">🏢 Ranking de Clientes</span>
-      <span id="rankingChevron" style="font-size:.8rem;color:var(--text3)">▲</span>
+      <span id="rankingChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
     </div>
-    <div id="rankingBody">
+    <div id="rankingBody" style="display:none">
     <div class="ranking-grid">
       <div class="conv-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem">
