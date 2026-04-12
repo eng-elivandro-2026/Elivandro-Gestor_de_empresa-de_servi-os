@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script>function Q(id){return document.getElementById(id);}</script>
+<script>function Q(id){return document.getElementById(id);}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TecFusion — Plataforma</title>
 <style>
@@ -4755,7 +4756,7 @@ function gestaoBackup() {
 // ══ INICIALIZAÇÃO DA PLATAFORMA ══════════════════════════
 
 async function iniciarPlataforma() {
-  // 1. Auth + carrega propostas da nuvem
+  // 1. Auth + propostas da nuvem
   if (typeof protegerPagina === 'function') await protegerPagina();
 
   // 2. Carrega templates, escopos e config da nuvem
@@ -4763,7 +4764,21 @@ async function iniciarPlataforma() {
     await sbCarregarBackup().catch(function(e){ console.warn('[init] backup:', e); });
   }
 
-  // 2. Usuário no header
+  // 3. Normaliza campo grupo dos escopos (registros antigos usam titulo como categoria)
+  try {
+    var _escs = JSON.parse(localStorage.getItem('tf_bancoEscopos') || '[]');
+    if (_escs.length && _escs.some(function(e){ return !e.grupo; })) {
+      _escs = _escs.map(function(e){
+        if (!e.grupo) e.grupo = e.g || e.titulo || 'Geral';
+        return e;
+      });
+      localStorage.setItem('tf_bancoEscopos', JSON.stringify(_escs));
+      localStorage.setItem('tf_etpl', JSON.stringify(_escs));
+      console.log('%c[init] ' + _escs.length + ' escopos normalizados', 'color:#f0a500');
+    }
+  } catch(e) { console.warn('[init] norm escopos:', e); }
+
+  // 4. Usuário no header
   try {
     var { data } = await window.sbClient.auth.getUser();
     if (data && data.user) {
