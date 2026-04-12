@@ -5,7 +5,7 @@
 <script>function Q(id){return document.getElementById(id);}</script>
 <script>function Q(id){return document.getElementById(id);}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TecFusion — Plataforma</title>
+<title>Fortex — Plataforma</title>
 <style>
 /* ══ VARIÁVEIS E RESET ══ */
 
@@ -577,8 +577,8 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <div class="logo">
         <div class="logo-mk">FX</div>
         <div>
-          <div class="logo-txt">TecFusion</div>
-          <div class="logo-sub">Plataforma Empresarial</div>
+          <div class="logo-txt">Fortex</div>
+          <div class="logo-sub">Tecnologia Industrial</div>
         </div>
       </div>
     </div>
@@ -3130,9 +3130,9 @@ function imprimirCategorias(){
       +'</tr>';
   });
   tbody+='</tbody>';
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tecfusion Categorias</title>'
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fortex Categorias</title>'
     +'<style>'+estilos+'</style></head><body>'
-    +'<h2>Tecfusion — Categorias de Orçamento</h2>'
+    +'<h2>Fortex — Categorias de Orçamento</h2>'
     +'<table>'+thead+tbody+'</table>'
   +'</div></body></html>';
   var w=window.open('','_blank');
@@ -3160,7 +3160,7 @@ function exportarCategoriasXLSX(){
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url;
-  a.download='Tecfusion_Categorias_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download='Fortex_Categorias_'+new Date().toISOString().slice(0,10)+'.csv';
   document.body.appendChild(a);a.click();
   setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500);
   toast('Categorias exportadas!','ok');
