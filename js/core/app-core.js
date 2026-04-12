@@ -2521,18 +2521,45 @@ function gerarMemorialFMF(){
   var nomeProp = ((Q('pNum')&&Q('pNum').value)||'Sem número')+' — '+((Q('pCli')&&Q('pCli').value)||'Cliente');
   var subtitulo = e(nomeProp)+' · Gerado em: '+e(agora);
 
-  // Abre no modal interno (sem nova aba)
-  if(typeof abrirMemorial === 'function'){
-    abrirMemorial(blocos, subtitulo);
-  } else {
-    // Fallback: nova aba se modal não existir
-    var w=window.open('','_blank');
-    if(!w){ alert('Não foi possível abrir o memorial.'); return; }
-    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
-      +'<style>body{font-family:Calibri,Arial,sans-serif;padding:20px;font-size:12px;color:#111}</style>'
-      +'</head><body>'+blocos+'</body></html>');
-    w.document.close();
+  // Abre no modal interno (cria se não existir)
+  var _mm = document.getElementById('memorialModal');
+  if(!_mm){
+    _mm = document.createElement('div');
+    _mm.id = 'memorialModal';
+    _mm.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto';
+    _mm.innerHTML = ''
+      +'<div style="width:min(860px,100%);background:#fff;border-radius:12px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+        +'<div style="position:sticky;top:0;z-index:10;background:#1e3a5f;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+          +'<div>'
+            +'<div style="font-size:16px;font-weight:700;color:#fff">📐 Memorial de Cálculo do FMF</div>'
+            +'<div id="memorialSubtitle" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px"></div>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;flex-shrink:0">'
+            +'<button onclick="imprimirMemorialFMF()" style="padding:6px 14px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit">🖨️ Imprimir</button>'
+            +'<button onclick="document.getElementById('memorialModal').style.display='none'" style="padding:6px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:700">✕ Fechar</button>'
+          +'</div>'
+        +'</div>'
+        +'<div id="memorialContent" style="padding:20px;font-family:Calibri,Arial,sans-serif;font-size:13px;color:#111827;background:#fff"></div>'
+      +'</div>';
+    _mm.addEventListener('click', function(ev){ if(ev.target===_mm) _mm.style.display='none'; });
+    document.body.appendChild(_mm);
+
+    window.imprimirMemorialFMF = function(){
+      var c=document.getElementById('memorialContent');
+      if(!c) return;
+      var w=window.open('','_blank');
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
+        +'<style>@page{size:A4;margin:14mm}body{font-family:Calibri,Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style>'
+        +'</head><body>'+c.innerHTML+'</body></html>');
+      w.document.close(); w.print();
+    };
   }
+
+  document.getElementById('memorialContent').innerHTML = blocos;
+  var _ms = document.getElementById('memorialSubtitle');
+  if(_ms) _ms.textContent = subtitulo || '';
+  _mm.style.display = 'flex';
+  _mm.scrollTop = 0;
 }
 
 
