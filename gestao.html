@@ -2874,9 +2874,9 @@ function atualizarDataHoje(){
 
   const str=`${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
 
-  document.getElementById('data-hoje').textContent=str;
+  var _dh=document.getElementById('data-hoje'); if(_dh)_dh.textContent=str;
 
-  document.getElementById('todayLbl').textContent=`${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+  var _lbl=document.getElementById('todayLbl'); if(_lbl)_lbl.textContent=`${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
 
 }
 
@@ -4968,7 +4968,7 @@ function toggleTheme(){
 
   dados.theme=document.body.classList.contains('light')?'light':'dark';
 
-  document.getElementById('theme-btn').textContent=dados.theme==='light'?'🌙':'☀️';
+  var _tb=document.getElementById('theme-btn'); if(_tb) _tb.textContent=dados.theme==='light'?'🌙':'☀️';
 
   save();
 
@@ -5600,7 +5600,7 @@ sbProtegerGestao().then(loadNuvem);
 
 renderFrases();
 
-document.getElementById('theme-btn').textContent=dados.theme==='light'?'🌙':'☀️';
+var _tb=document.getElementById('theme-btn'); if(_tb) _tb.textContent=dados.theme==='light'?'🌙':'☀️';
 
 // Atualizar janelas a cada minuto
 
@@ -5618,8 +5618,7 @@ function showSecG(id) {
 
   // Atualizar botões da sidebar
 
-  document.querySelectorAll(');
-
+  // querySelectorAll removido (sidebar agora no shell pai)
   var btn = document.getElementById('nb-' + id);
 
   if (btn) btn.classList.add('on');
