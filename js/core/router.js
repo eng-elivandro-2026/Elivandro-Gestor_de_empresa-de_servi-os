@@ -16,13 +16,21 @@
       icon: '📊',
       tipo: 'inline',
       nav: [
-        { label: 'Dashboard',       icon: '📊', action: "go('dashboard',this)" },
-        { label: 'Nova Proposta',   icon: '✏️', action: "newProposal(this)" },
-        { label: 'Templates',       icon: '📋', action: "go('templates',this);rTplMgr()" },
-        { label: 'Banco de Escopos',icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
-        { label: 'Análise',         icon: '📈', action: "go('analise',this);rAnalise()" },
-        { label: 'Pipeline',        icon: '🔀', action: "go('registro',this);rRegistro()" },
-        { label: 'Versões',         icon: '📋', action: "go('changelog',this)" },
+        { label: 'Dashboard',         icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
+        { label: '↳ Metas',           icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
+        { label: '↳ Visão Geral',     icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
+        { label: '↳ Análise IA',      icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
+        { label: '↳ Ranking',         icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
+        { label: '↳ Por Categoria',   icon: '📂', action: "irParaPainel('catAnaliseCard','togCatAnalise')" },
+        { label: '↳ KPIs Ciclos',     icon: '📊', action: "irParaPainel('ciclosCard','togCiclosDash')" },
+        { label: '↳ Linha do Tempo',  icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
+        { label: '↳ Fechamentos',     icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
+        { label: 'Nova Proposta',     icon: '✏️', action: "newProposal(this)" },
+        { label: 'Templates',         icon: '📋', action: "go('templates',this);rTplMgr()" },
+        { label: 'Banco de Escopos',  icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
+        { label: 'Análise',           icon: '📈', action: "go('analise',this);rAnalise()" },
+        { label: 'Pipeline',          icon: '🔀', action: "go('registro',this);rRegistro()" },
+        { label: 'Versões',           icon: '📋', action: "go('changelog',this)" },
       ]
     },
     {
@@ -148,8 +156,10 @@
         return;
       }
       el.innerHTML = mod.nav.map(function (item, i) {
-        return '<button class="nb nav-item" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
-          '<span>' + item.icon + '</span> ' + item.label +
+        var isSubitem = item.label.indexOf('↳') === 0;
+      var labelClean = isSubitem ? item.label.slice(2) : item.label;
+      return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
+          '<span>' + item.icon + '</span> ' + labelClean +
           '</button>';
       }).join('');
       // Ativa o primeiro item
