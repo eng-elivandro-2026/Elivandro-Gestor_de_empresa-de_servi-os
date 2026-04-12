@@ -556,6 +556,16 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   .app-shell.sidebar-open .sidebar{transform:translateX(0)}
   .app-shell.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 }
+
+/* Subitens do sidebar (painéis do dashboard) */
+.nav-item.subitem {
+  padding-left: 1.4rem;
+  font-size: .72rem;
+  color: var(--text3);
+  opacity: .85;
+}
+.nav-item.subitem:hover { opacity: 1; color: var(--text); }
+.nav-item.subitem.on { color: var(--accent); opacity: 1; }
 </style>
 </head>
 
@@ -688,7 +698,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:.8rem;padding:.75rem 1rem">
+  <div class="card" id="visaoGeralCard" style="margin-bottom:.8rem;padding:.75rem 1rem">
     <div class="ch" style="cursor:pointer;margin-bottom:.6rem;padding-bottom:.45rem" onclick="togVisaoGeral()">
       <span class="ct">📊 Visão Geral</span>
       <div class="br" onclick="event.stopPropagation()">
@@ -731,7 +741,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="rankingCard">
     <div class="ch" style="cursor:pointer" onclick="togRanking()">
       <span class="ct">🏢 Ranking de Clientes</span>
       <span id="rankingChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
@@ -4936,5 +4946,28 @@ function fecharMemorial(){
   if(m) m.style.display='none';
 }
 </script>
+
+// ── Navegação do Dashboard — rola e expande o painel ──────────
+function irParaPainel(cardId, togFn) {
+  // 1. Garante que está na seção dashboard
+  if (typeof go === 'function') go('dashboard', null);
+
+  setTimeout(function() {
+    var card = document.getElementById(cardId);
+    if (!card) return;
+
+    // 2. Expande o painel se estiver fechado
+    var body = card.querySelector('[id$="Body"]') || card.querySelector('[style*="display:none"]');
+    if (body && body.style.display === 'none') {
+      if (typeof window[togFn] === 'function') window[togFn]();
+    }
+
+    // 3. Rola suavemente até o card
+    setTimeout(function() {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, 50);
+}
+
 </body>
 </html>
