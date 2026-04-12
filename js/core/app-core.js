@@ -16,6 +16,32 @@ var n2=function(v){return isFinite(+v)?+v:0};
 var uid=function(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)};
 var money=function(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)};
 var fmtBRL=money;
+// ── Navegação do Dashboard — rola e expande o painel ──────────
+window.irParaPainel = function(cardId, togFn) {
+  if (typeof go === 'function') go('dashboard', null);
+  setTimeout(function() {
+    var card = document.getElementById(cardId);
+    if (!card) return;
+    // Expande se fechado
+    var togFunc = window[togFn];
+    if (typeof togFunc === 'function') {
+      var body = card.querySelector('[style*="display: none"], [style*="display:none"]');
+      if (body) togFunc();
+    }
+    // Rola até o card
+    setTimeout(function() {
+      var areaInline = document.getElementById('area-inline');
+      if (areaInline) {
+        var cardTop = card.getBoundingClientRect().top + areaInline.scrollTop - areaInline.getBoundingClientRect().top - 10;
+        areaInline.scrollTo({ top: cardTop, behavior: 'smooth' });
+      } else {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 120);
+  }, 60);
+};
+
+
 var fmtNumBr=function(v){ return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:4}).format(n2(v)); };
 var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}else{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
