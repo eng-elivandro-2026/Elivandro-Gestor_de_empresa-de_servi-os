@@ -4755,8 +4755,13 @@ function gestaoBackup() {
 // ══ INICIALIZAÇÃO DA PLATAFORMA ══════════════════════════
 
 async function iniciarPlataforma() {
-  // 1. Auth
+  // 1. Auth + carrega propostas da nuvem
   if (typeof protegerPagina === 'function') await protegerPagina();
+
+  // 2. Carrega templates, escopos e config da nuvem
+  if (typeof sbCarregarBackup === 'function') {
+    await sbCarregarBackup().catch(function(e){ console.warn('[init] backup:', e); });
+  }
 
   // 2. Usuário no header
   try {
