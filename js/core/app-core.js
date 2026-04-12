@@ -1245,7 +1245,21 @@ function _confirmarFechModal(){
   toast('✔ Proposta movida para '+((FASE[fase]&&FASE[fase].n)||fase)+' com data '+dtFech.split('-').reverse().join('/'),'ok');
 }
 
-function delP(id){if(confirm('Excluir proposta?')){props=props.filter(function(p){return p.id!==id});saveAll();rDash()}}
+function delP(id){
+  if(confirm('Excluir proposta?')){
+    props=props.filter(function(p){return p.id!==id});
+    saveAll();
+    rDash();
+    // Deletar também no Supabase
+    if(window.sbClient){
+      window.sbClient.from('propostas').delete().eq('app_id', String(id))
+        .then(function(r){
+          if(r.error) console.error('[delP] erro Supabase:', r.error.message);
+          else console.log('%c[delP] proposta excluída da nuvem: '+id, 'color:#f85149;font-weight:700');
+        });
+    }
+  }
+}
 
 function dupProp(id){
   try{
