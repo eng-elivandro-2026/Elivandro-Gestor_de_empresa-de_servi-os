@@ -145,10 +145,14 @@
         updated_at: new Date().toISOString()
       }, { onConflict: 'chave' });
     }
-    if (backup.escopos && backup.escopos.length) {
+    var escoposParaSalvar = backup.escopos;
+    if (!escoposParaSalvar || !escoposParaSalvar.length) {
+      try { escoposParaSalvar = JSON.parse(localStorage.getItem('tf_bancoEscopos') || '[]'); } catch(e) {}
+    }
+    if (escoposParaSalvar && escoposParaSalvar.length) {
       await window.sbClient.from('configuracoes').upsert({
         chave: 'tf_etpl',
-        valor: backup.escopos,
+        valor: escoposParaSalvar,
         updated_at: new Date().toISOString()
       }, { onConflict: 'chave' });
     }
@@ -173,7 +177,10 @@
     // Carregar escopos
     var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').single();
     if (rEsc.data && rEsc.data.valor) {
-      try { localStorage.setItem('tf_etpl', JSON.stringify(rEsc.data.valor)); } catch(e) {}
+      try {
+        localStorage.setItem('tf_etpl', JSON.stringify(rEsc.data.valor));
+        localStorage.setItem('tf_bancoEscopos', JSON.stringify(rEsc.data.valor));
+      } catch(e) {}
       console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
     }
     // Carregar config
@@ -184,53 +191,5 @@
     }
     return true;
   };
-
-  // ════════════════════════════════════════════════════════
-  // REALTIME — Atualização automática entre dispositivos
-  // ════════════════════════════════════════════════════════
-  var _realtimeChannel = null;
-  var _ultimoUpdate = Date.now();
-
-  window.sbIniciarRealtime = function () {
-    if (!window.sbClient) return;
-    if (_realtimeChannel) return; // já iniciado
-
-    _realtimeChannel = window.sbClient
-      .channel('propostas-realtime')
-      .on('postgres_changes', {
-        event: '*',          // INSERT, UPDATE, DELETE
-        schema: 'public',
-        table: 'propostas'
-      }, function (payload) {
-        // Ignorar se a mudança veio deste próprio dispositivo (< 2 segundos)
-        var agora = Date.now();
-        if (agora - _ultimoUpdate < 2000) return;
-
-        console.log('%c[Realtime] proposta atualizada por outro dispositivo', 'color:#F05A1A;font-weight:700');
-
-        // Recarregar propostas da nuvem e re-renderizar
-        sbCarregarNuvem().then(function (props) {
-          if (!props) return;
-          if (typeof loadAll === 'function') loadAll();
-          if (typeof rDash === 'function') rDash();
-          if (typeof rProps === 'function') rProps();
-          // Toast discreto
-          if (typeof toast === 'function') toast('🔄 Atualizado por outro dispositivo', 'ok');
-        });
-      })
-      .subscribe(function (status) {
-        if (status === 'SUBSCRIBED') {
-          console.log('%c[Realtime] conectado — sync automático ativo', 'color:#F05A1A;font-weight:700');
-        }
-      });
-  };
-
-  // Marcar timestamp ao salvar para ignorar o próprio evento
-  var _sbSalvarPropostaOriginal = window.sbSalvarProposta;
-  window.sbSalvarProposta = async function (p) {
-    _ultimoUpdate = Date.now();
-    return _sbSalvarPropostaOriginal ? _sbSalvarPropostaOriginal(p) : null;
-  };
-
 
 })();
