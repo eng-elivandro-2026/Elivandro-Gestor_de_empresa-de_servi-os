@@ -2375,6 +2375,13 @@ function gerarMemorialFMF(){
     grupos[key].itens.push(it);
   });
 
+  // Helpers de formatação
+  function br2(n){ return n2(n).toFixed(4).replace('.',','); }
+  function br6(n){ return n2(n).toFixed(6).replace('.',','); }
+  function brPct(n){ return (n2(n)*100).toFixed(2).replace('.',',')+'%'; }
+  function brR(n){ return 'R$ '+n2(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
   var blocos='';
   Object.keys(grupos).sort().forEach(function(key,gi){
     var g=grupos[key];
@@ -2382,71 +2389,161 @@ function gerarMemorialFMF(){
     var meta=exp.meta||{};
     var nomeCat=(meta.n||g.cat||'Categoria');
     var descCat=(meta.desc||'');
-    var linhas=g.itens.map(function(it,ii){
-      var qtdLabel='';
-      if(it.t==='material'){
-        qtdLabel=(it.mult||0)+(it.un1?' '+it.un1:'');
-      }else{
-        qtdLabel=(it.tec||1)+' técnico(s) × '+(it.dias||0)+(it.un1?' '+it.un1:'')+' × '+(it.hpd||0)+(it.un2?' '+it.un2:'');
-      }
-      return '<tr>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf">'+(ii+1)+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf">'+esc(it.desc||nomeCat)+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf">'+esc(qtdLabel)+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">'+money(it.cu)+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">'+(n2(it.fmf)).toFixed(6).replace('.',',')+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">'+money(it.pvu)+'</td>'
-        +'<td style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">'+money(it.pvt)+'</td>'
-        +'</tr>';
-    }).join('');
+    var isMat=(g.tipo==='material');
+    var isMob=(!isMat && g.cat && g.cat.indexOf('MB-')===0);
 
-    var resumoFormula = '';
-    if(g.tipo==='material'){
-      resumoFormula = 'No cadastro atual, o campo "mk" está sendo usado como margem bruta sobre custo. Portanto, quando a categoria está com 35%, isso não é o markup multiplicador; é a margem bruta/acréscimo sobre o custo usada na fórmula do material.';
-    } else if(g.cat && g.cat.indexOf('MB-')===0){
-      resumoFormula = 'Para mobilização, a fórmula usa margem bruta de mobilização sobre o custo, somada ao numerador.';
+    // ── DADOS ──────────────────────────────────────────
+    var origemMargem = isMat ? 'margem sobre custo cadastrada na categoria '+g.cat
+                     : isMob ? 'margem de mobilização cadastrada na categoria '+g.cat
+                     :         'margem de serviço cadastrada na categoria '+g.cat;
+    var rotuloMbShort = isMat ? 'mk (margem material)' : isMob ? 'mm (margem mobilização)' : 'mb (margem serviço)';
+
+    var dadosHtml =
+        '<li><strong>'+esc2(rotuloMbShort)+'</strong> = '+brPct(exp.margemBruta)+' = '+br2(exp.margemBruta)+' → '+esc2(origemMargem)+'</li>'
+      + '<li><strong>NF '+(isMat?'Materiais':'Serviços')+'</strong> = '+brPct(exp.nf)+' = '+br2(exp.nf)+' → alíquotas da proposta</li>'
+      + '<li><strong>Risco Sacado (RS)</strong> = '+brPct(exp.rs)+' = '+br2(exp.rs)+' → alíquotas da proposta</li>'
+      + '<li><strong>Comissão (Com)</strong> = '+brPct(exp.com)+' = '+br2(exp.com)+' → alíquotas da proposta</li>'
+      + '<li><strong>Negociação (Neg)</strong> = '+brPct(exp.neg)+' = '+br2(exp.neg)+' → alíquotas da proposta</li>';
+
+    // ── FÓRMULA ─────────────────────────────────────────
+    var formulaHtml;
+    if(isMat){
+      formulaHtml =
+          '<li>Total de alíquotas = NF + RS + Com + Neg</li>'
+        + '<li>FMF = (1 + mk) ÷ (1 − alíquotas)</li>'
+        + '<li>PV unitário = Custo unitário × FMF</li>'
+        + '<li>PV total = PV unitário × Quantidade</li>';
+    } else if(isMob){
+      formulaHtml =
+          '<li>Total de alíquotas = NF + RS + Com + Neg</li>'
+        + '<li>FMF = (1 + mm) ÷ (1 − alíquotas)</li>'
+        + '<li>PV unitário = Custo unitário × FMF</li>'
+        + '<li>PV total = PV unitário × Quantidade</li>';
     } else {
-      resumoFormula = 'Para serviço técnico, a fórmula usa margem bruta do serviço no denominador, conforme seu modelo de cálculo.';
+      formulaHtml =
+          '<li>Total de alíquotas = NF + RS + Com + Neg</li>'
+        + '<li>FMF = 1 ÷ [ (1 − mb) × (1 − alíquotas) ]</li>'
+        + '<li>PV unitário = Custo unitário × FMF</li>'
+        + '<li>PV total = PV unitário × Quantidade</li>';
     }
 
-    blocos += '<div style="page-break-inside:avoid;border:1px solid #d7d7d7;border-radius:8px;padding:14px 16px;margin:0 0 16px 0">'
-      +'<div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:8px">'+(gi+1)+'. '+esc(g.cat)+' — '+esc(nomeCat)+'</div>'
-      +'<div style="font-size:12px;color:#475569;margin-bottom:10px"><strong>Tipo:</strong> '+esc(exp.tipoLabel)+(descCat?' &nbsp;|&nbsp; <strong>Escopo:</strong> '+esc(descCat):'')+'</div>'
-      +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;margin-bottom:10px">'
-        +'<div style="font-size:12px;font-weight:700;margin-bottom:6px">Parâmetros da categoria</div>'
-        +'<div style="font-size:12px;line-height:1.6">'
-          +'<strong>'+esc(exp.rotuloMargem)+':</strong> '+fmtPct(exp.margemBruta)+'<br>'
-          +'<strong>Range cadastrado:</strong> de '+fmtPct(exp.rangeMin)+' até '+fmtPct(exp.rangeMax)+'<br>'
-          +'<strong>NF '+(g.tipo==='material'?'Materiais':'Serviços')+':</strong> '+fmtPct(exp.nf)+'<br>'
-          +'<strong>Risco Sacado:</strong> '+fmtPct(exp.rs)+'<br>'
-          +'<strong>Comissão '+(g.tipo==='material'?'Materiais':'Serviços')+':</strong> '+fmtPct(exp.com)+'<br>'
-          +'<strong>Margem Negociação:</strong> '+fmtPct(exp.neg)+'<br>'
-          +'<strong>Total agrupado de Impostos e Taxas:</strong> '+fmtPct(exp.impostosTaxas)
-        +'</div>'
+    // ── SUBSTITUINDO E CALCULANDO ────────────────────────
+    var nf=exp.nf, rs=exp.rs, com=exp.com, neg=exp.neg, mb=exp.margemBruta;
+    var somaAliq = nf+rs+com+neg;
+    var fmf = exp.fmf;
+
+    var calcHtml = '';
+    // Passo 1: soma das alíquotas
+    calcHtml += '<li><strong>Passo 1 — somar as alíquotas:</strong><br>'
+      + 'Total alíquotas = NF + RS + Com + Neg<br>'
+      + 'Total alíquotas = '+br2(nf)+' + '+br2(rs)+' + '+br2(com)+' + '+br2(neg)+'<br>'
+      + 'Total alíquotas = <strong>'+br2(somaAliq)+'</strong></li>';
+
+    if(isMat || isMob){
+      var rotuloM = isMat ? 'mk' : 'mm';
+      var num = 1 + mb;
+      var den = 1 - somaAliq;
+      calcHtml += '<li><strong>Passo 2 — calcular o numerador (1 + '+rotuloM+'):</strong><br>'
+        + '1 + '+br2(mb)+' = <strong>'+br2(num)+'</strong></li>';
+      calcHtml += '<li><strong>Passo 3 — calcular o denominador (1 − alíquotas):</strong><br>'
+        + '1 − '+br2(somaAliq)+' = <strong>'+br2(den)+'</strong></li>';
+      calcHtml += '<li><strong>Passo 4 — calcular o FMF:</strong><br>'
+        + 'FMF = numerador ÷ denominador<br>'
+        + 'FMF = '+br2(num)+' ÷ '+br2(den)+'<br>'
+        + 'FMF = <strong>'+br6(fmf)+'</strong></li>';
+    } else {
+      var fator1 = 1 - mb;
+      var fator2 = 1 - somaAliq;
+      var produto = fator1 * fator2;
+      calcHtml += '<li><strong>Passo 2 — calcular (1 − mb):</strong><br>'
+        + '1 − '+br2(mb)+' = <strong>'+br2(fator1)+'</strong></li>';
+      calcHtml += '<li><strong>Passo 3 — calcular (1 − alíquotas):</strong><br>'
+        + '1 − '+br2(somaAliq)+' = <strong>'+br2(fator2)+'</strong></li>';
+      calcHtml += '<li><strong>Passo 4 — multiplicar os dois fatores:</strong><br>'
+        + br2(fator1)+' × '+br2(fator2)+' = <strong>'+br2(produto)+'</strong></li>';
+      calcHtml += '<li><strong>Passo 5 — calcular o FMF:</strong><br>'
+        + 'FMF = 1 ÷ '+br2(produto)+'<br>'
+        + 'FMF = <strong>'+br6(fmf)+'</strong></li>';
+    }
+
+    // ── CÁLCULO DE CADA ITEM ────────────────────────────
+    var itensBlocos = g.itens.map(function(it, ii){
+      var cu = n2(it.cu);
+      var pvUnit = n2(it.pvu);
+      var pvTot  = n2(it.pvt);
+      var itCalc = '';
+      var passoBase = (isMat||isMob) ? 5 : 6;
+
+      if(isMat){
+        var qtd = n2(it.mult||1);
+        var un  = it.un1||'un';
+        itCalc += '<li><strong>Passo '+passoBase+' — dados do item:</strong><br>'
+          + 'Custo unitário = '+brR(cu)+'<br>'
+          + 'Quantidade = '+qtd+' '+esc2(un)+'</li>';
+        itCalc += '<li><strong>Passo '+(passoBase+1)+' — calcular PV unitário:</strong><br>'
+          + 'PV unitário = Custo unitário × FMF<br>'
+          + 'PV unitário = '+brR(cu)+' × '+br6(fmf)+'<br>'
+          + 'PV unitário = <strong>'+brR(pvUnit)+'</strong></li>';
+        itCalc += '<li><strong>Passo '+(passoBase+2)+' — calcular PV total:</strong><br>'
+          + 'PV total = PV unitário × Quantidade<br>'
+          + 'PV total = '+brR(pvUnit)+' × '+qtd+'<br>'
+          + 'PV total = <strong>'+brR(pvTot)+'</strong></li>';
+      } else {
+        var tec  = n2(it.tec||1);
+        var dias = n2(it.dias||0);
+        var hpd  = n2(it.hpd||0);
+        var un1  = it.un1||'Dias';
+        var un2  = it.un2||'Horas';
+        var qtdTotal = tec * dias * hpd;
+        itCalc += '<li><strong>Passo '+passoBase+' — dados do item:</strong><br>'
+          + 'Custo unitário = '+brR(cu)+' / hora<br>'
+          + 'Quantidade = '+tec+' técnico(s) × '+dias+' '+esc2(un1)+' × '+hpd+' '+esc2(un2)+'</li>';
+        itCalc += '<li><strong>Passo '+(passoBase+1)+' — calcular a quantidade total:</strong><br>'
+          + tec+' × '+dias+' × '+hpd+' = <strong>'+qtdTotal+' '+esc2(un2)+'</strong></li>';
+        itCalc += '<li><strong>Passo '+(passoBase+2)+' — calcular PV unitário:</strong><br>'
+          + 'PV unitário = Custo unitário × FMF<br>'
+          + 'PV unitário = '+brR(cu)+' × '+br6(fmf)+'<br>'
+          + 'PV unitário = <strong>'+brR(pvUnit)+'</strong></li>';
+        itCalc += '<li><strong>Passo '+(passoBase+3)+' — calcular PV total:</strong><br>'
+          + 'PV total = PV unitário × Quantidade total<br>'
+          + 'PV total = '+brR(pvUnit)+' × '+qtdTotal+'<br>'
+          + 'PV total = <strong>'+brR(pvTot)+'</strong></li>';
+      }
+
+      return '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;margin-bottom:10px">'
+        +'<div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:6px">Item '+(ii+1)+': '+esc2(it.desc||nomeCat)+'</div>'
+        +'<ol style="margin:0;padding-left:18px;font-size:12px;line-height:1.8">'+itCalc+'</ol>'
+        +'</div>';
+    }).join('');
+
+    // ── MONTAR BLOCO DA CATEGORIA ───────────────────────
+    blocos += '<div style="page-break-inside:avoid;border:2px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin:0 0 24px 0">'
+      // Cabeçalho
+      +'<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">'+(gi+1)+'. '+esc2(g.cat)+' — '+esc2(nomeCat)+'</div>'
+      +'<div style="font-size:12px;color:#475569;margin-bottom:14px"><strong>Tipo:</strong> '+esc2(exp.tipoLabel)+(descCat?' &nbsp;|&nbsp; <strong>Escopo:</strong> '+esc2(descCat):'')+'</div>'
+
+      // DADOS
+      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">📋 DADOS</div>'
+        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+dadosHtml+'</ul>'
       +'</div>'
-      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">Interpretação do parâmetro da categoria</div>'
-      +'<div style="font-size:12px;line-height:1.6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 12px;margin-bottom:10px">'
-        +esc(resumoFormula)
+
+      // FÓRMULA
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:8px">📐 FÓRMULA</div>'
+        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+formulaHtml+'</ul>'
       +'</div>'
-      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">Fórmula usada</div>'
-      +'<div style="font-size:12px;line-height:1.6;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px 12px;margin-bottom:10px">'
-        +'<div><strong>Passo 1:</strong> '+esc(exp.formulaTxt)+'</div>'
-        +'<div><strong>Passo 2:</strong> '+esc(exp.substituicao)+'</div>'
-        +'<div><strong>Passo 3:</strong> '+esc(exp.detalhe)+'</div>'
+
+      // CALCULANDO
+      +'<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-size:13px;font-weight:700;color:#854d0e;margin-bottom:8px">✏️ CALCULANDO PASSO A PASSO</div>'
+        +'<ol style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+calcHtml+'</ol>'
       +'</div>'
-      +'<div style="font-size:12px;font-weight:700;margin-bottom:6px">Cálculo dos itens desta categoria</div>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
-        +'<thead><tr style="background:#f1f5f9">'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf">#</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:left">Descrição</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:left">Quantidade / composição</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">Custo Unit.</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">FMF</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">PV Unit.</th>'
-          +'<th style="padding:6px 8px;border:1px solid #cfcfcf;text-align:right">PV Total</th>'
-        +'</tr></thead>'
-        +'<tbody>'+linhas+'</tbody>'
-      +'</table>'
+
+      // ITENS
+      +'<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:8px">🔢 CÁLCULO DE CADA ITEM</div>'
+      +itensBlocos
+
       +'</div>';
   });
 
@@ -2457,11 +2554,13 @@ function gerarMemorialFMF(){
     +'@page{size:A4;margin:14mm 14mm 16mm 14mm}'
     +'body{font-family:Calibri,Arial,sans-serif;color:#111827;margin:0;font-size:12px;background:#fff}'
     +'.wrap{padding:18px 20px}'
-    +'.top{border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}'
-    +'.t1{font-size:22px;font-weight:700}.t2{font-size:14px;color:#475569;margin-top:4px}'
+    +'.top{border-bottom:3px solid #1e3a5f;padding-bottom:12px;margin-bottom:20px}'
+    +'.t1{font-size:22px;font-weight:700;color:#0f172a}.t2{font-size:13px;color:#475569;margin-top:4px}'
     +'.meta{font-size:12px;color:#475569;margin-top:6px}'
     +'</style></head><body><div class="wrap">'
-    +'<div class="top"><div class="t1">Memorial de Cálculo do FMF</div><div class="t2">Passo a passo de como nasceu o FMF por categoria</div><div class="meta"><strong>Proposta:</strong> '+esc(nomeProp)+' &nbsp;|&nbsp; <strong>Gerado em:</strong> '+esc(agora)+'</div></div>'
+    +'<div class="top"><div class="t1">Memorial de Cálculo do FMF</div>'
+    +'<div class="t2">Cálculo passo a passo — dados, fórmula, substituição e resultado</div>'
+    +'<div class="meta"><strong>Proposta:</strong> '+esc2(nomeProp)+' &nbsp;|&nbsp; <strong>Gerado em:</strong> '+esc2(agora)+'</div></div>'
     +blocos
     +'</div></body></html>';
 
@@ -2471,6 +2570,7 @@ function gerarMemorialFMF(){
   w.document.write(htmlDoc);
   w.document.close();
 }
+
 
 var editBId=null;
 
