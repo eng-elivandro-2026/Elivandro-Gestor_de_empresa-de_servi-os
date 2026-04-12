@@ -2513,8 +2513,12 @@ function gerarMemorialFMF(){
       var c=document.getElementById('memorialContent');
       if(!c) return;
       var w=window.open('','_blank');
-      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style></head><body>'+c.innerHTML+'</body></html>');
-      w.document.close(); w.print();
+      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
+        +'<style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style>'
+        +'</head><body>'+c.innerHTML
+        +'<script>window.onafterprint=function(){window.close();};window.onload=function(){window.print();};<\/script>'
+        +'</body></html>');
+      w.document.close();
     };
 
     var _btnFch=document.createElement('button');
