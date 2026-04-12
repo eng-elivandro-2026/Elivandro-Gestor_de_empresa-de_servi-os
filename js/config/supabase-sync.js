@@ -178,8 +178,13 @@
     var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').single();
     if (rEsc.data && rEsc.data.valor) {
       try {
-        localStorage.setItem('tf_etpl', JSON.stringify(rEsc.data.valor));
-        localStorage.setItem('tf_bancoEscopos', JSON.stringify(rEsc.data.valor));
+        // Normaliza campo: registros antigos usam 'titulo' como grupo, novos usam 'grupo'
+        var escoposNorm = (rEsc.data.valor || []).map(function(e) {
+          if (!e.grupo && e.titulo) e.grupo = e.titulo;
+          return e;
+        });
+        localStorage.setItem('tf_etpl', JSON.stringify(escoposNorm));
+        localStorage.setItem('tf_bancoEscopos', JSON.stringify(escoposNorm));
       } catch(e) {}
       console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
     }
