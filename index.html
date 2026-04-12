@@ -426,8 +426,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   grid-template-areas:"hdr hdr" "sidebar main";
   height:100vh;
   overflow:hidden;
+  transition:grid-template-columns .2s ease;
 }
-.app-shell.collapsed{ grid-template-columns:var(--sidebar-w-collapsed) 1fr; }
+.app-shell.sidebar-closed{ grid-template-columns:0 1fr; }
+.app-shell.sidebar-closed .sidebar{ transform:translateX(-100%); }
 
 /* Header */
 .hdr{
@@ -455,12 +457,13 @@ body.light .hdr{background:rgba(255,255,255,.97)}
 .sidebar{
   grid-area:sidebar;background:var(--bg2);border-right:1px solid var(--border);
   display:flex;flex-direction:column;overflow:hidden;overflow-y:auto;
-  transition:all .2s;
+  transition:transform .2s ease;
+  min-width:0;
 }
 .sidebar::-webkit-scrollbar{width:3px}
 .sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .sidebar-section{padding:.6rem .5rem .2rem;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
-.app-shell.collapsed .sidebar-section{display:none}
+
 
 #sidebar-modulos{padding:.4rem .5rem;border-bottom:1px solid var(--border)}
 .mod-btn{width:100%;display:flex;align-items:center;gap:.5rem;padding:.42rem .6rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.78rem;font-weight:500;transition:all .15s;text-align:left;font-family:inherit;white-space:nowrap;overflow:hidden}
@@ -468,14 +471,14 @@ body.light .hdr{background:rgba(255,255,255,.97)}
 .mod-btn.on{background:rgba(240,165,0,.12);color:var(--accent);font-weight:700;border-left:3px solid var(--accent);padding-left:calc(.6rem - 3px)}
 .mod-icon{font-size:.95rem;flex-shrink:0;width:20px;text-align:center}
 .mod-label{flex:1;overflow:hidden;text-overflow:ellipsis}
-.app-shell.collapsed .mod-label,.app-shell.collapsed .mod-badge{display:none}
+
 .mod-badge{font-size:.55rem;font-weight:700;background:rgba(88,166,255,.12);color:var(--blue);padding:.1rem .3rem;border-radius:20px;border:1px solid rgba(88,166,255,.2);white-space:nowrap}
 
 #sidebar-nav-mod{flex:1;padding:.4rem .5rem}
 .nav-item{width:100%;display:flex;align-items:center;gap:.45rem;padding:.38rem .6rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.76rem;transition:all .15s;text-align:left;font-family:inherit;white-space:nowrap;overflow:hidden}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.on{background:var(--bg3);color:var(--text);font-weight:600}
-.app-shell.collapsed .nav-item span:last-child{display:none}
+
 .nav-vazio{font-size:.72rem;color:var(--text3);padding:.5rem .6rem;font-style:italic}
 
 .sidebar-footer{padding:.6rem .5rem;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:.3rem;margin-top:auto}
@@ -4754,15 +4757,17 @@ function toggleTheme() {
 
 function toggleSidebar() {
   var shell = document.getElementById('shell');
-  shell.classList.toggle('collapsed');
-  shell.classList.toggle('sidebar-open');
-  // Mostra/esconde ferramentas comercial conforme módulo ativo
-  var tc = document.getElementById('tools-comercial');
-  if (tc) tc.style.display = Router.getAtivo() === 'comercial' ? '' : 'none';
+  var isMobile = window.innerWidth <= 1024;
+  if (isMobile) {
+    shell.classList.toggle('sidebar-open');
+  } else {
+    shell.classList.toggle('sidebar-closed');
+  }
 }
 
 function fecharSidebar() {
-  document.getElementById('shell').classList.remove('sidebar-open');
+  var shell = document.getElementById('shell');
+  shell.classList.remove('sidebar-open');
 }
 
 // Oculta ferramentas comercial quando muda de módulo
