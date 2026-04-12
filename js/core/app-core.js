@@ -1,44 +1,131 @@
-// app-core.js — Sistema de Propostas V473_OFICIAL
-// Extraído do monolítico PROPOSTA_V473_OFICIAL.html
-// ============================================================
+//
+// ── Painel de Propostas no Sidebar ────────────────────────────
+window._sbPropFlt = 'all';
+window._sbPropQ   = '';
 
+window.abrirPainelPropostas = function() {
+  window._sbPropFlt = 'all';
+  window._sbPropQ   = '';
+  window._renderSbProps();
+};
 
-// ══ BLOCO 1 ══
-var LETTERHEAD_B64 = "";
-var Q=function(i){return document.getElementById(i)};
-var _toastT=null;
-function toast(msg,type){
-  var t=Q('toast');t.textContent=msg;t.className='show '+(type||'ok');
-  clearTimeout(_toastT);_toastT=setTimeout(function(){t.className='';},2200);
-}
-var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
-var n2=function(v){return isFinite(+v)?+v:0};
-var uid=function(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)};
-var money=function(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)};
-var fmtBRL=money;
-// ── Navegação do Dashboard — rola e expande o painel ──────────
-window.irParaPainel = function(cardId, togFn) {
-  if (typeof go === 'function') go('dashboard', null);
-  setTimeout(function() {
-    var card = document.getElementById(cardId);
-    if (!card) return;
-    // Expande se fechado
-    var togFunc = window[togFn];
-    if (typeof togFunc === 'function') {
-      var body = card.querySelector('[style*="display: none"], [style*="display:none"]');
-      if (body) togFunc();
-    }
-    // Rola até o card
-    setTimeout(function() {
-      var areaInline = document.getElementById('area-inline');
-      if (areaInline) {
-        var cardTop = card.getBoundingClientRect().top + areaInline.scrollTop - areaInline.getBoundingClientRect().top - 10;
-        areaInline.scrollTo({ top: cardTop, behavior: 'smooth' });
-      } else {
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 120);
-  }, 60);
+window._renderSbProps = function() {
+  var nav = document.getElementById('sidebar-nav-mod');
+  if (!nav) return;
+
+  var fasesFiltro = [
+    { k: 'all',               n: 'Todas' },
+    { k: 'em_elaboracao',     n: 'Elaboração' },
+    { k: 'enviada',           n: 'Enviada' },
+    { k: 'cliente_analisando',n: 'Analisando' },
+    { k: 'aprovado',          n: 'Aprovado' },
+    { k: 'andamento',         n: 'Andamento' },
+    { k: 'faturado',          n: 'Faturado' },
+    { k: 'finalizado',        n: 'Finalizado' },
+    { k: 'perdido',           n: 'Perdido' },
+  ];
+
+  var q   = (window._sbPropQ  || '').toLowerCase();
+  var flt = window._sbPropFlt || 'all';
+
+  var lista = (window.props || []).filter(function(p) {
+    var matchQ = !q
+      || (p.num||'').toLowerCase().indexOf(q) >= 0
+      || (p.cli||'').toLowerCase().indexOf(q) >= 0
+      || (p.tit||'').toLowerCase().indexOf(q) >= 0;
+    var matchF = flt === 'all' || p.fas === flt;
+    return matchQ && matchF;
+  });
+
+  lista = lista.slice().sort(function(a, b) {
+    return (b.num||'').localeCompare(a.num||'', 'pt-BR', { numeric: true });
+  });
+
+  var html = '';
+
+  // Campo de busca
+  html += '<div style="padding:.5rem .4rem .25rem">'
+    + '<input id="sbPropBusca" type="text" placeholder="Buscar..." '
+    + 'style="width:100%;padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);'
+    + 'border-radius:5px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none">'
+    + '</div>';
+
+  // Filtros de fase
+  html += '<div id="sbFasesBtns" style="padding:.2rem .4rem;display:flex;flex-wrap:wrap;gap:3px;margin-bottom:.15rem">';
+  fasesFiltro.forEach(function(f) {
+    var ativo = f.k === flt;
+    html += '<button data-fase="' + f.k + '" '
+      + 'style="padding:.18rem .42rem;font-size:.61rem;font-family:inherit;cursor:pointer;border-radius:4px;'
+      + 'border:1px solid var(--border);'
+      + (ativo
+          ? 'background:var(--accent);color:#000;font-weight:700;'
+          : 'background:var(--bg3);color:var(--text2);')
+      + '">' + f.n + '</button>';
+  });
+  html += '</div>';
+
+  // Contador
+  html += '<div style="font-size:.61rem;color:var(--text3);padding:.1rem .5rem .2rem">'
+    + lista.length + ' proposta' + (lista.length !== 1 ? 's' : '') + '</div>';
+
+  // Lista
+  if (!lista.length) {
+    html += '<div style="font-size:.72rem;color:var(--text3);padding:.5rem;font-style:italic">Nenhuma encontrada</div>';
+  } else {
+    lista.forEach(function(p) {
+      var fase = (window.FASE && window.FASE[p.fas]) || {};
+      var icon = fase.i || '📄';
+      var cor = p.fas === 'aprovado' || p.fas === 'andamento' || p.fas === 'faturado' ? 'var(--green)'
+              : (p.fas||'').indexOf('perdido') >= 0 ? 'var(--red)'
+              : p.fas === 'em_elaboracao' ? 'var(--accent)'
+              : 'var(--text2)';
+      html += '<button data-pid="' + p.id + '" '
+        + 'style="width:100%;text-align:left;padding:.35rem .5rem;border:none;background:transparent;'
+        + 'cursor:pointer;border-radius:5px;font-family:inherit;display:block">'
+        + '<div style="display:flex;align-items:center;gap:.35rem">'
+        + '<span style="font-size:.75rem;flex-shrink:0">' + icon + '</span>'
+        + '<div style="min-width:0;flex:1">'
+        + '<div style="font-size:.71rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+        + (p.num||'S/N') + '</div>'
+        + '<div style="font-size:.63rem;color:' + cor + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+        + (p.cli||p.loc||'Cliente') + '</div>'
+        + '</div></div></button>';
+    });
+  }
+
+  nav.innerHTML = html;
+
+  // Bind: busca
+  var inp = document.getElementById('sbPropBusca');
+  if (inp) {
+    inp.value = window._sbPropQ || '';
+    inp.addEventListener('input', function() {
+      window._sbPropQ = this.value;
+      window._renderSbProps();
+    });
+    setTimeout(function() { inp.focus(); }, 80);
+  }
+
+  // Bind: filtros de fase
+  var fasesDiv = document.getElementById('sbFasesBtns');
+  if (fasesDiv) {
+    fasesDiv.querySelectorAll('[data-fase]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        window._sbPropFlt = this.getAttribute('data-fase');
+        window._renderSbProps();
+      });
+    });
+  }
+
+  // Bind: abrir proposta
+  nav.querySelectorAll('[data-pid]').forEach(function(btn) {
+    btn.addEventListener('mouseover', function() { this.style.background = 'var(--bg3)'; });
+    btn.addEventListener('mouseout',  function() { this.style.background = 'transparent'; });
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-pid');
+      if (typeof editP === 'function') editP(id);
+    });
+  });
 };
 
 
@@ -2392,7 +2479,7 @@ function explainFMF(cfg,tipo,cat){
 function gerarMemorialFMF(){
   var cfg=getPrcAtual();
   var lista=(budg||[]).filter(function(it){ return !!it && it.inc!==false; });
-  if(!lista.length){ alert('Nenhum item incluido no orcamento para gerar o memorial de calculo.'); return; }
+  if(!lista.length){ alert('Nenhum item incluído no orçamento para gerar o memorial de cálculo.'); return; }
 
   var grupos={};
   lista.forEach(function(it){
@@ -2416,160 +2503,149 @@ function gerarMemorialFMF(){
     var descCat=(meta.desc||'');
     var isMat=(g.tipo==='material');
     var isMob=(!isMat && g.cat && g.cat.indexOf('MB-')===0);
+
     var nf=exp.nf, rs=exp.rs, com=exp.com, neg=exp.neg, mb=exp.margemBruta;
-    var somaAliq=nf+rs+com+neg;
-    var fmf=exp.fmf;
-    var rotuloMb=isMat?'mk (margem material)':isMob?'mm (margem mobilizacao)':'mb (margem servico)';
+    var somaAliq = nf+rs+com+neg;
+    var fmf = exp.fmf;
 
-    var dadosHtml=''
-      +li('<strong>'+e(rotuloMb)+'</strong> = '+brPct(mb)+' = '+brN(mb)+' - categoria '+e(g.cat))
-      +li('<strong>NF '+(isMat?'Materiais':'Servicos')+'</strong> = '+brPct(nf)+' = '+brN(nf)+' - aliquotas da proposta')
-      +li('<strong>Risco Sacado (RS)</strong> = '+brPct(rs)+' = '+brN(rs)+' - aliquotas da proposta')
-      +li('<strong>Comissao (Com)</strong> = '+brPct(com)+' = '+brN(com)+' - aliquotas da proposta')
-      +li('<strong>Negociacao (Neg)</strong> = '+brPct(neg)+' = '+brN(neg)+' - aliquotas da proposta');
+    var rotuloMb = isMat ? 'mk (margem material)' : isMob ? 'mm (margem mobilização)' : 'mb (margem serviço)';
+    var origemMb = 'categoria '+g.cat;
 
-    var formulaHtml='';
+    // ── 📋 DADOS ──────────────────────────────────────
+    var dadosHtml = ''
+      + li('<strong>'+e(rotuloMb)+'</strong> = '+brPct(mb)+' = '+brN(mb)+' → '+e(origemMb))
+      + li('<strong>NF '+(isMat?'Materiais':'Serviços')+'</strong> = '+brPct(nf)+' = '+brN(nf)+' → alíquotas da proposta')
+      + li('<strong>Risco Sacado (RS)</strong> = '+brPct(rs)+' = '+brN(rs)+' → alíquotas da proposta')
+      + li('<strong>Comissão (Com)</strong> = '+brPct(com)+' = '+brN(com)+' → alíquotas da proposta')
+      + li('<strong>Negociação (Neg)</strong> = '+brPct(neg)+' = '+brN(neg)+' → alíquotas da proposta');
+
+    // ── 📐 FÓRMULA ────────────────────────────────────
+    var formulaHtml;
     if(isMat){
-      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = (1 + mk) / (1 - aliquotas)')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
+      formulaHtml = ''
+        + li('Total de alíquotas = NF + RS + Com + Neg')
+        + li('FMF = (1 + mk) ÷ (1 − alíquotas)')
+        + li('PV unitário = Custo unitário × FMF')
+        + li('PV total = PV unitário × Quantidade');
     } else if(isMob){
-      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = (1 + mm) / (1 - aliquotas)')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
+      formulaHtml = ''
+        + li('Total de alíquotas = NF + RS + Com + Neg')
+        + li('FMF = (1 + mm) ÷ (1 − alíquotas)')
+        + li('PV unitário = Custo unitário × FMF')
+        + li('PV total = PV unitário × Quantidade');
     } else {
-      formulaHtml=li('Total de aliquotas = NF + RS + Com + Neg')+li('FMF = 1 / [ (1 - mb) x (1 - aliquotas) ]')+li('PV unitario = Custo unitario x FMF')+li('PV total = PV unitario x Quantidade');
+      formulaHtml = ''
+        + li('Total de alíquotas = NF + RS + Com + Neg')
+        + li('FMF = 1 ÷ [ (1 − mb) × (1 − alíquotas) ]')
+        + li('PV unitário = Custo unitário × FMF')
+        + li('PV total = PV unitário × Quantidade');
     }
 
-    var fmfHtml='';
-    if(isMat||isMob){
-      var rotuloM=isMat?'mk':'mm';
-      var num=1+mb, den=1-somaAliq;
-      fmfHtml=li('FMF = (1 + '+rotuloM+') / (1 - aliquotas)')
-        +li('FMF = (1 + '+brN(mb)+') / (1 - ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+'))')
-        +li('FMF = '+brN(num)+' / (1 - '+brN(somaAliq)+')')
-        +li('FMF = '+brN(num)+' / '+brN(den))
-        +li('<strong>FMF = '+brN(fmf,6)+'</strong>');
+    // ── 🔢 SUBSTITUINDO OS VALORES ────────────────────
+    // Bloco do FMF
+    var fmfHtml = '';
+    if(isMat || isMob){
+      var rotuloM = isMat?'mk':'mm';
+      var num = 1+mb, den = 1-somaAliq;
+      fmfHtml = ''
+        + li('FMF = (1 + '+rotuloM+') ÷ (1 − alíquotas)')
+        + li('FMF = (1 + '+brN(mb)+') ÷ (1 − ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+'))')
+        + li('FMF = '+brN(num)+' ÷ (1 − '+brN(somaAliq)+')')
+        + li('FMF = '+brN(num)+' ÷ '+brN(den))
+        + li('<strong>FMF = '+brN(fmf,6)+'</strong>');
     } else {
       var f1=1-mb, f2=1-somaAliq, prod=f1*f2;
-      fmfHtml=li('FMF = 1 / [ (1 - mb) x (1 - aliquotas) ]')
-        +li('FMF = 1 / [ (1 - '+brN(mb)+') x (1 - ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+')) ]')
-        +li('FMF = 1 / [ (1 - '+brN(mb)+') x (1 - '+brN(somaAliq)+') ]')
-        +li('FMF = 1 / [ '+brN(f1)+' x '+brN(f2)+' ]')
-        +li('FMF = 1 / '+brN(prod))
-        +li('<strong>FMF = '+brN(fmf,6)+'</strong>');
+      fmfHtml = ''
+        + li('FMF = 1 ÷ [ (1 − mb) × (1 − alíquotas) ]')
+        + li('FMF = 1 ÷ [ (1 − '+brN(mb)+') × (1 − ('+brN(nf)+' + '+brN(rs)+' + '+brN(com)+' + '+brN(neg)+')) ]')
+        + li('FMF = 1 ÷ [ (1 − '+brN(mb)+') × (1 − '+brN(somaAliq)+') ]')
+        + li('FMF = 1 ÷ [ '+brN(f1)+' × '+brN(f2)+' ]')
+        + li('FMF = 1 ÷ '+brN(prod))
+        + li('<strong>FMF = '+brN(fmf,6)+'</strong>');
     }
 
-    var itensHtml=g.itens.map(function(it,ii){
+    // Blocos por item
+    var itensHtml = g.itens.map(function(it,ii){
       var cu=n2(it.cu), pvUnit=n2(it.pvu), pvTot=n2(it.pvt);
-      var ih='<div style="font-size:12px;font-weight:700;color:#166534;margin:12px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">';
+      var itemHtml = '';
+
       if(isMat){
         var qtd=n2(it.mult||1), un=e(it.un1||'un');
-        ih+=li('PV unitario = Custo unitario x FMF')
-          +li('PV unitario = '+brR(cu)+' x '+brN(fmf,6))
-          +li('<strong>PV unitario = '+brR(pvUnit)+'</strong>')
-          +li('PV total = PV unitario x Quantidade')
-          +li('PV total = '+brR(pvUnit)+' x '+qtd+' '+un)
-          +li('<strong>PV total = '+brR(pvTot)+'</strong>');
+        itemHtml = ''
+          +'<div style="font-size:12px;font-weight:700;color:#166534;margin:10px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div>'
+          +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'
+          + li('PV unitário = Custo unitário × FMF')
+          + li('PV unitário = '+brR(cu)+' × '+brN(fmf,6))
+          + li('<strong>PV unitário = '+brR(pvUnit)+'</strong>')
+          +'<li style="margin-top:6px;margin-bottom:4px">PV total = PV unitário × Quantidade</li>'
+          + li('PV total = '+brR(pvUnit)+' × '+qtd+' '+un)
+          + li('<strong>PV total = '+brR(pvTot)+'</strong>')
+          +'</ul>';
       } else {
         var tec=n2(it.tec||1), dias=n2(it.dias||0), hpd=n2(it.hpd||0);
-        var un2=e(it.un2||'Horas');
+        var un1=e(it.un1||'Dias'), un2=e(it.un2||'Horas');
         var qtdTotal=tec*dias*hpd;
-        ih+=li('PV unitario = Custo unitario x FMF')
-          +li('PV unitario = '+brR(cu)+' x '+brN(fmf,6))
-          +li('<strong>PV unitario = '+brR(pvUnit)+'</strong>')
-          +li('PV total = PV unitario x Quantidade')
-          +li('PV total = '+brR(pvUnit)+' x ('+tec+' x '+dias+' x '+hpd+')')
-          +li('PV total = '+brR(pvUnit)+' x '+qtdTotal+' '+un2)
-          +li('<strong>PV total = '+brR(pvTot)+'</strong>');
+        itemHtml = ''
+          +'<div style="font-size:12px;font-weight:700;color:#166534;margin:10px 0 4px">Item '+(ii+1)+': '+e(it.desc||nomeCat)+'</div>'
+          +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'
+          + li('PV unitário = Custo unitário × FMF')
+          + li('PV unitário = '+brR(cu)+' × '+brN(fmf,6))
+          + li('<strong>PV unitário = '+brR(pvUnit)+'</strong>')
+          +'<li style="margin-top:6px;margin-bottom:4px">PV total = PV unitário × Quantidade</li>'
+          + li('PV total = '+brR(pvUnit)+' × ('+tec+' × '+dias+' × '+hpd+')')
+          + li('PV total = '+brR(pvUnit)+' × '+qtdTotal+' '+un2)
+          + li('<strong>PV total = '+brR(pvTot)+'</strong>')
+          +'</ul>';
       }
-      ih+='</ul>';
-      return ih;
+      return itemHtml;
     }).join('');
 
-    blocos+='<div style="page-break-inside:avoid;border:2px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin:0 0 28px 0">'
-      +'<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">'+(gi+1)+'. '+e(g.cat)+' - '+e(nomeCat)+'</div>'
-      +'<div style="font-size:12px;color:#475569;margin-bottom:16px"><strong>Tipo:</strong> '+e(exp.tipoLabel)+(descCat?' | <strong>Escopo:</strong> '+e(descCat):'')+'</div>'
+    var substHtml = fmfHtml + itensHtml;
+
+    // ── MONTAR BLOCO ──────────────────────────────────
+    blocos += '<div style="page-break-inside:avoid;border:2px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin:0 0 28px 0">'
+
+      // Cabeçalho
+      +'<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">'+(gi+1)+'. '+e(g.cat)+' — '+e(nomeCat)+'</div>'
+      +'<div style="font-size:12px;color:#475569;margin-bottom:16px"><strong>Tipo:</strong> '+e(exp.tipoLabel)+(descCat?' &nbsp;|&nbsp; <strong>Escopo:</strong> '+e(descCat):'')+'</div>'
+
+      // DADOS
       +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:12px">'
-        +'<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">DADOS</div>'
+        +'<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">📋 DADOS</div>'
         +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+dadosHtml+'</ul>'
       +'</div>'
+
+      // FÓRMULA
       +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;margin-bottom:12px">'
-        +'<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:8px">FORMULA</div>'
+        +'<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:8px">📐 FÓRMULA</div>'
         +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+formulaHtml+'</ul>'
       +'</div>'
+
+      // SUBSTITUINDO
       +'<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px">'
-        +'<div style="font-size:13px;font-weight:700;color:#854d0e;margin-bottom:8px">SUBSTITUINDO OS VALORES</div>'
-        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+fmfHtml+'</ul>'
-        +itensHtml
+        +'<div style="font-size:13px;font-weight:700;color:#854d0e;margin-bottom:8px">🔢 SUBSTITUINDO OS VALORES</div>'
+        +'<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.9">'+substHtml+'</ul>'
       +'</div>'
+
       +'</div>';
   });
 
-  var agora=new Date().toLocaleString('pt-BR');
-  var numP=(Q('pNum')&&Q('pNum').value)||'Sem numero';
-  var cliP=(Q('pCli')&&Q('pCli').value)||'Cliente';
-  var subtitulo=e(numP+' - '+cliP)+' | Gerado em: '+e(agora);
+  var agora = new Date().toLocaleString('pt-BR');
+  var nomeProp = ((Q('pNum')&&Q('pNum').value)||'Sem número')+' — '+((Q('pCli')&&Q('pCli').value)||'Cliente');
+  var subtitulo = e(nomeProp)+' · Gerado em: '+e(agora);
 
-  // Criar modal dinamicamente se nao existir
-  var _mm=document.getElementById('memorialModal');
-  if(!_mm){
-    _mm=document.createElement('div');
-    _mm.id='memorialModal';
-    _mm.setAttribute('style','display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto');
-
-    var _inner=document.createElement('div');
-    _inner.setAttribute('style','width:min(860px,100%);background:#fff;border-radius:12px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)');
-
-    var _hdr=document.createElement('div');
-    _hdr.setAttribute('style','position:sticky;top:0;z-index:10;background:#1e3a5f;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px');
-
-    var _titBox=document.createElement('div');
-    var _tit=document.createElement('div');
-    _tit.setAttribute('style','font-size:16px;font-weight:700;color:#fff');
-    _tit.textContent='Memorial de Calculo do FMF';
-    var _sub=document.createElement('div');
-    _sub.id='memorialSubtitle';
-    _sub.setAttribute('style','font-size:11px;color:rgba(255,255,255,.65);margin-top:2px');
-    _titBox.appendChild(_tit); _titBox.appendChild(_sub);
-
-    var _btnBox=document.createElement('div');
-    _btnBox.setAttribute('style','display:flex;gap:8px;flex-shrink:0');
-
-    var _btnImp=document.createElement('button');
-    _btnImp.setAttribute('style','padding:6px 14px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit');
-    _btnImp.textContent='Imprimir';
-    _btnImp.onclick=function(){
-      var c=document.getElementById('memorialContent');
-      if(!c) return;
-      var w=window.open('','_blank');
-      w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
-        +'<style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:10px}</style>'
-        +'</head><body>'+c.innerHTML
-        +'<script>window.onafterprint=function(){window.close();};window.onload=function(){window.print();};<\/script>'
-        +'</body></html>');
-      w.document.close();
-    };
-
-    var _btnFch=document.createElement('button');
-    _btnFch.setAttribute('style','padding:6px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:700');
-    _btnFch.textContent='X Fechar';
-    _btnFch.onclick=function(){ _mm.style.display='none'; };
-
-    _btnBox.appendChild(_btnImp); _btnBox.appendChild(_btnFch);
-    _hdr.appendChild(_titBox); _hdr.appendChild(_btnBox);
-
-    var _body=document.createElement('div');
-    _body.id='memorialContent';
-    _body.setAttribute('style','padding:20px;font-family:Arial,sans-serif;font-size:13px;color:#111827;background:#fff');
-
-    _inner.appendChild(_hdr); _inner.appendChild(_body);
-    _mm.appendChild(_inner);
-    _mm.addEventListener('click',function(ev){ if(ev.target===_mm) _mm.style.display='none'; });
-    document.body.appendChild(_mm);
+  // Abre no modal interno (sem nova aba)
+  if(typeof abrirMemorial === 'function'){
+    abrirMemorial(blocos, subtitulo);
+  } else {
+    // Fallback: nova aba se modal não existir
+    var w=window.open('','_blank');
+    if(!w){ alert('Não foi possível abrir o memorial.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Memorial FMF</title>'
+      +'<style>body{font-family:Calibri,Arial,sans-serif;padding:20px;font-size:12px;color:#111}</style>'
+      +'</head><body>'+blocos+'</body></html>');
+    w.document.close();
   }
-
-  document.getElementById('memorialContent').innerHTML=blocos;
-  var _ms=document.getElementById('memorialSubtitle');
-  if(_ms) _ms.textContent=subtitulo;
-  _mm.style.display='flex';
-  _mm.scrollTop=0;
 }
 
 
