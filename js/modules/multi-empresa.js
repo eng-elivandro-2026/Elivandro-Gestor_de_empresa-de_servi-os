@@ -97,23 +97,44 @@
   }
 
   // ── Recarregar dados ao trocar empresa ───────────────────
+  var _recarregando = false;
   async function recarregarDadosEmpresa(empresa) {
-    // Recarregar propostas da empresa ativa da nuvem
-    if (typeof sbCarregarNuvem === 'function') {
-      var propsNuvem = await sbCarregarNuvem();
-      // Filtrar só as da empresa ativa
-      if (propsNuvem && propsNuvem.length) {
-        var propsFiltradas = propsNuvem.filter(function (p) {
-          return !p.empresa_id || p.empresa_id === empresa.id;
-        });
-        if (typeof props !== 'undefined') props = propsFiltradas;
-        try { localStorage.setItem('tf_props', JSON.stringify(propsFiltradas)); } catch (e) {}
-      }
-    }
+    if (_recarregando) return;
+    _recarregando = true;
+    try {
+      if (!window.sbClient) return;
 
-    // Re-renderizar dashboard se estiver visível
-    try { if (typeof rDash === 'function') rDash(); } catch (e) {}
-    try { if (typeof rProps === 'function') rProps(); } catch (e) {}
+      // Buscar propostas diretamente filtradas por empresa_id no Supabase
+      var res = await window.sbClient
+        .from('propostas')
+        .select('dados_json, app_id')
+        .eq('empresa_id', empresa.id)
+        .order('updated_at', { ascending: false });
+
+      if (res.error) {
+        console.warn('[multi-empresa] erro ao carregar propostas:', res.error.message);
+        return;
+      }
+
+      var propsFiltradas = (res.data || []).map(function (r) {
+        var p = r.dados_json || {};
+        if (!p.id && r.app_id) p.id = r.app_id;
+        return p;
+      });
+
+      // Atualizar variável global props
+      if (typeof props !== 'undefined') props = propsFiltradas;
+      try { localStorage.setItem('tf_props', JSON.stringify(propsFiltradas)); } catch (e) {}
+
+      console.log('%c[Empresa] ' + empresa.nome_curto + ' — ' + propsFiltradas.length + ' proposta(s)', 'color:#f0a500');
+
+      // Re-renderizar
+      try { if (typeof rDash === 'function') rDash(); } catch (e) {}
+      try { if (typeof rProps === 'function') rProps(); } catch (e) {}
+
+    } finally {
+      _recarregando = false;
+    }
   }
 
   // ── Renderizar seletor de empresa no header ──────────────
@@ -145,12 +166,18 @@
     container.innerHTML = html;
     container.style.display = 'flex';
 
-    // Restaurar empresa ativa do localStorage
+    // Restaurar empresa ativa do localStorage — sem disparar onChange
     try {
       var saved = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
       var inicial = saved
         ? (empresas.find(function (e) { return e.id === saved.id; }) || empresas[0])
         : empresas[0];
+
+      // Setar valor do select sem disparar evento
+      var sel = document.getElementById('seletor-empresa');
+      if (sel) sel.value = inicial.id;
+
+      // Ativar empresa
       setEmpresaAtiva(inicial);
     } catch (e) {
       setEmpresaAtiva(empresas[0]);
