@@ -67,6 +67,18 @@
     recarregarDadosEmpresa(empresa);
 
     console.log('%c[Empresa] ' + empresa.nome_curto + ' ativa', 'color:#f0a500;font-weight:700');
+
+    // Notificar todos os iframes ativos sobre a troca de empresa
+    document.querySelectorAll('.mod-frame').forEach(function(frame) {
+      try {
+        frame.contentWindow.postMessage({
+          type: 'SET_EMPRESA',
+          empresaId: empresa.id,
+          empresaNome: empresa.nome,
+          empresaNomeCurto: empresa.nome_curto
+        }, '*');
+      } catch(e) {}
+    });
   };
 
   // ── Atualizar header com empresa ativa ───────────────────
