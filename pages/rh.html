@@ -939,14 +939,11 @@ async function carregarApontamentos() {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
-  // Montar mapa de proposta_id → {numero, titulo, cliente}
+  // Sempre buscar propostas do Supabase para garantir dados completos
   var mapaProps = {};
-  _propostas.forEach(function(p){ mapaProps[p.app_id] = p; });
-  if (!_propostas.length) {
-    var { data: pData } = await sb.from('propostas')
-      .select('app_id, numero_proposta, titulo, cliente').eq('empresa_id', empId);
-    (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
-  }
+  var { data: pData } = await sb.from('propostas')
+    .select('app_id, numero_proposta, titulo, cliente').eq('empresa_id', empId);
+  (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
 
   tbody.innerHTML = data.map(function(a) {
     var sBdg = a.status==='aprovado'?'bdg-green':a.status==='pendente'?'bdg-yellow':a.status==='rejeitado'?'bdg-red':'bdg-gray';
