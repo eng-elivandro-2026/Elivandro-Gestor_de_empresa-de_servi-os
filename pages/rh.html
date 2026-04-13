@@ -285,6 +285,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="ch">
         <span class="ct">⏱️ Apontamentos de Horas</span>
         <div class="br">
+          <!-- Toggle Equipe / Meus -->
+          <div id="toggleMeusApt" style="display:none;border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;display:flex">
+            <button id="btnAptEquipe" onclick="setModoApt('equipe')"
+              style="padding:.28rem .7rem;font-size:.72rem;font-family:inherit;cursor:pointer;border:none;background:var(--accent);color:#000;font-weight:700">
+              👥 Equipe
+            </button>
+            <button id="btnAptMeus" onclick="setModoApt('meus')"
+              style="padding:.28rem .7rem;font-size:.72rem;font-family:inherit;cursor:pointer;border:none;background:var(--bg3);color:var(--text2)">
+              👤 Meus
+            </button>
+          </div>
           <select id="filtroAptStatus" onchange="carregarApontamentos()"
             style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
             <option value="">Todos</option>
@@ -591,6 +602,8 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 var _colabs = [];
 var _colabAtivo = null;
 var _aptEditId = null;
+var _modoApt = 'equipe'; // 'equipe' | 'meus'
+var _colabProprio = null; // dados do colaborador logado (se for também colaborador)
 var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
 var _empresaId = null;
 var _propostas = [];
@@ -632,7 +645,7 @@ function showSec(id, btn) {
     btn.classList.add('on');
   }
   if (id === 'colaboradores') carregarColabs();
-  if (id === 'apontamentos') { carregarApontamentos(); carregarKpiApt(); }
+  if (id === 'apontamentos') { verificarColabProprio(); carregarApontamentos(); carregarKpiApt(); }
   if (id === 'boletins') carregarBoletins();
 }
 function showTab(id, btn) {
@@ -665,6 +678,41 @@ async function getEmpresaId() {
 }
 
 // ══ COLABORADORES ════════════════════════════════════════════
+// ── Verificar se usuário logado é também colaborador ────────
+async function verificarColabProprio() {
+  try {
+    var { data: authData } = await sb.auth.getUser();
+    if (!authData || !authData.user) return;
+    var { data: colab } = await sb
+      .from('colaboradores')
+      .select('id, nome, valor_hora')
+      .eq('auth_id', authData.user.id)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (colab) {
+      _colabProprio = colab;
+      // Mostrar toggle Equipe/Meus
+      var tog = document.getElementById('toggleMeusApt');
+      if (tog) tog.style.display = 'flex';
+    }
+  } catch(e) {}
+}
+
+function setModoApt(modo) {
+  _modoApt = modo;
+  var btnEq = document.getElementById('btnAptEquipe');
+  var btnMe = document.getElementById('btnAptMeus');
+  if (btnEq && btnMe) {
+    btnEq.style.background = modo==='equipe' ? 'var(--accent)' : 'var(--bg3)';
+    btnEq.style.color       = modo==='equipe' ? '#000' : 'var(--text2)';
+    btnEq.style.fontWeight  = modo==='equipe' ? '700' : '400';
+    btnMe.style.background  = modo==='meus'   ? 'var(--accent)' : 'var(--bg3)';
+    btnMe.style.color       = modo==='meus'   ? '#000' : 'var(--text2)';
+    btnMe.style.fontWeight  = modo==='meus'   ? '700' : '400';
+  }
+  carregarApontamentos();
+}
+
 async function carregarColabs() {
   var empId = await getEmpresaId();
   if (!empId) return;
@@ -949,9 +997,17 @@ async function carregarApontamentos() {
   var status = document.getElementById('filtroAptStatus').value;
   var q = sb.from('apontamentos')
     .select('*, colaboradores(nome,valor_hora)')
-    .eq('empresa_id', empId)
     .order('data', {ascending:false})
     .limit(100);
+
+  if (_modoApt === 'meus' && _colabProprio) {
+    // Modo "Meus" — ver apenas os próprios apontamentos de qualquer empresa
+    q = q.eq('colaborador_id', _colabProprio.id);
+  } else {
+    // Modo "Equipe" — ver apontamentos da empresa ativa
+    q = q.eq('empresa_id', empId);
+  }
+
   if (status) q = q.eq('status', status);
   var { data, error } = await q;
   var tbody = document.getElementById('aptBody');
