@@ -242,13 +242,25 @@
   // ── Listener de mensagens dos iframes ───────────────────
   window.addEventListener('message', function (e) {
     if (!e.data || !e.data.type) return;
-    // iframes podem pedir para trocar de módulo: { type: 'ROUTER_IR', modulo: 'rh' }
     if (e.data.type === 'ROUTER_IR') {
       Router.ir(e.data.modulo);
     }
-    // Sync de tema
     if (e.data.type === 'SET_TEMA') {
       document.body.classList.toggle('light', e.data.tema === 'light');
+    }
+    // iframe pede empresa ativa — responder imediatamente
+    if (e.data.type === 'RH_PEDIR_EMPRESA') {
+      try {
+        var emp = window.getEmpresaAtiva ? window.getEmpresaAtiva() : null;
+        if (emp && e.source) {
+          e.source.postMessage({
+            type: 'SET_EMPRESA',
+            empresaId: emp.id,
+            empresaNome: emp.nome,
+            empresaNomeCurto: emp.nome_curto
+          }, '*');
+        }
+      } catch(err) {}
     }
   });
 
