@@ -759,17 +759,43 @@ function showTab(id, btn) {
 // ══ EMPRESA ATIVA ════════════════════════════════════════════
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
-  // Receber empresa do parent (shell)
+
+  // Tentar pegar do parent (pode ainda não estar pronto)
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
       _empresaId = window.parent.getEmpresaAtivaId();
     }
   } catch(e) {}
-  // Fallback: pegar do Supabase
+
+  // Se não veio do parent, aguardar até 3s com retry
   if (!_empresaId) {
-    var { data } = await sb.from('empresas').select('id').eq('nome_curto','Tecfusion').single();
-    if (data) _empresaId = data.id;
+    for (var t = 0; t < 6; t++) {
+      await new Promise(function(r){ setTimeout(r, 500); });
+      try {
+        if (window.parent && window.parent.getEmpresaAtivaId) {
+          _empresaId = window.parent.getEmpresaAtivaId();
+          if (_empresaId) break;
+        }
+      } catch(e) {}
+    }
   }
+
+  // Fallback: buscar empresa do usuário logado no Supabase
+  if (!_empresaId) {
+    try {
+      var { data: authData } = await sb.auth.getUser();
+      if (authData && authData.user) {
+        var { data: usr } = await sb.from('usuarios')
+          .select('id').eq('auth_id', authData.user.id).maybeSingle();
+        if (usr) {
+          var { data: ue } = await sb.from('usuario_empresas')
+            .select('empresa_id').eq('usuario_id', usr.id).eq('ativo', true).limit(1).single();
+          if (ue) _empresaId = ue.empresa_id;
+        }
+      }
+    } catch(e) {}
+  }
+
   return _empresaId;
 }
 
@@ -2232,19 +2258,18 @@ async function salvarAdicionarEmpresa() {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Pegar empresa ativa do parent
+  // Carregar empresa e colaboradores
+  var empId = await getEmpresaId();
   try {
     if (window.parent && window.parent.getEmpresaAtiva) {
       var emp = window.parent.getEmpresaAtiva();
       if (emp) {
-        _empresaId = emp.id;
         var empLabel = document.getElementById('rhEmpresaLabel');
         if (empLabel) empLabel.textContent = emp.nome_curto;
       }
     }
   } catch(e) {}
 
-  // Carregar colaboradores
   await carregarColabs();
   await gerarAlertas();
 })();
