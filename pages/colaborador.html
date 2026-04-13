@@ -1302,7 +1302,7 @@ async function verBoletimColab(bolId, modoAssinar) {
   html += '<div style="padding:.5rem .6rem">';
   html += '<div>' + (bol.assinado_prestador ? '✅' : '⏳') + ' Prestador: ' + (_colab?_colab.nome:'—') + '</div>';
   if (bol.assinado_prestador && bol.data_assinatura_p) {
-    html += '<div style="font-size:10px;color:#6c757d">Em: ' + new Date(bol.data_assinatura_p).toLocaleString('pt-BR') + '</div>';
+    html += '<div style="font-size:10px;color:#6c757d">Em: ' + fmtBrasilia(bol.data_assinatura_p) + '</div>';
   }
   html += '<div style="margin-top:.35rem">' + (bol.assinado_empresa ? '✅' : '⏳') + ' Empresa</div>';
   html += '</div></div>';
@@ -1456,7 +1456,7 @@ async function imprimirBoletimColab() {
     + '<div class="footer-doc">'
     + '<div><div style="font-size:9px;color:#6c757d">ID: '+bol.id+'</div>'
     + (bol.status==='valido'?'<div class="valid-badge" style="margin-top:4px">✅ DOCUMENTO VÁLIDO</div>':'')
-    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: '+new Date().toLocaleString('pt-BR')+'</div></div>'
+    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: '+agoraBrasilia().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'})+'</div></div>'
     + '<div style="text-align:center"><img src="'+qrUrl+'" width="90" height="90" alt="QR Code" style="border:3px solid #1e3a5f;border-radius:4px"><div style="font-size:8px;color:#6c757d;margin-top:3px">Validação do documento</div></div>'
     + '</div></body></html>';
 
