@@ -667,10 +667,30 @@ async function getEmpresaId() {
 // ══ COLABORADORES ════════════════════════════════════════════
 async function carregarColabs() {
   var empId = await getEmpresaId();
+  if (!empId) return;
+
+  // Passo 1: buscar IDs dos colaboradores vinculados a esta empresa
+  var { data: vinculos, error: errV } = await sb
+    .from('colaborador_empresas')
+    .select('colaborador_id')
+    .eq('empresa_id', empId)
+    .eq('ativo', true);
+
+  if (errV) { console.error(errV); return; }
+  if (!vinculos || !vinculos.length) {
+    _colabs = [];
+    renderColabs([]);
+    renderKpiColabs([]);
+    return;
+  }
+
+  var ids = vinculos.map(function(v){ return v.colaborador_id; });
+
+  // Passo 2: buscar dados dos colaboradores por ID
   var { data, error } = await sb
     .from('colaboradores')
-    .select('*, colaborador_empresas!inner(empresa_id)')
-    .eq('colaborador_empresas.empresa_id', empId)
+    .select('*')
+    .in('id', ids)
     .eq('ativo', true)
     .order('nome');
 
@@ -678,7 +698,7 @@ async function carregarColabs() {
   _colabs = data || [];
   renderColabs(_colabs);
   renderKpiColabs(_colabs);
-  gerarAlertas(_colabs);
+  gerarAlertas();
 }
 
 function filtrarColabs() {
