@@ -47,7 +47,11 @@
   };
 
   // ── Definir empresa ativa ────────────────────────────────
+  var _trocandoEmpresa = false;
   window.setEmpresaAtiva = function (empresa) {
+    if (_trocandoEmpresa) return;
+    if (window._empresaAtiva && window._empresaAtiva.id === empresa.id) return;
+    _trocandoEmpresa = true;
     window._empresaAtiva = empresa;
 
     // Salvar no localStorage para restaurar na próxima visita
@@ -67,6 +71,7 @@
     recarregarDadosEmpresa(empresa);
 
     console.log('%c[Empresa] ' + empresa.nome_curto + ' ativa', 'color:#f0a500;font-weight:700');
+    setTimeout(function(){ _trocandoEmpresa = false; }, 500);
 
     // Notificar todos os iframes ativos sobre a troca de empresa
     document.querySelectorAll('.mod-frame').forEach(function(frame) {
