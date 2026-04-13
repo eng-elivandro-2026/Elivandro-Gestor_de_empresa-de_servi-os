@@ -219,7 +219,39 @@
     async function verificarSessao() {
       const { data } = await supabase.auth.getUser();
       if (data?.user) {
-        window.location.href = "/";
+        await redirecionarPorPerfil();
+      }
+    }
+
+    async function redirecionarPorPerfil() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData || !authData.user) { window.location.href = '/'; return; }
+
+        // maybeSingle() não lança erro se não encontrar — retorna null
+        const { data: colab, error: eColab } = await supabase
+          .from('colaboradores')
+          .select('id')
+          .eq('auth_id', authData.user.id)
+          .eq('ativo', true)
+          .maybeSingle();
+
+        if (eColab) {
+          console.warn('[login] erro ao buscar colaborador:', eColab.message);
+          window.location.href = '/';
+          return;
+        }
+
+        if (colab) {
+          // É colaborador/prestador → portal simplificado
+          window.location.href = '/pages/colaborador.html';
+        } else {
+          // É gestor/dono → plataforma completa
+          window.location.href = '/';
+        }
+      } catch(e) {
+        console.error('[login] erro:', e);
+        window.location.href = '/';
       }
     }
 
@@ -244,7 +276,8 @@
         return;
       }
 
-      window.location.href = "/";
+      // Verificar perfil para redirecionar corretamente
+      await redirecionarPorPerfil();
     }
 
     async function cadastrar() {
