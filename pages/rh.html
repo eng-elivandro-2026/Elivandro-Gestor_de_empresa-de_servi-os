@@ -2048,28 +2048,13 @@ async function abrirBoletimGestor(bolId) {
 
   document.getElementById('verBolGestorContent').innerHTML = html;
 
-  // Mostrar/ocultar botões
-  var areaPin      = document.getElementById('areaAssinarEmpresa');
-  var areaPrest    = document.getElementById('areaAssinarPrestador');
-  var btnCanc      = document.getElementById('btnCancelarBol');
+  // Mostrar/ocultar áreas — segurança garantida pelo PIN, não pelo auth
+  var areaPin  = document.getElementById('areaAssinarEmpresa');
+  var areaPrest= document.getElementById('areaAssinarPrestador');
+  var btnCanc  = document.getElementById('btnCancelarBol');
 
-  // Verificar se usuário logado é também o colaborador deste boletim
-  var { data: authNow } = await sb.auth.getUser();
-  var authUidNow = authNow && authNow.user ? authNow.user.id : null;
-  var euSouOColaborador = false;
-  if (bol.colaborador_id) {
-    var { data: colabAuth } = await sb.from('colaboradores')
-      .select('auth_id, email').eq('id', bol.colaborador_id).maybeSingle();
-    if (colabAuth) {
-      var emailLogado = authNow && authNow.user ? (authNow.user.email||'') : '';
-      // Match por auth_id OU por e-mail (cobre o caso de contas diferentes)
-      euSouOColaborador = (colabAuth.auth_id === authUidNow)
-                       || (emailLogado && colabAuth.email === emailLogado);
-    }
-  }
-
-  // Mostrar área de prestador se eu sou o colaborador e ainda não assinei
-  if (euSouOColaborador && bol.status === 'aguard_prestador' && !bol.assinado_prestador) {
+  // Área do prestador: aparece se status aguard_prestador
+  if (bol.status === 'aguard_prestador' && !bol.assinado_prestador) {
     areaPrest.style.display = 'block';
     ['ppin1','ppin2','ppin3','ppin4'].forEach(function(id){ document.getElementById(id).value=''; });
     setTimeout(function(){ document.getElementById('ppin1').focus(); }, 200);
@@ -2077,7 +2062,7 @@ async function abrirBoletimGestor(bolId) {
     areaPrest.style.display = 'none';
   }
 
-  // Mostrar área de empresa
+  // Área da empresa: aparece se status aguard_empresa
   if (bol.status === 'aguard_empresa' && !bol.assinado_empresa) {
     areaPin.style.display = 'block';
     ['epin1','epin2','epin3','epin4'].forEach(function(id){ document.getElementById(id).value=''; });
