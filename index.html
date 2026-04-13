@@ -575,12 +575,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="hdr-left">
       <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menu">☰</button>
       <div class="logo">
-        <div class="logo-mk">FX</div>
+        <div class="logo-mk" id="hdr-logo-mk">FX</div>
         <div>
-          <div class="logo-txt">Fortex</div>
-          <div class="logo-sub">Tecnologia Industrial</div>
+          <div class="logo-txt" id="hdr-logo-txt">Fortex</div>
+          <div class="logo-sub" id="hdr-logo-sub">Tecnologia Industrial</div>
         </div>
       </div>
+      <div id="seletor-empresa-container" style="display:none;align-items:center;margin-left:.5rem"></div>
     </div>
     <div class="hdr-right">
       <span id="hdr-data" style="font-size:.7rem;color:var(--text3)"></span>
@@ -4820,6 +4821,13 @@ async function iniciarPlataforma() {
       document.getElementById('hdr-avatar').textContent = email.slice(0,2).toUpperCase();
     }
   } catch(e) {}
+
+  // 5. Carregar empresas e mostrar seletor
+  try {
+    var _emps = await carregarEmpresasUsuario();
+    renderizarSeletorEmpresa(_emps);
+    console.log('%c[init] ' + _emps.length + ' empresa(s) carregada(s)', 'color:#f0a500;font-weight:700');
+  } catch(e) { console.warn('[init] empresas:', e); }
 
   // 3. Tema
   var tema = localStorage.getItem('tf_theme') || 'dark';
