@@ -1858,22 +1858,22 @@ async function previewApontamentosBol() {
     (_propsPrev||[]).forEach(function(p){ _previewPropostaMap[p.app_id] = p; });
   }
 
-  // Excluir apontamentos já vinculados a boletins ativos (não cancelados)
-  var usedAptIds = new Set();
+  // Buscar boletins ativos deste colaborador para saber quais IDs já estão em uso
+  var usedIds = new Set();
   var bolNumerosUsados = [];
-  var aptIdsTodos = (apts||[]).map(function(a){ return a.id; });
-  if (aptIdsTodos.length) {
-    var { data: bolExist } = await sb.from('boletins')
-      .select('numero,apontamentos_ids')
-      .overlaps('apontamentos_ids', aptIdsTodos)
-      .neq('status','cancelado');
-    (bolExist||[]).forEach(function(b) {
+  var { data: bolsDaColab } = await sb.from('boletins')
+    .select('numero,apontamentos_ids')
+    .eq('colaborador_id', colabId)
+    .neq('status','cancelado');
+  (bolsDaColab||[]).forEach(function(b) {
+    if (b.apontamentos_ids && b.apontamentos_ids.length) {
       bolNumerosUsados.push(b.numero);
-      (b.apontamentos_ids||[]).forEach(function(id) { usedAptIds.add(id); });
-    });
-  }
+      b.apontamentos_ids.forEach(function(id) { usedIds.add(String(id)); });
+    }
+  });
 
-  _bolAptPreview = (apts||[]).filter(function(a) { return !usedAptIds.has(a.id); });
+  // Filtrar: apenas apontamentos não vinculados a boletins ativos
+  _bolAptPreview = (apts||[]).filter(function(a) { return !usedIds.has(String(a.id)); });
 
   var preview = document.getElementById('bolPreview');
   var tabela  = document.getElementById('bolPreviewTabela');
@@ -1881,16 +1881,16 @@ async function previewApontamentosBol() {
   preview.style.display = 'block';
 
   alerta.style.display = 'none';
-  if (usedAptIds.size > 0) {
+  if (usedIds.size > 0) {
     alerta.style.display = 'block';
     alerta.style.background = 'rgba(240,165,0,.12)';
     alerta.style.color = 'var(--accent)';
-    alerta.textContent = '⚠️ ' + usedAptIds.size + ' apontamento(s) já utilizados em documentos ativos (' + bolNumerosUsados.join(', ') + ') foram excluídos desta seleção.';
+    alerta.textContent = '⚠️ ' + usedIds.size + ' apontamento(s) já utilizados em documentos ativos (' + bolNumerosUsados.join(', ') + ') foram excluídos desta seleção.';
   }
 
   if (!_bolAptPreview.length) {
     tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">'
-      + (usedAptIds.size > 0 ? 'Todos os apontamentos aprovados neste período já estão em documentos ativos.' : 'Nenhum apontamento aprovado neste período.')
+      + (usedIds.size > 0 ? 'Todos os apontamentos aprovados neste período já estão em documentos ativos.' : 'Nenhum apontamento aprovado neste período.')
       + '</div>';
     document.getElementById('bolTotHoras').textContent = '0h';
     document.getElementById('bolTotValor').textContent = 'R$ 0,00';
