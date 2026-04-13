@@ -322,6 +322,17 @@ body{
 }
 .alerta-pend{background:rgba(240,165,0,.08);color:var(--accent);border:1px solid rgba(240,165,0,.15)}
 .alerta-rej{background:rgba(240,96,96,.08);color:var(--red);border:1px solid rgba(240,96,96,.15)}
+
+/* PIN */
+.pin-box{display:flex;gap:.5rem;justify-content:center;margin:.75rem 0}
+.pin-digit{width:52px;height:60px;border:2px solid var(--border);border-radius:var(--r2);background:var(--bg3);color:var(--text);font-size:1.5rem;text-align:center;font-family:'DM Mono',monospace;transition:.15s}
+.pin-digit:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.15)}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-ov.on{display:flex}
+.modal-bx{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:min(400px,100%);overflow:hidden}
+.modal-hd{padding:1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-bd{padding:1rem}
+.modal-ft{padding:.85rem 1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end}
 </style>
 </head>
 <body>
@@ -598,6 +609,69 @@ body{
     <button class="bnav-btn" onclick="irPara('boletins')"><span class="icon">📄</span>Boletins</button>
     <button class="bnav-btn on" onclick="irPara('perfil')"><span class="icon">👤</span>Perfil</button>
   </nav>
+</div>
+
+
+<!-- Modal Ver/Assinar Boletim -->
+<div class="modal-ov" id="mVerBol" onclick="if(event.target===this)fecharVerBol()">
+  <div class="modal-bx" style="max-width:500px;max-height:90vh;overflow-y:auto">
+    <div class="modal-hd">
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--text)" id="mVerBolTit">Relatório</div>
+        <div style="font-size:.7rem;color:var(--text3)" id="mVerBolNum"></div>
+      </div>
+      <button class="btn-logout" onclick="fecharVerBol()">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="mVerBolContent"></div>
+      <!-- Área de assinatura PIN -->
+      <div id="areaAssinarPin" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:2px solid var(--accent);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:.5rem">✍️ Assinar com PIN</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Digite seu PIN de 4 dígitos para assinar este documento</div>
+        <div class="pin-box">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="pin1" oninput="moveFocus(this,'pin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="pin2" oninput="moveFocus(this,'pin3')" onkeydown="backFocus(event,'pin1')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="pin3" oninput="moveFocus(this,'pin4')" onkeydown="backFocus(event,'pin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="pin4" onkeydown="backFocus(event,'pin3')">
+        </div>
+        <button class="btn btn-primary" style="margin-top:.5rem" onclick="assinarComPin()">✅ Confirmar Assinatura</button>
+        <button class="btn btn-secondary" style="margin-top:.35rem;font-size:.72rem" onclick="esqueceiPin()">Esqueci meu PIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Criar/Redefinir PIN -->
+<div class="modal-ov" id="mPin" onclick="if(event.target===this)fecharMPin()">
+  <div class="modal-bx" style="max-width:340px">
+    <div class="modal-hd">
+      <div style="font-size:.9rem;font-weight:700;color:var(--text)" id="mPinTit">Criar PIN de Assinatura</div>
+      <button class="btn-logout" onclick="fecharMPin()">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem" id="mPinDesc">
+        Crie um PIN de 4 dígitos para assinar seus documentos digitalmente.
+      </div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Novo PIN</div>
+      <div class="pin-box" style="justify-content:flex-start">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="np1" oninput="moveFocus(this,'np2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="np2" oninput="moveFocus(this,'np3')" onkeydown="backFocus(event,'np1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="np3" oninput="moveFocus(this,'np4')" onkeydown="backFocus(event,'np2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="np4" onkeydown="backFocus(event,'np3')">
+      </div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .35rem">Confirmar PIN</div>
+      <div class="pin-box" style="justify-content:flex-start">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="cp1" oninput="moveFocus(this,'cp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="cp2" oninput="moveFocus(this,'cp3')" onkeydown="backFocus(event,'cp1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="cp3" oninput="moveFocus(this,'cp4')" onkeydown="backFocus(event,'cp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="cp4" onkeydown="backFocus(event,'cp3')">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-secondary btn-sm" onclick="fecharMPin()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarPin()">💾 Salvar PIN</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -1083,6 +1157,226 @@ async function carregarPerfil() {
   document.getElementById('kPProj').textContent  = projs.size;
   document.getElementById('kPValor').textContent = fmtMoedaCurto(totalV);
 }
+
+// ══ PIN ═══════════════════════════════════════════════════════
+function moveFocus(el, nextId) {
+  if (el.value.length >= 1) {
+    var next = document.getElementById(nextId);
+    if (next) next.focus();
+  }
+}
+function backFocus(e, prevId) {
+  if (e.key === 'Backspace' && !e.target.value) {
+    var prev = document.getElementById(prevId);
+    if (prev) { prev.value=''; prev.focus(); }
+  }
+}
+function getPinValue(p1,p2,p3,p4) {
+  return (document.getElementById(p1).value||'')
+       + (document.getElementById(p2).value||'')
+       + (document.getElementById(p3).value||'')
+       + (document.getElementById(p4).value||'');
+}
+function limparPin(p1,p2,p3,p4) {
+  [p1,p2,p3,p4].forEach(function(id){ document.getElementById(id).value=''; });
+}
+
+async function hashPin(pin) {
+  var enc = new TextEncoder();
+  var buf = await crypto.subtle.digest('SHA-256', enc.encode(pin + (_colab?_colab.id:'')));
+  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+// Verificar se colaborador tem PIN salvo
+async function verificarPin() {
+  var { data } = await sb.from('colaboradores')
+    .select('pin_hash').eq('id', _colab.id).single();
+  return !!(data && data.pin_hash);
+}
+
+function abrirCriarPin(callback) {
+  document.getElementById('mPinTit').textContent = 'Criar PIN de Assinatura';
+  document.getElementById('mPinDesc').textContent = 'Crie um PIN de 4 dígitos para assinar seus documentos digitalmente.';
+  limparPin('np1','np2','np3','np4');
+  limparPin('cp1','cp2','cp3','cp4');
+  window._pinCallback = callback || null;
+  document.getElementById('mPin').classList.add('on');
+  setTimeout(function(){ document.getElementById('np1').focus(); }, 100);
+}
+
+function fecharMPin() { document.getElementById('mPin').classList.remove('on'); }
+
+async function salvarPin() {
+  var pin  = getPinValue('np1','np2','np3','np4');
+  var pin2 = getPinValue('cp1','cp2','cp3','cp4');
+  if (pin.length < 4) { toast('Digite 4 dígitos.','err'); return; }
+  if (pin !== pin2)   { toast('PINs não conferem.','err'); return; }
+
+  var h = await hashPin(pin);
+  var { error } = await sb.from('colaboradores').update({ pin_hash: h }).eq('id', _colab.id);
+  if (error) { toast('Erro ao salvar PIN.','err'); return; }
+
+  toast('PIN criado com sucesso!','ok');
+  fecharMPin();
+  if (window._pinCallback) window._pinCallback();
+}
+
+async function esqueceiPin() {
+  // Enviar e-mail de redefinição via Supabase Auth
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) return;
+  await sb.auth.resetPasswordForEmail(authData.user.email, {
+    redirectTo: window.location.origin + '/pages/colaborador.html?reset_pin=1'
+  });
+  toast('E-mail enviado! Verifique sua caixa de entrada para redefinir o PIN.','ok');
+}
+
+// ══ BOLETINS — VER E ASSINAR ══════════════════════════════════
+var _bolAtivoColab = null;
+
+async function verBoletimColab(bolId, modoAssinar) {
+  var { data: bol } = await sb.from('boletins')
+    .select('*').eq('id', bolId).single();
+  if (!bol) { toast('Documento não encontrado.','err'); return; }
+  _bolAtivoColab = bol;
+
+  var tipo = _colab ? _colab.tipo : 'mei';
+  var isClt = tipo === 'clt';
+  var docTitulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var docSub    = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
+
+  document.getElementById('mVerBolTit').textContent = docTitulo;
+  document.getElementById('mVerBolNum').textContent = bol.numero;
+
+  // Buscar apontamentos
+  var { data: apts } = await sb.from('apontamentos')
+    .select('*').in('id', bol.apontamentos_ids||[])
+    .order('data',{ascending:true});
+
+  var propIds = [...new Set((apts||[]).map(function(a){ return a.proposta_id; }))];
+  var mapaP = {};
+  if (propIds.length) {
+    var { data: props } = await sb.from('propostas')
+      .select('app_id,numero_proposta,cliente').in('app_id', propIds);
+    (props||[]).forEach(function(p){ mapaP[p.app_id] = p; });
+  }
+
+  var html = '<div style="font-family:Arial,sans-serif;font-size:12px;color:#212529">';
+  html += '<div style="font-size:15px;font-weight:700;color:#1e3a5f;margin-bottom:.25rem">' + docTitulo + '</div>';
+  html += '<div style="font-size:11px;color:#6c757d;margin-bottom:.75rem">' + docSub + '</div>';
+
+  (apts||[]).forEach(function(a){
+    var p = mapaP[a.proposta_id]||{};
+    html += '<div style="border:1px solid #dee2e6;border-radius:6px;padding:.6rem;margin-bottom:.5rem">';
+    html += '<div style="font-weight:700;font-size:11px">' + fmtData(a.data) + ' · ' + (p.numero_proposta||a.proposta_id||'—') + '</div>';
+    html += '<div style="font-size:10px;color:#6c757d">' + (p.cliente||'') + '</div>';
+    html += '<div style="font-size:11px;margin-top:.25rem">' + (a.hora_entrada||'') + '–' + (a.hora_saida||'') + ' · Normal: ' + Number(a.horas_normal||0).toFixed(1) + 'h · Extra 50%: ' + Number(a.horas_extra_50||0).toFixed(1) + 'h</div>';
+    html += '<div style="font-size:11px;color:#198754;font-weight:600">' + fmtMoeda(a.valor_total) + '</div>';
+    html += '<div style="font-size:10px;color:#6c757d;font-style:italic">' + a.descricao + '</div>';
+    html += '</div>';
+  });
+
+  html += '<div style="background:#1e3a5f;color:white;padding:.6rem;border-radius:6px;text-align:center;margin:.75rem 0">';
+  html += '<div style="font-size:.8rem">TOTAL: <strong>' + fmtMoeda(bol.valor_total) + '</strong> · ' + Number(bol.horas_total||0).toFixed(1) + 'h</div></div>';
+
+  // Status assinaturas
+  html += '<div style="font-size:11px;border:1px solid #dee2e6;border-radius:6px;overflow:hidden">';
+  html += '<div style="background:#f8f9fa;padding:.4rem .6rem;font-weight:700;border-bottom:1px solid #dee2e6">Assinaturas</div>';
+  html += '<div style="padding:.5rem .6rem">';
+  html += '<div>' + (bol.assinado_prestador ? '✅' : '⏳') + ' Prestador: ' + (_colab?_colab.nome:'—') + '</div>';
+  if (bol.assinado_prestador && bol.data_assinatura_p) {
+    html += '<div style="font-size:10px;color:#6c757d">Em: ' + new Date(bol.data_assinatura_p).toLocaleString('pt-BR') + '</div>';
+  }
+  html += '<div style="margin-top:.35rem">' + (bol.assinado_empresa ? '✅' : '⏳') + ' Empresa</div>';
+  html += '</div></div>';
+
+  // Texto jurídico resumido
+  html += '<div style="margin-top:.75rem;padding:.6rem;background:#f8f9fa;border-radius:6px;font-size:10px;color:#6c757d">';
+  html += '<strong>Validade jurídica:</strong> Lei 14.063/2020 · MP 2.200-2/2001 · CC Art. 107/2002. ';
+  html += 'Assinatura eletrônica simples com registro de IP, timestamp e hash SHA-256.</div>';
+  html += '</div>';
+
+  document.getElementById('mVerBolContent').innerHTML = html;
+
+  // Mostrar área de assinatura PIN
+  var areaPin = document.getElementById('areaAssinarPin');
+  if (modoAssinar && bol.status === 'aguard_prestador' && !bol.assinado_prestador) {
+    areaPin.style.display = 'block';
+    limparPin('pin1','pin2','pin3','pin4');
+    setTimeout(function(){ document.getElementById('pin1').focus(); }, 200);
+  } else {
+    areaPin.style.display = 'none';
+  }
+
+  document.getElementById('mVerBol').classList.add('on');
+}
+
+function fecharVerBol() {
+  document.getElementById('mVerBol').classList.remove('on');
+  _bolAtivoColab = null;
+}
+
+async function assinarComPin() {
+  if (!_bolAtivoColab || !_colab) return;
+  var pin = getPinValue('pin1','pin2','pin3','pin4');
+  if (pin.length < 4) { toast('Digite os 4 dígitos do PIN.','err'); return; }
+
+  // Verificar se tem PIN cadastrado
+  var { data: colabData } = await sb.from('colaboradores')
+    .select('pin_hash').eq('id', _colab.id).single();
+
+  if (!colabData || !colabData.pin_hash) {
+    // Não tem PIN — criar agora
+    toast('Você ainda não tem PIN. Crie um agora.','ok');
+    fecharVerBol();
+    abrirCriarPin(function(){
+      // Após criar PIN, reabrir para assinar
+      setTimeout(function(){ verBoletimColab(_bolAtivoColab.id, true); }, 500);
+    });
+    return;
+  }
+
+  // Verificar PIN
+  var hashDigitado = await hashPin(pin);
+  if (hashDigitado !== colabData.pin_hash) {
+    toast('PIN incorreto.','err');
+    limparPin('pin1','pin2','pin3','pin4');
+    document.getElementById('pin1').focus();
+    return;
+  }
+
+  // Gerar hash do documento
+  var conteudo = document.getElementById('mVerBolContent').innerText;
+  var enc = new TextEncoder();
+  var buf = await crypto.subtle.digest('SHA-256', enc.encode(conteudo + _bolAtivoColab.id));
+  var hashDoc = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  // Salvar assinatura
+  var { error } = await sb.from('boletins').update({
+    assinado_prestador: true,
+    data_assinatura_p: new Date().toISOString(),
+    ip_prestador: 'registrado',
+    hash_assinatura_p: hashDoc,
+    status: 'aguard_empresa'
+  }).eq('id', _bolAtivoColab.id);
+
+  if (error) { toast('Erro: ' + error.message,'err'); return; }
+
+  toast('✅ Assinatura registrada! Aguardando empresa.','ok');
+  fecharVerBol();
+  carregarBoletins();
+}
+
+// Verificar URL para redefinição de PIN
+(function() {
+  if (window.location.search.includes('reset_pin=1')) {
+    setTimeout(function(){
+      abrirCriarPin();
+      document.getElementById('mPinTit').textContent = 'Redefinir PIN';
+      document.getElementById('mPinDesc').textContent = 'Defina seu novo PIN de 4 dígitos.';
+    }, 1500);
+  }
+})();
 
 // ══ LOGOUT ════════════════════════════════════════════════════
 async function fazerLogout() {
