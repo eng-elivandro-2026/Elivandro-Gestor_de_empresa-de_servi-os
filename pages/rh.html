@@ -1934,9 +1934,10 @@ async function gerarBoletim() {
 
 // ── Ver e assinar boletim (gestor) ────────────────────────────
 async function abrirBoletimGestor(bolId) {
-  var { data: bol } = await sb.from('boletins')
-    .select('*, colaboradores(id, nome, tipo, email, documento, auth_id)')
+  var { data: bol, error: bolErr } = await sb.from('boletins')
+    .select('*, colaboradores(id, nome, tipo, email, documento)')
     .eq('id', bolId).single();
+  if (bolErr) { console.error('[Boletim]', bolErr); toast('Erro ao carregar: ' + bolErr.message,'err'); return; }
   if (!bol) { toast('Documento não encontrado.','err'); return; }
   _bolGestorAtivo = bol;
 
@@ -2303,9 +2304,16 @@ async function assinarComoPrestadorGestor() {
   var { data: authData } = await sb.auth.getUser();
   if (!authData || !authData.user) return;
 
-  // Buscar PIN do colaborador
+  // Buscar PIN do colaborador — por auth_id ou por email
   var { data: colabData } = await sb.from('colaboradores')
     .select('id, pin_hash').eq('auth_id', authData.user.id).maybeSingle();
+
+  if (!colabData) {
+    // Tentar pelo email
+    var { data: colabByEmail } = await sb.from('colaboradores')
+      .select('id, pin_hash').eq('email', authData.user.email||'').maybeSingle();
+    colabData = colabByEmail;
+  }
 
   if (!colabData) { toast('Colaborador não encontrado.','err'); return; }
 
