@@ -575,14 +575,12 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="hdr-left">
       <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menu">☰</button>
       <div class="logo">
-        <div class="logo-mk" id="hdr-logo-mk">FX</div>
+        <div class="logo-mk">FX</div>
         <div>
-          <div class="logo-txt" id="hdr-logo-txt">Fortex</div>
-          <div class="logo-sub" id="hdr-logo-sub">Tecnologia Industrial</div>
+          <div class="logo-txt">Fortex</div>
+          <div class="logo-sub">Tecnologia Industrial</div>
         </div>
       </div>
-      <!-- Seletor de empresa (visível só para dono) -->
-      <div id="seletor-empresa-container" style="display:none;align-items:center;margin-left:.5rem"></div>
     </div>
     <div class="hdr-right">
       <span id="hdr-data" style="font-size:.7rem;color:var(--text3)"></span>
@@ -4717,7 +4715,6 @@ function rExecTimeline(){
 <script src="js/config/supabase.js"></script>
 <script src="js/config/supabase-sync.js"></script>
 <script src="js/core/app-core.js"></script>
-<script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js"></script>
 <script src="js/modules/categoria-analise.js"></script>
 <script src="js/modules/cotacao.js"></script>
@@ -4762,6 +4759,19 @@ async function iniciarPlataforma() {
   // 1. Auth
   if (typeof protegerPagina === 'function') await protegerPagina();
 
+  // Bloquear colaboradores — redirecionar para portal correto
+  try {
+    var _au = await window.sbClient.auth.getUser();
+    if (_au.data && _au.data.user) {
+      var _cc = await window.sbClient
+        .from('colaboradores').select('id')
+        .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
+      if (!_cc.error && _cc.data) {
+        window.location.href = '/pages/colaborador.html'; return;
+      }
+    }
+  } catch(e) {}
+
   // 2. SUPABASE = FONTE PRIMÁRIA — sempre carrega da nuvem e sobrescreve localStorage
   try {
     if (typeof sbCarregarNuvem === 'function') {
@@ -4790,7 +4800,7 @@ async function iniciarPlataforma() {
     }
   } catch(e) {}
 
-    // 4. Usuário no header + empresas
+    // 4. Usuário no header
   try {
     var { data } = await window.sbClient.auth.getUser();
     if (data && data.user) {
@@ -4799,13 +4809,6 @@ async function iniciarPlataforma() {
       document.getElementById('hdr-avatar').textContent = email.slice(0,2).toUpperCase();
     }
   } catch(e) {}
-
-  // 5. Carregar empresas do usuário e ativar seletor
-  try {
-    var empresas = await carregarEmpresasUsuario();
-    renderizarSeletorEmpresa(empresas);
-    console.log('%c[init] ' + empresas.length + ' empresa(s) carregada(s)', 'color:#f0a500;font-weight:700');
-  } catch(e) { console.warn('[init] empresas:', e); }
 
   // 3. Tema
   var tema = localStorage.getItem('tf_theme') || 'dark';
