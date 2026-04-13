@@ -603,7 +603,7 @@ var _colabs = [];
 var _colabAtivo = null;
 var _aptEditId = null;
 var _modoApt = 'equipe'; // 'equipe' | 'meus'
-var _colabProprio = null; // dados do colaborador logado (se for também colaborador)
+var _colabProprio = null; // null=não verificado, false=não é colab, objeto=é colab
 var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
 var _empresaId = null;
 var _propostas = [];
@@ -645,7 +645,12 @@ function showSec(id, btn) {
     btn.classList.add('on');
   }
   if (id === 'colaboradores') carregarColabs();
-  if (id === 'apontamentos') { verificarColabProprio(); carregarApontamentos(); carregarKpiApt(); }
+  if (id === 'apontamentos') {
+    verificarColabProprio().then(function(){
+      carregarApontamentos();
+      carregarKpiApt();
+    });
+  }
   if (id === 'boletins') carregarBoletins();
 }
 function showTab(id, btn) {
@@ -680,6 +685,12 @@ async function getEmpresaId() {
 // ══ COLABORADORES ════════════════════════════════════════════
 // ── Verificar se usuário logado é também colaborador ────────
 async function verificarColabProprio() {
+  if (_colabProprio !== null) {
+    // Já verificado — só garantir que toggle está visível
+    var tog = document.getElementById('toggleMeusApt');
+    if (tog && _colabProprio) tog.style.display = 'flex';
+    return;
+  }
   try {
     var { data: authData } = await sb.auth.getUser();
     if (!authData || !authData.user) return;
@@ -689,13 +700,12 @@ async function verificarColabProprio() {
       .eq('auth_id', authData.user.id)
       .eq('ativo', true)
       .maybeSingle();
+    _colabProprio = colab || false; // false = verificado, não é colaborador
     if (colab) {
-      _colabProprio = colab;
-      // Mostrar toggle Equipe/Meus
       var tog = document.getElementById('toggleMeusApt');
       if (tog) tog.style.display = 'flex';
     }
-  } catch(e) {}
+  } catch(e) { _colabProprio = false; }
 }
 
 function setModoApt(modo) {
