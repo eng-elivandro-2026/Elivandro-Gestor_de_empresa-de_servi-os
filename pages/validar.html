@@ -47,7 +47,7 @@ const LOGO_TECFUSION = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSU
 
 function fmtData(d){ if(!d)return'—'; var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function fmtMoeda(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
-function fmtDt(d){ return d?new Date(d).toLocaleString('pt-BR'):'—'; }
+function fmtDt(d){ return d?new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—'; }
 
 (async function() {
   var params = new URLSearchParams(window.location.search);
@@ -132,7 +132,7 @@ function fmtDt(d){ return d?new Date(d).toLocaleString('pt-BR'):'—'; }
     + '</div>'
     + '</div>'
     + (bol.hash_documento_final ? '<div class="hash-box"><strong>Hash SHA-256 do documento:</strong><br>' + bol.hash_documento_final + '</div>' : '')
-    + '<div class="footer">Verificação realizada em ' + new Date().toLocaleString('pt-BR')
+    + '<div class="footer">Verificação realizada em ' + new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})
     + '<br>ID: ' + bol.id + '</div>';
 })();
 
