@@ -1742,18 +1742,29 @@ async function abrirModalGerarBoletim() {
     selC.appendChild(opt);
   });
 
-  // Popular empresas disponíveis
+  // Popular empresas disponíveis — buscar do parent (multi-empresa.js vive lá)
+  var _emps = [];
+  try { _emps = window.parent._empresasUsuario || []; } catch(e) {}
+  // Fallback: buscar direto do Supabase
+  if (!_emps.length) {
+    var empId = await getEmpresaId();
+    if (empId) {
+      var { data: empsDb } = await sb.from('empresas')
+        .select('id,nome,nome_curto').eq('ativo',true);
+      _emps = empsDb || [];
+    }
+  }
   var selE = document.getElementById('bolEmpresa');
   selE.innerHTML = '<option value="">Selecione...</option>';
-  (window._empresasUsuario||[]).forEach(function(e) {
+  _emps.forEach(function(e) {
     var opt = document.createElement('option');
     opt.value = e.id;
-    opt.textContent = e.nome;
+    opt.textContent = e.nome || e.nome_curto;
     selE.appendChild(opt);
   });
   // Se só uma empresa, selecionar automaticamente
-  if ((window._empresasUsuario||[]).length === 1) {
-    selE.value = window._empresasUsuario[0].id;
+  if (_emps.length === 1) {
+    selE.value = _emps[0].id;
   }
 
   // Período padrão: mês atual
