@@ -698,6 +698,16 @@ function toast(msg, tipo) {
   t.textContent = msg; t.className = 'show ' + (tipo||'ok');
   clearTimeout(t._t); t._t = setTimeout(function(){ t.className=''; }, 2600);
 }
+
+// ── Hora de Brasília (UTC-3) ──────────────────────────────────
+function agoraBrasilia() {
+  return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Sao_Paulo'}));
+}
+function fmtBrasilia(isoStr) {
+  if (!isoStr) return '—';
+  return new Date(isoStr).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'});
+}
+
 function fmtData(d) {
   if (!d) return '—';
   var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0];
