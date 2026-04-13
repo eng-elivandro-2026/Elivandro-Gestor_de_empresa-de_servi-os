@@ -1015,10 +1015,11 @@ async function carregarApontamentos() {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
-  // Sempre buscar propostas do Supabase para garantir dados completos
+  // Buscar propostas — no modo "Meus" busca de todas as empresas
   var mapaProps = {};
-  var { data: pData } = await sb.from('propostas')
-    .select('app_id, numero_proposta, titulo, cliente').eq('empresa_id', empId);
+  var qProps = sb.from('propostas').select('app_id, numero_proposta, titulo, cliente');
+  if (_modoApt !== 'meus') qProps = qProps.eq('empresa_id', empId);
+  var { data: pData } = await qProps;
   (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
 
   tbody.innerHTML = data.map(function(a) {
@@ -1054,9 +1055,13 @@ async function carregarApontamentos() {
 
 async function carregarKpiApt() {
   var empId = await getEmpresaId();
-  var { data } = await sb.from('apontamentos')
-    .select('status, horas_total, valor_total')
-    .eq('empresa_id', empId);
+  var qKpi = sb.from('apontamentos').select('status, horas_total, valor_total');
+  if (_modoApt === 'meus' && _colabProprio) {
+    qKpi = qKpi.eq('colaborador_id', _colabProprio.id);
+  } else {
+    qKpi = qKpi.eq('empresa_id', empId);
+  }
+  var { data } = await qKpi;
   if (!data) return;
   var pend = data.filter(function(a){ return a.status==='pendente'; }).length;
   var aprov = data.filter(function(a){ return a.status==='aprovado'; }).length;
