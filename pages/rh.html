@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RH / Equipes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--purple:#bc8cff;--orange:#F05A1A;
+  --r:8px;--r2:6px;
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;
+  --red:#dc2626;--orange:#c2410c;
+}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* LAYOUT */
+.wrap{max-width:1200px;margin:0 auto;padding:1.25rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.ct{font-size:.82rem;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:.35rem;text-transform:uppercase;letter-spacing:.04em}
+
+/* SEÇÕES */
+.sec{display:none}.sec.on{display:block}
+
+/* NAV INTERNA */
+.nav-rh{display:flex;gap:.35rem;margin-bottom:1.25rem;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:.75rem}
+.nav-rh-btn{padding:.38rem .9rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent}
+.nav-rh-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-rh-btn.on{color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent)}
+
+/* ALERTAS */
+.alertas-bar{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.alerta{display:flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:var(--r2);font-size:.75rem;font-weight:600;cursor:pointer}
+.alerta-red{background:rgba(248,81,73,.1);color:var(--red);border:1px solid rgba(248,81,73,.2)}
+.alerta-yellow{background:rgba(240,165,0,.1);color:var(--accent);border:1px solid rgba(240,165,0,.2)}
+.alerta-blue{background:rgba(88,166,255,.1);color:var(--blue);border:1px solid rgba(88,166,255,.2)}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.ga{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.85rem}
+@media(max-width:700px){.g2,.g3,.ga{grid-template-columns:1fr}}
+
+/* FORM */
+.f{display:flex;flex-direction:column;gap:.28rem}
+.f label{font-size:.66rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.f input,.f select,.f textarea{padding:.46rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.83rem;font-family:inherit;width:100%;transition:border-color .15s}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(88,166,255,.1)}
+.f textarea{min-height:72px;resize:vertical;line-height:1.5}
+.f select option{background:var(--bg3)}
+
+/* BOTÕES */
+.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.42rem .85rem;border:none;border-radius:var(--r2);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+.btn:active{transform:translateY(1px)}
+.bp{background:var(--blue);color:#000}.bp:hover{opacity:.88}
+.bs{background:var(--green);color:#000}.bs:hover{opacity:.88}
+.ba{background:var(--accent);color:#000}.ba:hover{opacity:.88}
+.bg{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.bg:hover{border-color:var(--border2)}
+.bd{background:var(--red);color:#fff}.bd:hover{opacity:.88}
+.bo{background:var(--orange);color:#fff}.bo:hover{opacity:.88}
+.bsm{padding:.28rem .65rem;font-size:.72rem}
+.br{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:.1rem .45rem;border-radius:20px;font-size:.67rem;font-weight:700}
+.bdg-green{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.2)}
+.bdg-red{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.2)}
+.bdg-yellow{background:rgba(240,165,0,.12);color:var(--accent);border:1px solid rgba(240,165,0,.2)}
+.bdg-blue{background:rgba(88,166,255,.12);color:var(--blue);border:1px solid rgba(88,166,255,.2)}
+.bdg-gray{background:rgba(139,148,158,.12);color:var(--text2);border:1px solid rgba(139,148,158,.2)}
+
+/* LISTA DE COLABORADORES */
+.colab-list{display:flex;flex-direction:column;gap:.5rem}
+.colab-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:all .18s}
+.colab-card:hover{border-color:var(--blue);transform:translateY(-1px)}
+.colab-avatar{width:44px;height:44px;border-radius:50%;background:rgba(240,165,0,.15);border:2px solid rgba(240,165,0,.3);display:grid;place-items:center;font-size:.9rem;font-weight:700;color:var(--accent);flex-shrink:0}
+.colab-info{flex:1;min-width:0}
+.colab-nome{font-size:.9rem;font-weight:700;color:var(--text)}
+.colab-sub{font-size:.72rem;color:var(--text2);margin-top:.15rem}
+.colab-badges{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem}
+.colab-acoes{display:flex;gap:.35rem;flex-shrink:0}
+
+/* DOCUMENTOS */
+.doc-list{display:flex;flex-direction:column;gap:.4rem}
+.doc-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2)}
+.doc-icon{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;font-size:.9rem;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-nome{font-size:.78rem;font-weight:600;color:var(--text)}
+.doc-meta{font-size:.68rem;color:var(--text3);margin-top:.1rem}
+.doc-status{font-size:.68rem;font-weight:700}
+.doc-ok{color:var(--green)}
+.doc-alerta{color:var(--accent)}
+.doc-vencido{color:var(--red)}
+
+/* APONTAMENTOS */
+.apt-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.apt-table th{padding:.5rem .6rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+.apt-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border);color:var(--text2)}
+.apt-table tr:last-child td{border-bottom:none}
+.apt-table tr:hover td{background:rgba(88,166,255,.04)}
+.apt-nome{font-weight:600;color:var(--text)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.on{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(680px,100%);max-height:90vh;overflow-y:auto}
+.modal-box::-webkit-scrollbar{width:4px}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1}
+.modal-tit{font-size:.95rem;font-weight:700;color:var(--text)}
+.modal-body{padding:1.25rem}
+.modal-footer{padding:.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end}
+
+/* SEÇÃO DETALHE */
+.detalhe-hdr{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.detalhe-avatar{width:64px;height:64px;border-radius:50%;background:rgba(240,165,0,.15);border:3px solid rgba(240,165,0,.3);display:grid;place-items:center;font-size:1.4rem;font-weight:700;color:var(--accent);flex-shrink:0}
+.detalhe-nome{font-size:1.1rem;font-weight:700;color:var(--text)}
+.detalhe-sub{font-size:.8rem;color:var(--text2);margin-top:.25rem}
+
+/* TABS DETALHE */
+.tabs{display:flex;gap:2px;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab-btn{padding:.38rem .85rem;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.on{color:var(--accent);font-weight:700;border-bottom-color:var(--accent)}
+.tab-sec{display:none}.tab-sec.on{display:block}
+
+/* KPI CARDS */
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem}
+.kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;text-align:center}
+.kpi-v{font-size:1.4rem;font-weight:700;color:var(--accent);line-height:1.2}
+.kpi-l{font-size:.68rem;color:var(--text3);margin-top:.2rem;text-transform:uppercase;letter-spacing:.05em}
+
+/* HORAS CALC */
+.horas-calc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;margin-top:.75rem}
+.horas-linha{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.78rem}
+.horas-linha:last-child{border-bottom:none;font-weight:700;padding-top:.5rem}
+.horas-tipo{color:var(--text2)}
+.horas-val{color:var(--text);font-weight:600}
+.horas-total-val{color:var(--green);font-size:.92rem}
+
+/* TOAST */
+#rhToast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:.5rem 1.1rem;border-radius:20px;font-size:.78rem;font-weight:500;opacity:0;transition:all .25s;z-index:9999;pointer-events:none;white-space:nowrap}
+#rhToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#rhToast.ok{border-color:var(--green);color:var(--green)}
+#rhToast.err{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- NAV INTERNA -->
+  <div class="nav-rh">
+    <button class="nav-rh-btn on" onclick="showSec('colaboradores',this)">👷 Colaboradores</button>
+    <button class="nav-rh-btn" onclick="showSec('apontamentos',this)">⏱️ Apontamentos</button>
+    <button class="nav-rh-btn" onclick="showSec('boletins',this)">📋 Boletins</button>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="alertas-bar" id="alertasBar"></div>
+
+  <!-- ══ SEÇÃO COLABORADORES ══════════════════════════════ -->
+  <div class="sec on" id="sec-colaboradores">
+
+    <!-- KPIs -->
+    <div class="kpi-g" id="kpiColabs"></div>
+
+    <!-- Lista + botão novo -->
+    <div class="card">
+      <div class="ch">
+        <span class="ct">👷 Colaboradores e Prestadores</span>
+        <div class="br">
+          <input type="text" id="buscaColab" placeholder="🔍 Buscar..." oninput="filtrarColabs()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:200px">
+          <select id="filtroTipo" onchange="filtrarColabs()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos os tipos</option>
+            <option value="clt">CLT</option>
+            <option value="mei">MEI</option>
+            <option value="pj">PJ</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalColab()">+ Novo</button>
+        </div>
+      </div>
+      <div class="colab-list" id="colabList">
+        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO DETALHE COLABORADOR ═══════════════════════ -->
+  <div class="sec" id="sec-detalhe">
+    <div class="card">
+      <button class="btn bg bsm" onclick="showSec('colaboradores',null)" style="margin-bottom:1rem">← Voltar</button>
+      <div class="detalhe-hdr">
+        <div class="detalhe-avatar" id="detAvatar">?</div>
+        <div>
+          <div class="detalhe-nome" id="detNome">—</div>
+          <div class="detalhe-sub" id="detSub">—</div>
+          <div style="margin-top:.4rem;display:flex;gap:.3rem;flex-wrap:wrap" id="detBadges"></div>
+        </div>
+        <div class="br" style="margin-left:auto">
+          <button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>
+          <button class="btn bd bsm" onclick="desativarColab()">Desativar</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn on" onclick="showTab('dados',this)">📋 Dados</button>
+        <button class="tab-btn" onclick="showTab('documentos',this)">📄 Documentos</button>
+        <button class="tab-btn" onclick="showTab('saude',this)">🏥 Saúde/NRs</button>
+        <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
+        <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
+      </div>
+
+      <!-- Tab Dados -->
+      <div class="tab-sec on" id="tab-dados">
+        <div class="ga" id="detDados" style="margin-top:.75rem"></div>
+      </div>
+
+      <!-- Tab Documentos -->
+      <div class="tab-sec" id="tab-documentos">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalDoc()">+ Adicionar documento</button>
+        </div>
+        <div class="doc-list" id="docList"></div>
+      </div>
+
+      <!-- Tab Saúde/NRs -->
+      <div class="tab-sec" id="tab-saude">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalSaude('aso')">+ ASO</button>
+          <button class="btn bp bsm" onclick="abrirModalSaude('nr')">+ Certificado NR</button>
+        </div>
+        <div class="doc-list" id="saudeList"></div>
+      </div>
+
+      <!-- Tab EPIs -->
+      <div class="tab-sec" id="tab-epis">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalEpi()">+ Entrega de EPI</button>
+        </div>
+        <div class="doc-list" id="epiList"></div>
+      </div>
+
+      <!-- Tab Horas -->
+      <div class="tab-sec" id="tab-horas">
+        <div style="margin:.75rem 0">
+          <div class="kpi-g" id="kpiHorasColab"></div>
+          <table class="apt-table">
+            <thead><tr>
+              <th>Data</th><th>Projeto</th><th>Entrada</th><th>Saída</th>
+              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th>
+            </tr></thead>
+            <tbody id="horasColabBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO APONTAMENTOS ═══════════════════════════════ -->
+  <div class="sec" id="sec-apontamentos">
+    <div class="kpi-g" id="kpiApt"></div>
+
+    <div class="card">
+      <div class="ch">
+        <span class="ct">⏱️ Apontamentos de Horas</span>
+        <div class="br">
+          <select id="filtroAptStatus" onchange="carregarApontamentos()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos</option>
+            <option value="pendente">Pendentes</option>
+            <option value="aprovado">Aprovados</option>
+            <option value="ajustado">Ajustados</option>
+            <option value="rejeitado">Rejeitados</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalApontamento()">+ Novo Apontamento</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="apt-table">
+          <thead><tr>
+            <th>Colaborador</th><th>Data</th><th>Projeto</th>
+            <th>Entrada</th><th>Saída</th><th>Normal</th><th>Extra 50%</th>
+            <th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="aptBody">
+            <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO BOLETINS ═══════════════════════════════════ -->
+  <div class="sec" id="sec-boletins">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">📋 Boletins de Horas</span>
+        <button class="btn bs bsm" onclick="abrirModalGerarBoletim()">+ Gerar Boletim</button>
+      </div>
+      <div class="doc-list" id="boletinsList">
+        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum boletim gerado ainda.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ══ MODAL COLABORADOR ════════════════════════════════════ -->
+<div class="modal-overlay" id="modalColab" onclick="if(event.target===this)fecharModalColab()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalColabTit">Novo Colaborador</span>
+      <button class="btn bd bsm" onclick="fecharModalColab()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
+        <div class="f"><label>Tipo de vínculo *</label>
+          <select id="cTipo">
+            <option value="clt">CLT</option>
+            <option value="mei">MEI</option>
+            <option value="pj">PJ</option>
+          </select>
+        </div>
+        <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
+        <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
+        <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
+        <div class="f"><label>Custo/hora base (R$)</label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
+        <div class="f"><label>Função / Cargo</label><input type="text" id="cFuncao" placeholder="Eletricista Industrial"></div>
+        <div class="f"><label>Data de admissão</label><input type="date" id="cAdmissao"></div>
+      </div>
+      <div class="f" style="margin-top:.85rem">
+        <label>Observações</label>
+        <textarea id="cObs" placeholder="Informações adicionais..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalColab()">Cancelar</button>
+      <button class="btn bs" onclick="salvarColab()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL APONTAMENTO ════════════════════════════════════ -->
+<div class="modal-overlay" id="modalApt" onclick="if(event.target===this)fecharModalApt()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit">Registrar Apontamento de Horas</span>
+      <button class="btn bd bsm" onclick="fecharModalApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Colaborador *</label>
+          <select id="aptColab"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Proposta / Projeto *</label>
+          <select id="aptProposta"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Data *</label><input type="date" id="aptData"></div>
+        <div class="f"><label>Tipo do dia *</label>
+          <select id="aptTipoDia" onchange="calcularHorasApt()">
+            <option value="util">Dia útil (Seg–Sex)</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+            <option value="feriado">Feriado</option>
+          </select>
+        </div>
+        <div class="f"><label>Jornada de trabalho</label>
+          <select id="aptJornada" onchange="aplicarJornada()">
+            <option value="07-17">07:00 – 17:00</option>
+            <option value="08-18">08:00 – 18:00</option>
+            <option value="08-1730">08:00 – 17:30</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="f"><label>Hora entrada *</label><input type="time" id="aptEntrada" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Hora saída *</label><input type="time" id="aptSaida" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Intervalo início</label><input type="time" id="aptIntInicio" value="12:00" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Intervalo fim</label><input type="time" id="aptIntFim" value="13:00" onchange="calcularHorasApt()"></div>
+      </div>
+
+      <!-- Prévia do cálculo CLT -->
+      <div class="horas-calc" id="horasPrevia" style="display:none">
+        <div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
+        <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="pvNormal">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha">
+          <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
+          <span class="horas-total-val" id="pvTotal">—</span>
+        </div>
+      </div>
+
+      <div class="f" style="margin-top:.85rem">
+        <label>Descrição das atividades *</label>
+        <textarea id="aptDesc" placeholder="Descreva o que foi executado neste dia/projeto..." style="min-height:90px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalApt()">Cancelar</button>
+      <button class="btn bs" onclick="salvarApontamento()">💾 Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DOCUMENTO ══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDoc" onclick="if(event.target===this)fecharModalDoc()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalDocTit">Adicionar Documento</span>
+      <button class="btn bd bsm" onclick="fecharModalDoc()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Tipo de documento *</label>
+          <select id="docTipo">
+            <option value="">Selecione...</option>
+            <option value="rg">RG</option>
+            <option value="cpf">CPF</option>
+            <option value="pis">PIS/PASEP</option>
+            <option value="ctps">CTPS</option>
+            <option value="cnpj">CNPJ (MEI)</option>
+            <option value="contrato">Contrato</option>
+            <option value="comprovante_residencia">Comprovante de Residência</option>
+            <option value="certidao">Certidão (nasc./casam.)</option>
+            <option value="nf_mei">NF MEI</option>
+            <option value="comprovante_pagamento">Comprovante de Pagamento</option>
+            <option value="holerite">Holerite</option>
+            <option value="atestado">Atestado Médico</option>
+            <option value="advertencia">Advertência</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="f"><label>Descrição</label><input type="text" id="docDesc" placeholder="Ex: Contrato MEI abr/2026"></div>
+        <div class="f"><label>Data do documento</label><input type="date" id="docData"></div>
+        <div class="f"><label>Data de vencimento</label><input type="date" id="docVenc" placeholder="Deixe em branco se não vence"></div>
+        <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
+      </div>
+      <div style="margin-top:.75rem;padding:.75rem;background:var(--bg3);border-radius:var(--r2);border:1px solid var(--border);font-size:.75rem;color:var(--text3)">
+        📎 Upload de arquivos será disponibilizado em breve (Supabase Storage). Por enquanto registre os metadados.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalDoc()">Cancelar</button>
+      <button class="btn bs" onclick="salvarDoc()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL SAÚDE/NR ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalSaude" onclick="if(event.target===this)fecharModalSaude()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalSaudeTit">Adicionar ASO / Certificado NR</span>
+      <button class="btn bd bsm" onclick="fecharModalSaude()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Tipo *</label>
+          <select id="saudeTipo">
+            <option value="aso_adm">ASO Admissional</option>
+            <option value="aso_per">ASO Periódico</option>
+            <option value="aso_dem">ASO Demissional</option>
+            <option value="nr10">NR-10 (Eletricidade)</option>
+            <option value="nr35">NR-35 (Trabalho em Altura)</option>
+            <option value="nr12">NR-12 (Máquinas)</option>
+            <option value="nr18">NR-18 (Construção Civil)</option>
+            <option value="sep">SEP (Sistema Elétrico de Potência)</option>
+            <option value="outro_nr">Outro Certificado</option>
+          </select>
+        </div>
+        <div class="f"><label>Instituição / Médico</label><input type="text" id="saudeInst" placeholder="Ex: SESMT / Dr. João"></div>
+        <div class="f"><label>Data de emissão *</label><input type="date" id="saudeEmissao"></div>
+        <div class="f"><label>Data de vencimento *</label><input type="date" id="saudeVenc"></div>
+        <div class="f"><label>Carga horária (cursos NR)</label><input type="number" id="saudeCH" placeholder="40" min="0"></div>
+        <div class="f"><label>Resultado (ASO)</label>
+          <select id="saudeResult">
+            <option value="">N/A</option>
+            <option value="apto">Apto</option>
+            <option value="apto_restricao">Apto com restrição</option>
+            <option value="inapto">Inapto</option>
+          </select>
+        </div>
+        <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="saudeObs" style="min-height:56px"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalSaude()">Cancelar</button>
+      <button class="btn bs" onclick="salvarSaude()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EPI ═════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEpi" onclick="if(event.target===this)fecharModalEpi()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit">Ficha de Entrega de EPI</span>
+      <button class="btn bd bsm" onclick="fecharModalEpi()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>EPI *</label>
+          <select id="epiItem">
+            <option value="">Selecione...</option>
+            <option value="capacete">Capacete de segurança</option>
+            <option value="luva_borracha">Luva de borracha isolante</option>
+            <option value="luva_raspa">Luva de raspa</option>
+            <option value="botina">Botina de segurança</option>
+            <option value="oculos">Óculos de proteção</option>
+            <option value="protetor_auricular">Protetor auricular</option>
+            <option value="cinto_seguranca">Cinto de segurança/talabarte</option>
+            <option value="vestimenta_nr10">Vestimenta NR-10</option>
+            <option value="detector_tensao">Detector de tensão</option>
+            <option value="outro_epi">Outro EPI</option>
+          </select>
+        </div>
+        <div class="f"><label>Descrição / Marca</label><input type="text" id="epiDesc" placeholder="Ex: Capacete 3M ABS Amarelo"></div>
+        <div class="f"><label>CA (Cert. Aprovação) *</label><input type="text" id="epiCA" placeholder="Ex: CA 12345"></div>
+        <div class="f"><label>Data de entrega *</label><input type="date" id="epiEntrega"></div>
+        <div class="f"><label>Data de substituição</label><input type="date" id="epiSubs"></div>
+        <div class="f"><label>Quantidade</label><input type="number" id="epiQtd" value="1" min="1"></div>
+        <div class="f" style="grid-column:1/-1">
+          <label>Observações</label>
+          <textarea id="epiObs" style="min-height:56px" placeholder="O colaborador declara ter recebido o EPI acima e se compromete a utilizá-lo..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalEpi()">Cancelar</button>
+      <button class="btn bs" onclick="salvarEpi()">💾 Registrar Entrega</button>
+    </div>
+  </div>
+</div>
+
+<div id="rhToast"></div>
+
+<script>
+// ══ CONFIGURAÇÃO SUPABASE ════════════════════════════════════
+const SB_URL = 'https://ojuuzojwnyxdsavdosif.supabase.co';
+const SB_KEY = 'sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ══ ESTADO GLOBAL ════════════════════════════════════════════
+var _colabs = [];
+var _colabAtivo = null;
+var _aptEditId = null;
+var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
+var _empresaId = null;
+var _propostas = [];
+
+// ══ UTILITÁRIOS ══════════════════════════════════════════════
+function toast(msg, tipo) {
+  var t = document.getElementById('rhToast');
+  t.textContent = msg; t.className = 'show ' + (tipo||'ok');
+  clearTimeout(t._tid); t._tid = setTimeout(function(){ t.className=''; }, 2400);
+}
+function fmtData(d) {
+  if (!d) return '—';
+  var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0];
+}
+function fmtMoeda(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function diasAteVencer(dataStr) {
+  if (!dataStr) return null;
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var venc = new Date(dataStr + 'T00:00:00');
+  return Math.round((venc - hoje) / 86400000);
+}
+function statusVencimento(dataStr) {
+  if (!dataStr) return { cls: '', txt: '' };
+  var dias = diasAteVencer(dataStr);
+  if (dias < 0) return { cls: 'doc-vencido', txt: 'Vencido há ' + Math.abs(dias) + ' dias' };
+  if (dias <= 30) return { cls: 'doc-alerta', txt: 'Vence em ' + dias + ' dias' };
+  return { cls: 'doc-ok', txt: 'Válido até ' + fmtData(dataStr) };
+}
+
+// ══ NAVEGAÇÃO ════════════════════════════════════════════════
+function showSec(id, btn) {
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
+  var el = document.getElementById('sec-' + id);
+  if (el) el.classList.add('on');
+  if (btn) {
+    document.querySelectorAll('.nav-rh-btn').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+  }
+  if (id === 'colaboradores') carregarColabs();
+  if (id === 'apontamentos') { carregarApontamentos(); carregarKpiApt(); }
+  if (id === 'boletins') carregarBoletins();
+}
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-sec').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  var el = document.getElementById('tab-' + id);
+  if (el) el.classList.add('on');
+  if (btn) btn.classList.add('on');
+  if (id === 'horas' && _colabAtivo) carregarHorasColab(_colabAtivo.id);
+  if (id === 'documentos' && _colabAtivo) carregarDocs(_colabAtivo.id);
+  if (id === 'saude' && _colabAtivo) carregarSaude(_colabAtivo.id);
+  if (id === 'epis' && _colabAtivo) carregarEpis(_colabAtivo.id);
+}
+
+// ══ EMPRESA ATIVA ════════════════════════════════════════════
+async function getEmpresaId() {
+  if (_empresaId) return _empresaId;
+  // Receber empresa do parent (shell)
+  try {
+    if (window.parent && window.parent.getEmpresaAtivaId) {
+      _empresaId = window.parent.getEmpresaAtivaId();
+    }
+  } catch(e) {}
+  // Fallback: pegar do Supabase
+  if (!_empresaId) {
+    var { data } = await sb.from('empresas').select('id').eq('nome_curto','Tecfusion').single();
+    if (data) _empresaId = data.id;
+  }
+  return _empresaId;
+}
+
+// ══ COLABORADORES ════════════════════════════════════════════
+async function carregarColabs() {
+  var empId = await getEmpresaId();
+  var { data, error } = await sb
+    .from('colaboradores')
+    .select('*, colaborador_empresas!inner(empresa_id)')
+    .eq('colaborador_empresas.empresa_id', empId)
+    .eq('ativo', true)
+    .order('nome');
+
+  if (error) { console.error(error); return; }
+  _colabs = data || [];
+  renderColabs(_colabs);
+  renderKpiColabs(_colabs);
+  gerarAlertas(_colabs);
+}
+
+function filtrarColabs() {
+  var q = document.getElementById('buscaColab').value.toLowerCase();
+  var t = document.getElementById('filtroTipo').value;
+  var lista = _colabs.filter(function(c) {
+    var matchQ = !q || c.nome.toLowerCase().includes(q);
+    var matchT = !t || c.tipo === t;
+    return matchQ && matchT;
+  });
+  renderColabs(lista);
+}
+
+function renderColabs(lista) {
+  var el = document.getElementById('colabList');
+  if (!lista.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum colaborador encontrado.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(function(c) {
+    var ini = c.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+    var tipoBdg = c.tipo === 'clt' ? 'bdg-blue' : c.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
+    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    return '<div class="colab-card" onclick="abrirDetalhe(\'' + c.id + '\')">'
+      + '<div class="colab-avatar">' + ini + '</div>'
+      + '<div class="colab-info">'
+        + '<div class="colab-nome">' + c.nome + '</div>'
+        + '<div class="colab-sub">' + (c.funcao||'Sem função definida') + ' · ' + (c.email||'—') + '</div>'
+        + '<div class="colab-badges">'
+          + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
+          + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
+        + '</div>'
+      + '</div>'
+      + '<div class="colab-acoes">'
+        + '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
+        + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+function renderKpiColabs(lista) {
+  var clt = lista.filter(function(c){ return c.tipo==='clt'; }).length;
+  var mei = lista.filter(function(c){ return c.tipo==='mei'; }).length;
+  var pj  = lista.filter(function(c){ return c.tipo==='pj'; }).length;
+  document.getElementById('kpiColabs').innerHTML =
+    kpi(lista.length, 'Total') +
+    kpi(clt, 'CLT') +
+    kpi(mei, 'MEI') +
+    kpi(pj, 'PJ');
+}
+
+function kpi(v, l) {
+  return '<div class="kpi"><div class="kpi-v">' + v + '</div><div class="kpi-l">' + l + '</div></div>';
+}
+
+// ══ ALERTAS AUTOMÁTICOS ═════════════════════════════════════
+async function gerarAlertas() {
+  var empId = await getEmpresaId();
+  var alertas = [];
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var em30 = new Date(hoje); em30.setDate(em30.getDate() + 30);
+
+  // Buscar documentos de saúde com vencimento
+  var { data: saude } = await sb
+    .from('rh_saude')
+    .select('tipo, data_vencimento, colaborador_id, colaboradores(nome)')
+    .not('data_vencimento', 'is', null);
+
+  (saude || []).forEach(function(s) {
+    var dias = diasAteVencer(s.data_vencimento);
+    var nome = s.colaboradores ? s.colaboradores.nome : '?';
+    if (dias < 0) {
+      alertas.push({ cls:'alerta-red', txt: '🔴 ' + s.tipo.toUpperCase() + ' vencido — ' + nome });
+    } else if (dias <= 30) {
+      alertas.push({ cls:'alerta-yellow', txt: '🟡 ' + s.tipo.toUpperCase() + ' vence em ' + dias + ' dias — ' + nome });
+    }
+  });
+
+  // Apontamentos pendentes
+  var { count } = await sb
+    .from('apontamentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('empresa_id', empId)
+    .eq('status', 'pendente');
+
+  if (count > 0) {
+    alertas.push({ cls:'alerta-blue', txt: '⏱️ ' + count + ' apontamento(s) aguardando aprovação' });
+  }
+
+  var bar = document.getElementById('alertasBar');
+  if (!alertas.length) { bar.innerHTML = ''; return; }
+  bar.innerHTML = alertas.map(function(a) {
+    return '<div class="alerta ' + a.cls + '">' + a.txt + '</div>';
+  }).join('');
+}
+
+// ══ DETALHE COLABORADOR ══════════════════════════════════════
+async function abrirDetalhe(id) {
+  _colabAtivo = _colabs.find(function(c){ return c.id === id; });
+  if (!_colabAtivo) return;
+  showSec('detalhe', null);
+
+  var ini = _colabAtivo.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+  document.getElementById('detAvatar').textContent = ini;
+  document.getElementById('detNome').textContent = _colabAtivo.nome;
+  document.getElementById('detSub').textContent = (_colabAtivo.funcao||'Sem função') + ' · ' + (_colabAtivo.tipo||'').toUpperCase();
+
+  var tipoBdg = _colabAtivo.tipo === 'clt' ? 'bdg-blue' : _colabAtivo.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
+  document.getElementById('detBadges').innerHTML =
+    '<span class="bdg ' + tipoBdg + '">' + (_colabAtivo.tipo||'').toUpperCase() + '</span>' +
+    '<span class="bdg bdg-green">Ativo</span>';
+
+  // Dados básicos
+  document.getElementById('detDados').innerHTML =
+    campo('Nome', _colabAtivo.nome) +
+    campo('Tipo', (_colabAtivo.tipo||'').toUpperCase()) +
+    campo('CPF/CNPJ', _colabAtivo.documento||'—') +
+    campo('E-mail', _colabAtivo.email||'—') +
+    campo('Telefone', _colabAtivo.telefone||'—') +
+    campo('Valor/hora', _colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora) + '/h' : '—') +
+    campo('Função', _colabAtivo.funcao||'—') +
+    campo('Admissão', fmtData(_colabAtivo.admissao)) +
+    (campo('Obs.', _colabAtivo.observacoes||'—'));
+
+  carregarDocs(id);
+  carregarSaude(id);
+  carregarEpis(id);
+}
+
+function campo(label, valor) {
+  return '<div class="card" style="margin:0;padding:.65rem .85rem">'
+    + '<div style="font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem">' + label + '</div>'
+    + '<div style="font-size:.83rem;color:var(--text);font-weight:500">' + valor + '</div>'
+    + '</div>';
+}
+
+// ══ DOCUMENTOS ═══════════════════════════════════════════════
+async function carregarDocs(colabId) {
+  var { data } = await sb.from('rh_documentos')
+    .select('*').eq('colaborador_id', colabId).order('created_at', {ascending:false});
+  var el = document.getElementById('docList');
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum documento cadastrado.</div>';
+    return;
+  }
+  el.innerHTML = data.map(function(d) {
+    var sv = statusVencimento(d.data_vencimento);
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📄</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">' + (d.descricao||d.tipo) + '</div>'
+        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + '</div>'
+      + '</div>'
+      + '<button class="btn bd bsm" onclick="excluirDoc(\'' + d.id + '\')">🗑</button>'
+    + '</div>';
+  }).join('');
+}
+
+async function carregarSaude(colabId) {
+  var { data } = await sb.from('rh_saude')
+    .select('*').eq('colaborador_id', colabId).order('data_vencimento', {ascending:true});
+  var el = document.getElementById('saudeList');
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum registro de saúde/NR cadastrado.</div>';
+    return;
+  }
+  var labels = {aso_adm:'ASO Admissional',aso_per:'ASO Periódico',aso_dem:'ASO Demissional',
+    nr10:'NR-10',nr35:'NR-35',nr12:'NR-12',nr18:'NR-18',sep:'SEP',outro_nr:'Certificado NR'};
+  el.innerHTML = data.map(function(d) {
+    var sv = statusVencimento(d.data_vencimento);
+    var icon = d.tipo && d.tipo.startsWith('aso') ? '🏥' : '📜';
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(63,185,80,.1);color:var(--green)">' + icon + '</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">' + (labels[d.tipo]||d.tipo) + (d.instituicao ? ' — ' + d.instituicao : '') + '</div>'
+        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>'
+          + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + '</div>'
+      + '</div>'
+      + '<button class="btn bd bsm" onclick="excluirSaude(\'' + d.id + '\')">🗑</button>'
+    + '</div>';
+  }).join('');
+}
+
+async function carregarEpis(colabId) {
+  var { data } = await sb.from('rh_epis')
+    .select('*').eq('colaborador_id', colabId).order('data_entrega', {ascending:false});
+  var el = document.getElementById('epiList');
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum EPI registrado.</div>';
+    return;
+  }
+  el.innerHTML = data.map(function(d) {
+    var sv = statusVencimento(d.data_substituicao);
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(240,165,0,.1);color:var(--accent)">🦺</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">' + (d.descricao||d.item) + '</div>'
+        + '<div class="doc-meta">CA: ' + (d.ca||'—') + ' · Entrega: ' + fmtData(d.data_entrega)
+          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + '</div>'
+      + '</div>'
+      + '<button class="btn bd bsm" onclick="excluirEpi(\'' + d.id + '\')">🗑</button>'
+    + '</div>';
+  }).join('');
+}
+
+// ══ HORAS DO COLABORADOR ═════════════════════════════════════
+async function carregarHorasColab(colabId) {
+  var { data } = await sb.from('apontamentos')
+    .select('*').eq('colaborador_id', colabId)
+    .order('data', {ascending:false}).limit(50);
+  var tbody = document.getElementById('horasColabBody');
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    return;
+  }
+  var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
+  tbody.innerHTML = data.map(function(a) {
+    totalNormal += Number(a.horas_normal||0);
+    totalExtra50 += Number(a.horas_extra_50||0);
+    totalExtra100 += Number(a.horas_extra_100||0);
+    totalValor += Number(a.valor_total||0);
+    var sBdg = a.status==='aprovado' ? 'bdg-green' : a.status==='pendente' ? 'bdg-yellow' : a.status==='rejeitado' ? 'bdg-red' : 'bdg-gray';
+    return '<tr>'
+      + '<td>' + fmtData(a.data) + '</td>'
+      + '<td>' + (a.proposta_id||'—') + '</td>'
+      + '<td>' + (a.hora_entrada||'—') + '</td>'
+      + '<td>' + (a.hora_saida||'—') + '</td>'
+      + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
+      + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+      + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
+    + '</tr>';
+  }).join('');
+
+  document.getElementById('kpiHorasColab').innerHTML =
+    kpi(totalNormal.toFixed(1)+'h', 'Normal') +
+    kpi(totalExtra50.toFixed(1)+'h', 'Extra 50%') +
+    kpi(totalExtra100.toFixed(1)+'h', 'Extra 100%') +
+    kpi(fmtMoeda(totalValor), 'Total R$');
+}
+
+// ══ APONTAMENTOS ═════════════════════════════════════════════
+async function carregarApontamentos() {
+  var empId = await getEmpresaId();
+  var status = document.getElementById('filtroAptStatus').value;
+  var q = sb.from('apontamentos')
+    .select('*, colaboradores(nome,valor_hora)')
+    .eq('empresa_id', empId)
+    .order('data', {ascending:false})
+    .limit(100);
+  if (status) q = q.eq('status', status);
+  var { data, error } = await q;
+  var tbody = document.getElementById('aptBody');
+  if (error || !data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(function(a) {
+    var sBdg = a.status==='aprovado'?'bdg-green':a.status==='pendente'?'bdg-yellow':a.status==='rejeitado'?'bdg-red':'bdg-gray';
+    var nome = a.colaboradores ? a.colaboradores.nome : '—';
+    return '<tr>'
+      + '<td><span class="apt-nome">' + nome + '</span></td>'
+      + '<td>' + fmtData(a.data) + '</td>'
+      + '<td>' + (a.proposta_id||'—') + '</td>'
+      + '<td>' + (a.hora_entrada||'—') + '</td>'
+      + '<td>' + (a.hora_saida||'—') + '</td>'
+      + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
+      + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+      + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
+      + '<td><div class="br">'
+        + (a.status==='pendente'
+          ? '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✅</button>'
+            + '<button class="btn bd bsm" onclick="rejeitarApt(\'' + a.id + '\')">✕</button>'
+          : '')
+        + '<button class="btn bg bsm" onclick="excluirApt(\'' + a.id + '\')">🗑</button>'
+      + '</div></td>'
+    + '</tr>';
+  }).join('');
+}
+
+async function carregarKpiApt() {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('apontamentos')
+    .select('status, horas_total, valor_total')
+    .eq('empresa_id', empId);
+  if (!data) return;
+  var pend = data.filter(function(a){ return a.status==='pendente'; }).length;
+  var aprov = data.filter(function(a){ return a.status==='aprovado'; }).length;
+  var totalH = data.reduce(function(s,a){ return s+Number(a.horas_total||0); }, 0);
+  var totalV = data.filter(function(a){ return a.status==='aprovado'; })
+    .reduce(function(s,a){ return s+Number(a.valor_total||0); }, 0);
+  document.getElementById('kpiApt').innerHTML =
+    kpi(pend, 'Pendentes') + kpi(aprov, 'Aprovados') +
+    kpi(totalH.toFixed(1)+'h', 'Total Horas') + kpi(fmtMoeda(totalV), 'Custo Aprovado');
+}
+
+async function aprovarApt(id) {
+  var { error } = await sb.from('apontamentos').update({ status:'aprovado', updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Erro ao aprovar', 'err'); return; }
+  toast('Apontamento aprovado!', 'ok');
+  carregarApontamentos(); carregarKpiApt();
+}
+
+async function rejeitarApt(id) {
+  if (!confirm('Rejeitar este apontamento?')) return;
+  var { error } = await sb.from('apontamentos').update({ status:'rejeitado', updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Erro ao rejeitar', 'err'); return; }
+  toast('Apontamento rejeitado.', 'ok');
+  carregarApontamentos();
+}
+
+async function excluirApt(id) {
+  if (!confirm('Excluir este apontamento?')) return;
+  await sb.from('apontamentos').delete().eq('id', id);
+  toast('Excluído.', 'ok');
+  carregarApontamentos(); carregarKpiApt();
+}
+
+// ══ ENGINE CLT — CÁLCULO DE HORAS ════════════════════════════
+function timeToMin(t) {
+  if (!t) return 0;
+  var p = t.split(':'); return parseInt(p[0])*60 + parseInt(p[1]);
+}
+function minToH(m) { return (m/60).toFixed(2)*1; }
+
+function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora) {
+  var entMin  = timeToMin(entrada);
+  var saiMin  = timeToMin(saida);
+  var intIMin = timeToMin(intInicio || '12:00');
+  var intFMin = timeToMin(intFim    || '13:00');
+  var jIniMin = timeToMin(jornadaIni);
+  var jFimMin = timeToMin(jornadaFim);
+
+  // CLT: hora noturna = 52min30s = fator 60/52.5
+  var FATOR_NOT = 60/52.5;
+
+  var normal=0, extra50=0, extra100=0, noturno=0;
+  var INTERVALO = Math.max(intFMin - intIMin, 60); // mínimo 1h
+
+  // Para cada minuto trabalhado
+  for (var m = entMin; m < saiMin; m++) {
+    // Pular intervalo de almoço
+    if (m >= intIMin && m < intFMin) continue;
+
+    var hExtra = 0, hNormal = 0, hNoturno = 0;
+
+    if (tipoDia === 'domingo' || tipoDia === 'feriado') {
+      // 100% o dia todo
+      if (m >= 22*60 || m < 5*60) {
+        // Noturno + 100%
+        extra100 += (1/60) * FATOR_NOT;
+        noturno  += (1/60) * (FATOR_NOT - 1);
+      } else {
+        extra100 += 1/60;
+      }
+    } else if (tipoDia === 'sabado') {
+      // 50% o dia todo
+      if (m >= 22*60 || m < 5*60) {
+        extra50 += (1/60) * FATOR_NOT;
+        noturno += (1/60) * (FATOR_NOT - 1);
+      } else {
+        extra50 += 1/60;
+      }
+    } else {
+      // Dia útil
+      // Antes da jornada → extra 50%
+      if (m < jIniMin) {
+        if (m >= 22*60 || m < 5*60) {
+          extra50 += (1/60) * FATOR_NOT;
+          noturno += (1/60) * (FATOR_NOT - 1);
+        } else {
+          extra50 += 1/60;
+        }
+      }
+      // Dentro da jornada normal CLT (até 18:00 seg-qui / 17:00 sex)
+      else if (m >= jIniMin && m < jFimMin) {
+        if (m >= 22*60 || m < 5*60) {
+          normal  += (1/60) * FATOR_NOT;
+          noturno += (1/60) * (FATOR_NOT - 1);
+        } else {
+          normal += 1/60;
+        }
+      }
+      // Após jornada → extra 50%
+      else {
+        if (m >= 22*60 || m < 5*60) {
+          extra50 += (1/60) * FATOR_NOT;
+          noturno += (1/60) * (FATOR_NOT - 1);
+        } else {
+          extra50 += 1/60;
+        }
+      }
+    }
+  }
+
+  var vBase = Number(valorHora || 0);
+  var vNormal  = normal   * vBase;
+  var vExtra50 = extra50  * vBase * 1.5;
+  var vExtra100= extra100 * vBase * 2.0;
+  var vNoturno = noturno  * vBase * 0.3; // adicional noturno
+
+  return {
+    horas_normal:   parseFloat(normal.toFixed(2)),
+    horas_extra_50: parseFloat(extra50.toFixed(2)),
+    horas_extra_100:parseFloat(extra100.toFixed(2)),
+    horas_noturno:  parseFloat(noturno.toFixed(2)),
+    horas_total:    parseFloat((normal+extra50+extra100).toFixed(2)),
+    valor_normal:   parseFloat(vNormal.toFixed(2)),
+    valor_extra_50: parseFloat(vExtra50.toFixed(2)),
+    valor_extra_100:parseFloat(vExtra100.toFixed(2)),
+    valor_noturno:  parseFloat(vNoturno.toFixed(2)),
+    valor_total:    parseFloat((vNormal+vExtra50+vExtra100+vNoturno).toFixed(2))
+  };
+}
+
+function aplicarJornada() {
+  var j = document.getElementById('aptJornada').value;
+  var ini = document.getElementById('aptEntrada');
+  var fim = document.getElementById('aptSaida');
+  var ji  = document.getElementById('aptIntInicio');
+  var jf  = document.getElementById('aptIntFim');
+  if (j === '07-17') { ini.value='07:00'; fim.value='17:00'; }
+  else if (j === '08-18') { ini.value='08:00'; fim.value='18:00'; }
+  else if (j === '08-1730') { ini.value='08:00'; fim.value='17:30'; }
+  calcularHorasApt();
+}
+
+function calcularHorasApt() {
+  var entrada  = document.getElementById('aptEntrada').value;
+  var saida    = document.getElementById('aptSaida').value;
+  var intIni   = document.getElementById('aptIntInicio').value;
+  var intFim   = document.getElementById('aptIntFim').value;
+  var tipoDia  = document.getElementById('aptTipoDia').value;
+  var jornada  = document.getElementById('aptJornada').value;
+  var colabId  = document.getElementById('aptColab').value;
+
+  if (!entrada || !saida) return;
+
+  // Jornada padrão conforme seleção
+  var jIni = '08:00', jFim = '18:00';
+  if (jornada === '07-17') { jIni='07:00'; jFim='17:00'; }
+  else if (jornada === '08-1730') { jIni='08:00'; jFim='17:30'; }
+
+  // Pegar valor/hora do colaborador selecionado
+  var colab = _colabs.find(function(c){ return c.id === colabId; });
+  var vh = colab ? (colab.valor_hora||0) : 0;
+
+  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+
+  document.getElementById('horasPrevia').style.display = 'block';
+  document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
+  document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
+  document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
+  document.getElementById('pvNoturno').textContent   = r.horas_noturno.toFixed(1) + 'h → ' + fmtMoeda(r.valor_noturno);
+  document.getElementById('pvTotal').textContent     = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
+}
+
+// ══ MODAIS COLABORADOR ═══════════════════════════════════════
+var _colabEditId = null;
+
+function abrirModalColab(id) {
+  _colabEditId = id || null;
+  document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
+  if (!id) {
+    ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
+    document.getElementById('cTipo').value = 'mei';
+  } else {
+    var c = _colabs.find(function(x){ return x.id===id; });
+    if (c) {
+      document.getElementById('cNome').value = c.nome||'';
+      document.getElementById('cTipo').value = c.tipo||'mei';
+      document.getElementById('cDoc').value  = c.documento||'';
+      document.getElementById('cEmail').value= c.email||'';
+      document.getElementById('cTel').value  = c.telefone||'';
+      document.getElementById('cValorHora').value = c.valor_hora||'';
+      document.getElementById('cFuncao').value    = c.funcao||'';
+      document.getElementById('cAdmissao').value  = c.admissao||'';
+      document.getElementById('cObs').value       = c.observacoes||'';
+    }
+  }
+  document.getElementById('modalColab').classList.add('on');
+}
+
+function fecharModalColab() { document.getElementById('modalColab').classList.remove('on'); }
+
+async function salvarColab() {
+  var empId = await getEmpresaId();
+  var dados = {
+    nome: document.getElementById('cNome').value.trim(),
+    tipo: document.getElementById('cTipo').value,
+    documento: document.getElementById('cDoc').value.trim(),
+    email: document.getElementById('cEmail').value.trim(),
+    telefone: document.getElementById('cTel').value.trim(),
+    valor_hora: parseFloat(document.getElementById('cValorHora').value)||null,
+    funcao: document.getElementById('cFuncao').value.trim(),
+    admissao: document.getElementById('cAdmissao').value||null,
+    observacoes: document.getElementById('cObs').value.trim(),
+    ativo: true
+  };
+  if (!dados.nome) { toast('Informe o nome.','err'); return; }
+
+  var res, error;
+  if (_colabEditId) {
+    var r = await sb.from('colaboradores').update(dados).eq('id', _colabEditId);
+    error = r.error;
+  } else {
+    var r2 = await sb.from('colaboradores').insert(dados).select().single();
+    error = r2.error;
+    // Vincular à empresa
+    if (!error && r2.data) {
+      await sb.from('colaborador_empresas').insert({
+        colaborador_id: r2.data.id,
+        empresa_id: empId
+      });
+    }
+  }
+
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast(_colabEditId ? 'Colaborador atualizado!' : 'Colaborador cadastrado!', 'ok');
+  fecharModalColab();
+  carregarColabs();
+}
+
+function editarColab() {
+  if (_colabAtivo) abrirModalColab(_colabAtivo.id);
+}
+
+async function desativarColab() {
+  if (!_colabAtivo) return;
+  if (!confirm('Desativar ' + _colabAtivo.nome + '?')) return;
+  await sb.from('colaboradores').update({ativo:false}).eq('id', _colabAtivo.id);
+  toast('Colaborador desativado.', 'ok');
+  showSec('colaboradores', document.querySelector('.nav-rh-btn'));
+  carregarColabs();
+}
+
+// ══ MODAL APONTAMENTO ════════════════════════════════════════
+async function preencherSelectColabs() {
+  var sel = document.getElementById('aptColab');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  _colabs.forEach(function(c) {
+    sel.innerHTML += '<option value="' + c.id + '">' + c.nome + ' (' + c.tipo.toUpperCase() + ')</option>';
+  });
+}
+
+async function preencherSelectPropostas() {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('propostas')
+    .select('app_id, numero_proposta, titulo, fase')
+    .eq('empresa_id', empId)
+    .in('fase', ['aprovado','andamento','faturado','taf','sat','atrasado'])
+    .order('numero_proposta');
+  _propostas = data || [];
+  var sel = document.getElementById('aptProposta');
+  sel.innerHTML = '<option value="">Selecione a proposta...</option>';
+  _propostas.forEach(function(p) {
+    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.titulo||'Sem título') + '</option>';
+  });
+}
+
+async function abrirModalApontamento() {
+  if (_colabs.length === 0) await carregarColabs();
+  await preencherSelectColabs();
+  await preencherSelectPropostas();
+  document.getElementById('aptData').value = new Date().toISOString().split('T')[0];
+  document.getElementById('aptJornada').value = '08-18';
+  document.getElementById('aptEntrada').value = '08:00';
+  document.getElementById('aptSaida').value = '18:00';
+  document.getElementById('aptIntInicio').value = '12:00';
+  document.getElementById('aptIntFim').value = '13:00';
+  document.getElementById('aptTipoDia').value = 'util';
+  document.getElementById('aptDesc').value = '';
+  document.getElementById('horasPrevia').style.display = 'none';
+  document.getElementById('modalApt').classList.add('on');
+}
+
+async function abrirModalAptColab(colabId) {
+  await abrirModalApontamento();
+  document.getElementById('aptColab').value = colabId;
+  calcularHorasApt();
+}
+
+function fecharModalApt() { document.getElementById('modalApt').classList.remove('on'); }
+
+async function salvarApontamento() {
+  var empId = await getEmpresaId();
+  var colabId   = document.getElementById('aptColab').value;
+  var propostaId= document.getElementById('aptProposta').value;
+  var data      = document.getElementById('aptData').value;
+  var tipoDia   = document.getElementById('aptTipoDia').value;
+  var jornada   = document.getElementById('aptJornada').value;
+  var entrada   = document.getElementById('aptEntrada').value;
+  var saida     = document.getElementById('aptSaida').value;
+  var intIni    = document.getElementById('aptIntInicio').value || '12:00';
+  var intFim    = document.getElementById('aptIntFim').value   || '13:00';
+  var desc      = document.getElementById('aptDesc').value.trim();
+
+  if (!colabId||!propostaId||!data||!entrada||!saida||!desc) {
+    toast('Preencha todos os campos obrigatórios.','err'); return;
+  }
+
+  var jIni='08:00', jFim='18:00';
+  if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
+  else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
+
+  var colab = _colabs.find(function(c){ return c.id===colabId; });
+  var vh = colab ? (colab.valor_hora||0) : 0;
+
+  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+
+  var row = Object.assign({
+    empresa_id:       empId,
+    proposta_id:      propostaId,
+    colaborador_id:   colabId,
+    data:             data,
+    tipo_dia:         tipoDia,
+    regime_jornada:   jornada,
+    jornada_inicio:   jIni,
+    jornada_fim:      jFim,
+    hora_entrada:     entrada,
+    hora_saida:       saida,
+    intervalo_inicio: intIni,
+    intervalo_fim:    intFim,
+    descricao:        desc,
+    valor_hora_base:  vh,
+    status:           'pendente'
+  }, calc);
+
+  var { error } = await sb.from('apontamentos').insert(row);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast('Apontamento registrado!', 'ok');
+  fecharModalApt();
+  carregarApontamentos();
+  carregarKpiApt();
+}
+
+// ══ MODAL DOCUMENTO ══════════════════════════════════════════
+function abrirModalDoc() {
+  ['docTipo','docData','docVenc','docObs'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('docDesc').value='';
+  document.getElementById('modalDocTit').textContent='Adicionar Documento';
+  document.getElementById('modalDoc').classList.add('on');
+}
+function fecharModalDoc() { document.getElementById('modalDoc').classList.remove('on'); }
+async function salvarDoc() {
+  if (!_colabAtivo) return;
+  var row = {
+    colaborador_id: _colabAtivo.id,
+    tipo: document.getElementById('docTipo').value,
+    descricao: document.getElementById('docDesc').value.trim(),
+    data_documento: document.getElementById('docData').value||null,
+    data_vencimento: document.getElementById('docVenc').value||null,
+    observacoes: document.getElementById('docObs').value.trim()
+  };
+  if (!row.tipo) { toast('Selecione o tipo.','err'); return; }
+  var { error } = await sb.from('rh_documentos').insert(row);
+  if (error) { toast('Erro: '+error.message,'err'); return; }
+  toast('Documento salvo!','ok');
+  fecharModalDoc();
+  carregarDocs(_colabAtivo.id);
+}
+async function excluirDoc(id) {
+  if (!confirm('Excluir documento?')) return;
+  await sb.from('rh_documentos').delete().eq('id',id);
+  toast('Excluído.','ok');
+  if (_colabAtivo) carregarDocs(_colabAtivo.id);
+}
+
+// ══ MODAL SAÚDE ══════════════════════════════════════════════
+function abrirModalSaude(tipo) {
+  ['saudeTipo','saudeInst','saudeEmissao','saudeVenc','saudeCH','saudeObs'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('saudeResult').value='';
+  if (tipo==='aso') document.getElementById('saudeTipo').value='aso_per';
+  document.getElementById('modalSaude').classList.add('on');
+}
+function fecharModalSaude() { document.getElementById('modalSaude').classList.remove('on'); }
+async function salvarSaude() {
+  if (!_colabAtivo) return;
+  var row = {
+    colaborador_id: _colabAtivo.id,
+    tipo: document.getElementById('saudeTipo').value,
+    instituicao: document.getElementById('saudeInst').value.trim(),
+    data_emissao: document.getElementById('saudeEmissao').value||null,
+    data_vencimento: document.getElementById('saudeVenc').value||null,
+    carga_horaria: parseInt(document.getElementById('saudeCH').value)||null,
+    resultado: document.getElementById('saudeResult').value||null,
+    observacoes: document.getElementById('saudeObs').value.trim()
+  };
+  if (!row.tipo||!row.data_emissao||!row.data_vencimento) { toast('Preencha tipo, emissão e vencimento.','err'); return; }
+  var { error } = await sb.from('rh_saude').insert(row);
+  if (error) { toast('Erro: '+error.message,'err'); return; }
+  toast('Registro salvo!','ok');
+  fecharModalSaude();
+  carregarSaude(_colabAtivo.id);
+  gerarAlertas();
+}
+async function excluirSaude(id) {
+  if (!confirm('Excluir registro?')) return;
+  await sb.from('rh_saude').delete().eq('id',id);
+  toast('Excluído.','ok');
+  if (_colabAtivo) carregarSaude(_colabAtivo.id);
+}
+
+// ══ MODAL EPI ════════════════════════════════════════════════
+function abrirModalEpi() {
+  ['epiItem','epiDesc','epiCA','epiEntrega','epiSubs','epiObs'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('epiQtd').value='1';
+  document.getElementById('modalEpi').classList.add('on');
+}
+function fecharModalEpi() { document.getElementById('modalEpi').classList.remove('on'); }
+async function salvarEpi() {
+  if (!_colabAtivo) return;
+  var row = {
+    colaborador_id: _colabAtivo.id,
+    item: document.getElementById('epiItem').value,
+    descricao: document.getElementById('epiDesc').value.trim(),
+    ca: document.getElementById('epiCA').value.trim(),
+    data_entrega: document.getElementById('epiEntrega').value||null,
+    data_substituicao: document.getElementById('epiSubs').value||null,
+    quantidade: parseInt(document.getElementById('epiQtd').value)||1,
+    observacoes: document.getElementById('epiObs').value.trim()
+  };
+  if (!row.item||!row.data_entrega) { toast('Preencha EPI e data de entrega.','err'); return; }
+  var { error } = await sb.from('rh_epis').insert(row);
+  if (error) { toast('Erro: '+error.message,'err'); return; }
+  toast('EPI registrado!','ok');
+  fecharModalEpi();
+  carregarEpis(_colabAtivo.id);
+}
+async function excluirEpi(id) {
+  if (!confirm('Excluir registro de EPI?')) return;
+  await sb.from('rh_epis').delete().eq('id',id);
+  toast('Excluído.','ok');
+  if (_colabAtivo) carregarEpis(_colabAtivo.id);
+}
+
+// ══ BOLETINS ═════════════════════════════════════════════════
+async function carregarBoletins() {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('boletins')
+    .select('*, colaboradores(nome)')
+    .eq('empresa_id', empId)
+    .order('created_at', {ascending:false});
+  var el = document.getElementById('boletinsList');
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum boletim gerado ainda.</div>';
+    return;
+  }
+  var sLabels = {rascunho:'Rascunho',aguard_prestador:'Ag. Prestador',aguard_empresa:'Ag. Empresa',valido:'Válido',cancelado:'Cancelado'};
+  el.innerHTML = data.map(function(b) {
+    var nome = b.colaboradores ? b.colaboradores.nome : '—';
+    var sBdg = b.status==='valido'?'bdg-green':b.status==='aguard_prestador'||b.status==='aguard_empresa'?'bdg-yellow':'bdg-gray';
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📋</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">' + b.numero + ' — ' + nome + '</div>'
+        + '<div class="doc-meta">' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim)
+          + ' · ' + b.horas_total + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
+      + '</div>'
+      + '<span class="bdg ' + sBdg + '">' + (sLabels[b.status]||b.status) + '</span>'
+    + '</div>';
+  }).join('');
+}
+
+async function abrirModalGerarBoletim() {
+  // TODO: implementar geração de boletim na próxima entrega
+  toast('Geração de boletim com assinatura digital — em breve!', 'ok');
+}
+
+// ══ COMUNICAÇÃO COM SHELL PARENT ════════════════════════════
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'SHOW_SEC') {
+    var sec = e.data.payload || e.data.sec;
+    var btn = document.querySelector('.nav-rh-btn[onclick*="' + sec + '"]');
+    showSec(sec, btn);
+  }
+  if (e.data.type === 'SET_TEMA') {
+    document.body.classList.toggle('light', e.data.tema === 'light');
+  }
+  if (e.data.type === 'SET_EMPRESA') {
+    _empresaId = e.data.empresaId;
+    carregarColabs();
+  }
+});
+
+// ══ INICIALIZAÇÃO ════════════════════════════════════════════
+(async function init() {
+  // Herdar tema do parent
+  try {
+    var tema = window.parent.localStorage.getItem('tf_theme') || 'dark';
+    document.body.classList.toggle('light', tema === 'light');
+  } catch(e) {}
+
+  // Criar tabelas auxiliares se não existirem (via SQL já foi feito)
+  // Carregar colaboradores
+  await carregarColabs();
+  await gerarAlertas();
+})();
+</script>
+</body>
+</html>
