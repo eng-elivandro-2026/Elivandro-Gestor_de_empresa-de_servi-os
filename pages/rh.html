@@ -760,21 +760,44 @@ function showTab(id, btn) {
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
 
-  // 1) Tentar parent primeiro (rápido se já carregado)
+  // 1) Tentar parent diretamente (funciona se iframe carregou depois da empresa estar ativa)
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
       var fromParent = window.parent.getEmpresaAtivaId();
-      if (fromParent) { _empresaId = fromParent; return _empresaId; }
+      if (fromParent) {
+        _empresaId = fromParent;
+        console.log('[RH] empresa_id via parent.getEmpresaAtivaId:', _empresaId);
+        return _empresaId;
+      }
     }
   } catch(e) {}
 
-  // 2) Fallback direto no Supabase — sempre funciona pois RLS está OFF
+  // 2) Solicitar empresa ao parent via postMessage e aguardar resposta (até 2s)
+  //    Resolve a race condition: parent já tem empresa ativa mas não re-envia SET_EMPRESA
+  await new Promise(function(resolve) {
+    var done = false;
+    var timer = setTimeout(function() { if (!done) { done = true; resolve(); } }, 2000);
+    var handler = function(e) {
+      if (e.data && e.data.type === 'SET_EMPRESA' && e.data.empresaId && !done) {
+        done = true;
+        clearTimeout(timer);
+        window.removeEventListener('message', handler);
+        _empresaId = e.data.empresaId;
+        resolve();
+      }
+    };
+    window.addEventListener('message', handler);
+    try { window.parent.postMessage({ type: 'REQUEST_EMPRESA' }, '*'); } catch(e) {}
+  });
+
+  if (_empresaId) return _empresaId;
+
+  // 3) Fallback DB: colaborador_empresas (RLS off — sempre funciona)
   try {
     var auth = await sb.auth.getUser();
     if (!auth.data || !auth.data.user) return null;
     var authUid = auth.data.user.id;
 
-    // Prioridade: colaborador_empresas (RLS off — funciona em qualquer contexto)
     var { data: colab } = await sb.from('colaboradores')
       .select('id').eq('auth_id', authUid).eq('ativo', true).maybeSingle();
     if (colab) {
@@ -783,12 +806,12 @@ async function getEmpresaId() {
         .eq('ativo', true).limit(1).maybeSingle();
       if (ce && ce.empresa_id) {
         _empresaId = ce.empresa_id;
-        console.log('[RH] empresa_id resolvido via colaborador_empresas:', _empresaId);
+        console.log('[RH] empresa_id via colaborador_empresas:', _empresaId);
         return _empresaId;
       }
     }
 
-    // Secundário: usuarios → usuario_empresas (para perfil admin/gestor)
+    // Fallback admin: usuarios → usuario_empresas
     var { data: usr } = await sb.from('usuarios')
       .select('id').eq('auth_id', authUid).maybeSingle();
     if (usr) {
@@ -797,7 +820,7 @@ async function getEmpresaId() {
         .eq('ativo', true).limit(1).maybeSingle();
       if (ue && ue.empresa_id) {
         _empresaId = ue.empresa_id;
-        console.log('[RH] empresa_id resolvido via usuario_empresas:', _empresaId);
+        console.log('[RH] empresa_id via usuario_empresas:', _empresaId);
         return _empresaId;
       }
     }
@@ -2266,16 +2289,8 @@ async function salvarAdicionarEmpresa() {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Carregar empresa — tenta até 3x com backoff (resolve race condition do parent)
+  // Carregar empresa — getEmpresaId já aguarda SET_EMPRESA do parent se necessário
   var empId = await getEmpresaId();
-  if (!empId) {
-    await new Promise(function(r){ setTimeout(r, 800); });
-    empId = await getEmpresaId();
-  }
-  if (!empId) {
-    await new Promise(function(r){ setTimeout(r, 1500); });
-    empId = await getEmpresaId();
-  }
 
   // Atualizar label de empresa no header do RH
   try {
