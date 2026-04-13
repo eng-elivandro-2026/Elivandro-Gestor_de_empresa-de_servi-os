@@ -2051,6 +2051,24 @@ async function abrirBoletimGestor(bolId) {
   document.getElementById('modalVerBolGestor').classList.add('on');
 }
 
+// ── Imprimir via iframe (sem abrir nova aba) ─────────────────
+function _imprimirHtml(html) {
+  var old = document.getElementById('_printIframe');
+  if (old) old.remove();
+  var iframe = document.createElement('iframe');
+  iframe.id = '_printIframe';
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0';
+  document.body.appendChild(iframe);
+  // Remove botões no-print do html antes de injetar
+  var cleanHtml = html.replace(/<div class="no-print"[\s\S]*?<\/div>\s*/,'');
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(cleanHtml);
+  iframe.contentDocument.close();
+  setTimeout(function() {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e) {}
+  }, 400);
+}
+
 // ── Imprimir boletim ─────────────────────────────────────────
 async function imprimirBoletim() {
   if (!_bolGestorAtivo) return;
@@ -2207,9 +2225,7 @@ async function imprimirBoletim() {
     + '</div>'
     + '</body></html>';
 
-  var win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
+  _imprimirHtml(html);
 }
 
 
