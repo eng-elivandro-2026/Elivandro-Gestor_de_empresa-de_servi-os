@@ -760,67 +760,28 @@ function showTab(id, btn) {
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
 
-  // 1) Tentar parent diretamente (funciona se iframe carregou depois da empresa estar ativa)
+  // Tentar parent primeiro (rápido se já carregado)
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
       var fromParent = window.parent.getEmpresaAtivaId();
-      if (fromParent) {
-        _empresaId = fromParent;
-        console.log('[RH] empresa_id via parent.getEmpresaAtivaId:', _empresaId);
-        return _empresaId;
-      }
+      if (fromParent) { _empresaId = fromParent; return _empresaId; }
     }
   } catch(e) {}
 
-  // 2) Solicitar empresa ao parent via postMessage e aguardar resposta (até 2s)
-  //    Resolve a race condition: parent já tem empresa ativa mas não re-envia SET_EMPRESA
-  await new Promise(function(resolve) {
-    var done = false;
-    var timer = setTimeout(function() { if (!done) { done = true; resolve(); } }, 2000);
-    var handler = function(e) {
-      if (e.data && e.data.type === 'SET_EMPRESA' && e.data.empresaId && !done) {
-        done = true;
-        clearTimeout(timer);
-        window.removeEventListener('message', handler);
-        _empresaId = e.data.empresaId;
-        resolve();
-      }
-    };
-    window.addEventListener('message', handler);
-    try { window.parent.postMessage({ type: 'REQUEST_EMPRESA' }, '*'); } catch(e) {}
-  });
-
-  if (_empresaId) return _empresaId;
-
-  // 3) Fallback DB: colaborador_empresas (RLS off — sempre funciona)
+  // Buscar direto no Supabase pelo usuário logado
   try {
     var auth = await sb.auth.getUser();
     if (!auth.data || !auth.data.user) return null;
-    var authUid = auth.data.user.id;
+    var uid = auth.data.user.id;
 
-    var { data: colab } = await sb.from('colaboradores')
-      .select('id').eq('auth_id', authUid).eq('ativo', true).maybeSingle();
-    if (colab) {
-      var { data: ce } = await sb.from('colaborador_empresas')
-        .select('empresa_id').eq('colaborador_id', colab.id)
-        .eq('ativo', true).limit(1).maybeSingle();
-      if (ce && ce.empresa_id) {
-        _empresaId = ce.empresa_id;
-        console.log('[RH] empresa_id via colaborador_empresas:', _empresaId);
-        return _empresaId;
-      }
-    }
-
-    // Fallback admin: usuarios → usuario_empresas
     var { data: usr } = await sb.from('usuarios')
-      .select('id').eq('auth_id', authUid).maybeSingle();
+      .select('id').eq('auth_id', uid).maybeSingle();
     if (usr) {
       var { data: ue } = await sb.from('usuario_empresas')
         .select('empresa_id').eq('usuario_id', usr.id)
         .eq('ativo', true).limit(1).maybeSingle();
       if (ue && ue.empresa_id) {
         _empresaId = ue.empresa_id;
-        console.log('[RH] empresa_id via usuario_empresas:', _empresaId);
         return _empresaId;
       }
     }
@@ -2289,8 +2250,13 @@ async function salvarAdicionarEmpresa() {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Carregar empresa — getEmpresaId já aguarda SET_EMPRESA do parent se necessário
+  // Carregar empresa e dados
   var empId = await getEmpresaId();
+  if (!empId) {
+    // Última tentativa: esperar 1s e tentar de novo
+    await new Promise(function(r){ setTimeout(r, 1000); });
+    empId = await getEmpresaId();
+  }
 
   // Atualizar label de empresa no header do RH
   try {
