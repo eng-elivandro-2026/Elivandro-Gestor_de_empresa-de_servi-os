@@ -939,20 +939,24 @@ async function carregarApontamentos() {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
-  // Montar mapa de proposta_id → numero_proposta
+  // Montar mapa de proposta_id → {numero, titulo, cliente}
   var mapaProps = {};
-  _propostas.forEach(function(p){ mapaProps[p.app_id] = p.numero_proposta; });
-  // Se _propostas vazio, buscar do Supabase
+  _propostas.forEach(function(p){ mapaProps[p.app_id] = p; });
   if (!_propostas.length) {
     var { data: pData } = await sb.from('propostas')
-      .select('app_id, numero_proposta').eq('empresa_id', empId);
-    (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p.numero_proposta; });
+      .select('app_id, numero_proposta, titulo, cliente').eq('empresa_id', empId);
+    (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
   }
 
   tbody.innerHTML = data.map(function(a) {
     var sBdg = a.status==='aprovado'?'bdg-green':a.status==='pendente'?'bdg-yellow':a.status==='rejeitado'?'bdg-red':'bdg-gray';
     var nome = a.colaboradores ? a.colaboradores.nome : '—';
-    var numProp = mapaProps[a.proposta_id] || a.proposta_id || '—';
+    var pInfo = mapaProps[a.proposta_id];
+    var numProp = pInfo
+      ? '<strong>' + (pInfo.numero_proposta||a.proposta_id) + '</strong>'
+        + (pInfo.titulo ? '<br><span style="font-size:.68rem;color:var(--text3)">' + pInfo.titulo + '</span>' : '')
+        + (pInfo.cliente ? '<br><span style="font-size:.68rem;color:var(--text2)">' + pInfo.cliente + '</span>' : '')
+      : (a.proposta_id||'—');
     return '<tr>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
       + '<td>' + fmtData(a.data) + '</td>'
@@ -1320,7 +1324,7 @@ async function preencherSelectPropostas() {
   var sel = document.getElementById('aptProposta');
   sel.innerHTML = '<option value="">Selecione a proposta...</option>';
   _propostas.forEach(function(p) {
-    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.titulo||'Sem título') + '</option>';
+    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + (p.cliente ? ' — ' + p.cliente : '') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
   });
 }
 
