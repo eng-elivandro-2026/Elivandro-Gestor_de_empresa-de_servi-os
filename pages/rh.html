@@ -2179,7 +2179,7 @@ async function imprimirBoletim() {
     ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Valor</th><th>Descrição</th>'
     : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Valor</th><th>Descrição</th>';
 
-  var fmtAss = function(dt){ return dt ? new Date(dt).toLocaleString('pt-BR') : '—'; };
+  var fmtAss = function(dt){ return dt ? new Date(dt).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) : '—'; };
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head>'
     + '<meta charset="UTF-8"><title>' + titulo + ' — ' + bol.numero + '</title>'
