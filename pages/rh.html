@@ -1947,9 +1947,13 @@ async function abrirBoletimGestor(bolId) {
   var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
   document.getElementById('verBolGestorTit').textContent = titulo;
 
-  // Buscar apontamentos
-  var { data: apts } = await sb.from('apontamentos')
-    .select('*').in('id', bol.apontamentos_ids||[]).order('data',{ascending:true});
+  // Buscar apontamentos — evitar .in() com array vazio (trava o Supabase)
+  var apts = [];
+  if (bol.apontamentos_ids && bol.apontamentos_ids.length) {
+    var { data: aptsData } = await sb.from('apontamentos')
+      .select('*').in('id', bol.apontamentos_ids).order('data',{ascending:true});
+    apts = aptsData || [];
+  }
 
   // Buscar empresa
   var { data: emp } = await sb.from('empresas')
@@ -2122,9 +2126,13 @@ async function imprimirBoletim() {
   var titulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
   var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
 
-  // Buscar apontamentos
-  var { data: apts } = await sb.from('apontamentos')
-    .select('*').in('id', bol.apontamentos_ids||[]).order('data',{ascending:true});
+  // Buscar apontamentos — evitar .in() com array vazio (trava o Supabase)
+  var apts = [];
+  if (bol.apontamentos_ids && bol.apontamentos_ids.length) {
+    var { data: aptsData } = await sb.from('apontamentos')
+      .select('*').in('id', bol.apontamentos_ids).order('data',{ascending:true});
+    apts = aptsData || [];
+  }
 
   // Buscar empresa
   var { data: emp } = await sb.from('empresas')
