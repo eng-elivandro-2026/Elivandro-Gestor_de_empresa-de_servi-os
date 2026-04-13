@@ -14,31 +14,48 @@
   window.carregarEmpresasUsuario = async function () {
     if (!window.sbClient) return [];
     try {
-      // Buscar perfil e empresas vinculadas ao usuário logado
       var { data: authData } = await window.sbClient.auth.getUser();
       if (!authData || !authData.user) return [];
 
+      var authId = authData.user.id;
+
+      // Buscar usuário pelo auth_id
       var { data: usuario } = await window.sbClient
         .from('usuarios')
         .select('id, nome, perfil')
-        .eq('auth_id', authData.user.id)
-        .single();
+        .eq('auth_id', authId)
+        .maybeSingle();
 
-      if (!usuario) return [];
+      if (!usuario) {
+        console.warn('[multi-empresa] usuário não encontrado para auth_id:', authId);
+        return [];
+      }
       window._perfilUsuario = usuario.perfil;
 
-      var { data: vinculos } = await window.sbClient
+      // Buscar empresas vinculadas pelo usuario_id (não depende de RLS/auth.uid)
+      var { data: vinculos, error: errV } = await window.sbClient
         .from('usuario_empresas')
-        .select('empresa_id, empresas(id, nome, nome_curto, cnpj, regime_fiscal, logo_url)')
+        .select('empresa_id')
         .eq('usuario_id', usuario.id)
         .eq('ativo', true);
 
-      var empresas = (vinculos || []).map(function (v) {
-        return v.empresas;
-      }).filter(Boolean);
+      if (errV || !vinculos || !vinculos.length) {
+        console.warn('[multi-empresa] sem vínculos de empresa');
+        return [];
+      }
 
-      window._empresasUsuario = empresas;
-      return empresas;
+      var ids = vinculos.map(function(v){ return v.empresa_id; });
+
+      // Buscar dados das empresas pelos IDs
+      var { data: empresas } = await window.sbClient
+        .from('empresas')
+        .select('id, nome, nome_curto, cnpj, regime_fiscal, logo_url')
+        .in('id', ids)
+        .eq('ativo', true);
+
+      window._empresasUsuario = empresas || [];
+      console.log('%c[multi-empresa] ' + (empresas||[]).length + ' empresa(s) carregada(s) para ' + usuario.nome, 'color:#f0a500');
+      return empresas || [];
 
     } catch (e) {
       console.warn('[multi-empresa] erro ao carregar empresas:', e);
