@@ -2056,10 +2056,15 @@ async function abrirBoletimGestor(bolId) {
   var { data: authNow } = await sb.auth.getUser();
   var authUidNow = authNow && authNow.user ? authNow.user.id : null;
   var euSouOColaborador = false;
-  if (authUidNow && bol.colaborador_id) {
+  if (bol.colaborador_id) {
     var { data: colabAuth } = await sb.from('colaboradores')
-      .select('auth_id').eq('id', bol.colaborador_id).maybeSingle();
-    euSouOColaborador = !!(colabAuth && colabAuth.auth_id === authUidNow);
+      .select('auth_id, email').eq('id', bol.colaborador_id).maybeSingle();
+    if (colabAuth) {
+      var emailLogado = authNow && authNow.user ? (authNow.user.email||'') : '';
+      // Match por auth_id OU por e-mail (cobre o caso de contas diferentes)
+      euSouOColaborador = (colabAuth.auth_id === authUidNow)
+                       || (emailLogado && colabAuth.email === emailLogado);
+    }
   }
 
   // Mostrar área de prestador se eu sou o colaborador e ainda não assinei
