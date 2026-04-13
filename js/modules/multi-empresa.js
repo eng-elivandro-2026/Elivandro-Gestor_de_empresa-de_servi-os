@@ -240,6 +240,22 @@
     return window._perfilUsuario;
   };
 
+  // ── Responder pedidos de empresa vindos dos iframes ──────
+  // Resolve race condition: iframe carrega depois da empresa já estar ativa,
+  // então nunca recebeu o SET_EMPRESA original.
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'REQUEST_EMPRESA' && window._empresaAtiva) {
+      try {
+        e.source.postMessage({
+          type:             'SET_EMPRESA',
+          empresaId:        window._empresaAtiva.id,
+          empresaNome:      window._empresaAtiva.nome,
+          empresaNomeCurto: window._empresaAtiva.nome_curto
+        }, '*');
+      } catch(err) {}
+    }
+  });
+
   console.log('%c[multi-empresa] carregado', 'color:#f0a500;font-weight:700');
 
 })();
