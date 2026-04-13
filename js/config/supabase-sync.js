@@ -21,7 +21,7 @@
 
   // ── Converter proposta para linha do Supabase ─────────────
   function propToRow(p) {
-    return {
+    var row = {
       app_id:          String(p.id || ''),
       numero_proposta: String(p.num || ''),
       titulo:          String(p.tit || ''),
@@ -31,6 +31,12 @@
       dados_json:      p,
       updated_at:      new Date().toISOString()
     };
+    // Incluir empresa_id se disponível
+    var empId = (typeof getEmpresaAtivaId === 'function')
+      ? getEmpresaAtivaId()
+      : (window._empresaAtiva ? window._empresaAtiva.id : null);
+    if (empId) row.empresa_id = empId;
+    return row;
   }
 
   // ════════════════════════════════════════════════════════
@@ -63,12 +69,22 @@
     return res;
   };
 
-  window.sbCarregarNuvem = async function () {
+  window.sbCarregarNuvem = async function (empresaId) {
     if (!window.sbClient) return;
-    var res = await window.sbClient
+    // Usar empresa_id informado ou pegar da empresa ativa
+    var empId = empresaId
+      || (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
+      || (window._empresaAtiva ? window._empresaAtiva.id : null);
+
+    var query = window.sbClient
       .from('propostas')
       .select('dados_json, app_id')
       .order('updated_at', { ascending: false });
+
+    // Filtrar por empresa se tiver o ID
+    if (empId) query = query.eq('empresa_id', empId);
+
+    var res = await query;
     if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
     var props = (res.data || []).map(function (r) {
       var p = r.dados_json || {};
@@ -77,7 +93,7 @@
     });
     if (props.length) {
       LS('tf_props', props);
-      console.log('%c' + props.length + ' proposta(s) carregada(s) da nuvem', 'color:#58a6ff;font-weight:700');
+      console.log('%c' + props.length + ' proposta(s) carregada(s) da nuvem' + (empId ? ' [empresa filtrada]' : ''), 'color:#58a6ff;font-weight:700');
     }
     return props;
   };
