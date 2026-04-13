@@ -390,6 +390,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div class="modal-body" style="max-height:68vh;overflow-y:auto">
       <div id="verBolGestorContent"></div>
+      <!-- Área editar observações da empresa (fora do hash) -->
+      <div id="areaEditarObs" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">📝 Observações da Empresa</div>
+        <textarea id="txtObsEmpresa" style="width:100%;min-height:80px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.8rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn bs" style="flex:1" onclick="salvarObservacoesBoletim(_bolGestorAtivo.id, document.getElementById('txtObsEmpresa').value)">💾 Salvar</button>
+          <button class="btn bg" onclick="document.getElementById('areaEditarObs').style.display='none'">Cancelar</button>
+        </div>
+      </div>
       <!-- Área assinar como PRESTADOR (dono que também é colaborador) -->
       <div id="areaAssinarPrestador" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:2px solid var(--green);border-radius:var(--r)">
         <div style="font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:.35rem">✍️ Assinar como Prestador</div>
@@ -419,6 +428,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharVerBolGestor()">Fechar</button>
       <button class="btn bs" id="btnImprimirBol" onclick="imprimirBoletim()" style="display:none">🖨️ Imprimir / PDF</button>
+      <button class="btn" id="btnEditarObs" onclick="abrirEditarObs()" style="display:none">📝 Obs.</button>
+      <button class="btn" id="btnRevisarBol" onclick="revisarBoletim(_bolGestorAtivo.id)" style="display:none">✓ Revisado</button>
       <button class="btn bd" id="btnCancelarBol" style="display:none" onclick="cancelarBoletim()">🗑 Cancelar Documento</button>
     </div>
   </div>
@@ -1761,6 +1772,7 @@ async function carregarBoletins() {
           + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
       + '</div>'
       + '<span class="bdg ' + sBdg + '">' + (sLabels[b.status]||b.status) + '</span>'
+      + (b.revisado_em ? ' <span class="bdg bdg-gray" style="font-size:.6rem;margin-left:.25rem">✓ Rev</span>' : '')
     + '</div>';
   }).join('');
 }
@@ -1842,6 +1854,14 @@ async function previewApontamentosBol() {
 
   if (error) { toast('Erro ao buscar apontamentos.','err'); return; }
 
+  // Buscar dados das propostas para exibição no preview
+  var _previewPropostaMap = {};
+  var _pIdsPrev = (apts||[]).map(function(a){ return a.proposta_id; }).filter(Boolean);
+  if (_pIdsPrev.length) {
+    var { data: _propsPrev } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').in('app_id', _pIdsPrev);
+    (_propsPrev||[]).forEach(function(p){ _previewPropostaMap[p.app_id] = p; });
+  }
+
   _bolAptPreview = apts || [];
   var preview = document.getElementById('bolPreview');
   var tabela  = document.getElementById('bolPreviewTabela');
@@ -1886,7 +1906,7 @@ async function previewApontamentosBol() {
         totV += Number(a.valor_total||0);
         return '<tr style="border-bottom:1px solid var(--border)">'
           + '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>'
-          + '<td style="padding:.3rem .5rem;color:var(--text2)">' + (a.proposta_id||'—').slice(0,8) + '...</td>'
+          + '<td style="padding:.3rem .5rem;color:var(--text2)">' + ((_previewPropostaMap[a.proposta_id]||{}).numero_proposta || (a.proposta_id ? a.proposta_id.slice(0,8) : '—')) + '</td>'
           + '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
           + '<td style="padding:.3rem .5rem;text-align:right;color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
           + '</tr>';
@@ -1976,6 +1996,14 @@ async function abrirBoletimGestor(bolId) {
     apts = aptsData || [];
   }
 
+  // Buscar dados das propostas vinculadas aos apontamentos
+  _bolGestorAtivo._propostaMap = {};
+  var _aptPropostaIds = (apts||[]).map(function(a){ return a.proposta_id; }).filter(Boolean);
+  if (_aptPropostaIds.length) {
+    var { data: _propsData } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').in('app_id', _aptPropostaIds);
+    (_propsData||[]).forEach(function(p){ _bolGestorAtivo._propostaMap[p.app_id] = p; });
+  }
+
   // Buscar empresa
   var { data: emp } = await sb.from('empresas')
     .select('nome,cnpj').eq('id', bol.empresa_id).maybeSingle();
@@ -1994,6 +2022,9 @@ async function abrirBoletimGestor(bolId) {
   html += '<div><strong>CPF/CNPJ:</strong> ' + (colab.documento||'—') + '</div>';
   html += '<div><strong>Empresa:</strong> ' + (emp?emp.nome:'—') + '</div>';
   html += '<div><strong>Período:</strong> ' + fmtData(bol.periodo_inicio) + ' a ' + fmtData(bol.periodo_fim) + '</div>';
+  if (bol.revisado_em) {
+    html += '<div style="grid-column:1/-1;border-top:1px solid #dee2e6;padding-top:.3rem;margin-top:.2rem;font-size:10px"><strong>Revisado por:</strong> ' + (bol.revisado_por||'—') + ' em ' + fmtBrasilia(bol.revisado_em) + '</div>';
+  }
   html += '</div>';
 
   // Tabela de apontamentos
@@ -2001,6 +2032,8 @@ async function abrirBoletimGestor(bolId) {
   html += '<thead><tr style="background:#1e3a5f;color:white">';
   html += '<th style="padding:.4rem .5rem;text-align:left">Data</th>';
   if (!isClt) html += '<th style="padding:.4rem .5rem;text-align:center">Entrada</th><th style="padding:.4rem .5rem;text-align:center">Saída</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Proposta</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Cliente</th>';
   html += '<th style="padding:.4rem .5rem;text-align:center">Horas</th>';
   html += '<th style="padding:.4rem .5rem;text-align:right">Valor</th>';
   html += '<th style="padding:.4rem .5rem;text-align:left">Descrição</th>';
@@ -2009,8 +2042,11 @@ async function abrirBoletimGestor(bolId) {
   (apts||[]).forEach(function(a, i) {
     var bg = i%2===0?'#ffffff':'#f8f9fa';
     html += '<tr style="background:' + bg + ';border-bottom:1px solid #dee2e6">';
+    var _prop = (_bolGestorAtivo._propostaMap||{})[a.proposta_id] || {};
     html += '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>';
     if (!isClt) html += '<td style="padding:.3rem .5rem;text-align:center">' + (a.hora_entrada||'—') + '</td><td style="padding:.3rem .5rem;text-align:center">' + (a.hora_saida||'—') + '</td>';
+    html += '<td style="padding:.3rem .5rem;font-size:10px">' + (_prop.numero_proposta||'—') + '</td>';
+    html += '<td style="padding:.3rem .5rem;font-size:10px;color:#6c757d">' + (_prop.cliente||'—') + '</td>';
     html += '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>';
     html += '<td style="padding:.3rem .5rem;text-align:right;color:#198754;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>';
     html += '<td style="padding:.3rem .5rem;color:#6c757d;font-size:10px">' + (a.descricao||'') + '</td>';
@@ -2018,7 +2054,7 @@ async function abrirBoletimGestor(bolId) {
   });
 
   html += '</tbody><tfoot><tr style="background:#1e3a5f;color:white">';
-  html += '<td colspan="' + (isClt?'3':'5') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
+  html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
   html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoeda(bol.valor_total) + '</td>';
   html += '<td style="padding:.4rem .5rem"></td></tr></tfoot></table>';
 
@@ -2052,6 +2088,16 @@ async function abrirBoletimGestor(bolId) {
   }
   html += '</div></div></div>';
 
+  // Observações da empresa — sempre renderizadas (parte do hash)
+  html += '<div style="border:1px solid #dee2e6;border-radius:6px;padding:.75rem;margin-bottom:.75rem">';
+  html += '<div style="font-weight:700;font-size:11px;margin-bottom:.4rem;color:#495057">📋 Observações da Empresa</div>';
+  if (bol.observacoes_empresa) {
+    html += '<div style="font-size:11px;color:#212529;white-space:pre-wrap">' + bol.observacoes_empresa.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+  } else {
+    html += '<div style="font-size:11px;color:#adb5bd;font-style:italic">Sem observações registradas.</div>';
+  }
+  html += '</div>';
+
   // Validade jurídica
   if (bol.status === 'valido') {
     html += '<div style="border:2px solid #198754;border-radius:6px;padding:.75rem;margin-bottom:.75rem;background:#d1fae5">';
@@ -2069,6 +2115,13 @@ async function abrirBoletimGestor(bolId) {
   html += '<strong>Código Civil — Lei 10.406/2002</strong> — Art. 107: A validade da declaração de vontade não depende de forma especial, salvo quando a lei expressamente a exigir.<br><br>';
   html += 'As assinaturas eletrônicas registradas neste documento — com identificação das partes, data, hora, IP e hash SHA-256 — constituem prova de autoria e concordância com o conteúdo aqui descrito.';
   html += '</div>';
+
+  // Termo de concordância — sempre presente em todos os documentos
+  html += '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:.75rem;margin-top:.75rem;font-size:11px;color:#856404">';
+  html += '<strong style="display:block;margin-bottom:.3rem">TERMO DE CONCORDÂNCIA</strong>';
+  html += 'Ao assinar eletronicamente este documento, as partes declaram estar cientes e de acordo com todos os dados, horas, valores e informações nele registrados, reconhecendo-os como verídicos e completos, nos termos da legislação vigente.';
+  html += '</div>';
+
   html += '</div>';
 
   document.getElementById('verBolGestorContent').innerHTML = html;
@@ -2098,6 +2151,9 @@ async function abrirBoletimGestor(bolId) {
 
   btnCanc.style.display = bol.status !== 'cancelado' ? 'inline-flex' : 'none';
   document.getElementById('btnImprimirBol').style.display = 'inline-flex';
+  document.getElementById('btnEditarObs').style.display = (bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  document.getElementById('btnRevisarBol').style.display = (!bol.revisado_em && bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  document.getElementById('areaEditarObs').style.display = 'none';
   document.getElementById('modalVerBolGestor').classList.add('on');
 }
 
@@ -2169,26 +2225,31 @@ async function imprimirBoletim() {
   // Linhas da tabela
   var linhas = (apts||[]).map(function(a, i){
     var bg = i%2===0?'#ffffff':'#f5f5f5';
+    var _pmp = (_bolGestorAtivo._propostaMap||{})[a.proposta_id] || {};
     var cols = isClt
       ? '<td>' + fmtData(a.data) + '</td>'
         + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
         + '<td style="text-align:center">' + (a.hora_saida||'—') + '</td>'
         + '<td style="text-align:center">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
         + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+        + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
+        + '<td>' + (_pmp.cliente||'—') + '</td>'
         + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>'
       : '<td>' + fmtData(a.data) + '</td>'
         + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
         + '<td style="text-align:center">' + (a.hora_saida||'—') + '</td>'
         + '<td style="text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
+        + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
+        + '<td>' + (_pmp.cliente||'—') + '</td>'
         + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>';
     return '<tr style="background:' + bg + '">' + cols + '</tr>';
   }).join('');
 
   var headers = isClt
-    ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Valor</th><th>Descrição</th>'
-    : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Valor</th><th>Descrição</th>';
+    ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Proposta</th><th>Cliente</th><th>Valor</th><th>Descrição</th>'
+    : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Proposta</th><th>Cliente</th><th>Valor</th><th>Descrição</th>';
 
   var fmtAss = function(dt) {
     if (!dt) return '—';
@@ -2254,12 +2315,13 @@ async function imprimirBoletim() {
     + '<div><div class="info-label">CNPJ da Empresa</div><div class="info-val">' + (emp?emp.cnpj:'—') + '</div></div>'
     + '<div><div class="info-label">Período</div><div class="info-val">' + fmtData(bol.periodo_inicio) + ' a ' + fmtData(bol.periodo_fim) + '</div></div>'
     + '<div><div class="info-label">Total Geral</div><div class="info-val" style="color:#1a7a3c">' + totV + ' · ' + totH + 'h</div></div>'
+    + (bol.revisado_em ? '<div style="grid-column:1/-1"><div class="info-label">Revisado por</div><div class="info-val">' + (bol.revisado_por||'—') + ' — ' + fmtAss(bol.revisado_em) + '</div></div>' : '')
     + '</div>'
 
     // Tabela de apontamentos
     + '<div class="section-title">Detalhamento de Horas</div>'
     + '<table><thead><tr>' + headers + '</tr></thead><tbody>' + linhas + '</tbody>'
-    + '<tfoot><tr class="total-row"><td colspan="' + (isClt?'5':'4') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr></tfoot>'
+    + '<tfoot><tr class="total-row"><td colspan="' + (isClt?'7':'6') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr></tfoot>'
     + '</table>'
 
     // Registro de assinaturas
@@ -2285,6 +2347,15 @@ async function imprimirBoletim() {
       + '<strong>Hash do Documento Final (SHA-256):</strong><br>'
       + '<span style="font-family:monospace">' + bol.hash_documento_final + '</span>'
       + '</div>' : '')
+
+    // Observações da empresa
+    + (bol.observacoes_empresa ? '<div class="section-title">Observações da Empresa</div><div style="padding:8px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;margin-bottom:16px;font-size:10px;white-space:pre-wrap">' + bol.observacoes_empresa.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' : '')
+
+    // Termo de concordância — sempre presente
+    + '<div class="section-title">Termo de Concordância</div>'
+    + '<div style="padding:8px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;margin-bottom:16px;font-size:9px;color:#856404">'
+    + 'Ao assinar eletronicamente este documento, as partes declaram estar cientes e de acordo com todos os dados, horas, valores e informações nele registrados, reconhecendo-os como verídicos e completos, nos termos da legislação vigente.'
+    + '</div>'
 
     // Bloco jurídico
     + '<div class="section-title">Validade Jurídica</div>'
@@ -2314,6 +2385,58 @@ async function imprimirBoletim() {
 
 
 // ── Assinar como prestador (dono que também é colaborador) ────
+// ── Observações da empresa ───────────────────────────────────
+function abrirEditarObs() {
+  var area = document.getElementById('areaEditarObs');
+  var txt  = document.getElementById('txtObsEmpresa');
+  txt.value = (_bolGestorAtivo && _bolGestorAtivo.observacoes_empresa) || '';
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+async function salvarObservacoesBoletim(bolId, texto) {
+  if (!bolId) return;
+  var empId = await getEmpresaId();
+  if (!empId) { toast('Empresa não identificada.','err'); return; }
+  // Verificar status no servidor antes de salvar (regra de bloqueio)
+  var { data: bolAtual } = await sb.from('boletins').select('status').eq('id', bolId).eq('empresa_id', empId).maybeSingle();
+  if (!bolAtual) { toast('Documento não encontrado.','err'); return; }
+  if (bolAtual.status === 'valido' || bolAtual.status === 'cancelado') {
+    toast('Documento finalizado. Edição bloqueada.','err'); return;
+  }
+  var { error } = await sb.from('boletins')
+    .update({ observacoes_empresa: texto || null })
+    .eq('id', bolId).eq('empresa_id', empId);
+  if (error) { toast('Erro ao salvar: ' + error.message,'err'); return; }
+  toast('Observações salvas.','ok');
+  document.getElementById('areaEditarObs').style.display = 'none';
+  setTimeout(function(){ abrirBoletimGestor(bolId); }, 200);
+}
+
+// ── Revisar boletim ──────────────────────────────────────────
+async function revisarBoletim(bolId) {
+  if (!bolId) return;
+  var empId = await getEmpresaId();
+  if (!empId) { toast('Empresa não identificada.','err'); return; }
+  var { data: bolAtual } = await sb.from('boletins').select('status,revisado_em').eq('id', bolId).eq('empresa_id', empId).maybeSingle();
+  if (!bolAtual) { toast('Documento não encontrado.','err'); return; }
+  if (bolAtual.status === 'valido' || bolAtual.status === 'cancelado') {
+    toast('Documento finalizado. Revisão não permitida.','err'); return;
+  }
+  if (bolAtual.revisado_em) { toast('Documento já foi revisado anteriormente.','ok'); return; }
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) { toast('Sessão expirada.','err'); return; }
+  var { data: usr } = await sb.from('usuarios').select('nome').eq('auth_id', authData.user.id).maybeSingle();
+  var nomeRevisor = (usr && usr.nome) || authData.user.email || 'Usuário';
+  var { error } = await sb.from('boletins').update({
+    revisado_por: nomeRevisor,
+    revisado_em:  new Date().toISOString()
+  }).eq('id', bolId).eq('empresa_id', empId);
+  if (error) { toast('Erro ao registrar revisão: ' + error.message,'err'); return; }
+  toast('✅ Documento marcado como revisado.','ok');
+  carregarBoletins();
+  setTimeout(function(){ abrirBoletimGestor(bolId); }, 250);
+}
+
 async function assinarComoPrestadorGestor() {
   if (!_bolGestorAtivo) return;
   var pin = getPinVal(['ppin1','ppin2','ppin3','ppin4']);
