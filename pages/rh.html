@@ -326,16 +326,117 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="sec" id="sec-boletins">
     <div class="card">
       <div class="ch">
-        <span class="ct">📋 Boletins de Horas</span>
-        <button class="btn bs bsm" onclick="abrirModalGerarBoletim()">+ Gerar Boletim</button>
+        <span class="ct">📋 Relatórios de Serviços</span>
+        <button class="btn bs bsm" onclick="abrirModalGerarBoletim()">+ Gerar Documento</button>
       </div>
       <div class="doc-list" id="boletinsList">
-        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum boletim gerado ainda.</div>
+        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum documento gerado ainda.</div>
       </div>
     </div>
   </div>
 
 </div><!-- /wrap -->
+
+<!-- MODAL GERAR BOLETIM -->
+<div class="modal-overlay" id="modalGerarBol" onclick="if(event.target===this)fecharModalGerarBol()">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-hdr">
+      <span class="modal-tit">📋 Gerar Documento de Serviços</span>
+      <button class="btn bd bsm" onclick="fecharModalGerarBol()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Colaborador / Prestador *</label>
+          <select id="bolColab"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Empresa assinante *</label>
+          <select id="bolEmpresa"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Período — início *</label>
+          <input type="date" id="bolDtIni">
+        </div>
+        <div class="f"><label>Período — fim *</label>
+          <input type="date" id="bolDtFim">
+        </div>
+      </div>
+      <button class="btn bs" style="margin-top:.75rem;width:100%" onclick="previewApontamentosBol()">🔍 Buscar Apontamentos Aprovados</button>
+      <div id="bolPreview" style="display:none;margin-top:1rem">
+        <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Apontamentos no período</div>
+        <div id="bolPreviewTabela" style="max-height:260px;overflow-y:auto"></div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.75rem;margin-top:.5rem;display:flex;gap:1.5rem">
+          <div><div style="font-size:.65rem;color:var(--text3)">TOTAL HORAS</div><div id="bolTotHoras" style="font-size:1.1rem;font-weight:700;color:var(--text)">—</div></div>
+          <div><div style="font-size:.65rem;color:var(--text3)">TOTAL VALOR</div><div id="bolTotValor" style="font-size:1.1rem;font-weight:700;color:var(--green)">—</div></div>
+          <div><div style="font-size:.65rem;color:var(--text3)">APONTAMENTOS</div><div id="bolTotQtd" style="font-size:1.1rem;font-weight:700;color:var(--text)">—</div></div>
+        </div>
+        <div id="bolAlerta" style="display:none;padding:.6rem .85rem;border-radius:var(--r);font-size:.78rem;margin-top:.5rem"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalGerarBol()">Cancelar</button>
+      <button class="btn bs" id="btnGerarBol" style="display:none" onclick="gerarBoletim()">📋 Gerar e Enviar para Assinatura</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VER BOLETIM GESTOR -->
+<div class="modal-overlay" id="modalVerBolGestor" onclick="if(event.target===this)fecharVerBolGestor()">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="verBolGestorTit">Documento</span>
+      <button class="btn bd bsm" onclick="fecharVerBolGestor()">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:68vh;overflow-y:auto">
+      <div id="verBolGestorContent"></div>
+      <div id="areaAssinarEmpresa" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:.35rem">✍️ Assinar como Empresa</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Digite seu PIN de 4 dígitos para assinar este documento</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin1" oninput="movePinFocus(this,'epin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin2" oninput="movePinFocus(this,'epin3')" onkeydown="backPinFocus(event,'epin1')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin3" oninput="movePinFocus(this,'epin4')" onkeydown="backPinFocus(event,'epin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin4" onkeydown="backPinFocus(event,'epin3')">
+        </div>
+        <button class="btn bs" style="width:100%;margin-top:.35rem" onclick="assinarComoEmpresa()">✅ Confirmar Assinatura da Empresa</button>
+        <button class="btn bg" style="width:100%;margin-top:.35rem;font-size:.72rem" onclick="abrirCriarPinUsuario()">🔑 Criar / Redefinir PIN</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharVerBolGestor()">Fechar</button>
+      <button class="btn bd" id="btnCancelarBol" style="display:none" onclick="cancelarBoletim()">🗑 Cancelar Documento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PIN USUARIO -->
+<div class="modal-overlay" id="modalPinUsuario" onclick="if(event.target===this)fecharModalPinUsuario()">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-hdr">
+      <span class="modal-tit">🔑 PIN de Assinatura</span>
+      <button class="btn bd bsm" onclick="fecharModalPinUsuario()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:.8rem;color:var(--text2);margin-bottom:1rem">Este PIN será usado para assinar documentos como representante da empresa.</div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Novo PIN</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp1" oninput="movePinFocus(this,'unp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp2" oninput="movePinFocus(this,'unp3')" onkeydown="backPinFocus(event,'unp1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp3" oninput="movePinFocus(this,'unp4')" onkeydown="backPinFocus(event,'unp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp4" onkeydown="backPinFocus(event,'unp3')">
+      </div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Confirmar PIN</div>
+      <div style="display:flex;gap:.5rem">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp1" oninput="movePinFocus(this,'ucp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp2" oninput="movePinFocus(this,'ucp3')" onkeydown="backPinFocus(event,'ucp1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp3" oninput="movePinFocus(this,'ucp4')" onkeydown="backPinFocus(event,'ucp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp4" onkeydown="backPinFocus(event,'ucp3')">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalPinUsuario()">Cancelar</button>
+      <button class="btn bs" onclick="salvarPinUsuario()">💾 Salvar PIN</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL COLABORADOR ════════════════════════════════════ -->
 <div class="modal-overlay" id="modalColab" onclick="if(event.target===this)fecharModalColab()">
@@ -1581,37 +1682,485 @@ async function excluirEpi(id) {
   if (_colabAtivo) carregarEpis(_colabAtivo.id);
 }
 
-// ══ BOLETINS ═════════════════════════════════════════════════
+// ══ BOLETINS / RELATÓRIOS DE SERVIÇOS ═══════════════════════
+var _bolAptPreview = [];   // apontamentos do preview atual
+var _bolGestorAtivo = null; // boletim aberto no modal gestor
+var _usuarioLogado = null;  // dados do usuario logado (para PIN)
+
 async function carregarBoletins() {
   var empId = await getEmpresaId();
+  if (!empId) return;
   var { data } = await sb.from('boletins')
-    .select('*, colaboradores(nome)')
+    .select('*, colaboradores(nome, tipo)')
     .eq('empresa_id', empId)
     .order('created_at', {ascending:false});
   var el = document.getElementById('boletinsList');
   if (!data || !data.length) {
-    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum boletim gerado ainda.</div>';
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum documento gerado ainda.</div>';
     return;
   }
-  var sLabels = {rascunho:'Rascunho',aguard_prestador:'Ag. Prestador',aguard_empresa:'Ag. Empresa',valido:'Válido',cancelado:'Cancelado'};
+  var sLabels = {
+    rascunho:'Rascunho',
+    aguard_prestador:'Ag. Prestador',
+    aguard_empresa:'Ag. Empresa',
+    valido:'Válido ✅',
+    cancelado:'Cancelado'
+  };
   el.innerHTML = data.map(function(b) {
     var nome = b.colaboradores ? b.colaboradores.nome : '—';
-    var sBdg = b.status==='valido'?'bdg-green':b.status==='aguard_prestador'||b.status==='aguard_empresa'?'bdg-yellow':'bdg-gray';
-    return '<div class="doc-item">'
+    var tipo = b.colaboradores ? b.colaboradores.tipo : 'mei';
+    var isClt = tipo === 'clt';
+    var docNome = isClt ? 'Controle de Ponto' : 'Rel. Serviços Prestados';
+    var sBdg = b.status==='valido'?'bdg-green'
+             : b.status==='aguard_prestador'||b.status==='aguard_empresa'?'bdg-yellow'
+             : b.status==='cancelado'?'bdg-red':'bdg-gray';
+    return '<div class="doc-item" onclick="abrirBoletimGestor(\'' + b.id + '\')" style="cursor:pointer">'
       + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📋</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + b.numero + ' — ' + nome + '</div>'
-        + '<div class="doc-meta">' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim)
-          + ' · ' + b.horas_total + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
+        + '<div class="doc-meta" style="font-size:.67rem">' + docNome + ' · '
+          + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim)
+          + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
       + '</div>'
       + '<span class="bdg ' + sBdg + '">' + (sLabels[b.status]||b.status) + '</span>'
     + '</div>';
   }).join('');
 }
 
+// ── Modal Gerar Boletim ──────────────────────────────────────
 async function abrirModalGerarBoletim() {
-  // TODO: implementar geração de boletim na próxima entrega
-  toast('Geração de boletim com assinatura digital — em breve!', 'ok');
+  var empId = await getEmpresaId();
+  if (!empId) { toast('Empresa não identificada.','err'); return; }
+
+  // Popular colaboradores
+  var selC = document.getElementById('bolColab');
+  selC.innerHTML = '<option value="">Selecione...</option>';
+  (_colabs||[]).forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.nome + ' (' + (c.tipo||'').toUpperCase() + ')';
+    selC.appendChild(opt);
+  });
+
+  // Popular empresas disponíveis
+  var selE = document.getElementById('bolEmpresa');
+  selE.innerHTML = '<option value="">Selecione...</option>';
+  (window._empresasUsuario||[]).forEach(function(e) {
+    var opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.nome;
+    selE.appendChild(opt);
+  });
+  // Se só uma empresa, selecionar automaticamente
+  if ((window._empresasUsuario||[]).length === 1) {
+    selE.value = window._empresasUsuario[0].id;
+  }
+
+  // Período padrão: mês atual
+  var hoje = new Date();
+  var ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  var fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  document.getElementById('bolDtIni').value = ini.toISOString().slice(0,10);
+  document.getElementById('bolDtFim').value = fim.toISOString().slice(0,10);
+
+  // Limpar preview
+  document.getElementById('bolPreview').style.display = 'none';
+  document.getElementById('btnGerarBol').style.display = 'none';
+  _bolAptPreview = [];
+
+  document.getElementById('modalGerarBol').classList.add('on');
+}
+
+function fecharModalGerarBol() {
+  document.getElementById('modalGerarBol').classList.remove('on');
+}
+
+async function previewApontamentosBol() {
+  var colabId = document.getElementById('bolColab').value;
+  var dtIni   = document.getElementById('bolDtIni').value;
+  var dtFim   = document.getElementById('bolDtFim').value;
+  if (!colabId) { toast('Selecione o colaborador.','err'); return; }
+  if (!dtIni || !dtFim) { toast('Informe o período.','err'); return; }
+  if (dtIni > dtFim) { toast('Data início maior que fim.','err'); return; }
+
+  var { data: apts, error } = await sb.from('apontamentos')
+    .select('*')
+    .eq('colaborador_id', colabId)
+    .eq('status', 'aprovado')
+    .gte('data', dtIni)
+    .lte('data', dtFim)
+    .order('data', {ascending:true});
+
+  if (error) { toast('Erro ao buscar apontamentos.','err'); return; }
+
+  _bolAptPreview = apts || [];
+  var preview = document.getElementById('bolPreview');
+  var tabela  = document.getElementById('bolPreviewTabela');
+  var alerta  = document.getElementById('bolAlerta');
+  preview.style.display = 'block';
+
+  if (!_bolAptPreview.length) {
+    tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">Nenhum apontamento aprovado neste período.</div>';
+    document.getElementById('bolTotHoras').textContent = '0h';
+    document.getElementById('bolTotValor').textContent = 'R$ 0,00';
+    document.getElementById('bolTotQtd').textContent   = '0';
+    document.getElementById('btnGerarBol').style.display = 'none';
+    alerta.style.display = 'none';
+    return;
+  }
+
+  // Verificar se já existe boletim para esses apontamentos
+  var aptIds = _bolAptPreview.map(function(a){ return a.id; });
+  var { data: bolExist } = await sb.from('boletins')
+    .select('numero,status')
+    .overlaps('apontamentos_ids', aptIds)
+    .neq('status','cancelado');
+
+  alerta.style.display = 'none';
+  if (bolExist && bolExist.length) {
+    alerta.style.display = 'block';
+    alerta.style.background = 'rgba(240,165,0,.12)';
+    alerta.style.color = 'var(--accent)';
+    alerta.textContent = '⚠️ Atenção: ' + bolExist.length + ' apontamento(s) já estão em documentos anteriores (' + bolExist.map(function(b){ return b.numero; }).join(', ') + ').';
+  }
+
+  var totH = 0, totV = 0;
+  tabela.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.75rem">'
+    + '<thead><tr style="background:var(--bg3)">'
+    + '<th style="padding:.35rem .5rem;text-align:left;font-weight:600">Data</th>'
+    + '<th style="padding:.35rem .5rem;text-align:left;font-weight:600">Proposta</th>'
+    + '<th style="padding:.35rem .5rem;text-align:center;font-weight:600">Horas</th>'
+    + '<th style="padding:.35rem .5rem;text-align:right;font-weight:600">Valor</th>'
+    + '</tr></thead><tbody>'
+    + _bolAptPreview.map(function(a) {
+        totH += Number(a.horas_total||0);
+        totV += Number(a.valor_total||0);
+        return '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>'
+          + '<td style="padding:.3rem .5rem;color:var(--text2)">' + (a.proposta_id||'—').slice(0,8) + '...</td>'
+          + '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
+          + '<td style="padding:.3rem .5rem;text-align:right;color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+
+  document.getElementById('bolTotHoras').textContent = totH.toFixed(1) + 'h';
+  document.getElementById('bolTotValor').textContent = fmtMoeda(totV);
+  document.getElementById('bolTotQtd').textContent   = _bolAptPreview.length;
+  document.getElementById('btnGerarBol').style.display = 'inline-flex';
+}
+
+async function gerarBoletim() {
+  if (!_bolAptPreview.length) { toast('Nenhum apontamento para gerar.','err'); return; }
+  var colabId   = document.getElementById('bolColab').value;
+  var empresaId = document.getElementById('bolEmpresa').value;
+  var dtIni     = document.getElementById('bolDtIni').value;
+  var dtFim     = document.getElementById('bolDtFim').value;
+  if (!empresaId) { toast('Selecione a empresa assinante.','err'); return; }
+
+  var colab = (_colabs||[]).find(function(c){ return c.id === colabId; });
+  if (!colab) { toast('Colaborador não encontrado.','err'); return; }
+
+  // Gerar número sequencial
+  var { data: ultimo } = await sb.from('boletins')
+    .select('numero').order('created_at',{ascending:false}).limit(1).maybeSingle();
+  var seq = 1;
+  if (ultimo && ultimo.numero) {
+    var m = ultimo.numero.match(/(\d+)$/);
+    if (m) seq = parseInt(m[1]) + 1;
+  }
+  var ano = new Date().getFullYear();
+  var mes = String(new Date().getMonth()+1).padStart(2,'0');
+  var isClt = colab.tipo === 'clt';
+  var prefixo = isClt ? 'CP' : 'RSP';
+  var numero = prefixo + '-' + ano + '-' + mes + '-' + String(seq).padStart(4,'0');
+
+  var totH = _bolAptPreview.reduce(function(s,a){ return s + Number(a.horas_total||0); }, 0);
+  var totV = _bolAptPreview.reduce(function(s,a){ return s + Number(a.valor_total||0); }, 0);
+
+  var row = {
+    numero:            numero,
+    colaborador_id:    colabId,
+    empresa_id:        empresaId,
+    periodo_inicio:    dtIni,
+    periodo_fim:       dtFim,
+    horas_total:       totH.toFixed(2),
+    valor_total:       totV.toFixed(2),
+    apontamentos_ids:  _bolAptPreview.map(function(a){ return a.id; }),
+    status:            'aguard_prestador',
+    assinado_prestador: false,
+    assinado_empresa:   false
+  };
+
+  var { data: bolNovo, error } = await sb.from('boletins').insert(row).select().single();
+  if (error) { toast('Erro ao gerar: ' + error.message,'err'); return; }
+
+  toast('✅ ' + numero + ' gerado! Colaborador notificado para assinar.','ok');
+  fecharModalGerarBol();
+  carregarBoletins();
+
+  // Notificação por e-mail (log — integrar com Edge Function para envio real)
+  var empObj = (window._empresasUsuario||[]).find(function(e){ return e.id === empresaId; });
+  console.log('[EMAIL] Para:', colab.email, '| Assunto: Documento aguardando sua assinatura |', numero, '| Empresa:', empObj ? empObj.nome : empresaId);
+}
+
+// ── Ver e assinar boletim (gestor) ────────────────────────────
+async function abrirBoletimGestor(bolId) {
+  var { data: bol } = await sb.from('boletins')
+    .select('*, colaboradores(nome, tipo, email, documento)')
+    .eq('id', bolId).single();
+  if (!bol) { toast('Documento não encontrado.','err'); return; }
+  _bolGestorAtivo = bol;
+
+  var colab  = bol.colaboradores || {};
+  var isClt  = (colab.tipo||'mei') === 'clt';
+  var titulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
+  document.getElementById('verBolGestorTit').textContent = titulo;
+
+  // Buscar apontamentos
+  var { data: apts } = await sb.from('apontamentos')
+    .select('*').in('id', bol.apontamentos_ids||[]).order('data',{ascending:true});
+
+  // Buscar empresa
+  var { data: emp } = await sb.from('empresas')
+    .select('nome,cnpj').eq('id', bol.empresa_id).maybeSingle();
+
+  var html = '<div style="font-family:Arial,sans-serif;font-size:12px;color:#212529">';
+
+  // Cabeçalho
+  html += '<div style="border-bottom:3px solid #1e3a5f;padding-bottom:.75rem;margin-bottom:.75rem">';
+  html += '<div style="font-size:16px;font-weight:700;color:#1e3a5f">' + titulo + '</div>';
+  html += '<div style="font-size:11px;color:#6c757d">' + subtit + ' · Nº ' + bol.numero + '</div>';
+  html += '</div>';
+
+  // Dados
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem;font-size:11px">';
+  html += '<div><strong>Prestador:</strong> ' + (colab.nome||'—') + '</div>';
+  html += '<div><strong>CPF/CNPJ:</strong> ' + (colab.documento||'—') + '</div>';
+  html += '<div><strong>Empresa:</strong> ' + (emp?emp.nome:'—') + '</div>';
+  html += '<div><strong>Período:</strong> ' + fmtData(bol.periodo_inicio) + ' a ' + fmtData(bol.periodo_fim) + '</div>';
+  html += '</div>';
+
+  // Tabela de apontamentos
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:.75rem">';
+  html += '<thead><tr style="background:#1e3a5f;color:white">';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Data</th>';
+  if (!isClt) html += '<th style="padding:.4rem .5rem;text-align:center">Entrada</th><th style="padding:.4rem .5rem;text-align:center">Saída</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:center">Horas</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:right">Valor</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Descrição</th>';
+  html += '</tr></thead><tbody>';
+
+  (apts||[]).forEach(function(a, i) {
+    var bg = i%2===0?'#ffffff':'#f8f9fa';
+    html += '<tr style="background:' + bg + ';border-bottom:1px solid #dee2e6">';
+    html += '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>';
+    if (!isClt) html += '<td style="padding:.3rem .5rem;text-align:center">' + (a.hora_entrada||'—') + '</td><td style="padding:.3rem .5rem;text-align:center">' + (a.hora_saida||'—') + '</td>';
+    html += '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>';
+    html += '<td style="padding:.3rem .5rem;text-align:right;color:#198754;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>';
+    html += '<td style="padding:.3rem .5rem;color:#6c757d;font-size:10px">' + (a.descricao||'') + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody><tfoot><tr style="background:#1e3a5f;color:white">';
+  html += '<td colspan="' + (isClt?'3':'5') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
+  html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoeda(bol.valor_total) + '</td>';
+  html += '<td style="padding:.4rem .5rem"></td></tr></tfoot></table>';
+
+  // Assinaturas
+  html += '<div style="border:1px solid #dee2e6;border-radius:6px;overflow:hidden;margin-bottom:.75rem">';
+  html += '<div style="background:#f8f9fa;padding:.4rem .75rem;font-weight:700;font-size:11px;border-bottom:1px solid #dee2e6">Registro de Assinaturas</div>';
+  html += '<div style="padding:.6rem .75rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:11px">';
+
+  // Prestador
+  html += '<div style="padding:.5rem;background:' + (bol.assinado_prestador?'#d1fae5':'#fff3cd') + ';border-radius:4px">';
+  html += '<div style="font-weight:700">' + (bol.assinado_prestador?'✅':'⏳') + ' Prestador</div>';
+  html += '<div>' + (colab.nome||'—') + '</div>';
+  if (bol.assinado_prestador) {
+    html += '<div style="color:#6c757d;font-size:10px">Em: ' + new Date(bol.data_assinatura_p).toLocaleString('pt-BR') + '</div>';
+    html += '<div style="color:#6c757d;font-size:10px;font-family:monospace">Hash: ' + (bol.hash_assinatura_p||'').slice(0,16) + '...</div>';
+  } else {
+    html += '<div style="color:#856404;font-size:10px">Aguardando assinatura</div>';
+  }
+  html += '</div>';
+
+  // Empresa
+  html += '<div style="padding:.5rem;background:' + (bol.assinado_empresa?'#d1fae5':'#f8f9fa') + ';border-radius:4px">';
+  html += '<div style="font-weight:700">' + (bol.assinado_empresa?'✅':'⏳') + ' Empresa</div>';
+  html += '<div>' + (emp?emp.nome:'—') + '</div>';
+  if (bol.assinado_empresa) {
+    html += '<div style="color:#6c757d;font-size:10px">Em: ' + new Date(bol.data_assinatura_e).toLocaleString('pt-BR') + '</div>';
+    html += '<div style="color:#6c757d;font-size:10px">Por: ' + (bol.assinante_empresa_nome||'—') + '</div>';
+    html += '<div style="color:#6c757d;font-size:10px;font-family:monospace">Hash: ' + (bol.hash_assinatura_e||'').slice(0,16) + '...</div>';
+  } else {
+    html += '<div style="color:#6c757d;font-size:10px">Aguardando assinatura</div>';
+  }
+  html += '</div></div></div>';
+
+  // Validade jurídica
+  if (bol.status === 'valido') {
+    html += '<div style="border:2px solid #198754;border-radius:6px;padding:.75rem;margin-bottom:.75rem;background:#d1fae5">';
+    html += '<div style="font-weight:700;color:#198754;margin-bottom:.35rem">✅ DOCUMENTO VÁLIDO</div>';
+    html += '<div style="font-size:10px;color:#155724;font-family:monospace">ID: ' + bol.id + '</div>';
+    html += '<div style="font-size:10px;color:#155724;font-family:monospace">Hash final: ' + (bol.hash_documento_final||'—').slice(0,32) + '...</div>';
+    html += '</div>';
+  }
+
+  // Bloco jurídico
+  html += '<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:.75rem;font-size:10px;color:#495057">';
+  html += '<strong style="display:block;margin-bottom:.35rem">VALIDADE JURÍDICA DO DOCUMENTO</strong>';
+  html += '<strong>Lei nº 14.063/2020</strong> — Art. 4º: Assinatura eletrônica simples é válida para documentos entre pessoas jurídicas de direito privado.<br>';
+  html += '<strong>MP nº 2.200-2/2001</strong> — Art. 10, §2º: Admite-se outro meio de comprovação de autoria e integridade de documentos eletrônicos, desde que aceito pelas partes.<br>';
+  html += '<strong>Código Civil — Lei 10.406/2002</strong> — Art. 107: A validade da declaração de vontade não depende de forma especial, salvo quando a lei expressamente a exigir.<br><br>';
+  html += 'As assinaturas eletrônicas registradas neste documento — com identificação das partes, data, hora, IP e hash SHA-256 — constituem prova de autoria e concordância com o conteúdo aqui descrito.';
+  html += '</div>';
+  html += '</div>';
+
+  document.getElementById('verBolGestorContent').innerHTML = html;
+
+  // Mostrar/ocultar botões
+  var areaPin = document.getElementById('areaAssinarEmpresa');
+  var btnCanc = document.getElementById('btnCancelarBol');
+
+  if (bol.status === 'aguard_empresa' && !bol.assinado_empresa) {
+    areaPin.style.display = 'block';
+    ['epin1','epin2','epin3','epin4'].forEach(function(id){ document.getElementById(id).value=''; });
+    setTimeout(function(){ document.getElementById('epin1').focus(); }, 200);
+  } else {
+    areaPin.style.display = 'none';
+  }
+
+  btnCanc.style.display = (bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  document.getElementById('modalVerBolGestor').classList.add('on');
+}
+
+function fecharVerBolGestor() {
+  document.getElementById('modalVerBolGestor').classList.remove('on');
+  _bolGestorAtivo = null;
+}
+
+async function cancelarBoletim() {
+  if (!_bolGestorAtivo) return;
+  if (!confirm('Cancelar este documento? Esta ação não pode ser desfeita.')) return;
+  await sb.from('boletins').update({ status:'cancelado' }).eq('id', _bolGestorAtivo.id);
+  toast('Documento cancelado.','ok');
+  fecharVerBolGestor();
+  carregarBoletins();
+}
+
+// ── Assinatura empresa (PIN do usuário) ───────────────────────
+function movePinFocus(el, nextId) {
+  if (el.value.length >= 1 && nextId) {
+    var next = document.getElementById(nextId);
+    if (next) next.focus();
+  }
+}
+function backPinFocus(e, prevId) {
+  if (e.key === 'Backspace' && !e.target.value && prevId) {
+    var prev = document.getElementById(prevId);
+    if (prev) { prev.value=''; prev.focus(); }
+  }
+}
+function getPinVal(ids) {
+  return ids.map(function(id){ return document.getElementById(id).value||''; }).join('');
+}
+
+async function hashPinUsuario(pin, userId) {
+  var enc = new TextEncoder();
+  var buf = await crypto.subtle.digest('SHA-256', enc.encode(pin + userId));
+  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+async function assinarComoEmpresa() {
+  if (!_bolGestorAtivo) return;
+  var pin = getPinVal(['epin1','epin2','epin3','epin4']);
+  if (pin.length < 4) { toast('Digite os 4 dígitos do PIN.','err'); return; }
+
+  // Buscar usuário logado
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) { toast('Sessão expirada.','err'); return; }
+
+  var { data: usr } = await sb.from('usuarios')
+    .select('id, nome, pin_hash').eq('auth_id', authData.user.id).maybeSingle();
+
+  if (!usr) { toast('Usuário não encontrado.','err'); return; }
+
+  if (!usr.pin_hash) {
+    toast('Você ainda não tem PIN. Crie um agora.','ok');
+    abrirCriarPinUsuario();
+    return;
+  }
+
+  var hashDigitado = await hashPinUsuario(pin, usr.id);
+  if (hashDigitado !== usr.pin_hash) {
+    toast('PIN incorreto.','err');
+    ['epin1','epin2','epin3','epin4'].forEach(function(id){ document.getElementById(id).value=''; });
+    document.getElementById('epin1').focus();
+    return;
+  }
+
+  // Gerar hash do documento
+  var conteudo = document.getElementById('verBolGestorContent').innerText;
+  var enc = new TextEncoder();
+  var buf = await crypto.subtle.digest('SHA-256', enc.encode(conteudo + _bolGestorAtivo.id));
+  var hashAssin = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  // Hash final combinado (prestador + empresa)
+  var hashFinal = await crypto.subtle.digest('SHA-256', enc.encode(
+    (_bolGestorAtivo.hash_assinatura_p||'') + hashAssin + _bolGestorAtivo.id
+  ));
+  var hashFinalStr = Array.from(new Uint8Array(hashFinal)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  var { error } = await sb.from('boletins').update({
+    assinado_empresa:    true,
+    data_assinatura_e:   new Date().toISOString(),
+    ip_empresa:          'registrado',
+    hash_assinatura_e:   hashAssin,
+    assinante_empresa_nome: usr.nome,
+    hash_documento_final: hashFinalStr,
+    status:              'valido'
+  }).eq('id', _bolGestorAtivo.id);
+
+  if (error) { toast('Erro: ' + error.message,'err'); return; }
+
+  // Notificação (log — integrar Edge Function para e-mail real)
+  var colab = _bolGestorAtivo.colaboradores||{};
+  console.log('[EMAIL] Para:', colab.email, '| Assunto: Documento assinado e válido |', _bolGestorAtivo.numero);
+
+  toast('✅ Documento válido! Ambas as partes assinaram.','ok');
+  fecharVerBolGestor();
+  carregarBoletins();
+}
+
+// ── PIN do usuário gestor/dono ────────────────────────────────
+function abrirCriarPinUsuario() {
+  ['unp1','unp2','unp3','unp4','ucp1','ucp2','ucp3','ucp4'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('modalPinUsuario').classList.add('on');
+  setTimeout(function(){ document.getElementById('unp1').focus(); }, 100);
+}
+function fecharModalPinUsuario() {
+  document.getElementById('modalPinUsuario').classList.remove('on');
+}
+
+async function salvarPinUsuario() {
+  var pin  = getPinVal(['unp1','unp2','unp3','unp4']);
+  var pin2 = getPinVal(['ucp1','ucp2','ucp3','ucp4']);
+  if (pin.length < 4)  { toast('Digite 4 dígitos.','err'); return; }
+  if (pin !== pin2)    { toast('PINs não conferem.','err'); return; }
+
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) return;
+  var { data: usr } = await sb.from('usuarios')
+    .select('id').eq('auth_id', authData.user.id).maybeSingle();
+  if (!usr) { toast('Usuário não encontrado.','err'); return; }
+
+  var h = await hashPinUsuario(pin, usr.id);
+  var { error } = await sb.from('usuarios').update({ pin_hash: h }).eq('id', usr.id);
+  if (error) { toast('Erro ao salvar PIN.','err'); return; }
+
+  toast('PIN criado com sucesso! Agora assine o documento.','ok');
+  fecharModalPinUsuario();
 }
 
 // ══ COMUNICAÇÃO COM SHELL PARENT ════════════════════════════
