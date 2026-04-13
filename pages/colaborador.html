@@ -804,15 +804,29 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
       .select('*').eq('auth_id', authData.user.id).eq('ativo', true).single();
 
     if (!colab) {
-      // Verificar se é gestor/dono — redirecionar para plataforma principal
-      var { data: usuario } = await sb.from('usuarios')
-        .select('perfil').eq('auth_id', authData.user.id).single();
-      if (usuario && usuario.perfil !== 'colaborador') {
-        window.location.href = '/'; return;
+      // Tentar encontrar colaborador pelo e-mail (caso auth_id não esteja vinculado ainda)
+      var emailAtual = authData.user.email;
+      var { data: colabByEmail } = await sb.from('colaboradores')
+        .select('*').eq('email', emailAtual).eq('ativo', true).maybeSingle();
+
+      if (colabByEmail) {
+        // Encontrou pelo e-mail — vincular auth_id automaticamente
+        colab = colabByEmail;
+        sb.from('colaboradores')
+          .update({ auth_id: authData.user.id })
+          .eq('id', colabByEmail.id)
+          .then(function(){});
+      } else {
+        // Não é colaborador — verificar se é gestor/dono
+        var { data: usuario } = await sb.from('usuarios')
+          .select('perfil').eq('auth_id', authData.user.id).maybeSingle();
+        if (usuario && (usuario.perfil === 'dono' || usuario.perfil === 'gestor' || usuario.perfil === 'admin')) {
+          window.location.href = '/'; return;
+        }
+        document.getElementById('loading').innerHTML =
+          '<div style="text-align:center;padding:2rem;color:#f06060">Colaborador não encontrado.<br>Contate o administrador.</div>';
+        return;
       }
-      document.getElementById('loading').innerHTML =
-        '<div style="text-align:center;padding:2rem;color:#f06060">Colaborador não encontrado.<br>Contate o administrador.</div>';
-      return;
     }
 
     _colab = colab;
