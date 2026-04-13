@@ -2085,7 +2085,7 @@ async function abrirBoletimGestor(bolId) {
     areaPin.style.display = 'none';
   }
 
-  btnCanc.style.display = (bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  btnCanc.style.display = bol.status !== 'cancelado' ? 'inline-flex' : 'none';
   document.getElementById('btnImprimirBol').style.display = 'inline-flex';
   document.getElementById('modalVerBolGestor').classList.add('on');
 }
@@ -2365,9 +2365,20 @@ function fecharVerBolGestor() {
 
 async function cancelarBoletim() {
   if (!_bolGestorAtivo) return;
-  if (!confirm('Cancelar este documento? Esta ação não pode ser desfeita.')) return;
-  await sb.from('boletins').update({ status:'cancelado' }).eq('id', _bolGestorAtivo.id);
-  toast('Documento cancelado.','ok');
+  var opcao = confirm('Clique OK para CANCELAR o documento (mantém histórico)\nClique Cancelar para EXCLUIR permanentemente.');
+  if (opcao === null) return; // fechou o dialog
+  if (opcao) {
+    // Cancelar — mantém no histórico
+    var { error } = await sb.from('boletins').update({ status:'cancelado' }).eq('id', _bolGestorAtivo.id);
+    if (error) { toast('Erro: ' + error.message,'err'); return; }
+    toast('Documento cancelado.','ok');
+  } else {
+    // Excluir permanentemente
+    if (!confirm('Tem certeza? Esta ação é IRREVERSÍVEL.')) return;
+    var { error } = await sb.from('boletins').delete().eq('id', _bolGestorAtivo.id);
+    if (error) { toast('Erro: ' + error.message,'err'); return; }
+    toast('Documento excluído permanentemente.','ok');
+  }
   fecharVerBolGestor();
   carregarBoletins();
 }
