@@ -1022,7 +1022,7 @@ function prepararNovoApt() {
   var sel = document.getElementById('nProposta');
   sel.innerHTML = '<option value="">Selecione o projeto...</option>';
   _propostas.forEach(function(p){
-    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.cliente||p.titulo||'') + '</option>';
+    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.cliente||'') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
   });
 
   // Data de hoje
