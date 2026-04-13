@@ -390,6 +390,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div class="modal-body" style="max-height:68vh;overflow-y:auto">
       <div id="verBolGestorContent"></div>
+      <!-- Área assinar como PRESTADOR (dono que também é colaborador) -->
+      <div id="areaAssinarPrestador" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:2px solid var(--green);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:.35rem">✍️ Assinar como Prestador</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Você é o prestador deste documento. Digite seu PIN de colaborador para assinar.</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin1" oninput="movePinFocus(this,'ppin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin2" oninput="movePinFocus(this,'ppin3')" onkeydown="backPinFocus(event,'ppin1')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin3" oninput="movePinFocus(this,'ppin4')" onkeydown="backPinFocus(event,'ppin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin4" onkeydown="backPinFocus(event,'ppin3')">
+        </div>
+        <button class="btn bs" style="width:100%;margin-top:.35rem;background:var(--green);border-color:var(--green);color:#000" onclick="assinarComoPrestadorGestor()">✅ Confirmar Assinatura como Prestador</button>
+      </div>
+
       <div id="areaAssinarEmpresa" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--r)">
         <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:.35rem">✍️ Assinar como Empresa</div>
         <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Digite seu PIN de 4 dígitos para assinar este documento</div>
@@ -1922,7 +1935,7 @@ async function gerarBoletim() {
 // ── Ver e assinar boletim (gestor) ────────────────────────────
 async function abrirBoletimGestor(bolId) {
   var { data: bol } = await sb.from('boletins')
-    .select('*, colaboradores(nome, tipo, email, documento)')
+    .select('*, colaboradores(id, nome, tipo, email, documento, auth_id)')
     .eq('id', bolId).single();
   if (!bol) { toast('Documento não encontrado.','err'); return; }
   _bolGestorAtivo = bol;
@@ -2035,9 +2048,26 @@ async function abrirBoletimGestor(bolId) {
   document.getElementById('verBolGestorContent').innerHTML = html;
 
   // Mostrar/ocultar botões
-  var areaPin = document.getElementById('areaAssinarEmpresa');
-  var btnCanc = document.getElementById('btnCancelarBol');
+  var areaPin      = document.getElementById('areaAssinarEmpresa');
+  var areaPrest    = document.getElementById('areaAssinarPrestador');
+  var btnCanc      = document.getElementById('btnCancelarBol');
 
+  // Verificar se usuário logado é também o colaborador deste boletim
+  var { data: authNow } = await sb.auth.getUser();
+  var authUidNow = authNow && authNow.user ? authNow.user.id : null;
+  var colabDoDoc = bol.colaboradores || {};
+  var euSouOColaborador = authUidNow && colabDoDoc.auth_id === authUidNow;
+
+  // Mostrar área de prestador se eu sou o colaborador e ainda não assinei
+  if (euSouOColaborador && bol.status === 'aguard_prestador' && !bol.assinado_prestador) {
+    areaPrest.style.display = 'block';
+    ['ppin1','ppin2','ppin3','ppin4'].forEach(function(id){ document.getElementById(id).value=''; });
+    setTimeout(function(){ document.getElementById('ppin1').focus(); }, 200);
+  } else {
+    areaPrest.style.display = 'none';
+  }
+
+  // Mostrar área de empresa
   if (bol.status === 'aguard_empresa' && !bol.assinado_empresa) {
     areaPin.style.display = 'block';
     ['epin1','epin2','epin3','epin4'].forEach(function(id){ document.getElementById(id).value=''; });
@@ -2253,6 +2283,60 @@ async function imprimirBoletim() {
   _imprimirHtml(html);
 }
 
+
+// ── Assinar como prestador (dono que também é colaborador) ────
+async function assinarComoPrestadorGestor() {
+  if (!_bolGestorAtivo) return;
+  var pin = getPinVal(['ppin1','ppin2','ppin3','ppin4']);
+  if (pin.length < 4) { toast('Digite os 4 dígitos do PIN.','err'); return; }
+
+  // Buscar auth do usuário logado
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) return;
+
+  // Buscar PIN do colaborador
+  var { data: colabData } = await sb.from('colaboradores')
+    .select('id, pin_hash').eq('auth_id', authData.user.id).maybeSingle();
+
+  if (!colabData) { toast('Colaborador não encontrado.','err'); return; }
+
+  if (!colabData.pin_hash) {
+    toast('Você ainda não tem PIN de colaborador. Crie pelo portal do prestador.','ok');
+    return;
+  }
+
+  // Verificar PIN usando o mesmo hash do colaborador (pin + colaborador_id)
+  var enc = new TextEncoder();
+  var buf = await crypto.subtle.digest('SHA-256', enc.encode(pin + colabData.id));
+  var hashDigitado = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  if (hashDigitado !== colabData.pin_hash) {
+    toast('PIN incorreto.','err');
+    ['ppin1','ppin2','ppin3','ppin4'].forEach(function(id){ document.getElementById(id).value=''; });
+    document.getElementById('ppin1').focus();
+    return;
+  }
+
+  // Gerar hash do documento
+  var conteudo = document.getElementById('verBolGestorContent').innerText;
+  var buf2 = await crypto.subtle.digest('SHA-256', enc.encode(conteudo + _bolGestorAtivo.id));
+  var hashDoc = Array.from(new Uint8Array(buf2)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  var { error } = await sb.from('boletins').update({
+    assinado_prestador: true,
+    data_assinatura_p:  new Date().toISOString(),
+    ip_prestador:       'registrado',
+    hash_assinatura_p:  hashDoc,
+    status:             'aguard_empresa'
+  }).eq('id', _bolGestorAtivo.id);
+
+  if (error) { toast('Erro: ' + error.message,'err'); return; }
+
+  toast('✅ Assinado como prestador! Agora assine como empresa.','ok');
+  fecharVerBolGestor();
+  setTimeout(function(){ abrirBoletimGestor(_bolGestorAtivo.id); }, 300);
+  carregarBoletins();
+}
 
 function fecharVerBolGestor() {
   document.getElementById('modalVerBolGestor').classList.remove('on');
