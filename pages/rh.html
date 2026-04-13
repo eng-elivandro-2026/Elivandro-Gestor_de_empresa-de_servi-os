@@ -349,6 +349,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <label>Observações</label>
         <textarea id="cObs" placeholder="Informações adicionais..."></textarea>
       </div>
+      <!-- Seleção de empresas -->
+      <div style="margin-top:.85rem;padding:.85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">🏢 Vincular às Empresas</div>
+        <div id="cEmpresasCheck" style="display:flex;flex-wrap:wrap;gap:.6rem"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalColab()">Cancelar</button>
@@ -416,6 +421,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalApt()">Cancelar</button>
       <button class="btn bs" onclick="salvarApontamento()">💾 Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ADICIONAR EMPRESA ═════════════════════════════ -->
+<div class="modal-overlay" id="modalAddEmpresa" onclick="if(event.target===this)fecharModalAddEmpresa()">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalAddEmpTit">Adicionar a outra empresa</span>
+      <button class="btn bd bsm" onclick="fecharModalAddEmpresa()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:.82rem;color:var(--text2);margin-bottom:1rem" id="modalAddEmpNome"></div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Selecione as empresas:</div>
+      <div id="addEmpCheck" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalAddEmpresa()">Cancelar</button>
+      <button class="btn bs" onclick="salvarAdicionarEmpresa()">💾 Salvar vínculos</button>
     </div>
   </div>
 </div>
@@ -685,6 +709,7 @@ function renderColabs(lista) {
       + '</div>'
       + '<div class="colab-acoes">'
         + '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
+        + '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>'
         + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
       + '</div>'
     + '</div>';
@@ -1113,8 +1138,10 @@ function calcularHorasApt() {
 
 // ══ MODAIS COLABORADOR ═══════════════════════════════════════
 var _colabEditId = null;
+var _todasEmpresas = [];
+var _colabAddEmpId = null;
 
-function abrirModalColab(id) {
+async function abrirModalColab(id) {
   _colabEditId = id || null;
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
   if (!id) {
@@ -1123,24 +1150,55 @@ function abrirModalColab(id) {
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
     if (c) {
-      document.getElementById('cNome').value = c.nome||'';
-      document.getElementById('cTipo').value = c.tipo||'mei';
-      document.getElementById('cDoc').value  = c.documento||'';
-      document.getElementById('cEmail').value= c.email||'';
-      document.getElementById('cTel').value  = c.telefone||'';
+      document.getElementById('cNome').value      = c.nome||'';
+      document.getElementById('cTipo').value      = c.tipo||'mei';
+      document.getElementById('cDoc').value       = c.documento||'';
+      document.getElementById('cEmail').value     = c.email||'';
+      document.getElementById('cTel').value       = c.telefone||'';
       document.getElementById('cValorHora').value = c.valor_hora||'';
       document.getElementById('cFuncao').value    = c.funcao||'';
       document.getElementById('cAdmissao').value  = c.admissao||'';
       document.getElementById('cObs').value       = c.observacoes||'';
     }
   }
+  // Carregar checkboxes de empresas
+  await renderCheckEmpresasModal(id);
   document.getElementById('modalColab').classList.add('on');
+}
+
+async function renderCheckEmpresasModal(colabId) {
+  var box = document.getElementById('cEmpresasCheck');
+  if (!box) return;
+
+  // Buscar todas as empresas disponíveis
+  var { data: emps } = await sb.from('empresas').select('id,nome,nome_curto').eq('ativo',true);
+  _todasEmpresas = emps || [];
+
+  // Buscar empresas que o colaborador já está vinculado (se edição)
+  var vinculadas = [];
+  if (colabId) {
+    var { data: ce } = await sb.from('colaborador_empresas')
+      .select('empresa_id').eq('colaborador_id', colabId).eq('ativo', true);
+    vinculadas = (ce||[]).map(function(v){ return v.empresa_id; });
+  }
+
+  box.innerHTML = _todasEmpresas.map(function(e) {
+    var checked = colabId
+      ? vinculadas.includes(e.id)  // edição: marca as já vinculadas
+      : true;                       // novo: marca todas por padrão
+    return '<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.4rem .6rem;'
+      + 'background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2)">'
+      + '<input type="checkbox" id="chkEmp_' + e.id + '" value="' + e.id + '"'
+      + (checked ? ' checked' : '') + ' style="accent-color:var(--accent);width:16px;height:16px">'
+      + '<span style="font-size:.82rem;font-weight:600;color:var(--text)">' + e.nome_curto + '</span>'
+      + '<span style="font-size:.72rem;color:var(--text3)">— ' + e.nome + '</span>'
+      + '</label>';
+  }).join('');
 }
 
 function fecharModalColab() { document.getElementById('modalColab').classList.remove('on'); }
 
 async function salvarColab() {
-  var empId = await getEmpresaId();
   var dados = {
     nome: document.getElementById('cNome').value.trim(),
     tipo: document.getElementById('cTipo').value,
@@ -1155,23 +1213,59 @@ async function salvarColab() {
   };
   if (!dados.nome) { toast('Informe o nome.','err'); return; }
 
-  var res, error;
-  if (_colabEditId) {
-    var r = await sb.from('colaboradores').update(dados).eq('id', _colabEditId);
+  // Coletar empresas selecionadas
+  var empsSel = (_todasEmpresas||[]).filter(function(e) {
+    var chk = document.getElementById('chkEmp_' + e.id);
+    return chk && chk.checked;
+  }).map(function(e){ return e.id; });
+
+  if (!empsSel.length) { toast('Selecione ao menos uma empresa.','err'); return; }
+
+  var colabId = _colabEditId;
+  var error;
+
+  if (colabId) {
+    // Edição
+    var r = await sb.from('colaboradores').update(dados).eq('id', colabId);
     error = r.error;
   } else {
+    // Novo
     var r2 = await sb.from('colaboradores').insert(dados).select().single();
     error = r2.error;
-    // Vincular à empresa
-    if (!error && r2.data) {
-      await sb.from('colaborador_empresas').insert({
-        colaborador_id: r2.data.id,
-        empresa_id: empId
-      });
-    }
+    if (!error && r2.data) colabId = r2.data.id;
   }
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
+
+  // Sincronizar vínculos de empresa
+  if (colabId) {
+    // Buscar vínculos atuais
+    var { data: atual } = await sb.from('colaborador_empresas')
+      .select('empresa_id').eq('colaborador_id', colabId);
+    var jaVinculadas = (atual||[]).map(function(v){ return v.empresa_id; });
+
+    // Inserir novos vínculos
+    for (var i = 0; i < empsSel.length; i++) {
+      if (!jaVinculadas.includes(empsSel[i])) {
+        await sb.from('colaborador_empresas').insert({
+          colaborador_id: colabId,
+          empresa_id: empsSel[i],
+          ativo: true
+        });
+      }
+    }
+
+    // Desativar vínculos removidos
+    for (var j = 0; j < jaVinculadas.length; j++) {
+      if (!empsSel.includes(jaVinculadas[j])) {
+        await sb.from('colaborador_empresas')
+          .update({ ativo: false })
+          .eq('colaborador_id', colabId)
+          .eq('empresa_id', jaVinculadas[j]);
+      }
+    }
+  }
+
   toast(_colabEditId ? 'Colaborador atualizado!' : 'Colaborador cadastrado!', 'ok');
   fecharModalColab();
   carregarColabs();
@@ -1439,6 +1533,92 @@ window.addEventListener('message', function(e) {
     carregarColabs();
   }
 });
+
+// ══ ADICIONAR COLABORADOR A OUTRA EMPRESA ════════════════════
+async function abrirModalAdicionarEmpresa(colabId) {
+  _colabAddEmpId = colabId;
+  var c = _colabs.find(function(x){ return x.id===colabId; });
+  if (!c) return;
+
+  document.getElementById('modalAddEmpTit').textContent = 'Vincular: ' + c.nome;
+  document.getElementById('modalAddEmpNome').textContent =
+    'Selecione em quais empresas "' + c.nome + '" deve estar cadastrado:';
+
+  // Buscar todas as empresas
+  var { data: emps } = await sb.from('empresas').select('id,nome,nome_curto').eq('ativo',true);
+  _todasEmpresas = emps || [];
+
+  // Buscar vínculos atuais
+  var { data: ce } = await sb.from('colaborador_empresas')
+    .select('empresa_id').eq('colaborador_id', colabId).eq('ativo', true);
+  var vinculadas = (ce||[]).map(function(v){ return v.empresa_id; });
+
+  var box = document.getElementById('addEmpCheck');
+  box.innerHTML = _todasEmpresas.map(function(e) {
+    var checked = vinculadas.includes(e.id);
+    return '<label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;padding:.65rem .85rem;'
+      + 'background:var(--bg3);border:1px solid ' + (checked ? 'var(--accent)' : 'var(--border)') + ';border-radius:var(--r)">'
+      + '<input type="checkbox" id="addChkEmp_' + e.id + '" value="' + e.id + '"'
+      + (checked ? ' checked' : '')
+      + ' style="accent-color:var(--accent);width:18px;height:18px">'
+      + '<div>'
+        + '<div style="font-size:.85rem;font-weight:700;color:var(--text)">' + e.nome_curto + '</div>'
+        + '<div style="font-size:.72rem;color:var(--text3)">' + e.nome + '</div>'
+      + '</div>'
+      + (checked ? '<span class="bdg bdg-yellow" style="margin-left:auto">Atual</span>' : '')
+      + '</label>';
+  }).join('');
+
+  document.getElementById('modalAddEmpresa').classList.add('on');
+}
+
+function fecharModalAddEmpresa() {
+  document.getElementById('modalAddEmpresa').classList.remove('on');
+  _colabAddEmpId = null;
+}
+
+async function salvarAdicionarEmpresa() {
+  if (!_colabAddEmpId) return;
+
+  var empsSel = (_todasEmpresas||[]).filter(function(e) {
+    var chk = document.getElementById('addChkEmp_' + e.id);
+    return chk && chk.checked;
+  }).map(function(e){ return e.id; });
+
+  if (!empsSel.length) { toast('Selecione ao menos uma empresa.','err'); return; }
+
+  // Buscar vínculos atuais
+  var { data: atual } = await sb.from('colaborador_empresas')
+    .select('empresa_id').eq('colaborador_id', _colabAddEmpId);
+  var jaVinculadas = (atual||[]).map(function(v){ return v.empresa_id; });
+
+  // Inserir novos vínculos
+  var novos = 0;
+  for (var i = 0; i < empsSel.length; i++) {
+    if (!jaVinculadas.includes(empsSel[i])) {
+      await sb.from('colaborador_empresas').insert({
+        colaborador_id: _colabAddEmpId,
+        empresa_id: empsSel[i],
+        ativo: true
+      });
+      novos++;
+    }
+  }
+
+  // Desativar vínculos removidos
+  for (var j = 0; j < jaVinculadas.length; j++) {
+    if (!empsSel.includes(jaVinculadas[j])) {
+      await sb.from('colaborador_empresas')
+        .update({ ativo: false })
+        .eq('colaborador_id', _colabAddEmpId)
+        .eq('empresa_id', jaVinculadas[j]);
+    }
+  }
+
+  toast('Vínculos atualizados! ' + (novos ? novos + ' empresa(s) adicionada(s).' : ''), 'ok');
+  fecharModalAddEmpresa();
+  carregarColabs();
+}
 
 // ══ INICIALIZAÇÃO ════════════════════════════════════════════
 (async function init() {
