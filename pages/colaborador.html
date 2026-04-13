@@ -734,11 +734,15 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
       .select('empresas(id,nome,nome_curto)').eq('colaborador_id', colab.id).eq('ativo',true).limit(1).single();
     _empresa = ce && ce.empresas ? ce.empresas : null;
 
-    // Buscar propostas ativas da empresa
-    if (_empresa) {
+    // Buscar propostas de TODAS as empresas do colaborador
+    var { data: todasEmps } = await sb.from('colaborador_empresas')
+      .select('empresa_id').eq('colaborador_id', colab.id).eq('ativo', true);
+    var empIds = (todasEmps||[]).map(function(e){ return e.empresa_id; });
+
+    if (empIds.length) {
       var { data: props } = await sb.from('propostas')
-        .select('app_id,numero_proposta,titulo,cliente,fase')
-        .eq('empresa_id', _empresa.id)
+        .select('app_id,numero_proposta,titulo,cliente,fase,empresa_id')
+        .in('empresa_id', empIds)
         .not('fase','in','("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
         .order('numero_proposta', {ascending:false});
       _propostas = props || [];
@@ -793,6 +797,7 @@ async function carregarInicio() {
   var iniMes = agora.getFullYear() + '-' + String(agora.getMonth()+1).padStart(2,'0') + '-01';
   var fimMes = new Date(agora.getFullYear(), agora.getMonth()+1, 0).toISOString().split('T')[0];
 
+  // Buscar todos os apontamentos do colaborador (qualquer empresa)
   var { data: apts } = await sb.from('apontamentos')
     .select('horas_total,horas_extra_50,horas_extra_100,valor_total,proposta_id,status')
     .eq('colaborador_id', _colab.id)
@@ -820,6 +825,7 @@ async function carregarInicio() {
   alertasEl.innerHTML = alertHtml;
 
   // Últimos 5 apontamentos
+  // Últimos apontamentos — todos do colaborador independente de empresa
   var { data: ultimos } = await sb.from('apontamentos')
     .select('*').eq('colaborador_id', _colab.id)
     .order('data',{ascending:false}).limit(5);
@@ -950,7 +956,7 @@ async function salvarNovoApt() {
   var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
 
   var row = Object.assign({
-    empresa_id: _empresa ? _empresa.id : null,
+    empresa_id: (function(){ var p = _propostas.find(function(x){ return x.app_id === propostaId; }); return p ? (p.empresa_id || (_empresa ? _empresa.id : null)) : (_empresa ? _empresa.id : null); })(),
     proposta_id: propostaId,
     colaborador_id: _colab.id,
     data: data,
@@ -996,6 +1002,7 @@ async function carregarHistorico() {
   var fim = new Date(mes.split('-')[0], parseInt(mes.split('-')[1]), 0);
   var fimMes = fim.toISOString().split('T')[0];
 
+  // Histórico — todos os apontamentos do colaborador
   var { data } = await sb.from('apontamentos')
     .select('*').eq('colaborador_id', _colab.id)
     .gte('data', iniMes).lte('data', fimMes)
