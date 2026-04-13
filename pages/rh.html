@@ -1858,35 +1858,45 @@ async function previewApontamentosBol() {
     (_propsPrev||[]).forEach(function(p){ _previewPropostaMap[p.app_id] = p; });
   }
 
-  _bolAptPreview = apts || [];
+  // Excluir apontamentos já vinculados a boletins ativos (não cancelados)
+  var usedAptIds = new Set();
+  var bolNumerosUsados = [];
+  var aptIdsTodos = (apts||[]).map(function(a){ return a.id; });
+  if (aptIdsTodos.length) {
+    var { data: bolExist } = await sb.from('boletins')
+      .select('numero,apontamentos_ids')
+      .overlaps('apontamentos_ids', aptIdsTodos)
+      .neq('status','cancelado');
+    (bolExist||[]).forEach(function(b) {
+      bolNumerosUsados.push(b.numero);
+      (b.apontamentos_ids||[]).forEach(function(id) { usedAptIds.add(id); });
+    });
+  }
+
+  _bolAptPreview = (apts||[]).filter(function(a) { return !usedAptIds.has(a.id); });
+
   var preview = document.getElementById('bolPreview');
   var tabela  = document.getElementById('bolPreviewTabela');
   var alerta  = document.getElementById('bolAlerta');
   preview.style.display = 'block';
 
+  alerta.style.display = 'none';
+  if (usedAptIds.size > 0) {
+    alerta.style.display = 'block';
+    alerta.style.background = 'rgba(240,165,0,.12)';
+    alerta.style.color = 'var(--accent)';
+    alerta.textContent = '⚠️ ' + usedAptIds.size + ' apontamento(s) já utilizados em documentos ativos (' + bolNumerosUsados.join(', ') + ') foram excluídos desta seleção.';
+  }
+
   if (!_bolAptPreview.length) {
-    tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">Nenhum apontamento aprovado neste período.</div>';
+    tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">'
+      + (usedAptIds.size > 0 ? 'Todos os apontamentos aprovados neste período já estão em documentos ativos.' : 'Nenhum apontamento aprovado neste período.')
+      + '</div>';
     document.getElementById('bolTotHoras').textContent = '0h';
     document.getElementById('bolTotValor').textContent = 'R$ 0,00';
     document.getElementById('bolTotQtd').textContent   = '0';
     document.getElementById('btnGerarBol').style.display = 'none';
-    alerta.style.display = 'none';
     return;
-  }
-
-  // Verificar se já existe boletim para esses apontamentos
-  var aptIds = _bolAptPreview.map(function(a){ return a.id; });
-  var { data: bolExist } = await sb.from('boletins')
-    .select('numero,status')
-    .overlaps('apontamentos_ids', aptIds)
-    .neq('status','cancelado');
-
-  alerta.style.display = 'none';
-  if (bolExist && bolExist.length) {
-    alerta.style.display = 'block';
-    alerta.style.background = 'rgba(240,165,0,.12)';
-    alerta.style.color = 'var(--accent)';
-    alerta.textContent = '⚠️ Atenção: ' + bolExist.length + ' apontamento(s) já estão em documentos anteriores (' + bolExist.map(function(b){ return b.numero; }).join(', ') + ').';
   }
 
   var totH = 0, totV = 0;
