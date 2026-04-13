@@ -1993,7 +1993,7 @@ async function abrirBoletimGestor(bolId) {
   html += '<div style="font-weight:700">' + (bol.assinado_prestador?'✅':'⏳') + ' Prestador</div>';
   html += '<div>' + (colab.nome||'—') + '</div>';
   if (bol.assinado_prestador) {
-    html += '<div style="color:#6c757d;font-size:10px">Em: ' + new Date(bol.data_assinatura_p).toLocaleString('pt-BR') + '</div>';
+    html += '<div style="color:#6c757d;font-size:10px">Em: ' + fmtBrasilia(bol.data_assinatura_p) + '</div>';
     html += '<div style="color:#6c757d;font-size:10px;font-family:monospace">Hash: ' + (bol.hash_assinatura_p||'').slice(0,16) + '...</div>';
   } else {
     html += '<div style="color:#856404;font-size:10px">Aguardando assinatura</div>';
@@ -2005,7 +2005,7 @@ async function abrirBoletimGestor(bolId) {
   html += '<div style="font-weight:700">' + (bol.assinado_empresa?'✅':'⏳') + ' Empresa</div>';
   html += '<div>' + (emp?emp.nome:'—') + '</div>';
   if (bol.assinado_empresa) {
-    html += '<div style="color:#6c757d;font-size:10px">Em: ' + new Date(bol.data_assinatura_e).toLocaleString('pt-BR') + '</div>';
+    html += '<div style="color:#6c757d;font-size:10px">Em: ' + fmtBrasilia(bol.data_assinatura_e) + '</div>';
     html += '<div style="color:#6c757d;font-size:10px">Por: ' + (bol.assinante_empresa_nome||'—') + '</div>';
     html += '<div style="color:#6c757d;font-size:10px;font-family:monospace">Hash: ' + (bol.hash_assinatura_e||'').slice(0,16) + '...</div>';
   } else {
@@ -2241,7 +2241,7 @@ async function imprimirBoletim() {
     + '<div>'
     + '<div style="font-size:9px;color:#6c757d">ID do Documento: ' + bol.id + '</div>'
     + (bol.status==='valido' ? '<div class="valid-badge" style="margin-top:4px">✅ DOCUMENTO VÁLIDO</div>' : '')
-    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: ' + new Date().toLocaleString('pt-BR') + '</div>'
+    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: ' + agoraBrasilia().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) + '</div>'
     + '</div>'
     + '<div style="text-align:center">'
     + '<img src="' + qrUrl + '" width="90" height="90" alt="QR Code" style="border:3px solid #1e3a5f;border-radius:4px">'
