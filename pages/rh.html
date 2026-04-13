@@ -2064,9 +2064,26 @@ function _imprimirHtml(html) {
   iframe.contentDocument.open();
   iframe.contentDocument.write(cleanHtml);
   iframe.contentDocument.close();
-  setTimeout(function() {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e) {}
-  }, 400);
+  // Aguardar imagens (QR Code) carregarem antes de imprimir
+  iframe.onload = function() {
+    var imgs = iframe.contentDocument.images;
+    if (!imgs.length) {
+      setTimeout(function(){ try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){} }, 200);
+      return;
+    }
+    var loaded = 0;
+    var total  = imgs.length;
+    var doPrint = function() {
+      loaded++;
+      if (loaded >= total) {
+        setTimeout(function(){ try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){} }, 300);
+      }
+    };
+    for (var i = 0; i < total; i++) {
+      if (imgs[i].complete) { doPrint(); }
+      else { imgs[i].onload = doPrint; imgs[i].onerror = doPrint; }
+    }
+  };
 }
 
 // ── Imprimir boletim ─────────────────────────────────────────
