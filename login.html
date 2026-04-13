@@ -4,353 +4,203 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - Sistema de Propostas</title>
-
   <style>
-    *{
-      box-sizing:border-box;
-    }
-
-    body{
-      margin:0;
-      font-family:Arial,sans-serif;
-      background:#0d1117;
-      color:#fff;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:100vh;
-      padding:16px;
-    }
-
-    .container{
-      display:flex;
-      width:900px;
-      max-width:100%;
-      background:#161b22;
-      border:1px solid #30363d;
-      border-radius:12px;
-      overflow:hidden;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
-    }
-
-    .left{
-      flex:1;
-      background:#0d1117;
-      padding:30px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      border-right:1px solid #30363d;
-    }
-
-    .logo{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:20px;
-    }
-
-    .logo-mk{
-      background:#facc15;
-      color:#000;
-      font-weight:bold;
-      padding:10px 12px;
-      border-radius:6px;
-    }
-
-    .logo-text{
-      font-size:18px;
-      font-weight:bold;
-    }
-
-    .logo-sub{
-      font-size:12px;
-      color:#8b949e;
-    }
-
-    .left h2{
-      margin:20px 0 10px;
-    }
-
-    .left p{
-      font-size:14px;
-      color:#8b949e;
-      line-height:1.6;
-    }
-
-    .right{
-      flex:1;
-      padding:30px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-    }
-
-    h1{
-      margin:0 0 20px;
-    }
-
-    input{
-      width:100%;
-      padding:12px;
-      margin-bottom:10px;
-      border:none;
-      border-radius:8px;
-      background:#21262d;
-      color:#fff;
-      font-size:16px;
-      outline:none;
-    }
-
-    input:focus{
-      outline:2px solid #58a6ff;
-      outline-offset:1px;
-    }
-
-    button{
-      width:100%;
-      padding:12px;
-      border:none;
-      border-radius:8px;
-      background:#58a6ff;
-      color:#000;
-      font-weight:bold;
-      cursor:pointer;
-      margin-top:5px;
-      transition:opacity .2s ease;
-    }
-
-    button:hover{
-      opacity:.92;
-    }
-
-    .btn-secondary{
-      background:#30363d;
-      color:#fff;
-    }
-
-    #msg{
-      margin-top:12px;
-      font-size:14px;
-      color:#ff7b72;
-      min-height:20px;
-      line-height:1.4;
-    }
-
-    @media(max-width:768px){
-      .container{
-        flex-direction:column;
-      }
-
-      .left{
-        border-right:none;
-        border-bottom:1px solid #30363d;
-      }
-
-      .left,
-      .right{
-        padding:22px;
-      }
-    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#0d1117;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
+    .container{display:flex;width:900px;max-width:100%;background:#161b22;border:1px solid #30363d;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .left{flex:1;background:#0d1117;padding:30px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid #30363d}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+    .logo-mk{background:#facc15;color:#000;font-weight:bold;padding:10px 12px;border-radius:6px}
+    .logo-text{font-size:18px;font-weight:bold}
+    .logo-sub{font-size:12px;color:#8b949e}
+    .left h2{margin:20px 0 10px}
+    .left p{font-size:14px;color:#8b949e;line-height:1.6}
+    .right{flex:1;padding:30px;display:flex;flex-direction:column;justify-content:center}
+    h1{margin:0 0 20px}
+    input{width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;background:#21262d;color:#fff;font-size:16px;outline:none}
+    input:focus{outline:2px solid #58a6ff;outline-offset:1px}
+    .btn{width:100%;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:5px;transition:opacity .2s;font-size:15px;font-family:inherit}
+    .btn-blue{background:#58a6ff;color:#000}
+    .btn-secondary{background:#30363d;color:#fff}
+    .btn-empresa{background:#f0a500;color:#000;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px}
+    .btn-prestador{background:#3fb950;color:#000;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;margin-top:10px}
+    .btn-empresa:hover,.btn-prestador:hover{opacity:.9}
+    .role-picker{display:none;margin-top:8px}
+    .role-picker .desc{font-size:12px;color:#8b949e;text-align:center;margin:8px 0 16px}
+    .divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+    .divider hr{flex:1;border:none;border-top:1px solid #30363d}
+    .divider span{font-size:12px;color:#8b949e;white-space:nowrap}
+    .back-btn{background:none;border:none;color:#8b949e;cursor:pointer;font-size:13px;font-family:inherit;text-decoration:underline;width:auto;padding:0;margin-top:12px;text-align:center}
+    #msg{margin-top:12px;font-size:14px;color:#ff7b72;min-height:20px;line-height:1.4}
+    @media(max-width:768px){.container{flex-direction:column}.left{border-right:none;border-bottom:1px solid #30363d}.left,.right{padding:22px}}
   </style>
 </head>
-
 <body>
-  <div class="container">
-
-    <div class="left">
-      <div class="logo">
-        <div class="logo-mk">EE</div>
-        <div>
-          <div class="logo-text">Eng. Elivandro</div>
-          <div class="logo-sub">Sistema de Propostas</div>
-        </div>
+<div class="container">
+  <div class="left">
+    <div class="logo">
+      <div class="logo-mk">EE</div>
+      <div>
+        <div class="logo-text">Eng. Elivandro</div>
+        <div class="logo-sub">Sistema de Propostas</div>
       </div>
-
-      <h2>Bem-vindo</h2>
-      <p>Gerencie propostas, análises e pipeline da sua empresa em um único sistema.</p>
     </div>
+    <h2>Bem-vindo</h2>
+    <p>Gerencie propostas, análises e pipeline da sua empresa em um único sistema.</p>
+    <p style="margin-top:16px;font-size:13px;color:#6e7681">Acesso disponível para gestores, donos e prestadores de serviço.</p>
+  </div>
 
-    <div class="right">
+  <div class="right">
+    <!-- Formulário de login -->
+    <div id="formLogin">
       <h1>Entrar</h1>
-
       <input type="email" id="email" placeholder="Seu email" autocomplete="email" />
       <input type="password" id="senha" placeholder="Sua senha" autocomplete="current-password" />
-
-      <button id="btnLogin">Entrar</button>
-      <button id="btnCadastro" class="btn-secondary">Criar conta</button>
-      <button id="btnReset" class="btn-secondary">Esqueci minha senha</button>
-
+      <button class="btn btn-blue" id="btnLogin">Entrar</button>
+      <button class="btn btn-secondary" id="btnReset" style="margin-top:8px">Esqueci minha senha</button>
       <div id="msg"></div>
     </div>
 
+    <!-- Seletor de perfil (aparece após login quando usuário tem duplo papel) -->
+    <div id="rolePicker" style="display:none">
+      <h1 style="margin-bottom:6px">Como deseja entrar?</h1>
+      <div style="font-size:13px;color:#8b949e;margin-bottom:20px">Você tem acesso a mais de um perfil. Escolha como quer entrar agora:</div>
+
+      <button class="btn btn-empresa" id="btnEntrarEmpresa">
+        <span style="font-size:1.3rem">🏢</span>
+        <div style="text-align:left">
+          <div style="font-weight:700">Entrar como Empresa</div>
+          <div style="font-size:11px;font-weight:400;opacity:.8">Gestor / Dono — acesso completo ao sistema</div>
+        </div>
+      </button>
+
+      <button class="btn btn-prestador" id="btnEntrarPrestador">
+        <span style="font-size:1.3rem">👷</span>
+        <div style="text-align:left">
+          <div style="font-weight:700">Entrar como Prestador</div>
+          <div style="font-size:11px;font-weight:400;opacity:.8">Colaborador — apontamentos, boletins e histórico</div>
+        </div>
+      </button>
+
+      <button class="back-btn" id="btnVoltar">← Usar outra conta</button>
+    </div>
   </div>
+</div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+  const supabase = createClient(
+    "https://ojuuzojwnyxdsavdosif.supabase.co",
+    "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u"
+  );
 
-    const supabase = createClient(
-      "https://ojuuzojwnyxdsavdosif.supabase.co",
-      "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u"
-    );
+  const msg        = document.getElementById("msg");
+  const formLogin  = document.getElementById("formLogin");
+  const rolePicker = document.getElementById("rolePicker");
 
-    const msg = document.getElementById("msg");
-    const emailInput = document.getElementById("email");
-    const senhaInput = document.getElementById("senha");
-    const btnLogin = document.getElementById("btnLogin");
-    const btnCadastro = document.getElementById("btnCadastro");
-    const btnReset = document.getElementById("btnReset");
+  function mostrarErro(t){ msg.style.color="#ff7b72"; msg.textContent=t; }
+  function mostrarSucesso(t){ msg.style.color="#3fb950"; msg.textContent=t; }
 
-    function mostrarErro(texto) {
-      msg.style.color = "#ff7b72";
-      msg.textContent = texto;
-    }
+  // Verificar se tem sessão ativa ao carregar
+  async function verificarSessao() {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) await decidirDestino(data.user);
+  }
 
-    function mostrarSucesso(texto) {
-      msg.style.color = "#3fb950";
-      msg.textContent = texto;
-    }
+  // Decidir para onde ir após login
+  async function decidirDestino(user) {
+    const { data: usuario } = await supabase
+      .from('usuarios').select('perfil').eq('auth_id', user.id).eq('ativo', true).maybeSingle();
 
-    function limparMensagem() {
-      msg.style.color = "#ff7b72";
-      msg.textContent = "";
-    }
+    const ehGestorOuDono = usuario && (usuario.perfil === 'dono' || usuario.perfil === 'gestor' || usuario.perfil === 'admin');
 
-    async function verificarSessao() {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        await redirecionarPorPerfil();
+    const { data: colab } = await supabase
+      .from('colaboradores').select('id').eq('auth_id', user.id).eq('ativo', true).maybeSingle();
+
+    // Verificar também pelo email (fallback)
+    let ehColaborador = !!colab;
+    if (!ehColaborador) {
+      const { data: colabEmail } = await supabase
+        .from('colaboradores').select('id').eq('email', user.email).eq('ativo', true).maybeSingle();
+      ehColaborador = !!colabEmail;
+      // Vincular auth_id automaticamente
+      if (colabEmail) {
+        supabase.from('colaboradores').update({ auth_id: user.id }).eq('id', colabEmail.id).then(()=>{});
       }
     }
 
-    async function redirecionarPorPerfil() {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (!authData || !authData.user) { window.location.href = '/'; return; }
-
-        // 1. Verificar primeiro se é dono ou gestor (prioridade máxima)
-        const { data: usuario } = await supabase
-          .from('usuarios')
-          .select('perfil')
-          .eq('auth_id', authData.user.id)
-          .eq('ativo', true)
-          .maybeSingle();
-
-        if (usuario && (usuario.perfil === 'dono' || usuario.perfil === 'gestor')) {
-          // Dono ou gestor → sempre plataforma completa
-          window.location.href = '/';
-          return;
-        }
-
-        // 2. Só verifica colaborador se não for dono/gestor
-        const { data: colab } = await supabase
-          .from('colaboradores')
-          .select('id')
-          .eq('auth_id', authData.user.id)
-          .eq('ativo', true)
-          .maybeSingle();
-
-        if (colab) {
-          // É colaborador/prestador puro → portal simplificado
-          window.location.href = '/pages/colaborador.html';
-        } else {
-          // Sem perfil definido → plataforma completa
-          window.location.href = '/';
-        }
-      } catch(e) {
-        console.error('[login] erro:', e);
-        window.location.href = '/';
-      }
+    if (ehGestorOuDono && ehColaborador) {
+      // Duplo papel — mostrar seletor
+      formLogin.style.display = 'none';
+      rolePicker.style.display = 'block';
+      return;
     }
 
-    async function login() {
-      limparMensagem();
-
-      const email = emailInput.value.trim();
-      const senha = senhaInput.value.trim();
-
-      if (!email || !senha) {
-        mostrarErro("Preencha email e senha.");
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: senha
-      });
-
-      if (error) {
-        mostrarErro(error.message);
-        return;
-      }
-
-      // Verificar perfil para redirecionar corretamente
-      await redirecionarPorPerfil();
+    if (ehGestorOuDono) {
+      window.location.href = '/'; return;
     }
 
-    async function cadastrar() {
-      limparMensagem();
-
-      const email = emailInput.value.trim();
-      const senha = senhaInput.value.trim();
-
-      if (!email || !senha) {
-        mostrarErro("Preencha email e senha.");
-        return;
-      }
-
-      const { error } = await supabase.auth.signUp({
-        email,
-        password: senha
-      });
-
-      if (error) {
-        mostrarErro(error.message);
-        return;
-      }
-
-      mostrarSucesso("Conta criada. Verifique seu email.");
+    if (ehColaborador) {
+      window.location.href = '/pages/colaborador.html'; return;
     }
 
-    async function redefinirSenha() {
-      limparMensagem();
+    // Sem perfil — acesso ao sistema principal
+    window.location.href = '/';
+  }
 
-      const email = emailInput.value.trim();
+  // Login
+  document.getElementById("btnLogin").addEventListener("click", async () => {
+    msg.textContent = '';
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+    if (!email || !senha) { mostrarErro("Preencha email e senha."); return; }
 
-      if (!email) {
-        mostrarErro("Digite seu email primeiro.");
-        return;
-      }
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (error) { mostrarErro(error.message); return; }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://sistemas-propostas.vercel.app/login.html"
-      });
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) await decidirDestino(data.user);
+  });
 
-      if (error) {
-        mostrarErro(error.message);
-        return;
-      }
+  // Entrar como empresa
+  document.getElementById("btnEntrarEmpresa").addEventListener("click", () => {
+    window.location.href = '/';
+  });
 
-      mostrarSucesso("Link de redefinição enviado!");
-    }
+  // Entrar como prestador
+  document.getElementById("btnEntrarPrestador").addEventListener("click", () => {
+    window.location.href = '/pages/colaborador.html';
+  });
 
-    btnLogin.addEventListener("click", login);
-    btnCadastro.addEventListener("click", cadastrar);
-    btnReset.addEventListener("click", redefinirSenha);
+  // Voltar
+  document.getElementById("btnVoltar").addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    formLogin.style.display = 'block';
+    rolePicker.style.display = 'none';
+    document.getElementById("email").value = '';
+    document.getElementById("senha").value = '';
+  });
 
-    senhaInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        login();
-      }
+  // Esqueci a senha
+  document.getElementById("btnReset").addEventListener("click", async () => {
+    msg.textContent = '';
+    const email = document.getElementById("email").value.trim();
+    if (!email) { mostrarErro("Digite seu email primeiro."); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://sistemas-propostas.vercel.app/login.html"
     });
+    if (error) { mostrarErro(error.message); return; }
+    mostrarSucesso("Link de redefinição enviado!");
+  });
 
-    emailInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        login();
-      }
+  // Enter para login
+  ["email","senha"].forEach(id => {
+    document.getElementById(id).addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("btnLogin").click();
     });
+  });
 
-    verificarSessao();
-  </script>
+  verificarSessao();
+</script>
 </body>
 </html>
