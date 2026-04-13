@@ -1254,32 +1254,20 @@ async function salvarColab() {
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
 
-  // Sincronizar vínculos de empresa
+  // Sincronizar vínculos de empresa — deletar todos e reinserir os selecionados
   if (colabId) {
-    // Buscar vínculos atuais
-    var { data: atual } = await sb.from('colaborador_empresas')
-      .select('empresa_id').eq('colaborador_id', colabId);
-    var jaVinculadas = (atual||[]).map(function(v){ return v.empresa_id; });
+    // Remover todos os vínculos existentes
+    await sb.from('colaborador_empresas')
+      .delete()
+      .eq('colaborador_id', colabId);
 
-    // Inserir novos vínculos
+    // Reinserir apenas os selecionados
     for (var i = 0; i < empsSel.length; i++) {
-      if (!jaVinculadas.includes(empsSel[i])) {
-        await sb.from('colaborador_empresas').insert({
-          colaborador_id: colabId,
-          empresa_id: empsSel[i],
-          ativo: true
-        });
-      }
-    }
-
-    // Desativar vínculos removidos
-    for (var j = 0; j < jaVinculadas.length; j++) {
-      if (!empsSel.includes(jaVinculadas[j])) {
-        await sb.from('colaborador_empresas')
-          .update({ ativo: false })
-          .eq('colaborador_id', colabId)
-          .eq('empresa_id', jaVinculadas[j]);
-      }
+      await sb.from('colaborador_empresas').insert({
+        colaborador_id: colabId,
+        empresa_id: empsSel[i],
+        ativo: true
+      });
     }
   }
 
@@ -1616,35 +1604,20 @@ async function salvarAdicionarEmpresa() {
 
   if (!empsSel.length) { toast('Selecione ao menos uma empresa.','err'); return; }
 
-  // Buscar vínculos atuais
-  var { data: atual } = await sb.from('colaborador_empresas')
-    .select('empresa_id').eq('colaborador_id', _colabAddEmpId);
-  var jaVinculadas = (atual||[]).map(function(v){ return v.empresa_id; });
+  // Deletar todos os vínculos e reinserir os selecionados
+  await sb.from('colaborador_empresas')
+    .delete()
+    .eq('colaborador_id', _colabAddEmpId);
 
-  // Inserir novos vínculos
-  var novos = 0;
   for (var i = 0; i < empsSel.length; i++) {
-    if (!jaVinculadas.includes(empsSel[i])) {
-      await sb.from('colaborador_empresas').insert({
-        colaborador_id: _colabAddEmpId,
-        empresa_id: empsSel[i],
-        ativo: true
-      });
-      novos++;
-    }
+    await sb.from('colaborador_empresas').insert({
+      colaborador_id: _colabAddEmpId,
+      empresa_id: empsSel[i],
+      ativo: true
+    });
   }
 
-  // Desativar vínculos removidos
-  for (var j = 0; j < jaVinculadas.length; j++) {
-    if (!empsSel.includes(jaVinculadas[j])) {
-      await sb.from('colaborador_empresas')
-        .update({ ativo: false })
-        .eq('colaborador_id', _colabAddEmpId)
-        .eq('empresa_id', jaVinculadas[j]);
-    }
-  }
-
-  toast('Vínculos atualizados! ' + (novos ? novos + ' empresa(s) adicionada(s).' : ''), 'ok');
+  toast('Vínculos atualizados! ' + empsSel.length + ' empresa(s) vinculada(s).', 'ok');
   fecharModalAddEmpresa();
   carregarColabs();
 }
