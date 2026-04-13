@@ -2245,17 +2245,35 @@ async function salvarAdicionarEmpresa() {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Carregar empresa e colaboradores
-  var empId = await getEmpresaId();
+  // Solicitar empresa ao parent
   try {
-    if (window.parent && window.parent.getEmpresaAtiva) {
-      var emp = window.parent.getEmpresaAtiva();
-      if (emp) {
-        var empLabel = document.getElementById('rhEmpresaLabel');
-        if (empLabel) empLabel.textContent = emp.nome_curto;
-      }
+    if (window.parent && window.parent.postMessage) {
+      window.parent.postMessage({ type: 'RH_PEDIR_EMPRESA' }, '*');
     }
   } catch(e) {}
+
+  // Aguardar empresa via SET_EMPRESA ou buscar direto
+  var empId = await new Promise(function(resolve) {
+    // Timeout: se não receber em 1.5s, busca direto
+    var timeout = setTimeout(function() { resolve(null); }, 1500);
+
+    var handler = function(e) {
+      if (e.data && e.data.type === 'SET_EMPRESA' && e.data.empresaId) {
+        clearTimeout(timeout);
+        window.removeEventListener('message', handler);
+        _empresaId = e.data.empresaId;
+        var lbl = document.getElementById('rhEmpresaLabel');
+        if (lbl) lbl.textContent = e.data.empresaNomeCurto || '';
+        resolve(e.data.empresaId);
+      }
+    };
+    window.addEventListener('message', handler);
+  });
+
+  // Se não veio via postMessage, buscar direto no Supabase
+  if (!empId) {
+    empId = await getEmpresaId();
+  }
 
   await carregarColabs();
   await gerarAlertas();
