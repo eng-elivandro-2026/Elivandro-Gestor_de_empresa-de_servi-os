@@ -1303,8 +1303,8 @@ async function preencherSelectPropostas() {
   var { data } = await sb.from('propostas')
     .select('app_id, numero_proposta, titulo, fase')
     .eq('empresa_id', empId)
-    .in('fase', ['aprovado','andamento','faturado','taf','sat','atrasado'])
-    .order('numero_proposta');
+    .not('fase', 'in', '("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
+    .order('numero_proposta', { ascending: false });
   _propostas = data || [];
   var sel = document.getElementById('aptProposta');
   sel.innerHTML = '<option value="">Selecione a proposta...</option>';
