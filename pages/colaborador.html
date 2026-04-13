@@ -831,15 +831,48 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
 
     _colab = colab;
 
-    // Buscar empresa do colaborador
-    var { data: ce } = await sb.from('colaborador_empresas')
-      .select('empresas(id,nome,nome_curto)').eq('colaborador_id', colab.id).eq('ativo',true).limit(1).single();
-    _empresa = ce && ce.empresas ? ce.empresas : null;
+    // Buscar TODAS as empresas do colaborador
+    var { data: vinculos } = await sb.from('colaborador_empresas')
+      .select('empresas(id,nome,nome_curto)').eq('colaborador_id', colab.id).eq('ativo',true);
+    var empresasColab = (vinculos||[]).map(function(v){ return v.empresas; }).filter(Boolean);
 
-    // Buscar propostas de TODAS as empresas do colaborador
-    var { data: todasEmps } = await sb.from('colaborador_empresas')
-      .select('empresa_id').eq('colaborador_id', colab.id).eq('ativo', true);
-    var empIds = (todasEmps||[]).map(function(e){ return e.empresa_id; });
+    // Se mais de uma empresa — mostrar seletor antes de entrar
+    if (empresasColab.length > 1) {
+      var load = document.getElementById('loading');
+      load.innerHTML = '<div style="text-align:center;padding:2rem">'
+        + '<div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:1rem">Selecione a empresa</div>'
+        + '<div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem">Você está vinculado a mais de uma empresa.<br>Escolha em qual empresa vai trabalhar agora:</div>'
+        + '<div style="display:flex;flex-direction:column;gap:.75rem;max-width:320px;margin:0 auto">'
+        + empresasColab.map(function(e) {
+            var cor = e.nome_curto==='Fortex' ? '#F05A1A' : '#f0a500';
+            return '<button onclick="selecionarEmpresaColab(\'' + e.id + '\')" '
+              + 'style="padding:1rem;background:var(--bg3);border:2px solid var(--border);border-radius:10px;'
+              + 'color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;'
+              + 'display:flex;align-items:center;gap:.75rem">'
+              + '<span style="width:36px;height:36px;background:' + cor + ';border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#000">'
+              + e.nome_curto.slice(0,2).toUpperCase() + '</span>'
+              + '<span>' + e.nome + '</span>'
+              + '</button>';
+          }).join('')
+        + '</div></div>';
+      // Guardar empresas para uso posterior
+      window._empresasColab = empresasColab;
+      window._empIds = empresasColab.map(function(e){ return e.id; });
+      // Carregar propostas de todas as empresas em background
+      if (window._empIds.length) {
+        sb.from('propostas')
+          .select('app_id,numero_proposta,titulo,cliente,fase,empresa_id')
+          .in('empresa_id', window._empIds)
+          .not('fase','in','("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
+          .order('numero_proposta', {ascending:false})
+          .then(function(res){ _propostas = res.data || []; });
+      }
+      return; // Aguarda seleção
+    }
+
+    // Apenas uma empresa — entrar direto
+    _empresa = empresasColab[0] || null;
+    var empIds = empresasColab.map(function(e){ return e.id; });
 
     if (empIds.length) {
       var { data: props } = await sb.from('propostas')
@@ -864,6 +897,15 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
       '<div style="text-align:center;padding:2rem;color:#f06060">Erro ao carregar. Tente novamente.</div>';
   }
 })();
+
+// ── Selecionar empresa (colaborador multi-empresa) ───────────
+window.selecionarEmpresaColab = async function(empresaId) {
+  _empresa = (window._empresasColab||[]).find(function(e){ return e.id === empresaId; }) || null;
+  atualizarHeaders();
+  var load = document.getElementById('loading');
+  load.classList.add('hide');
+  setTimeout(function(){ load.style.display='none'; irPara('inicio'); }, 300);
+};
 
 function atualizarHeaders() {
   if (!_colab || !_empresa) return;
@@ -1411,7 +1453,14 @@ async function imprimirBoletimColab() {
   var validUrl = window.location.origin + '/validar.html?id=' + bol.id + '&hash=' + (bol.hash_documento_final||'').slice(0,16);
   var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(validUrl);
 
-  var fmtAss = function(dt){ return dt ? new Date(dt).toLocaleString('pt-BR') : '—'; };
+  var fmtAss = function(dt) {
+    if (!dt) return '—';
+    var d = new Date(new Date(dt).getTime() - 3 * 60 * 60 * 1000);
+    return d.toLocaleDateString('pt-BR') + ', ' +
+      String(d.getUTCHours()).padStart(2,'0') + ':' +
+      String(d.getUTCMinutes()).padStart(2,'0') + ':' +
+      String(d.getUTCSeconds()).padStart(2,'0');
+  };
   var totV = fmtMoeda(bol.valor_total);
   var totH = Number(bol.horas_total||0).toFixed(1);
 
