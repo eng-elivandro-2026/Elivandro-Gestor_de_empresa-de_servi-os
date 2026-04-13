@@ -2055,8 +2055,12 @@ async function abrirBoletimGestor(bolId) {
   // Verificar se usuário logado é também o colaborador deste boletim
   var { data: authNow } = await sb.auth.getUser();
   var authUidNow = authNow && authNow.user ? authNow.user.id : null;
-  var colabDoDoc = bol.colaboradores || {};
-  var euSouOColaborador = authUidNow && colabDoDoc.auth_id === authUidNow;
+  var euSouOColaborador = false;
+  if (authUidNow && bol.colaborador_id) {
+    var { data: colabAuth } = await sb.from('colaboradores')
+      .select('auth_id').eq('id', bol.colaborador_id).maybeSingle();
+    euSouOColaborador = !!(colabAuth && colabAuth.auth_id === authUidNow);
+  }
 
   // Mostrar área de prestador se eu sou o colaborador e ainda não assinei
   if (euSouOColaborador && bol.status === 'aguard_prestador' && !bol.assinado_prestador) {
