@@ -637,6 +637,10 @@ body{
         <button class="btn btn-primary" style="margin-top:.5rem" onclick="assinarComPin()">✅ Confirmar Assinatura</button>
         <button class="btn btn-secondary" style="margin-top:.35rem;font-size:.72rem" onclick="esqueceiPin()">Esqueci meu PIN</button>
       </div>
+      <!-- Botão imprimir sempre visível -->
+      <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)">
+        <button class="btn btn-secondary" style="width:100%" onclick="imprimirBoletimColab()">🖨️ Imprimir / Salvar PDF</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1328,6 +1332,89 @@ function fecharVerBol() {
   document.getElementById('mVerBol').classList.remove('on');
   _bolAtivoColab = null;
 }
+
+// ── Imprimir boletim (colaborador) ───────────────────────────
+async function imprimirBoletimColab() {
+  if (!_bolAtivoColab) return;
+  var bol  = _bolAtivoColab;
+  var isClt = _colab ? _colab.tipo === 'clt' : false;
+  var titulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
+
+  var { data: apts } = await sb.from('apontamentos')
+    .select('*').in('id', bol.apontamentos_ids||[]).order('data',{ascending:true});
+
+  var { data: emp } = await sb.from('empresas')
+    .select('nome,cnpj').eq('id', bol.empresa_id).maybeSingle();
+
+  var validUrl = window.location.origin + '/validar.html?id=' + bol.id + '&hash=' + (bol.hash_documento_final||'').slice(0,16);
+  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(validUrl);
+
+  var fmtAss = function(dt){ return dt ? new Date(dt).toLocaleString('pt-BR') : '—'; };
+  var totV = fmtMoeda(bol.valor_total);
+  var totH = Number(bol.horas_total||0).toFixed(1);
+
+  var headers = isClt
+    ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Valor</th><th>Descrição</th>'
+    : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Valor</th><th>Descrição</th>';
+
+  var linhas = (apts||[]).map(function(a,i){
+    var bg = i%2===0?'#ffffff':'#f5f5f5';
+    var cols = isClt
+      ? '<td>'+fmtData(a.data)+'</td><td style="text-align:center">'+(a.hora_entrada||'—')+'</td><td style="text-align:center">'+(a.hora_saida||'—')+'</td><td style="text-align:center">'+Number(a.horas_normal||0).toFixed(1)+'h</td><td style="text-align:center">'+Number(a.horas_extra_50||0).toFixed(1)+'h</td><td style="text-align:right;color:#1a7a3c;font-weight:600">'+fmtMoeda(a.valor_total)+'</td><td>'+(a.descricao||'')+'</td>'
+      : '<td>'+fmtData(a.data)+'</td><td style="text-align:center">'+(a.hora_entrada||'—')+'</td><td style="text-align:center">'+(a.hora_saida||'—')+'</td><td style="text-align:center">'+Number(a.horas_total||0).toFixed(1)+'h</td><td style="text-align:right;color:#1a7a3c;font-weight:600">'+fmtMoeda(a.valor_total)+'</td><td>'+(a.descricao||'')+'</td>';
+    return '<tr style="background:'+bg+'">'+cols+'</tr>';
+  }).join('');
+
+  var css = '*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#212529;padding:20px}h1{font-size:16px;color:#1e3a5f;margin-bottom:2px}h2{font-size:11px;color:#6c757d;font-weight:400;margin-bottom:16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#1e3a5f;color:white;padding:6px 8px;text-align:left;font-size:10px}td{padding:5px 8px;border-bottom:1px solid #dee2e6;font-size:10px}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:16px;padding:10px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px}.info-label{font-size:9px;color:#6c757d;text-transform:uppercase;letter-spacing:.04em}.info-val{font-size:11px;font-weight:600;color:#212529}.total-row td{background:#1e3a5f;color:white;font-weight:700;border:none}.section-title{font-size:10px;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px;border-bottom:2px solid #1e3a5f;padding-bottom:3px}.ass-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.ass-box{border:1px solid #dee2e6;border-radius:4px;padding:8px}.ass-ok{border-color:#198754;background:#d1fae5}.ass-pend{border-color:#ffc107;background:#fff9e6}.hash{font-family:monospace;font-size:9px;color:#6c757d;word-break:break-all;margin-top:4px}.juridico{background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:10px;font-size:9px;color:#495057;line-height:1.5;margin-bottom:16px}.footer-doc{display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #1e3a5f;padding-top:10px}.valid-badge{background:#198754;color:white;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700}@media print{.no-print{display:none}}';
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+titulo+' — '+bol.numero+'</title><style>'+css+'</style></head><body>'
+    + '<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">'
+    + '<button onclick="window.print()" style="background:#1e3a5f;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">🖨️ Imprimir / Salvar PDF</button>'
+    + '<button onclick="window.close()" style="background:#6c757d;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">✕ Fechar</button>'
+    + '</div>'
+    + '<table style="margin-bottom:12px"><tr><td style="border:none;padding:0;vertical-align:top;width:70%"><h1>'+titulo+'</h1><h2>'+subtit+'</h2></td>'
+    + '<td style="border:none;padding:0;text-align:right;vertical-align:top"><div style="font-size:9px;color:#6c757d">Nº do Documento</div><div style="font-size:14px;font-weight:700;color:#1e3a5f">'+bol.numero+'</div></td></tr></table>'
+    + '<div class="info-grid">'
+    + '<div><div class="info-label">Prestador / Colaborador</div><div class="info-val">'+(_colab?_colab.nome:'—')+'</div></div>'
+    + '<div><div class="info-label">CPF / CNPJ</div><div class="info-val">'+(_colab?_colab.documento||'—':'—')+'</div></div>'
+    + '<div><div class="info-label">Empresa Contratante</div><div class="info-val">'+(emp?emp.nome:'—')+'</div></div>'
+    + '<div><div class="info-label">Período</div><div class="info-val">'+fmtData(bol.periodo_inicio)+' a '+fmtData(bol.periodo_fim)+'</div></div>'
+    + '<div><div class="info-label">Total Horas</div><div class="info-val">'+totH+'h</div></div>'
+    + '<div><div class="info-label">Total Valor</div><div class="info-val" style="color:#1a7a3c">'+totV+'</div></div>'
+    + '</div>'
+    + '<div class="section-title">Detalhamento de Horas</div>'
+    + '<table><thead><tr>'+headers+'</tr></thead><tbody>'+linhas+'</tbody>'
+    + '<tfoot><tr class="total-row"><td colspan="'+(isClt?'5':'4')+'">TOTAL</td><td style="text-align:right">'+totV+'</td><td></td></tr></tfoot></table>'
+    + '<div class="section-title">Registro de Assinaturas Digitais</div>'
+    + '<div class="ass-grid">'
+    + '<div class="ass-box '+(bol.assinado_prestador?'ass-ok':'ass-pend')+'">'
+    + '<div style="font-weight:700;font-size:11px">'+(bol.assinado_prestador?'✅':'⏳')+' Prestador</div>'
+    + '<div>'+(_colab?_colab.nome:'—')+'</div>'
+    + '<div style="font-size:9px;color:#6c757d">Em: '+fmtAss(bol.data_assinatura_p)+'</div>'
+    + '<div class="hash">SHA-256: '+(bol.hash_assinatura_p||'—')+'</div>'
+    + '</div>'
+    + '<div class="ass-box '+(bol.assinado_empresa?'ass-ok':'ass-pend')+'">'
+    + '<div style="font-weight:700;font-size:11px">'+(bol.assinado_empresa?'✅':'⏳')+' Empresa</div>'
+    + '<div>'+(emp?emp.nome:'—')+'</div>'
+    + '<div style="font-size:9px;color:#6c757d">Em: '+fmtAss(bol.data_assinatura_e)+'</div>'
+    + '<div class="hash">SHA-256: '+(bol.hash_assinatura_e||'—')+'</div>'
+    + '</div></div>'
+    + (bol.hash_documento_final?'<div style="padding:8px;background:#d1fae5;border:1px solid #198754;border-radius:4px;margin-bottom:16px;font-size:9px"><strong>Hash Final (SHA-256):</strong><br><span style="font-family:monospace">'+bol.hash_documento_final+'</span></div>':'')
+    + '<div class="section-title">Validade Jurídica</div>'
+    + '<div class="juridico"><strong>Lei nº 14.063/2020</strong> — Art. 4º: Assinatura eletrônica simples válida para documentos entre pessoas jurídicas de direito privado.<br><br><strong>MP nº 2.200-2/2001</strong> — Art. 10, §2º: Admite-se outro meio de comprovação de autoria e integridade de documentos eletrônicos, desde que aceito pelas partes.<br><br><strong>Código Civil — Lei 10.406/2002</strong> — Art. 107: A validade da declaração de vontade não depende de forma especial, salvo quando a lei expressamente a exigir.<br><br>As assinaturas eletrônicas registradas — com identificação das partes, data, hora, IP e hash SHA-256 — constituem prova de autoria e concordância.</div>'
+    + '<div class="footer-doc">'
+    + '<div><div style="font-size:9px;color:#6c757d">ID: '+bol.id+'</div>'
+    + (bol.status==='valido'?'<div class="valid-badge" style="margin-top:4px">✅ DOCUMENTO VÁLIDO</div>':'')
+    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: '+new Date().toLocaleString('pt-BR')+'</div></div>'
+    + '<div style="text-align:center"><img src="'+qrUrl+'" width="90" height="90" alt="QR Code" style="border:3px solid #1e3a5f;border-radius:4px"><div style="font-size:8px;color:#6c757d;margin-top:3px">Validação do documento</div></div>'
+    + '</div></body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
 
 async function assinarComPin() {
   if (!_bolAtivoColab || !_colab) return;
