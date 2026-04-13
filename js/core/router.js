@@ -198,6 +198,21 @@
         frame.title = mod.label;
         var area = document.getElementById('area-frames');
         if (area) area.appendChild(frame);
+
+        // Enviar empresa quando iframe terminar de carregar
+        frame.addEventListener('load', function() {
+          try {
+            var emp = window.getEmpresaAtiva ? window.getEmpresaAtiva() : null;
+            if (emp && frame.contentWindow) {
+              frame.contentWindow.postMessage({
+                type: 'SET_EMPRESA',
+                empresaId: emp.id,
+                empresaNome: emp.nome,
+                empresaNomeCurto: emp.nome_curto
+              }, '*');
+            }
+          } catch(e) {}
+        });
       }
       frame.classList.add('visible');
     },
