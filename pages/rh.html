@@ -711,6 +711,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div id="rhToast"></div>
 
 <script>
+
+// ── Hora de Brasília (UTC-3) ──────────────────────────────────
+function agoraBrasilia() {
+  return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Sao_Paulo'}));
+}
+function fmtBrasilia(isoStr) {
+  if (!isoStr) return '—';
+  return new Date(isoStr).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'});
+}
+
 // ══ CONFIGURAÇÃO SUPABASE ════════════════════════════════════
 const SB_URL = 'https://ojuuzojwnyxdsavdosif.supabase.co';
 const SB_KEY = 'sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u';
@@ -2274,7 +2284,7 @@ async function imprimirBoletim() {
     + '<div>'
     + '<div style="font-size:9px;color:#6c757d">ID do Documento: ' + bol.id + '</div>'
     + (bol.status==='valido' ? '<div class="valid-badge" style="margin-top:4px">✅ DOCUMENTO VÁLIDO</div>' : '')
-    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: ' + agoraBrasilia().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) + '</div>'
+    + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: ' + new Date().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) + '</div>'
     + '</div>'
     + '<div style="text-align:center">'
     + '<img src="' + qrUrl + '" width="90" height="90" alt="QR Code" style="border:3px solid #1e3a5f;border-radius:4px">'
