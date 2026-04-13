@@ -718,7 +718,18 @@ function agoraBrasilia() {
 }
 function fmtBrasilia(isoStr) {
   if (!isoStr) return '—';
-  return new Date(isoStr).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'});
+  // Formata timestamp UTC para horário de Brasília (UTC-3)
+  var d = new Date(isoStr);
+  var utcMs = d.getTime();
+  var brasiliaMs = utcMs - (3 * 60 * 60 * 1000);
+  var b = new Date(brasiliaMs);
+  var dia = String(b.getUTCDate()).padStart(2,'0');
+  var mes = String(b.getUTCMonth()+1).padStart(2,'0');
+  var ano = b.getUTCFullYear();
+  var h   = String(b.getUTCHours()).padStart(2,'0');
+  var min = String(b.getUTCMinutes()).padStart(2,'0');
+  var seg = String(b.getUTCSeconds()).padStart(2,'0');
+  return dia+'/'+mes+'/'+ano+', '+h+':'+min+':'+seg;
 }
 
 // ══ CONFIGURAÇÃO SUPABASE ════════════════════════════════════
@@ -2179,7 +2190,12 @@ async function imprimirBoletim() {
     ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Valor</th><th>Descrição</th>'
     : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Valor</th><th>Descrição</th>';
 
-  var fmtAss = function(dt){ return dt ? new Date(dt).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) : '—'; };
+  var fmtAss = function(dt) {
+    if (!dt) return '—';
+    var b = new Date(new Date(dt).getTime() - 3*60*60*1000);
+    return String(b.getUTCDate()).padStart(2,'0')+'/'+String(b.getUTCMonth()+1).padStart(2,'0')+'/'+b.getUTCFullYear()
+      +', '+String(b.getUTCHours()).padStart(2,'0')+':'+String(b.getUTCMinutes()).padStart(2,'0')+':'+String(b.getUTCSeconds()).padStart(2,'0');
+  };
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head>'
     + '<meta charset="UTF-8"><title>' + titulo + ' — ' + bol.numero + '</title>'
