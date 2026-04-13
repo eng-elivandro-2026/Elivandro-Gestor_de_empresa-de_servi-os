@@ -760,30 +760,34 @@ function showTab(id, btn) {
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
 
-  // 1. Tentar pegar do parent direto
+  // Tentar parent primeiro (rápido se já carregado)
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
-      _empresaId = window.parent.getEmpresaAtivaId();
+      var fromParent = window.parent.getEmpresaAtivaId();
+      if (fromParent) { _empresaId = fromParent; return _empresaId; }
     }
   } catch(e) {}
-  if (_empresaId) return _empresaId;
 
-  // 2. Fallback direto no Supabase — buscar empresa do usuário logado
+  // Buscar direto no Supabase pelo usuário logado
   try {
-    var { data: authData } = await sb.auth.getUser();
-    if (authData && authData.user) {
-      var { data: usr } = await sb.from('usuarios')
-        .select('id').eq('auth_id', authData.user.id).maybeSingle();
-      if (usr) {
-        var { data: ue } = await sb.from('usuario_empresas')
-          .select('empresa_id').eq('usuario_id', usr.id).eq('ativo', true)
-          .limit(1).maybeSingle();
-        if (ue) _empresaId = ue.empresa_id;
+    var auth = await sb.auth.getUser();
+    if (!auth.data || !auth.data.user) return null;
+    var uid = auth.data.user.id;
+
+    var { data: usr } = await sb.from('usuarios')
+      .select('id').eq('auth_id', uid).maybeSingle();
+    if (usr) {
+      var { data: ue } = await sb.from('usuario_empresas')
+        .select('empresa_id').eq('usuario_id', usr.id)
+        .eq('ativo', true).limit(1).maybeSingle();
+      if (ue && ue.empresa_id) {
+        _empresaId = ue.empresa_id;
+        return _empresaId;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('[RH] getEmpresaId erro:', e); }
 
-  return _empresaId;
+  return null;
 }
 
 // ══ COLABORADORES ════════════════════════════════════════════
@@ -844,6 +848,7 @@ async function carregarColabs() {
     _colabs = [];
     renderColabs([]);
     renderKpiColabs([]);
+    console.log('[RH] Nenhum colaborador vinculado à empresa:', empId);
     return;
   }
 
@@ -2239,40 +2244,36 @@ async function salvarAdicionarEmpresa() {
 
 // ══ INICIALIZAÇÃO ════════════════════════════════════════════
 (async function init() {
-  // Herdar tema do parent
+  // Tema
   try {
     var tema = window.parent.localStorage.getItem('tf_theme') || 'dark';
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Solicitar empresa ao parent
+  // Carregar empresa e dados
+  var empId = await getEmpresaId();
+  if (!empId) {
+    // Última tentativa: esperar 1s e tentar de novo
+    await new Promise(function(r){ setTimeout(r, 1000); });
+    empId = await getEmpresaId();
+  }
+
+  // Atualizar label de empresa no header do RH
   try {
-    if (window.parent && window.parent.postMessage) {
-      window.parent.postMessage({ type: 'RH_PEDIR_EMPRESA' }, '*');
+    if (window.parent && window.parent.getEmpresaAtiva) {
+      var emp = window.parent.getEmpresaAtiva();
+      if (emp) {
+        var lbl = document.getElementById('rhEmpresaLabel');
+        if (lbl) lbl.textContent = emp.nome_curto;
+      }
     }
   } catch(e) {}
 
-  // Aguardar empresa via SET_EMPRESA ou buscar direto
-  var empId = await new Promise(function(resolve) {
-    // Timeout: se não receber em 1.5s, busca direto
-    var timeout = setTimeout(function() { resolve(null); }, 1500);
-
-    var handler = function(e) {
-      if (e.data && e.data.type === 'SET_EMPRESA' && e.data.empresaId) {
-        clearTimeout(timeout);
-        window.removeEventListener('message', handler);
-        _empresaId = e.data.empresaId;
-        var lbl = document.getElementById('rhEmpresaLabel');
-        if (lbl) lbl.textContent = e.data.empresaNomeCurto || '';
-        resolve(e.data.empresaId);
-      }
-    };
-    window.addEventListener('message', handler);
-  });
-
-  // Se não veio via postMessage, buscar direto no Supabase
   if (!empId) {
-    empId = await getEmpresaId();
+    // Mostrar erro claro em vez de "Carregando..."
+    var el = document.getElementById('colabList');
+    if (el) el.innerHTML = '<div style="color:var(--red);padding:1rem;font-size:.82rem">Erro: empresa não identificada. Tente recarregar.</div>';
+    return;
   }
 
   await carregarColabs();
