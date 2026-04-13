@@ -163,6 +163,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div class="wrap">
 
   <!-- NAV INTERNA -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <div style="font-size:.72rem;color:var(--text3)">
+      Empresa ativa: <strong id="rhEmpresaLabel" style="color:var(--accent)">—</strong>
+    </div>
+  </div>
   <div class="nav-rh">
     <button class="nav-rh-btn on" onclick="showSec('colaboradores',this)">👷 Colaboradores</button>
     <button class="nav-rh-btn" onclick="showSec('apontamentos',this)">⏱️ Apontamentos</button>
@@ -1530,7 +1535,19 @@ window.addEventListener('message', function(e) {
   }
   if (e.data.type === 'SET_EMPRESA') {
     _empresaId = e.data.empresaId;
-    carregarColabs();
+    // Recarregar seção ativa
+    var secAtiva = document.querySelector('.sec.on');
+    if (secAtiva) {
+      var id = secAtiva.id.replace('sec-','');
+      if (id === 'colaboradores') { carregarColabs(); gerarAlertas(); }
+      else if (id === 'apontamentos') { carregarApontamentos(); carregarKpiApt(); }
+      else if (id === 'boletins') carregarBoletins();
+    } else {
+      carregarColabs();
+    }
+    // Atualizar indicador de empresa na tela
+    var empLabel = document.getElementById('rhEmpresaLabel');
+    if (empLabel) empLabel.textContent = e.data.empresaNomeCurto || '';
   }
 });
 
@@ -1628,7 +1645,18 @@ async function salvarAdicionarEmpresa() {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Criar tabelas auxiliares se não existirem (via SQL já foi feito)
+  // Pegar empresa ativa do parent
+  try {
+    if (window.parent && window.parent.getEmpresaAtiva) {
+      var emp = window.parent.getEmpresaAtiva();
+      if (emp) {
+        _empresaId = emp.id;
+        var empLabel = document.getElementById('rhEmpresaLabel');
+        if (empLabel) empLabel.textContent = emp.nome_curto;
+      }
+    }
+  } catch(e) {}
+
   // Carregar colaboradores
   await carregarColabs();
   await gerarAlertas();
