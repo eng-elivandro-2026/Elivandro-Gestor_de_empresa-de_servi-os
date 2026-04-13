@@ -1116,16 +1116,29 @@ async function carregarBoletins() {
   var sLabels = {rascunho:'Rascunho',aguard_prestador:'Aguardando sua assinatura',aguard_empresa:'Ag. empresa',valido:'Válido',cancelado:'Cancelado'};
   var sBdgs   = {rascunho:'bdg-blue',aguard_prestador:'bdg-yellow',aguard_empresa:'bdg-blue',valido:'bdg-green',cancelado:'bdg-red'};
   el.innerHTML = data.map(function(b){
-    return '<div class="bol-item">'
+    var podeAssinar = b.status === 'aguard_prestador' && !b.assinado_prestador;
+    var dataAssinar = podeAssinar ? 'true' : 'false';
+    return '<div class="bol-item" data-bol-id="' + b.id + '" data-assinar="' + dataAssinar + '" style="cursor:pointer">'
       + '<div class="bol-icon">📋</div>'
       + '<div class="bol-info">'
         + '<div class="bol-num">' + b.numero + '</div>'
-        + '<div class="bol-meta">' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim) + ' · ' + b.horas_total + 'h</div>'
+        + '<div class="bol-meta">' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim) + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h</div>'
         + '<span class="bdg ' + (sBdgs[b.status]||'bdg-blue') + '" style="margin-top:.3rem">' + (sLabels[b.status]||b.status) + '</span>'
       + '</div>'
-      + '<div class="bol-valor">' + fmtMoeda(b.valor_total) + '</div>'
+      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.35rem">'
+        + '<div class="bol-valor">' + fmtMoeda(b.valor_total) + '</div>'
+        + (podeAssinar ? '<span style="font-size:.65rem;background:var(--accent);color:#000;padding:.18rem .45rem;border-radius:4px;font-weight:700">✍️ Assinar</span>' : '')
+      + '</div>'
     + '</div>';
   }).join('');
+  // Bind cliques via event delegation (evita problema de aspas no onclick)
+  el.querySelectorAll('.bol-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      var bolId   = this.getAttribute('data-bol-id');
+      var assinar = this.getAttribute('data-assinar') === 'true';
+      verBoletimColab(bolId, assinar);
+    });
+  });
 }
 
 // ══ PERFIL ════════════════════════════════════════════════════
