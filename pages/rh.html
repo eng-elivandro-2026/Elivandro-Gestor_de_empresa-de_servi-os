@@ -905,7 +905,7 @@ async function carregarHorasColab(colabId) {
     var sBdg = a.status==='aprovado' ? 'bdg-green' : a.status==='pendente' ? 'bdg-yellow' : a.status==='rejeitado' ? 'bdg-red' : 'bdg-gray';
     return '<tr>'
       + '<td>' + fmtData(a.data) + '</td>'
-      + '<td>' + (a.proposta_id||'—') + '</td>'
+      + '<td>' + (a.propostas ? (a.propostas.numero_proposta||a.proposta_id) : (a.proposta_id||'—')) + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
       + '<td>' + (a.hora_saida||'—') + '</td>'
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
@@ -939,13 +939,24 @@ async function carregarApontamentos() {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
+  // Montar mapa de proposta_id → numero_proposta
+  var mapaProps = {};
+  _propostas.forEach(function(p){ mapaProps[p.app_id] = p.numero_proposta; });
+  // Se _propostas vazio, buscar do Supabase
+  if (!_propostas.length) {
+    var { data: pData } = await sb.from('propostas')
+      .select('app_id, numero_proposta').eq('empresa_id', empId);
+    (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p.numero_proposta; });
+  }
+
   tbody.innerHTML = data.map(function(a) {
     var sBdg = a.status==='aprovado'?'bdg-green':a.status==='pendente'?'bdg-yellow':a.status==='rejeitado'?'bdg-red':'bdg-gray';
     var nome = a.colaboradores ? a.colaboradores.nome : '—';
+    var numProp = mapaProps[a.proposta_id] || a.proposta_id || '—';
     return '<tr>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
       + '<td>' + fmtData(a.data) + '</td>'
-      + '<td>' + (a.proposta_id||'—') + '</td>'
+      + '<td>' + numProp + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
       + '<td>' + (a.hora_saida||'—') + '</td>'
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
