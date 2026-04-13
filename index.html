@@ -4759,15 +4759,25 @@ async function iniciarPlataforma() {
   // 1. Auth
   if (typeof protegerPagina === 'function') await protegerPagina();
 
-  // Bloquear colaboradores — redirecionar para portal correto
+  // Bloquear colaboradores puros — redirecionar para portal correto
   try {
     var _au = await window.sbClient.auth.getUser();
     if (_au.data && _au.data.user) {
-      var _cc = await window.sbClient
-        .from('colaboradores').select('id')
+      // Verificar se é dono ou gestor primeiro
+      var _usr = await window.sbClient
+        .from('usuarios').select('perfil')
         .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
-      if (!_cc.error && _cc.data) {
-        window.location.href = '/pages/colaborador.html'; return;
+      // Se é dono ou gestor, fica na plataforma principal
+      if (_usr.data && (_usr.data.perfil === 'dono' || _usr.data.perfil === 'gestor')) {
+        // OK — continuar normalmente
+      } else {
+        // Verificar se é colaborador puro
+        var _cc = await window.sbClient
+          .from('colaboradores').select('id')
+          .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
+        if (!_cc.error && _cc.data) {
+          window.location.href = '/pages/colaborador.html'; return;
+        }
       }
     }
   } catch(e) {}
