@@ -2204,6 +2204,9 @@ var _colabAddEmpId = null;
 
 async function abrirModalColab(id) {
   _colabEditId = id || null;
+  if (id && (!_colabs || !_colabs.length)) {
+  await carregarColabs();
+}
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
@@ -2214,7 +2217,13 @@ async function abrirModalColab(id) {
     togglePerigFields();
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
-    if (c) {
+
+if (!c && id) {
+  await carregarColabs();
+  c = _colabs.find(function(x){ return x.id===id; });
+}
+
+if (c) {
       document.getElementById('cNome').value                = c.nome||'';
       document.getElementById('cTipo').value                = c.tipo||'mei';
       document.getElementById('cDoc').value                 = c.documento||'';
