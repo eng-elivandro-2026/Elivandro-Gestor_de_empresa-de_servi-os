@@ -635,6 +635,72 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- ══ MODAL EDITAR APONTAMENTO ═════════════════════════════ -->
+<div class="modal-overlay" id="modalEditarApt" onclick="if(event.target===this)fecharModalEditarApt()">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-hdr">
+      <span class="modal-tit">✏️ Editar Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalEditarApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Context: colaborador + proposta (read-only) -->
+      <div id="editAptCtx" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Data *</label><input type="date" id="eAptData"></div>
+        <div class="f"><label>Tipo do dia *</label>
+          <select id="eAptTipoDia" onchange="calcularHorasEditApt()">
+            <option value="util">Dia útil (Seg–Sex)</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+            <option value="feriado">Feriado</option>
+          </select>
+        </div>
+        <div class="f"><label>Jornada de trabalho</label>
+          <select id="eAptJornada" onchange="aplicarJornadaEdit()">
+            <option value="07-17">07:00 – 17:00</option>
+            <option value="08-18">08:00 – 18:00</option>
+            <option value="08-1730">08:00 – 17:30</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="f"><label>Hora entrada *</label><input type="time" id="eAptEntrada" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Hora saída *</label><input type="time" id="eAptSaida" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Intervalo início</label><input type="time" id="eAptIntInicio" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Intervalo fim</label><input type="time" id="eAptIntFim" onchange="calcularHorasEditApt()"></div>
+      </div>
+
+      <!-- Prévia do cálculo CLT -->
+      <div class="horas-calc" id="eHorasPrevia" style="display:none;margin-top:.85rem">
+        <div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
+        <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="ePvNormal">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="ePvExtra50">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="ePvExtra100">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="ePvNoturno">—</span></div>
+        <div class="horas-linha" id="ePvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="ePvPericulosidade">—</span></div>
+        <div class="horas-linha">
+          <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
+          <span class="horas-total-val" id="ePvTotal">—</span>
+        </div>
+      </div>
+
+      <div class="f" style="margin-top:.85rem">
+        <label>Descrição das atividades *</label>
+        <textarea id="eAptDesc" placeholder="Descreva o que foi executado neste dia/projeto..." style="min-height:90px"></textarea>
+      </div>
+      <div class="f" style="margin-top:.65rem">
+        <label>Motivo da edição <span style="color:var(--red)">*</span></label>
+        <textarea id="eAptMotivoEdit" placeholder="Descreva o motivo da alteração (mínimo 10 caracteres)..." style="min-height:70px"></textarea>
+        <span id="eAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalEditarApt()">Cancelar</button>
+      <button class="btn ba" onclick="salvarEdicaoApt()">💾 Salvar Edição</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL HISTÓRICO APONTAMENTO ══════════════════════════ -->
 <div class="modal-overlay" id="modalHistoricoApt" onclick="if(event.target===this)fecharModalHistoricoApt()">
   <div class="modal-box" style="max-width:560px">
@@ -829,7 +895,8 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 // ══ ESTADO GLOBAL ════════════════════════════════════════════
 var _colabs = [];
 var _colabAtivo = null;
-var _aptEditId = null;
+var _aptEditId   = null;
+var _aptEditData = null; // full apt record while edit modal is open
 var _modoApt = 'equipe'; // 'equipe' | 'meus'
 var _colabProprio = null; // null=não verificado, false=não é colab, objeto=é colab
 var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
@@ -1288,6 +1355,9 @@ async function carregarApontamentos() {
       if (a.status === 'pendente') {
         acoes += '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✔ Aprovar</button>'
                + '<button class="btn bo bsm" onclick="rejeitarApt(\'' + a.id + '\')">⛔ Rejeitar</button>';
+        if (!isLinked) {
+          acoes += '<button class="btn bg bsm" onclick="abrirModalEditarApt(\'' + a.id + '\')">✏️ Editar</button>';
+        }
       }
       if (a.status === 'aprovado' && !isLinked) {
         acoes += '<button class="btn bp bsm" onclick="abrirModalReabrirApt(\'' + a.id + '\')">🔓 Reabrir</button>';
@@ -1538,6 +1608,195 @@ async function confirmarReabrirApt() {
 
   toast('Apontamento reaberto — status voltou para pendente.', 'ok');
   fecharModalReabrirApt();
+  carregarApontamentos();
+  carregarKpiApt();
+}
+
+// ══ EDITAR APONTAMENTO ═══════════════════════════════════════
+
+async function abrirModalEditarApt(id) {
+  var { data: apt, error } = await sb.from('apontamentos')
+    .select('*, colaboradores(nome), propostas(numero_proposta, titulo)')
+    .eq('id', id).single();
+  if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (apt.status !== 'pendente') { toast('Apenas apontamentos pendentes podem ser editados.', 'err'); return; }
+  if (apt.boletim_id) { toast('Apontamento está vinculado a um documento e não pode ser editado.', 'err'); return; }
+
+  _aptEditId   = id;
+  _aptEditData = apt;
+
+  // Context header
+  var nomeColab = apt.colaboradores ? apt.colaboradores.nome : '—';
+  var numProp   = apt.propostas     ? (apt.propostas.numero_proposta || apt.proposta_id) : (apt.proposta_id || '—');
+  var titProp   = apt.propostas && apt.propostas.titulo ? ' · ' + apt.propostas.titulo : '';
+  document.getElementById('editAptCtx').innerHTML =
+    'Colaborador: <strong>' + nomeColab + '</strong>'
+    + ' · Proposta: <strong>' + numProp + '</strong>' + titProp;
+
+  // Fill form fields
+  document.getElementById('eAptData').value          = apt.data                || '';
+  document.getElementById('eAptTipoDia').value        = apt.tipo_dia            || 'util';
+  document.getElementById('eAptJornada').value        = apt.regime_jornada      || 'custom';
+  document.getElementById('eAptEntrada').value        = apt.hora_entrada        || '';
+  document.getElementById('eAptSaida').value          = apt.hora_saida          || '';
+  document.getElementById('eAptIntInicio').value      = apt.intervalo_inicio    || '12:00';
+  document.getElementById('eAptIntFim').value         = apt.intervalo_fim       || '13:00';
+  document.getElementById('eAptDesc').value           = apt.descricao           || '';
+  document.getElementById('eAptMotivoEdit').value     = '';
+  document.getElementById('eAptMotivoErr').style.display = 'none';
+
+  calcularHorasEditApt();
+  document.getElementById('modalEditarApt').classList.add('on');
+}
+
+function fecharModalEditarApt() {
+  document.getElementById('modalEditarApt').classList.remove('on');
+  _aptEditId   = null;
+  _aptEditData = null;
+}
+
+function aplicarJornadaEdit() {
+  var j = document.getElementById('eAptJornada').value;
+  var map = { '07-17': ['07:00','17:00'], '08-18': ['08:00','18:00'], '08-1730': ['08:00','17:30'] };
+  if (map[j]) {
+    document.getElementById('eAptEntrada').value = map[j][0];
+    document.getElementById('eAptSaida').value   = map[j][1];
+  }
+  calcularHorasEditApt();
+}
+
+function calcularHorasEditApt() {
+  var apt = _aptEditData;
+  if (!apt) return;
+  var entrada = document.getElementById('eAptEntrada').value;
+  var saida   = document.getElementById('eAptSaida').value;
+  var intIni  = document.getElementById('eAptIntInicio').value || '12:00';
+  var intFim  = document.getElementById('eAptIntFim').value   || '13:00';
+  var tipoDia = document.getElementById('eAptTipoDia').value;
+  var jIni    = apt.jornada_inicio       || '08:00';
+  var jFim    = apt.jornada_fim          || '18:00';
+  var vh      = apt.valor_hora_base      || 0;
+  var perig   = apt.periculoso           || false;
+  var percP   = apt.perc_periculosidade  || null;
+  var baseP   = apt.periculosidade_base  || null;
+
+  if (!entrada || !saida) { document.getElementById('eHorasPrevia').style.display = 'none'; return; }
+
+  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percP, baseP);
+
+  document.getElementById('eHorasPrevia').style.display = 'block';
+  document.getElementById('ePvNormal').textContent    = r.horas_normal.toFixed(1)    + 'h → ' + fmtMoeda(r.valor_normal);
+  document.getElementById('ePvExtra50').textContent   = r.horas_extra_50.toFixed(1)  + 'h → ' + fmtMoeda(r.valor_extra_50);
+  document.getElementById('ePvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
+  document.getElementById('ePvNoturno').textContent   = r.horas_noturno.toFixed(1)   + 'h → ' + fmtMoeda(r.valor_noturno);
+
+  var perigRow = document.getElementById('ePvPerigRow');
+  if (perig && r.valor_periculosidade > 0) {
+    var baseLabel = baseP === 'total' ? 'h totais' : 'h normais';
+    document.getElementById('ePvPericulosidade').textContent =
+      (baseP === 'total' ? r.horas_total : r.horas_normal).toFixed(1) + baseLabel
+      + ' × ' + percP + '% → ' + fmtMoeda(r.valor_periculosidade);
+    perigRow.style.display = '';
+  } else {
+    perigRow.style.display = 'none';
+  }
+
+  document.getElementById('ePvTotal').textContent = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
+}
+
+async function salvarEdicaoApt() {
+  var motivo = document.getElementById('eAptMotivoEdit').value.trim();
+  var errEl  = document.getElementById('eAptMotivoErr');
+  if (!motivo || motivo.length < 10) {
+    errEl.style.display = 'block';
+    document.getElementById('eAptMotivoEdit').focus();
+    return;
+  }
+  errEl.style.display = 'none';
+  if (!_aptEditId) return;
+
+  var entrada = document.getElementById('eAptEntrada').value;
+  var saida   = document.getElementById('eAptSaida').value;
+  var intIni  = document.getElementById('eAptIntInicio').value || '12:00';
+  var intFim  = document.getElementById('eAptIntFim').value   || '13:00';
+  var tipoDia = document.getElementById('eAptTipoDia').value;
+  var jornada = document.getElementById('eAptJornada').value;
+  var desc    = document.getElementById('eAptDesc').value.trim();
+  var data    = document.getElementById('eAptData').value;
+
+  if (!entrada || !saida || !desc || !data) { toast('Preencha todos os campos obrigatórios.', 'err'); return; }
+
+  var empId = await getEmpresaId();
+  var usr   = await _resolverUsuarioLogado();
+
+  // Race-condition guard: re-fetch current state before writing
+  var { data: apt } = await sb.from('apontamentos')
+    .select('id, status, boletim_id, hora_entrada, hora_saida, intervalo_inicio, intervalo_fim, tipo_dia, descricao, horas_normal, horas_extra_50, horas_extra_100, horas_noturno, horas_total, valor_total, valor_hora_base, periculoso, perc_periculosidade, periculosidade_base, jornada_inicio, jornada_fim')
+    .eq('id', _aptEditId).single();
+  if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (apt.status !== 'pendente') { toast('Apontamento não está mais pendente. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
+  if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
+
+  // Snapshot dos valores ANTES
+  var antes = {
+    hora_entrada:    apt.hora_entrada,    hora_saida:      apt.hora_saida,
+    intervalo_inicio: apt.intervalo_inicio, intervalo_fim: apt.intervalo_fim,
+    tipo_dia:        apt.tipo_dia,        descricao:       apt.descricao,
+    horas_normal:    apt.horas_normal,    horas_extra_50:  apt.horas_extra_50,
+    horas_extra_100: apt.horas_extra_100, horas_noturno:   apt.horas_noturno,
+    horas_total:     apt.horas_total,     valor_total:     apt.valor_total
+  };
+
+  // Recalcular com novos dados usando parâmetros do snapshot (sem depender do perfil atual do colab)
+  var jIni  = apt.jornada_inicio       || '08:00';
+  var jFim  = apt.jornada_fim          || '18:00';
+  var vh    = apt.valor_hora_base      || 0;
+  var perig = apt.periculoso           || false;
+  var percP = apt.perc_periculosidade  || null;
+  var baseP = apt.periculosidade_base  || null;
+  var calc  = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percP, baseP);
+
+  // Snapshot dos valores DEPOIS
+  var depois = {
+    hora_entrada:    entrada,  hora_saida:      saida,
+    intervalo_inicio: intIni,  intervalo_fim:   intFim,
+    tipo_dia:        tipoDia,  descricao:       desc,
+    horas_normal:    calc.horas_normal,    horas_extra_50:  calc.horas_extra_50,
+    horas_extra_100: calc.horas_extra_100, horas_noturno:   calc.horas_noturno,
+    horas_total:     calc.horas_total,     valor_total:     calc.valor_total
+  };
+
+  var agora = new Date().toISOString();
+  var { error: errUpd } = await sb.from('apontamentos').update(Object.assign({
+    data:             data,
+    tipo_dia:         tipoDia,
+    regime_jornada:   jornada,
+    hora_entrada:     entrada,
+    hora_saida:       saida,
+    intervalo_inicio: intIni,
+    intervalo_fim:    intFim,
+    descricao:        desc,
+    editado_por:      usr.nome,
+    editado_em:       agora,
+    motivo_edicao:    motivo,
+    updated_at:       agora
+  }, calc)).eq('id', _aptEditId).eq('empresa_id', empId);
+  if (errUpd) { toast('Erro ao salvar: ' + errUpd.message, 'err'); return; }
+
+  // Inserir evento no audit trail
+  await sb.from('apontamentos_historico').insert({
+    apontamento_id: _aptEditId,
+    empresa_id:     empId,
+    evento:         'editado',
+    motivo:         motivo,
+    usuario_id:     usr.id,
+    usuario_nome:   usr.nome,
+    dados_antes:    antes,
+    dados_depois:   depois
+  });
+
+  toast('Apontamento atualizado com sucesso.', 'ok');
+  fecharModalEditarApt();
   carregarApontamentos();
   carregarKpiApt();
 }
