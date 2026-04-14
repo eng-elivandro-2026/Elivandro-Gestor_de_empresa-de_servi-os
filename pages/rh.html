@@ -1767,7 +1767,9 @@ async function salvarEdicaoApt() {
   };
 
   var agora = new Date().toISOString();
-  var { error: errUpd } = await sb.from('apontamentos').update(Object.assign({
+  // Fix: no empresa_id filter — UPDATE by id only (avoids 0-row silent fail in "Meus" mode)
+  // .select('id') forces Supabase to return the affected rows so we can detect 0-row matches
+  var { data: updated, error: errUpd } = await sb.from('apontamentos').update(Object.assign({
     data:             data,
     tipo_dia:         tipoDia,
     regime_jornada:   jornada,
@@ -1780,20 +1782,22 @@ async function salvarEdicaoApt() {
     editado_em:       agora,
     motivo_edicao:    motivo,
     updated_at:       agora
-  }, calc)).eq('id', _aptEditId).eq('empresa_id', empId);
+  }, calc)).eq('id', _aptEditId).select('id');
   if (errUpd) { toast('Erro ao salvar: ' + errUpd.message, 'err'); return; }
+  if (!updated || !updated.length) { toast('Nenhuma linha atualizada — apontamento não encontrado ou sem permissão.', 'err'); return; }
 
-  // Inserir evento no audit trail
-  await sb.from('apontamentos_historico').insert({
-    apontamento_id: _aptEditId,
-    empresa_id:     empId,
-    evento:         'editado',
-    motivo:         motivo,
-    usuario_id:     usr.id,
-    usuario_nome:   usr.nome,
-    dados_antes:    antes,
-    dados_depois:   depois
+  // Insert audit event — use correct DB column names (dados_anteriores / dados_novos)
+  var { error: errHist } = await sb.from('apontamentos_historico').insert({
+    apontamento_id:   _aptEditId,
+    empresa_id:       empId,
+    evento:           'editado',
+    motivo:           motivo,
+    usuario_id:       usr.id,
+    usuario_nome:     usr.nome,
+    dados_anteriores: antes,
+    dados_novos:      depois
   });
+  if (errHist) { toast('Edição salva, mas erro ao registrar histórico: ' + errHist.message, 'warn'); }
 
   toast('Apontamento atualizado com sucesso.', 'ok');
   fecharModalEditarApt();
@@ -1858,7 +1862,7 @@ function _renderHistoricoItem(h) {
     html += '<div style="margin-top:.4rem;padding:.35rem .5rem;background:rgba(0,0,0,.15);border-radius:var(--r2);font-size:.73rem;color:var(--text);font-style:italic">"' + h.motivo + '"</div>';
   }
   if (h.evento === 'editado') {
-    html += _renderDiffApt(h.dados_antes, h.dados_depois);
+    html += _renderDiffApt(h.dados_anteriores, h.dados_novos);
   }
   html += '</div></div>';
   return html;
@@ -1895,13 +1899,13 @@ async function carregarHistoricoApt(id) {
   var temCriado = eventos.length > 0 && eventos[0].evento === 'criado';
   if (!temCriado && apt && apt.created_at) {
     eventos = [{
-      evento:       'criado',
-      criado_em:    apt.created_at,
-      usuario_nome: null,
-      motivo:       null,
-      dados_antes:  null,
-      dados_depois: null,
-      _inferido:    true
+      evento:           'criado',
+      criado_em:        apt.created_at,
+      usuario_nome:     null,
+      motivo:           null,
+      dados_anteriores: null,
+      dados_novos:      null,
+      _inferido:        true
     }].concat(eventos);
   }
 
