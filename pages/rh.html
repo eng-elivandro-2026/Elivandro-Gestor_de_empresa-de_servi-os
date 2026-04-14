@@ -301,11 +301,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           </div>
           <select id="filtroAptStatus" onchange="carregarApontamentos()"
             style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
-            <option value="">Todos</option>
+            <option value="">Ativos (sem cancelados)</option>
             <option value="pendente">Pendentes</option>
             <option value="aprovado">Aprovados</option>
             <option value="ajustado">Ajustados</option>
             <option value="rejeitado">Rejeitados</option>
+            <option value="cancelado">Cancelados</option>
           </select>
           <button class="btn bs bsm" onclick="abrirModalApontamento()">+ Novo Apontamento</button>
         </div>
@@ -580,6 +581,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalApt()">Cancelar</button>
       <button class="btn bs" onclick="salvarApontamento()">💾 Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CANCELAR APONTAMENTO ══════════════════════════ -->
+<div class="modal-overlay" id="modalCancelApt" onclick="if(event.target===this)fecharModalCancelApt()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-tit">Cancelar Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalCancelApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="cancelAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+      <div class="f">
+        <label>Motivo do cancelamento <span style="color:var(--red)">*</span></label>
+        <textarea id="txtMotivoCancelApt" placeholder="Descreva o motivo do cancelamento (mínimo 10 caracteres)..." style="min-height:80px"></textarea>
+        <span id="cancelAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+      <div style="background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.2);border-radius:var(--r2);padding:.55rem .75rem;margin-top:.75rem;font-size:.75rem;color:var(--red)">
+        ⚠️ Esta ação não pode ser desfeita. O apontamento será cancelado e não aparecerá mais na listagem padrão.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalCancelApt()">Voltar</button>
+      <button class="btn bd" onclick="confirmarCancelApt()">🗑 Confirmar Cancelamento</button>
     </div>
   </div>
 </div>
@@ -1130,6 +1156,7 @@ async function carregarEpis(colabId) {
 async function carregarHorasColab(colabId) {
   var { data } = await sb.from('apontamentos')
     .select('*').eq('colaborador_id', colabId)
+    .neq('status', 'cancelado')
     .order('data', {ascending:false}).limit(50);
   var tbody = document.getElementById('horasColabBody');
   if (!data || !data.length) {
@@ -1180,7 +1207,12 @@ async function carregarApontamentos() {
     q = q.eq('empresa_id', empId);
   }
 
-  if (status) q = q.eq('status', status);
+  if (status) {
+    q = q.eq('status', status);
+  } else {
+    // Default view: hide cancelled — they can be seen by selecting "Cancelados" explicitly
+    q = q.neq('status', 'cancelado');
+  }
   var { data, error } = await q;
   var tbody = document.getElementById('aptBody');
   if (error || !data || !data.length) {
@@ -1195,7 +1227,12 @@ async function carregarApontamentos() {
   (pData||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
 
   tbody.innerHTML = data.map(function(a) {
-    var sBdg = a.status==='aprovado'?'bdg-green':a.status==='pendente'?'bdg-yellow':a.status==='rejeitado'?'bdg-red':'bdg-gray';
+    var sBdg = a.status==='aprovado'?'bdg-green'
+             : a.status==='pendente'?'bdg-yellow'
+             : a.status==='rejeitado'?'bdg-red'
+             : a.status==='cancelado'?'bdg-red':'bdg-gray';
+    var isCancelado = a.status === 'cancelado';
+    var isLinked    = !!a.boletim_id;
     var nome = a.colaboradores ? a.colaboradores.nome : '—';
     var pInfo = mapaProps[a.proposta_id];
     var numProp = pInfo
@@ -1203,7 +1240,21 @@ async function carregarApontamentos() {
         + (pInfo.titulo ? '<br><span style="font-size:.68rem;color:var(--text3)">' + pInfo.titulo + '</span>' : '')
         + (pInfo.cliente ? '<br><span style="font-size:.68rem;color:var(--text2)">' + pInfo.cliente + '</span>' : '')
       : (a.proposta_id||'—');
-    return '<tr>'
+    // Action buttons
+    var acoes = '';
+    if (!isCancelado) {
+      if (a.status === 'pendente') {
+        acoes += '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✅</button>'
+               + '<button class="btn bd bsm" onclick="rejeitarApt(\'' + a.id + '\')">✕</button>';
+      }
+      if (isLinked) {
+        acoes += '<span class="bdg bdg-blue" style="font-size:.65rem" title="Vinculado ao documento ' + (a.boletim_numero||'') + '">🔒 ' + (a.boletim_numero||'DOC') + '</span>';
+      } else {
+        acoes += '<button class="btn bg bsm" onclick="abrirModalCancelApt(\'' + a.id + '\')" title="Cancelar apontamento">🗑</button>';
+      }
+    }
+    var trStyle = isCancelado ? ' style="opacity:.55;text-decoration:line-through"' : '';
+    return '<tr' + trStyle + '>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
       + '<td>' + fmtData(a.data) + '</td>'
       + '<td>' + numProp + '</td>'
@@ -1214,13 +1265,7 @@ async function carregarApontamentos() {
       + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
       + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
       + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
-      + '<td><div class="br">'
-        + (a.status==='pendente'
-          ? '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✅</button>'
-            + '<button class="btn bd bsm" onclick="rejeitarApt(\'' + a.id + '\')">✕</button>'
-          : '')
-        + '<button class="btn bg bsm" onclick="excluirApt(\'' + a.id + '\')">🗑</button>'
-      + '</div></td>'
+      + '<td><div class="br">' + acoes + '</div></td>'
     + '</tr>';
   }).join('');
 }
@@ -1235,10 +1280,11 @@ async function carregarKpiApt() {
   }
   var { data } = await qKpi;
   if (!data) return;
-  var pend = data.filter(function(a){ return a.status==='pendente'; }).length;
-  var aprov = data.filter(function(a){ return a.status==='aprovado'; }).length;
-  var totalH = data.reduce(function(s,a){ return s+Number(a.horas_total||0); }, 0);
-  var totalV = data.filter(function(a){ return a.status==='aprovado'; })
+  var ativos = data.filter(function(a){ return a.status !== 'cancelado'; });
+  var pend   = ativos.filter(function(a){ return a.status==='pendente'; }).length;
+  var aprov  = ativos.filter(function(a){ return a.status==='aprovado'; }).length;
+  var totalH = ativos.reduce(function(s,a){ return s+Number(a.horas_total||0); }, 0);
+  var totalV = ativos.filter(function(a){ return a.status==='aprovado'; })
     .reduce(function(s,a){ return s+Number(a.valor_total||0); }, 0);
   document.getElementById('kpiApt').innerHTML =
     kpi(pend, 'Pendentes') + kpi(aprov, 'Aprovados') +
@@ -1260,11 +1306,109 @@ async function rejeitarApt(id) {
   carregarApontamentos();
 }
 
-async function excluirApt(id) {
-  if (!confirm('Excluir este apontamento?')) return;
-  await sb.from('apontamentos').delete().eq('id', id);
-  toast('Excluído.', 'ok');
-  carregarApontamentos(); carregarKpiApt();
+// ── Cancelamento lógico de apontamentos ──────────────────────
+var _aptCancelId = null;
+
+// Helper: resolve logged-in user name from usuarios table
+async function _resolverUsuarioLogado() {
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) return { id: null, nome: 'Usuário' };
+  var { data: usr } = await sb.from('usuarios')
+    .select('id, nome').eq('auth_id', authData.user.id).maybeSingle();
+  return {
+    id:   (usr && usr.id)   || null,
+    nome: (usr && usr.nome) || authData.user.email || 'Usuário'
+  };
+}
+
+async function abrirModalCancelApt(id) {
+  // Re-fetch apontamento to get current state and boletim link
+  var { data: apt, error } = await sb.from('apontamentos')
+    .select('id, data, hora_entrada, hora_saida, horas_total, valor_total, status, boletim_id, boletim_numero, colaboradores(nome)')
+    .eq('id', id).single();
+  if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
+
+  // Status guard
+  if (apt.status === 'cancelado') { toast('Apontamento já está cancelado.', 'err'); return; }
+
+  // Boletim link guards
+  if (apt.boletim_id) {
+    // Check boletim status for richer message
+    var { data: bol } = await sb.from('boletins')
+      .select('numero, status').eq('id', apt.boletim_id).maybeSingle();
+    if (bol && bol.status === 'valido') {
+      toast('Este apontamento está vinculado ao documento ' + bol.numero + ' que já está assinado e válido. Não é possível cancelá-lo.', 'err');
+      return;
+    }
+    toast('Este apontamento está vinculado ao documento ' + (apt.boletim_numero || apt.boletim_id.slice(0,8)) + '. Cancele o documento primeiro.', 'err');
+    return;
+  }
+
+  _aptCancelId = id;
+  var nomeColab = apt.colaboradores ? apt.colaboradores.nome : '—';
+  document.getElementById('cancelAptResumo').innerHTML =
+    '<strong>' + nomeColab + '</strong>'
+    + ' · ' + fmtData(apt.data)
+    + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
+    + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
+    + ' · ' + fmtMoeda(apt.valor_total)
+    + '<br><span style="color:var(--accent);font-size:.72rem">Status atual: ' + (apt.status||'—') + '</span>';
+  document.getElementById('txtMotivoCancelApt').value = '';
+  document.getElementById('cancelAptMotivoErr').style.display = 'none';
+  document.getElementById('modalCancelApt').classList.add('on');
+}
+
+function fecharModalCancelApt() {
+  document.getElementById('modalCancelApt').classList.remove('on');
+  _aptCancelId = null;
+}
+
+async function confirmarCancelApt() {
+  var motivo = document.getElementById('txtMotivoCancelApt').value.trim();
+  var errEl  = document.getElementById('cancelAptMotivoErr');
+  if (!motivo || motivo.length < 10) {
+    errEl.style.display = 'block';
+    document.getElementById('txtMotivoCancelApt').focus();
+    return;
+  }
+  errEl.style.display = 'none';
+  if (!_aptCancelId) return;
+
+  var empId = await getEmpresaId();
+  var usr   = await _resolverUsuarioLogado();
+
+  // Re-verify server-side before writing (race condition guard)
+  var { data: apt } = await sb.from('apontamentos')
+    .select('id, status, boletim_id').eq('id', _aptCancelId).single();
+  if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (apt.status === 'cancelado') { toast('Já cancelado.', 'err'); fecharModalCancelApt(); return; }
+  if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Cancele o documento primeiro.', 'err'); fecharModalCancelApt(); return; }
+
+  // Write cancellation
+  var agora = new Date().toISOString();
+  var { error: errUpd } = await sb.from('apontamentos').update({
+    status:               'cancelado',
+    cancelado_por:        usr.nome,
+    cancelado_em:         agora,
+    motivo_cancelamento:  motivo,
+    updated_at:           agora
+  }).eq('id', _aptCancelId).eq('empresa_id', empId);
+  if (errUpd) { toast('Erro ao cancelar: ' + errUpd.message, 'err'); return; }
+
+  // Append to audit trail
+  await sb.from('apontamentos_historico').insert({
+    apontamento_id: _aptCancelId,
+    empresa_id:     empId,
+    evento:         'cancelado',
+    motivo:         motivo,
+    usuario_id:     usr.id,
+    usuario_nome:   usr.nome
+  });
+
+  toast('Apontamento cancelado.', 'ok');
+  fecharModalCancelApt();
+  carregarApontamentos();
+  carregarKpiApt();
 }
 
 // ══ ENGINE CLT — CÁLCULO DE HORAS ════════════════════════════
