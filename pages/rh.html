@@ -477,7 +477,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="g2" style="gap:.85rem">
         <div class="f"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
         <div class="f"><label>Tipo de vínculo *</label>
-          <select id="cTipo">
+          <select id="cTipo" onchange="togglePerigFields()">
             <option value="clt">CLT</option>
             <option value="mei">MEI</option>
             <option value="pj">PJ</option>
@@ -487,6 +487,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
         <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
         <div class="f"><label>Custo/hora base (R$)</label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
+        <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
+          <select id="cPericuloso" onchange="togglePercPerig()">
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
+          </select>
+        </div>
+        <div class="f" id="cPercPerigRow" style="display:none"><label>Adicional (%)</label><input type="number" id="cPercPericulosidade" value="30" min="0" max="100" step="0.01"></div>
+        <div class="f" id="cBasePerigRow" style="display:none"><label>Calcular sobre</label>
+          <select id="cPericulosidadeBase">
+            <option value="normal">Horas normais (CLT padrão — TST OJ 259)</option>
+            <option value="total">Horas totais (opção comercial)</option>
+          </select>
+        </div>
         <div class="f"><label>Função / Cargo</label><input type="text" id="cFuncao" placeholder="Eletricista Industrial"></div>
         <div class="f"><label>Data de admissão</label><input type="date" id="cAdmissao"></div>
       </div>
@@ -552,6 +565,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha" id="pvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="pvPericulosidade">—</span></div>
         <div class="horas-linha">
           <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
           <span class="horas-total-val" id="pvTotal">—</span>
@@ -935,6 +949,7 @@ function renderColabs(lista) {
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
+          + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '% / ' + (c.periculosidade_base==='total'?'h.totais':'h.normais') + '</span>' : '')
         + '</div>'
       + '</div>'
       + '<div class="colab-acoes">'
@@ -1259,7 +1274,7 @@ function timeToMin(t) {
 }
 function minToH(m) { return (m/60).toFixed(2)*1; }
 
-function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora) {
+function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora, periculoso, percPericulosidade, periculosidadeBase) {
   var entMin  = timeToMin(entrada);
   var saiMin  = timeToMin(saida);
   var intIMin = timeToMin(intInicio || '12:00');
@@ -1335,17 +1350,26 @@ function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni
   var vExtra100= extra100 * vBase * 2.0;
   var vNoturno = noturno  * vBase * 0.3; // adicional noturno
 
+  // Adicional de periculosidade (opcional — CLT art. 193 / TST OJ 259)
+  var perc  = (periculoso === true) ? (Number(percPericulosidade) || 30) : 0;
+  var base  = periculosidadeBase || 'normal';
+  // 'normal': aplica sobre horas normais apenas (padrão CLT)
+  // 'total':  aplica sobre horas totais trabalhadas (opção comercial)
+  var horasPerig = (base === 'total') ? (normal + extra50 + extra100) : normal;
+  var vPerig = horasPerig * vBase * (perc / 100);
+
   return {
-    horas_normal:   parseFloat(normal.toFixed(2)),
-    horas_extra_50: parseFloat(extra50.toFixed(2)),
-    horas_extra_100:parseFloat(extra100.toFixed(2)),
-    horas_noturno:  parseFloat(noturno.toFixed(2)),
-    horas_total:    parseFloat((normal+extra50+extra100).toFixed(2)),
-    valor_normal:   parseFloat(vNormal.toFixed(2)),
-    valor_extra_50: parseFloat(vExtra50.toFixed(2)),
-    valor_extra_100:parseFloat(vExtra100.toFixed(2)),
-    valor_noturno:  parseFloat(vNoturno.toFixed(2)),
-    valor_total:    parseFloat((vNormal+vExtra50+vExtra100+vNoturno).toFixed(2))
+    horas_normal:            parseFloat(normal.toFixed(2)),
+    horas_extra_50:          parseFloat(extra50.toFixed(2)),
+    horas_extra_100:         parseFloat(extra100.toFixed(2)),
+    horas_noturno:           parseFloat(noturno.toFixed(2)),
+    horas_total:             parseFloat((normal+extra50+extra100).toFixed(2)),
+    valor_normal:            parseFloat(vNormal.toFixed(2)),
+    valor_extra_50:          parseFloat(vExtra50.toFixed(2)),
+    valor_extra_100:         parseFloat(vExtra100.toFixed(2)),
+    valor_noturno:           parseFloat(vNoturno.toFixed(2)),
+    valor_periculosidade:    parseFloat(vPerig.toFixed(2)),
+    valor_total:             parseFloat((vNormal+vExtra50+vExtra100+vNoturno+vPerig).toFixed(2))
   };
 }
 
@@ -1377,21 +1401,49 @@ function calcularHorasApt() {
   if (jornada === '07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada === '08-1730') { jIni='08:00'; jFim='17:30'; }
 
-  // Pegar valor/hora do colaborador selecionado
+  // Pegar valor/hora e periculosidade do colaborador selecionado
   var colab = _colabs.find(function(c){ return c.id === colabId; });
-  var vh = colab ? (colab.valor_hora||0) : 0;
+  var vh         = colab ? (colab.valor_hora||0) : 0;
+  var perig      = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  var percPerig  = colab ? (colab.perc_periculosidade || 30) : 30;
+  var basePerig  = colab ? (colab.periculosidade_base || 'normal') : 'normal';
 
-  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   document.getElementById('horasPrevia').style.display = 'block';
   document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
   document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
   document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
   document.getElementById('pvNoturno').textContent   = r.horas_noturno.toFixed(1) + 'h → ' + fmtMoeda(r.valor_noturno);
+
+  var pvPerigRow = document.getElementById('pvPerigRow');
+  if (perig && r.valor_periculosidade > 0) {
+    var baseLabel = basePerig === 'total' ? 'h totais' : 'h normais';
+    document.getElementById('pvPericulosidade').textContent =
+      (basePerig === 'total' ? r.horas_total : r.horas_normal).toFixed(1) + baseLabel
+      + ' × ' + percPerig + '% → ' + fmtMoeda(r.valor_periculosidade);
+    pvPerigRow.style.display = '';
+  } else {
+    pvPerigRow.style.display = 'none';
+  }
+
   document.getElementById('pvTotal').textContent     = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
 }
 
 // ══ MODAIS COLABORADOR ═══════════════════════════════════════
+function togglePerigFields() {
+  var isClt = document.getElementById('cTipo').value === 'clt';
+  document.getElementById('cPerigRow').style.display     = isClt ? '' : 'none';
+  var isPerig = isClt && document.getElementById('cPericuloso').value === 'true';
+  document.getElementById('cPercPerigRow').style.display  = isPerig ? '' : 'none';
+  document.getElementById('cBasePerigRow').style.display  = isPerig ? '' : 'none';
+}
+function togglePercPerig() {
+  var isPerig = document.getElementById('cPericuloso').value === 'true';
+  document.getElementById('cPercPerigRow').style.display  = isPerig ? '' : 'none';
+  document.getElementById('cBasePerigRow').style.display  = isPerig ? '' : 'none';
+}
+
 var _colabEditId = null;
 var _todasEmpresas = [];
 var _colabAddEmpId = null;
@@ -1401,19 +1453,27 @@ async function abrirModalColab(id) {
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
-    document.getElementById('cTipo').value = 'mei';
+    document.getElementById('cTipo').value                = 'mei';
+    document.getElementById('cPericuloso').value          = 'false';
+    document.getElementById('cPercPericulosidade').value  = '30';
+    document.getElementById('cPericulosidadeBase').value  = 'normal';
+    togglePerigFields();
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
     if (c) {
-      document.getElementById('cNome').value      = c.nome||'';
-      document.getElementById('cTipo').value      = c.tipo||'mei';
-      document.getElementById('cDoc').value       = c.documento||'';
-      document.getElementById('cEmail').value     = c.email||'';
-      document.getElementById('cTel').value       = c.telefone||'';
-      document.getElementById('cValorHora').value = c.valor_hora||'';
-      document.getElementById('cFuncao').value    = c.funcao||'';
-      document.getElementById('cAdmissao').value  = c.admissao||'';
-      document.getElementById('cObs').value       = c.observacoes||'';
+      document.getElementById('cNome').value                = c.nome||'';
+      document.getElementById('cTipo').value                = c.tipo||'mei';
+      document.getElementById('cDoc').value                 = c.documento||'';
+      document.getElementById('cEmail').value               = c.email||'';
+      document.getElementById('cTel').value                 = c.telefone||'';
+      document.getElementById('cValorHora').value           = c.valor_hora||'';
+      document.getElementById('cFuncao').value              = c.funcao||'';
+      document.getElementById('cAdmissao').value            = c.admissao||'';
+      document.getElementById('cObs').value                 = c.observacoes||'';
+      document.getElementById('cPericuloso').value          = c.periculoso ? 'true' : 'false';
+      document.getElementById('cPercPericulosidade').value  = c.perc_periculosidade || 30;
+      document.getElementById('cPericulosidadeBase').value  = c.periculosidade_base || 'normal';
+      togglePerigFields();
     }
   }
   // Carregar checkboxes de empresas
@@ -1460,11 +1520,14 @@ async function salvarColab() {
     documento: document.getElementById('cDoc').value.trim(),
     email: document.getElementById('cEmail').value.trim(),
     telefone: document.getElementById('cTel').value.trim(),
-    valor_hora: parseFloat(document.getElementById('cValorHora').value)||null,
-    funcao: document.getElementById('cFuncao').value.trim(),
-    admissao: document.getElementById('cAdmissao').value||null,
-    observacoes: document.getElementById('cObs').value.trim(),
-    ativo: true
+    valor_hora:           parseFloat(document.getElementById('cValorHora').value)||null,
+    funcao:               document.getElementById('cFuncao').value.trim(),
+    admissao:             document.getElementById('cAdmissao').value||null,
+    observacoes:          document.getElementById('cObs').value.trim(),
+    periculoso:           document.getElementById('cTipo').value === 'clt' && document.getElementById('cPericuloso').value === 'true',
+    perc_periculosidade:  parseFloat(document.getElementById('cPercPericulosidade').value) || 30,
+    periculosidade_base:  document.getElementById('cPericulosidadeBase').value || 'normal',
+    ativo:                true
   };
   if (!dados.nome) { toast('Informe o nome.','err'); return; }
 
@@ -1597,26 +1660,32 @@ async function salvarApontamento() {
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
 
   var colab = _colabs.find(function(c){ return c.id===colabId; });
-  var vh = colab ? (colab.valor_hora||0) : 0;
+  var vh        = colab ? (colab.valor_hora||0) : 0;
+  var perig     = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  var percPerig = perig ? (colab.perc_periculosidade || 30) : null;
+  var basePerig = perig ? (colab.periculosidade_base || 'normal') : null;
 
-  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   var row = Object.assign({
-    empresa_id:       empId,
-    proposta_id:      propostaId,
-    colaborador_id:   colabId,
-    data:             data,
-    tipo_dia:         tipoDia,
-    regime_jornada:   jornada,
-    jornada_inicio:   jIni,
-    jornada_fim:      jFim,
-    hora_entrada:     entrada,
-    hora_saida:       saida,
-    intervalo_inicio: intIni,
-    intervalo_fim:    intFim,
-    descricao:        desc,
-    valor_hora_base:  vh,
-    status:           'pendente'
+    empresa_id:          empId,
+    proposta_id:         propostaId,
+    colaborador_id:      colabId,
+    data:                data,
+    tipo_dia:            tipoDia,
+    regime_jornada:      jornada,
+    jornada_inicio:      jIni,
+    jornada_fim:         jFim,
+    hora_entrada:        entrada,
+    hora_saida:          saida,
+    intervalo_inicio:    intIni,
+    intervalo_fim:       intFim,
+    descricao:           desc,
+    valor_hora_base:     vh,
+    periculoso:          perig,
+    perc_periculosidade: percPerig,
+    periculosidade_base: basePerig,
+    status:              'pendente'
   }, calc);
 
   var { error } = await sb.from('apontamentos').insert(row);
@@ -2059,10 +2128,47 @@ async function abrirBoletimGestor(bolId) {
     html += '</tr>';
   });
 
-  html += '</tbody><tfoot><tr style="background:#1e3a5f;color:white">';
+  // Calcular totais de periculosidade para memória de cálculo
+  var _perigApts = (apts||[]).filter(function(a){ return a.periculoso === true; });
+  var _totPerig  = _perigApts.reduce(function(s,a){ return s + Number(a.valor_periculosidade||0); }, 0);
+  var _totSemPerig = Number(bol.valor_total||0) - _totPerig;
+
+  html += '</tbody><tfoot>';
+  if (_perigApts.length > 0) {
+    html += '<tr style="background:#e9ecef;color:#495057">';
+    html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">Subtotal (horas trabalhadas)</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totSemPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem"></td></tr>';
+    html += '<tr style="background:#fff3cd;color:#856404">';
+    html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">⚡ Adicional Periculosidade</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem"></td></tr>';
+  }
+  html += '<tr style="background:#1e3a5f;color:white">';
   html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
   html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoeda(bol.valor_total) + '</td>';
   html += '<td style="padding:.4rem .5rem"></td></tr></tfoot></table>';
+
+  // Memória de cálculo — periculosidade (só renderiza se houver apontamentos com periculoso=true)
+  if (_perigApts.length > 0) {
+    // Derivar parâmetros do snapshot do primeiro apontamento periculoso
+    var _pa   = _perigApts[0];
+    var _pPerc = Number(_pa.perc_periculosidade || 30);
+    var _pBase = _pa.periculosidade_base || 'normal';
+    var _pBaseLabel = _pBase === 'total' ? 'Horas totais (opção comercial)' : 'Horas normais (CLT padrão — TST OJ 259)';
+    var _totHPerig  = _perigApts.reduce(function(s,a){ return s + Number(_pBase==='total' ? (a.horas_total||0) : (a.horas_normal||0)); }, 0);
+    var _totVHBase  = _perigApts.reduce(function(s,a){ return s + Number(_pBase==='total' ? (a.horas_total||0) : (a.horas_normal||0)) * Number(a.valor_hora_base||0); }, 0);
+
+    html += '<div style="border:1px solid #ffc107;border-radius:6px;padding:.75rem;margin-bottom:.75rem;background:#fffdf0">';
+    html += '<div style="font-weight:700;font-size:11px;margin-bottom:.5rem;color:#856404">⚡ MEMÓRIA DE CÁLCULO — ADICIONAL DE PERICULOSIDADE</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:10px;color:#495057">';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base de cálculo</td><td style="padding:.25rem .4rem;font-weight:600">' + _pBaseLabel + '</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Percentual</td><td style="padding:.25rem .4rem;font-weight:600">' + _pPerc + '%</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Horas base acumuladas</td><td style="padding:.25rem .4rem;font-weight:600">' + _totHPerig.toFixed(2) + 'h</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:.25rem .4rem;font-weight:600">' + fmtMoeda(_totVHBase) + '</td></tr>';
+    html += '<tr style="border-top:1px solid #ffc107"><td style="padding:.35rem .4rem;font-weight:700;color:#856404">Adicional total</td><td style="padding:.35rem .4rem;font-weight:700;color:#856404">' + fmtMoeda(_totPerig) + '</td></tr>';
+    html += '</table></div>';
+  }
 
   // Assinaturas
   html += '<div style="border:1px solid #dee2e6;border-radius:6px;overflow:hidden;margin-bottom:.75rem">';
@@ -2228,6 +2334,12 @@ async function imprimirBoletim() {
   var totH = Number(bol.horas_total||0).toFixed(1);
   var totV = fmtMoeda(bol.valor_total);
 
+  // Periculosidade — derivada dos apontamentos snapshot
+  var _prPrintApts  = (apts||[]).filter(function(a){ return a.periculoso === true; });
+  var _prTotPerig   = _prPrintApts.reduce(function(s,a){ return s + Number(a.valor_periculosidade||0); }, 0);
+  var _prTotSemPerig = Number(bol.valor_total||0) - _prTotPerig;
+  var _prHasPerig   = _prPrintApts.length > 0;
+
   // Linhas da tabela
   var linhas = (apts||[]).map(function(a, i){
     var bg = i%2===0?'#ffffff':'#f5f5f5';
@@ -2332,8 +2444,33 @@ async function imprimirBoletim() {
     // Tabela de apontamentos
     + '<div class="section-title">Detalhamento de Horas</div>'
     + '<table><thead><tr>' + headers + '</tr></thead><tbody>' + linhas + '</tbody>'
-    + '<tfoot><tr class="total-row"><td colspan="' + (isClt?'7':'6') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr></tfoot>'
+    + '<tfoot>'
+    + (_prHasPerig
+        ? '<tr style="background:#e9ecef;color:#495057"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">Subtotal (horas trabalhadas)</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotSemPerig) + '</td><td></td></tr>'
+        + '<tr style="background:#fff3cd;color:#856404"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">⚡ Adicional Periculosidade</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotPerig) + '</td><td></td></tr>'
+        : '')
+    + '<tr class="total-row"><td colspan="' + (isClt?'7':'6') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr>'
+    + '</tfoot>'
     + '</table>'
+
+    // Memória de cálculo de periculosidade (condicional)
+    + (_prHasPerig ? (function() {
+        var _pa2      = _prPrintApts[0];
+        var _pPerc2   = Number(_pa2.perc_periculosidade || 30);
+        var _pBase2   = _pa2.periculosidade_base || 'normal';
+        var _pLbl2    = _pBase2 === 'total' ? 'Horas totais (opção comercial)' : 'Horas normais (CLT padrão — TST OJ 259)';
+        var _pHoras2  = _prPrintApts.reduce(function(s,a){ return s + Number(_pBase2==='total'?(a.horas_total||0):(a.horas_normal||0)); }, 0);
+        var _pVHBase2 = _prPrintApts.reduce(function(s,a){ return s + Number(_pBase2==='total'?(a.horas_total||0):(a.horas_normal||0))*Number(a.valor_hora_base||0); }, 0);
+        return '<div style="border:1px solid #ffc107;border-radius:4px;padding:8px;margin-bottom:16px;background:#fffdf0">'
+          + '<div style="font-weight:700;font-size:10px;margin-bottom:6px;color:#856404">⚡ MEMÓRIA DE CÁLCULO — ADICIONAL DE PERICULOSIDADE</div>'
+          + '<table style="width:100%;border-collapse:collapse;font-size:9px;color:#495057">'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Base de cálculo</td><td style="padding:2px 4px;font-weight:600">' + _pLbl2 + '</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Percentual</td><td style="padding:2px 4px;font-weight:600">' + _pPerc2 + '%</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Horas base acumuladas</td><td style="padding:2px 4px;font-weight:600">' + _pHoras2.toFixed(2) + 'h</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:2px 4px;font-weight:600">' + fmtMoeda(_pVHBase2) + '</td></tr>'
+          + '<tr style="border-top:1px solid #ffc107"><td style="padding:4px;font-weight:700;color:#856404">Adicional total</td><td style="padding:4px;font-weight:700;color:#856404">' + fmtMoeda(_prTotPerig) + '</td></tr>'
+          + '</table></div>';
+      })() : '')
 
     // Registro de assinaturas
     + '<div class="section-title">Registro de Assinaturas Digitais</div>'
