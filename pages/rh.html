@@ -1592,7 +1592,9 @@ function _renderHistoricoItem(h) {
     + '<span style="font-weight:700;font-size:.78rem;color:' + cfg.cor + '">' + (h.evento||'—').toUpperCase() + '</span>'
     + '<span style="font-size:.68rem;color:var(--text3);white-space:nowrap">' + fmtBrasilia(h.criado_em) + '</span>'
     + '</div>'
-    + '<div style="font-size:.73rem;color:var(--text2)">por <strong>' + (h.usuario_nome||'—') + '</strong></div>';
+    + '<div style="font-size:.73rem;color:var(--text2)">por <strong>' + (h.usuario_nome || (h._inferido ? 'sistema' : '—')) + '</strong>'
+    + (h._inferido ? ' <span style="font-size:.65rem;color:var(--text3);font-style:italic">(inferido de created_at)</span>' : '')
+    + '</div>';
   if (h.motivo) {
     html += '<div style="margin-top:.4rem;padding:.35rem .5rem;background:rgba(0,0,0,.15);border-radius:var(--r2);font-size:.73rem;color:var(--text);font-style:italic">"' + h.motivo + '"</div>';
   }
@@ -1604,9 +1606,9 @@ function _renderHistoricoItem(h) {
 }
 
 async function carregarHistoricoApt(id) {
-  // Fetch apontamento summary
+  // Fetch apontamento summary (include created_at for fallback criado event)
   var { data: apt } = await sb.from('apontamentos')
-    .select('data, hora_entrada, hora_saida, horas_total, valor_total, status, colaboradores(nome)')
+    .select('data, hora_entrada, hora_saida, horas_total, valor_total, status, created_at, colaboradores(nome)')
     .eq('id', id).maybeSingle();
 
   // Populate header
@@ -1620,19 +1622,32 @@ async function carregarHistoricoApt(id) {
       + '<br><span style="font-size:.72rem;color:var(--text3)">Status atual: <strong>' + (apt.status||'—') + '</strong></span>'
     : '';
 
-  // Fetch history
+  // Fetch history ordered chronologically
   var { data: hist, error } = await sb.from('apontamentos_historico')
     .select('*')
     .eq('apontamento_id', id)
     .order('criado_em', { ascending: true });
   if (error) { toast('Erro ao carregar histórico: ' + error.message, 'err'); return; }
 
-  var timeline = document.getElementById('historicoAptTimeline');
-  if (!hist || !hist.length) {
-    timeline.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.8rem">Nenhum evento registrado para este apontamento.</div>';
-  } else {
-    timeline.innerHTML = hist.map(_renderHistoricoItem).join('');
+  var eventos = hist || [];
+
+  // Guarantee a 'criado' entry is always first.
+  // If the historico table has no 'criado' event, synthesize one from apontamentos.created_at.
+  var temCriado = eventos.length > 0 && eventos[0].evento === 'criado';
+  if (!temCriado && apt && apt.created_at) {
+    eventos = [{
+      evento:       'criado',
+      criado_em:    apt.created_at,
+      usuario_nome: null,
+      motivo:       null,
+      dados_antes:  null,
+      dados_depois: null,
+      _inferido:    true
+    }].concat(eventos);
   }
+
+  var timeline = document.getElementById('historicoAptTimeline');
+  timeline.innerHTML = eventos.map(_renderHistoricoItem).join('');
 
   document.getElementById('modalHistoricoApt').classList.add('on');
 }
