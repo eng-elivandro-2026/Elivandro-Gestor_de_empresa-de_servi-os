@@ -175,6 +175,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="nav-rh-btn on" onclick="showSec('colaboradores',this)">👷 Colaboradores</button>
     <button class="nav-rh-btn" onclick="showSec('apontamentos',this)">⏱️ Apontamentos</button>
     <button class="nav-rh-btn" onclick="showSec('boletins',this)">📋 Boletins</button>
+    <button class="nav-rh-btn" onclick="showSec('despesas',this)">💰 Despesas</button>
   </div>
 
   <!-- ALERTAS -->
@@ -337,6 +338,67 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum documento gerado ainda.</div>
       </div>
     </div>
+  </div>
+
+  <!-- ══ SEÇÃO DESPESAS ════════════════════════════════════ -->
+  <div class="sec" id="sec-despesas">
+
+    <!-- Formulário Nova Despesa -->
+    <div class="card">
+      <div class="ch"><span class="ct">💰 Nova Despesa</span></div>
+      <div class="g2" style="gap:.85rem">
+        <div class="f">
+          <label>Colaborador *</label>
+          <select id="dColabId"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f">
+          <label>Data *</label>
+          <input type="date" id="dData">
+        </div>
+        <div class="f">
+          <label>Valor (R$) *</label>
+          <input type="number" id="dValor" step="0.01" min="0" placeholder="0,00">
+        </div>
+        <div class="f">
+          <label>Tipo de Pagamento *</label>
+          <select id="dTipoPgto">
+            <option value="particular">Particular — solicitar reembolso</option>
+            <option value="empresa">Empresa — sem reembolso</option>
+          </select>
+        </div>
+      </div>
+      <div class="f" style="margin-top:.65rem">
+        <label>Descrição *</label>
+        <textarea id="dDesc" placeholder="Descreva a despesa..." style="min-height:60px"></textarea>
+      </div>
+      <div style="margin-top:.75rem;display:flex;justify-content:flex-end">
+        <button class="btn bs" onclick="salvarDespesa()">💾 Salvar Despesa</button>
+      </div>
+    </div>
+
+    <!-- Lista de Despesas -->
+    <div class="card">
+      <div class="ch"><span class="ct">📋 Despesas Registradas</span></div>
+      <div style="overflow-x:auto">
+        <table class="apt-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Data</th>
+              <th>Tipo Pgto</th>
+              <th>Valor</th>
+              <th>Descrição</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="despBody">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
 </div><!-- /wrap -->
@@ -947,6 +1009,7 @@ function showSec(id, btn) {
     });
   }
   if (id === 'boletins') carregarBoletins();
+  if (id === 'despesas') { _popularColabsDespesa(); carregarDespesas(); }
 }
 function showTab(id, btn) {
   document.querySelectorAll('.tab-sec').forEach(function(s){ s.classList.remove('on'); });
@@ -3537,6 +3600,126 @@ async function salvarAdicionarEmpresa() {
 }
 
 // ══ INICIALIZAÇÃO ════════════════════════════════════════════
+// ══ DESPESAS ══════════════════════════════════════════════════
+
+function _popularColabsDespesa() {
+  var sel = document.getElementById('dColabId');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Selecione...</option>'
+    + (_colabs||[]).filter(function(c){ return c.ativo !== false; })
+      .map(function(c){
+        return '<option value="' + c.id + '"' + (c.id===cur?' selected':'') + '>' + c.nome + '</option>';
+      }).join('');
+}
+
+async function carregarDespesas() {
+  var empId = await getEmpresaId();
+  var tbody = document.getElementById('despBody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Carregando...</td></tr>';
+
+  var { data, error } = await sb.from('rh_despesas')
+    .select('*, colaboradores(nome)')
+    .eq('empresa_id', empId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--red)">Erro ao carregar: ' + error.message + '</td></tr>';
+    return;
+  }
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhuma despesa registrada.</td></tr>';
+    return;
+  }
+
+  var statusCfg = {
+    pendente:  { cls: 'bdg-yellow', txt: 'Pendente'  },
+    aprovado:  { cls: 'bdg-green',  txt: 'Aprovado'  },
+    rejeitado: { cls: 'bdg-red',    txt: 'Rejeitado' },
+    ajuste:    { cls: 'bdg-yellow', txt: 'Ajuste'    }
+  };
+
+  tbody.innerHTML = data.map(function(d) {
+    var nome   = d.colaboradores ? d.colaboradores.nome : '—';
+    var cfg    = statusCfg[d.status] || { cls: 'bdg-gray', txt: d.status||'—' };
+    var tipoBdg = d.tipo_pagamento === 'particular'
+      ? '<span class="bdg bdg-blue" style="font-size:.65rem">Reembolso</span>'
+      : '<span class="bdg bdg-gray" style="font-size:.65rem">Empresa</span>';
+    var acoes = '';
+    if (d.status === 'pendente' || d.status === 'ajuste') {
+      acoes = '<button class="btn bs bsm" onclick="aprovarDespesa(\'' + d.id + '\')">✔ Aprovar</button>'
+            + '<button class="btn bd bsm" onclick="rejeitarDespesa(\'' + d.id + '\')">⛔ Rejeitar</button>';
+    }
+    return '<tr>'
+      + '<td><span class="apt-nome">' + nome + '</span></td>'
+      + '<td>' + fmtData(d.data_despesa) + '</td>'
+      + '<td>' + tipoBdg + '</td>'
+      + '<td style="color:var(--green);font-weight:600">' + fmtMoeda(d.valor) + '</td>'
+      + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (d.descricao||'') + '">' + (d.descricao||'—') + '</td>'
+      + '<td><span class="bdg ' + cfg.cls + '">' + cfg.txt + '</span></td>'
+      + '<td><div class="br">' + acoes + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function salvarDespesa() {
+  var colabId   = document.getElementById('dColabId').value;
+  var data      = document.getElementById('dData').value;
+  var valor     = parseFloat(document.getElementById('dValor').value);
+  var tipoPgto  = document.getElementById('dTipoPgto').value;
+  var desc      = document.getElementById('dDesc').value.trim();
+
+  if (!colabId || !data || isNaN(valor) || valor <= 0 || !desc) {
+    toast('Preencha todos os campos obrigatórios.', 'err'); return;
+  }
+
+  var empId = await getEmpresaId();
+  var { error } = await sb.from('rh_despesas').insert({
+    empresa_id:     empId,
+    colaborador_id: colabId,
+    data_despesa:   data,
+    valor:          valor,
+    tipo_pagamento: tipoPgto,
+    descricao:      desc,
+    tipo_despesa:   'outros',    // default for minimal step
+    forma_pagamento:'outros',    // default for minimal step
+    status:         'pendente'
+  });
+  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+
+  // Reset form fields (keep colaborador selected for convenience)
+  document.getElementById('dData').value  = '';
+  document.getElementById('dValor').value = '';
+  document.getElementById('dDesc').value  = '';
+  toast('Despesa registrada!', 'ok');
+  carregarDespesas();
+}
+
+async function aprovarDespesa(id) {
+  var usr = await _resolverUsuarioLogado();
+  var agora = new Date().toISOString();
+  var { error } = await sb.from('rh_despesas').update({
+    status:      'aprovado',
+    aprovado_por: usr.nome,
+    aprovado_em:  agora,
+    updated_at:   agora
+  }).eq('id', id);
+  if (error) { toast('Erro ao aprovar: ' + error.message, 'err'); return; }
+  toast('Despesa aprovada.', 'ok');
+  carregarDespesas();
+}
+
+async function rejeitarDespesa(id) {
+  if (!confirm('Rejeitar esta despesa?')) return;
+  var { error } = await sb.from('rh_despesas').update({
+    status:     'rejeitado',
+    updated_at:  new Date().toISOString()
+  }).eq('id', id);
+  if (error) { toast('Erro ao rejeitar: ' + error.message, 'err'); return; }
+  toast('Despesa rejeitada.', 'ok');
+  carregarDespesas();
+}
+
 (async function init() {
   // Herdar tema do parent
   try {
