@@ -635,6 +635,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- ══ MODAL HISTÓRICO APONTAMENTO ══════════════════════════ -->
+<div class="modal-overlay" id="modalHistoricoApt" onclick="if(event.target===this)fecharModalHistoricoApt()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-hdr">
+      <span class="modal-tit">📜 Histórico do Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalHistoricoApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="historicoAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:1rem;font-size:.8rem;color:var(--text2)"></div>
+      <div id="historicoAptTimeline" style="display:flex;flex-direction:column;gap:.75rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalHistoricoApt()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL ADICIONAR EMPRESA ═════════════════════════════ -->
 <div class="modal-overlay" id="modalAddEmpresa" onclick="if(event.target===this)fecharModalAddEmpresa()">
   <div class="modal-box" style="max-width:440px">
@@ -1281,6 +1298,7 @@ async function carregarApontamentos() {
         acoes += '<button class="btn bd bsm" onclick="abrirModalCancelApt(\'' + a.id + '\')">🚫 Cancelar</button>';
       }
     }
+    acoes += '<button class="btn bg bsm" onclick="carregarHistoricoApt(\'' + a.id + '\')">📜 Histórico</button>';
     var trStyle = isCancelado ? ' style="opacity:.55;text-decoration:line-through"' : '';
     return '<tr' + trStyle + '>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
@@ -1522,6 +1540,105 @@ async function confirmarReabrirApt() {
   fecharModalReabrirApt();
   carregarApontamentos();
   carregarKpiApt();
+}
+
+// ══ HISTÓRICO DE APONTAMENTO ═════════════════════════════════
+
+var _HIST_EVENTO_CFG = {
+  criado:    { cor: 'var(--text2)',  bg: 'rgba(139,148,158,.10)', brd: 'rgba(139,148,158,.22)', icon: '➕' },
+  aprovado:  { cor: 'var(--green)',  bg: 'rgba(63,185,80,.08)',   brd: 'rgba(63,185,80,.22)',   icon: '✔'  },
+  rejeitado: { cor: 'var(--orange)', bg: 'rgba(210,153,34,.08)',  brd: 'rgba(210,153,34,.22)',  icon: '⛔' },
+  reaberto:  { cor: 'var(--blue)',   bg: 'rgba(88,166,255,.08)',  brd: 'rgba(88,166,255,.22)',  icon: '🔓' },
+  cancelado: { cor: 'var(--red)',    bg: 'rgba(248,81,73,.08)',   brd: 'rgba(248,81,73,.22)',   icon: '🚫' },
+  editado:   { cor: 'var(--accent)', bg: 'rgba(240,165,0,.08)',   brd: 'rgba(240,165,0,.22)',   icon: '✏️' }
+};
+
+var _DIFF_LABELS = {
+  hora_entrada:    'Entrada',
+  hora_saida:      'Saída',
+  horas_normal:    'Horas normais',
+  horas_extra_50:  'Horas 50%',
+  horas_extra_100: 'Horas 100%',
+  horas_total:     'Total horas',
+  valor_total:     'Valor total',
+  proposta_id:     'Proposta'
+};
+
+function _renderDiffApt(antes, depois) {
+  var a = antes  || {};
+  var b = depois || {};
+  var keys = Object.keys(_DIFF_LABELS);
+  var changed = keys.filter(function(k) { return String(a[k]||'') !== String(b[k]||''); });
+  if (!changed.length) return '';
+  return '<div style="margin-top:.5rem;border-top:1px solid rgba(255,255,255,.07);padding-top:.45rem">'
+    + '<div style="font-size:.67rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Alterações</div>'
+    + changed.map(function(k) {
+        return '<div style="display:flex;gap:.4rem;align-items:baseline;font-size:.72rem;margin-bottom:.15rem">'
+          + '<span style="color:var(--text3);min-width:95px;flex-shrink:0">' + _DIFF_LABELS[k] + '</span>'
+          + '<span style="color:var(--red);text-decoration:line-through">'  + (a[k]||'—') + '</span>'
+          + '<span style="color:var(--text3);margin:0 .2rem">→</span>'
+          + '<span style="color:var(--green)">' + (b[k]||'—') + '</span>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+function _renderHistoricoItem(h) {
+  var cfg = _HIST_EVENTO_CFG[h.evento] || _HIST_EVENTO_CFG['criado'];
+  var html = '<div style="display:flex;gap:.75rem;align-items:flex-start">'
+    + '<div style="width:34px;height:34px;border-radius:50%;background:' + cfg.bg + ';border:1.5px solid ' + cfg.brd + ';display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0">' + cfg.icon + '</div>'
+    + '<div style="flex:1;background:' + cfg.bg + ';border:1px solid ' + cfg.brd + ';border-radius:var(--r2);padding:.6rem .85rem">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">'
+    + '<span style="font-weight:700;font-size:.78rem;color:' + cfg.cor + '">' + (h.evento||'—').toUpperCase() + '</span>'
+    + '<span style="font-size:.68rem;color:var(--text3);white-space:nowrap">' + fmtBrasilia(h.criado_em) + '</span>'
+    + '</div>'
+    + '<div style="font-size:.73rem;color:var(--text2)">por <strong>' + (h.usuario_nome||'—') + '</strong></div>';
+  if (h.motivo) {
+    html += '<div style="margin-top:.4rem;padding:.35rem .5rem;background:rgba(0,0,0,.15);border-radius:var(--r2);font-size:.73rem;color:var(--text);font-style:italic">"' + h.motivo + '"</div>';
+  }
+  if (h.evento === 'editado') {
+    html += _renderDiffApt(h.dados_antes, h.dados_depois);
+  }
+  html += '</div></div>';
+  return html;
+}
+
+async function carregarHistoricoApt(id) {
+  // Fetch apontamento summary
+  var { data: apt } = await sb.from('apontamentos')
+    .select('data, hora_entrada, hora_saida, horas_total, valor_total, status, colaboradores(nome)')
+    .eq('id', id).maybeSingle();
+
+  // Populate header
+  var nomeColab = apt && apt.colaboradores ? apt.colaboradores.nome : '—';
+  document.getElementById('historicoAptResumo').innerHTML = apt
+    ? '<strong>' + nomeColab + '</strong>'
+      + ' · ' + fmtData(apt.data)
+      + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
+      + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
+      + ' · ' + fmtMoeda(apt.valor_total)
+      + '<br><span style="font-size:.72rem;color:var(--text3)">Status atual: <strong>' + (apt.status||'—') + '</strong></span>'
+    : '';
+
+  // Fetch history
+  var { data: hist, error } = await sb.from('apontamentos_historico')
+    .select('*')
+    .eq('apontamento_id', id)
+    .order('criado_em', { ascending: true });
+  if (error) { toast('Erro ao carregar histórico: ' + error.message, 'err'); return; }
+
+  var timeline = document.getElementById('historicoAptTimeline');
+  if (!hist || !hist.length) {
+    timeline.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.8rem">Nenhum evento registrado para este apontamento.</div>';
+  } else {
+    timeline.innerHTML = hist.map(_renderHistoricoItem).join('');
+  }
+
+  document.getElementById('modalHistoricoApt').classList.add('on');
+}
+
+function fecharModalHistoricoApt() {
+  document.getElementById('modalHistoricoApt').classList.remove('on');
 }
 
 // ══ ENGINE CLT — CÁLCULO DE HORAS ════════════════════════════
