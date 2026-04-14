@@ -989,6 +989,7 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 
 // ══ ESTADO GLOBAL ════════════════════════════════════════════
 var _colabs = [];
+var _colabsGen = 0; // generation counter — prevents stale carregarColabs() from overwriting fresher results
 var _colabAtivo = null;
 var _aptEditId   = null;
 var _aptEditData = null; // full apt record while edit modal is open
@@ -1066,9 +1067,10 @@ async function getEmpresaId() {
     }
   } catch(e) {}
   // Fallback: pegar do Supabase
+  // Only write if still null — SET_EMPRESA may have arrived during the await and set _empresaId correctly
   if (!_empresaId) {
     var { data } = await sb.from('empresas').select('id').eq('nome_curto','Tecfusion').single();
-    if (data) _empresaId = data.id;
+    if (data && !_empresaId) _empresaId = data.id;
   }
   return _empresaId;
 }
@@ -1116,8 +1118,10 @@ function setModoApt(modo) {
 }
 
 async function carregarColabs() {
+  var gen = ++_colabsGen; // claim ownership; any older in-flight call will be discarded
   var empId = await getEmpresaId();
   if (!empId) return;
+  if (gen !== _colabsGen) return; // a newer call started — discard this result
 
   // Passo 1: buscar IDs dos colaboradores vinculados a esta empresa
   var { data: vinculos, error: errV } = await sb
@@ -1127,6 +1131,7 @@ async function carregarColabs() {
     .eq('ativo', true);
 
   if (errV) { console.error(errV); return; }
+  if (gen !== _colabsGen) return; // discard if superseded
   if (!vinculos || !vinculos.length) {
     _colabs = [];
     renderColabs([]);
@@ -1145,6 +1150,7 @@ async function carregarColabs() {
     .order('nome');
 
   if (error) { console.error(error); return; }
+  if (gen !== _colabsGen) return; // final check before writing state
   _colabs = data || [];
   renderColabs(_colabs);
   renderKpiColabs(_colabs);
