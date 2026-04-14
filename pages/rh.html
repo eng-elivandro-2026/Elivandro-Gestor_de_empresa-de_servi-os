@@ -1244,13 +1244,13 @@ async function carregarApontamentos() {
     var acoes = '';
     if (!isCancelado) {
       if (a.status === 'pendente') {
-        acoes += '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✅</button>'
-               + '<button class="btn bd bsm" onclick="rejeitarApt(\'' + a.id + '\')">✕</button>';
+        acoes += '<button class="btn bs bsm" onclick="aprovarApt(\'' + a.id + '\')">✔ Aprovar</button>'
+               + '<button class="btn bo bsm" onclick="rejeitarApt(\'' + a.id + '\')">⛔ Rejeitar</button>';
       }
       if (isLinked) {
         acoes += '<span class="bdg bdg-blue" style="font-size:.65rem" title="Vinculado ao documento ' + (a.boletim_numero||'') + '">🔒 ' + (a.boletim_numero||'DOC') + '</span>';
       } else {
-        acoes += '<button class="btn bg bsm" onclick="abrirModalCancelApt(\'' + a.id + '\')" title="Cancelar apontamento">🗑</button>';
+        acoes += '<button class="btn bd bsm" onclick="abrirModalCancelApt(\'' + a.id + '\')">🚫 Cancelar</button>';
       }
     }
     var trStyle = isCancelado ? ' style="opacity:.55;text-decoration:line-through"' : '';
