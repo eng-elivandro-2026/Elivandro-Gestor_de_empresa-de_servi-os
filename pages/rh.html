@@ -387,6 +387,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
             <option value="faturado">Faturado empresa</option>
           </select>
         </div>
+        <div class="f">
+          <label>Projeto / Proposta</label>
+          <select id="dProjetoId"><option value="">— nenhum —</option></select>
+        </div>
+        <div class="f">
+          <label>Centro de Custo</label>
+          <input type="text" id="dCentroCusto" placeholder="Ex: Obra SP-042, Manutenção...">
+        </div>
       </div>
       <div class="f" style="margin-top:.65rem">
         <label>Descrição *</label>
@@ -406,6 +414,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
             <tr>
               <th>Colaborador</th>
               <th>Data</th>
+              <th>Projeto</th>
+              <th>Centro Custo</th>
               <th>Tipo Despesa</th>
               <th>Forma Pgto</th>
               <th>Tipo Pgto</th>
@@ -1032,7 +1042,7 @@ function showSec(id, btn) {
     });
   }
   if (id === 'boletins') carregarBoletins();
-  if (id === 'despesas') { _popularColabsDespesa(); carregarDespesas(); }
+  if (id === 'despesas') { _popularColabsDespesa(); _popularProjetosDesp(); carregarDespesas(); }
 }
 function showTab(id, btn) {
   document.querySelectorAll('.tab-sec').forEach(function(s){ s.classList.remove('on'); });
@@ -3625,6 +3635,29 @@ async function salvarAdicionarEmpresa() {
 // ══ INICIALIZAÇÃO ════════════════════════════════════════════
 // ══ DESPESAS ══════════════════════════════════════════════════
 
+async function _popularProjetosDesp() {
+  if (!_propostas.length) {
+    var empId = await getEmpresaId();
+    var { data } = await sb.from('propostas')
+      .select('app_id, numero_proposta, titulo, cliente, fase')
+      .eq('empresa_id', empId)
+      .not('fase', 'in', '("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
+      .order('numero_proposta', { ascending: false });
+    _propostas = data || [];
+  }
+  var sel = document.getElementById('dProjetoId');
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— nenhum —</option>'
+    + _propostas.map(function(p) {
+        return '<option value="' + p.app_id + '"' + (p.app_id===cur?' selected':'') + '>'
+          + p.numero_proposta
+          + (p.cliente ? ' — ' + p.cliente : '')
+          + (p.titulo  ? ' | ' + p.titulo  : '')
+          + '</option>';
+      }).join('');
+}
+
 function _popularColabsDespesa() {
   var sel = document.getElementById('dColabId');
   var cur = sel.value;
@@ -3647,11 +3680,11 @@ async function carregarDespesas() {
     .limit(100);
 
   if (error) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--red)">Erro ao carregar: ' + error.message + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--red)">Erro ao carregar: ' + error.message + '</td></tr>';
     return;
   }
   if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhuma despesa registrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhuma despesa registrada.</td></tr>';
     return;
   }
 
@@ -3667,12 +3700,18 @@ async function carregarDespesas() {
   var formaLabel = { pix:'Pix', credito:'Crédito', debito:'Débito',
                      dinheiro:'Dinheiro', faturado:'Faturado' };
 
+  var mapaProj = {};
+  _propostas.forEach(function(p) { mapaProj[p.app_id] = p; });
+
   tbody.innerHTML = data.map(function(d) {
     var nome    = d.colaboradores ? d.colaboradores.nome : '—';
     var cfg     = statusCfg[d.status] || { cls: 'bdg-gray', txt: d.status||'—' };
     var tipoBdg = d.tipo_pagamento === 'particular'
       ? '<span class="bdg bdg-blue" style="font-size:.65rem">Reembolso</span>'
       : '<span class="bdg bdg-gray" style="font-size:.65rem">Empresa</span>';
+    var proj = d.projeto_id && mapaProj[d.projeto_id]
+      ? mapaProj[d.projeto_id].numero_proposta + (mapaProj[d.projeto_id].cliente ? ' — ' + mapaProj[d.projeto_id].cliente : '')
+      : '—';
     var acoes = '';
     if (d.status === 'pendente' || d.status === 'ajuste') {
       acoes = '<button class="btn bs bsm" onclick="aprovarDespesa(\'' + d.id + '\')">✔ Aprovar</button>'
@@ -3681,6 +3720,8 @@ async function carregarDespesas() {
     return '<tr>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
       + '<td>' + fmtData(d.data_despesa) + '</td>'
+      + '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + proj + '">' + proj + '</td>'
+      + '<td>' + (d.centro_custo || '—') + '</td>'
       + '<td>' + (tipoLabel[d.tipo_despesa]   || d.tipo_despesa   || '—') + '</td>'
       + '<td>' + (formaLabel[d.forma_pagamento]|| d.forma_pagamento|| '—') + '</td>'
       + '<td>' + tipoBdg + '</td>'
@@ -3693,13 +3734,15 @@ async function carregarDespesas() {
 }
 
 async function salvarDespesa() {
-  var colabId    = document.getElementById('dColabId').value;
-  var data       = document.getElementById('dData').value;
-  var valor      = parseFloat(document.getElementById('dValor').value);
-  var tipoPgto   = document.getElementById('dTipoPgto').value;
-  var tipoDesp   = document.getElementById('dTipoDesp').value;
-  var formaPgto  = document.getElementById('dFormaPgto').value;
-  var desc       = document.getElementById('dDesc').value.trim();
+  var colabId     = document.getElementById('dColabId').value;
+  var data        = document.getElementById('dData').value;
+  var valor       = parseFloat(document.getElementById('dValor').value);
+  var tipoPgto    = document.getElementById('dTipoPgto').value;
+  var tipoDesp    = document.getElementById('dTipoDesp').value;
+  var formaPgto   = document.getElementById('dFormaPgto').value;
+  var projetoId   = document.getElementById('dProjetoId').value   || null;
+  var centroCusto = document.getElementById('dCentroCusto').value.trim() || null;
+  var desc        = document.getElementById('dDesc').value.trim();
 
   if (!colabId || !data || isNaN(valor) || valor <= 0 || !desc) {
     toast('Preencha todos os campos obrigatórios.', 'err'); return;
@@ -3707,15 +3750,17 @@ async function salvarDespesa() {
 
   var empId = await getEmpresaId();
   var { error } = await sb.from('rh_despesas').insert({
-    empresa_id:     empId,
-    colaborador_id: colabId,
-    data_despesa:   data,
-    valor:          valor,
-    tipo_pagamento: tipoPgto,
-    tipo_despesa:   tipoDesp,
+    empresa_id:      empId,
+    colaborador_id:  colabId,
+    data_despesa:    data,
+    valor:           valor,
+    tipo_pagamento:  tipoPgto,
+    tipo_despesa:    tipoDesp,
     forma_pagamento: formaPgto,
-    descricao:      desc,
-    status:         'pendente'
+    projeto_id:      projetoId,
+    centro_custo:    centroCusto,
+    descricao:       desc,
+    status:          'pendente'
   });
   if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
 
