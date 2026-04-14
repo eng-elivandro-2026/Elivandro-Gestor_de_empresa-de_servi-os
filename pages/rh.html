@@ -390,6 +390,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div class="modal-body" style="max-height:68vh;overflow-y:auto">
       <div id="verBolGestorContent"></div>
+      <!-- Área editar observações da empresa (fora do hash) -->
+      <div id="areaEditarObs" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">📝 Observações da Empresa</div>
+        <textarea id="txtObsEmpresa" style="width:100%;min-height:80px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.8rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn bs" style="flex:1" onclick="salvarObservacoesBoletim(_bolGestorAtivo.id, document.getElementById('txtObsEmpresa').value)">💾 Salvar</button>
+          <button class="btn bg" onclick="document.getElementById('areaEditarObs').style.display='none'">Cancelar</button>
+        </div>
+      </div>
       <!-- Área assinar como PRESTADOR (dono que também é colaborador) -->
       <div id="areaAssinarPrestador" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:2px solid var(--green);border-radius:var(--r)">
         <div style="font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:.35rem">✍️ Assinar como Prestador</div>
@@ -419,6 +428,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharVerBolGestor()">Fechar</button>
       <button class="btn bs" id="btnImprimirBol" onclick="imprimirBoletim()" style="display:none">🖨️ Imprimir / PDF</button>
+      <button class="btn" id="btnEditarObs" onclick="abrirEditarObs()" style="display:none">📝 Obs.</button>
+      <button class="btn" id="btnRevisarBol" onclick="revisarBoletim(_bolGestorAtivo.id)" style="display:none">✓ Revisado</button>
       <button class="btn bd" id="btnCancelarBol" style="display:none" onclick="cancelarBoletim()">🗑 Cancelar Documento</button>
     </div>
   </div>
@@ -466,7 +477,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="g2" style="gap:.85rem">
         <div class="f"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
         <div class="f"><label>Tipo de vínculo *</label>
-          <select id="cTipo">
+          <select id="cTipo" onchange="togglePerigFields()">
             <option value="clt">CLT</option>
             <option value="mei">MEI</option>
             <option value="pj">PJ</option>
@@ -476,6 +487,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
         <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
         <div class="f"><label>Custo/hora base (R$)</label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
+        <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
+          <select id="cPericuloso" onchange="togglePercPerig()">
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
+          </select>
+        </div>
+        <div class="f" id="cPercPerigRow" style="display:none"><label>Adicional (%)</label><input type="number" id="cPercPericulosidade" value="30" min="0" max="100" step="0.01"></div>
+        <div class="f" id="cBasePerigRow" style="display:none"><label>Calcular sobre</label>
+          <select id="cPericulosidadeBase">
+            <option value="normal">Horas normais (CLT padrão — TST OJ 259)</option>
+            <option value="total">Horas totais (opção comercial)</option>
+          </select>
+        </div>
         <div class="f"><label>Função / Cargo</label><input type="text" id="cFuncao" placeholder="Eletricista Industrial"></div>
         <div class="f"><label>Data de admissão</label><input type="date" id="cAdmissao"></div>
       </div>
@@ -541,6 +565,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha" id="pvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="pvPericulosidade">—</span></div>
         <div class="horas-linha">
           <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
           <span class="horas-total-val" id="pvTotal">—</span>
@@ -718,18 +743,14 @@ function agoraBrasilia() {
 }
 function fmtBrasilia(isoStr) {
   if (!isoStr) return '—';
-  // Formata timestamp UTC para horário de Brasília (UTC-3)
   var d = new Date(isoStr);
-  var utcMs = d.getTime();
-  var brasiliaMs = utcMs - (3 * 60 * 60 * 1000);
-  var b = new Date(brasiliaMs);
-  var dia = String(b.getUTCDate()).padStart(2,'0');
-  var mes = String(b.getUTCMonth()+1).padStart(2,'0');
-  var ano = b.getUTCFullYear();
-  var h   = String(b.getUTCHours()).padStart(2,'0');
-  var min = String(b.getUTCMinutes()).padStart(2,'0');
-  var seg = String(b.getUTCSeconds()).padStart(2,'0');
-  return dia+'/'+mes+'/'+ano+', '+h+':'+min+':'+seg;
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  });
 }
 
 // ══ CONFIGURAÇÃO SUPABASE ════════════════════════════════════
@@ -928,6 +949,7 @@ function renderColabs(lista) {
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
+          + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '% / ' + (c.periculosidade_base==='total'?'h.totais':'h.normais') + '</span>' : '')
         + '</div>'
       + '</div>'
       + '<div class="colab-acoes">'
@@ -1252,7 +1274,7 @@ function timeToMin(t) {
 }
 function minToH(m) { return (m/60).toFixed(2)*1; }
 
-function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora) {
+function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora, periculoso, percPericulosidade, periculosidadeBase) {
   var entMin  = timeToMin(entrada);
   var saiMin  = timeToMin(saida);
   var intIMin = timeToMin(intInicio || '12:00');
@@ -1328,17 +1350,26 @@ function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni
   var vExtra100= extra100 * vBase * 2.0;
   var vNoturno = noturno  * vBase * 0.3; // adicional noturno
 
+  // Adicional de periculosidade (opcional — CLT art. 193 / TST OJ 259)
+  var perc  = (periculoso === true) ? (Number(percPericulosidade) || 30) : 0;
+  var base  = periculosidadeBase || 'normal';
+  // 'normal': aplica sobre horas normais apenas (padrão CLT)
+  // 'total':  aplica sobre horas totais trabalhadas (opção comercial)
+  var horasPerig = (base === 'total') ? (normal + extra50 + extra100) : normal;
+  var vPerig = horasPerig * vBase * (perc / 100);
+
   return {
-    horas_normal:   parseFloat(normal.toFixed(2)),
-    horas_extra_50: parseFloat(extra50.toFixed(2)),
-    horas_extra_100:parseFloat(extra100.toFixed(2)),
-    horas_noturno:  parseFloat(noturno.toFixed(2)),
-    horas_total:    parseFloat((normal+extra50+extra100).toFixed(2)),
-    valor_normal:   parseFloat(vNormal.toFixed(2)),
-    valor_extra_50: parseFloat(vExtra50.toFixed(2)),
-    valor_extra_100:parseFloat(vExtra100.toFixed(2)),
-    valor_noturno:  parseFloat(vNoturno.toFixed(2)),
-    valor_total:    parseFloat((vNormal+vExtra50+vExtra100+vNoturno).toFixed(2))
+    horas_normal:            parseFloat(normal.toFixed(2)),
+    horas_extra_50:          parseFloat(extra50.toFixed(2)),
+    horas_extra_100:         parseFloat(extra100.toFixed(2)),
+    horas_noturno:           parseFloat(noturno.toFixed(2)),
+    horas_total:             parseFloat((normal+extra50+extra100).toFixed(2)),
+    valor_normal:            parseFloat(vNormal.toFixed(2)),
+    valor_extra_50:          parseFloat(vExtra50.toFixed(2)),
+    valor_extra_100:         parseFloat(vExtra100.toFixed(2)),
+    valor_noturno:           parseFloat(vNoturno.toFixed(2)),
+    valor_periculosidade:    parseFloat(vPerig.toFixed(2)),
+    valor_total:             parseFloat((vNormal+vExtra50+vExtra100+vNoturno+vPerig).toFixed(2))
   };
 }
 
@@ -1370,21 +1401,49 @@ function calcularHorasApt() {
   if (jornada === '07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada === '08-1730') { jIni='08:00'; jFim='17:30'; }
 
-  // Pegar valor/hora do colaborador selecionado
+  // Pegar valor/hora e periculosidade do colaborador selecionado
   var colab = _colabs.find(function(c){ return c.id === colabId; });
-  var vh = colab ? (colab.valor_hora||0) : 0;
+  var vh         = colab ? (colab.valor_hora||0) : 0;
+  var perig      = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  var percPerig  = colab ? (colab.perc_periculosidade || 30) : 30;
+  var basePerig  = colab ? (colab.periculosidade_base || 'normal') : 'normal';
 
-  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   document.getElementById('horasPrevia').style.display = 'block';
   document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
   document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
   document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
   document.getElementById('pvNoturno').textContent   = r.horas_noturno.toFixed(1) + 'h → ' + fmtMoeda(r.valor_noturno);
+
+  var pvPerigRow = document.getElementById('pvPerigRow');
+  if (perig && r.valor_periculosidade > 0) {
+    var baseLabel = basePerig === 'total' ? 'h totais' : 'h normais';
+    document.getElementById('pvPericulosidade').textContent =
+      (basePerig === 'total' ? r.horas_total : r.horas_normal).toFixed(1) + baseLabel
+      + ' × ' + percPerig + '% → ' + fmtMoeda(r.valor_periculosidade);
+    pvPerigRow.style.display = '';
+  } else {
+    pvPerigRow.style.display = 'none';
+  }
+
   document.getElementById('pvTotal').textContent     = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
 }
 
 // ══ MODAIS COLABORADOR ═══════════════════════════════════════
+function togglePerigFields() {
+  var isClt = document.getElementById('cTipo').value === 'clt';
+  document.getElementById('cPerigRow').style.display     = isClt ? '' : 'none';
+  var isPerig = isClt && document.getElementById('cPericuloso').value === 'true';
+  document.getElementById('cPercPerigRow').style.display  = isPerig ? '' : 'none';
+  document.getElementById('cBasePerigRow').style.display  = isPerig ? '' : 'none';
+}
+function togglePercPerig() {
+  var isPerig = document.getElementById('cPericuloso').value === 'true';
+  document.getElementById('cPercPerigRow').style.display  = isPerig ? '' : 'none';
+  document.getElementById('cBasePerigRow').style.display  = isPerig ? '' : 'none';
+}
+
 var _colabEditId = null;
 var _todasEmpresas = [];
 var _colabAddEmpId = null;
@@ -1394,19 +1453,27 @@ async function abrirModalColab(id) {
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
-    document.getElementById('cTipo').value = 'mei';
+    document.getElementById('cTipo').value                = 'mei';
+    document.getElementById('cPericuloso').value          = 'false';
+    document.getElementById('cPercPericulosidade').value  = '30';
+    document.getElementById('cPericulosidadeBase').value  = 'normal';
+    togglePerigFields();
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
     if (c) {
-      document.getElementById('cNome').value      = c.nome||'';
-      document.getElementById('cTipo').value      = c.tipo||'mei';
-      document.getElementById('cDoc').value       = c.documento||'';
-      document.getElementById('cEmail').value     = c.email||'';
-      document.getElementById('cTel').value       = c.telefone||'';
-      document.getElementById('cValorHora').value = c.valor_hora||'';
-      document.getElementById('cFuncao').value    = c.funcao||'';
-      document.getElementById('cAdmissao').value  = c.admissao||'';
-      document.getElementById('cObs').value       = c.observacoes||'';
+      document.getElementById('cNome').value                = c.nome||'';
+      document.getElementById('cTipo').value                = c.tipo||'mei';
+      document.getElementById('cDoc').value                 = c.documento||'';
+      document.getElementById('cEmail').value               = c.email||'';
+      document.getElementById('cTel').value                 = c.telefone||'';
+      document.getElementById('cValorHora').value           = c.valor_hora||'';
+      document.getElementById('cFuncao').value              = c.funcao||'';
+      document.getElementById('cAdmissao').value            = c.admissao||'';
+      document.getElementById('cObs').value                 = c.observacoes||'';
+      document.getElementById('cPericuloso').value          = c.periculoso ? 'true' : 'false';
+      document.getElementById('cPercPericulosidade').value  = c.perc_periculosidade || 30;
+      document.getElementById('cPericulosidadeBase').value  = c.periculosidade_base || 'normal';
+      togglePerigFields();
     }
   }
   // Carregar checkboxes de empresas
@@ -1453,11 +1520,14 @@ async function salvarColab() {
     documento: document.getElementById('cDoc').value.trim(),
     email: document.getElementById('cEmail').value.trim(),
     telefone: document.getElementById('cTel').value.trim(),
-    valor_hora: parseFloat(document.getElementById('cValorHora').value)||null,
-    funcao: document.getElementById('cFuncao').value.trim(),
-    admissao: document.getElementById('cAdmissao').value||null,
-    observacoes: document.getElementById('cObs').value.trim(),
-    ativo: true
+    valor_hora:           parseFloat(document.getElementById('cValorHora').value)||null,
+    funcao:               document.getElementById('cFuncao').value.trim(),
+    admissao:             document.getElementById('cAdmissao').value||null,
+    observacoes:          document.getElementById('cObs').value.trim(),
+    periculoso:           document.getElementById('cTipo').value === 'clt' && document.getElementById('cPericuloso').value === 'true',
+    perc_periculosidade:  parseFloat(document.getElementById('cPercPericulosidade').value) || 30,
+    periculosidade_base:  document.getElementById('cPericulosidadeBase').value || 'normal',
+    ativo:                true
   };
   if (!dados.nome) { toast('Informe o nome.','err'); return; }
 
@@ -1590,26 +1660,32 @@ async function salvarApontamento() {
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
 
   var colab = _colabs.find(function(c){ return c.id===colabId; });
-  var vh = colab ? (colab.valor_hora||0) : 0;
+  var vh        = colab ? (colab.valor_hora||0) : 0;
+  var perig     = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  var percPerig = perig ? (colab.perc_periculosidade || 30) : null;
+  var basePerig = perig ? (colab.periculosidade_base || 'normal') : null;
 
-  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   var row = Object.assign({
-    empresa_id:       empId,
-    proposta_id:      propostaId,
-    colaborador_id:   colabId,
-    data:             data,
-    tipo_dia:         tipoDia,
-    regime_jornada:   jornada,
-    jornada_inicio:   jIni,
-    jornada_fim:      jFim,
-    hora_entrada:     entrada,
-    hora_saida:       saida,
-    intervalo_inicio: intIni,
-    intervalo_fim:    intFim,
-    descricao:        desc,
-    valor_hora_base:  vh,
-    status:           'pendente'
+    empresa_id:          empId,
+    proposta_id:         propostaId,
+    colaborador_id:      colabId,
+    data:                data,
+    tipo_dia:            tipoDia,
+    regime_jornada:      jornada,
+    jornada_inicio:      jIni,
+    jornada_fim:         jFim,
+    hora_entrada:        entrada,
+    hora_saida:          saida,
+    intervalo_inicio:    intIni,
+    intervalo_fim:       intFim,
+    descricao:           desc,
+    valor_hora_base:     vh,
+    periculoso:          perig,
+    perc_periculosidade: percPerig,
+    periculosidade_base: basePerig,
+    status:              'pendente'
   }, calc);
 
   var { error } = await sb.from('apontamentos').insert(row);
@@ -1761,6 +1837,7 @@ async function carregarBoletins() {
           + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
       + '</div>'
       + '<span class="bdg ' + sBdg + '">' + (sLabels[b.status]||b.status) + '</span>'
+      + (b.revisado_em ? ' <span class="bdg bdg-gray" style="font-size:.6rem;margin-left:.25rem">✓ Rev</span>' : '')
     + '</div>';
   }).join('');
 }
@@ -1842,35 +1919,53 @@ async function previewApontamentosBol() {
 
   if (error) { toast('Erro ao buscar apontamentos.','err'); return; }
 
-  _bolAptPreview = apts || [];
+  // Buscar dados das propostas para exibição no preview
+  var _previewPropostaMap = {};
+  var _pIdsPrev = (apts||[]).map(function(a){ return a.proposta_id; }).filter(Boolean);
+  if (_pIdsPrev.length) {
+    var { data: _propsPrev } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').in('app_id', _pIdsPrev);
+    (_propsPrev||[]).forEach(function(p){ _previewPropostaMap[p.app_id] = p; });
+  }
+
+  // Buscar boletins ativos deste colaborador para saber quais IDs já estão em uso
+  var usedIds = new Set();
+  var bolNumerosUsados = [];
+  var { data: bolsDaColab } = await sb.from('boletins')
+    .select('numero,apontamentos_ids')
+    .eq('colaborador_id', colabId)
+    .neq('status','cancelado');
+  (bolsDaColab||[]).forEach(function(b) {
+    if (b.apontamentos_ids && b.apontamentos_ids.length) {
+      bolNumerosUsados.push(b.numero);
+      b.apontamentos_ids.forEach(function(id) { usedIds.add(String(id)); });
+    }
+  });
+
+  // Filtrar: apenas apontamentos não vinculados a boletins ativos
+  _bolAptPreview = (apts||[]).filter(function(a) { return !usedIds.has(String(a.id)); });
+
   var preview = document.getElementById('bolPreview');
   var tabela  = document.getElementById('bolPreviewTabela');
   var alerta  = document.getElementById('bolAlerta');
   preview.style.display = 'block';
 
+  alerta.style.display = 'none';
+  if (usedIds.size > 0) {
+    alerta.style.display = 'block';
+    alerta.style.background = 'rgba(240,165,0,.12)';
+    alerta.style.color = 'var(--accent)';
+    alerta.textContent = '⚠️ ' + usedIds.size + ' apontamento(s) já utilizados em documentos ativos (' + bolNumerosUsados.join(', ') + ') foram excluídos desta seleção.';
+  }
+
   if (!_bolAptPreview.length) {
-    tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">Nenhum apontamento aprovado neste período.</div>';
+    tabela.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">'
+      + (usedIds.size > 0 ? 'Todos os apontamentos aprovados neste período já estão em documentos ativos.' : 'Nenhum apontamento aprovado neste período.')
+      + '</div>';
     document.getElementById('bolTotHoras').textContent = '0h';
     document.getElementById('bolTotValor').textContent = 'R$ 0,00';
     document.getElementById('bolTotQtd').textContent   = '0';
     document.getElementById('btnGerarBol').style.display = 'none';
-    alerta.style.display = 'none';
     return;
-  }
-
-  // Verificar se já existe boletim para esses apontamentos
-  var aptIds = _bolAptPreview.map(function(a){ return a.id; });
-  var { data: bolExist } = await sb.from('boletins')
-    .select('numero,status')
-    .overlaps('apontamentos_ids', aptIds)
-    .neq('status','cancelado');
-
-  alerta.style.display = 'none';
-  if (bolExist && bolExist.length) {
-    alerta.style.display = 'block';
-    alerta.style.background = 'rgba(240,165,0,.12)';
-    alerta.style.color = 'var(--accent)';
-    alerta.textContent = '⚠️ Atenção: ' + bolExist.length + ' apontamento(s) já estão em documentos anteriores (' + bolExist.map(function(b){ return b.numero; }).join(', ') + ').';
   }
 
   var totH = 0, totV = 0;
@@ -1886,7 +1981,7 @@ async function previewApontamentosBol() {
         totV += Number(a.valor_total||0);
         return '<tr style="border-bottom:1px solid var(--border)">'
           + '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>'
-          + '<td style="padding:.3rem .5rem;color:var(--text2)">' + (a.proposta_id||'—').slice(0,8) + '...</td>'
+          + '<td style="padding:.3rem .5rem;color:var(--text2)">' + ((_previewPropostaMap[a.proposta_id]||{}).numero_proposta || (a.proposta_id ? a.proposta_id.slice(0,8) : '—')) + '</td>'
           + '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
           + '<td style="padding:.3rem .5rem;text-align:right;color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
           + '</tr>';
@@ -1976,6 +2071,14 @@ async function abrirBoletimGestor(bolId) {
     apts = aptsData || [];
   }
 
+  // Buscar dados das propostas vinculadas aos apontamentos
+  _bolGestorAtivo._propostaMap = {};
+  var _aptPropostaIds = (apts||[]).map(function(a){ return a.proposta_id; }).filter(Boolean);
+  if (_aptPropostaIds.length) {
+    var { data: _propsData } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').in('app_id', _aptPropostaIds);
+    (_propsData||[]).forEach(function(p){ _bolGestorAtivo._propostaMap[p.app_id] = p; });
+  }
+
   // Buscar empresa
   var { data: emp } = await sb.from('empresas')
     .select('nome,cnpj').eq('id', bol.empresa_id).maybeSingle();
@@ -1994,6 +2097,9 @@ async function abrirBoletimGestor(bolId) {
   html += '<div><strong>CPF/CNPJ:</strong> ' + (colab.documento||'—') + '</div>';
   html += '<div><strong>Empresa:</strong> ' + (emp?emp.nome:'—') + '</div>';
   html += '<div><strong>Período:</strong> ' + fmtData(bol.periodo_inicio) + ' a ' + fmtData(bol.periodo_fim) + '</div>';
+  if (bol.revisado_em) {
+    html += '<div style="grid-column:1/-1;border-top:1px solid #dee2e6;padding-top:.3rem;margin-top:.2rem;font-size:10px"><strong>Revisado por:</strong> ' + (bol.revisado_por||'—') + ' em ' + fmtBrasilia(bol.revisado_em) + '</div>';
+  }
   html += '</div>';
 
   // Tabela de apontamentos
@@ -2001,6 +2107,8 @@ async function abrirBoletimGestor(bolId) {
   html += '<thead><tr style="background:#1e3a5f;color:white">';
   html += '<th style="padding:.4rem .5rem;text-align:left">Data</th>';
   if (!isClt) html += '<th style="padding:.4rem .5rem;text-align:center">Entrada</th><th style="padding:.4rem .5rem;text-align:center">Saída</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Proposta</th>';
+  html += '<th style="padding:.4rem .5rem;text-align:left">Cliente</th>';
   html += '<th style="padding:.4rem .5rem;text-align:center">Horas</th>';
   html += '<th style="padding:.4rem .5rem;text-align:right">Valor</th>';
   html += '<th style="padding:.4rem .5rem;text-align:left">Descrição</th>';
@@ -2009,18 +2117,58 @@ async function abrirBoletimGestor(bolId) {
   (apts||[]).forEach(function(a, i) {
     var bg = i%2===0?'#ffffff':'#f8f9fa';
     html += '<tr style="background:' + bg + ';border-bottom:1px solid #dee2e6">';
+    var _prop = (_bolGestorAtivo._propostaMap||{})[a.proposta_id] || {};
     html += '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>';
     if (!isClt) html += '<td style="padding:.3rem .5rem;text-align:center">' + (a.hora_entrada||'—') + '</td><td style="padding:.3rem .5rem;text-align:center">' + (a.hora_saida||'—') + '</td>';
+    html += '<td style="padding:.3rem .5rem;font-size:10px">' + (_prop.numero_proposta||'—') + '</td>';
+    html += '<td style="padding:.3rem .5rem;font-size:10px;color:#6c757d">' + (_prop.cliente||'—') + '</td>';
     html += '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>';
     html += '<td style="padding:.3rem .5rem;text-align:right;color:#198754;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>';
     html += '<td style="padding:.3rem .5rem;color:#6c757d;font-size:10px">' + (a.descricao||'') + '</td>';
     html += '</tr>';
   });
 
-  html += '</tbody><tfoot><tr style="background:#1e3a5f;color:white">';
-  html += '<td colspan="' + (isClt?'3':'5') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
+  // Calcular totais de periculosidade para memória de cálculo
+  var _perigApts = (apts||[]).filter(function(a){ return a.periculoso === true; });
+  var _totPerig  = _perigApts.reduce(function(s,a){ return s + Number(a.valor_periculosidade||0); }, 0);
+  var _totSemPerig = Number(bol.valor_total||0) - _totPerig;
+
+  html += '</tbody><tfoot>';
+  if (_perigApts.length > 0) {
+    html += '<tr style="background:#e9ecef;color:#495057">';
+    html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">Subtotal (horas trabalhadas)</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totSemPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem"></td></tr>';
+    html += '<tr style="background:#fff3cd;color:#856404">';
+    html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">⚡ Adicional Periculosidade</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem"></td></tr>';
+  }
+  html += '<tr style="background:#1e3a5f;color:white">';
+  html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
   html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoeda(bol.valor_total) + '</td>';
   html += '<td style="padding:.4rem .5rem"></td></tr></tfoot></table>';
+
+  // Memória de cálculo — periculosidade (só renderiza se houver apontamentos com periculoso=true)
+  if (_perigApts.length > 0) {
+    // Derivar parâmetros do snapshot do primeiro apontamento periculoso
+    var _pa   = _perigApts[0];
+    var _pPerc = Number(_pa.perc_periculosidade || 30);
+    var _pBase = _pa.periculosidade_base || 'normal';
+    var _pBaseLabel = _pBase === 'total' ? 'Horas totais (opção comercial)' : 'Horas normais (CLT padrão — TST OJ 259)';
+    var _totHPerig  = _perigApts.reduce(function(s,a){ return s + Number(_pBase==='total' ? (a.horas_total||0) : (a.horas_normal||0)); }, 0);
+    var _totVHBase  = _perigApts.reduce(function(s,a){ return s + Number(_pBase==='total' ? (a.horas_total||0) : (a.horas_normal||0)) * Number(a.valor_hora_base||0); }, 0);
+
+    html += '<div style="border:1px solid #ffc107;border-radius:6px;padding:.75rem;margin-bottom:.75rem;background:#fffdf0">';
+    html += '<div style="font-weight:700;font-size:11px;margin-bottom:.5rem;color:#856404">⚡ MEMÓRIA DE CÁLCULO — ADICIONAL DE PERICULOSIDADE</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:10px;color:#495057">';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base de cálculo</td><td style="padding:.25rem .4rem;font-weight:600">' + _pBaseLabel + '</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Percentual</td><td style="padding:.25rem .4rem;font-weight:600">' + _pPerc + '%</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Horas base acumuladas</td><td style="padding:.25rem .4rem;font-weight:600">' + _totHPerig.toFixed(2) + 'h</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:.25rem .4rem;font-weight:600">' + fmtMoeda(_totVHBase) + '</td></tr>';
+    html += '<tr style="border-top:1px solid #ffc107"><td style="padding:.35rem .4rem;font-weight:700;color:#856404">Adicional total</td><td style="padding:.35rem .4rem;font-weight:700;color:#856404">' + fmtMoeda(_totPerig) + '</td></tr>';
+    html += '</table></div>';
+  }
 
   // Assinaturas
   html += '<div style="border:1px solid #dee2e6;border-radius:6px;overflow:hidden;margin-bottom:.75rem">';
@@ -2052,6 +2200,16 @@ async function abrirBoletimGestor(bolId) {
   }
   html += '</div></div></div>';
 
+  // Observações da empresa — sempre renderizadas (parte do hash)
+  html += '<div style="border:1px solid #dee2e6;border-radius:6px;padding:.75rem;margin-bottom:.75rem">';
+  html += '<div style="font-weight:700;font-size:11px;margin-bottom:.4rem;color:#495057">📋 Observações da Empresa</div>';
+  if (bol.observacoes_empresa) {
+    html += '<div style="font-size:11px;color:#212529;white-space:pre-wrap">' + bol.observacoes_empresa.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+  } else {
+    html += '<div style="font-size:11px;color:#adb5bd;font-style:italic">Sem observações registradas.</div>';
+  }
+  html += '</div>';
+
   // Validade jurídica
   if (bol.status === 'valido') {
     html += '<div style="border:2px solid #198754;border-radius:6px;padding:.75rem;margin-bottom:.75rem;background:#d1fae5">';
@@ -2069,6 +2227,13 @@ async function abrirBoletimGestor(bolId) {
   html += '<strong>Código Civil — Lei 10.406/2002</strong> — Art. 107: A validade da declaração de vontade não depende de forma especial, salvo quando a lei expressamente a exigir.<br><br>';
   html += 'As assinaturas eletrônicas registradas neste documento — com identificação das partes, data, hora, IP e hash SHA-256 — constituem prova de autoria e concordância com o conteúdo aqui descrito.';
   html += '</div>';
+
+  // Termo de concordância — sempre presente em todos os documentos
+  html += '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:.75rem;margin-top:.75rem;font-size:11px;color:#856404">';
+  html += '<strong style="display:block;margin-bottom:.3rem">TERMO DE CONCORDÂNCIA</strong>';
+  html += 'Ao assinar eletronicamente este documento, as partes declaram estar cientes e de acordo com todos os dados, horas, valores e informações nele registrados, reconhecendo-os como verídicos e completos, nos termos da legislação vigente.';
+  html += '</div>';
+
   html += '</div>';
 
   document.getElementById('verBolGestorContent').innerHTML = html;
@@ -2098,6 +2263,9 @@ async function abrirBoletimGestor(bolId) {
 
   btnCanc.style.display = bol.status !== 'cancelado' ? 'inline-flex' : 'none';
   document.getElementById('btnImprimirBol').style.display = 'inline-flex';
+  document.getElementById('btnEditarObs').style.display = (bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  document.getElementById('btnRevisarBol').style.display = (!bol.revisado_em && bol.status !== 'valido' && bol.status !== 'cancelado') ? 'inline-flex' : 'none';
+  document.getElementById('areaEditarObs').style.display = 'none';
   document.getElementById('modalVerBolGestor').classList.add('on');
 }
 
@@ -2166,35 +2334,51 @@ async function imprimirBoletim() {
   var totH = Number(bol.horas_total||0).toFixed(1);
   var totV = fmtMoeda(bol.valor_total);
 
+  // Periculosidade — derivada dos apontamentos snapshot
+  var _prPrintApts  = (apts||[]).filter(function(a){ return a.periculoso === true; });
+  var _prTotPerig   = _prPrintApts.reduce(function(s,a){ return s + Number(a.valor_periculosidade||0); }, 0);
+  var _prTotSemPerig = Number(bol.valor_total||0) - _prTotPerig;
+  var _prHasPerig   = _prPrintApts.length > 0;
+
   // Linhas da tabela
   var linhas = (apts||[]).map(function(a, i){
     var bg = i%2===0?'#ffffff':'#f5f5f5';
+    var _pmp = (_bolGestorAtivo._propostaMap||{})[a.proposta_id] || {};
     var cols = isClt
       ? '<td>' + fmtData(a.data) + '</td>'
         + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
         + '<td style="text-align:center">' + (a.hora_saida||'—') + '</td>'
         + '<td style="text-align:center">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
         + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+        + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
+        + '<td>' + (_pmp.cliente||'—') + '</td>'
         + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>'
       : '<td>' + fmtData(a.data) + '</td>'
         + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
         + '<td style="text-align:center">' + (a.hora_saida||'—') + '</td>'
         + '<td style="text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
+        + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
+        + '<td>' + (_pmp.cliente||'—') + '</td>'
         + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>';
     return '<tr style="background:' + bg + '">' + cols + '</tr>';
   }).join('');
 
   var headers = isClt
-    ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Valor</th><th>Descrição</th>'
-    : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Valor</th><th>Descrição</th>';
+    ? '<th>Data</th><th>Entrada</th><th>Saída</th><th>H.Normal</th><th>H.Extra 50%</th><th>Proposta</th><th>Cliente</th><th>Valor</th><th>Descrição</th>'
+    : '<th>Data</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Proposta</th><th>Cliente</th><th>Valor</th><th>Descrição</th>';
 
   var fmtAss = function(dt) {
     if (!dt) return '—';
-    var b = new Date(new Date(dt).getTime() - 3*60*60*1000);
-    return String(b.getUTCDate()).padStart(2,'0')+'/'+String(b.getUTCMonth()+1).padStart(2,'0')+'/'+b.getUTCFullYear()
-      +', '+String(b.getUTCHours()).padStart(2,'0')+':'+String(b.getUTCMinutes()).padStart(2,'0')+':'+String(b.getUTCSeconds()).padStart(2,'0');
+    var d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    });
   };
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head>'
@@ -2254,13 +2438,39 @@ async function imprimirBoletim() {
     + '<div><div class="info-label">CNPJ da Empresa</div><div class="info-val">' + (emp?emp.cnpj:'—') + '</div></div>'
     + '<div><div class="info-label">Período</div><div class="info-val">' + fmtData(bol.periodo_inicio) + ' a ' + fmtData(bol.periodo_fim) + '</div></div>'
     + '<div><div class="info-label">Total Geral</div><div class="info-val" style="color:#1a7a3c">' + totV + ' · ' + totH + 'h</div></div>'
+    + (bol.revisado_em ? '<div style="grid-column:1/-1"><div class="info-label">Revisado por</div><div class="info-val">' + (bol.revisado_por||'—') + ' — ' + fmtAss(bol.revisado_em) + '</div></div>' : '')
     + '</div>'
 
     // Tabela de apontamentos
     + '<div class="section-title">Detalhamento de Horas</div>'
     + '<table><thead><tr>' + headers + '</tr></thead><tbody>' + linhas + '</tbody>'
-    + '<tfoot><tr class="total-row"><td colspan="' + (isClt?'5':'4') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr></tfoot>'
+    + '<tfoot>'
+    + (_prHasPerig
+        ? '<tr style="background:#e9ecef;color:#495057"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">Subtotal (horas trabalhadas)</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotSemPerig) + '</td><td></td></tr>'
+        + '<tr style="background:#fff3cd;color:#856404"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">⚡ Adicional Periculosidade</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotPerig) + '</td><td></td></tr>'
+        : '')
+    + '<tr class="total-row"><td colspan="' + (isClt?'7':'6') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr>'
+    + '</tfoot>'
     + '</table>'
+
+    // Memória de cálculo de periculosidade (condicional)
+    + (_prHasPerig ? (function() {
+        var _pa2      = _prPrintApts[0];
+        var _pPerc2   = Number(_pa2.perc_periculosidade || 30);
+        var _pBase2   = _pa2.periculosidade_base || 'normal';
+        var _pLbl2    = _pBase2 === 'total' ? 'Horas totais (opção comercial)' : 'Horas normais (CLT padrão — TST OJ 259)';
+        var _pHoras2  = _prPrintApts.reduce(function(s,a){ return s + Number(_pBase2==='total'?(a.horas_total||0):(a.horas_normal||0)); }, 0);
+        var _pVHBase2 = _prPrintApts.reduce(function(s,a){ return s + Number(_pBase2==='total'?(a.horas_total||0):(a.horas_normal||0))*Number(a.valor_hora_base||0); }, 0);
+        return '<div style="border:1px solid #ffc107;border-radius:4px;padding:8px;margin-bottom:16px;background:#fffdf0">'
+          + '<div style="font-weight:700;font-size:10px;margin-bottom:6px;color:#856404">⚡ MEMÓRIA DE CÁLCULO — ADICIONAL DE PERICULOSIDADE</div>'
+          + '<table style="width:100%;border-collapse:collapse;font-size:9px;color:#495057">'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Base de cálculo</td><td style="padding:2px 4px;font-weight:600">' + _pLbl2 + '</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Percentual</td><td style="padding:2px 4px;font-weight:600">' + _pPerc2 + '%</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Horas base acumuladas</td><td style="padding:2px 4px;font-weight:600">' + _pHoras2.toFixed(2) + 'h</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:2px 4px;font-weight:600">' + fmtMoeda(_pVHBase2) + '</td></tr>'
+          + '<tr style="border-top:1px solid #ffc107"><td style="padding:4px;font-weight:700;color:#856404">Adicional total</td><td style="padding:4px;font-weight:700;color:#856404">' + fmtMoeda(_prTotPerig) + '</td></tr>'
+          + '</table></div>';
+      })() : '')
 
     // Registro de assinaturas
     + '<div class="section-title">Registro de Assinaturas Digitais</div>'
@@ -2285,6 +2495,15 @@ async function imprimirBoletim() {
       + '<strong>Hash do Documento Final (SHA-256):</strong><br>'
       + '<span style="font-family:monospace">' + bol.hash_documento_final + '</span>'
       + '</div>' : '')
+
+    // Observações da empresa
+    + (bol.observacoes_empresa ? '<div class="section-title">Observações da Empresa</div><div style="padding:8px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;margin-bottom:16px;font-size:10px;white-space:pre-wrap">' + bol.observacoes_empresa.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' : '')
+
+    // Termo de concordância — sempre presente
+    + '<div class="section-title">Termo de Concordância</div>'
+    + '<div style="padding:8px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;margin-bottom:16px;font-size:9px;color:#856404">'
+    + 'Ao assinar eletronicamente este documento, as partes declaram estar cientes e de acordo com todos os dados, horas, valores e informações nele registrados, reconhecendo-os como verídicos e completos, nos termos da legislação vigente.'
+    + '</div>'
 
     // Bloco jurídico
     + '<div class="section-title">Validade Jurídica</div>'
@@ -2314,6 +2533,58 @@ async function imprimirBoletim() {
 
 
 // ── Assinar como prestador (dono que também é colaborador) ────
+// ── Observações da empresa ───────────────────────────────────
+function abrirEditarObs() {
+  var area = document.getElementById('areaEditarObs');
+  var txt  = document.getElementById('txtObsEmpresa');
+  txt.value = (_bolGestorAtivo && _bolGestorAtivo.observacoes_empresa) || '';
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+async function salvarObservacoesBoletim(bolId, texto) {
+  if (!bolId) return;
+  var empId = await getEmpresaId();
+  if (!empId) { toast('Empresa não identificada.','err'); return; }
+  // Verificar status no servidor antes de salvar (regra de bloqueio)
+  var { data: bolAtual } = await sb.from('boletins').select('status').eq('id', bolId).eq('empresa_id', empId).maybeSingle();
+  if (!bolAtual) { toast('Documento não encontrado.','err'); return; }
+  if (bolAtual.status === 'valido' || bolAtual.status === 'cancelado') {
+    toast('Documento finalizado. Edição bloqueada.','err'); return;
+  }
+  var { error } = await sb.from('boletins')
+    .update({ observacoes_empresa: texto || null })
+    .eq('id', bolId).eq('empresa_id', empId);
+  if (error) { toast('Erro ao salvar: ' + error.message,'err'); return; }
+  toast('Observações salvas.','ok');
+  document.getElementById('areaEditarObs').style.display = 'none';
+  setTimeout(function(){ abrirBoletimGestor(bolId); }, 200);
+}
+
+// ── Revisar boletim ──────────────────────────────────────────
+async function revisarBoletim(bolId) {
+  if (!bolId) return;
+  var empId = await getEmpresaId();
+  if (!empId) { toast('Empresa não identificada.','err'); return; }
+  var { data: bolAtual } = await sb.from('boletins').select('status,revisado_em').eq('id', bolId).eq('empresa_id', empId).maybeSingle();
+  if (!bolAtual) { toast('Documento não encontrado.','err'); return; }
+  if (bolAtual.status === 'valido' || bolAtual.status === 'cancelado') {
+    toast('Documento finalizado. Revisão não permitida.','err'); return;
+  }
+  if (bolAtual.revisado_em) { toast('Documento já foi revisado anteriormente.','ok'); return; }
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) { toast('Sessão expirada.','err'); return; }
+  var { data: usr } = await sb.from('usuarios').select('nome').eq('auth_id', authData.user.id).maybeSingle();
+  var nomeRevisor = (usr && usr.nome) || authData.user.email || 'Usuário';
+  var { error } = await sb.from('boletins').update({
+    revisado_por: nomeRevisor,
+    revisado_em:  new Date().toISOString()
+  }).eq('id', bolId).eq('empresa_id', empId);
+  if (error) { toast('Erro ao registrar revisão: ' + error.message,'err'); return; }
+  toast('✅ Documento marcado como revisado.','ok');
+  carregarBoletins();
+  setTimeout(function(){ abrirBoletimGestor(bolId); }, 250);
+}
+
 async function assinarComoPrestadorGestor() {
   if (!_bolGestorAtivo) return;
   var pin = getPinVal(['ppin1','ppin2','ppin3','ppin4']);
