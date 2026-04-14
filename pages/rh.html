@@ -1060,18 +1060,45 @@ function showTab(id, btn) {
 // ══ EMPRESA ATIVA ════════════════════════════════════════════
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
-  // Receber empresa do parent (shell)
+
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
-      _empresaId = window.parent.getEmpresaAtivaId();
+      var parentEmpId = window.parent.getEmpresaAtivaId();
+      if (parentEmpId) {
+        _empresaId = parentEmpId;
+        return _empresaId;
+      }
     }
   } catch(e) {}
-  // Fallback: pegar do Supabase
-  // Only write if still null — SET_EMPRESA may have arrived during the await and set _empresaId correctly
+
+  // espera curta para o parent / SET_EMPRESA estabilizar
+  for (var i = 0; i < 10; i++) {
+    await new Promise(function(r){ setTimeout(r, 100); });
+
+    if (_empresaId) return _empresaId;
+
+    try {
+      if (window.parent && window.parent.getEmpresaAtivaId) {
+        var delayedEmpId = window.parent.getEmpresaAtivaId();
+        if (delayedEmpId) {
+          _empresaId = delayedEmpId;
+          return _empresaId;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // fallback só em último caso
   if (!_empresaId) {
-    var { data } = await sb.from('empresas').select('id').eq('nome_curto','Tecfusion').single();
+    var { data } = await sb
+      .from('empresas')
+      .select('id')
+      .eq('nome_curto','Tecfusion')
+      .single();
+
     if (data && !_empresaId) _empresaId = data.id;
   }
+
   return _empresaId;
 }
 
