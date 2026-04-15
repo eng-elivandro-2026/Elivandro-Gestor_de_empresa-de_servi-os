@@ -1338,6 +1338,7 @@ function fmAbrirProposta(id){
   renderConsolidacaoTab(p);
   renderEngenhariaTab(p);
   renderExecucaoTab(p);
+  renderRecursosTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -2348,6 +2349,193 @@ function renderExecucaoTab(p) {
     + regCard
     + observCard
     + apont
+    + placeholderCard
+    + '</div>';
+}
+
+function renderRecursosTab(p) {
+  var el = document.getElementById('pd-panel-recursos');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem;align-items:baseline';
+  var valStyle   = 'color:var(--text);flex:1';
+  var numStyle   = 'color:var(--text3);font-size:.73rem;flex-shrink:0';
+
+  function brl(v) {
+    var num = n2(v);
+    return num > 0 ? 'R$ ' + num.toFixed(2).replace('.', ',') : '';
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sr = (p.stages && p.stages.recursos) || {};
+
+  var stgMat  = Array.isArray(sr.materiais) ? sr.materiais.filter(function(x){ return x && x.descricao; })   : [];
+  var stgMO   = Array.isArray(sr.mao_obra)  ? sr.mao_obra.filter(function(x){ return x && x.funcao; })       : [];
+  var stgTerc = Array.isArray(sr.terceiros) ? sr.terceiros.filter(function(x){ return x && x.servico; })     : [];
+  var stgOut  = Array.isArray(sr.outros)    ? sr.outros.filter(function(x){ return x && x.descricao; })      : [];
+  var stgRes  = sr.resumo || {};
+
+  var hasStages = stgMat.length || stgMO.length || stgTerc.length || stgOut.length
+               || (stgRes.custo_total > 0);
+
+  // ── Legacy fallback from p.bi[] ───────────────────────────
+  var biIncluidos = (p.bi || []).filter(function(it){ return it && it.inc !== false; });
+
+  var legMat  = !hasStages ? biIncluidos.filter(function(it){ return it.t === 'material' && !it.terc; })  : [];
+  var legMO   = !hasStages ? biIncluidos.filter(function(it){ return it.t === 'servico'  && !it.terc; })  : [];
+  var legTerc = !hasStages ? biIncluidos.filter(function(it){ return it.terc === true; })                  : [];
+
+  // ── Decide active source ──────────────────────────────────
+  var mat  = hasStages ? stgMat  : legMat;
+  var mo   = hasStages ? stgMO   : legMO;
+  var terc = hasStages ? stgTerc : legTerc;
+  var out  = stgOut;   // no legacy equivalent
+
+  var isLegacy = !hasStages && (mat.length || mo.length || terc.length);
+
+  // ── Compute totals ────────────────────────────────────────
+  function stgCost(arr, field) {
+    return arr.reduce(function(s, x){ return s + n2(x[field] || x.valor || 0) * n2(x.quantidade || x.dias || 1); }, 0);
+  }
+  function biCost(arr) {
+    return arr.reduce(function(s, it){ return s + n2(it.cu) * n2(it.mult || 1); }, 0);
+  }
+
+  var totMat  = stgRes.material_total   > 0 ? stgRes.material_total   : (hasStages ? stgCost(stgMat,  'custo_unit') : biCost(legMat));
+  var totMO   = stgRes.mao_obra_total   > 0 ? stgRes.mao_obra_total   : (hasStages ? stgCost(stgMO,   'valor_dia')  : biCost(legMO));
+  var totTerc = stgRes.terceiros_total  > 0 ? stgRes.terceiros_total  : (hasStages ? stgCost(stgTerc, 'valor')      : biCost(legTerc));
+  var totOut  = stgRes.outros_total     > 0 ? stgRes.outros_total     : stgCost(stgOut, 'valor');
+  var totGeral = stgRes.custo_total     > 0 ? stgRes.custo_total      : (totMat + totMO + totTerc + totOut);
+
+  var hasAny = mat.length || mo.length || terc.length || out.length || totGeral > 0;
+
+  // ── Resumo ────────────────────────────────────────────────
+  function resumoRow(label, valor, color) {
+    var v = brl(valor);
+    if (!v) return '';
+    return '<div style="display:flex;justify-content:space-between;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+      + '<span style="color:var(--text3)">' + label + '</span>'
+      + '<span style="font-weight:600;color:' + color + '">' + v + '</span>'
+      + '</div>';
+  }
+
+  var resumoCard = totGeral > 0
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Resumo de Custos' + (isLegacy ? ' <span style="font-weight:400;color:var(--text3)">(estimado de itens)</span>' : '') + '</div>'
+      + resumoRow('Materiais',  totMat,  'var(--blue)')
+      + resumoRow('Mão de Obra',totMO,   'var(--text)')
+      + resumoRow('Terceiros',  totTerc, '#f97316')
+      + resumoRow('Outros',     totOut,  'var(--text2)')
+      + '<div style="display:flex;justify-content:space-between;padding:.35rem 0;margin-top:.15rem;font-size:.88rem">'
+      + '<span style="font-weight:700">Total</span>'
+      + '<span style="font-weight:700;color:var(--accent)">R$ ' + totGeral.toFixed(2).replace('.', ',') + '</span>'
+      + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Materiais ─────────────────────────────────────────────
+  var matCard = '';
+  if (mat.length) {
+    var matRows = mat.map(function(m) {
+      var desc   = m.descricao || m.desc || '';
+      var qtd    = hasStages
+        ? (m.quantidade ? m.quantidade + (m.unidade ? ' ' + m.unidade : '') : '')
+        : (m.mult ? n2(m.mult) + (m.un1 ? ' ' + m.un1 : '') : '');
+      var custo  = hasStages ? brl(n2(m.custo_unit) * n2(m.quantidade || 1)) : brl(n2(m.cu) * n2(m.mult || 1));
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(desc) + '</span>'
+        + (qtd   ? '<span style="' + numStyle + '">' + esc(String(qtd)) + '</span>' : '')
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>'       : '')
+        + '</div>';
+    }).join('');
+    matCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Materiais (' + mat.length + ')</div>'
+      + matRows
+      + '</div>';
+  }
+
+  // ── Mão de obra ───────────────────────────────────────────
+  var moCard = '';
+  if (mo.length) {
+    var moRows = mo.map(function(m) {
+      var label  = m.funcao || m.desc || '';
+      var detalhe, custo;
+      if (hasStages) {
+        detalhe = [
+          m.quantidade ? m.quantidade + ' prof.' : '',
+          m.dias       ? m.dias + ' dia(s)'      : ''
+        ].filter(Boolean).join(' · ');
+        custo = brl(n2(m.valor_dia) * n2(m.quantidade || 1) * n2(m.dias || 1));
+      } else {
+        var _tec  = n2(m.tec  || 1);
+        var _dias = n2(m.dias || 1);
+        var _hpd  = n2(m.hpd  || 1);
+        detalhe = [
+          _tec  > 1  ? _tec + ' tec.'   : '',
+          _dias > 0  ? _dias + ' dia(s)' : '',
+          _hpd  !== 1 ? _hpd + 'h/dia'  : ''
+        ].filter(Boolean).join(' · ');
+        custo = brl(n2(m.cu) * n2(m.mult || 1));
+      }
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(label) + '</span>'
+        + (detalhe ? '<span style="' + numStyle + '">' + esc(detalhe) + '</span>' : '')
+        + (custo   ? '<span style="' + numStyle + '">' + esc(custo)   + '</span>' : '')
+        + '</div>';
+    }).join('');
+    moCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Mão de Obra (' + mo.length + ')</div>'
+      + moRows
+      + '</div>';
+  }
+
+  // ── Terceiros ─────────────────────────────────────────────
+  var tercCard = '';
+  if (terc.length) {
+    var tercRows = terc.map(function(t) {
+      var label  = t.servico || t.desc || '';
+      var forn   = t.fornecedor || '';
+      var custo  = hasStages ? brl(n2(t.valor)) : brl(n2(t.cu) * n2(t.mult || 1));
+      return '<div style="' + rowStyle + '">'
+        + (forn ? '<span style="color:var(--text3);flex-shrink:0;min-width:7rem">' + esc(forn) + '</span>' : '')
+        + '<span style="' + valStyle + '">' + esc(label) + '</span>'
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    tercCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Terceiros / Subcontratados (' + terc.length + ')</div>'
+      + tercRows
+      + '</div>';
+  }
+
+  // ── Outros / Logística ────────────────────────────────────
+  var outCard = '';
+  if (out.length) {
+    var outRows = out.map(function(o) {
+      var custo = brl(n2(o.valor));
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(o.descricao) + '</span>'
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    outCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Outros / Logística (' + out.length + ')</div>'
+      + outRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var placeholderCard = !hasAny
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum recurso registrado</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + resumoCard
+    + matCard
+    + moCard
+    + tercCard
+    + outCard
     + placeholderCard
     + '</div>';
 }
