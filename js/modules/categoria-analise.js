@@ -1328,6 +1328,9 @@ function fmAbrirProposta(id){
       + '</div>';
   }
 
+  // Render Escopo tab
+  renderEscopoTab(p);
+
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
   document.querySelectorAll('.pd-panel').forEach(function(panel){ panel.classList.remove('on'); });
@@ -1341,6 +1344,90 @@ function fmAbrirProposta(id){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// ESCOPO TAB
+// ══════════════════════════════════════════════════════════════
+function renderEscopoTab(p) {
+  var el = document.getElementById('pd-panel-escopo');
+  if (!el) return;
+
+  var itens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+
+  var inpStyle = 'width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .6rem;font-size:.8rem;font-family:inherit;box-sizing:border-box';
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.15rem';
+
+  var cardsHtml = '';
+  if (itens.length) {
+    cardsHtml = itens.map(function(it) {
+      var badge = it.gera_item
+        ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Sim</span>'
+        : '<span style="background:var(--bg3);color:var(--text3);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Não</span>';
+      return '<div class="card" style="margin:0">'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .8rem;font-size:.8rem;margin-bottom:.4rem">'
+        + '<div><div style="' + labelStyle + '">Fase</div><div style="font-weight:600">' + esc(it.fase || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Disciplina</div><div style="font-weight:600">' + esc(it.disciplina || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Equipamento</div><div>' + esc(it.equipamento || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Atividade</div><div>' + esc(it.atividade || '—') + '</div></div>'
+        + '</div>'
+        + (it.descricao ? '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.4rem">' + esc(it.descricao) + '</div>' : '')
+        + badge
+        + '</div>';
+    }).join('');
+  } else {
+    cardsHtml = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum escopo cadastrado</div>';
+  }
+
+  var formHtml = '<div id="escopo-form" style="display:none">'
+    + '<div class="card" style="margin:0;display:grid;gap:.45rem">'
+    + '<div style="font-size:.78rem;font-weight:700;color:var(--accent)">Novo Escopo</div>'
+    + '<div><div style="' + labelStyle + '">Fase</div><input id="esc-fase" placeholder="ex: Instalação" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Disciplina</div><input id="esc-disc" placeholder="ex: Elétrica" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Equipamento</div><input id="esc-equip" placeholder="ex: Painel CC" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Atividade</div><input id="esc-ativ" placeholder="ex: Cabeamento" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Descrição</div><textarea id="esc-desc" placeholder="Descrição detalhada..." rows="2" style="' + inpStyle + 'resize:vertical;min-height:56px"></textarea></div>'
+    + '<label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;cursor:pointer"><input type="checkbox" id="esc-gera"> Gera item de orçamento</label>'
+    + '<div style="display:flex;gap:.4rem;margin-top:.2rem">'
+    + '<button class="btn bg bsm" onclick="addEscopoItem()">Salvar</button>'
+    + '<button class="btn bd bsm" onclick="toggleEscopoForm()">Cancelar</button>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + cardsHtml
+    + '<button class="btn ba bsm" onclick="toggleEscopoForm()" style="justify-self:start;margin-top:.2rem">+ Adicionar Escopo</button>'
+    + formHtml
+    + '</div>';
+}
+
+function toggleEscopoForm() {
+  var f = document.getElementById('escopo-form');
+  if (!f) return;
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function addEscopoItem() {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+  if (!p.stages) p.stages = (typeof criarStagesVazios === 'function') ? criarStagesVazios() : {};
+  if (!p.stages.escopo) p.stages.escopo = { itens: [] };
+  if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
+
+  p.stages.escopo.itens.push({
+    fase:        (document.getElementById('esc-fase')  || {}).value || '',
+    disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
+    equipamento: (document.getElementById('esc-equip') || {}).value || '',
+    atividade:   (document.getElementById('esc-ativ')  || {}).value || '',
+    descricao:   (document.getElementById('esc-desc')  || {}).value || '',
+    gera_item:  !!(document.getElementById('esc-gera')  || {}).checked,
+    item_ref:    null
+  });
+
+  renderEscopoTab(p);
+}
 
 // ══════════════════════════════════════════════════════════════
 // PAINEL KPIs DE CICLOS — DASHBOARD
