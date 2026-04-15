@@ -1281,9 +1281,22 @@ function togCl(id){
 function fmAbrirProposta(id){
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
-  editP(id);
-  go('nova', null);
-  // Scroll ao topo
+
+  _pdId = id;
+
+  var numEl = document.getElementById('pd-num');
+  var cliEl = document.getElementById('pd-cli');
+  var badgeEl = document.getElementById('pd-fase-badge');
+
+  if(numEl) numEl.textContent = '#' + (p.num || '');
+  if(cliEl) cliEl.textContent = p.cli || '';
+
+  if(badgeEl){
+    badgeEl.innerHTML = p.fas || '';
+  }
+
+  go('proposta-detalhe', null);
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
