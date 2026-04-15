@@ -1279,6 +1279,7 @@ function togCl(id){
 
 
 function fmAbrirProposta(id){
+  console.log('fmAbrirProposta runtime winner', { id: id, hasPdDados: !!document.getElementById('pd-dados') });
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
 
