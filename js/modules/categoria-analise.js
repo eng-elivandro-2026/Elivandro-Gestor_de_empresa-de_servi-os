@@ -1332,6 +1332,7 @@ function fmAbrirProposta(id){
   renderEscopoTab(p);
   renderItensTab(p);
   renderFinanceiroTab(p);
+  renderDocumentosTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1681,6 +1682,93 @@ function renderFinanceiroTab(p) {
     + resumoCard
     + aliqCard
     + statusCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DOCUMENTOS TAB
+// ══════════════════════════════════════════════════════════════
+function renderDocumentosTab(p) {
+  var el = document.getElementById('pd-panel-documentos');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+
+  function checkRow(label, ok, detail) {
+    return '<div style="display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+      + '<span style="font-size:.85rem">' + (ok ? '✅' : '⬜') + '</span>'
+      + '<span style="' + (ok ? 'color:var(--text)' : 'color:var(--text3)') + '">' + label + '</span>'
+      + (detail ? '<span style="margin-left:auto;font-size:.72rem;color:var(--text3)">' + esc(String(detail)) + '</span>' : '')
+      + '</div>';
+  }
+
+  // ── Checklist de conteúdo ──────────────────────────────────
+  var escSecs = p.esc || [];
+  var biItens  = p.bi  || [];
+  var revs     = p.revs || [];
+  var logHist  = (p.log && Array.isArray(p.log.hist))  ? p.log.hist  : [];
+  var logRelat = (p.log && Array.isArray(p.log.relat)) ? p.log.relat : [];
+
+  var checksHtml = ''
+    + checkRow('Escopo / Seções',    escSecs.length > 0, escSecs.length  ? escSecs.length + ' seção(ões)' : '')
+    + checkRow('Itens de orçamento', biItens.length > 0, biItens.length  ? biItens.length + ' item(ns)' : '')
+    + checkRow('Revisões',           revs.length > 0,    revs.length     ? revs.length + ' revisão(ões)' : '')
+    + checkRow('Histórico comercial',logHist.length > 0, logHist.length  ? logHist.length + ' registro(s)' : '')
+    + checkRow('Relatórios de serviço', logRelat.length > 0, logRelat.length ? logRelat.length + ' relatório(s)' : '');
+
+  var checkCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Conteúdo da Proposta</div>'
+    + checksHtml
+    + '</div>';
+
+  // ── Revisões ───────────────────────────────────────────────
+  var revsCard = '';
+  if (revs.length) {
+    var revsRows = revs.map(function(r) {
+      return '<div style="display:flex;gap:.6rem;align-items:baseline;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.78rem">'
+        + '<span style="font-weight:700;color:var(--accent);flex-shrink:0">Rev. ' + esc(r.rev || '') + '</span>'
+        + '<span style="color:var(--text3);flex-shrink:0">' + esc(r.dat || '') + '</span>'
+        + '<span style="color:var(--text2);flex:1">' + esc(r.desc || '') + '</span>'
+        + '<span style="color:var(--text3);font-size:.7rem;flex-shrink:0">' + esc(r.por || '') + '</span>'
+        + '</div>';
+    }).join('');
+    revsCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Revisões</div>'
+      + revsRows
+      + '</div>';
+  }
+
+  // ── Histórico comercial (últimos 3) ────────────────────────
+  var histCard = '';
+  if (logHist.length) {
+    var sorted = logHist.slice().sort(function(a, b){ return (b.ts||0) - (a.ts||0); });
+    var histRows = sorted.slice(0, 3).map(function(item) {
+      return '<div style="padding:.35rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.15rem">'
+        +   '<span style="font-size:.78rem;font-weight:600">' + esc(item.titulo || '(sem título)') + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3)">' + esc(item.data || '') + '</span>'
+        + '</div>'
+        + (item.texto ? '<div style="font-size:.73rem;color:var(--text2);line-height:1.45;white-space:pre-wrap">' + esc(item.texto.slice(0, 120)) + (item.texto.length > 120 ? '…' : '') + '</div>' : '')
+        + '</div>';
+    }).join('');
+    var moreLabel = logHist.length > 3 ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.35rem">+ ' + (logHist.length - 3) + ' registro(s) adicionais</div>' : '';
+    histCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Histórico Comercial</div>'
+      + histRows + moreLabel
+      + '</div>';
+  }
+
+  // ── Sem histórico ─────────────────────────────────────────
+  var hasContent = revs.length || logHist.length || logRelat.length;
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum histórico de documentos disponível</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + checkCard
+    + revsCard
+    + histCard
+    + placeholderCard
     + '</div>';
 }
 
