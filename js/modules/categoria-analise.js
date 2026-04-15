@@ -1330,6 +1330,7 @@ function fmAbrirProposta(id){
 
   // Render Escopo tab
   renderEscopoTab(p);
+  renderItensTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1482,6 +1483,78 @@ function addEscopoItem() {
   }
 
   renderEscopoTab(p);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ITENS TAB
+// ══════════════════════════════════════════════════════════════
+function renderItensTab(p) {
+  var el = document.getElementById('pd-panel-itens');
+  if (!el) return;
+
+  var itens = p.bi || [];
+
+  if (!itens.length) {
+    el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum item orçado</div>';
+    return;
+  }
+
+  var totalIncluido = 0;
+  var rows = itens.map(function(it) {
+    var inc = it.inc !== false;
+    var tipo = it.t === 'material' ? 'Mat' : 'Svc';
+    var tipoColor = it.t === 'material' ? 'var(--purple)' : 'var(--blue)';
+    var tipoBg   = it.t === 'material' ? 'rgba(188,140,255,.12)' : 'rgba(88,166,255,.12)';
+
+    var qty = '';
+    if (it.t === 'material') {
+      qty = String(n2(it.mult)) + (it.un1 ? ' ' + it.un1 : '');
+    } else {
+      var parts = [];
+      if ((it.tec || 1) > 1) parts.push((it.tec || 1) + ' Tec.');
+      parts.push((it.dias || 1) + (it.un1 ? ' ' + it.un1 : ' d'));
+      parts.push((it.hpd || 1) + (it.un2 ? ' ' + it.un2 : 'h'));
+      qty = parts.join(' × ');
+    }
+
+    var pvt = n2(it.pvt);
+    if (inc) totalIncluido += pvt;
+
+    var rowOp = inc ? '1' : '0.45';
+    var pvtDisplay = inc
+      ? '<span style="font-weight:700;color:var(--green)">' + money(pvt) + '</span>'
+      : '<span style="color:var(--text3);font-size:.75rem;text-decoration:line-through">' + money(pvt) + '</span>';
+
+    var tercBadge = it.terc
+      ? '<span style="font-size:.65rem;color:#f97316;margin-left:.3rem">●Terc</span>'
+      : '';
+
+    return '<tr style="opacity:' + rowOp + ';border-bottom:1px solid var(--border)">'
+      + '<td style="padding:.38rem .5rem;font-size:.78rem">'
+      +   '<span style="background:' + tipoBg + ';color:' + tipoColor + ';padding:.05rem .35rem;border-radius:3px;font-size:.66rem;font-weight:700;margin-right:.35rem">' + tipo + '</span>'
+      +   esc(it.desc || it.cat || '—') + tercBadge
+      + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.75rem;color:var(--text2);white-space:nowrap">' + esc(qty) + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.75rem;text-align:right;color:var(--text2)">' + money(n2(it.pvu)) + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.78rem;text-align:right">' + pvtDisplay + '</td>'
+      + '</tr>';
+  }).join('');
+
+  el.innerHTML = '<div style="overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+    + '<thead><tr style="background:var(--bg3)">'
+    +   '<th style="padding:.38rem .5rem;text-align:left;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">Descrição</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:left;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">Qtd</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:right;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">PV Unit.</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:right;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">PV Total</th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '<tfoot><tr style="border-top:2px solid var(--border)">'
+    +   '<td colspan="3" style="padding:.42rem .5rem;font-size:.78rem;font-weight:700;color:var(--text2)">Total incluído</td>'
+    +   '<td style="padding:.42rem .5rem;font-size:.88rem;font-weight:700;color:var(--green);text-align:right">' + money(totalIncluido) + '</td>'
+    + '</tr></tfoot>'
+    + '</table>'
+    + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════
