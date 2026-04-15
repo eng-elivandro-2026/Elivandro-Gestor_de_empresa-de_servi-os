@@ -1334,6 +1334,7 @@ function fmAbrirProposta(id){
   renderFinanceiroTab(p);
   renderDocumentosTab(p);
   renderComercialTab(p);
+  renderVisitaTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1769,6 +1770,115 @@ function renderDocumentosTab(p) {
     + checkCard
     + revsCard
     + histCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderVisitaTab(p) {
+  var el = document.getElementById('pd-panel-visita');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Resolve data: stages.visita → legacy tl/p fields ─────
+  var sv  = (p.stages && p.stages.visita)     || {};
+  var sov = (p.stages && p.stages.org_visita) || {};
+  var tl  = p.tl || {};
+
+  var dataVisita   = sv.data_visita   || tl.dtVisita || '';
+  var local        = sv.local         || p.loc       || '';
+  var responsavel  = sv.responsavel   || p.res       || '';
+  var objetivo     = sv.objetivo      || '';
+  var observacoes  = sv.observacoes   || '';
+
+  var hasAnyData = dataVisita || local || responsavel || objetivo || observacoes;
+
+  // ── Dados da visita ───────────────────────────────────────
+  var dadosHtml = ''
+    + infoRow('Data da visita',  dataVisita)
+    + infoRow('Local',           local)
+    + infoRow('Responsável',     responsavel)
+    + infoRow('Objetivo',        objetivo);
+
+  var dadosCard = hasAnyData
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Dados da Visita</div>'
+      + dadosHtml
+      + '</div>'
+    : '';
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (observacoes && observacoes.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(observacoes.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Notas de logística (org_visita) ───────────────────────
+  var notasCard = (sov.notas_logistica && sov.notas_logistica.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas de Logística</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(sov.notas_logistica.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Checklist pré-visita ──────────────────────────────────
+  var checklist = Array.isArray(sv.checklist_pre) ? sv.checklist_pre : [];
+  var checkCard = '';
+  if (checklist.length) {
+    var checkRows = checklist.map(function(item) {
+      return '<div style="display:flex;align-items:center;gap:.55rem;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="font-size:.85rem">' + (item.concluido ? '✅' : '⬜') + '</span>'
+        + '<span style="color:' + (item.concluido ? 'var(--text)' : 'var(--text2)') + '">' + esc(item.descricao || '') + '</span>'
+        + '</div>';
+    }).join('');
+    checkCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Checklist Pré-Visita</div>'
+      + checkRows
+      + '</div>';
+  }
+
+  // ── Equipe (org_visita) ───────────────────────────────────
+  var equipe = Array.isArray(sov.equipe) ? sov.equipe : [];
+  var equipeCard = '';
+  if (equipe.length) {
+    var equipeRows = equipe.map(function(m) {
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.nome || '') + '</span>'
+        + '<span style="font-size:.73rem;color:var(--text3)">' + esc(m.funcao || '') + '</span>'
+        + '</div>';
+    }).join('');
+    equipeCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Equipe</div>'
+      + equipeRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = hasAnyData || checklist.length || equipe.length
+                 || (sov.notas_logistica && sov.notas_logistica.trim());
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma visita registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + dadosCard
+    + observCard
+    + notasCard
+    + checkCard
+    + equipeCard
     + placeholderCard
     + '</div>';
 }
