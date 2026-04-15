@@ -372,6 +372,7 @@
     if (!s.contato.telefone      && p.tel)  s.contato.telefone      = p.tel;
     if (!s.contato.email         && p.mail) s.contato.email         = p.mail;
     // Contato secundário como segunda entrada de reunioes (se diferente)
+    if (!Array.isArray(s.contato.reunioes)) s.contato.reunioes = [];
     if ((p.ac2 || p.dep2 || p.mail2 || p.tel2) && !s.contato.reunioes.length) {
       s.contato.reunioes = [{
         id:             _uid(),
