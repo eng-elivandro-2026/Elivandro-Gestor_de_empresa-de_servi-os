@@ -1466,6 +1466,9 @@ function addEscopoItem() {
   if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
 
   var item = {
+    _id:         (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
+                    ? p.stages.escopo.itens[_escopoEditIdx]._id
+                    : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
     fase:        (document.getElementById('esc-fase')  || {}).value || '',
     disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
     equipamento: (document.getElementById('esc-equip') || {}).value || '',
@@ -1529,10 +1532,23 @@ function renderItensTab(p) {
       ? '<span style="font-size:.65rem;color:#f97316;margin-left:.3rem">●Terc</span>'
       : '';
 
+    var origemLabel = '';
+    if (it.escopo_id) {
+      var escopoItens = (p.stages && p.stages.escopo && p.stages.escopo.itens) || [];
+      var escopoRef = escopoItens.find(function(e){ return e._id === it.escopo_id; });
+      if (escopoRef) {
+        var origemParts = [escopoRef.fase, escopoRef.equipamento, escopoRef.atividade].filter(Boolean);
+        origemLabel = '<div style="font-size:.65rem;color:var(--text3);margin-top:.15rem">'
+          + 'Origem: Escopo [' + esc(origemParts.join(' | ')) + ']'
+          + '</div>';
+      }
+    }
+
     return '<tr style="opacity:' + rowOp + ';border-bottom:1px solid var(--border)">'
       + '<td style="padding:.38rem .5rem;font-size:.78rem">'
       +   '<span style="background:' + tipoBg + ';color:' + tipoColor + ';padding:.05rem .35rem;border-radius:3px;font-size:.66rem;font-weight:700;margin-right:.35rem">' + tipo + '</span>'
       +   esc(it.desc || it.cat || '—') + tercBadge
+      +   origemLabel
       + '</td>'
       + '<td style="padding:.38rem .5rem;font-size:.75rem;color:var(--text2);white-space:nowrap">' + esc(qty) + '</td>'
       + '<td style="padding:.38rem .5rem;font-size:.75rem;text-align:right;color:var(--text2)">' + money(n2(it.pvu)) + '</td>'
