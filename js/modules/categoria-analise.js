@@ -1502,6 +1502,16 @@ function renderItensTab(p) {
     return;
   }
 
+  // Build escopo options once, reused per row
+  var escopoItens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var escopoOptsHtml = '<option value="">— sem vínculo —</option>'
+    + escopoItens.map(function(e) {
+        var label = [e.fase, e.equipamento, e.atividade].filter(Boolean).join(' | ') || e.descricao || e._id;
+        return '<option value="' + esc(e._id || '') + '">' + esc(label) + '</option>';
+      }).join('');
+  var selStyle = 'margin-top:.28rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text3);font-size:.67rem;font-family:inherit;padding:.15rem .3rem;max-width:100%;cursor:pointer';
+
   var totalIncluido = 0;
   var rows = itens.map(function(it) {
     var inc = it.inc !== false;
@@ -1544,11 +1554,23 @@ function renderItensTab(p) {
       }
     }
 
+    // Build selector with current escopo_id pre-selected
+    var selOpts = escopoOptsHtml.replace(
+      'value="' + esc(it.escopo_id || '') + '"',
+      'value="' + esc(it.escopo_id || '') + '" selected'
+    );
+    var selector = '<div>'
+      + '<select style="' + selStyle + '" onchange="linkEscopoItem(\'' + esc(it.id) + '\',this.value)">'
+      + selOpts
+      + '</select>'
+      + '</div>';
+
     return '<tr style="opacity:' + rowOp + ';border-bottom:1px solid var(--border)">'
       + '<td style="padding:.38rem .5rem;font-size:.78rem">'
       +   '<span style="background:' + tipoBg + ';color:' + tipoColor + ';padding:.05rem .35rem;border-radius:3px;font-size:.66rem;font-weight:700;margin-right:.35rem">' + tipo + '</span>'
       +   esc(it.desc || it.cat || '—') + tercBadge
       +   origemLabel
+      +   selector
       + '</td>'
       + '<td style="padding:.38rem .5rem;font-size:.75rem;color:var(--text2);white-space:nowrap">' + esc(qty) + '</td>'
       + '<td style="padding:.38rem .5rem;font-size:.75rem;text-align:right;color:var(--text2)">' + money(n2(it.pvu)) + '</td>'
@@ -1571,6 +1593,20 @@ function renderItensTab(p) {
     + '</tr></tfoot>'
     + '</table>'
     + '</div>';
+}
+
+function linkEscopoItem(itemId, escopoId) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.bi) return;
+  var it = p.bi.find(function(x){ return x.id === itemId; });
+  if (!it) return;
+  if (escopoId) {
+    it.escopo_id = escopoId;
+  } else {
+    delete it.escopo_id;
+  }
+  renderItensTab(p);
 }
 
 // ══════════════════════════════════════════════════════════════
