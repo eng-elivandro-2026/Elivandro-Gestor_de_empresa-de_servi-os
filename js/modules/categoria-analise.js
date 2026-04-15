@@ -1337,6 +1337,7 @@ function fmAbrirProposta(id){
   renderVisitaTab(p);
   renderConsolidacaoTab(p);
   renderEngenhariaTab(p);
+  renderExecucaoTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -2190,6 +2191,163 @@ function renderEngenhariaTab(p) {
     + matCard
     + moCard
     + tercCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderExecucaoTab(p) {
+  var el = document.getElementById('pd-panel-execucao');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sx  = (p.stages && p.stages.execucao)    || {};
+  var se  = (p.stages && p.stages.entrega)     || {};
+  var sp  = (p.stages && p.stages.planejamento)|| {};
+  var tl  = p.tl || {};
+
+  var progresso    = (typeof sx.progresso_pct === 'number') ? sx.progresso_pct : 0;
+  var registros    = Array.isArray(sx.registros)        ? sx.registros.filter(function(r){ return r && r.descricao; }) : [];
+  var apontIds     = Array.isArray(sx.apontamento_ids)  ? sx.apontamento_ids : [];
+
+  var dtInicio     = sp.data_inicio   || tl.dtInicioExec || '';
+  var dtTermino    = sp.data_termino  || tl.dtTermino    || '';
+  var dtEntrega    = se.data_entrega  || '';
+  var dtAceite     = se.data_aceite   || tl.dtAceite     || '';
+  var respAceite   = se.responsavel_aceite || '';
+  var observacoes  = se.observacoes   || '';
+  var checklist    = Array.isArray(se.checklist) ? se.checklist.filter(function(c){ return c && c.item; }) : [];
+
+  var fasObj   = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+
+  // Execution-phase fases only for status colour
+  var FAS_EXEC = ['andamento','em_pausa_falta_material','em_pausa_aguardando_cliente',
+                  'em_pausa_aguardando_terceiro','taf','sat','atrasado'];
+  var FAS_DONE = ['finalizado','faturado','recebido'];
+  var fasColor = FAS_DONE.indexOf(p.fas) >= 0 ? '#3fb950'
+               : p.fas === 'atrasado'          ? '#f85149'
+               : FAS_EXEC.indexOf(p.fas) >= 0  ? '#d4a017'
+               : 'var(--text2)';
+
+  var hasDates = dtInicio || dtTermino || dtEntrega || dtAceite;
+
+  // ── Status / Progresso ────────────────────────────────────
+  var pctBar = progresso > 0
+    ? '<div style="background:var(--bg3);border-radius:4px;height:8px;margin-top:.5rem;overflow:hidden">'
+      + '<div style="background:var(--accent);width:' + Math.min(progresso, 100) + '%;height:100%;border-radius:4px"></div>'
+      + '</div>'
+      + '<div style="font-size:.7rem;color:var(--text3);margin-top:.2rem;text-align:right">' + progresso + '%</div>'
+    : '';
+
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Status de Execução</div>'
+    + '<div style="font-size:.88rem;font-weight:700;color:' + fasColor + ';margin-bottom:' + (pctBar ? '.4rem' : '0') + '">' + esc(fasLabel) + '</div>'
+    + pctBar
+    + '</div>';
+
+  // ── Datas ─────────────────────────────────────────────────
+  var datasCard = hasDates
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Datas</div>'
+      + infoRow('Início',          dtInicio)
+      + infoRow('Término previsto',dtTermino)
+      + infoRow('Entrega',         dtEntrega)
+      + infoRow('Aceite',          dtAceite)
+      + infoRow('Responsável aceite', respAceite)
+      + '</div>'
+    : '';
+
+  // ── Checklist de entrega ──────────────────────────────────
+  var checkCard = '';
+  if (checklist.length) {
+    var checkRows = checklist.map(function(c) {
+      return '<div style="display:flex;align-items:center;gap:.55rem;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="font-size:.85rem">' + (c.concluido ? '✅' : '⬜') + '</span>'
+        + '<span style="color:' + (c.concluido ? 'var(--text)' : 'var(--text2)') + '">' + esc(c.item) + '</span>'
+        + '</div>';
+    }).join('');
+    var done = checklist.filter(function(c){ return c.concluido; }).length;
+    checkCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + ';display:flex;justify-content:space-between">'
+      + '<span>Checklist de Entrega</span>'
+      + '<span style="font-weight:600;color:var(--accent)">' + done + '/' + checklist.length + '</span>'
+      + '</div>'
+      + checkRows
+      + '</div>';
+  }
+
+  // ── Registros de execução ─────────────────────────────────
+  var regCard = '';
+  if (registros.length) {
+    var regRows = registros.slice().sort(function(a, b){
+      return (b.data || '').localeCompare(a.data || '');
+    }).map(function(r) {
+      var statusColor = r.status === 'concluido' ? '#3fb950'
+                      : r.status === 'pendente'  ? '#d4a017'
+                      : 'var(--text3)';
+      return '<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.12rem">'
+        +   '<span style="font-size:.78rem;color:var(--text2);flex:1">' + esc(r.descricao) + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(r.data || '') + '</span>'
+        + '</div>'
+        + (r.responsavel || r.status
+            ? '<div style="font-size:.7rem;display:flex;gap:.6rem">'
+              + (r.responsavel ? '<span style="color:var(--text3)">' + esc(r.responsavel) + '</span>' : '')
+              + (r.status ? '<span style="color:' + statusColor + ';font-weight:600">' + esc(r.status) + '</span>' : '')
+              + '</div>'
+            : '')
+        + '</div>';
+    }).join('');
+    regCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Registros de Execução</div>'
+      + regRows
+      + '</div>';
+  }
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (observacoes && observacoes.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações de Entrega</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(observacoes.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Apontamentos / Despesas (RH — não vinculados ainda) ───
+  var apont = apontIds.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Apontamentos</div>'
+      + '<div style="font-size:.8rem;color:var(--text2)">' + apontIds.length + ' apontamento(s) vinculado(s) (detalhe disponível no módulo RH)</div>'
+      + '</div>'
+    : '';
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = hasDates || checklist.length || registros.length
+                 || progresso > 0 || observacoes || apontIds.length;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma informação de execução registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + statusCard
+    + datasCard
+    + checkCard
+    + regCard
+    + observCard
+    + apont
     + placeholderCard
     + '</div>';
 }
