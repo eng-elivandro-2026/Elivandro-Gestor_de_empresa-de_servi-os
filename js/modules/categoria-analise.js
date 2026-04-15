@@ -1336,6 +1336,7 @@ function fmAbrirProposta(id){
   renderComercialTab(p);
   renderVisitaTab(p);
   renderConsolidacaoTab(p);
+  renderEngenhariaTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -2035,6 +2036,160 @@ function renderConsolidacaoTab(p) {
     + restCard
     + reqCard
     + cronCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderEngenhariaTab(p) {
+  var el = document.getElementById('pd-panel-engenharia');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem;align-items:baseline';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  var se  = (p.stages && p.stages.engenharia) || {};
+  var sr  = (p.stages && p.stages.recursos)   || {};
+
+  var especificacoes = Array.isArray(se.especificacoes) ? se.especificacoes.filter(function(x){ return x && x.parametro; }) : [];
+  var memoriais      = Array.isArray(se.memoriais)      ? se.memoriais.filter(function(x){ return x && x.titulo; })      : [];
+  var documentos     = Array.isArray(se.documentos_ref) ? se.documentos_ref.filter(function(x){ return x && x.titulo; }) : [];
+  var notas          = se.notas || '';
+
+  var materiais  = Array.isArray(sr.materiais)  ? sr.materiais.filter(function(x){ return x && x.descricao; })  : [];
+  var maoObra    = Array.isArray(sr.mao_obra)   ? sr.mao_obra.filter(function(x){ return x && x.funcao; })      : [];
+  var terceiros  = Array.isArray(sr.terceiros)  ? sr.terceiros.filter(function(x){ return x && x.servico; })    : [];
+
+  // ── Especificações / Parâmetros técnicos ──────────────────
+  var especCard = '';
+  if (especificacoes.length) {
+    var especRows = especificacoes.map(function(e) {
+      var valorStr = e.valor + (e.unidade ? ' ' + e.unidade : '');
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + keyStyle + '">' + esc(e.parametro) + '</span>'
+        + '<span style="' + valStyle + ';font-weight:600">' + esc(valorStr) + '</span>'
+        + (e.norma ? '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(e.norma) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    especCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Parâmetros Técnicos</div>'
+      + especRows
+      + '</div>';
+  }
+
+  // ── Notas de engenharia ───────────────────────────────────
+  var notasCard = (notas && notas.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas de Engenharia</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(notas.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Memoriais / notas de cálculo ─────────────────────────
+  var memCard = '';
+  if (memoriais.length) {
+    var memRows = memoriais.map(function(m) {
+      return '<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.15rem">' + esc(m.titulo) + '</div>'
+        + (m.conteudo && m.conteudo.trim()
+            ? '<div style="font-size:.75rem;color:var(--text2);white-space:pre-wrap;line-height:1.45">'
+              + esc(m.conteudo.trim().slice(0, 200)) + (m.conteudo.trim().length > 200 ? '…' : '')
+              + '</div>'
+            : '')
+        + '</div>';
+    }).join('');
+    memCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Memoriais Descritivos / Notas de Cálculo</div>'
+      + memRows
+      + '</div>';
+  }
+
+  // ── Documentos de referência ──────────────────────────────
+  var docCard = '';
+  if (documentos.length) {
+    var docRows = documentos.map(function(d) {
+      return '<div style="display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="color:var(--text2);flex:1">' + esc(d.titulo) + '</span>'
+        + (d.url_ou_path ? '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(d.url_ou_path) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    docCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Referências Técnicas</div>'
+      + docRows
+      + '</div>';
+  }
+
+  // ── Lista de materiais (recursos) ─────────────────────────
+  var matCard = '';
+  if (materiais.length) {
+    var matRows = materiais.map(function(m) {
+      var qtdStr = m.quantidade ? (m.quantidade + (m.unidade ? ' ' + m.unidade : '')) : '';
+      var custoStr = m.custo_unit ? 'R$ ' + n2(m.custo_unit).toFixed(2).replace('.', ',') : '';
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.descricao) + '</span>'
+        + (qtdStr   ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(qtdStr)   + '</span>' : '')
+        + (custoStr ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(custoStr) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    matCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Lista de Materiais</div>'
+      + matRows
+      + '</div>';
+  }
+
+  // ── Mão de obra (recursos) ────────────────────────────────
+  var moCard = '';
+  if (maoObra.length) {
+    var moRows = maoObra.map(function(m) {
+      var detalhe = [
+        m.quantidade ? m.quantidade + ' profissional(is)' : '',
+        m.dias ? m.dias + ' dia(s)' : ''
+      ].filter(Boolean).join(' · ');
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.funcao) + '</span>'
+        + (detalhe ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(detalhe) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    moCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Mão de Obra</div>'
+      + moRows
+      + '</div>';
+  }
+
+  // ── Terceiros (recursos) ──────────────────────────────────
+  var tercCard = '';
+  if (terceiros.length) {
+    var tercRows = terceiros.map(function(t) {
+      var valorStr = t.valor ? 'R$ ' + n2(t.valor).toFixed(2).replace('.', ',') : '';
+      return '<div style="' + rowStyle + '">'
+        + '<span style="color:var(--text3);flex-shrink:0;min-width:7rem">' + esc(t.fornecedor || '') + '</span>'
+        + '<span style="' + valStyle + '">' + esc(t.servico) + '</span>'
+        + (valorStr ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(valorStr) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    tercCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Terceiros / Subcontratados</div>'
+      + tercRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = especificacoes.length || memoriais.length || documentos.length
+                 || notas || materiais.length || maoObra.length || terceiros.length;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum dado de engenharia registrado</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + especCard
+    + notasCard
+    + memCard
+    + docCard
+    + matCard
+    + moCard
+    + tercCard
     + placeholderCard
     + '</div>';
 }
