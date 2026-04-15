@@ -1060,18 +1060,45 @@ function showTab(id, btn) {
 // ══ EMPRESA ATIVA ════════════════════════════════════════════
 async function getEmpresaId() {
   if (_empresaId) return _empresaId;
-  // Receber empresa do parent (shell)
+
   try {
     if (window.parent && window.parent.getEmpresaAtivaId) {
-      _empresaId = window.parent.getEmpresaAtivaId();
+      var parentEmpId = window.parent.getEmpresaAtivaId();
+      if (parentEmpId) {
+        _empresaId = parentEmpId;
+        return _empresaId;
+      }
     }
   } catch(e) {}
-  // Fallback: pegar do Supabase
-  // Only write if still null — SET_EMPRESA may have arrived during the await and set _empresaId correctly
+
+  // espera curta para o parent / SET_EMPRESA estabilizar
+  for (var i = 0; i < 10; i++) {
+    await new Promise(function(r){ setTimeout(r, 100); });
+
+    if (_empresaId) return _empresaId;
+
+    try {
+      if (window.parent && window.parent.getEmpresaAtivaId) {
+        var delayedEmpId = window.parent.getEmpresaAtivaId();
+        if (delayedEmpId) {
+          _empresaId = delayedEmpId;
+          return _empresaId;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // fallback só em último caso
   if (!_empresaId) {
-    var { data } = await sb.from('empresas').select('id').eq('nome_curto','Tecfusion').single();
+    var { data } = await sb
+      .from('empresas')
+      .select('id')
+      .eq('nome_curto','Tecfusion')
+      .single();
+
     if (data && !_empresaId) _empresaId = data.id;
   }
+
   return _empresaId;
 }
 
@@ -1256,8 +1283,19 @@ async function gerarAlertas() {
 
 // ══ DETALHE COLABORADOR ══════════════════════════════════════
 async function abrirDetalhe(id) {
+  if (!_colabs || !_colabs.length) {
+    await carregarColabs();
+  }
+
   _colabAtivo = _colabs.find(function(c){ return c.id === id; });
+
+  if (!_colabAtivo && id) {
+    await carregarColabs();
+    _colabAtivo = _colabs.find(function(c){ return c.id === id; });
+  }
+
   if (!_colabAtivo) return;
+
   showSec('detalhe', null);
 
   var ini = _colabAtivo.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
@@ -1270,7 +1308,6 @@ async function abrirDetalhe(id) {
     '<span class="bdg ' + tipoBdg + '">' + (_colabAtivo.tipo||'').toUpperCase() + '</span>' +
     '<span class="bdg bdg-green">Ativo</span>';
 
-  // Dados básicos
   document.getElementById('detDados').innerHTML =
     campo('Nome', _colabAtivo.nome) +
     campo('Tipo', (_colabAtivo.tipo||'').toUpperCase()) +
@@ -2204,6 +2241,9 @@ var _colabAddEmpId = null;
 
 async function abrirModalColab(id) {
   _colabEditId = id || null;
+  if (id && (!_colabs || !_colabs.length)) {
+  await carregarColabs();
+}
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
@@ -2214,7 +2254,13 @@ async function abrirModalColab(id) {
     togglePerigFields();
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
-    if (c) {
+
+if (!c && id) {
+  await carregarColabs();
+  c = _colabs.find(function(x){ return x.id===id; });
+}
+
+if (c) {
       document.getElementById('cNome').value                = c.nome||'';
       document.getElementById('cTipo').value                = c.tipo||'mei';
       document.getElementById('cDoc').value                 = c.documento||'';
