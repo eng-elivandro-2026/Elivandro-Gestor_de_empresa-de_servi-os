@@ -4097,21 +4097,22 @@ function pdTab(tab, btn){
 function fmAbrirProposta(id){
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
+
   _pdId = id;
-  // Preenche cabeçalho
-  var numEl=document.getElementById('pd-num');
-  var cliEl=document.getElementById('pd-cli');
-  var badgeEl=document.getElementById('pd-fase-badge');
-  if(numEl) numEl.textContent='#'+(p.num||'');
-  if(cliEl) cliEl.textContent=(p.cli||'')+(p.tit?' — '+p.tit:'');
+
+  var numEl = document.getElementById('pd-num');
+  var cliEl = document.getElementById('pd-cli');
+  var badgeEl = document.getElementById('pd-fase-badge');
+
+  if(numEl) numEl.textContent = '#' + (p.num || '');
+  if(cliEl) cliEl.textContent = p.cli || '';
+
   if(badgeEl){
-    var fi=(typeof FASE!=='undefined'&&FASE[p.fas])?FASE[p.fas]:{n:p.fas,i:''};
-    badgeEl.innerHTML='<span style="font-size:.68rem;padding:.18rem .55rem;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--border2)">'+(fi.i||'')+' '+(fi.n||p.fas||'')+'</span>';
+    badgeEl.innerHTML = p.fas || '';
   }
-  // Resetar para primeira aba
-  var firstTab=document.querySelector('#proposta-detalhe .pd-tab');
-  pdTab('dados', firstTab);
+
   go('proposta-detalhe', null);
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
