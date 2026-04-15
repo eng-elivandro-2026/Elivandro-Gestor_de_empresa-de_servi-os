@@ -1333,6 +1333,7 @@ function fmAbrirProposta(id){
   renderItensTab(p);
   renderFinanceiroTab(p);
   renderDocumentosTab(p);
+  renderComercialTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1768,6 +1769,111 @@ function renderDocumentosTab(p) {
     + checkCard
     + revsCard
     + histCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderComercialTab(p) {
+  var el = document.getElementById('pd-panel-comercial');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Status ────────────────────────────────────────────────
+  var fasObj   = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+  var fasColor = p.fas && p.fas.indexOf('perdido') === 0 ? '#f85149'
+               : p.fas === 'aprovado' || p.fas === 'recebido' ? '#3fb950'
+               : 'var(--text)';
+
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Status</div>'
+    + '<div style="font-size:.95rem;font-weight:700;color:' + fasColor + '">' + esc(fasLabel) + '</div>'
+    + '</div>';
+
+  // ── Datas ─────────────────────────────────────────────────
+  var datasHtml = ''
+    + infoRow('Data da proposta',  p.dat    || '')
+    + infoRow('Envio / Follow-up', p.dat2   || '')
+    + infoRow('Fechamento',        p.dtFech || '');
+
+  var datasCard = datasHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Datas</div>'
+      + datasHtml
+      + '</div>'
+    : '';
+
+  // ── Contato ───────────────────────────────────────────────
+  var contatoHtml = ''
+    + infoRow('Responsável', p.ac   || '')
+    + infoRow('E-mail',      p.mail || '')
+    + infoRow('Telefone',    p.tel  || '');
+
+  var contatoCard = contatoHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Contato</div>'
+      + contatoHtml
+      + '</div>'
+    : '';
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (p.cmnt && String(p.cmnt).trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(String(p.cmnt).trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Follow-up histórico ───────────────────────────────────
+  var followHist = (p.stages && p.stages.followup && Array.isArray(p.stages.followup.historico))
+    ? p.stages.followup.historico
+    : [];
+
+  var followCard = '';
+  if (followHist.length) {
+    var followRows = followHist.slice().sort(function(a, b) {
+      return (b.data || '').localeCompare(a.data || '');
+    }).map(function(h) {
+      return '<div style="padding:.35rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.15rem">'
+        +   '<span style="font-size:.78rem;font-weight:600">' + esc(h.tipo || 'follow-up') + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3)">' + esc(h.data || '') + '</span>'
+        + '</div>'
+        + (h.contato  ? '<div style="font-size:.73rem;color:var(--text3)">Contato: ' + esc(h.contato) + '</div>' : '')
+        + (h.outcome  ? '<div style="font-size:.73rem;color:var(--text2);margin-top:.1rem">' + esc(h.outcome) + '</div>' : '')
+        + (h.proxima_acao ? '<div style="font-size:.7rem;color:var(--accent);margin-top:.15rem">Próxima ação: ' + esc(h.proxima_acao) + (h.proxima_data ? ' — ' + esc(h.proxima_data) : '') + '</div>' : '')
+        + '</div>';
+    }).join('');
+    followCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Histórico de Follow-up</div>'
+      + followRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasFollow = followHist.length > 0;
+  var placeholderCard = !hasFollow
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum histórico comercial disponível</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + statusCard
+    + datasCard
+    + contatoCard
+    + observCard
+    + followCard
     + placeholderCard
     + '</div>';
 }
