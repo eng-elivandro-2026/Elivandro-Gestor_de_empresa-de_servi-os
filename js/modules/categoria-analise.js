@@ -1483,7 +1483,6 @@ function addEscopoItem() {
 
   renderEscopoTab(p);
 }
-}
 
 // ══════════════════════════════════════════════════════════════
 // PAINEL KPIs DE CICLOS — DASHBOARD
