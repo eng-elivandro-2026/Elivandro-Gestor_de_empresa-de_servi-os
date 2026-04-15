@@ -1335,6 +1335,7 @@ function fmAbrirProposta(id){
   renderDocumentosTab(p);
   renderComercialTab(p);
   renderVisitaTab(p);
+  renderConsolidacaoTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1879,6 +1880,161 @@ function renderVisitaTab(p) {
     + notasCard
     + checkCard
     + equipeCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderConsolidacaoTab(p) {
+  var el = document.getElementById('pd-panel-consolidacao');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:10rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  function tagList(items) {
+    return items.map(function(s) {
+      return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:.15rem .5rem;font-size:.73rem;color:var(--text2);margin:.15rem .2rem .15rem 0">' + esc(s) + '</span>';
+    }).join('');
+  }
+
+  function bulletList(items) {
+    return items.map(function(s) {
+      return '<div style="padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--text2);display:flex;gap:.5rem">'
+        + '<span style="color:var(--text3);flex-shrink:0">•</span>'
+        + '<span>' + esc(s) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sc  = (p.stages && p.stages.consolidacao) || {};
+  var tl  = p.tl || {};
+
+  var disciplinas = Array.isArray(sc.disciplinas)  ? sc.disciplinas.filter(Boolean)  : [];
+  var premissas   = Array.isArray(sc.premissas)    ? sc.premissas.filter(Boolean)    : [];
+  var restricoes  = Array.isArray(sc.restricoes)   ? sc.restricoes.filter(Boolean)   : [];
+  var requisitos  = Array.isArray(sc.requisitos)   ? sc.requisitos.filter(Boolean)   : [];
+  var tensEsp     = Array.isArray(sc.tensoes_especiais)
+                    ? sc.tensoes_especiais
+                    : (Array.isArray(p.tens) ? p.tens : []);
+
+  // Tension id → display label
+  var TENS_LABEL = { pT1F: '1F', pT2F: '2F', pT3F: '3F', pTN: 'N', pTPE: 'PE' };
+
+  var notasTec    = sc.notas_tecnicas          || p.area    || '';
+  var equipPrinc  = sc.equipamentos_principais || p.equip   || '';
+  var tensVal     = sc.tensao_alimentacao      || p.tensVal || '';
+  var tensCmd     = sc.tensao_comando          || p.tensCmd || '';
+
+  // Cronograma preliminar from planejamento stage
+  var plan      = (p.stages && p.stages.planejamento) || {};
+  var dtInicio  = plan.data_inicio  || tl.dtInicioExec || '';
+  var dtTermino = plan.data_termino || tl.dtTermino    || '';
+
+  // ── Disciplinas (tags) ────────────────────────────────────
+  var discCard = disciplinas.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Disciplinas</div>'
+      + '<div style="margin-top:.25rem">' + tagList(disciplinas) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Equipamentos / tensões ────────────────────────────────
+  var tensEspLabels = tensEsp.map(function(id) {
+    return TENS_LABEL[id] || id;
+  }).join(', ');
+
+  var tecHtml = ''
+    + infoRow('Equipamentos principais', equipPrinc)
+    + infoRow('Tensão de alimentação',   tensVal)
+    + infoRow('Tensão de comando',       tensCmd)
+    + (tensEspLabels ? infoRow('Tensões especiais', tensEspLabels) : '');
+
+  var tecCard = tecHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Informações Técnicas</div>'
+      + tecHtml
+      + '</div>'
+    : '';
+
+  // ── Notas técnicas / escopo entendido ─────────────────────
+  var notasCard = (notasTec && notasTec.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas Técnicas / Escopo Entendido</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(notasTec.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Premissas ─────────────────────────────────────────────
+  var premCard = premissas.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Premissas</div>'
+      + bulletList(premissas)
+      + '</div>'
+    : '';
+
+  // ── Restrições / Exclusões ────────────────────────────────
+  var restCard = restricoes.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Restrições / Exclusões</div>'
+      + bulletList(restricoes)
+      + '</div>'
+    : '';
+
+  // ── Requisitos ────────────────────────────────────────────
+  var reqCard = '';
+  if (requisitos.length) {
+    var reqRows = requisitos.map(function(r) {
+      return '<div style="padding:.25rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="font-size:.8rem;color:var(--text2)">' + esc(r.descricao || '') + '</div>'
+        + (r.origem ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">Origem: ' + esc(r.origem) + '</div>' : '')
+        + '</div>';
+    }).join('');
+    reqCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Requisitos</div>'
+      + reqRows
+      + '</div>';
+  }
+
+  // ── Cronograma preliminar ─────────────────────────────────
+  var cronHtml = ''
+    + infoRow('Início previsto',   dtInicio)
+    + infoRow('Término previsto',  dtTermino);
+
+  var cronCard = (dtInicio || dtTermino)
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Cronograma Preliminar</div>'
+      + cronHtml
+      + '</div>'
+    : '';
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = disciplinas.length || premissas.length || restricoes.length
+                 || requisitos.length || notasTec || equipPrinc
+                 || dtInicio || dtTermino;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma consolidação técnica registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + discCard
+    + tecCard
+    + notasCard
+    + premCard
+    + restCard
+    + reqCard
+    + cronCard
     + placeholderCard
     + '</div>';
 }
