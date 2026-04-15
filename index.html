@@ -1,3 +1,4 @@
+<!-- force deploy -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -556,6 +557,14 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   .app-shell.sidebar-open .sidebar{transform:translateX(0)}
   .app-shell.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 }
+
+/* ── PROPOSTA DETALHE ── */
+.pd-tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--border);margin-bottom:1.1rem;padding-bottom:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.pd-tabs::-webkit-scrollbar{display:none}
+.pd-tab{flex-shrink:0;padding:.38rem .75rem;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text3);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s}
+.pd-tab:hover{color:var(--text2)}
+.pd-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.pd-panel{display:none}.pd-panel.on{display:block}
 </style>
 </head>
 
@@ -2008,6 +2017,60 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     </div>
 
   </div>
+</div>
+
+<!-- PROPOSTA DETALHE -->
+<div id="proposta-detalhe" class="sec">
+
+  <!-- Cabeçalho da proposta -->
+  <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap">
+    <button class="btn bg bsm" onclick="go('dashboard',null)">← Voltar</button>
+    <div>
+      <div id="pd-num" style="font-family:monospace;font-size:1rem;font-weight:700;color:var(--accent)"></div>
+      <div id="pd-cli" style="font-size:.78rem;color:var(--text2)"></div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
+      <span id="pd-fase-badge"></span>
+      <button class="btn ba bsm" onclick="if(_pdId&&typeof editP==='function'){editP(_pdId);go('nova',null);}">✏️ Editar</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="pd-tabs">
+    <button class="pd-tab on" onclick="pdTab('dados',this)">Dados</button>
+    <button class="pd-tab"    onclick="pdTab('contato',this)">Contato</button>
+    <button class="pd-tab"    onclick="pdTab('visita',this)">Visita</button>
+    <button class="pd-tab"    onclick="pdTab('consolidacao',this)">Consolidação</button>
+    <button class="pd-tab"    onclick="pdTab('engenharia',this)">Engenharia</button>
+    <button class="pd-tab"    onclick="pdTab('recursos',this)">Recursos</button>
+    <button class="pd-tab"    onclick="pdTab('cotacoes',this)">Cotações</button>
+    <button class="pd-tab"    onclick="pdTab('estrutura',this)">Estrutura</button>
+    <button class="pd-tab"    onclick="pdTab('escopo',this)">Escopo</button>
+    <button class="pd-tab"    onclick="pdTab('itens',this)">Itens</button>
+    <button class="pd-tab"    onclick="pdTab('financeiro',this)">Financeiro</button>
+    <button class="pd-tab"    onclick="pdTab('documentos',this)">Documentos</button>
+    <button class="pd-tab"    onclick="pdTab('comercial',this)">Comercial</button>
+    <button class="pd-tab"    onclick="pdTab('execucao',this)">Execução</button>
+    <button class="pd-tab"    onclick="pdTab('resultado',this)">Resultado</button>
+  </div>
+
+  <!-- Painéis -->
+  <div id="pd-panel-dados"        class="pd-panel on"><div id="pd-dados"></div></div>
+  <div id="pd-panel-contato"      class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Contato</div></div>
+  <div id="pd-panel-visita"       class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Visita</div></div>
+  <div id="pd-panel-consolidacao" class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Consolidação</div></div>
+  <div id="pd-panel-engenharia"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Engenharia</div></div>
+  <div id="pd-panel-recursos"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Recursos</div></div>
+  <div id="pd-panel-cotacoes"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Cotações</div></div>
+  <div id="pd-panel-estrutura"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Estrutura</div></div>
+  <div id="pd-panel-escopo"       class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Escopo</div></div>
+  <div id="pd-panel-itens"        class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Itens</div></div>
+  <div id="pd-panel-financeiro"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Financeiro</div></div>
+  <div id="pd-panel-documentos"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Documentos</div></div>
+  <div id="pd-panel-comercial"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Comercial</div></div>
+  <div id="pd-panel-execucao"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Execução</div></div>
+  <div id="pd-panel-resultado"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Resultado</div></div>
+
 </div>
 
 </div><!-- /wrap -->
@@ -4022,12 +4085,35 @@ function togCl(id){
 })();
 
 
+// ── Proposta Detalhe — tab switcher ──
+var _pdId = null;
+function pdTab(tab, btn){
+  document.querySelectorAll('.pd-tab').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('.pd-panel').forEach(function(p){p.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  var el=document.getElementById('pd-panel-'+tab);
+  if(el) el.classList.add('on');
+}
+
 function fmAbrirProposta(id){
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
-  editP(id);
-  go('nova', null);
-  // Scroll ao topo
+
+  _pdId = id;
+
+  var numEl = document.getElementById('pd-num');
+  var cliEl = document.getElementById('pd-cli');
+  var badgeEl = document.getElementById('pd-fase-badge');
+
+  if(numEl) numEl.textContent = '#' + (p.num || '');
+  if(cliEl) cliEl.textContent = p.cli || '';
+
+  if(badgeEl){
+    badgeEl.innerHTML = p.fas || '';
+  }
+
+  go('proposta-detalhe', null);
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -4715,10 +4801,11 @@ function rExecTimeline(){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config/supabase.js"></script>
 <script src="js/config/supabase-sync.js"></script>
+<script src="js/core/proposta-stages.js"></script>
 <script src="js/core/app-core.js"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js"></script>
-<script src="js/modules/categoria-analise.js"></script>
+<script src="js/modules/categoria-analise.js?v=2"></script>
 <script src="js/modules/cotacao.js"></script>
 <script src="js/modules/gantt.js"></script>
 <script src="js/modules/log-modal.js"></script>
@@ -4791,6 +4878,8 @@ async function iniciarPlataforma() {
       if (_pNuvem && _pNuvem.length) {
         localStorage.setItem('tf_props', JSON.stringify(_pNuvem));
         if (typeof props !== 'undefined') props = _pNuvem;
+        // Migrar stages na cópia em memória após sobrescrever com dados da nuvem
+        if(typeof migrarTodasPropostas==='function'){var _mc=migrarTodasPropostas(props);if(_mc>0)localStorage.setItem('tf_props',JSON.stringify(props));}
         console.log('%c[init] ✅ ' + _pNuvem.length + ' propostas da nuvem (fonte primária)', 'color:#3fb950;font-weight:700');
       }
     }

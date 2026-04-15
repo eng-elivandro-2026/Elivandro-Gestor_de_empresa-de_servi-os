@@ -93,6 +93,11 @@
     });
     if (props.length) {
       LS('tf_props', props);
+      // Migrar para stages v1 (idempotente — skipa propostas já migradas)
+      if(typeof migrarTodasPropostas==='function'){
+        var _mc=migrarTodasPropostas(props);
+        if(_mc>0) LS('tf_props',props);
+      }
       console.log('%c' + props.length + ' proposta(s) carregada(s) da nuvem' + (empId ? ' [empresa filtrada]' : ''), 'color:#58a6ff;font-weight:700');
     }
     return props;

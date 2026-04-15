@@ -1279,11 +1279,65 @@ function togCl(id){
 
 
 function fmAbrirProposta(id){
+  console.log('fmAbrirProposta runtime winner', { id: id, hasPdDados: !!document.getElementById('pd-dados') });
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
-  editP(id);
-  go('nova', null);
-  // Scroll ao topo
+
+  _pdId = id;
+
+  var numEl = document.getElementById('pd-num');
+  var cliEl = document.getElementById('pd-cli');
+  var badgeEl = document.getElementById('pd-fase-badge');
+
+  if(numEl) numEl.textContent = '#' + (p.num || '');
+  if(cliEl) cliEl.textContent = p.cli || '';
+
+  if(badgeEl){
+    badgeEl.innerHTML = p.fas || '';
+  }
+
+  // Render Dados tab
+  var dadosEl = document.getElementById('pd-dados');
+  if(dadosEl){
+    var fasObj = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+    var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+    var descricao = p.desc || p.tit || '—';
+    var valorFmt = (typeof money === 'function') ? money(parseFloat(p.val) || 0) : String(p.val || '0');
+    dadosEl.innerHTML =
+      '<div style="display:grid;gap:.6rem">'
+      + '<div class="card" style="margin:0">'
+      +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Número</div>'
+      +   '<div style="font-family:monospace;font-size:1.05rem;font-weight:700;color:var(--accent)">#' + esc(p.num || '—') + '</div>'
+      + '</div>'
+      + '<div class="card" style="margin:0">'
+      +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Cliente</div>'
+      +   '<div style="font-size:.92rem;font-weight:600">' + esc(p.cli || '—') + '</div>'
+      + '</div>'
+      + '<div class="card" style="margin:0">'
+      +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Descrição</div>'
+      +   '<div style="font-size:.85rem;color:var(--text2)">' + esc(descricao) + '</div>'
+      + '</div>'
+      + '<div class="card" style="margin:0">'
+      +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Valor Total</div>'
+      +   '<div style="font-size:1.1rem;font-weight:700;color:var(--green)">' + valorFmt + '</div>'
+      + '</div>'
+      + '<div class="card" style="margin:0">'
+      +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Status</div>'
+      +   '<div style="font-size:.88rem;font-weight:600">' + esc(fasLabel) + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // Reset to Dados tab
+  document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.pd-panel').forEach(function(panel){ panel.classList.remove('on'); });
+  var firstTab = document.querySelector('.pd-tab');
+  if(firstTab) firstTab.classList.add('on');
+  var dadosPanel = document.getElementById('pd-panel-dados');
+  if(dadosPanel) dadosPanel.classList.add('on');
+
+  go('proposta-detalhe', null);
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 

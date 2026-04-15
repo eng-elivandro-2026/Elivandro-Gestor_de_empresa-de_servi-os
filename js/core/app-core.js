@@ -498,6 +498,11 @@ function loadAll(){
     });
     if(dirty){ try{LS('tf_props',props);}catch(e){} }
   })();
+  // ── Migrar para stages v1 se necessário ──────────────────
+  if(typeof migrarTodasPropostas==='function'){
+    var _stgMig=migrarTodasPropostas(props);
+    if(_stgMig>0){ try{LS('tf_props',props);}catch(e){} }
+  }
   // Forçar base em 290 se o salvo for maior que 290 ou não existir
   var cntSalvo=parseInt(LS('tf_cnt'),10);
   if(isFinite(cntSalvo)&&cntSalvo>0&&cntSalvo<=290){
@@ -1316,7 +1321,7 @@ function rProps(){
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
     var f=FASE[p.fas]||FASE.em_elaboracao||FASE.enviada;
-    return '<div class="pc" onclick="editP(\''+p.id+'\')">'
+    return '<div class="pc" onclick="fmAbrirProposta(\''+p.id+'\')">'
       +'<div class="pc-act" onclick="event.stopPropagation()">'
       +'<select onchange="chSt(\''+p.id+'\',this.value)">'+Object.keys(FASE).map(function(k){return'<option value="'+k+'"'+(p.fas===k?' selected':'')+'>'+FASE[k].n+'</option>'}).join('')+'</select>'
       +'<button class="pc-del" style="background:#2563eb" title="Duplicar proposta" onclick="dupProp(\''+p.id+'\');event.stopPropagation();">⧉</button>'+'<button class="pc-del" onclick="delP(\''+p.id+'\')">×</button></div>'
@@ -6573,6 +6578,7 @@ function buildCurrentProposalSnapshot(){
     ts:[],esc:JSON.parse(JSON.stringify(escSecs)),bi:JSON.parse(JSON.stringify(budg)),revs:JSON.parse(JSON.stringify(revs)),
     log:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.log)?JSON.parse(JSON.stringify(_p.log)):{hist:[],relat:[]}; })(),
     gantt:(function(){ var _p=props.find(function(x){return x.id===editId;}); var _g=_p&&_p.gantt?JSON.parse(JSON.stringify(_p.gantt)):{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]}; if(_g.trabSab===undefined)_g.trabSab=false; if(_g.trabDom===undefined)_g.trabDom=false; if(!_g.feriados)_g.feriados=[]; return _g; })(),
+    stages:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.stages)?JSON.parse(JSON.stringify(_p.stages)):(typeof criarStagesVazios==='function'?criarStagesVazios():{}); })(),
     prc:(function(){ var c=getPrcAtual(); return {s:JSON.parse(JSON.stringify(c.s)),m:JSON.parse(JSON.stringify(c.m))}; })(),
     tl:(function(){
       var _p=props.find(function(x){return x.id===editId;});
@@ -10755,9 +10761,22 @@ function togCl(id){
 function fmAbrirProposta(id){
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
-  editP(id);
-  go('nova', null);
-  // Scroll ao topo
+
+  _pdId = id;
+
+  var numEl = document.getElementById('pd-num');
+  var cliEl = document.getElementById('pd-cli');
+  var badgeEl = document.getElementById('pd-fase-badge');
+
+  if(numEl) numEl.textContent = '#' + (p.num || '');
+  if(cliEl) cliEl.textContent = p.cli || '';
+
+  if(badgeEl){
+    badgeEl.innerHTML = p.fas || '';
+  }
+
+  go('proposta-detalhe', null);
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
