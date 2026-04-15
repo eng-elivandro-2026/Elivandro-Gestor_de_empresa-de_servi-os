@@ -498,6 +498,11 @@ function loadAll(){
     });
     if(dirty){ try{LS('tf_props',props);}catch(e){} }
   })();
+  // ── Migrar para stages v1 se necessário ──────────────────
+  if(typeof migrarTodasPropostas==='function'){
+    var _stgMig=migrarTodasPropostas(props);
+    if(_stgMig>0){ try{LS('tf_props',props);}catch(e){} }
+  }
   // Forçar base em 290 se o salvo for maior que 290 ou não existir
   var cntSalvo=parseInt(LS('tf_cnt'),10);
   if(isFinite(cntSalvo)&&cntSalvo>0&&cntSalvo<=290){
@@ -6573,6 +6578,7 @@ function buildCurrentProposalSnapshot(){
     ts:[],esc:JSON.parse(JSON.stringify(escSecs)),bi:JSON.parse(JSON.stringify(budg)),revs:JSON.parse(JSON.stringify(revs)),
     log:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.log)?JSON.parse(JSON.stringify(_p.log)):{hist:[],relat:[]}; })(),
     gantt:(function(){ var _p=props.find(function(x){return x.id===editId;}); var _g=_p&&_p.gantt?JSON.parse(JSON.stringify(_p.gantt)):{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]}; if(_g.trabSab===undefined)_g.trabSab=false; if(_g.trabDom===undefined)_g.trabDom=false; if(!_g.feriados)_g.feriados=[]; return _g; })(),
+    stages:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.stages)?JSON.parse(JSON.stringify(_p.stages)):(typeof criarStagesVazios==='function'?criarStagesVazios():{}); })(),
     prc:(function(){ var c=getPrcAtual(); return {s:JSON.parse(JSON.stringify(c.s)),m:JSON.parse(JSON.stringify(c.m))}; })(),
     tl:(function(){
       var _p=props.find(function(x){return x.id===editId;});

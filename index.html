@@ -4715,6 +4715,7 @@ function rExecTimeline(){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config/supabase.js"></script>
 <script src="js/config/supabase-sync.js"></script>
+<script src="js/core/proposta-stages.js"></script>
 <script src="js/core/app-core.js"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js"></script>
@@ -4791,6 +4792,8 @@ async function iniciarPlataforma() {
       if (_pNuvem && _pNuvem.length) {
         localStorage.setItem('tf_props', JSON.stringify(_pNuvem));
         if (typeof props !== 'undefined') props = _pNuvem;
+        // Migrar stages na cópia em memória após sobrescrever com dados da nuvem
+        if(typeof migrarTodasPropostas==='function'){var _mc=migrarTodasPropostas(props);if(_mc>0)localStorage.setItem('tf_props',JSON.stringify(props));}
         console.log('%c[init] ✅ ' + _pNuvem.length + ' propostas da nuvem (fonte primária)', 'color:#3fb950;font-weight:700');
       }
     }
