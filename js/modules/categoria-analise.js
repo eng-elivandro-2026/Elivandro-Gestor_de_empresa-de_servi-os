@@ -1569,7 +1569,12 @@ function renderItensTab(p) {
   var el = document.getElementById('pd-panel-itens');
   if (!el) return;
 
-  var itens = p.bi || [];
+  // When this proposal is currently loaded in the edit wizard, budg is the live
+  // source of truth (salvarItemModal pushes to budg without updating props[].bi
+  // until upsertCurrentDraft fires). Fall back to p.bi for read-only view.
+  var itens = (typeof editId !== 'undefined' && editId === p.id
+               && typeof budg !== 'undefined' && Array.isArray(budg))
+    ? budg : (p.bi || []);
 
   if (!itens.length) {
     el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum item orçado</div>';
@@ -1676,6 +1681,15 @@ function linkEscopoItem(itemId, escopoId) {
     it.escopo_id = escopoId;
   } else {
     delete it.escopo_id;
+  }
+  // Mirror into budg when this proposal is loaded in the edit wizard,
+  // so renderItensTab (which prefers budg when editId === p.id) stays in sync.
+  if (typeof editId !== 'undefined' && editId === _pdId
+      && typeof budg !== 'undefined' && Array.isArray(budg)) {
+    var budgIt = budg.find(function(x){ return x.id === itemId; });
+    if (budgIt) {
+      if (escopoId) { budgIt.escopo_id = escopoId; } else { delete budgIt.escopo_id; }
+    }
   }
   // Persist: localStorage + Supabase
   try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
