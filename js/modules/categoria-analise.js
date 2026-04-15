@@ -1348,6 +1348,8 @@ function fmAbrirProposta(id){
 // ══════════════════════════════════════════════════════════════
 // ESCOPO TAB
 // ══════════════════════════════════════════════════════════════
+var _escopoEditIdx = null;
+
 function renderEscopoTab(p) {
   var el = document.getElementById('pd-panel-escopo');
   if (!el) return;
@@ -1360,11 +1362,15 @@ function renderEscopoTab(p) {
 
   var cardsHtml = '';
   if (itens.length) {
-    cardsHtml = itens.map(function(it) {
+    cardsHtml = itens.map(function(it, i) {
       var badge = it.gera_item
         ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Sim</span>'
         : '<span style="background:var(--bg3);color:var(--text3);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Não</span>';
       return '<div class="card" style="margin:0">'
+        + '<div style="display:flex;justify-content:flex-end;gap:.3rem;margin-bottom:.35rem">'
+        + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem" onclick="editEscopoItem(' + i + ')">✏ Editar</button>'
+        + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem;color:var(--red);border-color:var(--red)" onclick="deleteEscopoItem(' + i + ')">× Excluir</button>'
+        + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .8rem;font-size:.8rem;margin-bottom:.4rem">'
         + '<div><div style="' + labelStyle + '">Fase</div><div style="font-weight:600">' + esc(it.fase || '—') + '</div></div>'
         + '<div><div style="' + labelStyle + '">Disciplina</div><div style="font-weight:600">' + esc(it.disciplina || '—') + '</div></div>'
@@ -1381,7 +1387,7 @@ function renderEscopoTab(p) {
 
   var formHtml = '<div id="escopo-form" style="display:none">'
     + '<div class="card" style="margin:0;display:grid;gap:.45rem">'
-    + '<div style="font-size:.78rem;font-weight:700;color:var(--accent)">Novo Escopo</div>'
+    + '<div id="escopo-form-title" style="font-size:.78rem;font-weight:700;color:var(--accent)">Novo Escopo</div>'
     + '<div><div style="' + labelStyle + '">Fase</div><input id="esc-fase" placeholder="ex: Instalação" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Disciplina</div><input id="esc-disc" placeholder="ex: Elétrica" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Equipamento</div><input id="esc-equip" placeholder="ex: Painel CC" style="' + inpStyle + '"></div>'
@@ -1405,7 +1411,49 @@ function renderEscopoTab(p) {
 function toggleEscopoForm() {
   var f = document.getElementById('escopo-form');
   if (!f) return;
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  var isOpen = f.style.display !== 'none';
+  if (isOpen) {
+    f.style.display = 'none';
+    _escopoEditIdx = null;
+  } else {
+    f.style.display = 'block';
+  }
+}
+
+function editEscopoItem(idx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+  var it = p.stages.escopo.itens[idx];
+  if (!it) return;
+
+  _escopoEditIdx = idx;
+
+  var f = document.getElementById('escopo-form');
+  if (f) f.style.display = 'block';
+
+  var title = document.getElementById('escopo-form-title');
+  if (title) title.textContent = 'Editar Escopo';
+
+  var set = function(id, val){ var el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('esc-fase',  it.fase);
+  set('esc-disc',  it.disciplina);
+  set('esc-equip', it.equipamento);
+  set('esc-ativ',  it.atividade);
+  set('esc-desc',  it.descricao);
+  var gera = document.getElementById('esc-gera');
+  if (gera) gera.checked = !!it.gera_item;
+
+  f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function deleteEscopoItem(idx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+  p.stages.escopo.itens.splice(idx, 1);
+  _escopoEditIdx = null;
+  renderEscopoTab(p);
 }
 
 function addEscopoItem() {
@@ -1416,7 +1464,7 @@ function addEscopoItem() {
   if (!p.stages.escopo) p.stages.escopo = { itens: [] };
   if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
 
-  p.stages.escopo.itens.push({
+  var item = {
     fase:        (document.getElementById('esc-fase')  || {}).value || '',
     disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
     equipamento: (document.getElementById('esc-equip') || {}).value || '',
@@ -1424,9 +1472,17 @@ function addEscopoItem() {
     descricao:   (document.getElementById('esc-desc')  || {}).value || '',
     gera_item:  !!(document.getElementById('esc-gera')  || {}).checked,
     item_ref:    null
-  });
+  };
+
+  if (_escopoEditIdx !== null) {
+    p.stages.escopo.itens[_escopoEditIdx] = item;
+    _escopoEditIdx = null;
+  } else {
+    p.stages.escopo.itens.push(item);
+  }
 
   renderEscopoTab(p);
+}
 }
 
 // ══════════════════════════════════════════════════════════════
