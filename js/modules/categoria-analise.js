@@ -1375,6 +1375,17 @@ function renderEscopoTab(p) {
       var badge = it.gera_item
         ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Sim</span>'
         : '<span style="background:var(--bg3);color:var(--text3);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Não</span>';
+
+      var hasLinkedItem = it.item_ref
+        || (p.bi || []).some(function(b){ return b.escopo_id === it._id; });
+
+      var itemAction = '';
+      if (it.gera_item) {
+        itemAction = hasLinkedItem
+          ? '<span style="font-size:.7rem;color:var(--green);font-weight:600">✅ Item já criado</span>'
+          : '<button class="btn ba bsm" style="font-size:.72rem;padding:.2rem .55rem" onclick="criarItemDeEscopo(' + i + ')">➕ Criar Item</button>';
+      }
+
       return '<div class="card" style="margin:0">'
         + '<div style="display:flex;justify-content:flex-end;gap:.3rem;margin-bottom:.35rem">'
         + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem" onclick="editEscopoItem(' + i + ')">✏ Editar</button>'
@@ -1387,7 +1398,10 @@ function renderEscopoTab(p) {
         + '<div><div style="' + labelStyle + '">Atividade</div><div>' + esc(it.atividade || '—') + '</div></div>'
         + '</div>'
         + (it.descricao ? '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.4rem">' + esc(it.descricao) + '</div>' : '')
+        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem">'
         + badge
+        + itemAction
+        + '</div>'
         + '</div>';
     }).join('');
   } else {
@@ -1494,6 +1508,58 @@ function addEscopoItem() {
   }
 
   renderEscopoTab(p);
+}
+
+function criarItemDeEscopo(escopoIdx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+
+  var itens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var ei = itens[escopoIdx];
+  if (!ei) return;
+
+  // Disciplina → service category prefix (mirrors _catToDisciplina in proposta-stages.js)
+  var DISC_PREFIX = {
+    'Automação':      'AC', 'Elétrica':     'EL', 'Mecânica': 'ME',
+    'TI':             'TI', 'Gestão':       'GE',
+    'Instrumentação': 'IN', 'Civil':        'CI'
+  };
+  var catPrefix = DISC_PREFIX[ei.disciplina] || '';
+
+  // Load proposal into edit wizard (sets editId, populates budg, navigates to 'nova')
+  editP(_pdId);
+
+  // After editP's internal 150ms step(2) fires, open item modal pre-filled
+  setTimeout(function() {
+    step(2); // Orçamento — ensures we're on the right step
+
+    // Open in new-item mode (no id → salvarItemModal will uid() a new one)
+    abrirItemModal(null);
+
+    // Pre-fill: atividade — equipamento as description, equip field, fase as faseTrab
+    var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ')
+             || ei.descricao || '';
+
+    if (Q('mDesc'))     Q('mDesc').value     = desc;
+    if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
+    if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
+
+    // Try to match first category option whose key starts with the disciplina prefix
+    if (catPrefix) {
+      var sel = Q('mCat');
+      if (sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value.indexOf(catPrefix) === 0) {
+            sel.value = sel.options[i].value;
+            if (typeof mOnCat === 'function') mOnCat();
+            break;
+          }
+        }
+      }
+    }
+  }, 300);
 }
 
 // ══════════════════════════════════════════════════════════════
