@@ -1502,14 +1502,8 @@ function renderItensTab(p) {
     return;
   }
 
-  // Build escopo options once, reused per row
   var escopoItens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
     ? p.stages.escopo.itens : [];
-  var escopoOptsHtml = '<option value="">— sem vínculo —</option>'
-    + escopoItens.map(function(e) {
-        var label = [e.fase, e.equipamento, e.atividade].filter(Boolean).join(' | ') || e.descricao || e._id;
-        return '<option value="' + esc(e._id || '') + '">' + esc(label) + '</option>';
-      }).join('');
   var selStyle = 'margin-top:.28rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text3);font-size:.67rem;font-family:inherit;padding:.15rem .3rem;max-width:100%;cursor:pointer';
 
   var totalIncluido = 0;
@@ -1554,11 +1548,14 @@ function renderItensTab(p) {
       }
     }
 
-    // Build selector with current escopo_id pre-selected
-    var selOpts = escopoOptsHtml.replace(
-      'value="' + esc(it.escopo_id || '') + '"',
-      'value="' + esc(it.escopo_id || '') + '" selected'
-    );
+    // Build selector — explicit selected check per option, no string replace
+    var selOpts = '<option value=""' + (!it.escopo_id ? ' selected' : '') + '>— sem vínculo —</option>'
+      + escopoItens.map(function(e) {
+          if (!e._id) return '';
+          var label = [e.fase, e.equipamento, e.atividade].filter(Boolean).join(' | ') || e.descricao || e._id;
+          var isSel = it.escopo_id === e._id;
+          return '<option value="' + esc(e._id) + '"' + (isSel ? ' selected' : '') + '>' + esc(label) + '</option>';
+        }).join('');
     var selector = '<div>'
       + '<select style="' + selStyle + '" onchange="linkEscopoItem(\'' + esc(it.id) + '\',this.value)">'
       + selOpts
