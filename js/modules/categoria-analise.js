@@ -1606,6 +1606,9 @@ function linkEscopoItem(itemId, escopoId) {
   } else {
     delete it.escopo_id;
   }
+  // Persist: localStorage + Supabase
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderItensTab(p);
 }
 
