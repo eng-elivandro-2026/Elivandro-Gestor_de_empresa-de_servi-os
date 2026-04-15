@@ -1331,6 +1331,7 @@ function fmAbrirProposta(id){
   // Render Escopo tab
   renderEscopoTab(p);
   renderItensTab(p);
+  renderFinanceiroTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1607,6 +1608,80 @@ function linkEscopoItem(itemId, escopoId) {
   try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderItensTab(p);
+}
+
+// ══════════════════════════════════════════════════════════════
+// FINANCEIRO TAB
+// ══════════════════════════════════════════════════════════════
+function renderFinanceiroTab(p) {
+  var el = document.getElementById('pd-panel-financeiro');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.15rem';
+
+  function pct(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    return (n2(v) * 100).toFixed(2).replace('.', ',') + '%';
+  }
+  function row(label, value, valueStyle) {
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.28rem 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:.78rem;color:var(--text2)">' + label + '</span>'
+      + '<span style="font-size:.82rem;font-weight:600;' + (valueStyle || '') + '">' + value + '</span>'
+      + '</div>';
+  }
+
+  // ── Resumo de valores ───────────────────────────────────────
+  var vS   = n2(p.vS);
+  var vM   = n2(p.vM);
+  var vD   = n2(p.vD);
+  var vTot = n2(p.val) || (vS + vM - vD);
+
+  var resumoRows = '';
+  if (vS) resumoRows += row('Serviços', money(vS), 'color:var(--blue)');
+  if (vM) resumoRows += row('Materiais', money(vM), 'color:var(--purple)');
+  if (vD) resumoRows += row('Desconto', '– ' + money(vD), 'color:var(--red)');
+  resumoRows += '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.38rem 0;margin-top:.15rem">'
+    + '<span style="font-size:.8rem;font-weight:700;color:var(--text2)">Total</span>'
+    + '<span style="font-size:1.15rem;font-weight:700;color:var(--green)">' + money(vTot) + '</span>'
+    + '</div>';
+
+  var resumoCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + ';margin-bottom:.5rem">Resumo Financeiro</div>'
+    + resumoRows
+    + '</div>';
+
+  // ── Alíquotas ──────────────────────────────────────────────
+  var aliqCard = '';
+  var a = p.aliq || {};
+  if (p.aliq) {
+    var aliqRows = ''
+      + row('NF Serviços',   pct(a.nfS))
+      + row('NF Materiais',  pct(a.nfM))
+      + row('Retenção Svc',  pct(a.rS))
+      + row('Comissão Svc',  pct(a.comS))
+      + row('Comissão Mat',  pct(a.comM))
+      + row('Negociação',    pct(a.neg));
+    if (a.fechadoSemDesc)
+      aliqRows += row('Fechado sem desconto', 'Sim', 'color:var(--green)');
+    aliqCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + ';margin-bottom:.5rem">Alíquotas / Impostos</div>'
+      + aliqRows
+      + '</div>';
+  }
+
+  // ── Status ─────────────────────────────────────────────────
+  var fasObj = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + ';margin-bottom:.3rem">Status</div>'
+    + '<div style="font-size:.92rem;font-weight:600">' + esc(fasLabel) + '</div>'
+    + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + resumoCard
+    + aliqCard
+    + statusCard
+    + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════
