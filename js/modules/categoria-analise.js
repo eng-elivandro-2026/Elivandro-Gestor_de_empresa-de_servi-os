@@ -1649,19 +1649,28 @@ function criarItemDeEscopo(escopoIdx) {
   var ei = escopoList[escopoIdx];
   if (!ei) return;
 
-  if (_isAtividadeEletroduto34(ei.atividade)) {
+  var atividadePadrao = buscarAtividadePadrao(ei.atividade);
+
+  if (atividadePadrao && atividadePadrao.modo_execucao === 'produtivo') {
+    // ── Productive flow: qty → calculate → item modal prefilled ──
     _mostrarQtdModal(p, ei, function(qtd) {
-      var calcResult = calcularMontagemEletroduto34(qtd);
-      // Attach activity name + quantity for display in the confirmation overlay
-      calcResult.nome     = ATIVIDADES_PADRAO['SV-IE-00001'].nome;
-      calcResult.quantidade = qtd;
-      _mostrarConfirmacaoCalculo(calcResult);
-      // item modal will be connected in next step
+      var calc = calcularAtividade(atividadePadrao, qtd);
+      // Normalize to shape expected by _abrirItemModalComDados (calcResult branch)
+      var calcResult = {
+        atividade:  atividadePadrao.nome,
+        quantidade: qtd,
+        unidade:    atividadePadrao.unidade_execucao,
+        hh_total:   calc.hh,
+        materiais:  calc.materiais.map(function(m) {
+          return { descricao: m.descricao, unidade_compra: m.unidade_compra || 'un', quantidade_compra: m.quantidade };
+        })
+      };
+      _abrirItemModalComDados(p, ei, calcResult, qtd);
     });
     return;
   }
 
-  // Generic activities: ask quantity, then open item modal with qty prefilled
+  // ── Manual flow: ask qty, open item modal with basic prefill ──
   _mostrarQtdModal(p, ei, function(qtd) {
     _abrirItemModalComDados(p, ei, null, qtd);
   });
@@ -1779,9 +1788,15 @@ window.calcMontarEletroduto34 = calcMontarEletroduto34;
 
 var ATIVIDADES_PADRAO = {
   'SV-IE-00001': {
-    id:                'SV-IE-00001',
-    nome:              'Montagem de eletroduto 3/4"',
-    unidade_execucao:  'm',
+    id:               'SV-IE-00001',
+    codigo_interno:   'SV-IE-00001',
+    nome:             'Montagem de eletroduto 3/4"',
+    descricao_padrao: 'Fornecimento e montagem de eletroduto de aço galvanizado 3/4", incluindo abraçadeiras e fixação.',
+    categoria_padrao: 'IE-01',
+    tipo_padrao:      'serviço',
+    unidade_execucao: 'm',
+    modo_execucao:    'produtivo',
+    ativo:            true,
 
     produtividade: {
       recurso_tipo: 'hh',
@@ -1821,6 +1836,30 @@ var ATIVIDADES_PADRAO = {
 };
 
 /**
+ * Look up a standard activity by atividade text.
+ * Matching: case-insensitive; the registered nome must be contained in the
+ * escopo text OR the escopo text must be contained in the registered nome.
+ * Skips inactive entries (ativo === false).
+ *
+ * @param  {string} textoAtividade  ei.atividade from escopo
+ * @returns {object|null}            Matching ATIVIDADES_PADRAO entry or null
+ */
+function buscarAtividadePadrao(textoAtividade) {
+  if (!textoAtividade) return null;
+  var texto = String(textoAtividade).toLowerCase().trim();
+  var chaves = Object.keys(ATIVIDADES_PADRAO);
+  for (var i = 0; i < chaves.length; i++) {
+    var a = ATIVIDADES_PADRAO[chaves[i]];
+    if (a.ativo === false) continue;
+    var nome = String(a.nome).toLowerCase().trim();
+    if (texto === nome || texto.indexOf(nome) >= 0 || nome.indexOf(texto) >= 0) {
+      return a;
+    }
+  }
+  return null;
+}
+
+/**
  * Generic engine — calculates HH and material quantities for any
  * ATIVIDADES_PADRAO entry.
  *
@@ -1844,7 +1883,7 @@ function calcularAtividade(atividade, quantidade_execucao) {
     .map(function(r) {
       var raw = (qtd * r.consumo) / (r.fator_conversao || 1);
       var quantidade = r.arredondamento === 'ceil' ? Math.ceil(raw) : raw;
-      return { descricao: r.descricao, quantidade: quantidade };
+      return { descricao: r.descricao, unidade_compra: r.unidade_compra, quantidade: quantidade };
     });
 
   return { hh: hh, materiais: materiais };
