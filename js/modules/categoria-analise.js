@@ -1369,21 +1369,31 @@ function renderEscopoTab(p) {
   var inpStyle = 'width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .6rem;font-size:.8rem;font-family:inherit;box-sizing:border-box';
   var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.15rem';
 
+  // Use the live budg when this proposal is open in the edit wizard (same rule as renderItensTab)
+  var biItens = (typeof editId !== 'undefined' && editId === p.id
+                 && typeof budg !== 'undefined' && Array.isArray(budg))
+    ? budg : (p.bi || []);
+
   var cardsHtml = '';
   if (itens.length) {
     cardsHtml = itens.map(function(it, i) {
-      var badge = it.gera_item
-        ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Sim</span>'
-        : '<span style="background:var(--bg3);color:var(--text3);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item: Não</span>';
+      var geraItemBadge = it.gera_item
+        ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item</span>'
+        : '';
 
-      var hasLinkedItem = it.item_ref
-        || (p.bi || []).some(function(b){ return b.escopo_id === it._id; });
+      // Find linked bi item by escopo_id or item_ref
+      var linkedItem = (it.item_ref ? biItens.find(function(b){ return b.id === it.item_ref; }) : null)
+                    || biItens.find(function(b){ return b.escopo_id === it._id; });
 
-      var itemAction = '';
-      if (it.gera_item) {
-        itemAction = hasLinkedItem
-          ? '<span style="font-size:.7rem;color:var(--green);font-weight:600">✅ Item já criado</span>'
-          : '<button class="btn ba bsm" style="font-size:.72rem;padding:.2rem .55rem" onclick="criarItemDeEscopo(' + i + ')">➕ Criar Item</button>';
+      var statusChip, itemAction;
+      if (linkedItem) {
+        var linkedDesc = (linkedItem.desc || linkedItem.cat || '').slice(0, 60);
+        statusChip = '<span style="font-size:.7rem;color:var(--green);font-weight:600">✅ Item criado</span>'
+          + (linkedDesc ? '<span style="font-size:.68rem;color:var(--text3);margin-left:.35rem">' + esc(linkedDesc) + '</span>' : '');
+        itemAction = '';
+      } else {
+        statusChip = '<span style="font-size:.7rem;color:var(--text3)">Sem item vinculado</span>';
+        itemAction = '<button class="btn ba bsm" style="font-size:.72rem;padding:.2rem .55rem" onclick="criarItemDeEscopo(' + i + ')">➕ Criar Item</button>';
       }
 
       return '<div class="card" style="margin:0">'
@@ -1398,9 +1408,10 @@ function renderEscopoTab(p) {
         + '<div><div style="' + labelStyle + '">Atividade</div><div>' + esc(it.atividade || '—') + '</div></div>'
         + '</div>'
         + (it.descricao ? '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.4rem">' + esc(it.descricao) + '</div>' : '')
-        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem">'
-        + badge
-        + itemAction
+        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;border-top:1px solid var(--border);padding-top:.35rem;margin-top:.1rem">'
+        + statusChip
+        + (geraItemBadge ? '<span style="margin-left:auto">' + geraItemBadge + '</span>' : '')
+        + (itemAction    ? '<span>' + itemAction + '</span>'   : '')
         + '</div>'
         + '</div>';
     }).join('');
@@ -1510,57 +1521,162 @@ function addEscopoItem() {
   renderEscopoTab(p);
 }
 
+var _escopoIdParaVincular = null; // escopo._id to auto-link after modal save
+
 function criarItemDeEscopo(escopoIdx) {
   if (!_pdId) return;
   var p = props.find(function(x){ return x.id === _pdId; });
   if (!p) return;
 
-  var itens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+  var escopoList = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
     ? p.stages.escopo.itens : [];
-  var ei = itens[escopoIdx];
+  var ei = escopoList[escopoIdx];
   if (!ei) return;
 
-  // Disciplina → service category prefix (mirrors _catToDisciplina in proposta-stages.js)
+  _escopoIdParaVincular = ei._id;
+
+  // Set editId + budg context so getPrcAtual() and salvarItemModal() work correctly
+  // without navigating away from proposta-detalhe
+  editId = _pdId;
+  budg = JSON.parse(JSON.stringify(p.bi || []));
+
+  // Open item modal as overlay (stays on proposta-detalhe)
+  abrirItemModal(null);
+
+  // Pre-fill from escopo fields
+  var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ') || ei.descricao || '';
+  if (Q('mDesc'))     Q('mDesc').value     = desc;
+  if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
+  if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
+
   var DISC_PREFIX = {
-    'Automação':      'AC', 'Elétrica':     'EL', 'Mecânica': 'ME',
-    'TI':             'TI', 'Gestão':       'GE',
-    'Instrumentação': 'IN', 'Civil':        'CI'
+    'Automação': 'AC', 'Elétrica': 'EL', 'Mecânica': 'ME',
+    'TI': 'TI', 'Gestão': 'GE', 'Instrumentação': 'IN', 'Civil': 'CI'
   };
   var catPrefix = DISC_PREFIX[ei.disciplina] || '';
-
-  // Load proposal into edit wizard (sets editId, populates budg, navigates to 'nova')
-  editP(_pdId);
-
-  // After editP's internal 150ms step(2) fires, open item modal pre-filled
-  setTimeout(function() {
-    step(2); // Orçamento — ensures we're on the right step
-
-    // Open in new-item mode (no id → salvarItemModal will uid() a new one)
-    abrirItemModal(null);
-
-    // Pre-fill: atividade — equipamento as description, equip field, fase as faseTrab
-    var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ')
-             || ei.descricao || '';
-
-    if (Q('mDesc'))     Q('mDesc').value     = desc;
-    if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
-    if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
-
-    // Try to match first category option whose key starts with the disciplina prefix
-    if (catPrefix) {
-      var sel = Q('mCat');
-      if (sel) {
-        for (var i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value.indexOf(catPrefix) === 0) {
-            sel.value = sel.options[i].value;
-            if (typeof mOnCat === 'function') mOnCat();
-            break;
-          }
+  if (catPrefix) {
+    var sel = Q('mCat');
+    if (sel) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.indexOf(catPrefix) === 0) {
+          sel.value = sel.options[i].value;
+          if (typeof mOnCat === 'function') mOnCat();
+          break;
         }
       }
     }
-  }, 300);
+  }
+
+  // Override save button for this single save — restored by _salvarItemDeEscopo
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = _salvarItemDeEscopo;
 }
+
+function _salvarItemDeEscopo() {
+  // Restore the button FIRST so a failed validation doesn't leave a stale override
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = function(){ if (typeof salvarItemModal === 'function') salvarItemModal(); };
+
+  var prelen = Array.isArray(budg) ? budg.length : 0;
+  if (typeof salvarItemModal === 'function') salvarItemModal();
+
+  // Check if save succeeded: modal closed and budg grew by one
+  var modal = document.getElementById('itemModal');
+  var saved  = modal && modal.style.display === 'none' && Array.isArray(budg) && budg.length > prelen;
+
+  if (saved && _escopoIdParaVincular && _pdId) {
+    var newItem = budg[prelen]; // the newly pushed item
+    if (newItem) {
+      newItem.escopo_id = _escopoIdParaVincular;
+
+      var p = props.find(function(x){ return x.id === _pdId; });
+      if (p) {
+        // Sync budg (with new item + escopo_id) back into p.bi
+        p.bi = JSON.parse(JSON.stringify(budg));
+        try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+        if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        renderEscopoTab(p);
+        renderItensTab(p);
+      }
+    }
+  }
+
+  _escopoIdParaVincular = null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CALCULADORA DE ATIVIDADES — PRODUTIVIDADE + BOM
+// ══════════════════════════════════════════════════════════════
+/**
+ * Calcula HH e materiais para "Montagem de eletroduto 3/4""
+ *
+ * @param {number} qtd  Quantidade em metros
+ * @returns {{ hh_total: number, materiais: Array }}
+ *
+ * Exemplo para 10 m:
+ *   hh_total          = 10 * 0.8 = 8 hh
+ *   eletroduto 3/4"   = ceil(10 * 1 / 3) = 4 barras
+ *   abraçadeira       = ceil(10 * 0.5)   = 5 un
+ *   parafuso + bucha  = ceil(10 * 0.5)   = 5 un
+ */
+function calcMontarEletroduto34(qtd) {
+  qtd = Number(qtd) || 0;
+
+  var ATIVIDADE = {
+    nome:                  'Montagem de eletroduto 3/4"',
+    recurso_tipo:          'hh',
+    unidade_execucao:      'm',
+    fator_produtividade:   0.8
+  };
+
+  var BOM = [
+    {
+      descricao:                    'Eletroduto 3/4"',
+      unidade_execucao:             'm',
+      unidade_compra:               'barra',
+      fator_conversao:              3,
+      consumo_por_unidade_execucao: 1,
+      arredondamento:               'ceil'
+    },
+    {
+      descricao:                    'Abraçadeira',
+      unidade_execucao:             'm',
+      unidade_compra:               'un',
+      fator_conversao:              1,
+      consumo_por_unidade_execucao: 0.5,
+      arredondamento:               'ceil'
+    },
+    {
+      descricao:                    'Parafuso + bucha',
+      unidade_execucao:             'm',
+      unidade_compra:               'un',
+      fator_conversao:              1,
+      consumo_por_unidade_execucao: 0.5,
+      arredondamento:               'ceil'
+    }
+  ];
+
+  var hh_total = qtd * ATIVIDADE.fator_produtividade;
+
+  var materiais = BOM.map(function(m) {
+    var raw = (qtd * m.consumo_por_unidade_execucao) / m.fator_conversao;
+    var quantidade_compra = m.arredondamento === 'ceil' ? Math.ceil(raw) : raw;
+    return {
+      descricao:        m.descricao,
+      unidade_compra:   m.unidade_compra,
+      quantidade_compra: quantidade_compra
+    };
+  });
+
+  return {
+    atividade:  ATIVIDADE.nome,
+    quantidade: qtd,
+    unidade:    ATIVIDADE.unidade_execucao,
+    hh_total:   hh_total,
+    materiais:  materiais
+  };
+}
+window.calcMontarEletroduto34 = calcMontarEletroduto34;
 
 // ══════════════════════════════════════════════════════════════
 // ITENS TAB
