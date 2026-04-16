@@ -1387,6 +1387,7 @@ function renderEscopoTab(p) {
       return '<div class="card" style="margin:0">'
         + '<div style="display:flex;justify-content:flex-end;gap:.3rem;margin-bottom:.35rem">'
         + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem" onclick="editEscopoItem(' + i + ')">✏ Editar</button>'
+        + (linkedItem ? '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem" onclick="editarItemDeEscopo(' + i + ')">✏ Editar Item</button>' : '')
         + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem;color:var(--red);border-color:var(--red)" onclick="deleteEscopoItem(' + i + ')">× Excluir</button>'
         + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .8rem;font-size:.8rem;margin-bottom:.4rem">'
@@ -1727,6 +1728,62 @@ function _abrirItemModalComDados(p, ei, calcResult, qtd) {
 }
 
 // ── Entry point called from Escopo tab button ─────────────────
+// ── Edit linked item from Escopo card ────────────────────────
+// Reuses editItem (app-core.js) — same function as Itens tab pencil button.
+function editarItemDeEscopo(escopoIdx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+
+  var escopoList = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var ei = escopoList[escopoIdx];
+  if (!ei) return;
+
+  var biSrc = (typeof editId !== 'undefined' && editId === p.id
+               && typeof budg !== 'undefined' && Array.isArray(budg))
+              ? budg : (p.bi || []);
+  var linkedItem = (ei.item_ref ? biSrc.find(function(b){ return b.id === ei.item_ref; }) : null)
+                || biSrc.find(function(b){ return b.escopo_id === ei._id; });
+  if (!linkedItem) return;
+
+  // Set edit context so editItem / salvarItemModal operate on this proposal
+  editId = _pdId;
+  budg   = JSON.parse(JSON.stringify(p.bi || []));
+
+  if (typeof editItem === 'function') editItem(linkedItem.id);
+
+  // Hook save button to sync edits back to proposta-detalhe
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = _salvarEdicaoItemDeEscopo;
+}
+window.editarItemDeEscopo = editarItemDeEscopo;
+
+function _salvarEdicaoItemDeEscopo() {
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = function(){ if (typeof salvarItemModal === 'function') salvarItemModal(); };
+
+  if (typeof salvarItemModal === 'function') salvarItemModal();
+
+  var modal = document.getElementById('itemModal');
+  var saved = modal && modal.style.display === 'none';
+
+  if (saved && _pdId) {
+    var p = props.find(function(x){ return x.id === _pdId; });
+    if (p && Array.isArray(budg)) {
+      p.bi = JSON.parse(JSON.stringify(budg));
+      var _pvS = 0, _pvM = 0;
+      p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM+=n2(it.pvt); else _pvS+=n2(it.pvt); });
+      p.vS  = _pvS; p.vM  = _pvM; p.val = _pvS + _pvM - n2(p.vD);
+      try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+      if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+      if (typeof rDash === 'function') rDash();
+      renderEscopoTab(p);
+      renderItensTab(p);
+    }
+  }
+}
+
 function criarItemDeEscopo(escopoIdx) {
   if (!_pdId) return;
   var p = props.find(function(x){ return x.id === _pdId; });
