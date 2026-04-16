@@ -1414,6 +1414,7 @@ function renderEscopoTab(p) {
     + '<div><div style="' + labelStyle + '">Disciplina</div><input id="esc-disc" placeholder="ex: Elétrica" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Equipamento</div><input id="esc-equip" placeholder="ex: Painel CC" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Atividade</div><input id="esc-ativ" placeholder="ex: Cabeamento" style="' + inpStyle + '"></div>'
+    + '<div id="esc-qtd-exec-row" style="display:none"><div style="' + labelStyle + '">Quantidade de execução</div><input id="esc-qtd-exec" type="number" min="0.1" step="0.1" placeholder="ex: 10" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Descrição</div><textarea id="esc-desc" placeholder="Descrição detalhada..." rows="2" style="' + inpStyle + 'resize:vertical;min-height:56px"></textarea></div>'
     + '<label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;cursor:pointer"><input type="checkbox" id="esc-gera"> Gera item de orçamento</label>'
     + '<div style="display:flex;gap:.4rem;margin-top:.2rem">'
@@ -1466,6 +1467,20 @@ function editEscopoItem(idx) {
   var gera = document.getElementById('esc-gera');
   if (gera) gera.checked = !!it.gera_item;
 
+  // Show qty field only for productive standard activities
+  var _atvPadrao = buscarAtividadePadrao(it.atividade);
+  var qtdRow = document.getElementById('esc-qtd-exec-row');
+  var qtdInp = document.getElementById('esc-qtd-exec');
+  if (qtdRow && qtdInp) {
+    if (_atvPadrao && _atvPadrao.modo_execucao === 'produtivo') {
+      qtdRow.style.display = '';
+      qtdInp.value = it.quantidade_execucao || '';
+    } else {
+      qtdRow.style.display = 'none';
+      qtdInp.value = '';
+    }
+  }
+
   f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1486,24 +1501,68 @@ function addEscopoItem() {
   if (!p.stages.escopo) p.stages.escopo = { itens: [] };
   if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
 
+  var _qtdExecVal = parseFloat((document.getElementById('esc-qtd-exec') || {}).value) || null;
+
   var item = {
-    _id:         (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
-                    ? p.stages.escopo.itens[_escopoEditIdx]._id
-                    : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
-    fase:        (document.getElementById('esc-fase')  || {}).value || '',
-    disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
-    equipamento: (document.getElementById('esc-equip') || {}).value || '',
-    atividade:   (document.getElementById('esc-ativ')  || {}).value || '',
-    descricao:   (document.getElementById('esc-desc')  || {}).value || '',
-    gera_item:  !!(document.getElementById('esc-gera')  || {}).checked,
-    item_ref:    null
+    _id:                (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
+                           ? p.stages.escopo.itens[_escopoEditIdx]._id
+                           : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
+    fase:               (document.getElementById('esc-fase')  || {}).value || '',
+    disciplina:         (document.getElementById('esc-disc')  || {}).value || '',
+    equipamento:        (document.getElementById('esc-equip') || {}).value || '',
+    atividade:          (document.getElementById('esc-ativ')  || {}).value || '',
+    descricao:          (document.getElementById('esc-desc')  || {}).value || '',
+    gera_item:         !!(document.getElementById('esc-gera')  || {}).checked,
+    item_ref:           null,
+    quantidade_execucao: _qtdExecVal
   };
 
-  if (_escopoEditIdx !== null) {
+  var _isEdit = _escopoEditIdx !== null;
+  if (_isEdit) {
     p.stages.escopo.itens[_escopoEditIdx] = item;
     _escopoEditIdx = null;
   } else {
     p.stages.escopo.itens.push(item);
+  }
+
+  // If editing a productive-flow item that has a linked bi entry,
+  // update the generated description and HH-derived quantity fields.
+  // Pricing formula (pvt = cu * mult) is unchanged; only mult/dias are updated.
+  if (_isEdit && _qtdExecVal) {
+    var _atvEd = buscarAtividadePadrao(item.atividade);
+    if (_atvEd && _atvEd.modo_execucao === 'produtivo') {
+      var _biSrc = (typeof editId !== 'undefined' && editId === p.id
+                    && typeof budg !== 'undefined' && Array.isArray(budg))
+                   ? budg : (p.bi || []);
+      var _linked = _biSrc.find(function(b){ return b.escopo_id === item._id; });
+      if (_linked) {
+        var _calc = calcularAtividade(_atvEd, _qtdExecVal);
+        var _matNote = _calc.materiais.map(function(m){
+          return m.quantidade + ' ' + (m.unidade_compra || 'un') + ' ' + m.descricao;
+        }).join(', ');
+        _linked.desc = _atvEd.nome + ' — ' + _qtdExecVal + ' ' + _atvEd.unidade_execucao + ' (' + _calc.hh + ' hh)';
+        _linked.inst = 'Mat: ' + _matNote;
+        _linked.mult = _calc.hh;
+        _linked.dias = _calc.hh;
+        _linked.tec  = 1;
+        _linked.hpd  = 1;
+        _linked.pvt  = n2(_linked.cu) * _calc.hh; // same formula: cu × mult
+        // Mirror budg back to p.bi
+        p.bi = JSON.parse(JSON.stringify(_biSrc));
+        // Recalculate proposal totals
+        var _pvS2 = 0, _pvM2 = 0;
+        p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM2+=n2(it.pvt); else _pvS2+=n2(it.pvt); });
+        p.vS  = _pvS2;
+        p.vM  = _pvM2;
+        p.val = _pvS2 + _pvM2 - n2(p.vD);
+        try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+        if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        renderEscopoTab(p);
+        renderItensTab(p);
+        renderRecursosTab(p);
+        return;
+      }
+    }
   }
 
   renderEscopoTab(p);
