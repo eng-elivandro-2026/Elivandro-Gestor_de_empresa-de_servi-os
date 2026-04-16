@@ -1440,6 +1440,11 @@ function toggleEscopoForm() {
     _escopoEditIdx = null;
   } else {
     f.style.display = 'block';
+    // Reset qty row — only shown by editEscopoItem for productive activities
+    var qtdRow = document.getElementById('esc-qtd-exec-row');
+    var qtdInp = document.getElementById('esc-qtd-exec');
+    if (qtdRow) qtdRow.style.display = 'none';
+    if (qtdInp) qtdInp.value = '';
   }
 }
 
@@ -1565,7 +1570,13 @@ function addEscopoItem() {
     }
   }
 
+  // All other paths (non-productive edit, new item, productive edit without linked bi):
+  // persist the stages change and refresh both tabs so origin labels and selector
+  // options in Itens always reflect the current escopo data.
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderEscopoTab(p);
+  renderItensTab(p);
 }
 
 var _escopoIdParaVincular = null; // escopo._id to auto-link after modal save
