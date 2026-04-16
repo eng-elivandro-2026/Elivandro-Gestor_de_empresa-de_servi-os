@@ -1701,6 +1701,7 @@ function _salvarItemDeEscopo() {
         if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
         renderEscopoTab(p);
         renderItensTab(p);
+        renderRecursosTab(p);
       }
     }
   }
