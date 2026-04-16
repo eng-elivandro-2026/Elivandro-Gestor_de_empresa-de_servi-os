@@ -1518,31 +1518,62 @@ function _isAtividadeEletroduto34(atividade) {
   return n.indexOf('eletroduto') >= 0 && (n.indexOf('3/4') >= 0 || n.indexOf('34') >= 0);
 }
 
-function criarItemDeEscopo(escopoIdx) {
-  if (!_pdId) return;
-  var p = props.find(function(x){ return x.id === _pdId; });
-  if (!p) return;
+// ── Quantity overlay modal (replaces native prompt) ──────────
+function _mostrarQtdModal(p, ei, onConfirm) {
+  var s = 'background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .7rem;font-size:.95rem;box-sizing:border-box;width:100%';
+  var overlay = document.createElement('div');
+  overlay.id = 'qtdEscopoOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML =
+    '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r3);padding:1.4rem 1.6rem;min-width:300px;max-width:400px;width:90%">' +
+      '<p style="font-weight:600;margin:0 0 .2rem;font-size:.95rem">' + esc(ei.atividade || 'Criar Item') + '</p>' +
+      (ei.equipamento
+        ? '<p style="color:var(--text3);font-size:.8rem;margin:0 0 1rem">' + esc(ei.equipamento) + '</p>'
+        : '<div style="margin-bottom:1rem"></div>') +
+      '<label style="font-size:.83rem;color:var(--text2);display:block;margin-bottom:.35rem">Quantidade de execução (m)</label>' +
+      '<input id="qtdEscopoInput" type="number" min="0.1" step="0.1" placeholder="ex: 10" style="' + s + '">' +
+      '<div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">' +
+        '<button id="qtdEscopoCancelar" style="padding:.38rem .9rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);cursor:pointer;font-size:.85rem">Cancelar</button>' +
+        '<button id="qtdEscopoOk" style="padding:.38rem .9rem;background:var(--accent,#3b82f6);border:none;border-radius:var(--r2);color:#fff;cursor:pointer;font-weight:600;font-size:.85rem">Confirmar</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
 
-  var escopoList = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
-    ? p.stages.escopo.itens : [];
-  var ei = escopoList[escopoIdx];
-  if (!ei) return;
+  var inp = document.getElementById('qtdEscopoInput');
+  if (inp) setTimeout(function(){ inp.focus(); }, 50);
 
-  // ── Prototype: quantity step for eletroduto 3/4" ─────────
-  var calcResult = null;
-  if (_isAtividadeEletroduto34(ei.atividade)) {
-    var qtdStr = prompt(
-      'Montagem de eletroduto 3/4"\n'
-      + 'Equipamento: ' + (ei.equipamento || '—') + '\n\n'
-      + 'Quantidade de execução (metros):',
-      ''
-    );
-    if (qtdStr === null) return; // user cancelled — abort, no modal
-    var qtd = parseFloat(String(qtdStr).replace(',', '.'));
-    if (isNaN(qtd) || qtd <= 0) { alert('Quantidade inválida. Informe um número maior que zero.'); return; }
-    calcResult = calcMontarEletroduto34(qtd);
+  function fechar() {
+    var el = document.getElementById('qtdEscopoOverlay');
+    if (el) el.remove();
   }
 
+  document.getElementById('qtdEscopoCancelar').onclick = fechar;
+
+  document.getElementById('qtdEscopoOk').onclick = function() {
+    var val = parseFloat(String(inp.value).replace(',', '.'));
+    if (isNaN(val) || val <= 0) {
+      inp.style.border = '1px solid var(--red,#e55)';
+      inp.focus();
+      return;
+    }
+    fechar();
+    onConfirm(val);
+  };
+
+  if (inp) {
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter')  document.getElementById('qtdEscopoOk').click();
+      if (e.key === 'Escape') fechar();
+    });
+  }
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) fechar();
+  });
+}
+
+// ── Continuation: open item modal and pre-fill ───────────────
+function _abrirItemModalComDados(p, ei, calcResult) {
   _escopoIdParaVincular = ei._id;
 
   // Set editId + budg context so getPrcAtual() and salvarItemModal() work correctly
@@ -1574,10 +1605,7 @@ function criarItemDeEscopo(escopoIdx) {
 
   if (calcResult) {
     // ── Eletroduto 3/4" path: pre-fill with calc results ─────
-    // Description: activity name + quantity + HH total
     var desc = calcResult.atividade + ' — ' + calcResult.quantidade + ' m (' + calcResult.hh_total + ' hh)';
-
-    // Material list as a compact note in the Instalação field
     var matNote = calcResult.materiais.map(function(m) {
       return m.quantidade_compra + ' ' + m.unidade_compra + ' ' + m.descricao;
     }).join(', ');
@@ -1591,7 +1619,7 @@ function criarItemDeEscopo(escopoIdx) {
     if (Q('mTec'))  Q('mTec').value  = 1;
     if (Q('mDias')) Q('mDias').value = calcResult.hh_total;
     if (Q('mHpd'))  Q('mHpd').value  = 1;
-    if (typeof mCalcPV === 'function') mCalcPV(); // refresh PV display
+    if (typeof mCalcPV === 'function') mCalcPV();
   } else {
     // ── Standard path: generic escopo pre-fill ────────────────
     var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ') || ei.descricao || '';
@@ -1603,6 +1631,29 @@ function criarItemDeEscopo(escopoIdx) {
   // Override save button for this single save — restored by _salvarItemDeEscopo
   var btn = Q('btnSalvarItemModal');
   if (btn) btn.onclick = _salvarItemDeEscopo;
+}
+
+// ── Entry point called from Escopo tab button ─────────────────
+function criarItemDeEscopo(escopoIdx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+
+  var escopoList = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var ei = escopoList[escopoIdx];
+  if (!ei) return;
+
+  if (_isAtividadeEletroduto34(ei.atividade)) {
+    // Show quantity overlay; open item modal only after user confirms
+    _mostrarQtdModal(p, ei, function(qtd) {
+      _abrirItemModalComDados(p, ei, calcMontarEletroduto34(qtd));
+    });
+    return;
+  }
+
+  // Non-eletroduto: open item modal directly with standard pre-fill
+  _abrirItemModalComDados(p, ei, null);
 }
 
 function _salvarItemDeEscopo() {
