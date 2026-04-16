@@ -1343,6 +1343,1538 @@ function fmAbrirProposta(id){
 
 
 // ══════════════════════════════════════════════════════════════
+// ESCOPO TAB
+// ══════════════════════════════════════════════════════════════
+var _escopoEditIdx = null;
+
+function renderEscopoTab(p) {
+  var el = document.getElementById('pd-panel-escopo');
+  if (!el) return;
+
+  var itens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+
+  var inpStyle = 'width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .6rem;font-size:.8rem;font-family:inherit;box-sizing:border-box';
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.15rem';
+
+  // Use the live budg when this proposal is open in the edit wizard (same rule as renderItensTab)
+  var biItens = (typeof editId !== 'undefined' && editId === p.id
+                 && typeof budg !== 'undefined' && Array.isArray(budg))
+    ? budg : (p.bi || []);
+
+  var cardsHtml = '';
+  if (itens.length) {
+    cardsHtml = itens.map(function(it, i) {
+      var geraItemBadge = it.gera_item
+        ? '<span style="background:rgba(63,185,80,.15);color:var(--green);padding:.1rem .45rem;border-radius:3px;font-size:.7rem">Gera item</span>'
+        : '';
+
+      // Find linked bi item by escopo_id or item_ref
+      var linkedItem = (it.item_ref ? biItens.find(function(b){ return b.id === it.item_ref; }) : null)
+                    || biItens.find(function(b){ return b.escopo_id === it._id; });
+
+      var statusChip, itemAction;
+      if (linkedItem) {
+        var linkedDesc = (linkedItem.desc || linkedItem.cat || '').slice(0, 60);
+        statusChip = '<span style="font-size:.7rem;color:var(--green);font-weight:600">✅ Item criado</span>'
+          + (linkedDesc ? '<span style="font-size:.68rem;color:var(--text3);margin-left:.35rem">' + esc(linkedDesc) + '</span>' : '');
+        itemAction = '';
+      } else {
+        statusChip = '<span style="font-size:.7rem;color:var(--text3)">Sem item vinculado</span>';
+        itemAction = '<button class="btn ba bsm" style="font-size:.72rem;padding:.2rem .55rem" onclick="criarItemDeEscopo(' + i + ')">➕ Criar Item</button>';
+      }
+
+      return '<div class="card" style="margin:0">'
+        + '<div style="display:flex;justify-content:flex-end;gap:.3rem;margin-bottom:.35rem">'
+        + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem" onclick="editEscopoItem(' + i + ')">✏ Editar</button>'
+        + '<button class="btn bd bsm" style="font-size:.7rem;padding:.18rem .5rem;color:var(--red);border-color:var(--red)" onclick="deleteEscopoItem(' + i + ')">× Excluir</button>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .8rem;font-size:.8rem;margin-bottom:.4rem">'
+        + '<div><div style="' + labelStyle + '">Fase</div><div style="font-weight:600">' + esc(it.fase || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Disciplina</div><div style="font-weight:600">' + esc(it.disciplina || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Equipamento</div><div>' + esc(it.equipamento || '—') + '</div></div>'
+        + '<div><div style="' + labelStyle + '">Atividade</div><div>' + esc(it.atividade || '—') + '</div></div>'
+        + '</div>'
+        + (it.descricao ? '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.4rem">' + esc(it.descricao) + '</div>' : '')
+        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;border-top:1px solid var(--border);padding-top:.35rem;margin-top:.1rem">'
+        + statusChip
+        + (geraItemBadge ? '<span style="margin-left:auto">' + geraItemBadge + '</span>' : '')
+        + (itemAction    ? '<span>' + itemAction + '</span>'   : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } else {
+    cardsHtml = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum escopo cadastrado</div>';
+  }
+
+  var formHtml = '<div id="escopo-form" style="display:none">'
+    + '<div class="card" style="margin:0;display:grid;gap:.45rem">'
+    + '<div id="escopo-form-title" style="font-size:.78rem;font-weight:700;color:var(--accent)">Novo Escopo</div>'
+    + '<div><div style="' + labelStyle + '">Fase</div><input id="esc-fase" placeholder="ex: Instalação" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Disciplina</div><input id="esc-disc" placeholder="ex: Elétrica" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Equipamento</div><input id="esc-equip" placeholder="ex: Painel CC" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Atividade</div><input id="esc-ativ" placeholder="ex: Cabeamento" style="' + inpStyle + '"></div>'
+    + '<div><div style="' + labelStyle + '">Descrição</div><textarea id="esc-desc" placeholder="Descrição detalhada..." rows="2" style="' + inpStyle + 'resize:vertical;min-height:56px"></textarea></div>'
+    + '<label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;cursor:pointer"><input type="checkbox" id="esc-gera"> Gera item de orçamento</label>'
+    + '<div style="display:flex;gap:.4rem;margin-top:.2rem">'
+    + '<button class="btn bg bsm" onclick="addEscopoItem()">Salvar</button>'
+    + '<button class="btn bd bsm" onclick="toggleEscopoForm()">Cancelar</button>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + cardsHtml
+    + '<button class="btn ba bsm" onclick="toggleEscopoForm()" style="justify-self:start;margin-top:.2rem">+ Adicionar Escopo</button>'
+    + formHtml
+    + '</div>';
+}
+
+function toggleEscopoForm() {
+  var f = document.getElementById('escopo-form');
+  if (!f) return;
+  var isOpen = f.style.display !== 'none';
+  if (isOpen) {
+    f.style.display = 'none';
+    _escopoEditIdx = null;
+  } else {
+    f.style.display = 'block';
+  }
+}
+
+function editEscopoItem(idx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+  var it = p.stages.escopo.itens[idx];
+  if (!it) return;
+
+  _escopoEditIdx = idx;
+
+  var f = document.getElementById('escopo-form');
+  if (f) f.style.display = 'block';
+
+  var title = document.getElementById('escopo-form-title');
+  if (title) title.textContent = 'Editar Escopo';
+
+  var set = function(id, val){ var el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('esc-fase',  it.fase);
+  set('esc-disc',  it.disciplina);
+  set('esc-equip', it.equipamento);
+  set('esc-ativ',  it.atividade);
+  set('esc-desc',  it.descricao);
+  var gera = document.getElementById('esc-gera');
+  if (gera) gera.checked = !!it.gera_item;
+
+  f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function deleteEscopoItem(idx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+  p.stages.escopo.itens.splice(idx, 1);
+  _escopoEditIdx = null;
+  renderEscopoTab(p);
+}
+
+function addEscopoItem() {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+  if (!p.stages) p.stages = (typeof criarStagesVazios === 'function') ? criarStagesVazios() : {};
+  if (!p.stages.escopo) p.stages.escopo = { itens: [] };
+  if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
+
+  var item = {
+    _id:         (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
+                    ? p.stages.escopo.itens[_escopoEditIdx]._id
+                    : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
+    fase:        (document.getElementById('esc-fase')  || {}).value || '',
+    disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
+    equipamento: (document.getElementById('esc-equip') || {}).value || '',
+    atividade:   (document.getElementById('esc-ativ')  || {}).value || '',
+    descricao:   (document.getElementById('esc-desc')  || {}).value || '',
+    gera_item:  !!(document.getElementById('esc-gera')  || {}).checked,
+    item_ref:    null
+  };
+
+  if (_escopoEditIdx !== null) {
+    p.stages.escopo.itens[_escopoEditIdx] = item;
+    _escopoEditIdx = null;
+  } else {
+    p.stages.escopo.itens.push(item);
+  }
+
+  renderEscopoTab(p);
+}
+
+var _escopoIdParaVincular = null; // escopo._id to auto-link after modal save
+
+// Detects the eletroduto 3/4" prototype activity by atividade text
+function _isAtividadeEletroduto34(atividade) {
+  if (!atividade) return false;
+  var n = String(atividade).toLowerCase();
+  return n.indexOf('eletroduto') >= 0 && (n.indexOf('3/4') >= 0 || n.indexOf('34') >= 0);
+}
+
+function criarItemDeEscopo(escopoIdx) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p) return;
+
+  var escopoList = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var ei = escopoList[escopoIdx];
+  if (!ei) return;
+
+  // ── Prototype: quantity step for eletroduto 3/4" ─────────
+  var calcResult = null;
+  if (_isAtividadeEletroduto34(ei.atividade)) {
+    var qtdStr = prompt(
+      'Montagem de eletroduto 3/4"\n'
+      + 'Equipamento: ' + (ei.equipamento || '—') + '\n\n'
+      + 'Quantidade de execução (metros):',
+      ''
+    );
+    if (qtdStr === null) return; // user cancelled — abort, no modal
+    var qtd = parseFloat(String(qtdStr).replace(',', '.'));
+    if (isNaN(qtd) || qtd <= 0) { alert('Quantidade inválida. Informe um número maior que zero.'); return; }
+    calcResult = calcMontarEletroduto34(qtd);
+  }
+
+  _escopoIdParaVincular = ei._id;
+
+  // Set editId + budg context so getPrcAtual() and salvarItemModal() work correctly
+  // without navigating away from proposta-detalhe
+  editId = _pdId;
+  budg = JSON.parse(JSON.stringify(p.bi || []));
+
+  // Open item modal as overlay (stays on proposta-detalhe)
+  abrirItemModal(null);
+
+  // ── Category suggestion (shared for both paths) ───────────
+  var DISC_PREFIX = {
+    'Automação': 'AC', 'Elétrica': 'EL', 'Mecânica': 'ME',
+    'TI': 'TI', 'Gestão': 'GE', 'Instrumentação': 'IN', 'Civil': 'CI'
+  };
+  var catPrefix = DISC_PREFIX[ei.disciplina] || '';
+  if (catPrefix) {
+    var sel = Q('mCat');
+    if (sel) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.indexOf(catPrefix) === 0) {
+          sel.value = sel.options[i].value;
+          if (typeof mOnCat === 'function') mOnCat();
+          break;
+        }
+      }
+    }
+  }
+
+  if (calcResult) {
+    // ── Eletroduto 3/4" path: pre-fill with calc results ─────
+    // Description: activity name + quantity + HH total
+    var desc = calcResult.atividade + ' — ' + calcResult.quantidade + ' m (' + calcResult.hh_total + ' hh)';
+
+    // Material list as a compact note in the Instalação field
+    var matNote = calcResult.materiais.map(function(m) {
+      return m.quantidade_compra + ' ' + m.unidade_compra + ' ' + m.descricao;
+    }).join(', ');
+
+    if (Q('mDesc'))     Q('mDesc').value     = desc;
+    if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
+    if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
+    if (Q('mInst'))     Q('mInst').value     = 'Mat: ' + matNote;
+
+    // Set service qty = HH total (tec=1, dias=hh_total, hpd=1 → mult=hh_total)
+    if (Q('mTec'))  Q('mTec').value  = 1;
+    if (Q('mDias')) Q('mDias').value = calcResult.hh_total;
+    if (Q('mHpd'))  Q('mHpd').value  = 1;
+    if (typeof mCalcPV === 'function') mCalcPV(); // refresh PV display
+  } else {
+    // ── Standard path: generic escopo pre-fill ────────────────
+    var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ') || ei.descricao || '';
+    if (Q('mDesc'))     Q('mDesc').value     = desc;
+    if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
+    if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
+  }
+
+  // Override save button for this single save — restored by _salvarItemDeEscopo
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = _salvarItemDeEscopo;
+}
+
+function _salvarItemDeEscopo() {
+  // Restore the button FIRST so a failed validation doesn't leave a stale override
+  var btn = Q('btnSalvarItemModal');
+  if (btn) btn.onclick = function(){ if (typeof salvarItemModal === 'function') salvarItemModal(); };
+
+  var prelen = Array.isArray(budg) ? budg.length : 0;
+  if (typeof salvarItemModal === 'function') salvarItemModal();
+
+  // Check if save succeeded: modal closed and budg grew by one
+  var modal = document.getElementById('itemModal');
+  var saved  = modal && modal.style.display === 'none' && Array.isArray(budg) && budg.length > prelen;
+
+  if (saved && _escopoIdParaVincular && _pdId) {
+    var newItem = budg[prelen]; // the newly pushed item
+    if (newItem) {
+      newItem.escopo_id = _escopoIdParaVincular;
+
+      var p = props.find(function(x){ return x.id === _pdId; });
+      if (p) {
+        // Sync budg (with new item + escopo_id) back into p.bi
+        p.bi = JSON.parse(JSON.stringify(budg));
+        try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+        if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        renderEscopoTab(p);
+        renderItensTab(p);
+      }
+    }
+  }
+
+  _escopoIdParaVincular = null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CALCULADORA DE ATIVIDADES — PRODUTIVIDADE + BOM
+// ══════════════════════════════════════════════════════════════
+/**
+ * Calcula HH e materiais para "Montagem de eletroduto 3/4""
+ *
+ * @param {number} qtd  Quantidade em metros
+ * @returns {{ hh_total: number, materiais: Array }}
+ *
+ * Exemplo para 10 m:
+ *   hh_total          = 10 * 0.8 = 8 hh
+ *   eletroduto 3/4"   = ceil(10 * 1 / 3) = 4 barras
+ *   abraçadeira       = ceil(10 * 0.5)   = 5 un
+ *   parafuso + bucha  = ceil(10 * 0.5)   = 5 un
+ */
+function calcMontarEletroduto34(qtd) {
+  qtd = Number(qtd) || 0;
+
+  var ATIVIDADE = {
+    nome:                  'Montagem de eletroduto 3/4"',
+    recurso_tipo:          'hh',
+    unidade_execucao:      'm',
+    fator_produtividade:   0.8
+  };
+
+  var BOM = [
+    {
+      descricao:                    'Eletroduto 3/4"',
+      unidade_execucao:             'm',
+      unidade_compra:               'barra',
+      fator_conversao:              3,
+      consumo_por_unidade_execucao: 1,
+      arredondamento:               'ceil'
+    },
+    {
+      descricao:                    'Abraçadeira',
+      unidade_execucao:             'm',
+      unidade_compra:               'un',
+      fator_conversao:              1,
+      consumo_por_unidade_execucao: 0.5,
+      arredondamento:               'ceil'
+    },
+    {
+      descricao:                    'Parafuso + bucha',
+      unidade_execucao:             'm',
+      unidade_compra:               'un',
+      fator_conversao:              1,
+      consumo_por_unidade_execucao: 0.5,
+      arredondamento:               'ceil'
+    }
+  ];
+
+  var hh_total = qtd * ATIVIDADE.fator_produtividade;
+
+  var materiais = BOM.map(function(m) {
+    var raw = (qtd * m.consumo_por_unidade_execucao) / m.fator_conversao;
+    var quantidade_compra = m.arredondamento === 'ceil' ? Math.ceil(raw) : raw;
+    return {
+      descricao:        m.descricao,
+      unidade_compra:   m.unidade_compra,
+      quantidade_compra: quantidade_compra
+    };
+  });
+
+  return {
+    atividade:  ATIVIDADE.nome,
+    quantidade: qtd,
+    unidade:    ATIVIDADE.unidade_execucao,
+    hh_total:   hh_total,
+    materiais:  materiais
+  };
+}
+window.calcMontarEletroduto34 = calcMontarEletroduto34;
+
+// ══════════════════════════════════════════════════════════════
+// ITENS TAB
+// ══════════════════════════════════════════════════════════════
+function renderItensTab(p) {
+  var el = document.getElementById('pd-panel-itens');
+  if (!el) return;
+
+  // When this proposal is currently loaded in the edit wizard, budg is the live
+  // source of truth (salvarItemModal pushes to budg without updating props[].bi
+  // until upsertCurrentDraft fires). Fall back to p.bi for read-only view.
+  var itens = (typeof editId !== 'undefined' && editId === p.id
+               && typeof budg !== 'undefined' && Array.isArray(budg))
+    ? budg : (p.bi || []);
+
+  if (!itens.length) {
+    el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum item orçado</div>';
+    return;
+  }
+
+  var escopoItens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+  var selStyle = 'margin-top:.28rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text3);font-size:.67rem;font-family:inherit;padding:.15rem .3rem;max-width:100%;cursor:pointer';
+
+  var totalIncluido = 0;
+  var rows = itens.map(function(it) {
+    var inc = it.inc !== false;
+    var tipo = it.t === 'material' ? 'Mat' : 'Svc';
+    var tipoColor = it.t === 'material' ? 'var(--purple)' : 'var(--blue)';
+    var tipoBg   = it.t === 'material' ? 'rgba(188,140,255,.12)' : 'rgba(88,166,255,.12)';
+
+    var qty = '';
+    if (it.t === 'material') {
+      qty = String(n2(it.mult)) + (it.un1 ? ' ' + it.un1 : '');
+    } else {
+      var parts = [];
+      if ((it.tec || 1) > 1) parts.push((it.tec || 1) + ' Tec.');
+      parts.push((it.dias || 1) + (it.un1 ? ' ' + it.un1 : ' d'));
+      parts.push((it.hpd || 1) + (it.un2 ? ' ' + it.un2 : 'h'));
+      qty = parts.join(' × ');
+    }
+
+    var pvt = n2(it.pvt);
+    if (inc) totalIncluido += pvt;
+
+    var rowOp = inc ? '1' : '0.45';
+    var pvtDisplay = inc
+      ? '<span style="font-weight:700;color:var(--green)">' + money(pvt) + '</span>'
+      : '<span style="color:var(--text3);font-size:.75rem;text-decoration:line-through">' + money(pvt) + '</span>';
+
+    var tercBadge = it.terc
+      ? '<span style="font-size:.65rem;color:#f97316;margin-left:.3rem">●Terc</span>'
+      : '';
+
+    var origemLabel = '';
+    if (it.escopo_id) {
+      var _escopoItens = (p.stages && p.stages.escopo && p.stages.escopo.itens) || [];
+      var escopoRef = _escopoItens.find(function(e){ return e._id === it.escopo_id; });
+      if (escopoRef) {
+        var origemParts = [escopoRef.fase, escopoRef.equipamento, escopoRef.atividade].filter(Boolean);
+        origemLabel = '<div style="font-size:.65rem;color:var(--text3);margin-top:.15rem">'
+          + 'Origem: Escopo [' + esc(origemParts.join(' | ')) + ']'
+          + '</div>';
+      }
+    }
+
+    // Build selector — explicit selected check per option, no string replace
+    var selOpts = '<option value=""' + (!it.escopo_id ? ' selected' : '') + '>— sem vínculo —</option>'
+      + escopoItens.map(function(e) {
+          if (!e._id) return '';
+          var label = [e.fase, e.equipamento, e.atividade].filter(Boolean).join(' | ') || e.descricao || e._id;
+          var isSel = it.escopo_id === e._id;
+          return '<option value="' + esc(e._id) + '"' + (isSel ? ' selected' : '') + '>' + esc(label) + '</option>';
+        }).join('');
+    var selector = '<div>'
+      + '<select style="' + selStyle + '" onchange="linkEscopoItem(\'' + esc(it.id) + '\',this.value)">'
+      + selOpts
+      + '</select>'
+      + '</div>';
+
+    return '<tr style="opacity:' + rowOp + ';border-bottom:1px solid var(--border)">'
+      + '<td style="padding:.38rem .5rem;font-size:.78rem">'
+      +   '<span style="background:' + tipoBg + ';color:' + tipoColor + ';padding:.05rem .35rem;border-radius:3px;font-size:.66rem;font-weight:700;margin-right:.35rem">' + tipo + '</span>'
+      +   esc(it.desc || it.cat || '—') + tercBadge
+      +   origemLabel
+      +   selector
+      + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.75rem;color:var(--text2);white-space:nowrap">' + esc(qty) + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.75rem;text-align:right;color:var(--text2)">' + money(n2(it.pvu)) + '</td>'
+      + '<td style="padding:.38rem .5rem;font-size:.78rem;text-align:right">' + pvtDisplay + '</td>'
+      + '</tr>';
+  }).join('');
+
+  el.innerHTML = '<div style="overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+    + '<thead><tr style="background:var(--bg3)">'
+    +   '<th style="padding:.38rem .5rem;text-align:left;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">Descrição</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:left;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">Qtd</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:right;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">PV Unit.</th>'
+    +   '<th style="padding:.38rem .5rem;text-align:right;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">PV Total</th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '<tfoot><tr style="border-top:2px solid var(--border)">'
+    +   '<td colspan="3" style="padding:.42rem .5rem;font-size:.78rem;font-weight:700;color:var(--text2)">Total incluído</td>'
+    +   '<td style="padding:.42rem .5rem;font-size:.88rem;font-weight:700;color:var(--green);text-align:right">' + money(totalIncluido) + '</td>'
+    + '</tr></tfoot>'
+    + '</table>'
+    + '</div>';
+}
+
+function linkEscopoItem(itemId, escopoId) {
+  if (!_pdId) return;
+  var p = props.find(function(x){ return x.id === _pdId; });
+  if (!p || !p.bi) return;
+  var it = p.bi.find(function(x){ return x.id === itemId; });
+  if (!it) return;
+  if (escopoId) {
+    it.escopo_id = escopoId;
+  } else {
+    delete it.escopo_id;
+  }
+  // Mirror into budg when this proposal is loaded in the edit wizard,
+  // so renderItensTab (which prefers budg when editId === p.id) stays in sync.
+  if (typeof editId !== 'undefined' && editId === _pdId
+      && typeof budg !== 'undefined' && Array.isArray(budg)) {
+    var budgIt = budg.find(function(x){ return x.id === itemId; });
+    if (budgIt) {
+      if (escopoId) { budgIt.escopo_id = escopoId; } else { delete budgIt.escopo_id; }
+    }
+  }
+  // Persist: localStorage + Supabase
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderItensTab(p);
+}
+
+// ══════════════════════════════════════════════════════════════
+// FINANCEIRO TAB
+// ══════════════════════════════════════════════════════════════
+function renderFinanceiroTab(p) {
+  var el = document.getElementById('pd-panel-financeiro');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.15rem';
+
+  function pct(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    return (n2(v) * 100).toFixed(2).replace('.', ',') + '%';
+  }
+  function row(label, value, valueStyle) {
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.28rem 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:.78rem;color:var(--text2)">' + label + '</span>'
+      + '<span style="font-size:.82rem;font-weight:600;' + (valueStyle || '') + '">' + value + '</span>'
+      + '</div>';
+  }
+
+  // ── Resumo de valores ───────────────────────────────────────
+  var vS   = n2(p.vS);
+  var vM   = n2(p.vM);
+  var vD   = n2(p.vD);
+  var vTot = n2(p.val) || (vS + vM - vD);
+
+  var resumoRows = '';
+  if (vS) resumoRows += row('Serviços', money(vS), 'color:var(--blue)');
+  if (vM) resumoRows += row('Materiais', money(vM), 'color:var(--purple)');
+  if (vD) resumoRows += row('Desconto', '– ' + money(vD), 'color:var(--red)');
+  resumoRows += '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.38rem 0;margin-top:.15rem">'
+    + '<span style="font-size:.8rem;font-weight:700;color:var(--text2)">Total</span>'
+    + '<span style="font-size:1.15rem;font-weight:700;color:var(--green)">' + money(vTot) + '</span>'
+    + '</div>';
+
+  var resumoCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + ';margin-bottom:.5rem">Resumo Financeiro</div>'
+    + resumoRows
+    + '</div>';
+
+  // ── Alíquotas ──────────────────────────────────────────────
+  var aliqCard = '';
+  var a = p.aliq || {};
+  if (p.aliq) {
+    var aliqRows = ''
+      + row('NF Serviços',   pct(a.nfS))
+      + row('NF Materiais',  pct(a.nfM))
+      + row('Retenção Svc',  pct(a.rS))
+      + row('Comissão Svc',  pct(a.comS))
+      + row('Comissão Mat',  pct(a.comM))
+      + row('Negociação',    pct(a.neg));
+    if (a.fechadoSemDesc)
+      aliqRows += row('Fechado sem desconto', 'Sim', 'color:var(--green)');
+    aliqCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + ';margin-bottom:.5rem">Alíquotas / Impostos</div>'
+      + aliqRows
+      + '</div>';
+  }
+
+  // ── Status ─────────────────────────────────────────────────
+  var fasObj = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + ';margin-bottom:.3rem">Status</div>'
+    + '<div style="font-size:.92rem;font-weight:600">' + esc(fasLabel) + '</div>'
+    + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + resumoCard
+    + aliqCard
+    + statusCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DOCUMENTOS TAB
+// ══════════════════════════════════════════════════════════════
+function renderDocumentosTab(p) {
+  var el = document.getElementById('pd-panel-documentos');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+
+  function checkRow(label, ok, detail) {
+    return '<div style="display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+      + '<span style="font-size:.85rem">' + (ok ? '✅' : '⬜') + '</span>'
+      + '<span style="' + (ok ? 'color:var(--text)' : 'color:var(--text3)') + '">' + label + '</span>'
+      + (detail ? '<span style="margin-left:auto;font-size:.72rem;color:var(--text3)">' + esc(String(detail)) + '</span>' : '')
+      + '</div>';
+  }
+
+  // ── Checklist de conteúdo ──────────────────────────────────
+  var escSecs = p.esc || [];
+  var biItens  = p.bi  || [];
+  var revs     = p.revs || [];
+  var logHist  = (p.log && Array.isArray(p.log.hist))  ? p.log.hist  : [];
+  var logRelat = (p.log && Array.isArray(p.log.relat)) ? p.log.relat : [];
+
+  var checksHtml = ''
+    + checkRow('Escopo / Seções',    escSecs.length > 0, escSecs.length  ? escSecs.length + ' seção(ões)' : '')
+    + checkRow('Itens de orçamento', biItens.length > 0, biItens.length  ? biItens.length + ' item(ns)' : '')
+    + checkRow('Revisões',           revs.length > 0,    revs.length     ? revs.length + ' revisão(ões)' : '')
+    + checkRow('Histórico comercial',logHist.length > 0, logHist.length  ? logHist.length + ' registro(s)' : '')
+    + checkRow('Relatórios de serviço', logRelat.length > 0, logRelat.length ? logRelat.length + ' relatório(s)' : '');
+
+  var checkCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Conteúdo da Proposta</div>'
+    + checksHtml
+    + '</div>';
+
+  // ── Revisões ───────────────────────────────────────────────
+  var revsCard = '';
+  if (revs.length) {
+    var revsRows = revs.map(function(r) {
+      return '<div style="display:flex;gap:.6rem;align-items:baseline;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.78rem">'
+        + '<span style="font-weight:700;color:var(--accent);flex-shrink:0">Rev. ' + esc(r.rev || '') + '</span>'
+        + '<span style="color:var(--text3);flex-shrink:0">' + esc(r.dat || '') + '</span>'
+        + '<span style="color:var(--text2);flex:1">' + esc(r.desc || '') + '</span>'
+        + '<span style="color:var(--text3);font-size:.7rem;flex-shrink:0">' + esc(r.por || '') + '</span>'
+        + '</div>';
+    }).join('');
+    revsCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Revisões</div>'
+      + revsRows
+      + '</div>';
+  }
+
+  // ── Histórico comercial (últimos 3) ────────────────────────
+  var histCard = '';
+  if (logHist.length) {
+    var sorted = logHist.slice().sort(function(a, b){ return (b.ts||0) - (a.ts||0); });
+    var histRows = sorted.slice(0, 3).map(function(item) {
+      return '<div style="padding:.35rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.15rem">'
+        +   '<span style="font-size:.78rem;font-weight:600">' + esc(item.titulo || '(sem título)') + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3)">' + esc(item.data || '') + '</span>'
+        + '</div>'
+        + (item.texto ? '<div style="font-size:.73rem;color:var(--text2);line-height:1.45;white-space:pre-wrap">' + esc(item.texto.slice(0, 120)) + (item.texto.length > 120 ? '…' : '') + '</div>' : '')
+        + '</div>';
+    }).join('');
+    var moreLabel = logHist.length > 3 ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.35rem">+ ' + (logHist.length - 3) + ' registro(s) adicionais</div>' : '';
+    histCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Histórico Comercial</div>'
+      + histRows + moreLabel
+      + '</div>';
+  }
+
+  // ── Sem histórico ─────────────────────────────────────────
+  var hasContent = revs.length || logHist.length || logRelat.length;
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum histórico de documentos disponível</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + checkCard
+    + revsCard
+    + histCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderVisitaTab(p) {
+  var el = document.getElementById('pd-panel-visita');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Resolve data: stages.visita → legacy tl/p fields ─────
+  var sv  = (p.stages && p.stages.visita)     || {};
+  var sov = (p.stages && p.stages.org_visita) || {};
+  var tl  = p.tl || {};
+
+  var dataVisita   = sv.data_visita   || tl.dtVisita || '';
+  var local        = sv.local         || p.loc       || '';
+  var responsavel  = sv.responsavel   || p.res       || '';
+  var objetivo     = sv.objetivo      || '';
+  var observacoes  = sv.observacoes   || '';
+
+  var hasAnyData = dataVisita || local || responsavel || objetivo || observacoes;
+
+  // ── Dados da visita ───────────────────────────────────────
+  var dadosHtml = ''
+    + infoRow('Data da visita',  dataVisita)
+    + infoRow('Local',           local)
+    + infoRow('Responsável',     responsavel)
+    + infoRow('Objetivo',        objetivo);
+
+  var dadosCard = hasAnyData
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Dados da Visita</div>'
+      + dadosHtml
+      + '</div>'
+    : '';
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (observacoes && observacoes.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(observacoes.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Notas de logística (org_visita) ───────────────────────
+  var notasCard = (sov.notas_logistica && sov.notas_logistica.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas de Logística</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(sov.notas_logistica.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Checklist pré-visita ──────────────────────────────────
+  var checklist = Array.isArray(sv.checklist_pre) ? sv.checklist_pre : [];
+  var checkCard = '';
+  if (checklist.length) {
+    var checkRows = checklist.map(function(item) {
+      return '<div style="display:flex;align-items:center;gap:.55rem;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="font-size:.85rem">' + (item.concluido ? '✅' : '⬜') + '</span>'
+        + '<span style="color:' + (item.concluido ? 'var(--text)' : 'var(--text2)') + '">' + esc(item.descricao || '') + '</span>'
+        + '</div>';
+    }).join('');
+    checkCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Checklist Pré-Visita</div>'
+      + checkRows
+      + '</div>';
+  }
+
+  // ── Equipe (org_visita) ───────────────────────────────────
+  var equipe = Array.isArray(sov.equipe) ? sov.equipe : [];
+  var equipeCard = '';
+  if (equipe.length) {
+    var equipeRows = equipe.map(function(m) {
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.nome || '') + '</span>'
+        + '<span style="font-size:.73rem;color:var(--text3)">' + esc(m.funcao || '') + '</span>'
+        + '</div>';
+    }).join('');
+    equipeCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Equipe</div>'
+      + equipeRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = hasAnyData || checklist.length || equipe.length
+                 || (sov.notas_logistica && sov.notas_logistica.trim());
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma visita registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + dadosCard
+    + observCard
+    + notasCard
+    + checkCard
+    + equipeCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderConsolidacaoTab(p) {
+  var el = document.getElementById('pd-panel-consolidacao');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:10rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  function tagList(items) {
+    return items.map(function(s) {
+      return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:.15rem .5rem;font-size:.73rem;color:var(--text2);margin:.15rem .2rem .15rem 0">' + esc(s) + '</span>';
+    }).join('');
+  }
+
+  function bulletList(items) {
+    return items.map(function(s) {
+      return '<div style="padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--text2);display:flex;gap:.5rem">'
+        + '<span style="color:var(--text3);flex-shrink:0">•</span>'
+        + '<span>' + esc(s) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sc  = (p.stages && p.stages.consolidacao) || {};
+  var tl  = p.tl || {};
+
+  var disciplinas = Array.isArray(sc.disciplinas)  ? sc.disciplinas.filter(Boolean)  : [];
+  var premissas   = Array.isArray(sc.premissas)    ? sc.premissas.filter(Boolean)    : [];
+  var restricoes  = Array.isArray(sc.restricoes)   ? sc.restricoes.filter(Boolean)   : [];
+  var requisitos  = Array.isArray(sc.requisitos)   ? sc.requisitos.filter(Boolean)   : [];
+  var tensEsp     = Array.isArray(sc.tensoes_especiais)
+                    ? sc.tensoes_especiais
+                    : (Array.isArray(p.tens) ? p.tens : []);
+
+  // Tension id → display label
+  var TENS_LABEL = { pT1F: '1F', pT2F: '2F', pT3F: '3F', pTN: 'N', pTPE: 'PE' };
+
+  var notasTec    = sc.notas_tecnicas          || p.area    || '';
+  var equipPrinc  = sc.equipamentos_principais || p.equip   || '';
+  var tensVal     = sc.tensao_alimentacao      || p.tensVal || '';
+  var tensCmd     = sc.tensao_comando          || p.tensCmd || '';
+
+  // Cronograma preliminar from planejamento stage
+  var plan      = (p.stages && p.stages.planejamento) || {};
+  var dtInicio  = plan.data_inicio  || tl.dtInicioExec || '';
+  var dtTermino = plan.data_termino || tl.dtTermino    || '';
+
+  // ── Disciplinas (tags) ────────────────────────────────────
+  var discCard = disciplinas.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Disciplinas</div>'
+      + '<div style="margin-top:.25rem">' + tagList(disciplinas) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Equipamentos / tensões ────────────────────────────────
+  var tensEspLabels = tensEsp.map(function(id) {
+    return TENS_LABEL[id] || id;
+  }).join(', ');
+
+  var tecHtml = ''
+    + infoRow('Equipamentos principais', equipPrinc)
+    + infoRow('Tensão de alimentação',   tensVal)
+    + infoRow('Tensão de comando',       tensCmd)
+    + (tensEspLabels ? infoRow('Tensões especiais', tensEspLabels) : '');
+
+  var tecCard = tecHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Informações Técnicas</div>'
+      + tecHtml
+      + '</div>'
+    : '';
+
+  // ── Notas técnicas / escopo entendido ─────────────────────
+  var notasCard = (notasTec && notasTec.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas Técnicas / Escopo Entendido</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(notasTec.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Premissas ─────────────────────────────────────────────
+  var premCard = premissas.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Premissas</div>'
+      + bulletList(premissas)
+      + '</div>'
+    : '';
+
+  // ── Restrições / Exclusões ────────────────────────────────
+  var restCard = restricoes.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Restrições / Exclusões</div>'
+      + bulletList(restricoes)
+      + '</div>'
+    : '';
+
+  // ── Requisitos ────────────────────────────────────────────
+  var reqCard = '';
+  if (requisitos.length) {
+    var reqRows = requisitos.map(function(r) {
+      return '<div style="padding:.25rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="font-size:.8rem;color:var(--text2)">' + esc(r.descricao || '') + '</div>'
+        + (r.origem ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">Origem: ' + esc(r.origem) + '</div>' : '')
+        + '</div>';
+    }).join('');
+    reqCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Requisitos</div>'
+      + reqRows
+      + '</div>';
+  }
+
+  // ── Cronograma preliminar ─────────────────────────────────
+  var cronHtml = ''
+    + infoRow('Início previsto',   dtInicio)
+    + infoRow('Término previsto',  dtTermino);
+
+  var cronCard = (dtInicio || dtTermino)
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Cronograma Preliminar</div>'
+      + cronHtml
+      + '</div>'
+    : '';
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = disciplinas.length || premissas.length || restricoes.length
+                 || requisitos.length || notasTec || equipPrinc
+                 || dtInicio || dtTermino;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma consolidação técnica registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + discCard
+    + tecCard
+    + notasCard
+    + premCard
+    + restCard
+    + reqCard
+    + cronCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderEngenhariaTab(p) {
+  var el = document.getElementById('pd-panel-engenharia');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem;align-items:baseline';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  var se  = (p.stages && p.stages.engenharia) || {};
+  var sr  = (p.stages && p.stages.recursos)   || {};
+
+  var especificacoes = Array.isArray(se.especificacoes) ? se.especificacoes.filter(function(x){ return x && x.parametro; }) : [];
+  var memoriais      = Array.isArray(se.memoriais)      ? se.memoriais.filter(function(x){ return x && x.titulo; })      : [];
+  var documentos     = Array.isArray(se.documentos_ref) ? se.documentos_ref.filter(function(x){ return x && x.titulo; }) : [];
+  var notas          = se.notas || '';
+
+  var materiais  = Array.isArray(sr.materiais)  ? sr.materiais.filter(function(x){ return x && x.descricao; })  : [];
+  var maoObra    = Array.isArray(sr.mao_obra)   ? sr.mao_obra.filter(function(x){ return x && x.funcao; })      : [];
+  var terceiros  = Array.isArray(sr.terceiros)  ? sr.terceiros.filter(function(x){ return x && x.servico; })    : [];
+
+  // ── Especificações / Parâmetros técnicos ──────────────────
+  var especCard = '';
+  if (especificacoes.length) {
+    var especRows = especificacoes.map(function(e) {
+      var valorStr = e.valor + (e.unidade ? ' ' + e.unidade : '');
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + keyStyle + '">' + esc(e.parametro) + '</span>'
+        + '<span style="' + valStyle + ';font-weight:600">' + esc(valorStr) + '</span>'
+        + (e.norma ? '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(e.norma) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    especCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Parâmetros Técnicos</div>'
+      + especRows
+      + '</div>';
+  }
+
+  // ── Notas de engenharia ───────────────────────────────────
+  var notasCard = (notas && notas.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas de Engenharia</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(notas.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Memoriais / notas de cálculo ─────────────────────────
+  var memCard = '';
+  if (memoriais.length) {
+    var memRows = memoriais.map(function(m) {
+      return '<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.15rem">' + esc(m.titulo) + '</div>'
+        + (m.conteudo && m.conteudo.trim()
+            ? '<div style="font-size:.75rem;color:var(--text2);white-space:pre-wrap;line-height:1.45">'
+              + esc(m.conteudo.trim().slice(0, 200)) + (m.conteudo.trim().length > 200 ? '…' : '')
+              + '</div>'
+            : '')
+        + '</div>';
+    }).join('');
+    memCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Memoriais Descritivos / Notas de Cálculo</div>'
+      + memRows
+      + '</div>';
+  }
+
+  // ── Documentos de referência ──────────────────────────────
+  var docCard = '';
+  if (documentos.length) {
+    var docRows = documentos.map(function(d) {
+      return '<div style="display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="color:var(--text2);flex:1">' + esc(d.titulo) + '</span>'
+        + (d.url_ou_path ? '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(d.url_ou_path) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    docCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Referências Técnicas</div>'
+      + docRows
+      + '</div>';
+  }
+
+  // ── Lista de materiais (recursos) ─────────────────────────
+  var matCard = '';
+  if (materiais.length) {
+    var matRows = materiais.map(function(m) {
+      var qtdStr = m.quantidade ? (m.quantidade + (m.unidade ? ' ' + m.unidade : '')) : '';
+      var custoStr = m.custo_unit ? 'R$ ' + n2(m.custo_unit).toFixed(2).replace('.', ',') : '';
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.descricao) + '</span>'
+        + (qtdStr   ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(qtdStr)   + '</span>' : '')
+        + (custoStr ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(custoStr) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    matCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Lista de Materiais</div>'
+      + matRows
+      + '</div>';
+  }
+
+  // ── Mão de obra (recursos) ────────────────────────────────
+  var moCard = '';
+  if (maoObra.length) {
+    var moRows = maoObra.map(function(m) {
+      var detalhe = [
+        m.quantidade ? m.quantidade + ' profissional(is)' : '',
+        m.dias ? m.dias + ' dia(s)' : ''
+      ].filter(Boolean).join(' · ');
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(m.funcao) + '</span>'
+        + (detalhe ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(detalhe) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    moCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Mão de Obra</div>'
+      + moRows
+      + '</div>';
+  }
+
+  // ── Terceiros (recursos) ──────────────────────────────────
+  var tercCard = '';
+  if (terceiros.length) {
+    var tercRows = terceiros.map(function(t) {
+      var valorStr = t.valor ? 'R$ ' + n2(t.valor).toFixed(2).replace('.', ',') : '';
+      return '<div style="' + rowStyle + '">'
+        + '<span style="color:var(--text3);flex-shrink:0;min-width:7rem">' + esc(t.fornecedor || '') + '</span>'
+        + '<span style="' + valStyle + '">' + esc(t.servico) + '</span>'
+        + (valorStr ? '<span style="font-size:.73rem;color:var(--text3);flex-shrink:0">' + esc(valorStr) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    tercCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Terceiros / Subcontratados</div>'
+      + tercRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = especificacoes.length || memoriais.length || documentos.length
+                 || notas || materiais.length || maoObra.length || terceiros.length;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum dado de engenharia registrado</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + especCard
+    + notasCard
+    + memCard
+    + docCard
+    + matCard
+    + moCard
+    + tercCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderExecucaoTab(p) {
+  var el = document.getElementById('pd-panel-execucao');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sx  = (p.stages && p.stages.execucao)    || {};
+  var se  = (p.stages && p.stages.entrega)     || {};
+  var sp  = (p.stages && p.stages.planejamento)|| {};
+  var tl  = p.tl || {};
+
+  var progresso    = (typeof sx.progresso_pct === 'number') ? sx.progresso_pct : 0;
+  var registros    = Array.isArray(sx.registros)        ? sx.registros.filter(function(r){ return r && r.descricao; }) : [];
+  var apontIds     = Array.isArray(sx.apontamento_ids)  ? sx.apontamento_ids : [];
+
+  var dtInicio     = sp.data_inicio   || tl.dtInicioExec || '';
+  var dtTermino    = sp.data_termino  || tl.dtTermino    || '';
+  var dtEntrega    = se.data_entrega  || '';
+  var dtAceite     = se.data_aceite   || tl.dtAceite     || '';
+  var respAceite   = se.responsavel_aceite || '';
+  var observacoes  = se.observacoes   || '';
+  var checklist    = Array.isArray(se.checklist) ? se.checklist.filter(function(c){ return c && c.item; }) : [];
+
+  var fasObj   = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+
+  // Execution-phase fases only for status colour
+  var FAS_EXEC = ['andamento','em_pausa_falta_material','em_pausa_aguardando_cliente',
+                  'em_pausa_aguardando_terceiro','taf','sat','atrasado'];
+  var FAS_DONE = ['finalizado','faturado','recebido'];
+  var fasColor = FAS_DONE.indexOf(p.fas) >= 0 ? '#3fb950'
+               : p.fas === 'atrasado'          ? '#f85149'
+               : FAS_EXEC.indexOf(p.fas) >= 0  ? '#d4a017'
+               : 'var(--text2)';
+
+  var hasDates = dtInicio || dtTermino || dtEntrega || dtAceite;
+
+  // ── Status / Progresso ────────────────────────────────────
+  var pctBar = progresso > 0
+    ? '<div style="background:var(--bg3);border-radius:4px;height:8px;margin-top:.5rem;overflow:hidden">'
+      + '<div style="background:var(--accent);width:' + Math.min(progresso, 100) + '%;height:100%;border-radius:4px"></div>'
+      + '</div>'
+      + '<div style="font-size:.7rem;color:var(--text3);margin-top:.2rem;text-align:right">' + progresso + '%</div>'
+    : '';
+
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Status de Execução</div>'
+    + '<div style="font-size:.88rem;font-weight:700;color:' + fasColor + ';margin-bottom:' + (pctBar ? '.4rem' : '0') + '">' + esc(fasLabel) + '</div>'
+    + pctBar
+    + '</div>';
+
+  // ── Datas ─────────────────────────────────────────────────
+  var datasCard = hasDates
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Datas</div>'
+      + infoRow('Início',          dtInicio)
+      + infoRow('Término previsto',dtTermino)
+      + infoRow('Entrega',         dtEntrega)
+      + infoRow('Aceite',          dtAceite)
+      + infoRow('Responsável aceite', respAceite)
+      + '</div>'
+    : '';
+
+  // ── Checklist de entrega ──────────────────────────────────
+  var checkCard = '';
+  if (checklist.length) {
+    var checkRows = checklist.map(function(c) {
+      return '<div style="display:flex;align-items:center;gap:.55rem;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="font-size:.85rem">' + (c.concluido ? '✅' : '⬜') + '</span>'
+        + '<span style="color:' + (c.concluido ? 'var(--text)' : 'var(--text2)') + '">' + esc(c.item) + '</span>'
+        + '</div>';
+    }).join('');
+    var done = checklist.filter(function(c){ return c.concluido; }).length;
+    checkCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + ';display:flex;justify-content:space-between">'
+      + '<span>Checklist de Entrega</span>'
+      + '<span style="font-weight:600;color:var(--accent)">' + done + '/' + checklist.length + '</span>'
+      + '</div>'
+      + checkRows
+      + '</div>';
+  }
+
+  // ── Registros de execução ─────────────────────────────────
+  var regCard = '';
+  if (registros.length) {
+    var regRows = registros.slice().sort(function(a, b){
+      return (b.data || '').localeCompare(a.data || '');
+    }).map(function(r) {
+      var statusColor = r.status === 'concluido' ? '#3fb950'
+                      : r.status === 'pendente'  ? '#d4a017'
+                      : 'var(--text3)';
+      return '<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.12rem">'
+        +   '<span style="font-size:.78rem;color:var(--text2);flex:1">' + esc(r.descricao) + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0">' + esc(r.data || '') + '</span>'
+        + '</div>'
+        + (r.responsavel || r.status
+            ? '<div style="font-size:.7rem;display:flex;gap:.6rem">'
+              + (r.responsavel ? '<span style="color:var(--text3)">' + esc(r.responsavel) + '</span>' : '')
+              + (r.status ? '<span style="color:' + statusColor + ';font-weight:600">' + esc(r.status) + '</span>' : '')
+              + '</div>'
+            : '')
+        + '</div>';
+    }).join('');
+    regCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Registros de Execução</div>'
+      + regRows
+      + '</div>';
+  }
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (observacoes && observacoes.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações de Entrega</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(observacoes.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Apontamentos / Despesas (RH — não vinculados ainda) ───
+  var apont = apontIds.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Apontamentos</div>'
+      + '<div style="font-size:.8rem;color:var(--text2)">' + apontIds.length + ' apontamento(s) vinculado(s) (detalhe disponível no módulo RH)</div>'
+      + '</div>'
+    : '';
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasContent = hasDates || checklist.length || registros.length
+                 || progresso > 0 || observacoes || apontIds.length;
+
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma informação de execução registrada</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + statusCard
+    + datasCard
+    + checkCard
+    + regCard
+    + observCard
+    + apont
+    + placeholderCard
+    + '</div>';
+}
+
+function renderRecursosTab(p) {
+  var el = document.getElementById('pd-panel-recursos');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem;align-items:baseline';
+  var valStyle   = 'color:var(--text);flex:1';
+  var numStyle   = 'color:var(--text3);font-size:.73rem;flex-shrink:0';
+
+  function brl(v) {
+    var num = n2(v);
+    return num > 0 ? 'R$ ' + num.toFixed(2).replace('.', ',') : '';
+  }
+
+  // ── Resolve sources ───────────────────────────────────────
+  var sr = (p.stages && p.stages.recursos) || {};
+
+  var stgMat  = Array.isArray(sr.materiais) ? sr.materiais.filter(function(x){ return x && x.descricao; })   : [];
+  var stgMO   = Array.isArray(sr.mao_obra)  ? sr.mao_obra.filter(function(x){ return x && x.funcao; })       : [];
+  var stgTerc = Array.isArray(sr.terceiros) ? sr.terceiros.filter(function(x){ return x && x.servico; })     : [];
+  var stgOut  = Array.isArray(sr.outros)    ? sr.outros.filter(function(x){ return x && x.descricao; })      : [];
+  var stgRes  = sr.resumo || {};
+
+  var hasStages = stgMat.length || stgMO.length || stgTerc.length || stgOut.length
+               || (stgRes.custo_total > 0);
+
+  // ── Legacy fallback from p.bi[] ───────────────────────────
+  var biIncluidos = (p.bi || []).filter(function(it){ return it && it.inc !== false; });
+
+  var legMat  = !hasStages ? biIncluidos.filter(function(it){ return it.t === 'material' && !it.terc; })  : [];
+  var legMO   = !hasStages ? biIncluidos.filter(function(it){ return it.t === 'servico'  && !it.terc; })  : [];
+  var legTerc = !hasStages ? biIncluidos.filter(function(it){ return it.terc === true; })                  : [];
+
+  // ── Decide active source ──────────────────────────────────
+  var mat  = hasStages ? stgMat  : legMat;
+  var mo   = hasStages ? stgMO   : legMO;
+  var terc = hasStages ? stgTerc : legTerc;
+  var out  = stgOut;   // no legacy equivalent
+
+  var isLegacy = !hasStages && (mat.length || mo.length || terc.length);
+
+  // ── Compute totals ────────────────────────────────────────
+  function stgCost(arr, field) {
+    return arr.reduce(function(s, x){ return s + n2(x[field] || x.valor || 0) * n2(x.quantidade || x.dias || 1); }, 0);
+  }
+  function biCost(arr) {
+    return arr.reduce(function(s, it){ return s + n2(it.cu) * n2(it.mult || 1); }, 0);
+  }
+
+  var totMat  = stgRes.material_total   > 0 ? stgRes.material_total   : (hasStages ? stgCost(stgMat,  'custo_unit') : biCost(legMat));
+  var totMO   = stgRes.mao_obra_total   > 0 ? stgRes.mao_obra_total   : (hasStages ? stgCost(stgMO,   'valor_dia')  : biCost(legMO));
+  var totTerc = stgRes.terceiros_total  > 0 ? stgRes.terceiros_total  : (hasStages ? stgCost(stgTerc, 'valor')      : biCost(legTerc));
+  var totOut  = stgRes.outros_total     > 0 ? stgRes.outros_total     : stgCost(stgOut, 'valor');
+  var totGeral = stgRes.custo_total     > 0 ? stgRes.custo_total      : (totMat + totMO + totTerc + totOut);
+
+  var hasAny = mat.length || mo.length || terc.length || out.length || totGeral > 0;
+
+  // ── Resumo ────────────────────────────────────────────────
+  function resumoRow(label, valor, color) {
+    var v = brl(valor);
+    if (!v) return '';
+    return '<div style="display:flex;justify-content:space-between;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+      + '<span style="color:var(--text3)">' + label + '</span>'
+      + '<span style="font-weight:600;color:' + color + '">' + v + '</span>'
+      + '</div>';
+  }
+
+  var resumoCard = totGeral > 0
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Resumo de Custos' + (isLegacy ? ' <span style="font-weight:400;color:var(--text3)">(estimado de itens)</span>' : '') + '</div>'
+      + resumoRow('Materiais',  totMat,  'var(--blue)')
+      + resumoRow('Mão de Obra',totMO,   'var(--text)')
+      + resumoRow('Terceiros',  totTerc, '#f97316')
+      + resumoRow('Outros',     totOut,  'var(--text2)')
+      + '<div style="display:flex;justify-content:space-between;padding:.35rem 0;margin-top:.15rem;font-size:.88rem">'
+      + '<span style="font-weight:700">Total</span>'
+      + '<span style="font-weight:700;color:var(--accent)">R$ ' + totGeral.toFixed(2).replace('.', ',') + '</span>'
+      + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Materiais ─────────────────────────────────────────────
+  var matCard = '';
+  if (mat.length) {
+    var matRows = mat.map(function(m) {
+      var desc   = m.descricao || m.desc || '';
+      var qtd    = hasStages
+        ? (m.quantidade ? m.quantidade + (m.unidade ? ' ' + m.unidade : '') : '')
+        : (m.mult ? n2(m.mult) + (m.un1 ? ' ' + m.un1 : '') : '');
+      var custo  = hasStages ? brl(n2(m.custo_unit) * n2(m.quantidade || 1)) : brl(n2(m.cu) * n2(m.mult || 1));
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(desc) + '</span>'
+        + (qtd   ? '<span style="' + numStyle + '">' + esc(String(qtd)) + '</span>' : '')
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>'       : '')
+        + '</div>';
+    }).join('');
+    matCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Materiais (' + mat.length + ')</div>'
+      + matRows
+      + '</div>';
+  }
+
+  // ── Mão de obra ───────────────────────────────────────────
+  var moCard = '';
+  if (mo.length) {
+    var moRows = mo.map(function(m) {
+      var label  = m.funcao || m.desc || '';
+      var detalhe, custo;
+      if (hasStages) {
+        detalhe = [
+          m.quantidade ? m.quantidade + ' prof.' : '',
+          m.dias       ? m.dias + ' dia(s)'      : ''
+        ].filter(Boolean).join(' · ');
+        custo = brl(n2(m.valor_dia) * n2(m.quantidade || 1) * n2(m.dias || 1));
+      } else {
+        var _tec  = n2(m.tec  || 1);
+        var _dias = n2(m.dias || 1);
+        var _hpd  = n2(m.hpd  || 1);
+        detalhe = [
+          _tec  > 1  ? _tec + ' tec.'   : '',
+          _dias > 0  ? _dias + ' dia(s)' : '',
+          _hpd  !== 1 ? _hpd + 'h/dia'  : ''
+        ].filter(Boolean).join(' · ');
+        custo = brl(n2(m.cu) * n2(m.mult || 1));
+      }
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(label) + '</span>'
+        + (detalhe ? '<span style="' + numStyle + '">' + esc(detalhe) + '</span>' : '')
+        + (custo   ? '<span style="' + numStyle + '">' + esc(custo)   + '</span>' : '')
+        + '</div>';
+    }).join('');
+    moCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Mão de Obra (' + mo.length + ')</div>'
+      + moRows
+      + '</div>';
+  }
+
+  // ── Terceiros ─────────────────────────────────────────────
+  var tercCard = '';
+  if (terc.length) {
+    var tercRows = terc.map(function(t) {
+      var label  = t.servico || t.desc || '';
+      var forn   = t.fornecedor || '';
+      var custo  = hasStages ? brl(n2(t.valor)) : brl(n2(t.cu) * n2(t.mult || 1));
+      return '<div style="' + rowStyle + '">'
+        + (forn ? '<span style="color:var(--text3);flex-shrink:0;min-width:7rem">' + esc(forn) + '</span>' : '')
+        + '<span style="' + valStyle + '">' + esc(label) + '</span>'
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    tercCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Terceiros / Subcontratados (' + terc.length + ')</div>'
+      + tercRows
+      + '</div>';
+  }
+
+  // ── Outros / Logística ────────────────────────────────────
+  var outCard = '';
+  if (out.length) {
+    var outRows = out.map(function(o) {
+      var custo = brl(n2(o.valor));
+      return '<div style="' + rowStyle + '">'
+        + '<span style="' + valStyle + '">' + esc(o.descricao) + '</span>'
+        + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + '</div>';
+    }).join('');
+    outCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Outros / Logística (' + out.length + ')</div>'
+      + outRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var placeholderCard = !hasAny
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum recurso registrado</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + resumoCard
+    + matCard
+    + moCard
+    + tercCard
+    + outCard
+    + placeholderCard
+    + '</div>';
+}
+
+function renderComercialTab(p) {
+  var el = document.getElementById('pd-panel-comercial');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  // ── Status ────────────────────────────────────────────────
+  var fasObj   = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+  var fasColor = p.fas && p.fas.indexOf('perdido') === 0 ? '#f85149'
+               : p.fas === 'aprovado' || p.fas === 'recebido' ? '#3fb950'
+               : 'var(--text)';
+
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Status</div>'
+    + '<div style="font-size:.95rem;font-weight:700;color:' + fasColor + '">' + esc(fasLabel) + '</div>'
+    + '</div>';
+
+  // ── Datas ─────────────────────────────────────────────────
+  var datasHtml = ''
+    + infoRow('Data da proposta',  p.dat    || '')
+    + infoRow('Envio / Follow-up', p.dat2   || '')
+    + infoRow('Fechamento',        p.dtFech || '');
+
+  var datasCard = datasHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Datas</div>'
+      + datasHtml
+      + '</div>'
+    : '';
+
+  // ── Contato ───────────────────────────────────────────────
+  var contatoHtml = ''
+    + infoRow('Responsável', p.ac   || '')
+    + infoRow('E-mail',      p.mail || '')
+    + infoRow('Telefone',    p.tel  || '');
+
+  var contatoCard = contatoHtml
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Contato</div>'
+      + contatoHtml
+      + '</div>'
+    : '';
+
+  // ── Observações ───────────────────────────────────────────
+  var observCard = (p.cmnt && String(p.cmnt).trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Observações</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(String(p.cmnt).trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  // ── Follow-up histórico ───────────────────────────────────
+  var followHist = (p.stages && p.stages.followup && Array.isArray(p.stages.followup.historico))
+    ? p.stages.followup.historico
+    : [];
+
+  var followCard = '';
+  if (followHist.length) {
+    var followRows = followHist.slice().sort(function(a, b) {
+      return (b.data || '').localeCompare(a.data || '');
+    }).map(function(h) {
+      return '<div style="padding:.35rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.15rem">'
+        +   '<span style="font-size:.78rem;font-weight:600">' + esc(h.tipo || 'follow-up') + '</span>'
+        +   '<span style="font-size:.7rem;color:var(--text3)">' + esc(h.data || '') + '</span>'
+        + '</div>'
+        + (h.contato  ? '<div style="font-size:.73rem;color:var(--text3)">Contato: ' + esc(h.contato) + '</div>' : '')
+        + (h.outcome  ? '<div style="font-size:.73rem;color:var(--text2);margin-top:.1rem">' + esc(h.outcome) + '</div>' : '')
+        + (h.proxima_acao ? '<div style="font-size:.7rem;color:var(--accent);margin-top:.15rem">Próxima ação: ' + esc(h.proxima_acao) + (h.proxima_data ? ' — ' + esc(h.proxima_data) : '') + '</div>' : '')
+        + '</div>';
+    }).join('');
+    followCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Histórico de Follow-up</div>'
+      + followRows
+      + '</div>';
+  }
+
+  // ── Placeholder ───────────────────────────────────────────
+  var hasFollow = followHist.length > 0;
+  var placeholderCard = !hasFollow
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum histórico comercial disponível</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + statusCard
+    + datasCard
+    + contatoCard
+    + observCard
+    + followCard
+    + placeholderCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
 // PAINEL KPIs DE CICLOS — DASHBOARD
 // ══════════════════════════════════════════════════════════════
 function togCiclosDash(){
