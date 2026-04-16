@@ -1697,6 +1697,20 @@ function _salvarItemDeEscopo() {
       if (p) {
         // Sync budg (with new item + escopo_id) back into p.bi
         p.bi = JSON.parse(JSON.stringify(budg));
+
+        // Recalculate p.vS / p.vM / p.val from the updated p.bi so the
+        // proposal card shows the correct total without a page reload.
+        // Mirrors updBT() logic: sum pvt by type, skip excluded items.
+        var _pvS = 0, _pvM = 0;
+        p.bi.forEach(function(it) {
+          if (it.inc === false) return;
+          if (it.t === 'material') _pvM += n2(it.pvt);
+          else                     _pvS += n2(it.pvt);
+        });
+        p.vS  = _pvS;
+        p.vM  = _pvM;
+        p.val = _pvS + _pvM - n2(p.vD);
+
         try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
         if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
         renderEscopoTab(p);
