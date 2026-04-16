@@ -1573,7 +1573,7 @@ function _mostrarQtdModal(p, ei, onConfirm) {
 }
 
 // ── Continuation: open item modal and pre-fill ───────────────
-function _abrirItemModalComDados(p, ei, calcResult) {
+function _abrirItemModalComDados(p, ei, calcResult, qtd) {
   _escopoIdParaVincular = ei._id;
 
   // Set editId + budg context so getPrcAtual() and salvarItemModal() work correctly
@@ -1622,10 +1622,15 @@ function _abrirItemModalComDados(p, ei, calcResult) {
     if (typeof mCalcPV === 'function') mCalcPV();
   } else {
     // ── Standard path: generic escopo pre-fill ────────────────
-    var desc = [ei.atividade, ei.equipamento].filter(Boolean).join(' — ') || ei.descricao || '';
+    var desc = ei.atividade || [ei.atividade, ei.equipamento].filter(Boolean).join(' — ') || ei.descricao || '';
     if (Q('mDesc'))     Q('mDesc').value     = desc;
     if (Q('mEquip'))    Q('mEquip').value    = ei.equipamento || '';
     if (Q('mFaseTrab')) Q('mFaseTrab').value = ei.fase        || '';
+    if (qtd) {
+      if (Q('mQtd'))   Q('mQtd').value   = qtd;
+      if (Q('mQtdUn')) Q('mQtdUn').value = 'Unidade';
+      if (typeof mCalcPV === 'function') mCalcPV();
+    }
   }
 
   // Override save button for this single save — restored by _salvarItemDeEscopo
@@ -1656,8 +1661,10 @@ function criarItemDeEscopo(escopoIdx) {
     return;
   }
 
-  // Non-eletroduto: open item modal directly with standard pre-fill
-  _abrirItemModalComDados(p, ei, null);
+  // Generic activities: ask quantity, then open item modal with qty prefilled
+  _mostrarQtdModal(p, ei, function(qtd) {
+    _abrirItemModalComDados(p, ei, null, qtd);
+  });
 }
 
 function _salvarItemDeEscopo() {
