@@ -1494,9 +1494,43 @@ function deleteEscopoItem(idx) {
   if (!_pdId) return;
   var p = props.find(function(x){ return x.id === _pdId; });
   if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+  var deletedItem = p.stages.escopo.itens[idx];
+  var deletedId   = deletedItem && deletedItem._id;
   p.stages.escopo.itens.splice(idx, 1);
   _escopoEditIdx = null;
+  var removedAny = false;
+  if (deletedId) {
+    var biSrc = (typeof editId !== 'undefined' && editId === p.id
+                 && typeof budg !== 'undefined' && Array.isArray(budg))
+                ? budg : (p.bi || []);
+    for (var i = biSrc.length - 1; i >= 0; i--) {
+      var biItem = biSrc[i];
+      if (biItem.origem_escopo_id === deletedId || biItem.escopo_id === deletedId) {
+        if (biItem.gerado_por_escopo) {
+          biSrc.splice(i, 1);
+        } else {
+          delete biItem.escopo_id;
+        }
+        removedAny = true;
+      }
+    }
+    if (removedAny) {
+      p.bi = JSON.parse(JSON.stringify(biSrc));
+      if (typeof editId !== 'undefined' && editId === p.id
+          && typeof budg !== 'undefined') {
+        budg = JSON.parse(JSON.stringify(biSrc));
+      }
+      var _pvS = 0, _pvM = 0;
+      p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM+=n2(it.pvt); else _pvS+=n2(it.pvt); });
+      p.vS = _pvS; p.vM = _pvM; p.val = _pvS + _pvM - n2(p.vD);
+    }
+  }
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  if (removedAny && typeof rDash === 'function') rDash();
   renderEscopoTab(p);
+  renderItensTab(p);
+  if (removedAny) renderRecursosTab(p);
 }
 
 function addEscopoItem() {
@@ -1583,7 +1617,7 @@ function addEscopoItem() {
                       && typeof budg !== 'undefined' && Array.isArray(budg))
                      ? budg : (p.bi || []);
     var _linkedSync = _biSrcSync.find(function(b){ return b.escopo_id === item._id; });
-    if (_linkedSync) {
+    if (_linkedSync && _linkedSync.gerado_por_escopo) {
       var _newDesc = [item.atividade, item.equipamento].filter(Boolean).join(' — ') || item.descricao || '';
       if (_newDesc) {
         _linkedSync.desc = _newDesc;
@@ -1836,7 +1870,9 @@ function _salvarItemDeEscopo() {
   if (saved && _escopoIdParaVincular && _pdId) {
     var newItem = budg[prelen]; // the newly pushed item
     if (newItem) {
-      newItem.escopo_id = _escopoIdParaVincular;
+      newItem.escopo_id         = _escopoIdParaVincular;
+      newItem.gerado_por_escopo = true;
+      newItem.origem_escopo_id  = _escopoIdParaVincular;
 
       var p = props.find(function(x){ return x.id === _pdId; });
       if (p) {
