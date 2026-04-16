@@ -1574,6 +1574,23 @@ function addEscopoItem() {
   // All other paths (non-productive edit, new item, productive edit without linked bi):
   // persist the stages change and refresh both tabs so origin labels and selector
   // options in Itens always reflect the current escopo data.
+
+  // If editing, sync the linked bi item's desc from the updated escopo fields so
+  // the "Item criado" chip shows current equipment/atividade text.
+  if (_isEdit) {
+    var _biSrcSync = (typeof editId !== 'undefined' && editId === p.id
+                      && typeof budg !== 'undefined' && Array.isArray(budg))
+                     ? budg : (p.bi || []);
+    var _linkedSync = _biSrcSync.find(function(b){ return b.escopo_id === item._id; });
+    if (_linkedSync) {
+      var _newDesc = [item.atividade, item.equipamento].filter(Boolean).join(' — ') || item.descricao || '';
+      if (_newDesc) {
+        _linkedSync.desc = _newDesc;
+        p.bi = JSON.parse(JSON.stringify(_biSrcSync));
+      }
+    }
+  }
+
   try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderEscopoTab(p);
