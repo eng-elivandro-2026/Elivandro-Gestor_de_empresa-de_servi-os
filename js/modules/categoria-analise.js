@@ -2156,8 +2156,7 @@ function renderItensTab(p) {
 
     var origemLabel = '';
     if (it.escopo_id) {
-      var _escopoItens = (p.stages && p.stages.escopo && p.stages.escopo.itens) || [];
-      var escopoRef = _escopoItens.find(function(e){ return e._id === it.escopo_id; });
+      var escopoRef = escopoItens.find(function(e){ return e._id === it.escopo_id; });
       if (escopoRef) {
         var origemParts = [escopoRef.fase, escopoRef.equipamento, escopoRef.atividade].filter(Boolean);
         origemLabel = '<div style="font-size:.65rem;color:var(--text3);margin-top:.15rem">'
