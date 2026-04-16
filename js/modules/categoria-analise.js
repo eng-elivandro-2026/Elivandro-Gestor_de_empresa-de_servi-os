@@ -1845,6 +1845,15 @@ function calcularMontagemEletroduto34(qtd) {
 }
 window.calcularMontagemEletroduto34 = calcularMontagemEletroduto34;
 
+function testMontagemEletroduto34() {
+  var r = calcularMontagemEletroduto34(10);
+  var linhas = ['HH: ' + r.hh].concat(
+    r.materiais.map(function(m) { return m.descricao + ': ' + m.quantidade; })
+  );
+  alert(linhas.join('\n'));
+}
+window.testMontagemEletroduto34 = testMontagemEletroduto34;
+
 // ══════════════════════════════════════════════════════════════
 // ITENS TAB
 // ══════════════════════════════════════════════════════════════
