@@ -1645,9 +1645,13 @@ function criarItemDeEscopo(escopoIdx) {
   if (!ei) return;
 
   if (_isAtividadeEletroduto34(ei.atividade)) {
-    // Show quantity overlay; open item modal only after user confirms
     _mostrarQtdModal(p, ei, function(qtd) {
-      _abrirItemModalComDados(p, ei, calcMontarEletroduto34(qtd));
+      var calcResult = calcularMontagemEletroduto34(qtd);
+      // Attach activity name + quantity for display in the confirmation overlay
+      calcResult.nome     = ATIVIDADES_PADRAO['SV-IE-00001'].nome;
+      calcResult.quantidade = qtd;
+      _mostrarConfirmacaoCalculo(calcResult);
+      // item modal will be connected in next step
     });
     return;
   }
@@ -1844,6 +1848,42 @@ function calcularMontagemEletroduto34(qtd) {
   return calcularAtividade(ATIVIDADES_PADRAO['SV-IE-00001'], qtd);
 }
 window.calcularMontagemEletroduto34 = calcularMontagemEletroduto34;
+
+// ── Confirmation overlay: shows calc result, no next action yet ──
+function _mostrarConfirmacaoCalculo(calcResult) {
+  var linhas = calcResult.materiais.map(function(m) {
+    return '<tr><td style="padding:.25rem .5rem;color:var(--text2)">' + esc(m.descricao) + '</td>'
+         + '<td style="padding:.25rem .5rem;font-weight:600;text-align:right">' + m.quantidade + '</td></tr>';
+  }).join('');
+
+  var overlay = document.createElement('div');
+  overlay.id = 'calcConfirmOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3100;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML =
+    '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r3);padding:1.4rem 1.6rem;min-width:280px;max-width:380px;width:90%">' +
+      '<p style="font-weight:600;margin:0 0 .15rem;font-size:.95rem">Resultado do cálculo</p>' +
+      '<p style="color:var(--text3);font-size:.78rem;margin:0 0 1rem">' + esc(calcResult.nome || '') + ' — ' + calcResult.quantidade + ' m</p>' +
+      '<table style="width:100%;border-collapse:collapse;margin-bottom:.75rem">' +
+        '<tr><td style="padding:.25rem .5rem;color:var(--text2)">HH</td>'
+          + '<td style="padding:.25rem .5rem;font-weight:600;text-align:right">' + calcResult.hh + '</td></tr>' +
+        linhas +
+      '</table>' +
+      '<div style="display:flex;justify-content:flex-end">' +
+        '<button id="calcConfirmFechar" style="padding:.38rem 1rem;background:var(--accent,#3b82f6);border:none;border-radius:var(--r2);color:#fff;cursor:pointer;font-weight:600;font-size:.85rem">OK</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  function fechar() {
+    var el = document.getElementById('calcConfirmOverlay');
+    if (el) el.remove();
+  }
+  document.getElementById('calcConfirmFechar').onclick = fechar;
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) fechar(); });
+  document.addEventListener('keydown', function onKey(e) {
+    if (e.key === 'Escape' || e.key === 'Enter') { fechar(); document.removeEventListener('keydown', onKey); }
+  });
+}
 
 function testMontagemEletroduto34() {
   var r = calcularMontagemEletroduto34(10);
