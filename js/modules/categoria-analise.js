@@ -1562,6 +1562,7 @@ function addEscopoItem() {
         p.val = _pvS2 + _pvM2 - n2(p.vD);
         try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
         if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        if (typeof rDash === 'function') rDash();
         renderEscopoTab(p);
         renderItensTab(p);
         renderRecursosTab(p);
@@ -1783,6 +1784,7 @@ function _salvarItemDeEscopo() {
 
         try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
         if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        if (typeof rDash === 'function') rDash();
         renderEscopoTab(p);
         renderItensTab(p);
         renderRecursosTab(p);
