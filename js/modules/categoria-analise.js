@@ -1763,6 +1763,89 @@ function calcMontarEletroduto34(qtd) {
 window.calcMontarEletroduto34 = calcMontarEletroduto34;
 
 // ══════════════════════════════════════════════════════════════
+// ATIVIDADES PADRÃO — catalog + generic calculation engine
+// ══════════════════════════════════════════════════════════════
+
+var ATIVIDADES_PADRAO = {
+  'SV-IE-00001': {
+    id:                'SV-IE-00001',
+    nome:              'Montagem de eletroduto 3/4"',
+    unidade_execucao:  'm',
+
+    produtividade: {
+      recurso_tipo: 'hh',
+      fator:        0.8        // hh per m
+    },
+
+    recursos: [
+      {
+        tipo:              'material',
+        descricao:         'Eletroduto 3/4"',
+        unidade_execucao:  'm',
+        unidade_compra:    'barra',
+        fator_conversao:   3,   // 1 barra = 3 m
+        consumo:           1,   // 1 m per m executed
+        arredondamento:    'ceil'
+      },
+      {
+        tipo:              'material',
+        descricao:         'Abraçadeira',
+        unidade_execucao:  'm',
+        unidade_compra:    'un',
+        fator_conversao:   1,
+        consumo:           0.5, // 1 abraçadeira per 2 m
+        arredondamento:    'ceil'
+      },
+      {
+        tipo:              'material',
+        descricao:         'Parafuso + bucha',
+        unidade_execucao:  'm',
+        unidade_compra:    'un',
+        fator_conversao:   1,
+        consumo:           0.5,
+        arredondamento:    'ceil'
+      }
+    ]
+  }
+};
+
+/**
+ * Generic engine — calculates HH and material quantities for any
+ * ATIVIDADES_PADRAO entry.
+ *
+ * @param  {object} atividade          Entry from ATIVIDADES_PADRAO
+ * @param  {number} quantidade_execucao Quantity in atividade.unidade_execucao
+ * @returns {{ hh: number, materiais: Array<{descricao:string, quantidade:number}> }}
+ *
+ * Example — SV-IE-00001, 10 m:
+ *   hh: 8
+ *   materiais:
+ *     Eletroduto 3/4" : 4 barras
+ *     Abraçadeira     : 5 un
+ *     Parafuso + bucha: 5 un
+ */
+function calcularAtividade(atividade, quantidade_execucao) {
+  var qtd = Number(quantidade_execucao) || 0;
+  var hh  = qtd * (atividade.produtividade && atividade.produtividade.fator || 0);
+
+  var materiais = (atividade.recursos || [])
+    .filter(function(r) { return r.tipo === 'material'; })
+    .map(function(r) {
+      var raw = (qtd * r.consumo) / (r.fator_conversao || 1);
+      var quantidade = r.arredondamento === 'ceil' ? Math.ceil(raw) : raw;
+      return { descricao: r.descricao, quantidade: quantidade };
+    });
+
+  return { hh: hh, materiais: materiais };
+}
+
+// Specific wrapper — same activity, cleaner call site
+function calcularMontagemEletroduto34(qtd) {
+  return calcularAtividade(ATIVIDADES_PADRAO['SV-IE-00001'], qtd);
+}
+window.calcularMontagemEletroduto34 = calcularMontagemEletroduto34;
+
+// ══════════════════════════════════════════════════════════════
 // ITENS TAB
 // ══════════════════════════════════════════════════════════════
 function renderItensTab(p) {
