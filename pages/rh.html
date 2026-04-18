@@ -1728,6 +1728,16 @@ async function carregarHorasColab(colabId) {
     (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
   }
 
+  // Mapa reverso aptId → boletim numero via apontamentos_ids
+  var mapaAptBolPreview = {};
+  var { data: bolsColab } = await sb.from('boletins')
+    .select('numero, apontamentos_ids').eq('colaborador_id', colabId).neq('status','cancelado');
+  (bolsColab||[]).forEach(function(b){
+    (b.apontamentos_ids||[]).forEach(function(aid){
+      mapaAptBolPreview[String(aid)] = b.numero || '—';
+    });
+  });
+
   var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
   var totalAprov=0, totalPend=0, totalRej=0;
   tbody.innerHTML = _horasColabCache.map(function(a) {
@@ -1742,7 +1752,8 @@ async function carregarHorasColab(colabId) {
     var proj = mapaProps[a.proposta_id];
     var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — ' + proj.titulo : '') : (a.proposta_id||'—');
     var desc = a.descricao || '—';
-    var bolCell = a.boletim_numero ? '<span style="font-size:.7rem;color:var(--accent)">' + a.boletim_numero + '</span>' : '—';
+    var bolNum = mapaAptBolPreview[String(a.id)];
+    var bolCell = bolNum ? '<span style="font-size:.7rem;color:var(--accent)">' + bolNum + '</span>' : '—';
     return '<tr>'
       + '<td>' + fmtData(a.data) + '</td>'
       + '<td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
@@ -1803,6 +1814,14 @@ async function gerarRelatorioHoras() {
   var { data: boletins } = await bolQ;
   boletins = boletins || [];
 
+  // Mapa reverso: aptId → boletim numero (usando apontamentos_ids do boletim)
+  var mapaAptBol = {};
+  boletins.forEach(function(b){
+    (b.apontamentos_ids||[]).forEach(function(aid){
+      mapaAptBol[String(aid)] = b.numero || '—';
+    });
+  });
+
   // Buscar histórico dos apontamentos
   var aptIds = apts.map(function(a){ return a.id; });
   var historicos = {};
@@ -1826,7 +1845,7 @@ async function gerarRelatorioHoras() {
     if (a.status==='aprovado')  totalAprov++;
     else if (a.status==='pendente')  totalPend++;
     else if (a.status==='rejeitado') totalRej++;
-    if (a.boletim_id) totalComBol++;
+    if (mapaAptBol[String(a.id)]) totalComBol++;
   });
   var totalHoras = totalNormal + totalExtra50 + totalExtra100;
 
@@ -1844,7 +1863,7 @@ async function gerarRelatorioHoras() {
   var linhas = apts.map(function(a){
     var proj = mapaProps[a.proposta_id];
     var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — '+proj.titulo : '') : (a.proposta_id||'—');
-    var bolInfo = a.boletim_numero ? a.boletim_numero : '—';
+    var bolInfo = mapaAptBol[String(a.id)] || '—';
     var hasHist = historicos[a.id] && historicos[a.id].length > 0;
     return '<tr style="' + (hasHist ? 'background:#fff8c5' : '') + '">'
       + '<td style="white-space:nowrap">' + fmtData(a.data) + '</td>'
