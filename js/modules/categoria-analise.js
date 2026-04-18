@@ -1574,7 +1574,10 @@ function addEscopoItem() {
       var _biSrc = (typeof editId !== 'undefined' && editId === p.id
                     && typeof budg !== 'undefined' && Array.isArray(budg))
                    ? budg : (p.bi || []);
-      var _linked = _biSrc.find(function(b){ return b.escopo_id === item._id; });
+      var _linked = _biSrc.find(function(b){
+        return b.origem_escopo_id === item._id ||
+               (b.gerado_por_escopo && b.escopo_id === item._id);
+      });
       if (_linked) {
         var _calc = calcularAtividade(_atvEd, _qtdExecVal);
         var _matNote = _calc.materiais.map(function(m){
@@ -1616,12 +1619,20 @@ function addEscopoItem() {
     var _biSrcSync = (typeof editId !== 'undefined' && editId === p.id
                       && typeof budg !== 'undefined' && Array.isArray(budg))
                      ? budg : (p.bi || []);
-    var _linkedSync = _biSrcSync.find(function(b){ return b.escopo_id === item._id; });
-    if (_linkedSync && _linkedSync.gerado_por_escopo) {
+    var _linkedSync = _biSrcSync.find(function(b){
+      return b.origem_escopo_id === item._id ||
+             (b.gerado_por_escopo && b.escopo_id === item._id);
+    });
+    if (_linkedSync) {
       var _newDesc = [item.atividade, item.equipamento].filter(Boolean).join(' — ') || item.descricao || '';
       if (_newDesc) {
         _linkedSync.desc = _newDesc;
         p.bi = JSON.parse(JSON.stringify(_biSrcSync));
+        // When we read from p.bi (editId !== p.id), also sync budg if it is live
+        if (typeof editId !== 'undefined' && editId === p.id
+            && typeof budg !== 'undefined' && Array.isArray(budg)) {
+          budg = JSON.parse(JSON.stringify(p.bi));
+        }
       }
     }
   }
