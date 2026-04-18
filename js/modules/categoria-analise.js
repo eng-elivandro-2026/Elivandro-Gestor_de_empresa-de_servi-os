@@ -1346,6 +1346,7 @@ function fmAbrirProposta(id){
   renderCotacoesTab(p);
   renderEstruturaTab(p);
   renderResultadoTab(p);
+  renderAtividadesPadraoTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -1433,6 +1434,10 @@ function renderEscopoTab(p) {
     + '<div><div style="' + labelStyle + '">Disciplina</div><input id="esc-disc" placeholder="ex: Elétrica" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Equipamento</div><input id="esc-equip" placeholder="ex: Painel CC" style="' + inpStyle + '"></div>'
     + '<div><div style="' + labelStyle + '">Atividade</div><input id="esc-ativ" placeholder="ex: Cabeamento" style="' + inpStyle + '"></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    +   '<div><div style="' + labelStyle + '">Qtd. Técnica</div><input id="esc-qtd" type="number" min="0" step="any" placeholder="ex: 12" style="' + inpStyle + '"></div>'
+    +   '<div><div style="' + labelStyle + '">Unidade</div><input id="esc-un" placeholder="ex: m, pç, h" style="' + inpStyle + '"></div>'
+    + '</div>'
     + '<div><div style="' + labelStyle + '">Descrição</div><textarea id="esc-desc" placeholder="Descrição detalhada..." rows="2" style="' + inpStyle + 'resize:vertical;min-height:56px"></textarea></div>'
     + '<label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;cursor:pointer"><input type="checkbox" id="esc-gera"> Gera item de orçamento</label>'
     + '<div style="display:flex;gap:.4rem;margin-top:.2rem">'
@@ -1481,6 +1486,8 @@ function editEscopoItem(idx) {
   set('esc-disc',  it.disciplina);
   set('esc-equip', it.equipamento);
   set('esc-ativ',  it.atividade);
+  set('esc-qtd',   it.quantidade_tecnica != null ? String(it.quantidade_tecnica) : '');
+  set('esc-un',    it.unidade_tecnica || '');
   set('esc-desc',  it.descricao);
   var gera = document.getElementById('esc-gera');
   if (gera) gera.checked = !!it.gera_item;
@@ -1492,9 +1499,40 @@ function deleteEscopoItem(idx) {
   if (!_pdId) return;
   var p = props.find(function(x){ return x.id === _pdId; });
   if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
+
+  var deletedId = p.stages.escopo.itens[idx] && p.stages.escopo.itens[idx]._id;
   p.stages.escopo.itens.splice(idx, 1);
   _escopoEditIdx = null;
+
+  // Cascade: remove generated items, unlink manually linked items
+  if (deletedId) {
+    var removidos = 0;
+    p.bi = (p.bi || []).filter(function(bi) {
+      if (bi.escopo_id !== deletedId) return true;
+      if (bi._generated === true) { removidos++; return false; } // delete generated
+      delete bi.escopo_id;                                       // unlink manual
+      return true;
+    });
+    if (typeof budg !== 'undefined' && Array.isArray(budg)) {
+      var newBudg = budg.filter(function(bi) {
+        if (bi.escopo_id !== deletedId) return true;
+        if (bi._generated === true) return false;
+        delete bi.escopo_id;
+        return true;
+      });
+      budg.length = 0;
+      newBudg.forEach(function(x){ budg.push(x); });
+    }
+    if (removidos > 0) {
+      recalcProposalTotal(p);
+    }
+  }
+
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+
   renderEscopoTab(p);
+  renderItensTab(p);
 }
 
 function addEscopoItem() {
@@ -1505,27 +1543,52 @@ function addEscopoItem() {
   if (!p.stages.escopo) p.stages.escopo = { itens: [] };
   if (!Array.isArray(p.stages.escopo.itens)) p.stages.escopo.itens = [];
 
+  var qtdRaw = parseFloat((document.getElementById('esc-qtd') || {}).value);
   var item = {
-    _id:         (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
-                    ? p.stages.escopo.itens[_escopoEditIdx]._id
-                    : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
-    fase:        (document.getElementById('esc-fase')  || {}).value || '',
-    disciplina:  (document.getElementById('esc-disc')  || {}).value || '',
-    equipamento: (document.getElementById('esc-equip') || {}).value || '',
-    atividade:   (document.getElementById('esc-ativ')  || {}).value || '',
-    descricao:   (document.getElementById('esc-desc')  || {}).value || '',
-    gera_item:  !!(document.getElementById('esc-gera')  || {}).checked,
-    item_ref:    null
+    _id:               (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
+                          ? p.stages.escopo.itens[_escopoEditIdx]._id
+                          : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
+    fase:              (document.getElementById('esc-fase')  || {}).value || '',
+    disciplina:        (document.getElementById('esc-disc')  || {}).value || '',
+    equipamento:       (document.getElementById('esc-equip') || {}).value || '',
+    atividade:         (document.getElementById('esc-ativ')  || {}).value || '',
+    quantidade_tecnica: isNaN(qtdRaw) ? null : qtdRaw,
+    unidade_tecnica:   (document.getElementById('esc-un')   || {}).value || '',
+    descricao:         (document.getElementById('esc-desc')  || {}).value || '',
+    gera_item:        !!(document.getElementById('esc-gera') || {}).checked,
+    item_ref:          null
   };
 
-  if (_escopoEditIdx !== null) {
+  var isEdit = _escopoEditIdx !== null;
+  if (isEdit) {
     p.stages.escopo.itens[_escopoEditIdx] = item;
     _escopoEditIdx = null;
+
+    // Cascade update: sync description on items generated by this scope
+    var descAtualizado = [item.atividade, item.equipamento].filter(Boolean).join(' — ') || item.descricao;
+    (p.bi || []).forEach(function(bi) {
+      if (bi.escopo_id === item._id && bi._generated === true) {
+        bi.desc = descAtualizado || bi.desc;
+      }
+    });
+    if (typeof budg !== 'undefined' && Array.isArray(budg)) {
+      budg.forEach(function(bi) {
+        if (bi.escopo_id === item._id && bi._generated === true) {
+          bi.desc = descAtualizado || bi.desc;
+        }
+      });
+    }
   } else {
     p.stages.escopo.itens.push(item);
   }
 
+  // Persist scope + any cascaded item changes
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+
   renderEscopoTab(p);
+  if (isEdit) renderItensTab(p); // refresh itens to show updated descriptions
+  toggleEscopoForm();            // close form after save
 }
 
 var _escopoIdParaVincular = null; // escopo._id to auto-link after modal save
@@ -1594,7 +1657,8 @@ function _salvarItemDeEscopo() {
   if (saved && _escopoIdParaVincular && _pdId) {
     var newItem = budg[prelen]; // the newly pushed item
     if (newItem) {
-      newItem.escopo_id = _escopoIdParaVincular;
+      newItem.escopo_id  = _escopoIdParaVincular;
+      newItem._generated = true; // marks this as owned by the scope (cascade delete applies)
 
       var p = props.find(function(x){ return x.id === _pdId; });
       if (p) {
@@ -2648,6 +2712,10 @@ function renderRecursosTab(p) {
   var mo   = hasStages ? stgMO   : legMO;
   var terc = hasStages ? stgTerc : legTerc;
   var out  = stgOut;   // no legacy equivalent
+  var delBtn = function(tipo, idx) {
+    return '<button onclick="deleteRecurso(\'' + tipo + '\',' + idx + ')" '
+      + 'style="flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:0 .2rem;line-height:1" title="Remover">×</button>';
+  };
 
   var isLegacy = !hasStages && (mat.length || mo.length || terc.length);
 
@@ -2694,7 +2762,7 @@ function renderRecursosTab(p) {
   // ── Materiais ─────────────────────────────────────────────
   var matCard = '';
   if (mat.length) {
-    var matRows = mat.map(function(m) {
+    var matRows = mat.map(function(m, mi) {
       var desc   = m.descricao || m.desc || '';
       var qtd    = hasStages
         ? (m.quantidade ? m.quantidade + (m.unidade ? ' ' + m.unidade : '') : '')
@@ -2704,6 +2772,7 @@ function renderRecursosTab(p) {
         + '<span style="' + valStyle + '">' + esc(desc) + '</span>'
         + (qtd   ? '<span style="' + numStyle + '">' + esc(String(qtd)) + '</span>' : '')
         + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>'       : '')
+        + (hasStages ? delBtn('material', mi) : '')
         + '</div>';
     }).join('');
     matCard = '<div class="card" style="margin:0">'
@@ -2715,7 +2784,7 @@ function renderRecursosTab(p) {
   // ── Mão de obra ───────────────────────────────────────────
   var moCard = '';
   if (mo.length) {
-    var moRows = mo.map(function(m) {
+    var moRows = mo.map(function(m, mi) {
       var label  = m.funcao || m.desc || '';
       var detalhe, custo;
       if (hasStages) {
@@ -2739,6 +2808,7 @@ function renderRecursosTab(p) {
         + '<span style="' + valStyle + '">' + esc(label) + '</span>'
         + (detalhe ? '<span style="' + numStyle + '">' + esc(detalhe) + '</span>' : '')
         + (custo   ? '<span style="' + numStyle + '">' + esc(custo)   + '</span>' : '')
+        + (hasStages ? delBtn('mao_obra', mi) : '')
         + '</div>';
     }).join('');
     moCard = '<div class="card" style="margin:0">'
@@ -2750,7 +2820,7 @@ function renderRecursosTab(p) {
   // ── Terceiros ─────────────────────────────────────────────
   var tercCard = '';
   if (terc.length) {
-    var tercRows = terc.map(function(t) {
+    var tercRows = terc.map(function(t, ti) {
       var label  = t.servico || t.desc || '';
       var forn   = t.fornecedor || '';
       var custo  = hasStages ? brl(n2(t.valor)) : brl(n2(t.cu) * n2(t.mult || 1));
@@ -2758,6 +2828,7 @@ function renderRecursosTab(p) {
         + (forn ? '<span style="color:var(--text3);flex-shrink:0;min-width:7rem">' + esc(forn) + '</span>' : '')
         + '<span style="' + valStyle + '">' + esc(label) + '</span>'
         + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + (hasStages ? delBtn('terceiro', ti) : '')
         + '</div>';
     }).join('');
     tercCard = '<div class="card" style="margin:0">'
@@ -2769,11 +2840,12 @@ function renderRecursosTab(p) {
   // ── Outros / Logística ────────────────────────────────────
   var outCard = '';
   if (out.length) {
-    var outRows = out.map(function(o) {
+    var outRows = out.map(function(o, oi) {
       var custo = brl(n2(o.valor));
       return '<div style="' + rowStyle + '">'
         + '<span style="' + valStyle + '">' + esc(o.descricao) + '</span>'
         + (custo ? '<span style="' + numStyle + '">' + esc(custo) + '</span>' : '')
+        + delBtn('outro', oi)
         + '</div>';
     }).join('');
     outCard = '<div class="card" style="margin:0">'
@@ -2787,14 +2859,262 @@ function renderRecursosTab(p) {
     ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum recurso registrado</div>'
     : '';
 
+  // ── Add-form builder ─────────────────────────────────────
+  var inStyle = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.25rem .45rem;font-size:.8rem;width:100%;box-sizing:border-box';
+
+  function recSection(tipo, title, existingRows, formInputs) {
+    return '<div class="card" style="margin:0" id="rec-card-' + tipo + '">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">'
+      + '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">' + title + '</div>'
+      + '<button id="rec-add-btn-' + tipo + '" onclick="showRecursoForm(\'' + tipo + '\')" '
+      + 'style="background:none;border:1px dashed var(--border);color:var(--text3);border-radius:4px;padding:.2rem .6rem;font-size:.75rem;cursor:pointer">+ Adicionar</button>'
+      + '</div>'
+      + (existingRows || '')
+      + '<div id="rec-form-' + tipo + '" style="display:none;background:var(--bg3,var(--bg2));border-radius:6px;padding:.5rem .55rem;margin-top:.35rem">'
+      + formInputs
+      + '<div style="display:flex;gap:.4rem;margin-top:.45rem">'
+      + '<button onclick="addRecurso(\'' + tipo + '\')" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.25rem .65rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+      + '<button onclick="hideRecursoForm(\'' + tipo + '\')" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.25rem .55rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  var matSection = recSection('material', 'Materiais (' + mat.length + ')',
+    mat.length ? matRows : '',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Descrição</label><input id="rf-material-descricao" style="' + inStyle + '" placeholder="Ex: Cabo elétrico"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Unidade</label><input id="rf-material-unidade" style="' + inStyle + '" placeholder="m, kg, un..."></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Quantidade</label><input id="rf-material-quantidade" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Custo Unit. (R$)</label><input id="rf-material-custo_unit" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0,00"></div>'
+    + '</div>');
+
+  var moSection = recSection('mao_obra', 'Mão de Obra (' + mo.length + ')',
+    mo.length ? moRows : '',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    + '<div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--text3)">Função / Cargo</label><input id="rf-mao_obra-funcao" style="' + inStyle + '" placeholder="Ex: Eletricista"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Nº Profissionais</label><input id="rf-mao_obra-quantidade" type="number" min="1" step="1" style="' + inStyle + '" value="1"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Dias</label><input id="rf-mao_obra-dias" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--text3)">Valor/Dia (R$)</label><input id="rf-mao_obra-valor_dia" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0,00"></div>'
+    + '</div>');
+
+  var tercSection = recSection('terceiro', 'Terceiros / Subcontratados (' + terc.length + ')',
+    terc.length ? tercRows : '',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Serviço</label><input id="rf-terceiro-servico" style="' + inStyle + '" placeholder="Ex: Consultoria"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Fornecedor</label><input id="rf-terceiro-fornecedor" style="' + inStyle + '" placeholder="Nome empresa"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--text3)">Valor (R$)</label><input id="rf-terceiro-valor" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0,00"></div>'
+    + '</div>');
+
+  var outSection = recSection('outro', 'Outros / Logística (' + out.length + ')',
+    out.length ? outRows : '',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Descrição</label><input id="rf-outro-descricao" style="' + inStyle + '" placeholder="Ex: Hospedagem"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Valor (R$)</label><input id="rf-outro-valor" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0,00"></div>'
+    + '</div>');
+
   el.innerHTML = '<div style="display:grid;gap:.6rem">'
     + resumoCard
-    + matCard
-    + moCard
-    + tercCard
-    + outCard
-    + placeholderCard
+    + matSection
+    + moSection
+    + tercSection
+    + outSection
     + '</div>';
+}
+
+// ── Resource CRUD ─────────────────────────────────────────────────────────────
+
+function showRecursoForm(tipo) {
+  var form = document.getElementById('rec-form-' + tipo);
+  var btn  = document.getElementById('rec-add-btn-' + tipo);
+  if (form) form.style.display = 'block';
+  if (btn)  btn.style.display  = 'none';
+}
+
+function hideRecursoForm(tipo) {
+  var form = document.getElementById('rec-form-' + tipo);
+  var btn  = document.getElementById('rec-add-btn-' + tipo);
+  if (form) {
+    form.style.display = 'none';
+    form.querySelectorAll('input').forEach(function(i) { i.value = ''; });
+  }
+  if (btn) btn.style.display = '';
+}
+
+function _getRecProp() {
+  if (typeof props === 'undefined' || !_pdId) return null;
+  return props.find(function(x) { return x.id === _pdId; }) || null;
+}
+
+function addRecurso(tipo) {
+  var p = _getRecProp();
+  if (!p) return;
+
+  if (!p.stages) p.stages = {};
+  var sr = p.stages.recursos || (p.stages.recursos = {});
+
+  function gv(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  function gn(id) { return parseFloat(gv(id)) || 0; }
+
+  var item;
+  if (tipo === 'material') {
+    var desc = gv('rf-material-descricao');
+    if (!desc) { alert('Informe a descrição do material.'); return; }
+    item = { descricao: desc, unidade: gv('rf-material-unidade'), quantidade: gn('rf-material-quantidade'), custo_unit: gn('rf-material-custo_unit') };
+    if (!Array.isArray(sr.materiais)) sr.materiais = [];
+    sr.materiais.push(item);
+
+  } else if (tipo === 'mao_obra') {
+    var func = gv('rf-mao_obra-funcao');
+    if (!func) { alert('Informe a função/cargo.'); return; }
+    item = { funcao: func, quantidade: gn('rf-mao_obra-quantidade') || 1, dias: gn('rf-mao_obra-dias'), valor_dia: gn('rf-mao_obra-valor_dia') };
+    if (!Array.isArray(sr.mao_obra)) sr.mao_obra = [];
+    sr.mao_obra.push(item);
+
+  } else if (tipo === 'terceiro') {
+    var serv = gv('rf-terceiro-servico');
+    if (!serv) { alert('Informe o serviço.'); return; }
+    item = { servico: serv, fornecedor: gv('rf-terceiro-fornecedor'), valor: gn('rf-terceiro-valor') };
+    if (!Array.isArray(sr.terceiros)) sr.terceiros = [];
+    sr.terceiros.push(item);
+
+  } else if (tipo === 'outro') {
+    var outDesc = gv('rf-outro-descricao');
+    if (!outDesc) { alert('Informe a descrição.'); return; }
+    item = { descricao: outDesc, valor: gn('rf-outro-valor') };
+    if (!Array.isArray(sr.outros)) sr.outros = [];
+    sr.outros.push(item);
+  }
+
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderRecursosTab(p);
+}
+
+function deleteRecurso(tipo, idx) {
+  var p = _getRecProp();
+  if (!p || !p.stages || !p.stages.recursos) return;
+  var sr = p.stages.recursos;
+  var arr;
+  if      (tipo === 'material') arr = sr.materiais;
+  else if (tipo === 'mao_obra') arr = sr.mao_obra;
+  else if (tipo === 'terceiro') arr = sr.terceiros;
+  else if (tipo === 'outro')    arr = sr.outros;
+  if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
+  arr.splice(idx, 1);
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderRecursosTab(p);
+}
+
+// ── Atividades Padrão Library ─────────────────────────────────────────────────
+
+var _ATVKEY = 'tf_atividades_padrao';
+
+function _loadAtividades() {
+  try { return JSON.parse(localStorage.getItem(_ATVKEY) || '[]'); } catch(e) { return []; }
+}
+function _saveAtividades(list) {
+  localStorage.setItem(_ATVKEY, JSON.stringify(list));
+}
+
+function renderAtividadesPadraoTab(p) {
+  var el = document.getElementById('pd-panel-atv-padrao');
+  if (!el) return;
+
+  var list = _loadAtividades();
+  var inStyle = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.25rem .45rem;font-size:.8rem;width:100%';
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem;align-items:baseline';
+
+  var formHtml = '<div class="card" style="margin:0" id="atvp-form-wrap">'
+    + '<div style="' + labelStyle + '">Nova Atividade Padrão</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Código</label><input id="atvp-codigo" style="' + inStyle + '" placeholder="Ex: ELE-001"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Disciplina</label><input id="atvp-disciplina" style="' + inStyle + '" placeholder="Ex: Elétrica"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--text3)">Nome da Atividade</label><input id="atvp-nome" style="' + inStyle + '" placeholder="Ex: Instalação de quadro elétrico"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--text3)">Descrição</label><input id="atvp-desc" style="' + inStyle + '" placeholder="Descrição detalhada (opcional)"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">Categoria Padrão</label><input id="atvp-categoria" style="' + inStyle + '" placeholder="Ex: Instalações"></div>'
+    + '<div><label style="font-size:.7rem;color:var(--text3)">HH por Unidade</label><input id="atvp-hh" type="number" min="0" step="any" style="' + inStyle + '" placeholder="0"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:.4rem;margin-top:.55rem">'
+    + '<button style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.28rem .7rem;font-size:.8rem;cursor:pointer" onclick="saveAtividadePadrao()">Salvar Atividade</button>'
+    + '</div>'
+    + '</div>';
+
+  var rowsHtml = list.length
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Atividades Cadastradas (' + list.length + ')</div>'
+      + list.map(function(a, ai) {
+          return '<div style="' + rowStyle + '">'
+            + '<span style="color:var(--text3);font-size:.73rem;flex-shrink:0;min-width:5rem">' + esc(a.codigo || '') + '</span>'
+            + '<span style="flex:1;color:var(--text)">' + esc(a.nome || '') + '</span>'
+            + '<span style="color:var(--text3);font-size:.73rem;flex-shrink:0">' + esc(a.disciplina || '') + '</span>'
+            + (p ? '<button onclick="aplicarAtividadePadrao(' + ai + ')" style="flex-shrink:0;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.15rem .5rem;font-size:.73rem;cursor:pointer;margin:0 .2rem">Aplicar</button>' : '')
+            + '<button onclick="deleteAtividadePadrao(' + ai + ')" style="flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:0 .2rem" title="Excluir">×</button>'
+            + '</div>';
+        }).join('')
+      + '</div>'
+    : '<div style="color:var(--text3);font-size:.83rem;text-align:center;padding:1rem">Nenhuma atividade padrão cadastrada</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">' + formHtml + rowsHtml + '</div>';
+}
+
+function saveAtividadePadrao() {
+  function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  var nome = gv('atvp-nome');
+  if (!nome) { alert('Informe o nome da atividade.'); return; }
+  var list = _loadAtividades();
+  list.push({
+    id:           'atvp-' + Date.now(),
+    codigo:       gv('atvp-codigo'),
+    nome:         nome,
+    descricao:    gv('atvp-desc'),
+    disciplina:   gv('atvp-disciplina'),
+    categoria_padrao: gv('atvp-categoria'),
+    hh_por_unidade:   parseFloat(gv('atvp-hh')) || 0
+  });
+  _saveAtividades(list);
+  var p = _getRecProp();
+  renderAtividadesPadraoTab(p);
+}
+
+function deleteAtividadePadrao(idx) {
+  var list = _loadAtividades();
+  if (idx < 0 || idx >= list.length) return;
+  list.splice(idx, 1);
+  _saveAtividades(list);
+  var p = _getRecProp();
+  renderAtividadesPadraoTab(p);
+}
+
+function aplicarAtividadePadrao(idx) {
+  var list = _loadAtividades();
+  var a = list[idx];
+  if (!a) return;
+  // Fill the escopo form fields with data from the standard activity
+  function sv(id, val) { var e = document.getElementById(id); if (e) e.value = val || ''; }
+  sv('esc-disc',   a.disciplina || '');
+  sv('esc-cat',    a.categoria_padrao || '');
+  sv('esc-desc',   a.nome + (a.descricao ? ' — ' + a.descricao : ''));
+  sv('esc-un',     'un');
+  sv('esc-qtd',    a.hh_por_unidade ? String(a.hh_por_unidade) : '');
+  // Switch to escopo tab
+  var escopoBtn = Array.prototype.find.call(
+    document.querySelectorAll('.pd-tab'),
+    function(b) { return b.textContent.trim() === 'Escopo'; }
+  );
+  if (escopoBtn) {
+    escopoBtn.click();
+    var escopoForm = document.getElementById('escopo-form');
+    if (escopoForm && escopoForm.style.display === 'none') {
+      var addBtn = document.querySelector('[onclick="toggleEscopoForm()"]');
+      if (addBtn) addBtn.click();
+    }
+  }
 }
 
 function renderComercialTab(p) {
