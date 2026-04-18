@@ -1285,6 +1285,9 @@ function fmAbrirProposta(id){
 
   _pdId = id;
 
+  // Garantir que p.val reflita a soma real dos itens antes de qualquer render
+  recalcProposalTotal(p);
+
   var numEl = document.getElementById('pd-num');
   var cliEl = document.getElementById('pd-cli');
   var badgeEl = document.getElementById('pd-fase-badge');
@@ -1319,7 +1322,7 @@ function fmAbrirProposta(id){
       + '</div>'
       + '<div class="card" style="margin:0">'
       +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Valor Total</div>'
-      +   '<div style="font-size:1.1rem;font-weight:700;color:var(--green)">' + valorFmt + '</div>'
+      +   '<div id="pd-dados-valor" style="font-size:1.1rem;font-weight:700;color:var(--green)">' + valorFmt + '</div>'
       + '</div>'
       + '<div class="card" style="margin:0">'
       +   '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem">Status</div>'
@@ -1789,6 +1792,9 @@ function renderItensTab(p) {
     + '</tr></tfoot>'
     + '</table>'
     + '</div>';
+
+  // Sync p.val com o total real dos itens (fora do wizard)
+  recalcProposalTotal(p);
 }
 
 function linkEscopoItem(itemId, escopoId) {
@@ -1815,6 +1821,57 @@ function linkEscopoItem(itemId, escopoId) {
   try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderItensTab(p);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SYNC DE TOTAL — mantém p.val em sincronia com sum(p.bi)
+// Chamado pelo renderItensTab e por qualquer operação que mude itens
+// fora do wizard. Quando o wizard está ativo, ele controla p.val
+// via updKpi/upsertCurrentDraft — não interferimos.
+// ══════════════════════════════════════════════════════════════
+function recalcProposalTotal(p) {
+  if (!p || !Array.isArray(p.bi) || !p.bi.length) return;
+
+  // Não interferir enquanto o wizard está editando esta proposta
+  var wizardAtivo = typeof editId !== 'undefined' && editId === p.id
+                    && !!document.getElementById('kpiGrid');
+  if (wizardAtivo) return;
+
+  var vS = 0, vM = 0;
+  p.bi.forEach(function(it) {
+    if (it.inc === false) return;
+    var pvt = parseFloat(it.pvt) || parseFloat(it.pv) || 0;
+    if (it.t === 'material' || it.t === 'm') vM += pvt;
+    else vS += pvt;
+  });
+
+  var vD      = parseFloat(p.vD) || 0;
+  var novoVal = parseFloat((vS + vM - vD).toFixed(2));
+
+  // Sem mudança relevante — evita escrita desnecessária
+  if (Math.abs(novoVal - (parseFloat(p.val) || 0)) < 0.01) return;
+
+  p.vS  = parseFloat(vS.toFixed(2));
+  p.vM  = parseFloat(vM.toFixed(2));
+  p.val = novoVal;
+
+  // Persistir
+  try {
+    if (typeof props !== 'undefined') localStorage.setItem('tf_props', JSON.stringify(props));
+  } catch(e) {}
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+
+  // Atualizar display do valor no painel Dados (sem re-render completo)
+  var valorEl = document.getElementById('pd-dados-valor');
+  if (valorEl) valorEl.textContent = typeof money === 'function' ? money(novoVal) : novoVal;
+
+  // Atualizar abas que dependem de p.val
+  try { renderFinanceiroTab(p); } catch(e) {}
+  try { renderResultadoTab(p);  } catch(e) {}
+
+  // Atualizar cards da lista de propostas e dashboard
+  try { if (typeof rDash  === 'function') rDash();  } catch(e) {}
+  try { if (typeof rProps === 'function') rProps(); } catch(e) {}
 }
 
 // ══════════════════════════════════════════════════════════════
