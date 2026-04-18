@@ -617,19 +617,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn bd bsm" onclick="fecharModalColab()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="g2" style="gap:.85rem">
-        <div class="f"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
-        <div class="f"><label>Tipo de vínculo * <span style="font-size:.65rem;color:var(--accent);font-weight:normal">(por empresa)</span></label>
-          <select id="cTipo" onchange="togglePerigFields()">
-            <option value="clt">CLT</option>
-            <option value="mei">MEI</option>
-            <option value="pj">PJ</option>
-          </select>
+      <!-- Seção por empresa — sempre visível no topo -->
+      <div style="background:rgba(240,165,0,.09);border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:.8rem 1rem;margin-bottom:.9rem">
+        <div style="font-size:.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.65rem">⚡ Configuração por Empresa (específica para cada empresa)</div>
+        <div class="g2" style="gap:.85rem">
+          <div class="f"><label>Tipo de vínculo *</label>
+            <select id="cTipo" onchange="togglePerigFields()">
+              <option value="clt">CLT</option>
+              <option value="mei">MEI</option>
+              <option value="pj">PJ</option>
+            </select>
+          </div>
+          <div class="f"><label>Custo/hora base (R$)</label>
+            <input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01">
+          </div>
         </div>
+      </div>
+
+      <div class="g2" style="gap:.85rem">
+        <div class="f" style="grid-column:1/-1"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
         <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
         <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
         <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
-        <div class="f"><label>Custo/hora base (R$) <span style="font-size:.65rem;color:var(--accent);font-weight:normal">(por empresa)</span></label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
         <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
           <select id="cPericuloso" onchange="togglePercPerig()">
             <option value="false">Não</option>
