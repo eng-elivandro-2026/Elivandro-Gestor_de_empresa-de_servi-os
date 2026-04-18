@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro — TecFusion</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+      --border:rgba(240,246,252,.1);--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+      --accent:#f0a500;--green:#3fb950;--r:8px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+    .box{width:min(500px,100%);background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:2rem}
+    .logo{text-align:center;margin-bottom:1.5rem}
+    .logo-brand{display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.3rem}
+    .logo-circle{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.9rem;color:#000}
+    .logo-name{font-size:1.2rem;font-weight:800;color:var(--accent);letter-spacing:-.02em}
+    .logo-sub{font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+    h2{font-size:.9rem;color:var(--text2);text-align:center;margin-bottom:1.5rem;line-height:1.4}
+    .field{margin-bottom:.9rem}
+    label{display:block;font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.28rem}
+    input,select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.52rem .72rem;font-size:.84rem;font-family:inherit;outline:none;transition:border .15s}
+    input:focus,select:focus{border-color:var(--accent)}
+    select option{background:var(--bg3)}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+    .btn-submit{width:100%;padding:.62rem;background:var(--accent);color:#000;font-weight:700;font-size:.88rem;border:none;border-radius:6px;cursor:pointer;margin-top:.4rem;font-family:inherit;transition:opacity .15s}
+    .btn-submit:disabled{opacity:.55;cursor:not-allowed}
+    .msg{margin-top:1rem;padding:.75rem 1rem;border-radius:6px;font-size:.82rem;display:none;line-height:1.5}
+    .msg.ok{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.35);color:#3fb950}
+    .msg.err{background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.35);color:#f85149}
+    .login-link{text-align:center;margin-top:1.25rem;font-size:.77rem;color:var(--text3)}
+    .login-link a{color:var(--accent);text-decoration:none}
+    .divisor{height:1px;background:var(--border);margin:1.2rem 0}
+    .section-label{font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem;font-weight:700}
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="logo-brand">
+      <div class="logo-circle">TC</div>
+      <div class="logo-name">TecFusion</div>
+    </div>
+    <div class="logo-sub">Soluções Elétricas Industriais</div>
+  </div>
+
+  <h2>Cadastro de Colaborador / Prestador<br>
+    <span style="font-weight:400;font-size:.8em">Preencha os dados abaixo. O administrador receberá uma notificação para aprovar seu acesso.</span>
+  </h2>
+
+  <form id="form" onsubmit="registrar(event)" autocomplete="off">
+    <div class="section-label">Dados pessoais</div>
+
+    <div class="field">
+      <label>Nome completo *</label>
+      <input type="text" id="rNome" required placeholder="Ex: João Silva">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Tipo de contrato *</label>
+        <select id="rTipo" required>
+          <option value="">Selecione...</option>
+          <option value="clt">CLT</option>
+          <option value="mei">MEI</option>
+          <option value="pj">PJ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Função / Cargo *</label>
+        <input type="text" id="rFuncao" required placeholder="Ex: Eletricista">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>CPF / CNPJ</label>
+        <input type="text" id="rDoc" placeholder="000.000.000-00">
+      </div>
+      <div class="field">
+        <label>Telefone</label>
+        <input type="text" id="rTel" placeholder="(11) 99999-9999">
+      </div>
+    </div>
+
+    <div class="divisor"></div>
+    <div class="section-label">Acesso ao sistema</div>
+
+    <div class="field">
+      <label>E-mail de acesso *</label>
+      <input type="email" id="rEmail" required placeholder="joao@email.com">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Senha *</label>
+        <input type="password" id="rSenha" required minlength="6" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="field">
+        <label>Confirmar senha *</label>
+        <input type="password" id="rSenha2" required minlength="6" placeholder="Repita a senha">
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit" id="btnReg">Enviar Cadastro</button>
+  </form>
+
+  <div class="msg" id="msg"></div>
+  <div class="login-link">Já tem conta? <a href="/login.html">Entrar</a></div>
+</div>
+
+<script>
+const SB_URL = 'https://ojuuzojwnyxdsavdosif.supabase.co';
+const SB_KEY = 'sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u';
+const ADMIN_EMAIL = 'nascimento.gaube@gmail.com';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+function showMsg(txt, tipo) {
+  var el = document.getElementById('msg');
+  el.textContent = txt;
+  el.className = 'msg ' + tipo;
+  el.style.display = 'block';
+}
+
+async function registrar(e) {
+  e.preventDefault();
+  var nome   = document.getElementById('rNome').value.trim();
+  var email  = document.getElementById('rEmail').value.trim().toLowerCase();
+  var tipo   = document.getElementById('rTipo').value;
+  var funcao = document.getElementById('rFuncao').value.trim();
+  var doc    = document.getElementById('rDoc').value.trim();
+  var tel    = document.getElementById('rTel').value.trim();
+  var senha  = document.getElementById('rSenha').value;
+  var senha2 = document.getElementById('rSenha2').value;
+
+  if (senha !== senha2) { showMsg('As senhas não coincidem.', 'err'); return; }
+
+  var btn = document.getElementById('btnReg');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    // 1. Criar conta no Supabase Auth
+    var { data: authData, error: authErr } = await sb.auth.signUp({
+      email: email,
+      password: senha,
+      options: { data: { nome: nome } }
+    });
+    if (authErr) throw new Error(authErr.message);
+
+    var userId = authData.user ? authData.user.id : null;
+
+    // 2. Inserir na tabela colaboradores (pendente até aprovação)
+    var { error: dbErr } = await sb.from('colaboradores').insert({
+      auth_id:     userId,
+      nome:        nome,
+      email:       email,
+      tipo:        tipo,
+      funcao:      funcao,
+      documento:   doc  || null,
+      telefone:    tel  || null,
+      ativo:       false,
+      observacoes: '__PENDENTE__'
+    });
+    if (dbErr) throw new Error('Erro ao salvar dados: ' + dbErr.message);
+
+    // 3. Notificar admin por e-mail via FormSubmit (gratuito, sem conta)
+    try {
+      await fetch('https://formsubmit.co/ajax/' + ADMIN_EMAIL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: '🔔 Novo cadastro pendente — ' + nome,
+          Colaborador: nome,
+          Email: email,
+          Tipo: tipo.toUpperCase(),
+          Função: funcao,
+          Documento: doc || '—',
+          Telefone: tel || '—',
+          _template: 'table'
+        })
+      });
+    } catch(emailErr) {
+      console.warn('Notificação por e-mail não enviada:', emailErr);
+    }
+
+    // 4. Sucesso
+    document.getElementById('form').style.display = 'none';
+    showMsg('✅ Cadastro enviado com sucesso! Aguarde a aprovação do administrador. Você será avisado quando seu acesso for liberado.', 'ok');
+
+  } catch(err) {
+    showMsg('Erro: ' + err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Enviar Cadastro';
+  }
+}
+</script>
+</body>
+</html>
