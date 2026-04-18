@@ -1494,22 +1494,28 @@ function deleteEscopoItem(idx) {
   if (!_pdId) return;
   var p = props.find(function(x){ return x.id === _pdId; });
   if (!p || !p.stages || !p.stages.escopo || !p.stages.escopo.itens) return;
-  var deletedItem = p.stages.escopo.itens[idx];
-  var deletedId   = deletedItem && deletedItem._id;
+  var deletedItem   = p.stages.escopo.itens[idx];
+  var deletedId     = deletedItem && deletedItem._id;
+  var deletedBiId   = deletedItem && deletedItem.item_ref; // canonical forward ref
   p.stages.escopo.itens.splice(idx, 1);
   _escopoEditIdx = null;
   var removedAny = false;
-  if (deletedId) {
+  if (deletedId || deletedBiId) {
     var biSrc = p.bi || [];
     _migrarItensEscopo(biSrc);
     for (var i = biSrc.length - 1; i >= 0; i--) {
       var biItem = biSrc[i];
-      if (biItem.origem_escopo_id === deletedId || biItem.escopo_id === deletedId) {
-        if (biItem.gerado_por_escopo || biItem.tipo_origem === 'escopo') {
-          biSrc.splice(i, 1);
-        } else {
-          delete biItem.escopo_id;
-        }
+      // Match by canonical forward ref first, then reverse stamps
+      var isGenerated = (deletedBiId && biItem.id === deletedBiId)
+        || biItem.origem_escopo_id === deletedId
+        || (biItem.gerado_por_escopo && biItem.escopo_id === deletedId)
+        || (biItem.tipo_origem === 'escopo' && biItem.escopo_id === deletedId);
+      var isManualLink = !isGenerated && biItem.escopo_id === deletedId;
+      if (isGenerated) {
+        biSrc.splice(i, 1);
+        removedAny = true;
+      } else if (isManualLink) {
+        delete biItem.escopo_id;
         removedAny = true;
       }
     }
@@ -1607,17 +1613,20 @@ function addEscopoItem() {
 
   var _qtdExecVal = parseFloat((document.getElementById('esc-qtd-exec') || {}).value) || null;
 
+  var _existingEscopoItem = (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx])
+    ? p.stages.escopo.itens[_escopoEditIdx] : null;
+
   var item = {
-    _id:                (_escopoEditIdx !== null && p.stages.escopo.itens[_escopoEditIdx]
-                           ? p.stages.escopo.itens[_escopoEditIdx]._id
-                           : Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
+    _id:                _existingEscopoItem
+                          ? _existingEscopoItem._id
+                          : Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
     fase:               (document.getElementById('esc-fase')  || {}).value || '',
     disciplina:         (document.getElementById('esc-disc')  || {}).value || '',
     equipamento:        (document.getElementById('esc-equip') || {}).value || '',
     atividade:          (document.getElementById('esc-ativ')  || {}).value || '',
     descricao:          (document.getElementById('esc-desc')  || {}).value || '',
     gera_item:         !!(document.getElementById('esc-gera')  || {}).checked,
-    item_ref:           null,
+    item_ref:           _existingEscopoItem ? (_existingEscopoItem.item_ref || null) : null,
     quantidade_execucao: _qtdExecVal
   };
 
@@ -1633,12 +1642,19 @@ function addEscopoItem() {
     if (!Array.isArray(p.bi)) p.bi = [];
     _migrarItensEscopo(p.bi);
 
-    var _linked = encontrarItemGeradoPorEscopo(p.bi, item._id);
+    // Primary lookup: use the canonical forward reference (item_ref → bi.id)
+    // Fallback: reverse stamp lookup (origem_escopo_id or escopo_id)
+    var _linked = (item.item_ref
+        ? p.bi.find(function(b){ return b.id === item.item_ref; })
+        : null)
+      || encontrarItemGeradoPorEscopo(p.bi, item._id)
+      || p.bi.find(function(b){ return b.escopo_id === item._id && !b.gerado_por_escopo; });
 
     if (_linked) {
       if (!item.gera_item) {
-        // Escopo disabled item generation → remove it and update totals
-        removerItemGerado(p.bi, item._id);
+        // Escopo disabled item generation → remove linked item and update totals
+        var _rmIdx = p.bi.indexOf(_linked);
+        if (_rmIdx >= 0) p.bi.splice(_rmIdx, 1);
         var _pvSr = 0, _pvMr = 0;
         p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvMr+=n2(it.pvt); else _pvSr+=n2(it.pvt); });
         p.vS = _pvSr; p.vM = _pvMr; p.val = _pvSr + _pvMr - n2(p.vD);
@@ -1937,6 +1953,13 @@ function _salvarItemDeEscopo() {
 
       var p = props.find(function(x){ return x.id === _pdId; });
       if (p) {
+        // Write the canonical forward reference: escopo.item_ref → bi.id
+        var _escopoList = p.stages && p.stages.escopo && p.stages.escopo.itens;
+        if (Array.isArray(_escopoList)) {
+          var _escopoRef = _escopoList.find(function(e){ return e._id === _escopoIdParaVincular; });
+          if (_escopoRef) _escopoRef.item_ref = newItem.id;
+        }
+
         p.bi = JSON.parse(JSON.stringify(budg));
         budg = JSON.parse(JSON.stringify(p.bi)); // budg ← p.bi (canonical sync)
 
