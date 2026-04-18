@@ -1339,6 +1339,10 @@ function fmAbrirProposta(id){
   renderEngenhariaTab(p);
   renderExecucaoTab(p);
   renderRecursosTab(p);
+  renderContatoTab(p);
+  renderCotacoesTab(p);
+  renderEstruturaTab(p);
+  renderResultadoTab(p);
 
   // Reset to Dados tab
   document.querySelectorAll('.pd-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -2838,6 +2842,347 @@ function renderComercialTab(p) {
     + observCard
     + followCard
     + placeholderCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONTATO TAB
+// ══════════════════════════════════════════════════════════════
+function renderContatoTab(p) {
+  var el = document.getElementById('pd-panel-contato');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var rowStyle   = 'display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border);font-size:.8rem';
+  var keyStyle   = 'color:var(--text3);flex-shrink:0;min-width:9rem';
+  var valStyle   = 'color:var(--text);flex:1';
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return '<div style="' + rowStyle + '">'
+      + '<span style="' + keyStyle + '">' + label + '</span>'
+      + '<span style="' + valStyle + '">' + esc(value) + '</span>'
+      + '</div>';
+  }
+
+  var clientHtml = ''
+    + infoRow('Cliente',  p.cli   || '')
+    + infoRow('CNPJ',     p.cnpj  || '')
+    + infoRow('Cidade',   p.cid   || '');
+
+  var clientCard = clientHtml
+    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Cliente</div>' + clientHtml + '</div>'
+    : '';
+
+  var c1Html = ''
+    + infoRow('Nome',         p.ac   || '')
+    + infoRow('Departamento', p.dep  || '')
+    + infoRow('E-mail',       p.mail || '')
+    + infoRow('Telefone',     p.tel  || '');
+
+  var c1Card = c1Html
+    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Principal</div>' + c1Html + '</div>'
+    : '';
+
+  var c2Html = ''
+    + infoRow('Nome',         p.ac2   || '')
+    + infoRow('Departamento', p.dep2  || '')
+    + infoRow('E-mail',       p.mail2 || '')
+    + infoRow('Telefone',     p.tel2  || '');
+
+  var c2Card = c2Html
+    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Secundário</div>' + c2Html + '</div>'
+    : '';
+
+  var locHtml = ''
+    + infoRow('Local do serviço', p.loc     || '')
+    + infoRow('Cidade do serviço', p.csvc   || '')
+    + infoRow('CNPJ do local',    p.locCnpj || '');
+
+  var locCard = locHtml
+    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Local do Serviço</div>' + locHtml + '</div>'
+    : '';
+
+  var hasContent = p.cli || p.ac || p.ac2 || p.loc;
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum contato registrado</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + clientCard + c1Card + c2Card + locCard + placeholderCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// COTAÇÕES TAB
+// ══════════════════════════════════════════════════════════════
+function renderCotacoesTab(p) {
+  var el = document.getElementById('pd-panel-cotacoes');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+
+  function pctFmt(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    var num = parseFloat(v);
+    if (isNaN(num)) return '—';
+    return (num * 100).toFixed(2).replace('.', ',') + '%';
+  }
+
+  function row(label, value, note) {
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.28rem 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:.78rem;color:var(--text2)">' + label
+      + (note ? ' <span style="font-size:.68rem;color:var(--text3)">(' + note + ')</span>' : '')
+      + '</span>'
+      + '<span style="font-size:.82rem;font-weight:600">' + value + '</span>'
+      + '</div>';
+  }
+
+  if (!p.aliq) {
+    el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma cotação configurada</div>';
+    return;
+  }
+
+  var a = p.aliq;
+
+  var nfCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Impostos / NF</div>'
+    + row('NF Serviços',  pctFmt(a.nfS), 'sobre PV')
+    + row('NF Materiais', pctFmt(a.nfM), 'sobre PV')
+    + '</div>';
+
+  var comCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Comissões e Retenções</div>'
+    + row('Comissão Serviços',       pctFmt(a.comS), 'sobre PV')
+    + row('Comissão Materiais',      pctFmt(a.comM), 'sobre PV')
+    + row('Retenção (Risco Sacado)', pctFmt(a.rS))
+    + '</div>';
+
+  var negRows = row('Margem de negociação', pctFmt(a.neg));
+  if (a.negZero) negRows += row('Fechado sem desconto', 'Sim', 'reserva incorporada ao lucro');
+
+  var negCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Negociação</div>'
+    + negRows
+    + '</div>';
+
+  var regiCard = '';
+  var emp = window._empresaAtiva;
+  if (emp && emp.regime_fiscal) {
+    regiCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Regime Fiscal da Empresa</div>'
+      + '<div style="font-size:.85rem;color:var(--text)">' + esc(emp.regime_fiscal) + '</div>'
+      + '</div>';
+  }
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + nfCard + comCard + negCard + regiCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// ESTRUTURA TAB
+// ══════════════════════════════════════════════════════════════
+function renderEstruturaTab(p) {
+  var el = document.getElementById('pd-panel-estrutura');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+  var se = (p.stages && p.stages.estrutura) || {};
+
+  function moneyFmt(v) {
+    return typeof money === 'function' ? money(parseFloat(v) || 0) : 'R$ ' + (parseFloat(v) || 0).toFixed(2);
+  }
+
+  // Disciplinas do escopo
+  var escopoItens = (p.stages && p.stages.escopo && Array.isArray(p.stages.escopo.itens))
+    ? p.stages.escopo.itens : [];
+
+  var byDisc = {};
+  escopoItens.forEach(function(it) {
+    var disc = it.disciplina || 'Geral';
+    if (!byDisc[disc]) byDisc[disc] = 0;
+    byDisc[disc]++;
+  });
+
+  var discKeys = Object.keys(byDisc);
+  var discCard = '';
+  if (discKeys.length) {
+    var discRows = discKeys.map(function(disc) {
+      return '<div style="display:flex;justify-content:space-between;padding:.28rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="color:var(--text2)">' + esc(disc) + '</span>'
+        + '<span style="font-size:.72rem;color:var(--text3)">' + byDisc[disc] + ' escopo(s)</span>'
+        + '</div>';
+    }).join('');
+    discCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Disciplinas do Escopo</div>'
+      + discRows
+      + '</div>';
+  }
+
+  // Orçamento por categoria
+  var bi = p.bi || [];
+  var grouped = {};
+  bi.forEach(function(item) {
+    var cat = item.cat || item.catC || 'Sem categoria';
+    if (!grouped[cat]) grouped[cat] = { count: 0, total: 0 };
+    grouped[cat].count++;
+    grouped[cat].total += parseFloat(item.pv) || 0;
+  });
+
+  var cats = Object.keys(grouped);
+  var orcCard = '';
+  if (cats.length) {
+    var catRows = cats.map(function(cat) {
+      var g = grouped[cat];
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border-bottom:1px solid var(--border);font-size:.8rem">'
+        + '<span style="color:var(--text2)">' + esc(cat)
+        + ' <span style="font-size:.7rem;color:var(--text3)">(' + g.count + ' item' + (g.count > 1 ? 'ns' : '') + ')</span></span>'
+        + '<span style="font-weight:600">' + moneyFmt(g.total) + '</span>'
+        + '</div>';
+    }).join('');
+    orcCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Orçamento por Categoria</div>'
+      + catRows
+      + '</div>';
+  }
+
+  var notasCard = (se.notas && se.notas.trim())
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Notas de Estrutura</div>'
+      + '<div style="font-size:.8rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">' + esc(se.notas.trim()) + '</div>'
+      + '</div>'
+    : '';
+
+  var hasContent = discKeys.length || cats.length || (se.notas && se.notas.trim());
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma estrutura definida</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + discCard + orcCard + notasCard + placeholderCard
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// RESULTADO TAB
+// ══════════════════════════════════════════════════════════════
+function renderResultadoTab(p) {
+  var el = document.getElementById('pd-panel-resultado');
+  if (!el) return;
+
+  var labelStyle = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.4rem';
+
+  function moneyFmt(v) {
+    return typeof money === 'function' ? money(parseFloat(v) || 0) : 'R$ ' + (parseFloat(v) || 0).toFixed(2);
+  }
+
+  function pctFmt(v) {
+    return (parseFloat(v) * 100).toFixed(1).replace('.', ',') + '%';
+  }
+
+  function row(label, value, color) {
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.28rem 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:.78rem;color:var(--text2)">' + label + '</span>'
+      + '<span style="font-size:.85rem;font-weight:600;' + (color ? 'color:' + color : '') + '">' + value + '</span>'
+      + '</div>';
+  }
+
+  var tl  = p.tl  || {};
+  var a   = p.aliq || {};
+  var val = parseFloat(p.val) || 0;
+
+  // Deduções estimadas
+  var nfS  = val * (parseFloat(a.nfS)  || 0);
+  var nfM  = val * (parseFloat(a.nfM)  || 0);
+  var rS   = val * (parseFloat(a.rS)   || 0);
+  var comS = val * (parseFloat(a.comS) || 0);
+  var comM = val * (parseFloat(a.comM) || 0);
+  var neg  = a.negZero ? 0 : val * (parseFloat(a.neg) || 0);
+  var totalDesc = nfS + nfM + rS + comS + comM + neg;
+  var ll    = val - totalDesc;
+  var llPct = val > 0 ? ll / val : 0;
+
+  // Status
+  var fasObj   = (typeof FASE !== 'undefined' && FASE[p.fas]) || null;
+  var fasLabel = fasObj ? (fasObj.i + ' ' + fasObj.n) : (p.fas || '—');
+  var fasColor = (p.fas === 'recebido' || p.fas === 'finalizado') ? 'var(--green)'
+               : (p.fas && p.fas.indexOf('perdido') === 0)        ? '#f85149'
+               : 'var(--text)';
+
+  var statusCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Status Final</div>'
+    + '<div style="font-size:.95rem;font-weight:700;color:' + fasColor + '">' + esc(fasLabel) + '</div>'
+    + (tl.dtAceite      ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.25rem">Aceite: '            + esc(tl.dtAceite)      + '</div>' : '')
+    + (tl.dtRecebFinal  ? '<div style="font-size:.72rem;color:var(--text3)">Recebimento final: ' + esc(tl.dtRecebFinal) + '</div>' : '')
+    + '</div>';
+
+  // Receita bruta
+  var receitaCard = '<div class="card" style="margin:0">'
+    + '<div style="' + labelStyle + '">Receita Bruta</div>'
+    + row('Valor da proposta', moneyFmt(val), 'var(--green)')
+    + '</div>';
+
+  // Deduções
+  var dedCard = '';
+  if (p.aliq && totalDesc > 0) {
+    var dedRows = '';
+    if (nfS)  dedRows += row('NF Serviços',            '− ' + moneyFmt(nfS));
+    if (nfM)  dedRows += row('NF Materiais',           '− ' + moneyFmt(nfM));
+    if (rS)   dedRows += row('Retenção (RS)',           '− ' + moneyFmt(rS));
+    if (comS) dedRows += row('Comissão Serviços',       '− ' + moneyFmt(comS));
+    if (comM) dedRows += row('Comissão Materiais',      '− ' + moneyFmt(comM));
+    if (neg)  dedRows += row('Margem negociação',       '− ' + moneyFmt(neg));
+    dedCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Deduções Estimadas</div>'
+      + dedRows
+      + '</div>';
+  }
+
+  // Lucro Líquido
+  var llCard = (p.aliq && val > 0)
+    ? '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Resultado Estimado</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0">'
+      + '<span style="font-size:.85rem;font-weight:700;color:var(--text)">Lucro Líquido (LL)</span>'
+      + '<div style="text-align:right">'
+      + '<div style="font-size:1.2rem;font-weight:700;color:' + (ll >= 0 ? 'var(--green)' : '#f85149') + '">' + moneyFmt(ll) + '</div>'
+      + '<div style="font-size:.72rem;color:var(--text3)">' + pctFmt(llPct) + ' sobre receita bruta</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+    : '';
+
+  // Recebimentos
+  var recebCard = '';
+  var adiantos   = Array.isArray(tl.adiantamentos) ? tl.adiantamentos : [];
+  var totAdiant  = adiantos.reduce(function(s, x) { return s + (parseFloat(x.valor) || 0); }, 0);
+  var totFinal   = parseFloat(tl.valRecebFinal) || 0;
+  var totReceb   = totAdiant + totFinal;
+
+  if (totReceb > 0) {
+    var recebRows = '';
+    if (totAdiant) recebRows += row('Adiantamentos recebidos', moneyFmt(totAdiant), 'var(--blue)');
+    if (totFinal)  recebRows += row('Recebimento final',       moneyFmt(totFinal),  'var(--blue)');
+    recebRows += '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.4rem 0">'
+      + '<span style="font-size:.8rem;font-weight:700">Total recebido</span>'
+      + '<span style="font-size:.95rem;font-weight:700;color:var(--green)">' + moneyFmt(totReceb) + '</span>'
+      + '</div>';
+    var pendente = val - totReceb;
+    if (pendente > 0.01) recebRows += row('Saldo pendente', moneyFmt(pendente), '#f0a500');
+    recebCard = '<div class="card" style="margin:0">'
+      + '<div style="' + labelStyle + '">Recebimentos</div>'
+      + recebRows
+      + '</div>';
+  }
+
+  var hasContent = val > 0;
+  var placeholderCard = !hasContent
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum resultado disponível</div>'
+    : '';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + statusCard + receitaCard + dedCard + llCard + recebCard + placeholderCard
     + '</div>';
 }
 
