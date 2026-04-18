@@ -2020,44 +2020,6 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 </div>
 
 <!-- PROPOSTA DETALHE -->
-<div id="proposta-detalhe" class="sec">
-
-  <!-- Cabeçalho da proposta -->
-  <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap">
-    <button class="btn bg bsm" onclick="go('dashboard',null)">← Voltar</button>
-    <div>
-      <div id="pd-num" style="font-family:monospace;font-size:1rem;font-weight:700;color:var(--accent)"></div>
-      <div id="pd-cli" style="font-size:.78rem;color:var(--text2)"></div>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
-      <span id="pd-fase-badge"></span>
-      <button class="btn ba bsm" onclick="if(_pdId&&typeof editP==='function'){editP(_pdId);go('nova',null);}">✏️ Editar</button>
-    </div>
-  </div>
-
-  <!-- Tabs -->
-
-  <!-- Painéis — conteúdo injetado via render*Tab() em categoria-analise.js -->
-  <div id="pd-dados"></div>
-  <!-- painéis ocultos mantidos para compatibilidade com funções existentes -->
-  <div id="pd-panel-dados"        style="display:none"></div>
-  <div id="pd-panel-contato"      style="display:none"></div>
-  <div id="pd-panel-visita"       style="display:none"></div>
-  <div id="pd-panel-consolidacao" style="display:none"></div>
-  <div id="pd-panel-engenharia"   style="display:none"></div>
-  <div id="pd-panel-recursos"     style="display:none"></div>
-  <div id="pd-panel-cotacoes"     style="display:none"></div>
-  <div id="pd-panel-estrutura"    style="display:none"></div>
-  <div id="pd-panel-escopo"       style="display:none"></div>
-  <div id="pd-panel-itens"        style="display:none"></div>
-  <div id="pd-panel-financeiro"   style="display:none"></div>
-  <div id="pd-panel-documentos"   style="display:none"></div>
-  <div id="pd-panel-comercial"    style="display:none"></div>
-  <div id="pd-panel-execucao"     style="display:none"></div>
-  <div id="pd-panel-resultado"    style="display:none"></div>
-  <div id="pd-panel-atv-padrao"   style="display:none"></div>
-
-</div>
 
 </div><!-- /wrap -->
 
@@ -4084,22 +4046,10 @@ function pdTab(tab, btn){
 function fmAbrirProposta(id){
   var p=props.find(function(x){return x.id===id;});
   if(!p) return;
-
   _pdId = id;
-
-  var numEl = document.getElementById('pd-num');
-  var cliEl = document.getElementById('pd-cli');
-  var badgeEl = document.getElementById('pd-fase-badge');
-
-  if(numEl) numEl.textContent = '#' + (p.num || '');
-  if(cliEl) cliEl.textContent = p.cli || '';
-
-  if(badgeEl){
-    badgeEl.innerHTML = p.fas || '';
-  }
-
-  go('proposta-detalhe', null);
-
+  if(typeof recalcProposalTotal==='function') recalcProposalTotal(p);
+  if(typeof editP==='function') editP(id);
+  go('nova', null);
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
