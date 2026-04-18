@@ -2036,42 +2036,26 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 
   <!-- Tabs -->
-  <div class="pd-tabs">
-    <button class="pd-tab on" onclick="pdTab('dados',this)">Dados</button>
-    <button class="pd-tab"    onclick="pdTab('contato',this)">Contato</button>
-    <button class="pd-tab"    onclick="pdTab('visita',this)">Visita</button>
-    <button class="pd-tab"    onclick="pdTab('consolidacao',this)">Consolidação</button>
-    <button class="pd-tab"    onclick="pdTab('engenharia',this)">Engenharia</button>
-    <button class="pd-tab"    onclick="pdTab('recursos',this)">Recursos</button>
-    <button class="pd-tab"    onclick="pdTab('cotacoes',this)">Cotações</button>
-    <button class="pd-tab"    onclick="pdTab('estrutura',this)">Estrutura</button>
-    <button class="pd-tab"    onclick="pdTab('escopo',this)">Escopo</button>
-    <button class="pd-tab"    onclick="pdTab('itens',this)">Itens</button>
-    <button class="pd-tab"    onclick="pdTab('financeiro',this)">Financeiro</button>
-    <button class="pd-tab"    onclick="pdTab('documentos',this)">Documentos</button>
-    <button class="pd-tab"    onclick="pdTab('comercial',this)">Comercial</button>
-    <button class="pd-tab"    onclick="pdTab('execucao',this)">Execução</button>
-    <button class="pd-tab"    onclick="pdTab('resultado',this)">Resultado</button>
-    <button class="pd-tab"    onclick="pdTab('atv-padrao',this)">Ativ. Padrão</button>
-  </div>
 
   <!-- Painéis — conteúdo injetado via render*Tab() em categoria-analise.js -->
-  <div id="pd-panel-dados"        class="pd-panel on"><div id="pd-dados"></div></div>
-  <div id="pd-panel-contato"      class="pd-panel"></div>
-  <div id="pd-panel-visita"       class="pd-panel"></div>
-  <div id="pd-panel-consolidacao" class="pd-panel"></div>
-  <div id="pd-panel-engenharia"   class="pd-panel"></div>
-  <div id="pd-panel-recursos"     class="pd-panel"></div>
-  <div id="pd-panel-cotacoes"     class="pd-panel"></div>
-  <div id="pd-panel-estrutura"    class="pd-panel"></div>
-  <div id="pd-panel-escopo"       class="pd-panel"></div>
-  <div id="pd-panel-itens"        class="pd-panel"></div>
-  <div id="pd-panel-financeiro"   class="pd-panel"></div>
-  <div id="pd-panel-documentos"   class="pd-panel"></div>
-  <div id="pd-panel-comercial"    class="pd-panel"></div>
-  <div id="pd-panel-execucao"     class="pd-panel"></div>
-  <div id="pd-panel-resultado"    class="pd-panel"></div>
-  <div id="pd-panel-atv-padrao"   class="pd-panel"></div>
+  <div id="pd-dados"></div>
+  <!-- painéis ocultos mantidos para compatibilidade com funções existentes -->
+  <div id="pd-panel-dados"        style="display:none"></div>
+  <div id="pd-panel-contato"      style="display:none"></div>
+  <div id="pd-panel-visita"       style="display:none"></div>
+  <div id="pd-panel-consolidacao" style="display:none"></div>
+  <div id="pd-panel-engenharia"   style="display:none"></div>
+  <div id="pd-panel-recursos"     style="display:none"></div>
+  <div id="pd-panel-cotacoes"     style="display:none"></div>
+  <div id="pd-panel-estrutura"    style="display:none"></div>
+  <div id="pd-panel-escopo"       style="display:none"></div>
+  <div id="pd-panel-itens"        style="display:none"></div>
+  <div id="pd-panel-financeiro"   style="display:none"></div>
+  <div id="pd-panel-documentos"   style="display:none"></div>
+  <div id="pd-panel-comercial"    style="display:none"></div>
+  <div id="pd-panel-execucao"     style="display:none"></div>
+  <div id="pd-panel-resultado"    style="display:none"></div>
+  <div id="pd-panel-atv-padrao"   style="display:none"></div>
 
 </div>
 
