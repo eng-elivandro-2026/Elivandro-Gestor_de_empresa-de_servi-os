@@ -4496,19 +4496,35 @@ window.addEventListener('message', function(e) {
   }
   if (e.data.type === 'SET_EMPRESA') {
     _empresaId = e.data.empresaId;
-    // Recarregar seção ativa
-    var secAtiva = document.querySelector('.sec.on');
-    if (secAtiva) {
-      var id = secAtiva.id.replace('sec-','');
-      if (id === 'colaboradores') { carregarColabs(); gerarAlertas(); }
-      else if (id === 'apontamentos') { carregarApontamentos(); carregarKpiApt(); }
-      else if (id === 'boletins') carregarBoletins();
-    } else {
-      carregarColabs();
-    }
+    // Resetar estado de colaborador ativo (era da empresa anterior)
+    _colabAtivo = null;
+    _horasColabCache = [];
+    _horasColabDe = null;
+    _horasColabAte = null;
+    _colabProprio = null; // forçar re-verificação na nova empresa
+
     // Atualizar indicador de empresa na tela
     var empLabel = document.getElementById('rhEmpresaLabel');
     if (empLabel) empLabel.textContent = e.data.empresaNomeCurto || '';
+
+    // Recarregar seção ativa (ou voltar para colaboradores se estiver em detalhe)
+    var secAtiva = document.querySelector('.sec.on');
+    var secId = secAtiva ? secAtiva.id.replace('sec-','') : '';
+    if (secId === 'colaboradores') {
+      carregarColabs(); gerarAlertas();
+    } else if (secId === 'detalhe') {
+      // Estava no detalhe de um colaborador da empresa anterior — volta para a lista
+      showSec('colaboradores', document.querySelector('.nav-rh-btn'));
+      carregarColabs(); gerarAlertas();
+    } else if (secId === 'apontamentos') {
+      carregarApontamentos(); carregarKpiApt();
+    } else if (secId === 'boletins') {
+      carregarBoletins();
+    } else if (secId === 'despesas') {
+      carregarDespesas();
+    } else {
+      carregarColabs(); gerarAlertas();
+    }
   }
 });
 
