@@ -305,14 +305,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <!-- Tab Horas -->
       <div class="tab-sec" id="tab-horas">
         <div style="margin:.75rem 0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-            <div class="kpi-g" id="kpiHorasColab" style="flex:1"></div>
-            <button class="btn bs bsm" onclick="gerarRelatorioHoras()" style="white-space:nowrap;margin-left:1rem">📊 Relatório Completo</button>
+          <!-- Filtro de período -->
+          <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .85rem">
+            <span style="font-size:.75rem;color:var(--text2);font-weight:600">Período:</span>
+            <input type="date" id="horasColabDe" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .6rem;font-size:.78rem;font-family:inherit">
+            <span style="color:var(--text3);font-size:.78rem">até</span>
+            <input type="date" id="horasColabAte" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .6rem;font-size:.78rem;font-family:inherit">
+            <button class="btn bs bsm" onclick="filtrarHorasColab()">🔍 Filtrar</button>
+            <button class="btn bg bsm" onclick="limparFiltroHoras()">Limpar</button>
+            <button class="btn bs bsm" onclick="gerarRelatorioHoras()" style="margin-left:auto;font-weight:700">📊 Gerar Relatório</button>
           </div>
+          <div class="kpi-g" id="kpiHorasColab" style="margin-bottom:.85rem"></div>
           <table class="apt-table">
             <thead><tr>
               <th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>
-              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th>
+              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Boletim</th>
             </tr></thead>
             <tbody id="horasColabBody"></tbody>
           </table>
@@ -1681,40 +1688,65 @@ async function carregarEpis(colabId) {
 
 // ══ HORAS DO COLABORADOR ═════════════════════════════════════
 var _horasColabCache = [];
+var _horasColabDe = null;
+var _horasColabAte = null;
+
+function filtrarHorasColab() {
+  if (!_colabAtivo) return;
+  _horasColabDe  = document.getElementById('horasColabDe').value  || null;
+  _horasColabAte = document.getElementById('horasColabAte').value || null;
+  carregarHorasColab(_colabAtivo.id);
+}
+
+function limparFiltroHoras() {
+  _horasColabDe = null; _horasColabAte = null;
+  document.getElementById('horasColabDe').value  = '';
+  document.getElementById('horasColabAte').value = '';
+  if (_colabAtivo) carregarHorasColab(_colabAtivo.id);
+}
+
 async function carregarHorasColab(colabId) {
-  var { data } = await sb.from('apontamentos')
+  var q = sb.from('apontamentos')
     .select('*').eq('colaborador_id', colabId)
     .neq('status', 'cancelado')
-    .order('data', {ascending:false}).limit(200);
+    .order('data', {ascending:false}).limit(500);
+  if (_horasColabDe)  q = q.gte('data', _horasColabDe);
+  if (_horasColabAte) q = q.lte('data', _horasColabAte);
+  var { data } = await q;
   _horasColabCache = data || [];
   var tbody = document.getElementById('horasColabBody');
   if (!_horasColabCache.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    document.getElementById('kpiHorasColab').innerHTML = '';
     return;
   }
 
-  // Buscar nomes dos projetos
-  var ids = [...new Set(_horasColabCache.map(function(a){ return a.proposta_id; }).filter(Boolean))];
+  var propIds = [...new Set(_horasColabCache.map(function(a){ return a.proposta_id; }).filter(Boolean))];
   var mapaProps = {};
-  if (ids.length) {
-    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo').in('app_id', ids);
+  if (propIds.length) {
+    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo').in('app_id', propIds);
     (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
   }
 
   var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
+  var totalAprov=0, totalPend=0, totalRej=0;
   tbody.innerHTML = _horasColabCache.map(function(a) {
     totalNormal += Number(a.horas_normal||0);
     totalExtra50 += Number(a.horas_extra_50||0);
     totalExtra100 += Number(a.horas_extra_100||0);
     totalValor += Number(a.valor_total||0);
+    if (a.status==='aprovado') totalAprov++;
+    else if (a.status==='pendente') totalPend++;
+    else if (a.status==='rejeitado') totalRej++;
     var sBdg = a.status==='aprovado' ? 'bdg-green' : a.status==='pendente' ? 'bdg-yellow' : a.status==='rejeitado' ? 'bdg-red' : 'bdg-gray';
     var proj = mapaProps[a.proposta_id];
     var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — ' + proj.titulo : '') : (a.proposta_id||'—');
     var desc = a.descricao || '—';
+    var bolCell = a.boletim_numero ? '<span style="font-size:.7rem;color:var(--accent)">' + a.boletim_numero + '</span>' : '—';
     return '<tr>'
       + '<td>' + fmtData(a.data) + '</td>'
-      + '<td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
-      + '<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
+      + '<td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
+      + '<td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
       + '<td>' + (a.hora_saida||'—') + '</td>'
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
@@ -1722,6 +1754,7 @@ async function carregarHorasColab(colabId) {
       + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
       + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
       + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
+      + '<td>' + bolCell + '</td>'
     + '</tr>';
   }).join('');
 
@@ -1729,79 +1762,273 @@ async function carregarHorasColab(colabId) {
     kpi(totalNormal.toFixed(1)+'h', 'Normal') +
     kpi(totalExtra50.toFixed(1)+'h', 'Extra 50%') +
     kpi(totalExtra100.toFixed(1)+'h', 'Extra 100%') +
-    kpi(fmtMoeda(totalValor), 'Total R$');
+    kpi(fmtMoeda(totalValor), 'Total R$') +
+    kpi(String(totalAprov), 'Aprovados') +
+    kpi(String(totalPend), 'Pendentes') +
+    (totalRej ? kpi(String(totalRej), 'Rejeitados') : '');
 }
 
 async function gerarRelatorioHoras() {
   if (!_colabAtivo) return;
-  var data = _horasColabCache;
-  if (!data.length) { toast('Nenhum dado para gerar relatório.', 'err'); return; }
+  var apts = _horasColabCache;
+  if (!apts.length) { toast('Nenhum dado para gerar relatório.', 'err'); return; }
 
-  var ids = [...new Set(data.map(function(a){ return a.proposta_id; }).filter(Boolean))];
+  toast('Gerando relatório...', 'ok');
+
+  var empId = await getEmpresaId();
+
+  // Buscar dados da empresa
+  var empresa = { nome: '—', cnpj: '—', logo_url: null };
+  try {
+    var empLocal = (window.parent._empresasUsuario||[]).find(function(e){ return e.id===empId; });
+    if (empLocal) { empresa = empLocal; }
+    else {
+      var { data: empDb } = await sb.from('empresas').select('nome,cnpj,logo_url').eq('id', empId).maybeSingle();
+      if (empDb) empresa = empDb;
+    }
+  } catch(e){}
+
+  // Buscar projetos
+  var propIds = [...new Set(apts.map(function(a){ return a.proposta_id; }).filter(Boolean))];
   var mapaProps = {};
-  if (ids.length) {
-    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo, cliente').in('app_id', ids);
+  if (propIds.length) {
+    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo, cliente').in('app_id', propIds);
     (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
   }
 
+  // Buscar boletins do colaborador no período
+  var bolQ = sb.from('boletins').select('*').eq('colaborador_id', _colabAtivo.id).eq('empresa_id', empId).order('periodo_inicio');
+  if (_horasColabDe)  bolQ = bolQ.gte('periodo_fim', _horasColabDe);
+  if (_horasColabAte) bolQ = bolQ.lte('periodo_inicio', _horasColabAte);
+  var { data: boletins } = await bolQ;
+  boletins = boletins || [];
+
+  // Buscar histórico dos apontamentos
+  var aptIds = apts.map(function(a){ return a.id; });
+  var historicos = {};
+  if (aptIds.length) {
+    var { data: hist } = await sb.from('apontamentos_historico')
+      .select('*').in('apontamento_id', aptIds).order('criado_em', {ascending:true});
+    (hist||[]).forEach(function(h){
+      if (!historicos[h.apontamento_id]) historicos[h.apontamento_id] = [];
+      historicos[h.apontamento_id].push(h);
+    });
+  }
+
+  // Calcular totais
   var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
-  var linhas = data.map(function(a) {
-    totalNormal += Number(a.horas_normal||0);
-    totalExtra50 += Number(a.horas_extra_50||0);
+  var totalAprov=0, totalPend=0, totalRej=0, totalComBol=0;
+  apts.forEach(function(a){
+    totalNormal   += Number(a.horas_normal||0);
+    totalExtra50  += Number(a.horas_extra_50||0);
     totalExtra100 += Number(a.horas_extra_100||0);
-    totalValor += Number(a.valor_total||0);
+    totalValor    += Number(a.valor_total||0);
+    if (a.status==='aprovado')  totalAprov++;
+    else if (a.status==='pendente')  totalPend++;
+    else if (a.status==='rejeitado') totalRej++;
+    if (a.boletim_id) totalComBol++;
+  });
+  var totalHoras = totalNormal + totalExtra50 + totalExtra100;
+
+  // Período exibido
+  var periodoTxt = (_horasColabDe && _horasColabAte)
+    ? fmtData(_horasColabDe) + ' a ' + fmtData(_horasColabAte)
+    : (_horasColabDe ? 'A partir de ' + fmtData(_horasColabDe) : (_horasColabAte ? 'Até ' + fmtData(_horasColabAte) : 'Todos os registros'));
+
+  // Status colors
+  function sc(s){ return s==='aprovado'?'#1a7f37':s==='pendente'?'#9a6700':s==='rejeitado'?'#cf222e':s==='valido'?'#0969da':'#57606a'; }
+  function sb2(s){ return s==='aprovado'?'#dafbe1':s==='pendente'?'#fff8c5':s==='rejeitado'?'#ffebe9':s==='valido'?'#ddf4ff':'#f6f8fa'; }
+  function badge(s){ return '<span style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;background:'+sb2(s)+';color:'+sc(s)+'">' + (s||'—') + '</span>'; }
+
+  // Linhas da tabela principal
+  var linhas = apts.map(function(a){
     var proj = mapaProps[a.proposta_id];
-    var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — ' + proj.titulo : '') : (a.proposta_id||'—');
-    var statusColor = a.status==='aprovado' ? '#3fb950' : a.status==='pendente' ? '#d29922' : a.status==='rejeitado' ? '#f85149' : '#8b949e';
-    return '<tr>'
-      + '<td>' + fmtData(a.data) + '</td>'
-      + '<td>' + projLabel + '</td>'
+    var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — '+proj.titulo : '') : (a.proposta_id||'—');
+    var bolInfo = a.boletim_numero ? a.boletim_numero : '—';
+    var hasHist = historicos[a.id] && historicos[a.id].length > 0;
+    return '<tr style="' + (hasHist ? 'background:#fff8c5' : '') + '">'
+      + '<td style="white-space:nowrap">' + fmtData(a.data) + '</td>'
+      + '<td style="font-size:10px">' + projLabel + '</td>'
       + '<td>' + (a.descricao||'—') + '</td>'
-      + '<td>' + (a.hora_entrada||'—') + '</td>'
-      + '<td>' + (a.hora_saida||'—') + '</td>'
+      + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
+      + '<td style="text-align:center">' + (a.hora_saida||'—') + '</td>'
       + '<td style="text-align:center">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td style="text-align:center">' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
-      + '<td style="text-align:right;color:#1a7f37;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
-      + '<td style="text-align:center;color:' + statusColor + ';font-weight:600">' + (a.status||'—') + '</td>'
+      + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td style="text-align:center">' + badge(a.status) + '</td>'
+      + '<td style="text-align:center;font-size:10px;color:#0969da">' + bolInfo + '</td>'
     + '</tr>';
   }).join('');
 
+  // Seção boletins
+  var secBoletins = '';
+  if (boletins.length) {
+    var bolLinhas = boletins.map(function(b){
+      var assinEmp  = b.assinado_empresa  ? '✅ Sim' : '⏳ Não';
+      var assinPrest = b.assinado_prestador ? '✅ Sim' : '⏳ Não';
+      var statusBol = b.status==='valido' ? 'Válido' : b.status==='aguard_prestador' ? 'Aguardando Prestador' : b.status==='aguard_empresa' ? 'Aguardando Empresa' : b.status==='rascunho' ? 'Rascunho' : (b.status||'—');
+      return '<tr>'
+        + '<td style="font-weight:700">' + (b.numero||'—') + '</td>'
+        + '<td>' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim) + '</td>'
+        + '<td style="text-align:center">' + Number(b.horas_total||0).toFixed(1) + 'h</td>'
+        + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoeda(b.valor_total) + '</td>'
+        + '<td style="text-align:center">' + badge(b.status==='valido'?'valido':b.status) + '</td>'
+        + '<td style="text-align:center">' + assinPrest + '</td>'
+        + '<td style="text-align:center">' + assinEmp + '</td>'
+      + '</tr>';
+    }).join('');
+    secBoletins = '<div class="sec-title">📋 BOLETINS EMITIDOS NO PERÍODO</div>'
+      + '<table><thead><tr>'
+      + '<th>Número</th><th>Período</th><th>Horas</th><th>Valor</th><th>Status</th><th>Assin. Prestador</th><th>Assin. Empresa</th>'
+      + '</tr></thead><tbody>' + bolLinhas + '</tbody></table>';
+  }
+
+  // Seção histórico
+  var secHistorico = '';
+  var histEntries = [];
+  Object.keys(historicos).forEach(function(aptId){
+    var apt = apts.find(function(a){ return a.id===aptId; });
+    historicos[aptId].forEach(function(h){
+      histEntries.push({ apt: apt, h: h });
+    });
+  });
+  if (histEntries.length) {
+    histEntries.sort(function(a,b){ return a.h.criado_em > b.h.criado_em ? 1 : -1; });
+    var histLinhas = histEntries.map(function(e){
+      var dataHist = e.h.criado_em ? new Date(e.h.criado_em).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) : '—';
+      var aptData = e.apt ? fmtData(e.apt.data) : '—';
+      var evColor = e.h.evento==='cancelado'?'#cf222e':e.h.evento==='editado'?'#9a6700':'#1a7f37';
+      return '<tr>'
+        + '<td>' + dataHist + '</td>'
+        + '<td>' + aptData + '</td>'
+        + '<td style="font-weight:700;color:' + evColor + '">' + (e.h.evento||'—').toUpperCase() + '</td>'
+        + '<td>' + (e.h.usuario_nome||'—') + '</td>'
+        + '<td>' + (e.h.motivo||'—') + '</td>'
+      + '</tr>';
+    }).join('');
+    secHistorico = '<div class="sec-title">🔄 HISTÓRICO DE ALTERAÇÕES</div>'
+      + '<table><thead><tr><th>Data/Hora</th><th>Apontamento</th><th>Evento</th><th>Usuário</th><th>Motivo</th></tr></thead>'
+      + '<tbody>' + histLinhas + '</tbody></table>';
+  }
+
+  var logoHtml = empresa.logo_url
+    ? '<img src="' + empresa.logo_url + '" style="height:52px;object-fit:contain;margin-right:14px">'
+    : '<div style="width:52px;height:52px;background:#f0a500;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#000;margin-right:14px;flex-shrink:0">' + (empresa.nome||'T').charAt(0) + '</div>';
+
+  var css = [
+    'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:24px 28px;line-height:1.4}',
+    '.header{display:flex;align-items:center;border-bottom:3px solid #f0a500;padding-bottom:14px;margin-bottom:4px}',
+    '.header-info{flex:1}',
+    '.emp-nome{font-size:17px;font-weight:900;color:#111;margin:0 0 2px}',
+    '.emp-cnpj{font-size:10px;color:#555}',
+    '.rel-title{text-align:center;font-size:14px;font-weight:900;letter-spacing:.08em;color:#333;margin:10px 0 14px;text-transform:uppercase;border:1px solid #e0e0e0;padding:6px;background:#fafafa}',
+    '.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-bottom:14px;background:#f6f8fa;border:1px solid #e0e0e0;border-radius:6px;padding:10px 14px}',
+    '.info-row{display:flex;gap:6px}.info-label{color:#555;min-width:100px;font-size:10px}.info-val{font-weight:700}',
+    '.kpis{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}',
+    '.kpi{background:#f6f8fa;border:1px solid #e0e0e0;border-radius:6px;padding:7px 12px;text-align:center;min-width:80px}',
+    '.kpi b{display:block;font-size:13px;font-weight:900}.kpi span{font-size:9px;color:#666;text-transform:uppercase}',
+    '.sec-title{font-size:11px;font-weight:900;color:#333;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 6px;padding-bottom:3px;border-bottom:2px solid #f0a500}',
+    'table{width:100%;border-collapse:collapse;margin-bottom:4px}',
+    'th{background:#f0a500;color:#000;padding:4px 6px;text-align:left;font-size:9.5px;font-weight:700}',
+    'td{padding:3px 6px;border-bottom:1px solid #eee;font-size:10px}',
+    'tr:nth-child(even) td{background:#fafafa}',
+    '.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}',
+    '.sig-box{border-top:1px solid #aaa;padding-top:6px}',
+    '.sig-label{font-size:10px;color:#555;margin-bottom:2px}.sig-name{font-size:11px;font-weight:700}',
+    '.sig-date{font-size:10px;color:#555;margin-top:16px}',
+    '.footer{margin-top:20px;padding-top:8px;border-top:1px solid #ddd;font-size:9px;color:#999;text-align:center}',
+    '@media print{body{padding:12px 16px}.no-print{display:none}button{display:none}}'
+  ].join('');
+
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
     + '<title>Relatório de Horas — ' + _colabAtivo.nome + '</title>'
-    + '<style>'
-    + 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:20px}'
-    + 'h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;color:#555;margin:0 0 12px;font-weight:normal}'
-    + '.header{border-bottom:2px solid #f0a500;padding-bottom:10px;margin-bottom:16px}'
-    + '.kpis{display:flex;gap:16px;margin-bottom:16px}'
-    + '.kpi{background:#f5f5f5;border-radius:6px;padding:8px 14px;text-align:center}'
-    + '.kpi b{display:block;font-size:14px;color:#1a7f37}.kpi span{font-size:10px;color:#666}'
-    + 'table{width:100%;border-collapse:collapse}'
-    + 'th{background:#f0a500;color:#000;padding:5px 6px;text-align:left;font-size:10px}'
-    + 'td{padding:4px 6px;border-bottom:1px solid #eee}'
-    + 'tr:nth-child(even) td{background:#fafafa}'
-    + '.footer{margin-top:20px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#888;text-align:center}'
-    + '@media print{body{padding:10px}.no-print{display:none}}'
-    + '</style></head><body>'
+    + '<style>' + css + '</style></head><body>'
+    + '<button class="no-print" onclick="window.print()" style="position:fixed;top:16px;right:16px;padding:8px 18px;background:#f0a500;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">🖨️ Imprimir / PDF</button>'
+
+    // CABEÇALHO
     + '<div class="header">'
-    + '<h1>Relatório de Horas — ' + _colabAtivo.nome + '</h1>'
-    + '<h2>' + (_colabAtivo.funcao||'') + ' · ' + (_colabAtivo.tipo||'').toUpperCase() + ' · Gerado em: ' + new Date().toLocaleDateString('pt-BR') + '</h2>'
+    + logoHtml
+    + '<div class="header-info">'
+    + '<div class="emp-nome">' + (empresa.nome||'—') + '</div>'
+    + '<div class="emp-cnpj">CNPJ: ' + (empresa.cnpj||'—') + '</div>'
     + '</div>'
+    + '<div style="text-align:right;font-size:9px;color:#888">Emitido em: ' + new Date().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) + '</div>'
+    + '</div>'
+
+    // TÍTULO
+    + '<div class="rel-title">RELATÓRIO PARA SIMPLES CONFERÊNCIA</div>'
+
+    // INFO COLABORADOR
+    + '<div class="info-grid">'
+    + '<div class="info-row"><span class="info-label">Colaborador:</span><span class="info-val">' + _colabAtivo.nome + '</span></div>'
+    + '<div class="info-row"><span class="info-label">Tipo de contrato:</span><span class="info-val">' + (_colabAtivo.tipo||'—').toUpperCase() + '</span></div>'
+    + '<div class="info-row"><span class="info-label">Função / Cargo:</span><span class="info-val">' + (_colabAtivo.funcao||'—') + '</span></div>'
+    + '<div class="info-row"><span class="info-label">Valor/hora base:</span><span class="info-val">' + (_colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora)+'/h' : '—') + '</span></div>'
+    + '<div class="info-row"><span class="info-label">Período do relatório:</span><span class="info-val">' + periodoTxt + '</span></div>'
+    + '<div class="info-row"><span class="info-label">CPF / CNPJ:</span><span class="info-val">' + (_colabAtivo.documento||'—') + '</span></div>'
+    + '</div>'
+
+    // RESUMO
+    + '<div class="sec-title">📊 RESUMO GERAL</div>'
     + '<div class="kpis">'
-    + '<div class="kpi"><b>' + totalNormal.toFixed(1) + 'h</b><span>Normal</span></div>'
-    + '<div class="kpi"><b>' + totalExtra50.toFixed(1) + 'h</b><span>Extra 50%</span></div>'
-    + '<div class="kpi"><b>' + totalExtra100.toFixed(1) + 'h</b><span>Extra 100%</span></div>'
-    + '<div class="kpi"><b style="color:#1a7f37">' + fmtMoeda(totalValor) + '</b><span>Total R$</span></div>'
+    + '<div class="kpi"><b>' + totalNormal.toFixed(1)+'h</b><span>Normal</span></div>'
+    + '<div class="kpi"><b>' + totalExtra50.toFixed(1)+'h</b><span>Extra 50%</span></div>'
+    + '<div class="kpi"><b>' + totalExtra100.toFixed(1)+'h</b><span>Extra 100%</span></div>'
+    + '<div class="kpi"><b>' + totalHoras.toFixed(1)+'h</b><span>Total Horas</span></div>'
+    + '<div class="kpi"><b style="color:#1a7f37">' + fmtMoeda(totalValor)+'</b><span>Total R$</span></div>'
+    + '<div class="kpi"><b style="color:#1a7f37">' + totalAprov+'</b><span>Aprovados</span></div>'
+    + '<div class="kpi"><b style="color:#9a6700">' + totalPend+'</b><span>Pendentes</span></div>'
+    + (totalRej ? '<div class="kpi"><b style="color:#cf222e">'+totalRej+'</b><span>Rejeitados</span></div>' : '')
+    + '<div class="kpi"><b style="color:#0969da">' + totalComBol+'</b><span>Com Boletim</span></div>'
     + '</div>'
+
+    // APONTAMENTOS
+    + '<div class="sec-title">📝 APONTAMENTOS DETALHADOS ' + ((_horasColabDe||_horasColabAte) ? '(' + periodoTxt + ')' : '') + '</div>'
     + '<table><thead><tr>'
-    + '<th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>'
-    + '<th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th>'
-    + '</tr></thead><tbody>' + linhas + '</tbody></table>'
-    + '<div class="footer">Sistema de Gestão Elivandro — Documento gerado automaticamente</div>'
-    + '<script>window.print();<\/script>'
+    + '<th>Data</th><th>Projeto</th><th>Descrição das Atividades</th><th>Entrada</th><th>Saída</th>'
+    + '<th>Normal</th><th>E.50%</th><th>E.100%</th><th>Total R$</th><th>Status</th><th>Boletim</th>'
+    + '</tr></thead><tbody>' + linhas + '</tbody>'
+    + '<tfoot><tr style="background:#f0f0f0;font-weight:700">'
+    + '<td colspan="5">TOTAIS</td>'
+    + '<td style="text-align:center">' + totalNormal.toFixed(1)+'h</td>'
+    + '<td style="text-align:center">' + totalExtra50.toFixed(1)+'h</td>'
+    + '<td style="text-align:center">' + totalExtra100.toFixed(1)+'h</td>'
+    + '<td style="text-align:right;color:#1a7f37">' + fmtMoeda(totalValor)+'</td>'
+    + '<td colspan="2"></td>'
+    + '</tr></tfoot>'
+    + '</table>'
+    + '<p style="font-size:9px;color:#888;margin:2px 0 0">* Linhas em amarelo possuem histórico de alterações</p>'
+
+    // BOLETINS
+    + secBoletins
+
+    // HISTÓRICO
+    + secHistorico
+
+    // ASSINATURAS
+    + '<div class="sec-title">✍️ ASSINATURAS</div>'
+    + '<div class="sig-grid">'
+    + '<div class="sig-box">'
+    + '<div class="sig-label">Empresa / Responsável</div>'
+    + '<div class="sig-name">' + (empresa.nome||'') + '</div>'
+    + '<div class="sig-date">Data: ______ / ______ / __________</div>'
+    + '<div style="margin-top:30px;border-top:1px solid #333;padding-top:4px;font-size:9px;color:#555">Assinatura e carimbo</div>'
+    + '</div>'
+    + '<div class="sig-box">'
+    + '<div class="sig-label">Colaborador / Prestador</div>'
+    + '<div class="sig-name">' + _colabAtivo.nome + '</div>'
+    + ((_colabAtivo.documento) ? '<div style="font-size:9px;color:#555">CPF/CNPJ: ' + _colabAtivo.documento + '</div>' : '')
+    + '<div class="sig-date">Data: ______ / ______ / __________</div>'
+    + '<div style="margin-top:30px;border-top:1px solid #333;padding-top:4px;font-size:9px;color:#555">Assinatura</div>'
+    + '</div>'
+    + '</div>'
+
+    + '<div class="footer">Sistema de Gestão Elivandro — Documento gerado automaticamente em ' + new Date().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) + ' — APENAS PARA CONFERÊNCIA</div>'
     + '</body></html>';
 
   var win = window.open('', '_blank');
+  if (!win) { toast('Permita pop-ups no navegador para gerar o relatório.', 'err'); return; }
   win.document.write(html);
   win.document.close();
 }
