@@ -187,6 +187,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <!-- KPIs -->
     <div class="kpi-g" id="kpiColabs"></div>
 
+    <!-- Cadastros pendentes (aparece somente quando há pendentes) -->
+    <div class="card" id="pendCard" style="display:none;border-color:rgba(240,165,0,.45)">
+      <div class="ch">
+        <span class="ct">⏳ Cadastros Pendentes de Aprovação</span>
+        <span id="pendBadge" class="bdg bdg-yellow" style="font-size:.72rem"></span>
+      </div>
+      <div id="pendList"></div>
+    </div>
+
+    <!-- Colaboradores inativos (colapsável) -->
+    <div class="card" id="inativosCard" style="display:none">
+      <div class="ch" style="cursor:pointer" onclick="toggleInativos()">
+        <span class="ct">💤 Colaboradores Inativos</span>
+        <span id="inativosChevron" style="font-size:.78rem;color:var(--text3)">▼ ver</span>
+      </div>
+      <div id="inativosList" style="display:none"></div>
+    </div>
+
     <!-- Lista + botão novo -->
     <div class="card">
       <div class="ch">
@@ -224,6 +242,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="br" style="margin-left:auto">
           <button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>
           <button class="btn bd bsm" onclick="desativarColab()">Desativar</button>
+          <button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>
         </div>
       </div>
 
@@ -1035,7 +1054,7 @@ function showSec(id, btn) {
     document.querySelectorAll('.nav-rh-btn').forEach(function(b){ b.classList.remove('on'); });
     btn.classList.add('on');
   }
-  if (id === 'colaboradores') carregarColabs();
+  if (id === 'colaboradores') { carregarColabs(); carregarPendentes(); carregarInativos(); }
   if (id === 'apontamentos') {
     verificarColabProprio().then(function(){
       carregarApontamentos();
@@ -2388,6 +2407,143 @@ async function desativarColab() {
   toast('Colaborador desativado.', 'ok');
   showSec('colaboradores', document.querySelector('.nav-rh-btn'));
   carregarColabs();
+  carregarInativos();
+}
+
+async function excluirColabAtivo() {
+  if (!_colabAtivo) return;
+  if (!confirm('EXCLUIR ' + _colabAtivo.nome + ' permanentemente?\nEsta ação não pode ser desfeita.')) return;
+  await sb.from('colaborador_empresas').delete().eq('colaborador_id', _colabAtivo.id);
+  await sb.from('colaboradores').delete().eq('id', _colabAtivo.id);
+  toast('Colaborador excluído.', 'ok');
+  showSec('colaboradores', document.querySelector('.nav-rh-btn'));
+  carregarColabs();
+}
+
+// ══ PENDENTES ════════════════════════════════════════════════
+async function carregarPendentes() {
+  var { data } = await sb
+    .from('colaboradores')
+    .select('*')
+    .eq('ativo', false)
+    .ilike('observacoes', '%__PENDENTE__%')
+    .order('nome');
+
+  var lista = data || [];
+  var card = document.getElementById('pendCard');
+  var badge = document.getElementById('pendBadge');
+  if (!lista.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  badge.textContent = lista.length + ' pendente' + (lista.length > 1 ? 's' : '');
+  renderPendentes(lista);
+}
+
+function renderPendentes(lista) {
+  document.getElementById('pendList').innerHTML = lista.map(function(c) {
+    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    var id = c.id.replace(/'/g,"\\\'");
+    var nome = (c.nome||'').replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)">'
+      + '<div style="flex:1;min-width:0">'
+        + '<div style="font-weight:600;font-size:.85rem">' + (c.nome||'—') + '</div>'
+        + '<div style="font-size:.74rem;color:var(--text3)">' + (c.email||'—') + ' · ' + tipoTxt + ' · ' + (c.funcao||'—') + (c.documento ? ' · ' + c.documento : '') + '</div>'
+      + '</div>'
+      + '<button class="btn bs bsm" onclick="aprovarPendente(\'' + id + '\',\'' + nome + '\')">✔ Aprovar</button>'
+      + '<button class="btn bd bsm" onclick="rejeitarPendente(\'' + id + '\',\'' + nome + '\')" style="color:#f85149">✗ Rejeitar</button>'
+    + '</div>';
+  }).join('');
+}
+
+async function aprovarPendente(id, nome) {
+  if (!confirm('Aprovar cadastro de ' + nome + '?')) return;
+  var empId = await getEmpresaId();
+
+  var { data: c } = await sb.from('colaboradores').select('observacoes').eq('id', id).single();
+  var obsLimpa = c ? (c.observacoes || '').replace('__PENDENTE__', '').trim() : '';
+
+  var { error } = await sb.from('colaboradores').update({
+    ativo: true,
+    observacoes: obsLimpa || null
+  }).eq('id', id);
+  if (error) { toast('Erro ao aprovar: ' + error.message, 'err'); return; }
+
+  if (empId) {
+    var { data: vinc } = await sb.from('colaborador_empresas')
+      .select('id').eq('colaborador_id', id).eq('empresa_id', empId);
+    if (!vinc || !vinc.length) {
+      await sb.from('colaborador_empresas').insert({ colaborador_id: id, empresa_id: empId, ativo: true });
+    }
+  }
+  toast('Cadastro de ' + nome + ' aprovado!', 'ok');
+  carregarColabs();
+  carregarPendentes();
+}
+
+async function rejeitarPendente(id, nome) {
+  if (!confirm('Rejeitar e excluir o cadastro de ' + nome + '?\nO colaborador não terá acesso ao sistema.')) return;
+  await sb.from('colaboradores').delete().eq('id', id);
+  toast('Cadastro de ' + nome + ' rejeitado.', 'ok');
+  carregarPendentes();
+}
+
+// ══ INATIVOS ═════════════════════════════════════════════════
+async function carregarInativos() {
+  var empId = await getEmpresaId();
+  if (!empId) return;
+
+  var { data: vinculos } = await sb.from('colaborador_empresas')
+    .select('colaborador_id').eq('empresa_id', empId).eq('ativo', true);
+  if (!vinculos || !vinculos.length) { document.getElementById('inativosCard').style.display = 'none'; return; }
+
+  var ids = vinculos.map(function(v){ return v.colaborador_id; });
+  var { data } = await sb.from('colaboradores').select('*').in('id', ids).eq('ativo', false).order('nome');
+
+  var lista = (data || []).filter(function(c){ return !(c.observacoes||'').includes('__PENDENTE__'); });
+  var card = document.getElementById('inativosCard');
+  if (!lista.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  renderInativos(lista);
+}
+
+function renderInativos(lista) {
+  document.getElementById('inativosList').innerHTML = lista.map(function(c) {
+    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    var id = c.id.replace(/'/g,"\\\'");
+    var nome = (c.nome||'').replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)">'
+      + '<div style="flex:1;min-width:0">'
+        + '<div style="font-weight:600;font-size:.85rem;color:var(--text2)">' + (c.nome||'—') + '</div>'
+        + '<div style="font-size:.74rem;color:var(--text3)">' + (c.funcao||'—') + ' · ' + tipoTxt + '</div>'
+      + '</div>'
+      + '<button class="btn bs bsm" onclick="reativarColabById(\'' + id + '\',\'' + nome + '\')">🔄 Reativar</button>'
+      + '<button class="btn bd bsm" onclick="excluirColabById(\'' + id + '\',\'' + nome + '\')" style="color:#f85149">🗑️ Excluir</button>'
+    + '</div>';
+  }).join('');
+}
+
+function toggleInativos() {
+  var list = document.getElementById('inativosList');
+  var chev = document.getElementById('inativosChevron');
+  var aberto = list.style.display !== 'none';
+  list.style.display = aberto ? 'none' : '';
+  chev.textContent = aberto ? '▼ ver' : '▲ ocultar';
+}
+
+async function reativarColabById(id, nome) {
+  if (!confirm('Reativar ' + nome + '?')) return;
+  await sb.from('colaboradores').update({ ativo: true }).eq('id', id);
+  toast('Colaborador reativado.', 'ok');
+  carregarColabs();
+  carregarInativos();
+}
+
+async function excluirColabById(id, nome) {
+  if (!confirm('EXCLUIR ' + nome + ' permanentemente?\nEsta ação não pode ser desfeita.')) return;
+  await sb.from('colaborador_empresas').delete().eq('colaborador_id', id);
+  await sb.from('colaboradores').delete().eq('id', id);
+  toast('Colaborador excluído.', 'ok');
+  carregarColabs();
+  carregarInativos();
 }
 
 // ══ MODAL APONTAMENTO ════════════════════════════════════════
