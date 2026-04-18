@@ -232,58 +232,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ACTION BAR */
 #actionBar{
-  display:none;position:sticky;top:var(--hdr-h,52px);z-index:90;
-  background:rgba(13,42,13,.98);backdrop-filter:blur(10px);
-  border-bottom:2px solid #3fb950;
-  flex-direction:column;gap:0;
+  display:none;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  flex-direction:row;align-items:center;gap:.5rem;
+  padding:.45rem 1rem;
 }
 #actionBar.visible{display:flex}
-
-/* Linha 1 */
-.ab-row1{
-  display:flex;align-items:center;gap:.5rem;
-  padding:.45rem 1rem;
-  border-bottom:1px solid rgba(63,185,80,.2);
-}
+.ab-row1{display:contents}
 .ab-info{
-  flex:1;font-size:.78rem;color:#aef7ae;font-weight:600;
+  flex:1;font-size:.78rem;color:var(--text2);font-weight:600;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   min-width:0;
 }
 .ab-actions{display:flex;gap:.35rem;align-items:center;flex-shrink:0}
 .ab-save{font-size:.75rem;padding:.32rem .75rem}
-
-/* Linha 2 — etapas */
-.ab-steps{
-  display:flex;align-items:stretch;
-  overflow-x:auto;scrollbar-width:none;
-  gap:0;
-}
-.ab-steps::-webkit-scrollbar{display:none}
-.ab-step{
-  display:flex;align-items:center;gap:.3rem;
-  padding:.38rem .75rem;border:none;
-  background:transparent;color:rgba(163,230,163,.65);
-  cursor:pointer;font-size:.75rem;font-family:inherit;
-  white-space:nowrap;border-right:1px solid rgba(63,185,80,.15);
-  transition:all .15s;flex-shrink:0;
-}
-.ab-step:hover{background:rgba(63,185,80,.08);color:#aef7ae}
-.ab-step.ativo{background:rgba(63,185,80,.15);color:#3fb950;font-weight:700}
-.ab-sn{
-  width:18px;height:18px;border-radius:50%;
-  background:rgba(63,185,80,.2);border:1px solid rgba(63,185,80,.35);
-  display:grid;place-items:center;font-size:.65rem;font-weight:700;
-  color:#56d364;flex-shrink:0;
-}
-.ab-step.ativo .ab-sn{background:rgba(63,185,80,.4);border-color:#3fb950;color:#fff}
-.ab-sl{font-size:.74rem}
+.ab-steps{display:none}
 
 @media(max-width:640px){
-  .ab-row1{padding:.4rem .75rem}
+  #actionBar{padding:.4rem .75rem}
   .ab-info{font-size:.72rem}
-  .ab-step{padding:.35rem .6rem}
-  .ab-sl{font-size:.7rem}
 }
 
 
