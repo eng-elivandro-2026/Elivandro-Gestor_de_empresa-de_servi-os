@@ -1841,6 +1841,26 @@ function renderItensTab(p) {
       + '</tr>';
   }).join('');
 
+  var vD = parseFloat(p.vD) || 0;
+  var totalLiquido = parseFloat((totalIncluido - vD).toFixed(2));
+
+  var tfootRows = '<tr style="border-top:2px solid var(--border)">'
+    +   '<td colspan="3" style="padding:.38rem .5rem;font-size:.78rem;color:var(--text2)">Subtotal incluído</td>'
+    +   '<td style="padding:.38rem .5rem;font-size:.82rem;font-weight:600;color:var(--text);text-align:right">' + money(totalIncluido) + '</td>'
+    + '</tr>';
+
+  if (vD > 0) {
+    tfootRows += '<tr>'
+      + '<td colspan="3" style="padding:.28rem .5rem;font-size:.78rem;color:var(--text3)">Desconto global</td>'
+      + '<td style="padding:.28rem .5rem;font-size:.78rem;color:#f85149;text-align:right">− ' + money(vD) + '</td>'
+      + '</tr>';
+  }
+
+  tfootRows += '<tr style="border-top:1px solid var(--border)">'
+    +   '<td colspan="3" style="padding:.42rem .5rem;font-size:.82rem;font-weight:700;color:var(--text2)">Total da proposta</td>'
+    +   '<td style="padding:.42rem .5rem;font-size:.9rem;font-weight:700;color:var(--green);text-align:right">' + money(totalLiquido) + '</td>'
+    + '</tr>';
+
   el.innerHTML = '<div style="overflow-x:auto">'
     + '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
     + '<thead><tr style="background:var(--bg3)">'
@@ -1850,10 +1870,7 @@ function renderItensTab(p) {
     +   '<th style="padding:.38rem .5rem;text-align:right;font-size:.66rem;text-transform:uppercase;color:var(--text3);font-weight:600">PV Total</th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
-    + '<tfoot><tr style="border-top:2px solid var(--border)">'
-    +   '<td colspan="3" style="padding:.42rem .5rem;font-size:.78rem;font-weight:700;color:var(--text2)">Total incluído</td>'
-    +   '<td style="padding:.42rem .5rem;font-size:.88rem;font-weight:700;color:var(--green);text-align:right">' + money(totalIncluido) + '</td>'
-    + '</tr></tfoot>'
+    + '<tfoot>' + tfootRows + '</tfoot>'
     + '</table>'
     + '</div>';
 
