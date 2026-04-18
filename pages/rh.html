@@ -873,6 +873,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f"><label>Descrição</label><input type="text" id="docDesc" placeholder="Ex: Contrato MEI abr/2026"></div>
         <div class="f"><label>Data do documento</label><input type="date" id="docData"></div>
         <div class="f"><label>Data de vencimento</label><input type="date" id="docVenc" placeholder="Deixe em branco se não vence"></div>
+        <div class="f"><label>Aviso por e-mail</label>
+          <select id="docAvisoDias">
+            <option value="0">Sem aviso por e-mail</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+            <option value="90">90 dias antes</option>
+          </select>
+        </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
       </div>
       <div style="margin-top:.75rem;padding:.75rem;background:var(--bg3);border-radius:var(--r2);border:1px solid var(--border);font-size:.75rem;color:var(--text3)">
@@ -1022,6 +1032,17 @@ function fmtData(d) {
 function fmtMoeda(v) {
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+var _docEditId = null;
+
+function getAvisoDiasFromObs(obs) {
+  if (!obs) return 0;
+  var m = (obs||'').match(/^__aviso:(\d+)__/);
+  return m ? parseInt(m[1]) : 0;
+}
+function getObsClean(obs) {
+  return (obs||'').replace(/^__aviso:\d+__\n?/, '');
+}
+
 function diasAteVencer(dataStr) {
   if (!dataStr) return null;
   var hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1258,10 +1279,9 @@ function kpi(v, l) {
 async function gerarAlertas() {
   var empId = await getEmpresaId();
   var alertas = [];
-  var hoje = new Date(); hoje.setHours(0,0,0,0);
-  var em30 = new Date(hoje); em30.setDate(em30.getDate() + 30);
+  var emailAlerts = [];
 
-  // Buscar documentos de saúde com vencimento
+  // Documentos de saúde/NR com vencimento
   var { data: saude } = await sb
     .from('rh_saude')
     .select('tipo, data_vencimento, colaborador_id, colaboradores(nome)')
@@ -1271,9 +1291,36 @@ async function gerarAlertas() {
     var dias = diasAteVencer(s.data_vencimento);
     var nome = s.colaboradores ? s.colaboradores.nome : '?';
     if (dias < 0) {
-      alertas.push({ cls:'alerta-red', txt: '🔴 ' + s.tipo.toUpperCase() + ' vencido — ' + nome });
+      var txt = '🔴 ' + s.tipo.toUpperCase() + ' vencido — ' + nome;
+      alertas.push({ cls:'alerta-red', txt: txt });
+      emailAlerts.push(txt);
     } else if (dias <= 30) {
-      alertas.push({ cls:'alerta-yellow', txt: '🟡 ' + s.tipo.toUpperCase() + ' vence em ' + dias + ' dias — ' + nome });
+      var txt = '🟡 ' + s.tipo.toUpperCase() + ' vence em ' + dias + ' dias — ' + nome;
+      alertas.push({ cls:'alerta-yellow', txt: txt });
+      emailAlerts.push(txt);
+    }
+  });
+
+  // Documentos gerais com aviso configurado
+  var { data: docs } = await sb
+    .from('rh_documentos')
+    .select('descricao, tipo, data_vencimento, observacoes, colaboradores(nome)')
+    .not('data_vencimento', 'is', null);
+
+  (docs || []).forEach(function(d) {
+    var dias = diasAteVencer(d.data_vencimento);
+    if (dias === null) return;
+    var aviso = getAvisoDiasFromObs(d.observacoes) || 30;
+    var nome = d.colaboradores ? d.colaboradores.nome : '?';
+    var docLabel = d.descricao || d.tipo || 'Documento';
+    if (dias < 0) {
+      var txt = '🔴 ' + docLabel + ' vencido — ' + nome;
+      alertas.push({ cls:'alerta-red', txt: txt });
+      emailAlerts.push(txt);
+    } else if (dias <= aviso) {
+      var txt = '🟡 ' + docLabel + ' vence em ' + dias + ' dias — ' + nome;
+      alertas.push({ cls:'alerta-yellow', txt: txt });
+      emailAlerts.push(txt);
     }
   });
 
@@ -1289,10 +1336,31 @@ async function gerarAlertas() {
   }
 
   var bar = document.getElementById('alertasBar');
-  if (!alertas.length) { bar.innerHTML = ''; return; }
-  bar.innerHTML = alertas.map(function(a) {
-    return '<div class="alerta ' + a.cls + '">' + a.txt + '</div>';
-  }).join('');
+  if (!alertas.length) { bar.innerHTML = ''; } else {
+    bar.innerHTML = alertas.map(function(a) {
+      return '<div class="alerta ' + a.cls + '">' + a.txt + '</div>';
+    }).join('');
+  }
+
+  // Enviar e-mail de alerta (máximo 1 por dia)
+  if (emailAlerts.length) {
+    var hoje = new Date().toISOString().slice(0,10);
+    var ultimoEnvio = localStorage.getItem('rh_alert_email_date');
+    if (ultimoEnvio !== hoje) {
+      try {
+        await fetch('https://formsubmit.co/ajax/nascimento.gaube@gmail.com', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            _subject: '⚠️ Alertas de Vencimento RH — ' + new Date().toLocaleDateString('pt-BR'),
+            Alertas: emailAlerts.join('\n'),
+            _template: 'box'
+          })
+        });
+        localStorage.setItem('rh_alert_email_date', hoje);
+      } catch(e) { console.warn('Email de alerta não enviado:', e); }
+    }
+  }
 }
 
 // ══ DETALHE COLABORADOR ══════════════════════════════════════
@@ -1368,12 +1436,17 @@ async function carregarDocs(colabId) {
   }
   el.innerHTML = data.map(function(d) {
     var sv = statusVencimento(d.data_vencimento);
+    var aviso = getAvisoDiasFromObs(d.observacoes);
+    var obsClean = getObsClean(d.observacoes);
+    var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📄</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.tipo) + '</div>'
-        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + '</div>'
+        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
+        + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + '<button class="btn ba bsm" onclick="editarDoc(' + JSON.stringify(d) + ')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirDoc(\'' + d.id + '\')">🗑</button>'
     + '</div>';
   }).join('');
@@ -2661,26 +2734,47 @@ async function salvarApontamento() {
 
 // ══ MODAL DOCUMENTO ══════════════════════════════════════════
 function abrirModalDoc() {
+  _docEditId = null;
   ['docTipo','docData','docVenc','docObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('docDesc').value='';
+  document.getElementById('docAvisoDias').value='30';
   document.getElementById('modalDocTit').textContent='Adicionar Documento';
   document.getElementById('modalDoc').classList.add('on');
 }
-function fecharModalDoc() { document.getElementById('modalDoc').classList.remove('on'); }
+function editarDoc(d) {
+  _docEditId = d.id;
+  document.getElementById('docTipo').value    = d.tipo||'';
+  document.getElementById('docDesc').value    = d.descricao||'';
+  document.getElementById('docData').value    = d.data_documento||'';
+  document.getElementById('docVenc').value    = d.data_vencimento||'';
+  document.getElementById('docAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes));
+  document.getElementById('docObs').value     = getObsClean(d.observacoes);
+  document.getElementById('modalDocTit').textContent='Editar Documento';
+  document.getElementById('modalDoc').classList.add('on');
+}
+function fecharModalDoc() { document.getElementById('modalDoc').classList.remove('on'); _docEditId = null; }
 async function salvarDoc() {
   if (!_colabAtivo) return;
+  var aviso = document.getElementById('docAvisoDias').value;
+  var obsRaw = document.getElementById('docObs').value.trim();
+  var obsFinal = (aviso && aviso !== '0') ? ('__aviso:' + aviso + '__' + (obsRaw ? '\n' + obsRaw : '')) : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
     tipo: document.getElementById('docTipo').value,
     descricao: document.getElementById('docDesc').value.trim(),
     data_documento: document.getElementById('docData').value||null,
     data_vencimento: document.getElementById('docVenc').value||null,
-    observacoes: document.getElementById('docObs').value.trim()
+    observacoes: obsFinal||null
   };
   if (!row.tipo) { toast('Selecione o tipo.','err'); return; }
-  var { error } = await sb.from('rh_documentos').insert(row);
+  var error;
+  if (_docEditId) {
+    ({ error } = await sb.from('rh_documentos').update(row).eq('id', _docEditId));
+  } else {
+    ({ error } = await sb.from('rh_documentos').insert(row));
+  }
   if (error) { toast('Erro: '+error.message,'err'); return; }
-  toast('Documento salvo!','ok');
+  toast(_docEditId ? 'Documento atualizado!' : 'Documento salvo!', 'ok');
   fecharModalDoc();
   carregarDocs(_colabAtivo.id);
 }
