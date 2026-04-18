@@ -884,9 +884,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           </select>
         </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
-      </div>
-      <div style="margin-top:.75rem;padding:.75rem;background:var(--bg3);border-radius:var(--r2);border:1px solid var(--border);font-size:.75rem;color:var(--text3)">
-        📎 Upload de arquivos será disponibilizado em breve (Supabase Storage). Por enquanto registre os metadados.
+        <div class="f" style="grid-column:1/-1">
+          <label>Arquivo (PDF, imagem, Word)</label>
+          <input type="file" id="docArquivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
+            style="padding:.4rem .6rem;font-size:.8rem;cursor:pointer">
+          <div id="docArquivoAtual" style="margin-top:.4rem;font-size:.75rem;color:var(--text3);display:none">
+            Arquivo atual: <a id="docArquivoLink" href="#" target="_blank" style="color:var(--accent)"></a>
+            <button onclick="removerArquivoAtual()" style="margin-left:.5rem;background:none;border:none;color:#f85149;cursor:pointer;font-size:.75rem">✕ remover</button>
+          </div>
+          <div id="docUploadProgress" style="display:none;margin-top:.35rem;font-size:.75rem;color:var(--text3)">⏳ Enviando arquivo...</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1448,6 +1455,7 @@ async function carregarDocs(colabId) {
         + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + (d.arquivo_url ? '<a href="' + d.arquivo_url + '" target="_blank" class="btn bg bsm" style="margin-right:.25rem;text-decoration:none">📎</a>' : '')
       + '<button class="btn ba bsm" onclick="editarDocById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirDoc(\'' + d.id + '\')">🗑</button>'
     + '</div>';
@@ -2740,55 +2748,123 @@ async function salvarApontamento() {
 }
 
 // ══ MODAL DOCUMENTO ══════════════════════════════════════════
-function abrirModalDoc() {
+var _docArquivoRemover = false;
+
+function _resetModalDoc() {
   _docEditId = null;
+  _docArquivoRemover = false;
   ['docTipo','docData','docVenc','docObs'].forEach(function(f){ document.getElementById(f).value=''; });
-  document.getElementById('docDesc').value='';
-  document.getElementById('docAvisoDias').value='30';
-  document.getElementById('modalDocTit').textContent='Adicionar Documento';
+  document.getElementById('docDesc').value = '';
+  document.getElementById('docAvisoDias').value = '30';
+  document.getElementById('docArquivo').value = '';
+  document.getElementById('docArquivoAtual').style.display = 'none';
+  document.getElementById('docUploadProgress').style.display = 'none';
+}
+
+function abrirModalDoc() {
+  _resetModalDoc();
+  document.getElementById('modalDocTit').textContent = 'Adicionar Documento';
   document.getElementById('modalDoc').classList.add('on');
 }
+
 function editarDoc(d) {
+  _resetModalDoc();
   _docEditId = d.id;
-  document.getElementById('docTipo').value    = d.tipo||'';
-  document.getElementById('docDesc').value    = d.descricao||'';
-  document.getElementById('docData').value    = d.data_documento||'';
-  document.getElementById('docVenc').value    = d.data_vencimento||'';
+  document.getElementById('docTipo').value      = d.tipo||'';
+  document.getElementById('docDesc').value      = d.descricao||'';
+  document.getElementById('docData').value      = d.data_documento||'';
+  document.getElementById('docVenc').value      = d.data_vencimento||'';
   document.getElementById('docAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes));
-  document.getElementById('docObs').value     = getObsClean(d.observacoes);
-  document.getElementById('modalDocTit').textContent='Editar Documento';
+  document.getElementById('docObs').value       = getObsClean(d.observacoes);
+  if (d.arquivo_url) {
+    var el = document.getElementById('docArquivoAtual');
+    el.style.display = '';
+    var link = document.getElementById('docArquivoLink');
+    link.href = d.arquivo_url;
+    link.textContent = d.arquivo_nome || 'Ver arquivo';
+  }
+  document.getElementById('modalDocTit').textContent = 'Editar Documento';
   document.getElementById('modalDoc').classList.add('on');
 }
-function fecharModalDoc() { document.getElementById('modalDoc').classList.remove('on'); _docEditId = null; }
+
+function removerArquivoAtual() {
+  _docArquivoRemover = true;
+  document.getElementById('docArquivoAtual').style.display = 'none';
+}
+
+function fecharModalDoc() {
+  document.getElementById('modalDoc').classList.remove('on');
+  _docEditId = null;
+  _docArquivoRemover = false;
+}
+
 async function salvarDoc() {
   if (!_colabAtivo) return;
-  var aviso = document.getElementById('docAvisoDias').value;
+  var btnSalvar = document.querySelector('#modalDoc .btn.bs');
+  if (btnSalvar) btnSalvar.disabled = true;
+
+  var aviso  = document.getElementById('docAvisoDias').value;
   var obsRaw = document.getElementById('docObs').value.trim();
   var obsFinal = (aviso && aviso !== '0') ? ('__aviso:' + aviso + '__' + (obsRaw ? '\n' + obsRaw : '')) : obsRaw;
+
   var row = {
     colaborador_id: _colabAtivo.id,
-    tipo: document.getElementById('docTipo').value,
-    descricao: document.getElementById('docDesc').value.trim(),
-    data_documento: document.getElementById('docData').value||null,
-    data_vencimento: document.getElementById('docVenc').value||null,
-    observacoes: obsFinal||null
+    tipo:           document.getElementById('docTipo').value,
+    descricao:      document.getElementById('docDesc').value.trim(),
+    data_documento: document.getElementById('docData').value  || null,
+    data_vencimento:document.getElementById('docVenc').value  || null,
+    observacoes:    obsFinal || null
   };
-  if (!row.tipo) { toast('Selecione o tipo.','err'); return; }
+  if (!row.tipo) { toast('Selecione o tipo.','err'); if(btnSalvar) btnSalvar.disabled=false; return; }
+
+  // Upload de arquivo (se selecionado)
+  var fileInput = document.getElementById('docArquivo');
+  var file = fileInput.files[0];
+  if (file) {
+    document.getElementById('docUploadProgress').style.display = '';
+    var ext = file.name.split('.').pop();
+    var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    var path = _colabAtivo.id + '/' + Date.now() + '_' + safeName;
+    var { data: upData, error: upErr } = await sb.storage
+      .from('documentos-rh').upload(path, file, { upsert: true });
+    document.getElementById('docUploadProgress').style.display = 'none';
+    if (upErr) { toast('Erro no upload: ' + upErr.message, 'err'); if(btnSalvar) btnSalvar.disabled=false; return; }
+    var { data: urlData } = sb.storage.from('documentos-rh').getPublicUrl(path);
+    row.arquivo_url  = urlData.publicUrl;
+    row.arquivo_nome = file.name;
+  } else if (_docArquivoRemover) {
+    // Remove arquivo existente do storage
+    var docAtual = _docsCache.find(function(x){ return x.id === _docEditId; });
+    if (docAtual && docAtual.arquivo_url) {
+      var oldPath = decodeURIComponent(docAtual.arquivo_url.split('/documentos-rh/')[1] || '').split('?')[0];
+      if (oldPath) await sb.storage.from('documentos-rh').remove([oldPath]);
+    }
+    row.arquivo_url  = null;
+    row.arquivo_nome = null;
+  }
+
   var error;
   if (_docEditId) {
     ({ error } = await sb.from('rh_documentos').update(row).eq('id', _docEditId));
   } else {
     ({ error } = await sb.from('rh_documentos').insert(row));
   }
-  if (error) { toast('Erro: '+error.message,'err'); return; }
+  if (btnSalvar) btnSalvar.disabled = false;
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
   toast(_docEditId ? 'Documento atualizado!' : 'Documento salvo!', 'ok');
   fecharModalDoc();
   carregarDocs(_colabAtivo.id);
 }
+
 async function excluirDoc(id) {
   if (!confirm('Excluir documento?')) return;
-  await sb.from('rh_documentos').delete().eq('id',id);
-  toast('Excluído.','ok');
+  var docDel = _docsCache.find(function(x){ return x.id === id; });
+  if (docDel && docDel.arquivo_url) {
+    var path = decodeURIComponent(docDel.arquivo_url.split('/documentos-rh/')[1] || '').split('?')[0];
+    if (path) await sb.storage.from('documentos-rh').remove([path]);
+  }
+  await sb.from('rh_documentos').delete().eq('id', id);
+  toast('Excluído.', 'ok');
   if (_colabAtivo) carregarDocs(_colabAtivo.id);
 }
 
