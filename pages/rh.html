@@ -2948,7 +2948,11 @@ async function renderCheckEmpresasModal(colabId) {
   }).join('');
 }
 
-function fecharModalColab() { document.getElementById('modalColab').classList.remove('on'); }
+function fecharModalColab() {
+  document.getElementById('modalColab').classList.remove('on');
+  var box = document.querySelector('#modalColab .modal-box');
+  if (box) box.scrollTop = 0;
+}
 
 async function salvarColab() {
   var dados = {
