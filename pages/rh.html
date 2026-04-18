@@ -619,7 +619,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-body">
       <div class="g2" style="gap:.85rem">
         <div class="f"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
-        <div class="f"><label>Tipo de vínculo *</label>
+        <div class="f"><label>Tipo de vínculo * <span style="font-size:.65rem;color:var(--accent);font-weight:normal">(por empresa)</span></label>
           <select id="cTipo" onchange="togglePerigFields()">
             <option value="clt">CLT</option>
             <option value="mei">MEI</option>
@@ -629,7 +629,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
         <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
         <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
-        <div class="f"><label>Custo/hora base (R$)</label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
+        <div class="f"><label>Custo/hora base (R$) <span style="font-size:.65rem;color:var(--accent);font-weight:normal">(por empresa)</span></label><input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01"></div>
         <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
           <select id="cPericuloso" onchange="togglePercPerig()">
             <option value="false">Não</option>
@@ -1244,20 +1244,20 @@ function setModoApt(modo) {
 }
 
 async function carregarColabs() {
-  var gen = ++_colabsGen; // claim ownership; any older in-flight call will be discarded
+  var gen = ++_colabsGen;
   var empId = await getEmpresaId();
   if (!empId) return;
-  if (gen !== _colabsGen) return; // a newer call started — discard this result
+  if (gen !== _colabsGen) return;
 
-  // Passo 1: buscar IDs dos colaboradores vinculados a esta empresa
+  // Passo 1: buscar vínculos com tipo e valor_hora específicos desta empresa
   var { data: vinculos, error: errV } = await sb
     .from('colaborador_empresas')
-    .select('colaborador_id')
+    .select('colaborador_id, tipo, valor_hora')
     .eq('empresa_id', empId)
     .eq('ativo', true);
 
   if (errV) { console.error(errV); return; }
-  if (gen !== _colabsGen) return; // discard if superseded
+  if (gen !== _colabsGen) return;
   if (!vinculos || !vinculos.length) {
     _colabs = [];
     renderColabs([]);
@@ -1267,7 +1267,13 @@ async function carregarColabs() {
 
   var ids = vinculos.map(function(v){ return v.colaborador_id; });
 
-  // Passo 2: buscar dados dos colaboradores por ID (ativos e inativos)
+  // Mapa de overrides por empresa
+  var empOverrides = {};
+  vinculos.forEach(function(v){
+    empOverrides[v.colaborador_id] = { tipo: v.tipo, valor_hora: v.valor_hora };
+  });
+
+  // Passo 2: buscar dados dos colaboradores
   var { data, error } = await sb
     .from('colaboradores')
     .select('*')
@@ -1276,8 +1282,17 @@ async function carregarColabs() {
     .order('nome');
 
   if (error) { console.error(error); return; }
-  if (gen !== _colabsGen) return; // final check before writing state
-  _colabs = data || [];
+  if (gen !== _colabsGen) return;
+
+  // Mesclar: tipo e valor_hora da empresa têm prioridade
+  _colabs = (data || []).map(function(c) {
+    var o = empOverrides[c.id] || {};
+    return Object.assign({}, c, {
+      tipo:       o.tipo       || c.tipo,
+      valor_hora: (o.valor_hora != null) ? o.valor_hora : c.valor_hora
+    });
+  });
+
   renderColabs(_colabs);
   renderKpiColabs(_colabs);
   gerarAlertas();
@@ -2970,24 +2985,33 @@ async function salvarColab() {
 
   // Sincronizar vínculos de empresa — deletar todos e reinserir os selecionados
   if (colabId) {
-    // Remover todos os vínculos existentes
-    await sb.from('colaborador_empresas')
-      .delete()
-      .eq('colaborador_id', colabId);
+    await sb.from('colaborador_empresas').delete().eq('colaborador_id', colabId);
 
-    // Reinserir apenas os selecionados
     for (var i = 0; i < empsSel.length; i++) {
       await sb.from('colaborador_empresas').insert({
         colaborador_id: colabId,
-        empresa_id: empsSel[i],
-        ativo: true
+        empresa_id:     empsSel[i],
+        ativo:          true,
+        tipo:           dados.tipo,
+        valor_hora:     dados.valor_hora
       });
     }
   }
 
   toast(_colabEditId ? 'Colaborador atualizado!' : 'Colaborador cadastrado!', 'ok');
+  var wasEditingId = _colabEditId;
+  var wasInDetalhe = wasEditingId && _colabAtivo && _colabAtivo.id === wasEditingId;
   fecharModalColab();
-  carregarColabs();
+  await carregarColabs();
+
+  // Atualizar o detalhe em tempo real se estava aberto
+  if (wasInDetalhe) {
+    var updated = _colabs.find(function(c){ return c.id === wasEditingId; });
+    if (updated) {
+      _colabAtivo = updated;
+      abrirDetalhe(updated.id);
+    }
+  }
 }
 
 function editarColab() {
