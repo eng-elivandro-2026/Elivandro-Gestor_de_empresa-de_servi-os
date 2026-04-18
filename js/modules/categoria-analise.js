@@ -1627,6 +1627,15 @@ function addEscopoItem() {
     _migrarItensEscopo(p.bi);
 
     var _linked = encontrarItemGeradoPorEscopo(p.bi, item._id);
+
+    /* ── DEBUG (remove after diagnosis) ─────────────────────── */
+    console.log('[ESC-EDIT] item._id:', item._id);
+    console.log('[ESC-EDIT] p.bi length:', (p.bi || []).length);
+    console.log('[ESC-EDIT] _linked:', _linked
+      ? { desc: _linked.desc, gerado: _linked.gerado_por_escopo, origem: _linked.origem_escopo_id }
+      : null);
+    /* ─────────────────────────────────────────────────────────── */
+
     if (_linked) {
       if (!item.gera_item) {
         // Escopo disabled item generation → remove it and update totals
@@ -1670,7 +1679,9 @@ function addEscopoItem() {
         return;
       }
       // Non-productive or no qty: apply current escopo fields to linked item
+      var _descBefore = _linked.desc;
       aplicarDadosDoEscopoNoItem(item, _linked);
+      console.log('[ESC-EDIT] desc before:', _descBefore, '→ after:', _linked.desc);
       budg = JSON.parse(JSON.stringify(p.bi));
     }
   }
@@ -2196,9 +2207,19 @@ function renderItensTab(p) {
   // When this proposal is currently loaded in the edit wizard, budg is the live
   // source of truth (salvarItemModal pushes to budg without updating props[].bi
   // until upsertCurrentDraft fires). Fall back to p.bi for read-only view.
-  var itens = (typeof editId !== 'undefined' && editId === p.id
-               && typeof budg !== 'undefined' && Array.isArray(budg))
-    ? budg : (p.bi || []);
+  var _usesBudg = (typeof editId !== 'undefined' && editId === p.id
+                   && typeof budg !== 'undefined' && Array.isArray(budg));
+  var itens = _usesBudg ? budg : (p.bi || []);
+
+  /* ── DEBUG (remove after diagnosis) ─────────────────────── */
+  console.log('[renderItensTab] source:', _usesBudg ? 'budg' : 'p.bi',
+    '| len:', itens.length,
+    '| editId:', typeof editId !== 'undefined' ? editId : 'undef',
+    '| p.id:', p.id);
+  if (itens.length) console.log('[renderItensTab] first item desc:', itens[0].desc,
+    '| gerado:', itens[0].gerado_por_escopo,
+    '| origem:', itens[0].origem_escopo_id);
+  /* ─────────────────────────────────────────────────────────── */
 
   if (!itens.length) {
     el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum item orçado</div>';
