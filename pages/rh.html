@@ -1033,6 +1033,7 @@ function fmtMoeda(v) {
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 var _docEditId = null;
+var _docsCache = [];
 
 function getAvisoDiasFromObs(obs) {
   if (!obs) return 0;
@@ -1429,12 +1430,13 @@ function campo(label, valor) {
 async function carregarDocs(colabId) {
   var { data } = await sb.from('rh_documentos')
     .select('*').eq('colaborador_id', colabId).order('created_at', {ascending:false});
+  _docsCache = data || [];
   var el = document.getElementById('docList');
-  if (!data || !data.length) {
+  if (!_docsCache.length) {
     el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum documento cadastrado.</div>';
     return;
   }
-  el.innerHTML = data.map(function(d) {
+  el.innerHTML = _docsCache.map(function(d) {
     var sv = statusVencimento(d.data_vencimento);
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var obsClean = getObsClean(d.observacoes);
@@ -1446,10 +1448,15 @@ async function carregarDocs(colabId) {
         + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
-      + '<button class="btn ba bsm" onclick="editarDoc(' + JSON.stringify(d) + ')" style="margin-right:.25rem">✏️</button>'
+      + '<button class="btn ba bsm" onclick="editarDocById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirDoc(\'' + d.id + '\')">🗑</button>'
     + '</div>';
   }).join('');
+}
+
+function editarDocById(id) {
+  var d = _docsCache.find(function(x){ return x.id === id; });
+  if (d) editarDoc(d);
 }
 
 async function carregarSaude(colabId) {
