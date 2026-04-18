@@ -196,15 +196,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div id="pendList"></div>
     </div>
 
-    <!-- Colaboradores inativos (colapsável) -->
-    <div class="card" id="inativosCard" style="display:none">
-      <div class="ch" style="cursor:pointer" onclick="toggleInativos()">
-        <span class="ct">💤 Colaboradores Inativos</span>
-        <span id="inativosChevron" style="font-size:.78rem;color:var(--text3)">▼ ver</span>
-      </div>
-      <div id="inativosList" style="display:none"></div>
-    </div>
-
     <!-- Lista + botão novo -->
     <div class="card">
       <div class="ch">
@@ -1054,7 +1045,7 @@ function showSec(id, btn) {
     document.querySelectorAll('.nav-rh-btn').forEach(function(b){ b.classList.remove('on'); });
     btn.classList.add('on');
   }
-  if (id === 'colaboradores') { carregarColabs(); carregarPendentes(); carregarInativos(); }
+  if (id === 'colaboradores') { carregarColabs(); carregarPendentes(); }
   if (id === 'apontamentos') {
     verificarColabProprio().then(function(){
       carregarApontamentos();
@@ -1187,12 +1178,12 @@ async function carregarColabs() {
 
   var ids = vinculos.map(function(v){ return v.colaborador_id; });
 
-  // Passo 2: buscar dados dos colaboradores por ID
+  // Passo 2: buscar dados dos colaboradores por ID (ativos e inativos)
   var { data, error } = await sb
     .from('colaboradores')
     .select('*')
     .in('id', ids)
-    .eq('ativo', true)
+    .order('ativo', { ascending: false })
     .order('nome');
 
   if (error) { console.error(error); return; }
@@ -1224,22 +1215,26 @@ function renderColabs(lista) {
     var ini = c.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
     var tipoBdg = c.tipo === 'clt' ? 'bdg-blue' : c.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
     var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
-    return '<div class="colab-card" onclick="abrirDetalhe(\'' + c.id + '\')">'
-      + '<div class="colab-avatar">' + ini + '</div>'
+    var inativo = !c.ativo;
+    var acoes = inativo
+      ? '<button class="btn bs bsm" onclick="event.stopPropagation();reativarColabById(\'' + c.id + '\',\'' + (c.nome||'').replace(/'/g,"\\'") + '\')">🔄 Reativar</button>'
+        + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
+      : '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
+        + '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>'
+        + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>';
+    return '<div class="colab-card" onclick="abrirDetalhe(\'' + c.id + '\')" style="' + (inativo ? 'opacity:.6' : '') + '">'
+      + '<div class="colab-avatar" style="' + (inativo ? 'background:var(--bg3);color:var(--text3)' : '') + '">' + ini + '</div>'
       + '<div class="colab-info">'
         + '<div class="colab-nome">' + c.nome + '</div>'
         + '<div class="colab-sub">' + (c.funcao||'Sem função definida') + ' · ' + (c.email||'—') + '</div>'
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
+          + (inativo ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>')
           + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
-          + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '% / ' + (c.periculosidade_base==='total'?'h.totais':'h.normais') + '</span>' : '')
+          + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '%</span>' : '')
         + '</div>'
       + '</div>'
-      + '<div class="colab-acoes">'
-        + '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
-        + '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>'
-        + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
-      + '</div>'
+      + '<div class="colab-acoes">' + acoes + '</div>'
     + '</div>';
   }).join('');
 }
@@ -1323,9 +1318,21 @@ async function abrirDetalhe(id) {
   document.getElementById('detSub').textContent = (_colabAtivo.funcao||'Sem função') + ' · ' + (_colabAtivo.tipo||'').toUpperCase();
 
   var tipoBdg = _colabAtivo.tipo === 'clt' ? 'bdg-blue' : _colabAtivo.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
+  var inativoDetalhe = !_colabAtivo.ativo;
   document.getElementById('detBadges').innerHTML =
     '<span class="bdg ' + tipoBdg + '">' + (_colabAtivo.tipo||'').toUpperCase() + '</span>' +
-    '<span class="bdg bdg-green">Ativo</span>';
+    (inativoDetalhe ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>');
+
+  // Botões condicionais no cabeçalho do detalhe
+  var btnAcoes = document.querySelector('#sec-detalhe .detalhe-hdr .br');
+  if (btnAcoes) {
+    btnAcoes.innerHTML =
+      '<button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>' +
+      (inativoDetalhe
+        ? '<button class="btn bs bsm" onclick="reativarColabById(\'' + _colabAtivo.id + '\',\'' + (_colabAtivo.nome||'').replace(/'/g,"\\'") + '\');showSec(\'colaboradores\',null)">🔄 Reativar</button>'
+        : '<button class="btn bd bsm" onclick="desativarColab()">Desativar</button>') +
+      '<button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>';
+  }
 
   document.getElementById('detDados').innerHTML =
     campo('Nome', _colabAtivo.nome) +
