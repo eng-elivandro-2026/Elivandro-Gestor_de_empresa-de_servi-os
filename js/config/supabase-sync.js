@@ -21,7 +21,16 @@
 
   // ── Converter proposta para linha do Supabase ─────────────
   function propToRow(p) {
-    var row = {
+    var empId = (typeof getEmpresaAtivaId === 'function')
+      ? getEmpresaAtivaId()
+      : (window._empresaAtiva ? window._empresaAtiva.id : null);
+
+    if (!empId) {
+      console.error('[supabase-sync] propToRow chamado sem empresa ativa. Operação bloqueada.');
+      return null;
+    }
+
+    return {
       app_id:          String(p.id || ''),
       numero_proposta: String(p.num || ''),
       titulo:          String(p.tit || ''),
@@ -29,14 +38,9 @@
       valor_total:     parseFloat(p.val) || 0,
       fase:            String(p.fas || 'em_elaboracao'),
       dados_json:      p,
+      empresa_id:      empId,
       updated_at:      new Date().toISOString()
     };
-    // Incluir empresa_id se disponível
-    var empId = (typeof getEmpresaAtivaId === 'function')
-      ? getEmpresaAtivaId()
-      : (window._empresaAtiva ? window._empresaAtiva.id : null);
-    if (empId) row.empresa_id = empId;
-    return row;
   }
 
   // ════════════════════════════════════════════════════════
@@ -44,11 +48,20 @@
   // ════════════════════════════════════════════════════════
 
   window.sbMigrarLocal = async function () {
+    var empId = (typeof getEmpresaAtivaId === 'function')
+      ? getEmpresaAtivaId()
+      : (window._empresaAtiva ? window._empresaAtiva.id : null);
+    if (!empId) {
+      console.error('[supabase-sync] sbMigrarLocal bloqueado: nenhuma empresa ativa.');
+      return { total: 0, erros: 0 };
+    }
+
     var props = LS('tf_props') || [];
     if (!props.length) { console.log('[supabase-sync] Nenhuma proposta no localStorage.'); return; }
     var LOTE = 10, total = 0, erros = 0;
     for (var i = 0; i < props.length; i += LOTE) {
-      var rows = props.slice(i, i + LOTE).map(propToRow);
+      var rows = props.slice(i, i + LOTE).map(propToRow).filter(Boolean);
+      if (!rows.length) continue;
       var res = await window.sbClient
         .from('propostas')
         .upsert(rows, { onConflict: 'app_id', ignoreDuplicates: false });
@@ -62,29 +75,31 @@
 
   window.sbSalvarProposta = async function (p) {
     if (!window.sbClient || !p) return;
+    var row = propToRow(p);
+    if (!row) return; // empresa_id ausente — bloqueado em propToRow
     var res = await window.sbClient
       .from('propostas')
-      .upsert(propToRow(p), { onConflict: 'app_id', ignoreDuplicates: false });
+      .upsert(row, { onConflict: 'app_id', ignoreDuplicates: false });
     if (res.error) console.error('[supabase-sync] Erro ao salvar proposta:', res.error.message);
     return res;
   };
 
   window.sbCarregarNuvem = async function (empresaId) {
     if (!window.sbClient) return;
-    // Usar empresa_id informado ou pegar da empresa ativa
     var empId = empresaId
       || (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
       || (window._empresaAtiva ? window._empresaAtiva.id : null);
 
-    var query = window.sbClient
+    if (!empId) {
+      console.error('[supabase-sync] sbCarregarNuvem bloqueado: nenhuma empresa ativa. Forneça empresaId ou aguarde setEmpresaAtiva().');
+      return [];
+    }
+
+    var res = await window.sbClient
       .from('propostas')
       .select('dados_json, app_id')
+      .eq('empresa_id', empId)
       .order('updated_at', { ascending: false });
-
-    // Filtrar por empresa se tiver o ID
-    if (empId) query = query.eq('empresa_id', empId);
-
-    var res = await query;
     if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
     var props = (res.data || []).map(function (r) {
       var p = r.dados_json || {};

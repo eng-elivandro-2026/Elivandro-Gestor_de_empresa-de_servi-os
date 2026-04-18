@@ -2052,24 +2052,26 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <button class="pd-tab"    onclick="pdTab('comercial',this)">Comercial</button>
     <button class="pd-tab"    onclick="pdTab('execucao',this)">Execução</button>
     <button class="pd-tab"    onclick="pdTab('resultado',this)">Resultado</button>
+    <button class="pd-tab"    onclick="pdTab('atv-padrao',this)">Ativ. Padrão</button>
   </div>
 
-  <!-- Painéis -->
+  <!-- Painéis — conteúdo injetado via render*Tab() em categoria-analise.js -->
   <div id="pd-panel-dados"        class="pd-panel on"><div id="pd-dados"></div></div>
-  <div id="pd-panel-contato"      class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Contato</div></div>
-  <div id="pd-panel-visita"       class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Visita</div></div>
-  <div id="pd-panel-consolidacao" class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Consolidação</div></div>
-  <div id="pd-panel-engenharia"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Engenharia</div></div>
-  <div id="pd-panel-recursos"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Recursos</div></div>
-  <div id="pd-panel-cotacoes"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Cotações</div></div>
-  <div id="pd-panel-estrutura"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Estrutura</div></div>
-  <div id="pd-panel-escopo"       class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Escopo</div></div>
-  <div id="pd-panel-itens"        class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Itens</div></div>
-  <div id="pd-panel-financeiro"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Financeiro</div></div>
-  <div id="pd-panel-documentos"   class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Documentos</div></div>
-  <div id="pd-panel-comercial"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Comercial</div></div>
-  <div id="pd-panel-execucao"     class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Execução</div></div>
-  <div id="pd-panel-resultado"    class="pd-panel"><div class="card" style="color:var(--text2);font-size:.83rem">Conteúdo da aba Resultado</div></div>
+  <div id="pd-panel-contato"      class="pd-panel"></div>
+  <div id="pd-panel-visita"       class="pd-panel"></div>
+  <div id="pd-panel-consolidacao" class="pd-panel"></div>
+  <div id="pd-panel-engenharia"   class="pd-panel"></div>
+  <div id="pd-panel-recursos"     class="pd-panel"></div>
+  <div id="pd-panel-cotacoes"     class="pd-panel"></div>
+  <div id="pd-panel-estrutura"    class="pd-panel"></div>
+  <div id="pd-panel-escopo"       class="pd-panel"></div>
+  <div id="pd-panel-itens"        class="pd-panel"></div>
+  <div id="pd-panel-financeiro"   class="pd-panel"></div>
+  <div id="pd-panel-documentos"   class="pd-panel"></div>
+  <div id="pd-panel-comercial"    class="pd-panel"></div>
+  <div id="pd-panel-execucao"     class="pd-panel"></div>
+  <div id="pd-panel-resultado"    class="pd-panel"></div>
+  <div id="pd-panel-atv-padrao"   class="pd-panel"></div>
 
 </div>
 
@@ -4801,6 +4803,7 @@ function rExecTimeline(){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config/supabase.js"></script>
 <script src="js/config/supabase-sync.js"></script>
+<script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
 <script src="js/core/app-core.js"></script>
 <script src="js/modules/multi-empresa.js"></script>
