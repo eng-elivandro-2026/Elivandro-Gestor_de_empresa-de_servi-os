@@ -266,7 +266,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
       <div class="tabs">
         <button class="tab-btn on" onclick="showTab('dados',this)">📋 Dados</button>
-        <button class="tab-btn" onclick="showTab('documentos',this)">📄 Documentos</button>
+        <button class="tab-btn" onclick="showTab('documentos',this)">📄 Docs Pessoais</button>
         <button class="tab-btn" onclick="showTab('saude',this)">🏥 Saúde/NRs</button>
         <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
         <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
@@ -305,10 +305,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <!-- Tab Horas -->
       <div class="tab-sec" id="tab-horas">
         <div style="margin:.75rem 0">
-          <div class="kpi-g" id="kpiHorasColab"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div class="kpi-g" id="kpiHorasColab" style="flex:1"></div>
+            <button class="btn bs bsm" onclick="gerarRelatorioHoras()" style="white-space:nowrap;margin-left:1rem">📊 Relatório Completo</button>
+          </div>
           <table class="apt-table">
             <thead><tr>
-              <th>Data</th><th>Projeto</th><th>Entrada</th><th>Saída</th>
+              <th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>
               <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th>
             </tr></thead>
             <tbody id="horasColabBody"></tbody>
@@ -964,12 +967,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
             <option value="inapto">Inapto</option>
           </select>
         </div>
+        <div class="f"><label>Aviso por e-mail</label>
+          <select id="saudeAvisoDias">
+            <option value="0">Sem aviso</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+            <option value="90">90 dias antes</option>
+          </select>
+        </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="saudeObs" style="min-height:56px"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalSaude()">Cancelar</button>
-      <button class="btn bs" onclick="salvarSaude()">💾 Salvar</button>
+      <button class="btn bs" id="btnSalvarSaude" onclick="salvarSaude()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -1003,6 +1016,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f"><label>Data de entrega *</label><input type="date" id="epiEntrega"></div>
         <div class="f"><label>Data de substituição</label><input type="date" id="epiSubs"></div>
         <div class="f"><label>Quantidade</label><input type="number" id="epiQtd" value="1" min="1"></div>
+        <div class="f"><label>Aviso de substituição</label>
+          <select id="epiAvisoDias">
+            <option value="0">Sem aviso</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+          </select>
+        </div>
         <div class="f" style="grid-column:1/-1">
           <label>Observações</label>
           <textarea id="epiObs" style="min-height:56px" placeholder="O colaborador declara ter recebido o EPI acima e se compromete a utilizá-lo..."></textarea>
@@ -1011,7 +1033,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalEpi()">Cancelar</button>
-      <button class="btn bs" onclick="salvarEpi()">💾 Registrar Entrega</button>
+      <button class="btn bs" id="btnSalvarEpi" onclick="salvarEpi()">💾 Registrar Entrega</button>
     </div>
   </div>
 </div>
@@ -1068,6 +1090,10 @@ function fmtMoeda(v) {
 }
 var _docEditId = null;
 var _docsCache = [];
+var _saudeEditId = null;
+var _saudeCacheList = [];
+var _epiEditId = null;
+var _epiCacheList = [];
 
 function getAvisoDiasFromObs(obs) {
   if (!obs) return 0;
@@ -1316,23 +1342,52 @@ async function gerarAlertas() {
   var alertas = [];
   var emailAlerts = [];
 
+  var saudeLabels = {aso_adm:'ASO Admissional',aso_per:'ASO Periódico',aso_dem:'ASO Demissional',
+    nr10:'NR-10',nr35:'NR-35',nr12:'NR-12',nr18:'NR-18',sep:'SEP',outro_nr:'Certificado NR'};
+
   // Documentos de saúde/NR com vencimento
   var { data: saude } = await sb
     .from('rh_saude')
-    .select('tipo, data_vencimento, colaborador_id, colaboradores(nome)')
+    .select('tipo, data_vencimento, data_emissao, observacoes, colaboradores(nome)')
     .not('data_vencimento', 'is', null);
 
   (saude || []).forEach(function(s) {
     var dias = diasAteVencer(s.data_vencimento);
+    if (dias === null) return;
+    var aviso = getAvisoDiasFromObs(s.observacoes) || 30;
     var nome = s.colaboradores ? s.colaboradores.nome : '?';
+    var label = saudeLabels[s.tipo] || s.tipo.toUpperCase();
     if (dias < 0) {
-      var txt = '🔴 ' + s.tipo.toUpperCase() + ' vencido — ' + nome;
+      var txt = '🔴 ' + label + ' vencido — ' + nome;
       alertas.push({ cls:'alerta-red', txt: txt });
-      emailAlerts.push(txt);
-    } else if (dias <= 30) {
-      var txt = '🟡 ' + s.tipo.toUpperCase() + ' vence em ' + dias + ' dias — ' + nome;
+      emailAlerts.push({ doc: label, colab: nome, dataDoc: s.data_emissao, dataVenc: s.data_vencimento, status: 'VENCIDO' });
+    } else if (dias <= aviso) {
+      var txt = '🟡 ' + label + ' vence em ' + dias + ' dias — ' + nome;
       alertas.push({ cls:'alerta-yellow', txt: txt });
-      emailAlerts.push(txt);
+      emailAlerts.push({ doc: label, colab: nome, dataDoc: s.data_emissao, dataVenc: s.data_vencimento, status: 'Vence em ' + dias + ' dia(s)' });
+    }
+  });
+
+  // EPIs com data de substituição
+  var { data: epis } = await sb
+    .from('rh_epis')
+    .select('item, descricao, data_entrega, data_substituicao, observacoes, colaboradores(nome)')
+    .not('data_substituicao', 'is', null);
+
+  (epis || []).forEach(function(e) {
+    var dias = diasAteVencer(e.data_substituicao);
+    if (dias === null) return;
+    var aviso = getAvisoDiasFromObs(e.observacoes) || 30;
+    var nome = e.colaboradores ? e.colaboradores.nome : '?';
+    var label = 'EPI: ' + (e.descricao || e.item || 'EPI');
+    if (dias < 0) {
+      var txt = '🔴 ' + label + ' — substituição vencida — ' + nome;
+      alertas.push({ cls:'alerta-red', txt: txt });
+      emailAlerts.push({ doc: label, colab: nome, dataDoc: e.data_entrega, dataVenc: e.data_substituicao, status: 'SUBSTITUIÇÃO VENCIDA' });
+    } else if (dias <= aviso) {
+      var txt = '🟡 ' + label + ' — substituição em ' + dias + ' dias — ' + nome;
+      alertas.push({ cls:'alerta-yellow', txt: txt });
+      emailAlerts.push({ doc: label, colab: nome, dataDoc: e.data_entrega, dataVenc: e.data_substituicao, status: 'Substituição em ' + dias + ' dia(s)' });
     }
   });
 
@@ -1569,23 +1624,28 @@ function editarDocById(id) {
 async function carregarSaude(colabId) {
   var { data } = await sb.from('rh_saude')
     .select('*').eq('colaborador_id', colabId).order('data_vencimento', {ascending:true});
+  _saudeCacheList = data || [];
   var el = document.getElementById('saudeList');
-  if (!data || !data.length) {
+  if (!_saudeCacheList.length) {
     el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum registro de saúde/NR cadastrado.</div>';
     return;
   }
   var labels = {aso_adm:'ASO Admissional',aso_per:'ASO Periódico',aso_dem:'ASO Demissional',
     nr10:'NR-10',nr35:'NR-35',nr12:'NR-12',nr18:'NR-18',sep:'SEP',outro_nr:'Certificado NR'};
-  el.innerHTML = data.map(function(d) {
+  el.innerHTML = _saudeCacheList.map(function(d) {
     var sv = statusVencimento(d.data_vencimento);
     var icon = d.tipo && d.tipo.startsWith('aso') ? '🏥' : '📜';
+    var aviso = getAvisoDiasFromObs(d.observacoes);
+    var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
+    var obsClean = getObsClean(d.observacoes);
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(63,185,80,.1);color:var(--green)">' + icon + '</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (labels[d.tipo]||d.tipo) + (d.instituicao ? ' — ' + d.instituicao : '') + '</div>'
-        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>'
-          + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + '</div>'
+        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + avisoBadge + '</div>'
+        + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + '<button class="btn ba bsm" onclick="editarSaudeById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirSaude(\'' + d.id + '\')">🗑</button>'
     + '</div>';
   }).join('');
@@ -1594,46 +1654,67 @@ async function carregarSaude(colabId) {
 async function carregarEpis(colabId) {
   var { data } = await sb.from('rh_epis')
     .select('*').eq('colaborador_id', colabId).order('data_entrega', {ascending:false});
+  _epiCacheList = data || [];
   var el = document.getElementById('epiList');
-  if (!data || !data.length) {
+  if (!_epiCacheList.length) {
     el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.5rem">Nenhum EPI registrado.</div>';
     return;
   }
-  el.innerHTML = data.map(function(d) {
+  el.innerHTML = _epiCacheList.map(function(d) {
     var sv = statusVencimento(d.data_substituicao);
+    var aviso = getAvisoDiasFromObs(d.observacoes);
+    var avisoBadge = aviso > 0 && d.data_substituicao ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
+    var obsClean = getObsClean(d.observacoes);
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(240,165,0,.1);color:var(--accent)">🦺</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.item) + '</div>'
         + '<div class="doc-meta">CA: ' + (d.ca||'—') + ' · Entrega: ' + fmtData(d.data_entrega)
-          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + '</div>'
+          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
+        + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + '<button class="btn ba bsm" onclick="editarEpiById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirEpi(\'' + d.id + '\')">🗑</button>'
     + '</div>';
   }).join('');
 }
 
 // ══ HORAS DO COLABORADOR ═════════════════════════════════════
+var _horasColabCache = [];
 async function carregarHorasColab(colabId) {
   var { data } = await sb.from('apontamentos')
     .select('*').eq('colaborador_id', colabId)
     .neq('status', 'cancelado')
-    .order('data', {ascending:false}).limit(50);
+    .order('data', {ascending:false}).limit(200);
+  _horasColabCache = data || [];
   var tbody = document.getElementById('horasColabBody');
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+  if (!_horasColabCache.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
+
+  // Buscar nomes dos projetos
+  var ids = [...new Set(_horasColabCache.map(function(a){ return a.proposta_id; }).filter(Boolean))];
+  var mapaProps = {};
+  if (ids.length) {
+    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo').in('app_id', ids);
+    (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
+  }
+
   var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
-  tbody.innerHTML = data.map(function(a) {
+  tbody.innerHTML = _horasColabCache.map(function(a) {
     totalNormal += Number(a.horas_normal||0);
     totalExtra50 += Number(a.horas_extra_50||0);
     totalExtra100 += Number(a.horas_extra_100||0);
     totalValor += Number(a.valor_total||0);
     var sBdg = a.status==='aprovado' ? 'bdg-green' : a.status==='pendente' ? 'bdg-yellow' : a.status==='rejeitado' ? 'bdg-red' : 'bdg-gray';
+    var proj = mapaProps[a.proposta_id];
+    var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — ' + proj.titulo : '') : (a.proposta_id||'—');
+    var desc = a.descricao || '—';
     return '<tr>'
       + '<td>' + fmtData(a.data) + '</td>'
-      + '<td>' + (a.propostas ? (a.propostas.numero_proposta||a.proposta_id) : (a.proposta_id||'—')) + '</td>'
+      + '<td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
+      + '<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
       + '<td>' + (a.hora_saida||'—') + '</td>'
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
@@ -1649,6 +1730,80 @@ async function carregarHorasColab(colabId) {
     kpi(totalExtra50.toFixed(1)+'h', 'Extra 50%') +
     kpi(totalExtra100.toFixed(1)+'h', 'Extra 100%') +
     kpi(fmtMoeda(totalValor), 'Total R$');
+}
+
+async function gerarRelatorioHoras() {
+  if (!_colabAtivo) return;
+  var data = _horasColabCache;
+  if (!data.length) { toast('Nenhum dado para gerar relatório.', 'err'); return; }
+
+  var ids = [...new Set(data.map(function(a){ return a.proposta_id; }).filter(Boolean))];
+  var mapaProps = {};
+  if (ids.length) {
+    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo, cliente').in('app_id', ids);
+    (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
+  }
+
+  var totalNormal=0, totalExtra50=0, totalExtra100=0, totalValor=0;
+  var linhas = data.map(function(a) {
+    totalNormal += Number(a.horas_normal||0);
+    totalExtra50 += Number(a.horas_extra_50||0);
+    totalExtra100 += Number(a.horas_extra_100||0);
+    totalValor += Number(a.valor_total||0);
+    var proj = mapaProps[a.proposta_id];
+    var projLabel = proj ? (proj.numero_proposta||'') + (proj.titulo ? ' — ' + proj.titulo : '') : (a.proposta_id||'—');
+    var statusColor = a.status==='aprovado' ? '#3fb950' : a.status==='pendente' ? '#d29922' : a.status==='rejeitado' ? '#f85149' : '#8b949e';
+    return '<tr>'
+      + '<td>' + fmtData(a.data) + '</td>'
+      + '<td>' + projLabel + '</td>'
+      + '<td>' + (a.descricao||'—') + '</td>'
+      + '<td>' + (a.hora_entrada||'—') + '</td>'
+      + '<td>' + (a.hora_saida||'—') + '</td>'
+      + '<td style="text-align:center">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
+      + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+      + '<td style="text-align:center">' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td style="text-align:right;color:#1a7f37;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td style="text-align:center;color:' + statusColor + ';font-weight:600">' + (a.status||'—') + '</td>'
+    + '</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    + '<title>Relatório de Horas — ' + _colabAtivo.nome + '</title>'
+    + '<style>'
+    + 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:20px}'
+    + 'h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;color:#555;margin:0 0 12px;font-weight:normal}'
+    + '.header{border-bottom:2px solid #f0a500;padding-bottom:10px;margin-bottom:16px}'
+    + '.kpis{display:flex;gap:16px;margin-bottom:16px}'
+    + '.kpi{background:#f5f5f5;border-radius:6px;padding:8px 14px;text-align:center}'
+    + '.kpi b{display:block;font-size:14px;color:#1a7f37}.kpi span{font-size:10px;color:#666}'
+    + 'table{width:100%;border-collapse:collapse}'
+    + 'th{background:#f0a500;color:#000;padding:5px 6px;text-align:left;font-size:10px}'
+    + 'td{padding:4px 6px;border-bottom:1px solid #eee}'
+    + 'tr:nth-child(even) td{background:#fafafa}'
+    + '.footer{margin-top:20px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#888;text-align:center}'
+    + '@media print{body{padding:10px}.no-print{display:none}}'
+    + '</style></head><body>'
+    + '<div class="header">'
+    + '<h1>Relatório de Horas — ' + _colabAtivo.nome + '</h1>'
+    + '<h2>' + (_colabAtivo.funcao||'') + ' · ' + (_colabAtivo.tipo||'').toUpperCase() + ' · Gerado em: ' + new Date().toLocaleDateString('pt-BR') + '</h2>'
+    + '</div>'
+    + '<div class="kpis">'
+    + '<div class="kpi"><b>' + totalNormal.toFixed(1) + 'h</b><span>Normal</span></div>'
+    + '<div class="kpi"><b>' + totalExtra50.toFixed(1) + 'h</b><span>Extra 50%</span></div>'
+    + '<div class="kpi"><b>' + totalExtra100.toFixed(1) + 'h</b><span>Extra 100%</span></div>'
+    + '<div class="kpi"><b style="color:#1a7f37">' + fmtMoeda(totalValor) + '</b><span>Total R$</span></div>'
+    + '</div>'
+    + '<table><thead><tr>'
+    + '<th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>'
+    + '<th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th>'
+    + '</tr></thead><tbody>' + linhas + '</tbody></table>'
+    + '<div class="footer">Sistema de Gestão Elivandro — Documento gerado automaticamente</div>'
+    + '<script>window.print();<\/script>'
+    + '</body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ══ APONTAMENTOS ═════════════════════════════════════════════
@@ -2969,14 +3124,37 @@ async function excluirDoc(id) {
 
 // ══ MODAL SAÚDE ══════════════════════════════════════════════
 function abrirModalSaude(tipo) {
+  _saudeEditId = null;
   ['saudeTipo','saudeInst','saudeEmissao','saudeVenc','saudeCH','saudeObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('saudeResult').value='';
+  document.getElementById('saudeAvisoDias').value='30';
   if (tipo==='aso') document.getElementById('saudeTipo').value='aso_per';
+  document.getElementById('modalSaudeTit').textContent='Adicionar ASO / Certificado NR';
+  document.getElementById('btnSalvarSaude').textContent='💾 Salvar';
+  document.getElementById('modalSaude').classList.add('on');
+}
+function editarSaudeById(id) {
+  var d = _saudeCacheList.find(function(x){ return x.id===id; });
+  if (!d) return;
+  _saudeEditId = id;
+  document.getElementById('saudeTipo').value = d.tipo||'';
+  document.getElementById('saudeInst').value = d.instituicao||'';
+  document.getElementById('saudeEmissao').value = d.data_emissao||'';
+  document.getElementById('saudeVenc').value = d.data_vencimento||'';
+  document.getElementById('saudeCH').value = d.carga_horaria||'';
+  document.getElementById('saudeResult').value = d.resultado||'';
+  document.getElementById('saudeAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
+  document.getElementById('saudeObs').value = getObsClean(d.observacoes);
+  document.getElementById('modalSaudeTit').textContent='Editar Registro';
+  document.getElementById('btnSalvarSaude').textContent='💾 Atualizar';
   document.getElementById('modalSaude').classList.add('on');
 }
 function fecharModalSaude() { document.getElementById('modalSaude').classList.remove('on'); }
 async function salvarSaude() {
   if (!_colabAtivo) return;
+  var aviso = parseInt(document.getElementById('saudeAvisoDias').value)||0;
+  var obsRaw = document.getElementById('saudeObs').value.trim();
+  var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
     tipo: document.getElementById('saudeTipo').value,
@@ -2985,12 +3163,19 @@ async function salvarSaude() {
     data_vencimento: document.getElementById('saudeVenc').value||null,
     carga_horaria: parseInt(document.getElementById('saudeCH').value)||null,
     resultado: document.getElementById('saudeResult').value||null,
-    observacoes: document.getElementById('saudeObs').value.trim()
+    observacoes: obsVal
   };
   if (!row.tipo||!row.data_emissao||!row.data_vencimento) { toast('Preencha tipo, emissão e vencimento.','err'); return; }
-  var { error } = await sb.from('rh_saude').insert(row);
+  var error;
+  if (_saudeEditId) {
+    var res = await sb.from('rh_saude').update(row).eq('id', _saudeEditId);
+    error = res.error;
+  } else {
+    var res = await sb.from('rh_saude').insert(row);
+    error = res.error;
+  }
   if (error) { toast('Erro: '+error.message,'err'); return; }
-  toast('Registro salvo!','ok');
+  toast(_saudeEditId ? 'Atualizado!' : 'Registro salvo!','ok');
   fecharModalSaude();
   carregarSaude(_colabAtivo.id);
   gerarAlertas();
@@ -3004,13 +3189,34 @@ async function excluirSaude(id) {
 
 // ══ MODAL EPI ════════════════════════════════════════════════
 function abrirModalEpi() {
+  _epiEditId = null;
   ['epiItem','epiDesc','epiCA','epiEntrega','epiSubs','epiObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('epiQtd').value='1';
+  document.getElementById('epiAvisoDias').value='30';
+  document.getElementById('btnSalvarEpi').textContent='💾 Registrar Entrega';
+  document.getElementById('modalEpi').classList.add('on');
+}
+function editarEpiById(id) {
+  var d = _epiCacheList.find(function(x){ return x.id===id; });
+  if (!d) return;
+  _epiEditId = id;
+  document.getElementById('epiItem').value = d.item||'';
+  document.getElementById('epiDesc').value = d.descricao||'';
+  document.getElementById('epiCA').value = d.ca||'';
+  document.getElementById('epiEntrega').value = d.data_entrega||'';
+  document.getElementById('epiSubs').value = d.data_substituicao||'';
+  document.getElementById('epiQtd').value = d.quantidade||1;
+  document.getElementById('epiAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
+  document.getElementById('epiObs').value = getObsClean(d.observacoes);
+  document.getElementById('btnSalvarEpi').textContent='💾 Atualizar';
   document.getElementById('modalEpi').classList.add('on');
 }
 function fecharModalEpi() { document.getElementById('modalEpi').classList.remove('on'); }
 async function salvarEpi() {
   if (!_colabAtivo) return;
+  var aviso = parseInt(document.getElementById('epiAvisoDias').value)||0;
+  var obsRaw = document.getElementById('epiObs').value.trim();
+  var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
     item: document.getElementById('epiItem').value,
@@ -3019,12 +3225,19 @@ async function salvarEpi() {
     data_entrega: document.getElementById('epiEntrega').value||null,
     data_substituicao: document.getElementById('epiSubs').value||null,
     quantidade: parseInt(document.getElementById('epiQtd').value)||1,
-    observacoes: document.getElementById('epiObs').value.trim()
+    observacoes: obsVal
   };
   if (!row.item||!row.data_entrega) { toast('Preencha EPI e data de entrega.','err'); return; }
-  var { error } = await sb.from('rh_epis').insert(row);
+  var error;
+  if (_epiEditId) {
+    var res = await sb.from('rh_epis').update(row).eq('id', _epiEditId);
+    error = res.error;
+  } else {
+    var res = await sb.from('rh_epis').insert(row);
+    error = res.error;
+  }
   if (error) { toast('Erro: '+error.message,'err'); return; }
-  toast('EPI registrado!','ok');
+  toast(_epiEditId ? 'Atualizado!' : 'EPI registrado!','ok');
   fecharModalEpi();
   carregarEpis(_colabAtivo.id);
 }
