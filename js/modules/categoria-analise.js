@@ -2279,7 +2279,7 @@ function saveVisitaTab() {
   p.stages.visita.observacoes  = gv('vis-obs');
   p.stages.org_visita.notas_logistica = gv('vis-notas');
   p.data_atu = new Date().toISOString();
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderVisitaTab(p);
 }
@@ -2494,7 +2494,7 @@ function saveConsolidacaoTab() {
   sp.data_inicio  = gv('con-dtIni');
   sp.data_termino = gv('con-dtFim');
   p.data_atu = new Date().toISOString();
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderConsolidacaoTab(p);
 }
@@ -2680,7 +2680,7 @@ function saveEngenhariaTab() {
   function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
   p.stages.engenharia.notas = gv('eng-notas');
   p.data_atu = new Date().toISOString();
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderEngenhariaTab(p);
 }
@@ -3157,7 +3157,7 @@ function addRecurso(tipo) {
     sr.outros.push(item);
   }
 
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderRecursosTab(p);
 }
@@ -3173,7 +3173,7 @@ function deleteRecurso(tipo, idx) {
   else if (tipo === 'outro')    arr = sr.outros;
   if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
   arr.splice(idx, 1);
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderRecursosTab(p);
 }
@@ -3481,7 +3481,7 @@ function saveContatoTab() {
   p.ac2 = gv('ct-ac2'); p.dep2 = gv('ct-dep2'); p.mail2= gv('ct-mail2');p.tel2 = gv('ct-tel2');
   p.loc = gv('ct-loc'); p.csvc = gv('ct-csvc'); p.locCnpj = gv('ct-locCnpj');
   p.data_atu = new Date().toISOString();
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   var cliEl = document.getElementById('pd-cli');
   if (cliEl) cliEl.textContent = p.cli || '';
@@ -3593,7 +3593,7 @@ function saveCotacoesTab() {
   var neg = gn('aliq-neg'); if (neg !== undefined) a.neg = neg;
   a.negZero = gb('aliq-negZero');
   p.data_atu = new Date().toISOString();
-  salvarProps();
+  try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
   if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
   renderCotacoesTab(p);
   try { renderFinanceiroTab(p); renderResultadoTab(p); } catch(e) {}
