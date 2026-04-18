@@ -1706,8 +1706,9 @@ function limparFiltroHoras() {
 }
 
 async function carregarHorasColab(colabId) {
+  var empId = await getEmpresaId();
   var q = sb.from('apontamentos')
-    .select('*').eq('colaborador_id', colabId)
+    .select('*').eq('colaborador_id', colabId).eq('empresa_id', empId)
     .neq('status', 'cancelado')
     .order('data', {ascending:false}).limit(500);
   if (_horasColabDe)  q = q.gte('data', _horasColabDe);
@@ -2062,8 +2063,8 @@ async function carregarApontamentos() {
     .limit(100);
 
   if (_modoApt === 'meus' && _colabProprio) {
-    // Modo "Meus" — ver apenas os próprios apontamentos de qualquer empresa
-    q = q.eq('colaborador_id', _colabProprio.id);
+    // Modo "Meus" — apontamentos próprios filtrados pela empresa ativa
+    q = q.eq('colaborador_id', _colabProprio.id).eq('empresa_id', empId);
   } else {
     // Modo "Equipe" — ver apontamentos da empresa ativa
     q = q.eq('empresa_id', empId);
@@ -2141,11 +2142,9 @@ async function carregarApontamentos() {
 
 async function carregarKpiApt() {
   var empId = await getEmpresaId();
-  var qKpi = sb.from('apontamentos').select('status, horas_total, valor_total');
+  var qKpi = sb.from('apontamentos').select('status, horas_total, valor_total').eq('empresa_id', empId);
   if (_modoApt === 'meus' && _colabProprio) {
     qKpi = qKpi.eq('colaborador_id', _colabProprio.id);
-  } else {
-    qKpi = qKpi.eq('empresa_id', empId);
   }
   var { data } = await qKpi;
   if (!data) return;
@@ -3607,9 +3606,11 @@ async function previewApontamentosBol() {
   if (!dtIni || !dtFim) { toast('Informe o período.','err'); return; }
   if (dtIni > dtFim) { toast('Data início maior que fim.','err'); return; }
 
+  var empresaId = await getEmpresaId();
   var { data: apts, error } = await sb.from('apontamentos')
     .select('*')
     .eq('colaborador_id', colabId)
+    .eq('empresa_id', empresaId)
     .eq('status', 'aprovado')
     .gte('data', dtIni)
     .lte('data', dtFim)
