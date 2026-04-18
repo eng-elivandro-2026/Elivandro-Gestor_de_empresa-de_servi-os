@@ -2211,18 +2211,77 @@ function renderVisitaTab(p) {
   // ── Placeholder ───────────────────────────────────────────
   var hasContent = hasAnyData || checklist.length || equipe.length
                  || (sov.notas_logistica && sov.notas_logistica.trim());
+
+  var editBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:.4rem">'
+    + '<button onclick="editVisitaTab()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.22rem .65rem;font-size:.75rem;cursor:pointer">✏ Editar</button>'
+    + '</div>';
+
   var placeholderCard = !hasContent
-    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma visita registrada</div>'
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma visita registrada — clique em Editar para preencher</div>'
     : '';
 
   el.innerHTML = '<div style="display:grid;gap:.6rem">'
-    + dadosCard
-    + observCard
-    + notasCard
-    + checkCard
-    + equipeCard
-    + placeholderCard
+    + editBtn
+    + dadosCard + observCard + notasCard + checkCard + equipeCard + placeholderCard
     + '</div>';
+}
+
+function editVisitaTab() {
+  var p = _getRecProp(); if (!p) return;
+  var el = document.getElementById('pd-panel-visita'); if (!el) return;
+  if (!p.stages) p.stages = {};
+  var sv  = p.stages.visita     || {};
+  var sov = p.stages.org_visita || {};
+  var tl  = p.tl || {};
+  var inp = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.8rem;width:100%;box-sizing:border-box';
+  var lbl = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem;display:block';
+  var g2  = 'display:grid;grid-template-columns:1fr 1fr;gap:.4rem';
+  var ta  = inp + ';resize:vertical;min-height:60px';
+  function f(id, label, val, type) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<input id="' + id + '" style="' + inp + '" value="' + esc(val || '') + '"' + (type ? ' type="' + type + '"' : '') + '></div>';
+  }
+  function t(id, label, val) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<textarea id="' + id + '" style="' + ta + '">' + esc(val || '') + '</textarea></div>';
+  }
+  el.innerHTML = '<div style="display:grid;gap:.5rem">'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Dados da Visita</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + '<div style="' + g2 + '">'
+    + f('vis-data', 'Data da Visita', sv.data_visita || tl.dtVisita, 'date')
+    + f('vis-resp', 'Responsável', sv.responsavel || p.res)
+    + '</div>'
+    + f('vis-local', 'Local', sv.local || p.loc)
+    + f('vis-obj', 'Objetivo', sv.objetivo)
+    + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Observações e Logística</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + t('vis-obs', 'Observações', sv.observacoes)
+    + t('vis-notas', 'Notas de Logística', sov.notas_logistica)
+    + '</div></div>'
+    + '<div style="display:flex;gap:.4rem">'
+    + '<button onclick="saveVisitaTab()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+    + '<button onclick="renderVisitaTab(_getRecProp())" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+    + '</div></div>';
+}
+
+function saveVisitaTab() {
+  var p = _getRecProp(); if (!p) return;
+  if (!p.stages) p.stages = {};
+  if (!p.stages.visita)     p.stages.visita     = {};
+  if (!p.stages.org_visita) p.stages.org_visita = {};
+  function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  p.stages.visita.data_visita  = gv('vis-data');
+  p.stages.visita.responsavel  = gv('vis-resp');
+  p.stages.visita.local        = gv('vis-local');
+  p.stages.visita.objetivo     = gv('vis-obj');
+  p.stages.visita.observacoes  = gv('vis-obs');
+  p.stages.org_visita.notas_logistica = gv('vis-notas');
+  p.data_atu = new Date().toISOString();
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderVisitaTab(p);
 }
 
 function renderConsolidacaoTab(p) {
@@ -2365,19 +2424,79 @@ function renderConsolidacaoTab(p) {
                  || dtInicio || dtTermino;
 
   var placeholderCard = !hasContent
-    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma consolidação técnica registrada</div>'
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma consolidação técnica — clique em Editar para preencher</div>'
     : '';
 
-  el.innerHTML = '<div style="display:grid;gap:.6rem">'
-    + discCard
-    + tecCard
-    + notasCard
-    + premCard
-    + restCard
-    + reqCard
-    + cronCard
-    + placeholderCard
+  var editBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:.4rem">'
+    + '<button onclick="editConsolidacaoTab()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.22rem .65rem;font-size:.75rem;cursor:pointer">✏ Editar</button>'
     + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + editBtn
+    + discCard + tecCard + notasCard + premCard + restCard + reqCard + cronCard + placeholderCard
+    + '</div>';
+}
+
+function editConsolidacaoTab() {
+  var p = _getRecProp(); if (!p) return;
+  var el = document.getElementById('pd-panel-consolidacao'); if (!el) return;
+  if (!p.stages) p.stages = {};
+  var sc = p.stages.consolidacao || {};
+  var sp = p.stages.planejamento || {};
+  var inp = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.8rem;width:100%;box-sizing:border-box';
+  var ta  = inp + ';resize:vertical;min-height:60px';
+  var lbl = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem;display:block';
+  var g2  = 'display:grid;grid-template-columns:1fr 1fr;gap:.4rem';
+  function f(id, label, val, type) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<input id="' + id + '" style="' + inp + '" value="' + esc(val || '') + '"' + (type ? ' type="' + type + '"' : '') + '></div>';
+  }
+  function t(id, label, val) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<textarea id="' + id + '" style="' + ta + '">' + esc(val || '') + '</textarea></div>';
+  }
+  el.innerHTML = '<div style="display:grid;gap:.5rem">'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Informações Técnicas</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + f('con-equip', 'Equipamentos Principais', sc.equipamentos_principais || p.equip)
+    + '<div style="' + g2 + '">' + f('con-tensVal', 'Tensão Alimentação', sc.tensao_alimentacao || p.tensVal) + f('con-tensCmd', 'Tensão Comando', sc.tensao_comando || p.tensCmd) + '</div>'
+    + t('con-notas', 'Notas Técnicas / Escopo Entendido', sc.notas_tecnicas || p.area)
+    + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Premissas (uma por linha)</div>'
+    + t('con-premissas', '', (Array.isArray(sc.premissas) ? sc.premissas : []).join('\n'))
+    + '</div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Restrições / Exclusões (uma por linha)</div>'
+    + t('con-restricoes', '', (Array.isArray(sc.restricoes) ? sc.restricoes : []).join('\n'))
+    + '</div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Cronograma Preliminar</div>'
+    + '<div style="' + g2 + '">' + f('con-dtIni', 'Início Previsto', sp.data_inicio || '', 'date') + f('con-dtFim', 'Término Previsto', sp.data_termino || '', 'date') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:.4rem">'
+    + '<button onclick="saveConsolidacaoTab()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+    + '<button onclick="renderConsolidacaoTab(_getRecProp())" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+    + '</div></div>';
+}
+
+function saveConsolidacaoTab() {
+  var p = _getRecProp(); if (!p) return;
+  if (!p.stages) p.stages = {};
+  if (!p.stages.consolidacao) p.stages.consolidacao = {};
+  if (!p.stages.planejamento) p.stages.planejamento = {};
+  function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  var sc = p.stages.consolidacao;
+  var sp = p.stages.planejamento;
+  sc.equipamentos_principais = gv('con-equip');
+  sc.tensao_alimentacao = gv('con-tensVal');
+  sc.tensao_comando = gv('con-tensCmd');
+  sc.notas_tecnicas = gv('con-notas');
+  sc.premissas  = gv('con-premissas').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  sc.restricoes = gv('con-restricoes').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  sp.data_inicio  = gv('con-dtIni');
+  sp.data_termino = gv('con-dtFim');
+  p.data_atu = new Date().toISOString();
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderConsolidacaoTab(p);
 }
 
 function renderEngenhariaTab(p) {
@@ -2519,19 +2638,51 @@ function renderEngenhariaTab(p) {
                  || notas || materiais.length || maoObra.length || terceiros.length;
 
   var placeholderCard = !hasContent
-    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum dado de engenharia registrado</div>'
+    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum dado de engenharia — clique em Editar para preencher</div>'
     : '';
 
-  el.innerHTML = '<div style="display:grid;gap:.6rem">'
-    + especCard
-    + notasCard
-    + memCard
-    + docCard
-    + matCard
-    + moCard
-    + tercCard
-    + placeholderCard
+  var editBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:.4rem">'
+    + '<button onclick="editEngenhariaTab()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.22rem .65rem;font-size:.75rem;cursor:pointer">✏ Editar</button>'
     + '</div>';
+
+  el.innerHTML = '<div style="display:grid;gap:.6rem">'
+    + editBtn
+    + especCard + notasCard + memCard + docCard + matCard + moCard + tercCard + placeholderCard
+    + '</div>';
+}
+
+function editEngenhariaTab() {
+  var p = _getRecProp(); if (!p) return;
+  var el = document.getElementById('pd-panel-engenharia'); if (!el) return;
+  if (!p.stages) p.stages = {};
+  var se = p.stages.engenharia || {};
+  var inp = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.8rem;width:100%;box-sizing:border-box';
+  var ta  = inp + ';resize:vertical;min-height:70px';
+  var lbl = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem;display:block';
+  function t(id, label, val) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<textarea id="' + id + '" style="' + ta + '">' + esc(val || '') + '</textarea></div>';
+  }
+  el.innerHTML = '<div style="display:grid;gap:.5rem">'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Notas de Engenharia</div>'
+    + t('eng-notas', 'Notas, Memória de Cálculo, Especificações', se.notas)
+    + '</div>'
+    + '<div style="display:flex;gap:.4rem">'
+    + '<button onclick="saveEngenhariaTab()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+    + '<button onclick="renderEngenhariaTab(_getRecProp())" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+    + '</div></div>';
+}
+
+function saveEngenhariaTab() {
+  var p = _getRecProp(); if (!p) return;
+  if (!p.stages) p.stages = {};
+  if (!p.stages.engenharia) p.stages.engenharia = {};
+  function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  p.stages.engenharia.notas = gv('eng-notas');
+  p.data_atu = new Date().toISOString();
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderEngenhariaTab(p);
 }
 
 function renderExecucaoTab(p) {
@@ -3259,52 +3410,82 @@ function renderContatoTab(p) {
       + '</div>';
   }
 
-  var clientHtml = ''
-    + infoRow('Cliente',  p.cli   || '')
-    + infoRow('CNPJ',     p.cnpj  || '')
-    + infoRow('Cidade',   p.cid   || '');
+  var editBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:.4rem">'
+    + '<button onclick="editContatoTab()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.22rem .65rem;font-size:.75rem;cursor:pointer">✏ Editar</button>'
+    + '</div>';
 
-  var clientCard = clientHtml
-    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Cliente</div>' + clientHtml + '</div>'
-    : '';
+  var clientHtml = infoRow('Cliente',  p.cli || '') + infoRow('CNPJ', p.cnpj || '') + infoRow('Cidade', p.cid || '');
+  var clientCard = '<div class="card" style="margin:0"><div style="' + labelStyle + '">Cliente</div>'
+    + (clientHtml || '<div style="color:var(--text3);font-size:.8rem">Não informado</div>') + '</div>';
 
-  var c1Html = ''
-    + infoRow('Nome',         p.ac   || '')
-    + infoRow('Departamento', p.dep  || '')
-    + infoRow('E-mail',       p.mail || '')
-    + infoRow('Telefone',     p.tel  || '');
+  var c1Html = infoRow('Nome', p.ac || '') + infoRow('Departamento', p.dep || '') + infoRow('E-mail', p.mail || '') + infoRow('Telefone', p.tel || '');
+  var c1Card = '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Principal</div>'
+    + (c1Html || '<div style="color:var(--text3);font-size:.8rem">Não informado</div>') + '</div>';
 
-  var c1Card = c1Html
-    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Principal</div>' + c1Html + '</div>'
-    : '';
+  var c2Html = infoRow('Nome', p.ac2 || '') + infoRow('Departamento', p.dep2 || '') + infoRow('E-mail', p.mail2 || '') + infoRow('Telefone', p.tel2 || '');
+  var c2Card = '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Secundário</div>'
+    + (c2Html || '<div style="color:var(--text3);font-size:.8rem">Não informado</div>') + '</div>';
 
-  var c2Html = ''
-    + infoRow('Nome',         p.ac2   || '')
-    + infoRow('Departamento', p.dep2  || '')
-    + infoRow('E-mail',       p.mail2 || '')
-    + infoRow('Telefone',     p.tel2  || '');
-
-  var c2Card = c2Html
-    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Contato Secundário</div>' + c2Html + '</div>'
-    : '';
-
-  var locHtml = ''
-    + infoRow('Local do serviço', p.loc     || '')
-    + infoRow('Cidade do serviço', p.csvc   || '')
-    + infoRow('CNPJ do local',    p.locCnpj || '');
-
-  var locCard = locHtml
-    ? '<div class="card" style="margin:0"><div style="' + labelStyle + '">Local do Serviço</div>' + locHtml + '</div>'
-    : '';
-
-  var hasContent = p.cli || p.ac || p.ac2 || p.loc;
-  var placeholderCard = !hasContent
-    ? '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum contato registrado</div>'
-    : '';
+  var locHtml = infoRow('Local do serviço', p.loc || '') + infoRow('Cidade', p.csvc || '') + infoRow('CNPJ do local', p.locCnpj || '');
+  var locCard = '<div class="card" style="margin:0"><div style="' + labelStyle + '">Local do Serviço</div>'
+    + (locHtml || '<div style="color:var(--text3);font-size:.8rem">Não informado</div>') + '</div>';
 
   el.innerHTML = '<div style="display:grid;gap:.6rem">'
-    + clientCard + c1Card + c2Card + locCard + placeholderCard
+    + editBtn + clientCard + c1Card + c2Card + locCard
     + '</div>';
+}
+
+function editContatoTab() {
+  var p = _getRecProp(); if (!p) return;
+  var el = document.getElementById('pd-panel-contato'); if (!el) return;
+  var inp = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.8rem;width:100%;box-sizing:border-box';
+  var lbl = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem;display:block';
+  function f(id, label, val, type) {
+    return '<div><label style="' + lbl + '">' + label + '</label>'
+      + '<input id="' + id + '" style="' + inp + '" value="' + esc(val || '') + '"' + (type ? ' type="' + type + '"' : '') + '></div>';
+  }
+  var g2 = 'display:grid;grid-template-columns:1fr 1fr;gap:.4rem';
+  el.innerHTML = '<div style="display:grid;gap:.5rem">'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Cliente</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + f('ct-cli',  'Razão Social / Nome', p.cli)
+    + '<div style="' + g2 + '">' + f('ct-cnpj', 'CNPJ', p.cnpj) + f('ct-cid', 'Cidade', p.cid) + '</div>'
+    + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Contato Principal</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + '<div style="' + g2 + '">' + f('ct-ac', 'Nome', p.ac) + f('ct-dep', 'Departamento', p.dep) + '</div>'
+    + '<div style="' + g2 + '">' + f('ct-mail', 'E-mail', p.mail, 'email') + f('ct-tel', 'Telefone', p.tel, 'tel') + '</div>'
+    + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Contato Secundário</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + '<div style="' + g2 + '">' + f('ct-ac2', 'Nome', p.ac2) + f('ct-dep2', 'Departamento', p.dep2) + '</div>'
+    + '<div style="' + g2 + '">' + f('ct-mail2', 'E-mail', p.mail2, 'email') + f('ct-tel2', 'Telefone', p.tel2, 'tel') + '</div>'
+    + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Local do Serviço</div>'
+    + '<div style="display:grid;gap:.35rem">'
+    + f('ct-loc', 'Endereço / Nome do local', p.loc)
+    + '<div style="' + g2 + '">' + f('ct-csvc', 'Cidade', p.csvc) + f('ct-locCnpj', 'CNPJ do local', p.locCnpj) + '</div>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:.4rem">'
+    + '<button onclick="saveContatoTab()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+    + '<button onclick="renderContatoTab(_getRecProp())" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function saveContatoTab() {
+  var p = _getRecProp(); if (!p) return;
+  function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  p.cli = gv('ct-cli'); p.cnpj = gv('ct-cnpj'); p.cid = gv('ct-cid');
+  p.ac  = gv('ct-ac');  p.dep  = gv('ct-dep');  p.mail = gv('ct-mail'); p.tel  = gv('ct-tel');
+  p.ac2 = gv('ct-ac2'); p.dep2 = gv('ct-dep2'); p.mail2= gv('ct-mail2');p.tel2 = gv('ct-tel2');
+  p.loc = gv('ct-loc'); p.csvc = gv('ct-csvc'); p.locCnpj = gv('ct-locCnpj');
+  p.data_atu = new Date().toISOString();
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  var cliEl = document.getElementById('pd-cli');
+  if (cliEl) cliEl.textContent = p.cli || '';
+  renderContatoTab(p);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3332,12 +3513,11 @@ function renderCotacoesTab(p) {
       + '</div>';
   }
 
-  if (!p.aliq) {
-    el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhuma cotação configurada</div>';
-    return;
-  }
+  var editBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:.4rem">'
+    + '<button onclick="editCotacoesTab()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.22rem .65rem;font-size:.75rem;cursor:pointer">✏ Editar</button>'
+    + '</div>';
 
-  var a = p.aliq;
+  var a = p.aliq || {};
 
   var nfCard = '<div class="card" style="margin:0">'
     + '<div style="' + labelStyle + '">Impostos / NF</div>'
@@ -3354,11 +3534,7 @@ function renderCotacoesTab(p) {
 
   var negRows = row('Margem de negociação', pctFmt(a.neg));
   if (a.negZero) negRows += row('Fechado sem desconto', 'Sim', 'reserva incorporada ao lucro');
-
-  var negCard = '<div class="card" style="margin:0">'
-    + '<div style="' + labelStyle + '">Negociação</div>'
-    + negRows
-    + '</div>';
+  var negCard = '<div class="card" style="margin:0"><div style="' + labelStyle + '">Negociação</div>' + negRows + '</div>';
 
   var regiCard = '';
   var emp = window._empresaAtiva;
@@ -3370,8 +3546,57 @@ function renderCotacoesTab(p) {
   }
 
   el.innerHTML = '<div style="display:grid;gap:.6rem">'
-    + nfCard + comCard + negCard + regiCard
+    + editBtn + nfCard + comCard + negCard + regiCard
     + '</div>';
+}
+
+function editCotacoesTab() {
+  var p = _getRecProp(); if (!p) return;
+  var el = document.getElementById('pd-panel-cotacoes'); if (!el) return;
+  var a = p.aliq || {};
+  var inp = 'background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.8rem;width:100%;box-sizing:border-box';
+  var lbl = 'font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.2rem;display:block';
+  var g2 = 'display:grid;grid-template-columns:1fr 1fr;gap:.4rem';
+  function pf(id, label, val) {
+    var pct = (val !== undefined && val !== null && val !== '') ? (parseFloat(val) * 100).toFixed(2) : '';
+    return '<div><label style="' + lbl + '">' + label + ' (%)</label>'
+      + '<input id="' + id + '" type="number" min="0" max="100" step="0.01" style="' + inp + '" value="' + esc(pct) + '" placeholder="0,00"></div>';
+  }
+  el.innerHTML = '<div style="display:grid;gap:.5rem">'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Impostos / NF</div>'
+    + '<div style="' + g2 + '">' + pf('aliq-nfS', 'NF Serviços', a.nfS) + pf('aliq-nfM', 'NF Materiais', a.nfM) + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Comissões e Retenções</div>'
+    + '<div style="' + g2 + '">' + pf('aliq-comS', 'Comissão Serviços', a.comS) + pf('aliq-comM', 'Comissão Materiais', a.comM) + '</div>'
+    + '<div style="margin-top:.35rem">' + pf('aliq-rS', 'Retenção Risco Sacado', a.rS) + '</div></div>'
+    + '<div class="card" style="margin:0"><div style="font-size:.65rem;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Negociação</div>'
+    + pf('aliq-neg', 'Margem de Negociação', a.neg)
+    + '<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;margin-top:.35rem;cursor:pointer">'
+    + '<input type="checkbox" id="aliq-negZero"' + (a.negZero ? ' checked' : '') + '> Fechado sem desconto (reserva no lucro)</label>'
+    + '</div>'
+    + '<div style="display:flex;gap:.4rem">'
+    + '<button onclick="saveCotacoesTab()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:.3rem .8rem;font-size:.8rem;cursor:pointer">Salvar</button>'
+    + '<button onclick="renderCotacoesTab(_getRecProp())" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer">Cancelar</button>'
+    + '</div></div>';
+}
+
+function saveCotacoesTab() {
+  var p = _getRecProp(); if (!p) return;
+  function gn(id) { var e = document.getElementById(id); return e && e.value !== '' ? parseFloat(e.value) / 100 : undefined; }
+  function gb(id) { var e = document.getElementById(id); return e ? e.checked : false; }
+  if (!p.aliq) p.aliq = {};
+  var a = p.aliq;
+  var nfS = gn('aliq-nfS'); if (nfS !== undefined) a.nfS = nfS;
+  var nfM = gn('aliq-nfM'); if (nfM !== undefined) a.nfM = nfM;
+  var comS= gn('aliq-comS');if (comS!== undefined) a.comS= comS;
+  var comM= gn('aliq-comM');if (comM!== undefined) a.comM= comM;
+  var rS  = gn('aliq-rS');  if (rS  !== undefined) a.rS  = rS;
+  var neg = gn('aliq-neg'); if (neg !== undefined) a.neg = neg;
+  a.negZero = gb('aliq-negZero');
+  p.data_atu = new Date().toISOString();
+  salvarProps();
+  if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+  renderCotacoesTab(p);
+  try { renderFinanceiroTab(p); renderResultadoTab(p); } catch(e) {}
 }
 
 // ══════════════════════════════════════════════════════════════
