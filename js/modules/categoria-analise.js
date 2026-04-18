@@ -1501,10 +1501,11 @@ function deleteEscopoItem(idx) {
   var removedAny = false;
   if (deletedId) {
     var biSrc = p.bi || [];
+    _migrarItensEscopo(biSrc);
     for (var i = biSrc.length - 1; i >= 0; i--) {
       var biItem = biSrc[i];
       if (biItem.origem_escopo_id === deletedId || biItem.escopo_id === deletedId) {
-        if (biItem.gerado_por_escopo) {
+        if (biItem.gerado_por_escopo || biItem.tipo_origem === 'escopo') {
           biSrc.splice(i, 1);
         } else {
           delete biItem.escopo_id;
@@ -1512,9 +1513,9 @@ function deleteEscopoItem(idx) {
         removedAny = true;
       }
     }
+    p.bi = JSON.parse(JSON.stringify(biSrc));
+    if (typeof budg !== 'undefined') budg = JSON.parse(JSON.stringify(p.bi));
     if (removedAny) {
-      p.bi = JSON.parse(JSON.stringify(biSrc));
-      if (typeof budg !== 'undefined') budg = JSON.parse(JSON.stringify(p.bi));
       var _pvS = 0, _pvM = 0;
       p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM+=n2(it.pvt); else _pvS+=n2(it.pvt); });
       p.vS = _pvS; p.vM = _pvM; p.val = _pvS + _pvM - n2(p.vD);
@@ -1581,9 +1582,15 @@ function removerItemGerado(lista, escopoId) {
 function _migrarItensEscopo(biList) {
   if (!Array.isArray(biList)) return;
   biList.forEach(function(item) {
-    if (item && item.gerado_por_escopo === true
-        && !item.origem_escopo_id && item.escopo_id) {
+    if (!item) return;
+    // Case 1: already stamped but missing origem_escopo_id
+    if (item.gerado_por_escopo === true && !item.origem_escopo_id && item.escopo_id) {
       item.origem_escopo_id = item.escopo_id;
+    }
+    // Case 2: created via old flow (tipo_origem='escopo') before gerado_por_escopo was introduced
+    if (item.tipo_origem === 'escopo' && !item.gerado_por_escopo && item.escopo_id) {
+      item.gerado_por_escopo = true;
+      if (!item.origem_escopo_id) item.origem_escopo_id = item.escopo_id;
     }
   });
 }
@@ -1623,18 +1630,10 @@ function addEscopoItem() {
   }
 
   if (_isEdit) {
-    // Migrate old items that lack origem_escopo_id (backward compat)
+    if (!Array.isArray(p.bi)) p.bi = [];
     _migrarItensEscopo(p.bi);
 
     var _linked = encontrarItemGeradoPorEscopo(p.bi, item._id);
-
-    /* ── DEBUG (remove after diagnosis) ─────────────────────── */
-    console.log('[ESC-EDIT] item._id:', item._id);
-    console.log('[ESC-EDIT] p.bi length:', (p.bi || []).length);
-    console.log('[ESC-EDIT] _linked:', _linked
-      ? { desc: _linked.desc, gerado: _linked.gerado_por_escopo, origem: _linked.origem_escopo_id }
-      : null);
-    /* ─────────────────────────────────────────────────────────── */
 
     if (_linked) {
       if (!item.gera_item) {
@@ -1679,11 +1678,10 @@ function addEscopoItem() {
         return;
       }
       // Non-productive or no qty: apply current escopo fields to linked item
-      var _descBefore = _linked.desc;
       aplicarDadosDoEscopoNoItem(item, _linked);
-      console.log('[ESC-EDIT] desc before:', _descBefore, '→ after:', _linked.desc);
-      budg = JSON.parse(JSON.stringify(p.bi));
     }
+    // Always sync budg from p.bi after any mutation (or migration) in the edit path
+    budg = JSON.parse(JSON.stringify(p.bi));
   }
 
   try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
@@ -2210,16 +2208,6 @@ function renderItensTab(p) {
   var _usesBudg = (typeof editId !== 'undefined' && editId === p.id
                    && typeof budg !== 'undefined' && Array.isArray(budg));
   var itens = _usesBudg ? budg : (p.bi || []);
-
-  /* ── DEBUG (remove after diagnosis) ─────────────────────── */
-  console.log('[renderItensTab] source:', _usesBudg ? 'budg' : 'p.bi',
-    '| len:', itens.length,
-    '| editId:', typeof editId !== 'undefined' ? editId : 'undef',
-    '| p.id:', p.id);
-  if (itens.length) console.log('[renderItensTab] first item desc:', itens[0].desc,
-    '| gerado:', itens[0].gerado_por_escopo,
-    '| origem:', itens[0].origem_escopo_id);
-  /* ─────────────────────────────────────────────────────────── */
 
   if (!itens.length) {
     el.innerHTML = '<div class="card" style="margin:0;color:var(--text3);font-size:.83rem;text-align:center;padding:1.5rem">Nenhum item orçado</div>';
