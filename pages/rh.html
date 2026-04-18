@@ -1339,7 +1339,7 @@ async function gerarAlertas() {
   // Documentos gerais com aviso configurado
   var { data: docs } = await sb
     .from('rh_documentos')
-    .select('descricao, tipo, data_vencimento, observacoes, colaboradores(nome)')
+    .select('descricao, tipo, data_documento, data_vencimento, observacoes, colaboradores(nome)')
     .not('data_vencimento', 'is', null);
 
   (docs || []).forEach(function(d) {
@@ -1351,11 +1351,11 @@ async function gerarAlertas() {
     if (dias < 0) {
       var txt = '🔴 ' + docLabel + ' vencido — ' + nome;
       alertas.push({ cls:'alerta-red', txt: txt });
-      emailAlerts.push(txt);
+      emailAlerts.push({ doc: docLabel, colab: nome, dataDoc: d.data_documento, dataVenc: d.data_vencimento, status: 'VENCIDO' });
     } else if (dias <= aviso) {
       var txt = '🟡 ' + docLabel + ' vence em ' + dias + ' dias — ' + nome;
       alertas.push({ cls:'alerta-yellow', txt: txt });
-      emailAlerts.push(txt);
+      emailAlerts.push({ doc: docLabel, colab: nome, dataDoc: d.data_documento, dataVenc: d.data_vencimento, status: 'Vence em ' + dias + ' dia(s)' });
     }
   });
 
@@ -1383,14 +1383,26 @@ async function gerarAlertas() {
     var ultimoEnvio = localStorage.getItem('rh_alert_email_date');
     if (ultimoEnvio !== hoje) {
       var emails = getEmailsAlerta();
+      var linhas = emailAlerts.map(function(a, i) {
+        return (i+1) + '. ' + a.doc
+          + '\n   Colaborador: ' + a.colab
+          + '\n   Data do documento: ' + (a.dataDoc ? fmtData(a.dataDoc) : '—')
+          + '\n   Data de vencimento: ' + (a.dataVenc ? fmtData(a.dataVenc) : '—')
+          + '\n   Status: ' + a.status;
+      }).join('\n\n');
+      var corpo = '!!! ALERTA PARA RENOVAÇÃO !!!\n\n'
+        + linhas
+        + '\n\n——————————————————\n'
+        + 'Esse é um alerta automático do Sistema de Gestão Elivandro.\n'
+        + 'Acesse o sistema para mais detalhes: https://sistemas-propostas.vercel.app';
       try {
         await Promise.all(emails.map(function(email) {
           return fetch('https://formsubmit.co/ajax/' + email, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({
-              _subject: '⚠️ Alertas de Vencimento RH — ' + new Date().toLocaleDateString('pt-BR'),
-              Alertas: emailAlerts.join('\n'),
+              _subject: '!!! ALERTA PARA RENOVAÇÃO !!! — ' + new Date().toLocaleDateString('pt-BR'),
+              Mensagem: corpo,
               _template: 'box'
             })
           });
