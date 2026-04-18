@@ -1500,9 +1500,7 @@ function deleteEscopoItem(idx) {
   _escopoEditIdx = null;
   var removedAny = false;
   if (deletedId) {
-    var biSrc = (typeof editId !== 'undefined' && editId === p.id
-                 && typeof budg !== 'undefined' && Array.isArray(budg))
-                ? budg : (p.bi || []);
+    var biSrc = p.bi || [];
     for (var i = biSrc.length - 1; i >= 0; i--) {
       var biItem = biSrc[i];
       if (biItem.origem_escopo_id === deletedId || biItem.escopo_id === deletedId) {
@@ -1516,10 +1514,7 @@ function deleteEscopoItem(idx) {
     }
     if (removedAny) {
       p.bi = JSON.parse(JSON.stringify(biSrc));
-      if (typeof editId !== 'undefined' && editId === p.id
-          && typeof budg !== 'undefined') {
-        budg = JSON.parse(JSON.stringify(biSrc));
-      }
+      if (typeof budg !== 'undefined') budg = JSON.parse(JSON.stringify(p.bi));
       var _pvS = 0, _pvM = 0;
       p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM+=n2(it.pvt); else _pvS+=n2(it.pvt); });
       p.vS = _pvS; p.vM = _pvM; p.val = _pvS + _pvM - n2(p.vD);
@@ -1532,6 +1527,68 @@ function deleteEscopoItem(idx) {
   renderItensTab(p);
   if (removedAny) renderRecursosTab(p);
 }
+
+// ── Escopo ↔ Itens shared helpers (architecture lock) ────────
+
+function montarDescricaoDoItem(escopo) {
+  return [escopo.atividade, escopo.equipamento].filter(Boolean).join(' — ')
+    || escopo.descricao || '';
+}
+
+function encontrarItemGeradoPorEscopo(lista, escopoId) {
+  return (lista || []).find(function(item) {
+    return item && item.gerado_por_escopo === true && item.origem_escopo_id === escopoId;
+  });
+}
+
+function aplicarDadosDoEscopoNoItem(escopo, item) {
+  item.desc                = montarDescricaoDoItem(escopo);
+  item.qtd                 = escopo.quantidade_execucao || item.qtd || 1;
+  item.un                  = escopo.unidade_execucao    || item.un  || 'vb';
+  item.origem_label        = montarDescricaoDoItem(escopo);
+  item.equipamento_exibido = escopo.equipamento || '';
+  item.atividade_exibida   = escopo.atividade   || '';
+}
+
+function criarItemAPartirDoEscopo(escopo) {
+  return {
+    _id:                     (typeof crypto !== 'undefined' && crypto.randomUUID)
+                               ? crypto.randomUUID()
+                               : String(Date.now()),
+    tipo_origem:             'escopo',
+    gerado_por_escopo:       true,
+    origem_escopo_id:        escopo._id,
+    escopo_id:               escopo._id,
+    sincronizacao_automatica: true,
+    desc:                    montarDescricaoDoItem(escopo),
+    qtd:                     escopo.quantidade_execucao || 1,
+    un:                      escopo.unidade_execucao    || 'vb',
+    origem_label:            montarDescricaoDoItem(escopo),
+    equipamento_exibido:     escopo.equipamento || '',
+    atividade_exibida:       escopo.atividade   || ''
+  };
+}
+
+function removerItemGerado(lista, escopoId) {
+  var idx = -1;
+  for (var _i = 0; _i < lista.length; _i++) {
+    if (lista[_i] && lista[_i].gerado_por_escopo === true
+        && lista[_i].origem_escopo_id === escopoId) { idx = _i; break; }
+  }
+  if (idx >= 0) lista.splice(idx, 1);
+}
+
+function _migrarItensEscopo(biList) {
+  if (!Array.isArray(biList)) return;
+  biList.forEach(function(item) {
+    if (item && item.gerado_por_escopo === true
+        && !item.origem_escopo_id && item.escopo_id) {
+      item.origem_escopo_id = item.escopo_id;
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
 
 function addEscopoItem() {
   if (!_pdId) return;
@@ -1565,20 +1622,30 @@ function addEscopoItem() {
     p.stages.escopo.itens.push(item);
   }
 
-  // If editing a productive-flow item that has a linked bi entry,
-  // update the generated description and HH-derived quantity fields.
-  // Pricing formula (pvt = cu * mult) is unchanged; only mult/dias are updated.
-  if (_isEdit && _qtdExecVal) {
-    var _atvEd = buscarAtividadePadrao(item.atividade);
-    if (_atvEd && _atvEd.modo_execucao === 'produtivo') {
-      var _biSrc = (typeof editId !== 'undefined' && editId === p.id
-                    && typeof budg !== 'undefined' && Array.isArray(budg))
-                   ? budg : (p.bi || []);
-      var _linked = _biSrc.find(function(b){
-        return b.origem_escopo_id === item._id ||
-               (b.gerado_por_escopo && b.escopo_id === item._id);
-      });
-      if (_linked) {
+  if (_isEdit) {
+    // Migrate old items that lack origem_escopo_id (backward compat)
+    _migrarItensEscopo(p.bi);
+
+    var _linked = encontrarItemGeradoPorEscopo(p.bi, item._id);
+    if (_linked) {
+      if (!item.gera_item) {
+        // Escopo disabled item generation → remove it and update totals
+        removerItemGerado(p.bi, item._id);
+        var _pvSr = 0, _pvMr = 0;
+        p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvMr+=n2(it.pvt); else _pvSr+=n2(it.pvt); });
+        p.vS = _pvSr; p.vM = _pvMr; p.val = _pvSr + _pvMr - n2(p.vD);
+        budg = JSON.parse(JSON.stringify(p.bi));
+        try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+        if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
+        if (typeof rDash === 'function') rDash();
+        renderEscopoTab(p);
+        renderItensTab(p);
+        renderRecursosTab(p);
+        return;
+      }
+      // Productive recalculation when qty is available
+      var _atvEd = _qtdExecVal ? buscarAtividadePadrao(item.atividade) : null;
+      if (_atvEd && _atvEd.modo_execucao === 'produtivo') {
         var _calc = calcularAtividade(_atvEd, _qtdExecVal);
         var _matNote = _calc.materiais.map(function(m){
           return m.quantidade + ' ' + (m.unidade_compra || 'un') + ' ' + m.descricao;
@@ -1589,15 +1656,11 @@ function addEscopoItem() {
         _linked.dias = _calc.hh;
         _linked.tec  = 1;
         _linked.hpd  = 1;
-        _linked.pvt  = n2(_linked.cu) * _calc.hh; // same formula: cu × mult
-        // Mirror budg back to p.bi
-        p.bi = JSON.parse(JSON.stringify(_biSrc));
-        // Recalculate proposal totals
+        _linked.pvt  = n2(_linked.cu) * _calc.hh;
         var _pvS2 = 0, _pvM2 = 0;
         p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM2+=n2(it.pvt); else _pvS2+=n2(it.pvt); });
-        p.vS  = _pvS2;
-        p.vM  = _pvM2;
-        p.val = _pvS2 + _pvM2 - n2(p.vD);
+        p.vS = _pvS2; p.vM = _pvM2; p.val = _pvS2 + _pvM2 - n2(p.vD);
+        budg = JSON.parse(JSON.stringify(p.bi));
         try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
         if (typeof sbSalvarProposta === 'function') sbSalvarProposta(p);
         if (typeof rDash === 'function') rDash();
@@ -1606,34 +1669,9 @@ function addEscopoItem() {
         renderRecursosTab(p);
         return;
       }
-    }
-  }
-
-  // All other paths (non-productive edit, new item, productive edit without linked bi):
-  // persist the stages change and refresh both tabs so origin labels and selector
-  // options in Itens always reflect the current escopo data.
-
-  // If editing, sync the linked bi item's desc from the updated escopo fields so
-  // the "Item criado" chip shows current equipment/atividade text.
-  if (_isEdit) {
-    var _biSrcSync = (typeof editId !== 'undefined' && editId === p.id
-                      && typeof budg !== 'undefined' && Array.isArray(budg))
-                     ? budg : (p.bi || []);
-    var _linkedSync = _biSrcSync.find(function(b){
-      return b.origem_escopo_id === item._id ||
-             (b.gerado_por_escopo && b.escopo_id === item._id);
-    });
-    if (_linkedSync) {
-      var _newDesc = [item.atividade, item.equipamento].filter(Boolean).join(' — ') || item.descricao || '';
-      if (_newDesc) {
-        _linkedSync.desc = _newDesc;
-        p.bi = JSON.parse(JSON.stringify(_biSrcSync));
-        // When we read from p.bi (editId !== p.id), also sync budg if it is live
-        if (typeof editId !== 'undefined' && editId === p.id
-            && typeof budg !== 'undefined' && Array.isArray(budg)) {
-          budg = JSON.parse(JSON.stringify(p.bi));
-        }
-      }
+      // Non-productive or no qty: apply current escopo fields to linked item
+      aplicarDadosDoEscopoNoItem(item, _linked);
+      budg = JSON.parse(JSON.stringify(p.bi));
     }
   }
 
@@ -1817,6 +1855,7 @@ function _salvarEdicaoItemDeEscopo() {
     var p = props.find(function(x){ return x.id === _pdId; });
     if (p && Array.isArray(budg)) {
       p.bi = JSON.parse(JSON.stringify(budg));
+      budg = JSON.parse(JSON.stringify(p.bi)); // budg ← p.bi (canonical sync)
       var _pvS = 0, _pvM = 0;
       p.bi.forEach(function(it){ if(it.inc===false) return; if(it.t==='material') _pvM+=n2(it.pvt); else _pvS+=n2(it.pvt); });
       p.vS  = _pvS; p.vM  = _pvM; p.val = _pvS + _pvM - n2(p.vD);
@@ -1881,18 +1920,17 @@ function _salvarItemDeEscopo() {
   if (saved && _escopoIdParaVincular && _pdId) {
     var newItem = budg[prelen]; // the newly pushed item
     if (newItem) {
-      newItem.escopo_id         = _escopoIdParaVincular;
-      newItem.gerado_por_escopo = true;
-      newItem.origem_escopo_id  = _escopoIdParaVincular;
+      newItem.escopo_id              = _escopoIdParaVincular;
+      newItem.gerado_por_escopo      = true;
+      newItem.origem_escopo_id       = _escopoIdParaVincular;
+      newItem.tipo_origem            = 'escopo';
+      newItem.sincronizacao_automatica = true;
 
       var p = props.find(function(x){ return x.id === _pdId; });
       if (p) {
-        // Sync budg (with new item + escopo_id) back into p.bi
         p.bi = JSON.parse(JSON.stringify(budg));
+        budg = JSON.parse(JSON.stringify(p.bi)); // budg ← p.bi (canonical sync)
 
-        // Recalculate p.vS / p.vM / p.val from the updated p.bi so the
-        // proposal card shows the correct total without a page reload.
-        // Mirrors updBT() logic: sum pvt by type, skip excluded items.
         var _pvS = 0, _pvM = 0;
         p.bi.forEach(function(it) {
           if (it.inc === false) return;
