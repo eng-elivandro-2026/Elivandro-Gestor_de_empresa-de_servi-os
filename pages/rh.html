@@ -466,6 +466,16 @@ body.master-admin .scope-btn{display:inline-block!important}
             <input type="date" id="iValidade">
           </div>
           <div class="f">
+            <label>Alerta de vencimento</label>
+            <select id="iAvisoDias">
+              <option value="0">Sem aviso</option>
+              <option value="30">30 dias antes</option>
+              <option value="60">60 dias antes</option>
+              <option value="90">90 dias antes</option>
+              <option value="120">120 dias antes</option>
+            </select>
+          </div>
+          <div class="f">
             <label>Contato para renovação</label>
             <input type="text" id="iContatoNome" placeholder="Nome do contato">
           </div>
@@ -1702,20 +1712,21 @@ async function gerarAlertas() {
   // Integrações vencendo/vencidas
   var { data: integAlert } = await sb
     .from('rh_integracoes')
-    .select('valido_ate, cliente_nome, colaboradores(nome)')
+    .select('valido_ate, cliente_nome, data_integracao, observacoes, colaboradores(nome)')
     .eq('empresa_id', empId)
     .not('valido_ate', 'is', null);
   (integAlert || []).forEach(function(r) {
     var dias = diasAteVencer(r.valido_ate);
     if (dias === null) return;
+    var aviso  = getAvisoDiasFromObs(r.observacoes) || 30;
     var colab   = r.colaboradores ? r.colaboradores.nome : '?';
     var cliente = r.cliente_nome || '?';
     if (dias < 0) {
       alertas.push({ cls:'alerta-red',    txt: '🔴 Integração VENCIDA — ' + colab + ' @ ' + cliente });
-      emailAlerts.push({ doc: 'Integração', colab: colab + ' @ ' + cliente, dataDoc: null, dataVenc: r.valido_ate, status: 'VENCIDA' });
-    } else if (dias <= 30) {
+      emailAlerts.push({ doc: 'Integração em ' + cliente, colab: colab, dataDoc: r.data_integracao, dataVenc: r.valido_ate, status: 'VENCIDA' });
+    } else if (dias <= aviso) {
       alertas.push({ cls:'alerta-yellow', txt: '🟡 Integração vence em ' + dias + ' dias — ' + colab + ' @ ' + cliente });
-      emailAlerts.push({ doc: 'Integração', colab: colab + ' @ ' + cliente, dataDoc: null, dataVenc: r.valido_ate, status: 'Vence em ' + dias + ' dia(s)' });
+      emailAlerts.push({ doc: 'Integração em ' + cliente, colab: colab, dataDoc: r.data_integracao, dataVenc: r.valido_ate, status: 'Vence em ' + dias + ' dia(s)' });
     }
   });
 
@@ -3710,6 +3721,7 @@ function renderIntegracoesColab(lista) {
           + (r.valido_ate ? ' · Válido até: ' + fmtData(r.valido_ate) : '')
           + (r.contato_nome ? ' · Contato: ' + r.contato_nome : '')
           + (r.contato_fone ? ' · ' + r.contato_fone : '')
+          + (getAvisoDiasFromObs(r.observacoes) ? ' · Aviso: ' + getAvisoDiasFromObs(r.observacoes) + ' dias antes' : '')
         + '</div>'
       + '</div>'
       + '<span class="bdg ' + si.cls + '">' + si.txt + '</span>'
@@ -3756,6 +3768,7 @@ async function abrirModalIntegracao(id, fromColab) {
     document.getElementById('iCidade').value       = '';
     document.getElementById('iData').value         = '';
     document.getElementById('iValidade').value     = '';
+    document.getElementById('iAvisoDias').value    = '30';
     document.getElementById('iContatoNome').value  = '';
     document.getElementById('iContatoFone').value  = '';
     document.getElementById('iContatoEmail').value = '';
@@ -3775,10 +3788,11 @@ async function abrirModalIntegracao(id, fromColab) {
     document.getElementById('iCidade').value       = src.cliente_cidade || '';
     document.getElementById('iData').value         = src.data_integracao|| '';
     document.getElementById('iValidade').value     = src.valido_ate     || '';
+    document.getElementById('iAvisoDias').value    = String(getAvisoDiasFromObs(src.observacoes) || 30);
     document.getElementById('iContatoNome').value  = src.contato_nome   || '';
     document.getElementById('iContatoFone').value  = src.contato_fone   || '';
     document.getElementById('iContatoEmail').value = src.contato_email  || '';
-    document.getElementById('iObs').value          = src.observacoes    || '';
+    document.getElementById('iObs').value          = getObsClean(src.observacoes);
   }
   document.getElementById('modalIntegracao').classList.add('on');
 }
@@ -3795,6 +3809,9 @@ async function salvarIntegracao() {
 
   var empId   = await getEmpresaId();
   var colabId = document.getElementById('iColab').value || null;
+  var aviso   = parseInt(document.getElementById('iAvisoDias').value) || 0;
+  var obsRaw  = document.getElementById('iObs').value.trim();
+  var obsVal  = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : (obsRaw || null);
   var dados   = {
     empresa_id:      empId,
     colaborador_id:  colabId,
@@ -3805,7 +3822,7 @@ async function salvarIntegracao() {
     contato_nome:    document.getElementById('iContatoNome').value.trim()   || null,
     contato_fone:    document.getElementById('iContatoFone').value.trim()   || null,
     contato_email:   document.getElementById('iContatoEmail').value.trim()  || null,
-    observacoes:     document.getElementById('iObs').value.trim()           || null
+    observacoes:     obsVal
   };
 
   var r = _integEditId
