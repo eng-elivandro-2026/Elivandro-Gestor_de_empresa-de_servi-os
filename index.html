@@ -2133,6 +2133,3205 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 
+<!-- ══ MÓDULO GESTÃO CEO (inline) ══ -->
+<style id="gestao-styles">
+#gestao-wrap body.light{
+
+  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#eef1f5;
+
+  --border:#d5dce6;--border2:#bfc9d7;
+
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+
+  --accent:#e04f0f;--accent2:#ff7a3d;
+
+  --green:#15803d;--blue:#2563eb;
+
+  --red:#dc2626;--orange:#c2410c;--purple:#7c3aed;
+
+}
+#gestao-wrap /* HEADER */
+
+.hdr{position:sticky;top:0;z-index:100;background:#0a0c10;backdrop-filter:blur(12px);border-bottom:2px solid var(--accent);display:flex;align-items:center;justify-content:space-between;padding:0 1rem;height:52px;gap:.75rem}
+#gestao-wrap body.light .hdr{background:rgba(255,255,255,.96)}
+#gestao-wrap .logo{display:flex;align-items:center;gap:.55rem;flex-shrink:0}
+#gestao-wrap .logo-mk{width:30px;height:30px;background:var(--accent);border-radius:7px;display:grid;place-items:center;font-size:.72rem;font-weight:800;color:#000;flex-shrink:0}
+#gestao-wrap .logo-txt{font-size:.88rem;font-weight:700;line-height:1;color:var(--text)}
+#gestao-wrap .logo-sub{font-size:.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+#gestao-wrap .nav{display:flex;gap:2px}
+#gestao-wrap .nb{padding:.35rem .75rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.75rem;font-weight:500;transition:all .15s;white-space:nowrap;font-family:inherit}
+#gestao-wrap .nb:hover{background:var(--bg3);color:var(--text)}
+#gestao-wrap .nb.on{background:rgba(240,90,26,.15);color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent)}
+#gestao-wrap .hdr-right{display:flex;align-items:center;gap:.4rem}
+#gestao-wrap .theme-btn{padding:.3rem .5rem;border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.7rem;font-family:inherit}
+#gestao-wrap .today-lbl{font-size:.7rem;color:var(--text3);white-space:nowrap}
+#gestao-wrap /* LAYOUT */
+
+.wrap{max-width:1100px;margin:0 auto;padding:1.1rem}
+#gestao-wrap .sec{display:none}
+#gestao-wrap .sec.on{display:block;animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+#gestao-wrap /* CARDS */
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem}
+#gestao-wrap .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+#gestao-wrap .card-title{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:.35rem}
+#gestao-wrap .card-sub{font-size:.7rem;color:var(--text3)}
+#gestao-wrap /* GRID */
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+#gestao-wrap .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem}
+#gestao-wrap .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}
+#gestao-wrap /* FORM */
+
+.f{display:flex;flex-direction:column;gap:.22rem}
+#gestao-wrap .f label{font-size:.62rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+#gestao-wrap .f input, #gestao-wrap .f select, #gestao-wrap .f textarea{padding:.44rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;width:100%;transition:border-color .15s}
+#gestao-wrap .f input:focus, #gestao-wrap .f select:focus, #gestao-wrap .f textarea:focus{outline:none;border-color:var(--blue)}
+#gestao-wrap .f textarea{resize:vertical;line-height:1.5;min-height:64px}
+#gestao-wrap .f select option{background:var(--bg3)}
+#gestao-wrap /* BUTTONS */
+
+.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.38rem .8rem;border:none;border-radius:var(--r2);font-weight:600;font-size:.75rem;cursor:pointer;transition:all .15s;font-family:inherit}
+#gestao-wrap .btn:active{transform:translateY(1px)}
+#gestao-wrap .ba{background:var(--accent);color:#000}
+#gestao-wrap .ba:hover{background:var(--accent2)}
+#gestao-wrap .bg{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+#gestao-wrap .bg:hover{border-color:var(--border2)}
+#gestao-wrap .bs{background:var(--green);color:#000}
+#gestao-wrap .bs:hover{filter:brightness(1.1)}
+#gestao-wrap .bd{background:var(--red);color:#fff}
+#gestao-wrap .bd:hover{filter:brightness(1.1)}
+#gestao-wrap .bp{background:var(--blue);color:#000}
+#gestao-wrap .bp:hover{filter:brightness(1.1)}
+#gestao-wrap .btn-sm{padding:.25rem .55rem;font-size:.68rem}
+#gestao-wrap .btn-xs{padding:.15rem .4rem;font-size:.64rem}
+#gestao-wrap .br{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+#gestao-wrap /* BADGES */
+
+.bdg{display:inline-flex;align-items:center;padding:.1rem .42rem;border-radius:20px;font-size:.63rem;font-weight:700;white-space:nowrap}
+#gestao-wrap .b-ok{background:rgba(63,185,80,.15);color:#56d364}
+#gestao-wrap .b-warn{background:rgba(240,165,0,.15);color:#f0a500}
+#gestao-wrap .b-danger{background:rgba(248,81,73,.15);color:#f85149}
+#gestao-wrap .b-info{background:rgba(88,166,255,.15);color:#79b8ff}
+#gestao-wrap .b-muted{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+#gestao-wrap .b-fazer{background:rgba(88,166,255,.12);color:#79b8ff}
+#gestao-wrap .b-mover{background:rgba(240,165,0,.12);color:#f0a500}
+#gestao-wrap .b-construir{background:rgba(63,185,80,.12);color:#56d364}
+#gestao-wrap /* KPI */
+
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.7rem;margin-bottom:1rem}
+#gestao-wrap .kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;text-align:center}
+#gestao-wrap .kpi-v{font-size:1.5rem;font-weight:700;color:var(--accent);display:block;line-height:1.1}
+#gestao-wrap .kpi-l{font-size:.63rem;color:var(--text3);margin-top:.2rem;text-transform:uppercase;letter-spacing:.05em}
+#gestao-wrap .kpi.green .kpi-v{color:var(--green)}
+#gestao-wrap .kpi.red .kpi-v{color:var(--red)}
+#gestao-wrap .kpi.blue .kpi-v{color:var(--blue)}
+#gestao-wrap /* TAREFAS */
+
+.task-item{display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem;transition:border-color .15s}
+#gestao-wrap .task-item:hover{border-color:var(--border2)}
+#gestao-wrap .task-item.done{opacity:.5}
+#gestao-wrap .task-item.done .task-txt{text-decoration:line-through}
+#gestao-wrap .task-check{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:4px;flex-shrink:0;margin-top:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#gestao-wrap .task-check.checked{background:var(--green);border-color:var(--green);color:#000;font-size:10px}
+#gestao-wrap .task-body{flex:1;min-width:0}
+#gestao-wrap .task-txt{font-size:.82rem;color:var(--text);line-height:1.4}
+#gestao-wrap .task-meta{display:flex;gap:.3rem;margin-top:.2rem;flex-wrap:wrap;align-items:center}
+#gestao-wrap .task-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:.1rem .3rem;border-radius:3px;opacity:0;transition:opacity .15s;flex-shrink:0}
+#gestao-wrap .task-item:hover .task-del{opacity:1}
+#gestao-wrap /* PRIORIDADES */
+
+.prio-item{display:flex;align-items:center;gap:.6rem;padding:.65rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+#gestao-wrap .prio-num{width:22px;height:22px;background:var(--accent);border-radius:50%;display:grid;place-items:center;font-size:.68rem;font-weight:800;color:#000;flex-shrink:0}
+#gestao-wrap .prio-input{flex:1;background:transparent;border:none;color:var(--text);font-size:.84rem;font-family:inherit;outline:none}
+#gestao-wrap .prio-item.done .prio-input{text-decoration:line-through;color:var(--text3)}
+#gestao-wrap .prio-check{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+#gestao-wrap .prio-check.checked{background:var(--green);border-color:var(--green);color:#000;font-size:10px}
+#gestao-wrap /* SEMANA */
+
+.week-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:1rem}
+#gestao-wrap .week-day{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+#gestao-wrap .week-day.today{border-color:var(--accent)}
+#gestao-wrap .wd-hdr{padding:.4rem .55rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+#gestao-wrap .wd-name{font-size:.68rem;font-weight:700;color:var(--text2)}
+#gestao-wrap .wd-date{font-size:.6rem;color:var(--text3)}
+#gestao-wrap .wd-body{padding:.45rem .55rem;min-height:80px}
+#gestao-wrap .wd-block{font-size:.67rem;padding:.18rem .35rem;border-radius:3px;margin-bottom:.2rem;line-height:1.3}
+#gestao-wrap .wd-fazer{background:rgba(88,166,255,.12);color:#79b8ff}
+#gestao-wrap .wd-mover{background:rgba(240,165,0,.12);color:#f0a500}
+#gestao-wrap .wd-construir{background:rgba(63,185,80,.12);color:#56d364}
+#gestao-wrap .wd-jiu{background:rgba(188,140,255,.12);color:#bc8cff}
+#gestao-wrap .wd-livre{font-size:.65rem;color:var(--text3);font-style:italic}
+#gestao-wrap .week-day.today .wd-hdr{background:rgba(240,165,0,.08)}
+#gestao-wrap .week-day.today .wd-name{color:var(--accent)}
+#gestao-wrap /* PROPOSTA CICLO */
+
+.ciclo-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+#gestao-wrap .ciclo-num{font-family:monospace;font-size:.78rem;font-weight:700;color:var(--accent);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);padding:.1rem .35rem;border-radius:4px;flex-shrink:0}
+#gestao-wrap .ciclo-body{flex:1;min-width:0}
+#gestao-wrap .ciclo-cliente{font-size:.82rem;color:var(--text)}
+#gestao-wrap .ciclo-fase{font-size:.7rem;color:var(--text3)}
+#gestao-wrap .ciclo-progress{height:3px;background:var(--border);border-radius:2px;margin-top:.3rem;overflow:hidden}
+#gestao-wrap .ciclo-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+#gestao-wrap .ciclo-dia{font-size:.68rem;color:var(--text2);white-space:nowrap;flex-shrink:0}
+#gestao-wrap /* FOLLOWUP */
+
+.fu-item{display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+#gestao-wrap .fu-dias{font-size:.72rem;font-weight:700;min-width:36px;flex-shrink:0;padding-top:2px}
+#gestao-wrap .fu-dias.ok{color:var(--green)}
+#gestao-wrap .fu-dias.warn{color:var(--accent)}
+#gestao-wrap .fu-dias.danger{color:var(--red)}
+#gestao-wrap .fu-body{flex:1;min-width:0}
+#gestao-wrap .fu-prop{font-size:.82rem;color:var(--text)}
+#gestao-wrap .fu-cliente{font-size:.7rem;color:var(--text3)}
+#gestao-wrap /* CONFORMIDADE */
+
+.conf-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;border-bottom:1px solid var(--border)}
+#gestao-wrap .conf-item:last-child{border:none}
+#gestao-wrap .conf-ava{width:30px;height:30px;border-radius:50%;background:rgba(88,166,255,.15);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#79b8ff;flex-shrink:0}
+#gestao-wrap .conf-name{font-size:.82rem;color:var(--text);flex:1}
+#gestao-wrap .conf-badges{display:flex;gap:.3rem;flex-wrap:wrap}
+#gestao-wrap /* PROGRESS */
+
+.prog-wrap{margin-bottom:.85rem}
+#gestao-wrap .prog-lbl{display:flex;justify-content:space-between;margin-bottom:.35rem}
+#gestao-wrap .prog-lbl span{font-size:.72rem;color:var(--text2)}
+#gestao-wrap .prog-lbl strong{font-size:.72rem;color:var(--text);font-weight:600}
+#gestao-wrap .prog-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+#gestao-wrap .prog-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .4s ease}
+#gestao-wrap .prog-fill.green{background:var(--green)}
+#gestao-wrap .prog-fill.blue{background:var(--blue)}
+#gestao-wrap /* FUNIL */
+
+.funil-item{display:flex;align-items:center;gap:.7rem;padding:.55rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+#gestao-wrap .funil-num{font-family:monospace;font-size:.75rem;color:var(--accent);min-width:55px;flex-shrink:0}
+#gestao-wrap .funil-body{flex:1;min-width:0}
+#gestao-wrap .funil-cliente{font-size:.82rem;color:var(--text)}
+#gestao-wrap .funil-desc{font-size:.68rem;color:var(--text3)}
+#gestao-wrap .funil-acoes{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem}
+#gestao-wrap .funil-dias{font-size:.7rem;font-weight:600;white-space:nowrap;flex-shrink:0}
+#gestao-wrap /* TRIMESTRAL */
+
+.trim-meta{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem;text-align:center}
+#gestao-wrap .trim-valor{font-size:2rem;font-weight:700;color:var(--accent)}
+#gestao-wrap .trim-de{font-size:.75rem;color:var(--text3);margin-top:.2rem}
+#gestao-wrap .trim-pct{font-size:1rem;font-weight:700;color:var(--green);margin-top:.3rem}
+#gestao-wrap .fab-item{display:flex;align-items:center;gap:.7rem;padding:.55rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+#gestao-wrap .fab-logo{width:32px;height:32px;border-radius:var(--r2);background:rgba(88,166,255,.1);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#79b8ff;flex-shrink:0}
+#gestao-wrap .fab-body{flex:1;min-width:0}
+#gestao-wrap .fab-nome{font-size:.82rem;color:var(--text)}
+#gestao-wrap .fab-status{font-size:.68rem;color:var(--text3)}
+#gestao-wrap /* MODAL */
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:12px}
+#gestao-wrap .modal-bg.on{display:flex}
+#gestao-wrap .modal{width:min(520px,98vw);background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+#gestao-wrap .modal-hdr{padding:.85rem 1rem .6rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+#gestao-wrap .modal-title{font-size:.9rem;font-weight:700;color:var(--accent)}
+#gestao-wrap .modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:.1rem .3rem}
+#gestao-wrap .modal-body{padding:1rem;max-height:70vh;overflow-y:auto}
+#gestao-wrap .modal-footer{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:.4rem;justify-content:flex-end}
+#gestao-wrap /* JANELA STATUS */
+
+.janela-wrap{display:flex;gap:.5rem;margin-bottom:.85rem}
+#gestao-wrap .janela{flex:1;text-align:center;padding:.55rem;border-radius:var(--r);border:1px solid var(--border)}
+#gestao-wrap .janela.ativa{border-color:var(--green);background:rgba(63,185,80,.07)}
+#gestao-wrap .janela.passada{opacity:.5}
+#gestao-wrap .janela-hora{font-size:.85rem;font-weight:700;color:var(--text)}
+#gestao-wrap .janela.ativa .janela-hora{color:var(--green)}
+#gestao-wrap .janela-lbl{font-size:.62rem;color:var(--text3);margin-top:.1rem}
+#gestao-wrap .janela-status{font-size:.62rem;margin-top:.15rem;font-weight:600}
+#gestao-wrap .janela.ativa .janela-status{color:var(--green)}
+#gestao-wrap /* ALERTA */
+
+.alerta{display:flex;align-items:flex-start;gap:.5rem;padding:.55rem .75rem;border-radius:var(--r2);margin-bottom:.4rem;font-size:.78rem}
+#gestao-wrap .alerta.danger{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.2);color:var(--red)}
+#gestao-wrap .alerta.warn{background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);color:var(--accent)}
+#gestao-wrap .alerta.info{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.2);color:#79b8ff}
+#gestao-wrap /* EXPLOSÃO */
+
+.explo-item{display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .65rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.3rem}
+#gestao-wrap .explo-txt{flex:1;font-size:.8rem;color:var(--text);line-height:1.4}
+#gestao-wrap .explo-actions{display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.45rem}
+#gestao-wrap .explo-btn{padding:.2rem .5rem;border:1.5px solid var(--border);background:transparent;color:var(--text3);border-radius:20px;font-size:.65rem;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;font-weight:500}
+#gestao-wrap .explo-btn:hover{border-color:currentColor;opacity:.8}
+#gestao-wrap .explo-btn.sel{font-weight:700;box-shadow:0 0 0 2px currentColor}
+#gestao-wrap .explo-ok{padding:.28rem .85rem;border:none;border-radius:20px;background:var(--accent);color:#000;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:.4rem;align-self:flex-end}
+#gestao-wrap .explo-ok:hover{filter:brightness(1.1)}
+#gestao-wrap .explo-item{display:flex;flex-direction:column;padding:.6rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.35rem;transition:border-color .15s}
+#gestao-wrap .explo-item:hover{border-color:var(--border2)}
+#gestao-wrap .explo-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem}
+#gestao-wrap .explo-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:.1rem .25rem;opacity:0;transition:opacity .15s;flex-shrink:0}
+#gestao-wrap .explo-item:hover .explo-del{opacity:1}
+#gestao-wrap /* FRASES */
+
+.frases-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem}
+#gestao-wrap .frase-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;position:relative;transition:border-color .2s}
+#gestao-wrap .frase-card:hover{border-color:var(--border2)}
+#gestao-wrap .frase-card:hover .frase-edit-btn{opacity:1}
+#gestao-wrap .frase-icone{font-size:1.2rem;margin-bottom:.4rem;display:block}
+#gestao-wrap .frase-txt{font-size:.82rem;color:var(--text);line-height:1.6;font-style:italic;min-height:38px}
+#gestao-wrap .frase-autor{font-size:.65rem;color:var(--accent);margin-top:.4rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+#gestao-wrap .frase-edit-btn{position:absolute;top:.5rem;right:.5rem;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:var(--r2);padding:.15rem .4rem;font-size:.65rem;cursor:pointer;opacity:0;transition:opacity .15s;font-family:inherit}
+#gestao-wrap .frase-edit-btn:hover{color:var(--text);border-color:var(--border2)}
+#gestao-wrap .captura-area{width:100%;padding:.5rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;resize:none;line-height:1.5;transition:border-color .15s}
+#gestao-wrap .captura-area:focus{outline:none;border-color:var(--blue)}
+#gestao-wrap /* CALENDÁRIO */
+
+.cal-mini{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.65rem;cursor:pointer;transition:border-color .15s}
+#gestao-wrap .cal-mini:hover{border-color:var(--accent)}
+#gestao-wrap .cal-mini-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem}
+#gestao-wrap .cal-mini-nome{font-size:.75rem;font-weight:700;color:var(--accent)}
+#gestao-wrap .cal-mini-num{font-size:.62rem;color:var(--text3)}
+#gestao-wrap .cal-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+#gestao-wrap .cal-mini-dw{font-size:.55rem;color:var(--text3);text-align:center;padding:.1rem 0;font-weight:600}
+#gestao-wrap .cal-mini-d{font-size:.62rem;text-align:center;padding:.18rem .05rem;border-radius:3px;color:var(--text2);line-height:1.2}
+#gestao-wrap .cal-mini-d.hoje{background:var(--accent);color:#000;font-weight:700;border-radius:50%}
+#gestao-wrap .cal-mini-d.tem-reg{background:rgba(63,185,80,.15);border-radius:3px;color:var(--green)}
+#gestao-wrap .cal-mini-d.dom{color:var(--red)}
+#gestao-wrap .cal-mini-d.out{color:var(--text3);opacity:.4}
+#gestao-wrap .cal-mini-d.sem-num{font-size:.52rem;color:var(--text3);border-right:1px solid var(--border);padding-right:2px}
+#gestao-wrap .cal-exp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#gestao-wrap .cal-exp-dw{font-size:.7rem;color:var(--text3);text-align:center;padding:.25rem 0;font-weight:600;border-bottom:1px solid var(--border)}
+#gestao-wrap .cal-exp-d{min-height:52px;border:0.5px solid var(--border);border-radius:var(--r2);padding:.3rem .4rem;position:relative}
+#gestao-wrap .cal-exp-d.hoje{border-color:var(--accent);background:rgba(240,165,0,.05)}
+#gestao-wrap .cal-exp-d.out{opacity:.35}
+#gestao-wrap .cal-exp-num{font-size:.78rem;font-weight:600;color:var(--text);display:block}
+#gestao-wrap .cal-exp-dia-ano{font-size:.58rem;color:var(--text3);display:block}
+#gestao-wrap .cal-exp-sem{font-size:.6rem;color:var(--accent);font-weight:600}
+#gestao-wrap .cal-exp-d.dom .cal-exp-num{color:var(--red)}
+#gestao-wrap .cal-resumo-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.4rem .7rem;font-size:.72rem;color:var(--text2)}
+#gestao-wrap .cal-resumo-item strong{color:var(--accent);font-size:.85rem;display:block}
+#gestao-wrap .task-menu-wrap{position:relative;flex-shrink:0}
+#gestao-wrap .task-menu-btn{background:none;border:1px solid var(--border);color:var(--text3);border-radius:var(--r2);padding:.2rem .5rem;cursor:pointer;font-size:.72rem;opacity:0;transition:opacity .15s;font-family:inherit;line-height:1.4}
+#gestao-wrap .task-item:hover .task-menu-btn{opacity:1}
+#gestao-wrap .task-menu-btn:hover{background:var(--bg3);color:var(--text)}
+#gestao-wrap .task-dropdown{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);min-width:148px;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.3);overflow:hidden}
+#gestao-wrap .task-dropdown.open{display:block}
+#gestao-wrap .task-dd-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .8rem;font-size:.78rem;color:var(--text);cursor:pointer;transition:background .12s;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+#gestao-wrap .task-dd-item:hover{background:var(--bg3)}
+#gestao-wrap .task-dd-item.red{color:var(--red)}
+#gestao-wrap .task-dd-item.red:hover{background:rgba(248,81,73,.08)}
+#gestao-wrap .task-dd-sep{height:1px;background:var(--border);margin:.25rem 0}
+#gestao-wrap /* SECTION LABEL */
+
+.sec-lbl{font-size:.63rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;padding-left:2px}
+#gestao-wrap /* EMPTY STATE */
+
+.empty{text-align:center;padding:1.5rem;color:var(--text3);font-size:.78rem}
+#gestao-wrap /* DIVIDER */
+
+.divider{height:1px;background:var(--border);margin:.85rem 0}
+#gestao-wrap /* INPUT ROW */
+
+.input-row{display:flex;gap:.4rem;margin-bottom:.5rem}
+#gestao-wrap .input-row input{flex:1;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit}
+#gestao-wrap .input-row input:focus{outline:none;border-color:var(--blue)}
+#gestao-wrap /* TOAST */
+
+.toast{position:fixed;bottom:1rem;right:1rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.55rem 1rem;font-size:.78rem;color:var(--text);z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+#gestao-wrap .toast.show{opacity:1;transform:translateY(0)}
+</style>
+<div id="gestao" class="sec">
+<div id="gestao-wrap">
+<body>
+
+
+
+
+
+
+
+<div class="wrap">
+
+
+
+<!-- ==================== DIA ==================== -->
+
+<div class="gsec on" id="sec-dia">
+
+
+
+  <!-- Banner modo leitura (dias passados) -->
+
+  <div id="dia-readonly-banner" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:var(--r);padding:.55rem 1rem;margin-bottom:.85rem;align-items:center;justify-content:space-between;gap:.5rem">
+
+    <span style="font-size:.78rem;color:#79b8ff">📖 Visualizando histórico — somente leitura</span>
+
+    <button class="btn bp btn-sm" onclick="abrirDia(diaHoje())">Ir para hoje →</button>
+
+  </div>
+
+
+
+  <!-- Navegação de dias -->
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
+
+    <div id="dia-nav" class="br" style="gap:.3rem"></div>
+
+    <span id="dia-hist-badge"></span>
+
+  </div>
+
+
+
+  <!-- Alertas automáticos -->
+
+  <div id="alertas-dia"></div>
+
+
+
+<!-- FRASES MOTIVACIONAIS -->
+
+<div class="frases-wrap" id="frases-wrap"></div>
+
+
+
+  <!-- ABERTURA -->
+
+  <div class="card dia-input-area">
+
+    <div class="card-hdr">
+
+      <div class="card-title">🌅 Abertura do Dia</div>
+
+      <div class="card-sub" id="data-hoje"></div>
+
+    </div>
+
+    <div class="sec-lbl">Minhas 3 prioridades de hoje</div>
+
+    <div id="prios-wrap">
+
+      <div class="prio-item" id="prio-1">
+
+        <div class="prio-num">1</div>
+
+        <input class="prio-input" placeholder="Prioridade 1..." oninput="savePrios()" id="p1">
+
+        <div class="prio-check" id="pc1" onclick="togglePrio(1)"></div>
+
+      </div>
+
+      <div class="prio-item" id="prio-2">
+
+        <div class="prio-num" style="background:var(--text2)">2</div>
+
+        <input class="prio-input" placeholder="Prioridade 2..." oninput="savePrios()" id="p2">
+
+        <div class="prio-check" id="pc2" onclick="togglePrio(2)"></div>
+
+      </div>
+
+      <div class="prio-item" id="prio-3">
+
+        <div class="prio-num" style="background:var(--text3)">3</div>
+
+        <input class="prio-input" placeholder="Prioridade 3..." oninput="savePrios()" id="p3">
+
+        <div class="prio-check" id="pc3" onclick="togglePrio(3)"></div>
+
+      </div>
+
+    </div>
+
+    <div style="margin-top:.7rem">
+
+      <div class="prog-lbl"><span>Progresso do dia</span><strong id="prio-pct">0%</strong></div>
+
+      <div class="prog-bar"><div class="prog-fill" id="prio-bar" style="width:0%"></div></div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- JANELAS DE COMUNICAÇÃO -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📱 Janelas de Comunicação</div>
+
+      <div class="card-sub">Fora dos horários — foco total</div>
+
+    </div>
+
+    <div class="janela-wrap" id="janelas-wrap">
+
+      <div class="janela" id="j-manha">
+
+        <div class="janela-hora">9h30</div>
+
+        <div class="janela-lbl">Abertura</div>
+
+        <div class="janela-status" id="js-abertura">Prioridades do dia</div>
+
+      </div>
+
+      <div class="janela" id="j-meio">
+
+        <div class="janela-hora">12h00</div>
+
+        <div class="janela-lbl">Janela 1</div>
+
+        <div class="janela-status" id="js-meio">E-mail + Zap</div>
+
+      </div>
+
+      <div class="janela" id="j-tarde">
+
+        <div class="janela-hora">17h00</div>
+
+        <div class="janela-lbl">Janela 2</div>
+
+        <div class="janela-status" id="js-tarde">E-mail + Zap</div>
+
+      </div>
+
+      <div class="janela" id="j-fecha">
+
+        <div class="janela-hora">17h30</div>
+
+        <div class="janela-lbl">Fechamento</div>
+
+        <div class="janela-status" id="js-fecha">Processar anotações</div>
+
+      </div>
+
+    </div>
+
+    <div style="font-size:.72rem;color:var(--text3);text-align:center">Status do WhatsApp: <em>"Respondo mensagens às 12h e 17h"</em></div>
+
+  </div>
+
+
+
+  <div class="g2">
+
+    <!-- TAREFAS DO DIA -->
+
+    <div class="card dia-input-area">
+
+      <div class="card-hdr">
+
+        <div class="card-title">✅ Tarefas de Hoje</div>
+
+        <div class="br" style="gap:.3rem">
+
+          <button class="btn ba btn-sm" onclick="abrirModalTarefa()">+ Adicionar</button>
+
+          <button class="btn bg btn-sm" onclick="ordenarTarefasCEO();renderTarefas();toast('Reorganizado por prioridade CEO')" title="Prioridade CEO">↕ Priorizar</button>
+
+        </div>
+
+      </div>
+
+      <div id="tarefas-dia-list">
+
+        <div class="empty" id="tarefas-empty">Nenhuma tarefa ainda</div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- EXPLOSÃO DE INFORMAÇÕES -->
+
+    <div class="card dia-input-area">
+
+      <div class="card-hdr">
+
+        <div class="card-title">⚡ Explosão de Informações</div>
+
+        <span style="font-size:.6rem;color:var(--blue);cursor:pointer" onclick="abrirModal('m-destinos')">[gerenciar destinos]</span>
+
+      </div>
+
+      <div class="input-row">
+
+        <input id="explo-input" placeholder="Anote rápido — processe no fechamento..." onkeydown="if(event.key==='Enter')addExplosao()">
+
+        <button class="btn ba btn-sm" onclick="addExplosao()">+</button>
+
+      </div>
+
+      <div id="explo-list">
+
+        <div class="empty" id="explo-empty">Nenhuma anotação pendente</div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- FECHAMENTO -->
+
+  <div class="card dia-input-area">
+
+    <div class="card-hdr">
+
+      <div class="card-title">🌙 Fechamento do Dia — 17h30</div>
+
+      <div class="card-sub">Processar antes de parar</div>
+
+    </div>
+
+    <div class="g2">
+
+      <div>
+
+        <div class="sec-lbl">O que ficou aberto?</div>
+
+        <div class="input-row" style="margin-bottom:.3rem">
+
+          <input id="aberto-input" placeholder="Tarefa que não fechou..." onkeydown="if(event.key==='Enter')addAberto()">
+
+          <button class="btn bg btn-sm" onclick="addAberto()">+</button>
+
+        </div>
+
+        <div id="abertos-list"></div>
+
+      </div>
+
+      <div>
+
+        <div class="sec-lbl">Pergunta do dia</div>
+
+        <div class="alerta info" style="margin-bottom:.4rem">
+
+          <span>💡</span><span>Fiz alguma coisa hoje que me aproximou de novos clientes ou do crescimento?</span>
+
+        </div>
+
+        <textarea class="captura-area" id="reflexao-dia" rows="3" placeholder="Sua resposta..." oninput="saveReflexao()"></textarea>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+</div>
+
+
+
+<!-- ==================== SEMANA ==================== -->
+
+<div class="gsec" id="sec-semana">
+
+
+
+  <!-- GRADE DA SEMANA -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📆 Esta Semana</div>
+
+      <div class="card-sub" id="semana-periodo"></div>
+
+    </div>
+
+    <div class="week-grid" id="week-grid"></div>
+
+    <div class="br" style="margin-top:.5rem">
+
+      <span class="bdg b-fazer">◼ Fazer</span>
+
+      <span class="bdg b-mover">◼ Mover</span>
+
+      <span class="bdg b-construir">◼ Construir</span>
+
+      <span class="bdg" style="background:rgba(188,140,255,.12);color:#bc8cff">◼ Jiu-jitsu</span>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="g2">
+
+    <!-- PROPOSTAS EM CICLO -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">📋 Propostas em Ciclo</div>
+
+        <button class="btn ba btn-sm" onclick="abrirModalCiclo()">+ Proposta</button>
+
+      </div>
+
+      <div id="ciclos-list">
+
+        <div class="empty" id="ciclos-empty">Nenhuma proposta em andamento</div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- FOLLOW-UPS DA SEMANA -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">📞 Follow-ups Pendentes</div>
+
+        <button class="btn ba btn-sm" onclick="abrirModalFollowup()">+ Follow-up</button>
+
+      </div>
+
+      <div id="followups-list">
+
+        <div class="empty" id="fu-empty">Nenhum follow-up pendente</div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- VISITAS DA SEMANA -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">🔧 Visitas — Terça e Quinta</div>
+
+      <button class="btn ba btn-sm" onclick="abrirModalVisita()">+ Visita</button>
+
+    </div>
+
+    <div id="visitas-list">
+
+      <div class="empty" id="visitas-empty">Nenhuma visita agendada</div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- REUNIÃO SEGUNDA -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">☕ Reunião de Segunda — 9h30</div>
+
+      <div class="card-sub">30 minutos com você mesmo</div>
+
+    </div>
+
+    <div id="check-segunda">
+
+      <div class="task-item" onclick="toggleCheckSeg(this)">
+
+        <div class="task-check" onclick="event.stopPropagation();toggleCheckSeg(this.closest('.task-item'))"></div>
+
+        <div class="task-body"><div class="task-txt">Quantas propostas em andamento e em qual dia do ciclo?</div></div>
+
+      </div>
+
+      <div class="task-item" onclick="toggleCheckSeg(this)">
+
+        <div class="task-check" onclick="event.stopPropagation();toggleCheckSeg(this.closest('.task-item'))"></div>
+
+        <div class="task-body"><div class="task-txt">Quais visitas estão marcadas esta semana?</div></div>
+
+      </div>
+
+      <div class="task-item" onclick="toggleCheckSeg(this)">
+
+        <div class="task-check" onclick="event.stopPropagation();toggleCheckSeg(this.closest('.task-item'))"></div>
+
+        <div class="task-body"><div class="task-txt">Quais follow-ups precisam acontecer esta semana?</div></div>
+
+      </div>
+
+      <div class="task-item" onclick="toggleCheckSeg(this)">
+
+        <div class="task-check" onclick="event.stopPropagation();toggleCheckSeg(this.closest('.task-item'))"></div>
+
+        <div class="task-body"><div class="task-txt">O que meu filho precisa fazer esta semana?</div></div>
+
+      </div>
+
+      <div class="task-item" onclick="toggleCheckSeg(this)">
+
+        <div class="task-check" onclick="event.stopPropagation();toggleCheckSeg(this.closest('.task-item'))"></div>
+
+        <div class="task-body"><div class="task-txt">Tem algum alerta de conformidade esta semana?</div></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+</div>
+
+
+
+<!-- ==================== MÊS ==================== -->
+
+<div class="gsec" id="sec-mes">
+
+
+
+  <!-- KPIs -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📊 Números do Mês</div>
+
+      <button class="btn ba btn-sm" onclick="abrirModalAtualizar()">Atualizar</button>
+
+    </div>
+
+    <div class="kpi-g" id="kpis-mes">
+
+      <div class="kpi"><span class="kpi-v" id="k-enviadas">0</span><div class="kpi-l">Propostas enviadas</div></div>
+
+      <div class="kpi green"><span class="kpi-v" id="k-aprovadas">0</span><div class="kpi-l">Aprovadas</div></div>
+
+      <div class="kpi blue"><span class="kpi-v" id="k-valor">R$ 0</span><div class="kpi-l">Valor aprovado</div></div>
+
+      <div class="kpi"><span class="kpi-v" id="k-tx">0%</span><div class="kpi-l">Taxa de conversão</div></div>
+
+    </div>
+
+    <div class="prog-wrap">
+
+      <div class="prog-lbl"><span>Meta anual (30% de crescimento)</span><strong id="meta-pct-txt">0%</strong></div>
+
+      <div class="prog-bar"><div class="prog-fill green" id="meta-bar" style="width:0%"></div></div>
+
+      <div style="font-size:.68rem;color:var(--text3);margin-top:.3rem">Meta: R$ 2.730.000 · Acumulado: <span id="meta-acum">R$ 0</span></div>
+
+    </div>
+
+    <div class="prog-wrap" style="margin-bottom:0">
+
+      <div class="prog-lbl"><span>Dependência cliente fixo</span><strong id="dep-pct-txt">—</strong></div>
+
+      <div class="prog-bar"><div class="prog-fill" id="dep-bar" style="width:0%"></div></div>
+
+      <div style="font-size:.68rem;color:var(--text3);margin-top:.3rem">Meta: reduzir abaixo de 60% este ano</div>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="g2">
+
+    <!-- FUNIL ABERTO -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">🔵 Funil de Propostas</div>
+
+        <button class="btn ba btn-sm" onclick="abrirModalFunil()">+ Proposta</button>
+
+      </div>
+
+      <div id="funil-list">
+
+        <div class="empty" id="funil-empty">Nenhuma proposta no funil</div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- CONFORMIDADE -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">🛡️ Conformidade da Equipe</div>
+
+        <button class="btn ba btn-sm" onclick="abrirModalEquipe()">Gerenciar</button>
+
+      </div>
+
+      <div id="conf-list">
+
+        <div class="empty" id="conf-empty">Nenhum membro cadastrado</div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- CRESCIMENTO DO MÊS -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">🚀 Ação de Crescimento do Mês</div>
+
+      <div class="card-sub">Sexta-feira — tarde de CEO</div>
+
+    </div>
+
+    <div class="sec-lbl">O que fiz este mês que me aproximou do crescimento?</div>
+
+    <textarea class="captura-area" id="crescimento-mes" rows="3" placeholder="Ex: entrei em contato com distribuidor WEG, visitei novo cliente potencial, documentei processo de proposta..." oninput="saveCrescimento()"></textarea>
+
+    <div style="margin-top:.7rem">
+
+      <div class="sec-lbl">Próximo passo de crescimento</div>
+
+      <input style="width:100%;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit" id="prox-passo" placeholder="Ex: agendar visita comercial na Klabin..." oninput="saveProxPasso()">
+
+    </div>
+
+  </div>
+
+
+
+</div>
+
+
+
+<!-- ==================== TRIMESTRE ==================== -->
+
+<div class="gsec" id="sec-trimestre">
+
+
+
+  <!-- META ESTRATÉGICA -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">🎯 Visão Estratégica — CEO</div>
+
+      <button class="btn ba btn-sm" onclick="abrirModalAtualizar()">Atualizar</button>
+
+    </div>
+
+    <div class="g2" style="margin-bottom:.85rem">
+
+      <div class="trim-meta">
+
+        <div class="trim-valor" id="trim-fat">R$ 0</div>
+
+        <div class="trim-de">de R$ 4.800.000 (meta 3 anos)</div>
+
+        <div class="trim-pct" id="trim-pct-meta">0% do caminho</div>
+
+      </div>
+
+      <div class="trim-meta">
+
+        <div class="trim-valor" id="trim-dep" style="color:var(--orange)">0%</div>
+
+        <div class="trim-de">dependência cliente fixo</div>
+
+        <div class="trim-pct" id="trim-dep-status" style="color:var(--text3)">—</div>
+
+      </div>
+
+    </div>
+
+    <div class="prog-wrap">
+
+      <div class="prog-lbl"><span>Faturamento anual atual</span><strong id="trim-fat-pct-txt">0%</strong></div>
+
+      <div class="prog-bar"><div class="prog-fill" id="trim-fat-bar" style="width:0%"></div></div>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="g2">
+
+    <!-- FABRICANTES / PARCERIAS -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">🤝 Fabricantes e Parcerias</div>
+
+        <button class="btn ba btn-sm" onclick="abrirModalFab()">+ Parceria</button>
+
+      </div>
+
+      <div id="fab-list">
+
+        <div class="fab-item">
+
+          <div class="fab-logo">WEG</div>
+
+          <div class="fab-body"><div class="fab-nome">WEG</div><div class="fab-status">Fornecedor atual · integrador pendente</div></div>
+
+          <span class="bdg b-warn">Prospectar</span>
+
+        </div>
+
+        <div class="fab-item">
+
+          <div class="fab-logo">SIE</div>
+
+          <div class="fab-body"><div class="fab-nome">Siemens</div><div class="fab-status">Fornecedor atual · integrador pendente</div></div>
+
+          <span class="bdg b-warn">Prospectar</span>
+
+        </div>
+
+        <div class="fab-item">
+
+          <div class="fab-logo">SICK</div>
+
+          <div class="fab-body"><div class="fab-nome">SICK</div><div class="fab-status">Fornecedor atual</div></div>
+
+          <span class="bdg b-warn">Prospectar</span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ESTRUTURA DE TIME -->
+
+    <div class="card">
+
+      <div class="card-hdr">
+
+        <div class="card-title">👥 Estrutura de Time</div>
+
+        <div class="card-sub">Checklist para contratar</div>
+
+      </div>
+
+      <div id="check-contrat">
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Processo de proposta documentado</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Rotina semanal funcionando há 30 dias</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Bitrix com todos projetos atualizados</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Meu filho operando Bitrix autonomamente</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Empresa do filho aberta juridicamente</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Pelo menos 2 clientes novos ativos</div></div>
+
+        </div>
+
+        <div class="task-item" onclick="toggleCheckContr(this)">
+
+          <div class="task-check"></div>
+
+          <div class="task-body"><div class="task-txt">Dependência cliente fixo abaixo de 70%</div></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- REVISÃO TRIMESTRAL -->
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📝 Revisão Trimestral — Fora do Escritório</div>
+
+      <div class="card-sub">Meio dia · 1x por trimestre</div>
+
+    </div>
+
+    <div class="g2">
+
+      <div>
+
+        <div class="sec-lbl">Na velocidade atual, quando chego a R$ 4,8M?</div>
+
+        <textarea class="captura-area" id="rev-velocidade" rows="3" placeholder="Análise honesta do ritmo atual..." oninput="saveRevTrim('velocidade')"></textarea>
+
+      </div>
+
+      <div>
+
+        <div class="sec-lbl">O que precisa mudar esse trimestre?</div>
+
+        <textarea class="captura-area" id="rev-mudanca" rows="3" placeholder="Decisões, ajustes, novas ações..." oninput="saveRevTrim('mudanca')"></textarea>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+</div>
+
+
+
+<!-- ==================== CALENDÁRIO ==================== -->
+
+<div class="gsec" id="sec-calendario">
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📆 Calendário do Ano</div>
+
+      <div style="display:flex;align-items:center;gap:.5rem">
+
+        <button class="btn bg btn-sm" onclick="calAnterior()">‹</button>
+
+        <strong id="cal-ano-lbl" style="font-size:.88rem;min-width:48px;text-align:center"></strong>
+
+        <button class="btn bg btn-sm" onclick="calProximo()">›</button>
+
+      </div>
+
+    </div>
+
+    <!-- Resumo do ano -->
+
+    <div id="cal-resumo" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+
+    <!-- Grid 12 meses -->
+
+    <div id="cal-anual" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.85rem"></div>
+
+  </div>
+
+
+
+  <!-- Visão expandida do mês selecionado -->
+
+  <div class="card" id="cal-mes-card" style="display:none">
+
+    <div class="card-hdr">
+
+      <div class="card-title" id="cal-mes-titulo">Mês</div>
+
+      <button class="btn bg btn-sm" onclick="document.getElementById('cal-mes-card').style.display='none'">Fechar</button>
+
+    </div>
+
+    <div id="cal-mes-expand"></div>
+
+  </div>
+
+</div>
+
+
+
+
+
+<div class="gsec" id="sec-versoes">
+
+  <div class="card">
+
+    <div class="card-hdr">
+
+      <div class="card-title">📋 Histórico de Versões</div>
+
+      <div class="card-sub">ENG. ELIVANDRO — PLANEJADOR</div>
+
+    </div>
+
+    <div id="versoes-lista"></div>
+
+  </div>
+
+</div>
+
+
+
+</div><!-- fim wrap -->
+
+
+
+<!-- ==================== MODAIS ==================== -->
+
+
+
+<!-- Modal Backup -->
+
+<div class="modal-bg" id="m-backup">
+
+  <div class="modal" style="width:min(520px,98vw)">
+
+    <div class="modal-hdr"><div class="modal-title">💾 Backup de Dados</div><button class="modal-close" onclick="fecharModal('m-backup')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.85rem">
+
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.85rem 1rem;border:1px solid var(--border)">
+
+          <div style="font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.3rem">📤 Exportar Backup</div>
+
+          <div style="font-size:.73rem;color:var(--text3);margin-bottom:.65rem">Salva todos os seus dados em um arquivo .json. Guarde em local seguro.</div>
+
+          <button class="btn ba" onclick="exportarBackup()">⬇ Baixar backup</button>
+
+        </div>
+
+        <div style="background:var(--bg3);border-radius:var(--r);padding:.85rem 1rem;border:1px solid var(--border)">
+
+          <div style="font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.3rem">📥 Importar Backup</div>
+
+          <div style="font-size:.73rem;color:var(--text3);margin-bottom:.65rem">Restaura dados de um arquivo de backup. <strong style="color:var(--red)">Atenção: substitui todos os dados atuais.</strong></div>
+
+          <div style="display:flex;gap:.5rem;align-items:center">
+
+            <input type="file" id="backup-file" accept=".json" style="flex:1;padding:.38rem .6rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem">
+
+            <button class="btn bd" onclick="importarBackup()">⬆ Restaurar</button>
+
+          </div>
+
+          <div id="backup-status" style="font-size:.72rem;margin-top:.4rem;color:var(--green);display:none"></div>
+
+        </div>
+
+        <div style="font-size:.7rem;color:var(--text3);text-align:center">
+
+          Dados salvos localmente neste navegador · Faça backup regularmente
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-backup')">Fechar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Destinos Explosão -->
+
+<div class="modal-bg" id="m-destinos">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Destinos da Explosão</div><button class="modal-close" onclick="fecharModal('m-destinos')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:.7rem">Cada anotação pode ser encaminhada para um destino. Personalize abaixo.</div>
+
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.8rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nome do destino</label><input id="dest-nome-input" placeholder="Ex: Adriano, Urgente..."></div>
+
+          <div class="f"><label>Cor</label><input id="dest-cor-input" type="color" value="#bc8cff" style="width:100%;padding:.3rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);cursor:pointer;height:36px"></div>
+
+        </div>
+
+        <div class="f"><label>Tipo de ação</label>
+
+          <select id="dest-tipo-input">
+
+            <option value="pessoa">Pessoa — cria tarefa atribuída a ela</option>
+
+            <option value="urgente">Urgente — cria tarefa marcada como urgente</option>
+
+            <option value="importante">Importante — cria tarefa marcada como importante</option>
+
+            <option value="sistema">Sistema externo (ex: Bitrix, CRM...)</option>
+
+          </select>
+
+        </div>
+
+        <button class="btn ba btn-sm" style="align-self:flex-end" onclick="addDestinoCustom()">+ Criar destino</button>
+
+      </div>
+
+      <div id="destinos-list-modal"></div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn ba" onclick="fecharModal('m-destinos')">Fechar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Frase -->
+
+<div class="modal-bg" id="m-frase">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Editar Frase</div><button class="modal-close" onclick="fecharModal('m-frase')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="f"><label>Ícone (emoji)</label><input id="mfr-icone" maxlength="4" placeholder="💡"></div>
+
+        <div class="f"><label>Frase</label><textarea id="mfr-txt" rows="3" placeholder="Digite sua frase motivacional..."></textarea></div>
+
+        <div class="f"><label>Autor / Fonte</label><input id="mfr-autor" placeholder="Ex: Peter Drucker, Você mesmo..."></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-frase')">Cancelar</button><button class="btn ba" onclick="salvarFrase()">Salvar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Tarefa -->
+
+<div class="modal-bg" id="m-tarefa">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title" id="mt-titulo-modal">Nova Tarefa</div><button class="modal-close" onclick="fecharModal('m-tarefa')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="f"><label>Descrição</label><input id="mt-txt" placeholder="O que precisa ser feito..."></div>
+
+        <div class="g2">
+
+          <div class="f"><label>Tipo <span style="font-size:.6rem;color:var(--blue);cursor:pointer" onclick="fecharModal('m-tarefa');abrirModal('m-tipos')">[gerenciar tipos]</span></label>
+
+            <select id="mt-tipo"></select>
+
+          </div>
+
+          <div class="f"><label>Responsável <span style="font-size:.6rem;color:var(--blue);cursor:pointer" onclick="fecharModal('m-tarefa');abrirModal('m-resps')">[gerenciar]</span></label>
+
+            <select id="mt-resp"></select>
+
+          </div>
+
+        </div>
+
+        <!-- PRIORIDADE CEO -->
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem">
+
+          <div style="font-size:.65rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">🎯 Prioridade (Matriz CEO)</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem" id="mt-prio-grid">
+
+            <div id="mt-pq0" onclick="setPrioModal(0)" style="cursor:pointer;border:2px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem;text-align:center;transition:all .15s">
+
+              <div style="font-size:.72rem;font-weight:700;color:#f85149">🔴 URGENTE + IMPORTANTE</div>
+
+              <div style="font-size:.62rem;color:var(--text3);margin-top:.15rem">Fazer agora</div>
+
+            </div>
+
+            <div id="mt-pq1" onclick="setPrioModal(1)" style="cursor:pointer;border:2px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem;text-align:center;transition:all .15s">
+
+              <div style="font-size:.72rem;font-weight:700;color:#f0a500">🔴 URGENTE</div>
+
+              <div style="font-size:.62rem;color:var(--text3);margin-top:.15rem">Delegar ou resolver já</div>
+
+            </div>
+
+            <div id="mt-pq2" onclick="setPrioModal(2)" style="cursor:pointer;border:2px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem;text-align:center;transition:all .15s">
+
+              <div style="font-size:.72rem;font-weight:700;color:#e3702a">🟠 IMPORTANTE</div>
+
+              <div style="font-size:.62rem;color:var(--text3);margin-top:.15rem">Agendar — construir</div>
+
+            </div>
+
+            <div id="mt-pq3" onclick="setPrioModal(3)" style="cursor:pointer;border:2px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem;text-align:center;transition:all .15s">
+
+              <div style="font-size:.72rem;font-weight:700;color:var(--text2)">⚪ NORMAL</div>
+
+              <div style="font-size:.62rem;color:var(--text3);margin-top:.15rem">Fazer quando puder</div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- PRAZO / GANTT -->
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem">
+
+          <div style="font-size:.65rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">📊 Prazo / Gantt</div>
+
+          <div class="g2" style="margin-bottom:.5rem">
+
+            <div class="f"><label>Data de início</label><input id="mt-inicio" type="date" oninput="calcularFimTarefa()"></div>
+
+            <div class="f"><label>Data de entrega</label>
+
+              <div style="display:flex;align-items:center;gap:.4rem">
+
+                <input id="mt-fim" type="date" style="flex:1;padding:.44rem .7rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem" readonly>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="g2">
+
+            <div class="f"><label>Duração</label>
+
+              <div style="display:flex;gap:.35rem">
+
+                <input id="mt-duracao" type="number" min="1" placeholder="Ex: 3" style="flex:1;min-width:70px;padding:.44rem .7rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem" oninput="calcularFimTarefa()">
+
+                <select id="mt-dur-tipo" oninput="calcularFimTarefa()" style="padding:.44rem .5rem;min-width:70px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem">
+
+                  <option value="dias">Dias</option>
+
+                  <option value="horas">Horas</option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="f"><label>Barra de progresso</label>
+
+              <div style="display:flex;align-items:center;gap:.5rem">
+
+                <input id="mt-progresso" type="range" min="0" max="100" value="0" oninput="document.getElementById('mt-prog-val').textContent=this.value+'%'" style="flex:1">
+
+                <span id="mt-prog-val" style="font-size:.75rem;font-weight:600;color:var(--accent);min-width:35px">0%</span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div id="mt-gantt-preview" style="display:none;margin-top:.5rem;background:var(--bg);border-radius:4px;height:8px;overflow:hidden;border:1px solid var(--border)">
+
+            <div id="mt-gantt-bar" style="height:100%;background:var(--accent);border-radius:4px;transition:width .3s"></div>
+
+          </div>
+
+          <div id="mt-gantt-resumo" style="display:none;font-size:.68rem;color:var(--text3);margin-top:.3rem"></div>
+
+        </div>
+
+        <div class="f"><label>Observação (opcional)</label><input id="mt-obs" placeholder="Detalhes adicionais..."></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-tarefa')">Cancelar</button><button class="btn ba" id="mt-btn-salvar" onclick="salvarTarefa()">Adicionar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Gerenciar Tipos -->
+
+<div class="modal-bg" id="m-tipos">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Tipos de Tarefa</div><button class="modal-close" onclick="fecharModal('m-tipos')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div class="input-row" style="margin-bottom:.7rem">
+
+        <input id="tipo-nome-input" placeholder="Nome do tipo (ex: Reunião, Compras...)">
+
+        <input id="tipo-cor-input" type="color" value="#58a6ff" style="width:44px;padding:.2rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);cursor:pointer">
+
+        <button class="btn ba btn-sm" onclick="addTipoCustom()">+ Criar</button>
+
+      </div>
+
+      <div id="tipos-list-modal"></div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn ba" onclick="fecharModal('m-tipos');abrirModalTarefa()">← Voltar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Gerenciar Responsáveis -->
+
+<div class="modal-bg" id="m-resps">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Responsáveis</div><button class="modal-close" onclick="fecharModal('m-resps')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.7rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nome</label><input id="resp-nome-input" placeholder="Ex: João, Carlos..."></div>
+
+          <div class="f"><label>Função</label><input id="resp-func-input" placeholder="Ex: Eletricista, Auxiliar..."></div>
+
+        </div>
+
+        <button class="btn ba btn-sm" style="align-self:flex-end" onclick="addRespCustom()">+ Cadastrar</button>
+
+      </div>
+
+      <div id="resps-list-modal"></div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn ba" onclick="fecharModal('m-resps');abrirModalTarefa()">← Voltar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Ciclo de Proposta -->
+
+<div class="modal-bg" id="m-ciclo">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Proposta em Ciclo</div><button class="modal-close" onclick="fecharModal('m-ciclo')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nº da Proposta</label><input id="mc-num" placeholder="Ex: P-035"></div>
+
+          <div class="f"><label>Dia do Ciclo (1-8)</label><input id="mc-dia" type="number" min="1" max="8" value="1"></div>
+
+        </div>
+
+        <div class="f"><label>Cliente</label><input id="mc-cliente" placeholder="Nome do cliente..."></div>
+
+        <div class="f"><label>Fase atual</label>
+
+          <select id="mc-fase">
+
+            <option value="1">Dia 1 — Visita técnica</option>
+
+            <option value="2">Dia 2 — Organizar informações de campo</option>
+
+            <option value="3">Dia 3 — Levantar materiais / cotações</option>
+
+            <option value="4">Dia 4 — Escopo e cronograma</option>
+
+            <option value="5">Dia 5 — Aguardando orçamentos</option>
+
+            <option value="6">Dia 6 — Valores e análise de margem</option>
+
+            <option value="7">Dia 7 — Revisão final</option>
+
+            <option value="8">Dia 8 — Envio da proposta</option>
+
+          </select>
+
+        </div>
+
+        <div class="f"><label>Valor estimado (R$)</label><input id="mc-valor" type="number" placeholder="80000"></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-ciclo')">Cancelar</button><button class="btn ba" onclick="salvarCiclo()">Adicionar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Follow-up -->
+
+<div class="modal-bg" id="m-followup">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Follow-up</div><button class="modal-close" onclick="fecharModal('m-followup')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nº da Proposta</label><input id="mf-num" placeholder="Ex: P-028"></div>
+
+          <div class="f"><label>Data de envio</label><input id="mf-data" type="date"></div>
+
+        </div>
+
+        <div class="f"><label>Cliente</label><input id="mf-cliente" placeholder="Nome do cliente..."></div>
+
+        <div class="f"><label>Serviço</label><input id="mf-servico" placeholder="Ex: Painel elétrico, SPDA..."></div>
+
+        <div class="f"><label>Valor (R$)</label><input id="mf-valor" type="number" placeholder="80000"></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-followup')">Cancelar</button><button class="btn ba" onclick="salvarFollowup()">Adicionar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Visita -->
+
+<div class="modal-bg" id="m-visita">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Visita Técnica</div><button class="modal-close" onclick="fecharModal('m-visita')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Data</label><input id="mv-data" type="date"></div>
+
+          <div class="f"><label>Horário</label><input id="mv-hora" type="time" value="09:00"></div>
+
+        </div>
+
+        <div class="f"><label>Cliente</label><input id="mv-cliente" placeholder="Nome do cliente..."></div>
+
+        <div class="f"><label>Objetivo da visita</label><input id="mv-obj" placeholder="Ex: Levantamento SPDA, diagnóstico painel..."></div>
+
+        <div class="f"><label>Local / Cidade</label><input id="mv-local" placeholder="Ex: Jundiaí - SP"></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-visita')">Cancelar</button><button class="btn ba" onclick="salvarVisita()">Agendar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal KPI Mês -->
+
+<div class="modal-bg" id="m-atualizar">
+
+  <div class="modal" style="width:min(600px,98vw)">
+
+    <div class="modal-hdr"><div class="modal-title">📊 Atualizar Dados</div><button class="modal-close" onclick="fecharModal('m-atualizar')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">Números do Mês</div>
+
+      <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Propostas enviadas (mês)</label><input id="mk-env" type="number" min="0"></div>
+
+          <div class="f"><label>Propostas aprovadas (mês)</label><input id="mk-apr" type="number" min="0"></div>
+
+        </div>
+
+        <div class="g2">
+
+          <div class="f"><label>Valor aprovado mês (R$)</label><input id="mk-val" type="number" min="0"></div>
+
+          <div class="f"><label>Faturamento acumulado ano (R$)</label><input id="mk-acum" type="number" min="0"></div>
+
+        </div>
+
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:.2rem 0 .85rem"></div>
+
+      <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">Visão Estratégica</div>
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Faturamento anual atual (R$)</label><input id="mtr-fat" type="number" placeholder="2100000"></div>
+
+          <div class="f"><label>% dependência cliente fixo</label><input id="mk-dep" type="number" min="0" max="100" placeholder="Ex: 90"></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-atualizar')">Cancelar</button><button class="btn ba" onclick="salvarDados()">💾 Salvar tudo</button></div>
+
+  </div>
+
+</div>
+
+
+
+
+
+<!-- Modal Funil -->
+
+<div class="modal-bg" id="m-funil">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Proposta no Funil</div><button class="modal-close" onclick="fecharModal('m-funil')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nº da Proposta</label><input id="mfun-num" placeholder="P-028"></div>
+
+          <div class="f"><label>Data de envio</label><input id="mfun-data" type="date"></div>
+
+        </div>
+
+        <div class="f"><label>Cliente</label><input id="mfun-cliente" placeholder="Nome..."></div>
+
+        <div class="f"><label>Serviço / Escopo</label><input id="mfun-servico" placeholder="Ex: Automação, SPDA, Painel..."></div>
+
+        <div class="g2">
+
+          <div class="f"><label>Valor (R$)</label><input id="mfun-valor" type="number"></div>
+
+          <div class="f"><label>Status</label>
+
+            <select id="mfun-status">
+
+              <option value="enviada">Enviada</option>
+
+              <option value="negociando">Negociando</option>
+
+              <option value="aguardando">Aguardando decisão</option>
+
+              <option value="aprovada">Aprovada</option>
+
+              <option value="perdida">Perdida</option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-funil')">Cancelar</button><button class="btn ba" onclick="salvarFunil()">Adicionar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Equipe -->
+
+<div class="modal-bg" id="m-equipe">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Membro da Equipe</div><button class="modal-close" onclick="fecharModal('m-equipe')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="f"><label>Nome</label><input id="me-nome" placeholder="Nome completo..."></div>
+
+        <div class="f"><label>Função</label><input id="me-func" placeholder="Ex: Eletricista, Auxiliar..."></div>
+
+        <div class="g2">
+
+          <div class="f"><label>ASO — vencimento</label><input id="me-aso" type="date"></div>
+
+          <div class="f"><label>Integração — vencimento</label><input id="me-int" type="date"></div>
+
+        </div>
+
+        <div class="f"><label>Exame médico — vencimento</label><input id="me-exam" type="date"></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-equipe')">Cancelar</button><button class="btn ba" onclick="salvarEquipe()">Salvar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<!-- Modal Fabricante -->
+
+<div class="modal-bg" id="m-fab">
+
+  <div class="modal">
+
+    <div class="modal-hdr"><div class="modal-title">Fabricante / Parceria</div><button class="modal-close" onclick="fecharModal('m-fab')">✕</button></div>
+
+    <div class="modal-body">
+
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+
+        <div class="g2">
+
+          <div class="f"><label>Nome do fabricante</label><input id="mfab-nome" placeholder="Ex: WEG, Siemens..."></div>
+
+          <div class="f"><label>Sigla (3 letras)</label><input id="mfab-sigla" maxlength="4" placeholder="WEG"></div>
+
+        </div>
+
+        <div class="f"><label>Status</label>
+
+          <select id="mfab-status">
+
+            <option value="Prospectar">Prospectar — sem contato ainda</option>
+
+            <option value="Contatado">Contatado — aguardando retorno</option>
+
+            <option value="Em negociação">Em negociação</option>
+
+            <option value="Integrador">Integrador certificado</option>
+
+          </select>
+
+        </div>
+
+        <div class="f"><label>Observação</label><input id="mfab-obs" placeholder="Ex: distribuidor contato, linha de produto..."></div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-fab')">Cancelar</button><button class="btn ba" onclick="salvarFab()">Adicionar</button></div>
+
+  </div>
+
+</div>
+
+
+
+<div class="toast" id="toast"></div>
+
+
+
+</div>
+</div>
+
+<!-- ══ MÓDULO RH / EQUIPES (inline) ══ -->
+<style id="rh-styles">
+#rh-wrap body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;
+  --red:#dc2626;--orange:#c2410c;
+}
+#rh-wrap /* LAYOUT */
+.wrap{max-width:1200px;margin:0 auto;padding:1.25rem}
+#rh-wrap .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem}
+#rh-wrap .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+#rh-wrap .ct{font-size:.82rem;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:.35rem;text-transform:uppercase;letter-spacing:.04em}
+#rh-wrap /* SEÇÕES */
+.sec{display:none}
+#rh-wrap .sec.on{display:block}
+#rh-wrap /* NAV INTERNA */
+.nav-rh{display:flex;gap:.35rem;margin-bottom:1.25rem;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:.75rem}
+#rh-wrap .nav-rh-btn{padding:.38rem .9rem;border:none;background:transparent;color:var(--text2);border-radius:var(--r2);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent}
+#rh-wrap .nav-rh-btn:hover{background:var(--bg3);color:var(--text)}
+#rh-wrap .nav-rh-btn.on{color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent)}
+#rh-wrap /* ALERTAS */
+.alertas-bar{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+#rh-wrap .alerta{display:flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:var(--r2);font-size:.75rem;font-weight:600;cursor:pointer}
+#rh-wrap .alerta-red{background:rgba(248,81,73,.1);color:var(--red);border:1px solid rgba(248,81,73,.2)}
+#rh-wrap .alerta-yellow{background:rgba(240,165,0,.1);color:var(--accent);border:1px solid rgba(240,165,0,.2)}
+#rh-wrap .alerta-blue{background:rgba(88,166,255,.1);color:var(--blue);border:1px solid rgba(88,166,255,.2)}
+#rh-wrap /* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+#rh-wrap .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+#rh-wrap .ga{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.85rem}
+#rh-wrap /* FORM */
+.f{display:flex;flex-direction:column;gap:.28rem}
+#rh-wrap .f label{font-size:.66rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+#rh-wrap .f input, #rh-wrap .f select, #rh-wrap .f textarea{padding:.46rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.83rem;font-family:inherit;width:100%;transition:border-color .15s}
+#rh-wrap .f input:focus, #rh-wrap .f select:focus, #rh-wrap .f textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(88,166,255,.1)}
+#rh-wrap .f textarea{min-height:72px;resize:vertical;line-height:1.5}
+#rh-wrap .f select option{background:var(--bg3)}
+#rh-wrap /* BOTÕES */
+.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.42rem .85rem;border:none;border-radius:var(--r2);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+#rh-wrap .btn:active{transform:translateY(1px)}
+#rh-wrap .bp{background:var(--blue);color:#000}
+#rh-wrap .bp:hover{opacity:.88}
+#rh-wrap .bs{background:var(--green);color:#000}
+#rh-wrap .bs:hover{opacity:.88}
+#rh-wrap .ba{background:var(--accent);color:#000}
+#rh-wrap .ba:hover{opacity:.88}
+#rh-wrap .bg{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+#rh-wrap .bg:hover{border-color:var(--border2)}
+#rh-wrap .bd{background:var(--red);color:#fff}
+#rh-wrap .bd:hover{opacity:.88}
+#rh-wrap .bo{background:var(--orange);color:#fff}
+#rh-wrap .bo:hover{opacity:.88}
+#rh-wrap .bsm{padding:.28rem .65rem;font-size:.72rem}
+#rh-wrap .br{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+#rh-wrap /* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:.1rem .45rem;border-radius:20px;font-size:.67rem;font-weight:700}
+#rh-wrap .bdg-green{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.2)}
+#rh-wrap .bdg-red{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.2)}
+#rh-wrap .bdg-yellow{background:rgba(240,165,0,.12);color:var(--accent);border:1px solid rgba(240,165,0,.2)}
+#rh-wrap .bdg-blue{background:rgba(88,166,255,.12);color:var(--blue);border:1px solid rgba(88,166,255,.2)}
+#rh-wrap .bdg-gray{background:rgba(139,148,158,.12);color:var(--text2);border:1px solid rgba(139,148,158,.2)}
+#rh-wrap /* LISTA DE COLABORADORES */
+.colab-list{display:flex;flex-direction:column;gap:.5rem}
+#rh-wrap .colab-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:all .18s}
+#rh-wrap .colab-card:hover{border-color:var(--blue);transform:translateY(-1px)}
+#rh-wrap .colab-avatar{width:44px;height:44px;border-radius:50%;background:rgba(240,165,0,.15);border:2px solid rgba(240,165,0,.3);display:grid;place-items:center;font-size:.9rem;font-weight:700;color:var(--accent);flex-shrink:0}
+#rh-wrap .colab-info{flex:1;min-width:0}
+#rh-wrap .colab-nome{font-size:.9rem;font-weight:700;color:var(--text)}
+#rh-wrap .colab-sub{font-size:.72rem;color:var(--text2);margin-top:.15rem}
+#rh-wrap .colab-badges{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem}
+#rh-wrap .colab-acoes{display:flex;gap:.35rem;flex-shrink:0}
+#rh-wrap /* DOCUMENTOS */
+.doc-list{display:flex;flex-direction:column;gap:.4rem}
+#rh-wrap .doc-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2)}
+#rh-wrap .doc-icon{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;font-size:.9rem;flex-shrink:0}
+#rh-wrap .doc-info{flex:1;min-width:0}
+#rh-wrap .doc-nome{font-size:.78rem;font-weight:600;color:var(--text)}
+#rh-wrap .doc-meta{font-size:.68rem;color:var(--text3);margin-top:.1rem}
+#rh-wrap .doc-status{font-size:.68rem;font-weight:700}
+#rh-wrap .doc-ok{color:var(--green)}
+#rh-wrap .doc-alerta{color:var(--accent)}
+#rh-wrap .doc-vencido{color:var(--red)}
+#rh-wrap /* APONTAMENTOS */
+.apt-table{width:100%;border-collapse:collapse;font-size:.78rem}
+#rh-wrap .apt-table th{padding:.5rem .6rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+#rh-wrap .apt-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border);color:var(--text2)}
+#rh-wrap .apt-table tr:last-child td{border-bottom:none}
+#rh-wrap .apt-table tr:hover td{background:rgba(88,166,255,.04)}
+#rh-wrap .apt-nome{font-weight:600;color:var(--text)}
+#rh-wrap /* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px}
+#rh-wrap .modal-overlay.on{display:flex}
+#rh-wrap .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(680px,100%);max-height:90vh;overflow-y:auto}
+#rh-wrap .scope-btn{display:none}
+#rh-wrap body.master-admin .scope-btn{display:inline-block!important}
+#rh-wrap .modal-box::-webkit-scrollbar{width:4px}
+#rh-wrap .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1}
+#rh-wrap .modal-tit{font-size:.95rem;font-weight:700;color:var(--text)}
+#rh-wrap .modal-body{padding:1.25rem}
+#rh-wrap .modal-footer{padding:.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end}
+#rh-wrap /* SEÇÃO DETALHE */
+.detalhe-hdr{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+#rh-wrap .detalhe-avatar{width:64px;height:64px;border-radius:50%;background:rgba(240,165,0,.15);border:3px solid rgba(240,165,0,.3);display:grid;place-items:center;font-size:1.4rem;font-weight:700;color:var(--accent);flex-shrink:0}
+#rh-wrap .detalhe-nome{font-size:1.1rem;font-weight:700;color:var(--text)}
+#rh-wrap .detalhe-sub{font-size:.8rem;color:var(--text2);margin-top:.25rem}
+#rh-wrap /* TABS DETALHE */
+.tabs{display:flex;gap:2px;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0}
+#rh-wrap .tab-btn{padding:.38rem .85rem;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+#rh-wrap .tab-btn:hover{color:var(--text)}
+#rh-wrap .tab-btn.on{color:var(--accent);font-weight:700;border-bottom-color:var(--accent)}
+#rh-wrap .tab-sec{display:none}
+#rh-wrap .tab-sec.on{display:block}
+#rh-wrap /* KPI CARDS */
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem}
+#rh-wrap .kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;text-align:center}
+#rh-wrap .kpi-v{font-size:1.4rem;font-weight:700;color:var(--accent);line-height:1.2}
+#rh-wrap .kpi-l{font-size:.68rem;color:var(--text3);margin-top:.2rem;text-transform:uppercase;letter-spacing:.05em}
+#rh-wrap /* HORAS CALC */
+.horas-calc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;margin-top:.75rem}
+#rh-wrap .horas-linha{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.78rem}
+#rh-wrap .horas-linha:last-child{border-bottom:none;font-weight:700;padding-top:.5rem}
+#rh-wrap .horas-tipo{color:var(--text2)}
+#rh-wrap .horas-val{color:var(--text);font-weight:600}
+#rh-wrap .horas-total-val{color:var(--green);font-size:.92rem}
+#rh-wrap /* TOAST */
+#rhToast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:.5rem 1.1rem;border-radius:20px;font-size:.78rem;font-weight:500;opacity:0;transition:all .25s;z-index:9999;pointer-events:none;white-space:nowrap}
+#rh-wrap #rhToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#rh-wrap #rhToast.ok{border-color:var(--green);color:var(--green)}
+#rh-wrap #rhToast.err{border-color:var(--red);color:var(--red)}
+#rh-wrap .pin-digit{width:48px;height:56px;border:2px solid var(--border);border-radius:var(--r2);background:var(--bg3);color:var(--text);font-size:1.4rem;text-align:center;font-family:'DM Mono',monospace;transition:.15s;flex-shrink:0}
+#rh-wrap .pin-digit:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.15)}
+</style>
+<div id="rh" class="sec">
+<div id="rh-wrap">
+<body>
+<div class="wrap">
+
+  <!-- NAV INTERNA -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <div style="font-size:.72rem;color:var(--text3)">
+      Empresa ativa: <strong id="rhEmpresaLabel" style="color:var(--accent)">—</strong>
+    </div>
+  </div>
+  <div class="nav-rh">
+    <button class="nav-rh-btn on" onclick="rhShowSec('colaboradores', this)">👷 Colaboradores</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('integracoes', this)">🏭 Integrações</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('apontamentos', this)">⏱️ Apontamentos</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('boletins', this)">📋 Boletins</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('despesas', this)">💰 Despesas</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('ferias-geral', this)">🌴 Férias</button>
+    <button class="nav-rh-btn" onclick="abrirConfigEmails()" style="margin-left:auto;font-size:.75rem;opacity:.7">🔔 E-mails de Alerta</button>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="alertas-bar" id="alertasBar"></div>
+
+  <!-- ══ MODAL E-MAILS DE ALERTA ══════════════════════════════ -->
+  <div class="modal-overlay" id="modalConfigEmails" onclick="if(event.target===this)fecharConfigEmails()">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-hdr">
+        <span class="modal-tit">🔔 E-mails de Alerta de Vencimento</span>
+        <button class="btn bd bsm" onclick="fecharConfigEmails()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.8rem;color:var(--text3);margin-bottom:1rem">
+          Estes e-mails receberão notificações automáticas quando documentos estiverem vencidos ou próximos do vencimento (1× por dia).
+        </p>
+        <div id="emailAlertaList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
+        <div style="display:flex;gap:.5rem">
+          <input type="email" id="novoEmailAlerta" placeholder="novo@email.com"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.48rem .7rem;font-size:.83rem;font-family:inherit;outline:none"
+            onkeydown="if(event.key==='Enter')adicionarEmailAlerta()">
+          <button class="btn bs bsm" onclick="adicionarEmailAlerta()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="fecharConfigEmails()">Fechar</button>
+        <button class="btn bs" onclick="salvarConfigEmails()">💾 Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO COLABORADORES ══════════════════════════════ -->
+  <div class="rhsec on" id="sec-colaboradores">
+
+    <!-- KPIs -->
+    <div class="kpi-g" id="kpiColabs"></div>
+
+    <!-- Cadastros pendentes (aparece somente quando há pendentes) -->
+    <div class="card" id="pendCard" style="display:none;border-color:rgba(240,165,0,.45)">
+      <div class="ch">
+        <span class="ct">⏳ Cadastros Pendentes de Aprovação</span>
+        <span id="pendBadge" class="bdg bdg-yellow" style="font-size:.72rem"></span>
+      </div>
+      <div id="pendList"></div>
+    </div>
+
+    <!-- Lista + botão novo -->
+    <div class="card">
+      <div class="ch">
+        <span class="ct">👷 Colaboradores e Prestadores</span>
+        <div class="br">
+          <input type="text" id="buscaColab" placeholder="🔍 Buscar..." oninput="filtrarColabs()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:200px">
+          <select id="filtroTipo" onchange="filtrarColabs()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos os tipos</option>
+            <option value="clt">CLT</option>
+            <option value="mei">MEI</option>
+            <option value="pj">PJ</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalColab()">+ Novo</button>
+        </div>
+      </div>
+      <div class="colab-list" id="colabList">
+        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO DETALHE COLABORADOR ═══════════════════════ -->
+  <div class="rhsec" id="sec-detalhe">
+    <div class="card">
+      <button class="btn bg bsm" onclick="showSec('colaboradores',null)" style="margin-bottom:1rem">← Voltar</button>
+      <div class="detalhe-hdr">
+        <div class="detalhe-avatar" id="detAvatar">?</div>
+        <div>
+          <div class="detalhe-nome" id="detNome">—</div>
+          <div class="detalhe-sub" id="detSub">—</div>
+          <div style="margin-top:.4rem;display:flex;gap:.3rem;flex-wrap:wrap" id="detBadges"></div>
+        </div>
+        <div class="br" style="margin-left:auto">
+          <button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>
+          <button class="btn bd bsm" onclick="desativarColab()">Desativar</button>
+          <button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn on" onclick="showTab('dados',this)">📋 Dados</button>
+        <button class="tab-btn" onclick="showTab('documentos',this)">📄 Docs Pessoais</button>
+        <button class="tab-btn" onclick="showTab('saude',this)">🏥 Saúde/NRs</button>
+        <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
+        <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
+        <button class="tab-btn" id="tabBtnFerias" style="display:none" onclick="showTab('ferias',this)">🌴 Férias</button>
+        <button class="tab-btn" onclick="showTab('integracoes-colab',this)">🏭 Integrações</button>
+      </div>
+
+      <!-- Tab Dados -->
+      <div class="tab-sec on" id="tab-dados">
+        <div class="ga" id="detDados" style="margin-top:.75rem"></div>
+      </div>
+
+      <!-- Tab Documentos -->
+      <div class="tab-sec" id="tab-documentos">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalDoc()">+ Adicionar documento</button>
+        </div>
+        <div class="doc-list" id="docList"></div>
+      </div>
+
+      <!-- Tab Saúde/NRs -->
+      <div class="tab-sec" id="tab-saude">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalSaude('aso')">+ ASO</button>
+          <button class="btn bp bsm" onclick="abrirModalSaude('nr')">+ Certificado NR</button>
+        </div>
+        <div class="doc-list" id="saudeList"></div>
+      </div>
+
+      <!-- Tab EPIs -->
+      <div class="tab-sec" id="tab-epis">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalEpi()">+ Entrega de EPI</button>
+        </div>
+        <div class="doc-list" id="epiList"></div>
+      </div>
+
+      <!-- Tab Horas -->
+      <div class="tab-sec" id="tab-horas">
+        <div style="margin:.75rem 0">
+          <!-- Filtro de período -->
+          <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .85rem">
+            <span style="font-size:.75rem;color:var(--text2);font-weight:600">Período:</span>
+            <input type="date" id="horasColabDe" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .6rem;font-size:.78rem;font-family:inherit">
+            <span style="color:var(--text3);font-size:.78rem">até</span>
+            <input type="date" id="horasColabAte" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .6rem;font-size:.78rem;font-family:inherit">
+            <button class="btn bs bsm" onclick="filtrarHorasColab()">🔍 Filtrar</button>
+            <button class="btn bg bsm" onclick="limparFiltroHoras()">Limpar</button>
+            <button class="btn bs bsm" onclick="gerarRelatorioHoras()" style="margin-left:auto;font-weight:700">📊 Gerar Relatório</button>
+          </div>
+          <div class="kpi-g" id="kpiHorasColab" style="margin-bottom:.85rem"></div>
+          <table class="apt-table">
+            <thead><tr>
+              <th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>
+              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Boletim</th>
+            </tr></thead>
+            <tbody id="horasColabBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Férias (CLT) -->
+      <div class="tab-sec" id="tab-ferias">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalFerias()">+ Registrar férias</button>
+        </div>
+        <div id="feriasStatus"></div>
+        <div class="doc-list" id="feriasList" style="margin-top:.75rem"></div>
+      </div>
+
+      <!-- Tab Integrações do colaborador -->
+      <div class="tab-sec" id="tab-integracoes-colab">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalIntegracao(null,true)">+ Nova integração</button>
+        </div>
+        <div class="doc-list" id="integColabList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL FÉRIAS ══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modalFerias" onclick="if(event.target===this)fecharModalFerias()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-tit" id="modalFeriasTit">Registrar Férias</span>
+        <button class="btn bd bsm" onclick="fecharModalFerias()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="g2" style="gap:.85rem">
+          <div class="f">
+            <label>Início do período aquisitivo</label>
+            <input type="date" id="fPeriodoInicio" onchange="calcularPeriodoFerias()">
+          </div>
+          <div class="f">
+            <label>Fim do período aquisitivo</label>
+            <input type="date" id="fPeriodoFim" readonly style="opacity:.6">
+          </div>
+          <div class="f">
+            <label>Vencimento das férias</label>
+            <input type="date" id="fVencimento" readonly style="opacity:.6">
+          </div>
+          <div class="f">
+            <label>Status</label>
+            <select id="fStatus">
+              <option value="pendente">Pendente (não gozadas)</option>
+              <option value="agendado">Agendado</option>
+              <option value="gozado">Gozado</option>
+            </select>
+          </div>
+          <div class="f">
+            <label>Início das férias (gozo)</label>
+            <input type="date" id="fInicio">
+          </div>
+          <div class="f">
+            <label>Fim das férias (gozo)</label>
+            <input type="date" id="fFim">
+          </div>
+          <div class="f">
+            <label>Dias gozados</label>
+            <input type="number" id="fDiasGozados" value="30" min="0" max="30">
+          </div>
+          <div class="f">
+            <label>Dias vendidos — abono pecuniário (máx 10)</label>
+            <input type="number" id="fDiasVendidos" value="0" min="0" max="10">
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-top:.85rem;font-size:.82rem;color:var(--text2)">
+          <input type="checkbox" id="fAdiantamento13" style="accent-color:var(--accent);width:16px;height:16px">
+          Solicitou adiantamento do 13º salário junto com as férias
+        </label>
+        <div class="f" style="margin-top:.85rem">
+          <label>Observações</label>
+          <textarea id="fObs" placeholder="Observações..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg bsm" onclick="fecharModalFerias()">Cancelar</button>
+        <button class="btn bs bsm" onclick="salvarFerias()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO INTEGRAÇÕES ══════════════════════════════════ -->
+  <div class="rhsec" id="sec-integracoes">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">🏭 Controle de Integrações em Clientes</span>
+        <div class="br">
+          <input type="text" id="buscaInteg" placeholder="🔍 Buscar cliente ou colaborador..." oninput="filtrarIntegracoes()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:240px">
+          <select id="filtroIntegStatus" onchange="filtrarIntegracoes()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos</option>
+            <option value="ok">Válidas</option>
+            <option value="alerta">Vencendo</option>
+            <option value="vencido">Vencidas</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalIntegracao(null,false)">+ Nova integração</button>
+        </div>
+      </div>
+      <div id="integList"></div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL INTEGRAÇÃO ══════════════════════════════════ -->
+  <div class="modal-overlay" id="modalIntegracao" onclick="if(event.target===this)fecharModalIntegracao()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-tit" id="modalIntegTit">Nova Integração</span>
+        <button class="btn bd bsm" onclick="fecharModalIntegracao()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="g2" style="gap:.85rem">
+          <div class="f" style="grid-column:1/-1">
+            <label>Colaborador</label>
+            <select id="iColab">
+              <option value="">— selecione —</option>
+            </select>
+          </div>
+          <div class="f" style="grid-column:1/-1">
+            <label>Nome do cliente *</label>
+            <input type="text" id="iCliente" placeholder="Ex: Petrobrás S.A.">
+          </div>
+          <div class="f">
+            <label>Cidade</label>
+            <input type="text" id="iCidade" placeholder="Ex: São Paulo – SP">
+          </div>
+          <div class="f">
+            <label>Data da integração *</label>
+            <input type="date" id="iData">
+          </div>
+          <div class="f">
+            <label>Válido até</label>
+            <input type="date" id="iValidade">
+          </div>
+          <div class="f">
+            <label>Alerta de vencimento</label>
+            <select id="iAvisoDias">
+              <option value="0">Sem aviso</option>
+              <option value="30">30 dias antes</option>
+              <option value="60">60 dias antes</option>
+              <option value="90">90 dias antes</option>
+              <option value="120">120 dias antes</option>
+            </select>
+          </div>
+          <div class="f">
+            <label>Contato para renovação</label>
+            <input type="text" id="iContatoNome" placeholder="Nome do contato">
+          </div>
+          <div class="f">
+            <label>Fone do contato</label>
+            <input type="text" id="iContatoFone" placeholder="(11) 99999-9999">
+          </div>
+          <div class="f">
+            <label>E-mail do contato</label>
+            <input type="email" id="iContatoEmail" placeholder="contato@cliente.com.br">
+          </div>
+        </div>
+        <div class="f" style="margin-top:.85rem">
+          <label>Observações</label>
+          <textarea id="iObs" placeholder="Observações sobre a integração..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg bsm" onclick="fecharModalIntegracao()">Cancelar</button>
+        <button class="btn bs bsm" onclick="salvarIntegracao()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO FÉRIAS GERAL ════════════════════════════════ -->
+  <div class="rhsec" id="sec-ferias-geral">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">🌴 Análise Geral de Férias — Colaboradores CLT</span>
+        <div class="br">
+          <input type="text" id="buscaFeriasGeral" placeholder="🔍 Buscar colaborador..." oninput="filtrarFeriasGeral()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:220px">
+          <select id="filtroFeriasStatus" onchange="filtrarFeriasGeral()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos os status</option>
+            <option value="vencido">Vencidas</option>
+            <option value="alerta">Vencendo em breve</option>
+            <option value="pendente">Pendentes</option>
+            <option value="agendado">Agendadas</option>
+            <option value="gozado">Gozadas</option>
+          </select>
+        </div>
+      </div>
+      <div id="feriasGeralList"></div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO APONTAMENTOS ═══════════════════════════════ -->
+  <div class="rhsec" id="sec-apontamentos">
+    <div class="kpi-g" id="kpiApt"></div>
+
+    <div class="card">
+      <div class="ch">
+        <span class="ct">⏱️ Apontamentos de Horas</span>
+        <div class="br">
+          <!-- Toggle Equipe / Meus -->
+          <div id="toggleMeusApt" style="display:none;border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;display:flex">
+            <button id="btnAptEquipe" onclick="setModoApt('equipe')"
+              style="padding:.28rem .7rem;font-size:.72rem;font-family:inherit;cursor:pointer;border:none;background:var(--accent);color:#000;font-weight:700">
+              👥 Equipe
+            </button>
+            <button id="btnAptMeus" onclick="setModoApt('meus')"
+              style="padding:.28rem .7rem;font-size:.72rem;font-family:inherit;cursor:pointer;border:none;background:var(--bg3);color:var(--text2)">
+              👤 Meus
+            </button>
+          </div>
+          <select id="filtroAptStatus" onchange="carregarApontamentos()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Ativos (sem cancelados)</option>
+            <option value="pendente">Pendentes</option>
+            <option value="aprovado">Aprovados</option>
+            <option value="ajustado">Ajustados</option>
+            <option value="rejeitado">Rejeitados</option>
+            <option value="cancelado">Cancelados</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalApontamento()">+ Novo Apontamento</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="apt-table">
+          <thead><tr>
+            <th>Colaborador</th><th>Data</th><th>Projeto</th>
+            <th>Entrada</th><th>Saída</th><th>Normal</th><th>Extra 50%</th>
+            <th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="aptBody">
+            <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO BOLETINS ═══════════════════════════════════ -->
+  <div class="rhsec" id="sec-boletins">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">📋 Relatórios de Serviços</span>
+        <button class="btn bs bsm" onclick="abrirModalGerarBoletim()">+ Gerar Documento</button>
+      </div>
+      <div class="doc-list" id="boletinsList">
+        <div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum documento gerado ainda.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO DESPESAS ════════════════════════════════════ -->
+  <div class="rhsec" id="sec-despesas">
+
+    <!-- Formulário Nova Despesa (recolhido por padrão) -->
+    <div class="card">
+      <div class="ch" onclick="toggleNovaDespesa()" style="cursor:pointer;user-select:none">
+        <span class="ct">💰 Nova Despesa</span>
+        <span id="novaDespesaArrow" style="color:var(--text3);font-size:.85rem;transition:transform .2s">▼</span>
+      </div>
+      <div id="novaDespesaForm" style="display:none">
+      <div class="g2" style="gap:.85rem">
+        <div class="f">
+          <label>Colaborador *</label>
+          <select id="dColabId"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f">
+          <label>Data *</label>
+          <input type="date" id="dData">
+        </div>
+        <div class="f">
+          <label>Valor (R$) *</label>
+          <input type="number" id="dValor" step="0.01" min="0" placeholder="0,00">
+        </div>
+        <div class="f">
+          <label>Tipo de Pagamento *</label>
+          <select id="dTipoPgto">
+            <option value="particular">Particular — solicitar reembolso</option>
+            <option value="empresa">Empresa — sem reembolso</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Tipo de Despesa *</label>
+          <select id="dTipoDesp">
+            <option value="alimentacao">Alimentação</option>
+            <option value="combustivel">Combustível</option>
+            <option value="hospedagem">Hospedagem</option>
+            <option value="material">Material</option>
+            <option value="transporte">Transporte</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Forma de Pagamento *</label>
+          <select id="dFormaPgto">
+            <option value="pix">Pix</option>
+            <option value="credito">Crédito</option>
+            <option value="debito">Débito</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="faturado">Faturado empresa</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Projeto / Proposta</label>
+          <select id="dProjetoId"><option value="">— nenhum —</option></select>
+        </div>
+        <div class="f">
+          <label>Centro de Custo</label>
+          <input type="text" id="dCentroCusto" placeholder="Ex: Obra SP-042, Manutenção...">
+        </div>
+      </div>
+      <div class="f" style="margin-top:.65rem">
+        <label>Descrição *</label>
+        <textarea id="dDesc" placeholder="Descreva a despesa..." style="min-height:60px"></textarea>
+      </div>
+      <div style="margin-top:.75rem;display:flex;justify-content:flex-end">
+        <button class="btn bs" onclick="salvarDespesa()">💾 Salvar Despesa</button>
+      </div>
+      </div><!-- /novaDespesaForm -->
+    </div>
+
+    <!-- Lista de Despesas -->
+    <div class="card">
+      <div class="ch"><span class="ct">📋 Despesas Registradas</span></div>
+      <div style="overflow-x:auto">
+        <table class="apt-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Data</th>
+              <th>Projeto</th>
+              <th>Centro Custo</th>
+              <th>Tipo Despesa</th>
+              <th>Forma Pgto</th>
+              <th>Tipo Pgto</th>
+              <th>Valor</th>
+              <th>Descrição</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="despBody">
+            <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- MODAL GERAR BOLETIM -->
+<div class="modal-overlay" id="modalGerarBol" onclick="if(event.target===this)fecharModalGerarBol()">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-hdr">
+      <span class="modal-tit">📋 Gerar Documento de Serviços</span>
+      <button class="btn bd bsm" onclick="fecharModalGerarBol()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Colaborador / Prestador *</label>
+          <select id="bolColab"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Empresa assinante *</label>
+          <select id="bolEmpresa"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Período — início *</label>
+          <input type="date" id="bolDtIni">
+        </div>
+        <div class="f"><label>Período — fim *</label>
+          <input type="date" id="bolDtFim">
+        </div>
+      </div>
+      <button class="btn bs" style="margin-top:.75rem;width:100%" onclick="previewApontamentosBol()">🔍 Buscar Apontamentos Aprovados</button>
+      <div id="bolPreview" style="display:none;margin-top:1rem">
+        <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Apontamentos no período</div>
+        <div id="bolPreviewTabela" style="max-height:260px;overflow-y:auto"></div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.75rem;margin-top:.5rem;display:flex;gap:1.5rem">
+          <div><div style="font-size:.65rem;color:var(--text3)">TOTAL HORAS</div><div id="bolTotHoras" style="font-size:1.1rem;font-weight:700;color:var(--text)">—</div></div>
+          <div><div style="font-size:.65rem;color:var(--text3)">TOTAL VALOR</div><div id="bolTotValor" style="font-size:1.1rem;font-weight:700;color:var(--green)">—</div></div>
+          <div><div style="font-size:.65rem;color:var(--text3)">APONTAMENTOS</div><div id="bolTotQtd" style="font-size:1.1rem;font-weight:700;color:var(--text)">—</div></div>
+        </div>
+        <div id="bolAlerta" style="display:none;padding:.6rem .85rem;border-radius:var(--r);font-size:.78rem;margin-top:.5rem"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalGerarBol()">Cancelar</button>
+      <button class="btn bs" id="btnGerarBol" style="display:none" onclick="gerarBoletim()">📋 Gerar e Enviar para Assinatura</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VER BOLETIM GESTOR -->
+<div class="modal-overlay" id="modalVerBolGestor" onclick="if(event.target===this)fecharVerBolGestor()">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="verBolGestorTit">Documento</span>
+      <button class="btn bd bsm" onclick="fecharVerBolGestor()">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:68vh;overflow-y:auto">
+      <div id="verBolGestorContent"></div>
+      <!-- Área editar observações da empresa (fora do hash) -->
+      <div id="areaEditarObs" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">📝 Observações da Empresa</div>
+        <textarea id="txtObsEmpresa" style="width:100%;min-height:80px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.8rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn bs" style="flex:1" onclick="salvarObservacoesBoletim(_bolGestorAtivo.id, document.getElementById('txtObsEmpresa').value)">💾 Salvar</button>
+          <button class="btn bg" onclick="document.getElementById('areaEditarObs').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+      <!-- Área assinar como PRESTADOR (dono que também é colaborador) -->
+      <div id="areaAssinarPrestador" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:2px solid var(--green);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:.35rem">✍️ Assinar como Prestador</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Você é o prestador deste documento. Digite seu PIN de colaborador para assinar.</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin1" oninput="movePinFocus(this,'ppin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin2" oninput="movePinFocus(this,'ppin3')" onkeydown="backPinFocus(event,'ppin1')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin3" oninput="movePinFocus(this,'ppin4')" onkeydown="backPinFocus(event,'ppin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ppin4" onkeydown="backPinFocus(event,'ppin3')">
+        </div>
+        <button class="btn bs" style="width:100%;margin-top:.35rem;background:var(--green);border-color:var(--green);color:#000" onclick="assinarComoPrestadorGestor()">✅ Confirmar Assinatura como Prestador</button>
+      </div>
+
+      <div id="areaAssinarEmpresa" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--r)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:.35rem">✍️ Assinar como Empresa</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Digite seu PIN de 4 dígitos para assinar este documento</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin1" oninput="movePinFocus(this,'epin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin2" oninput="movePinFocus(this,'epin3')" onkeydown="backPinFocus(event,'epin1')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin3" oninput="movePinFocus(this,'epin4')" onkeydown="backPinFocus(event,'epin2')">
+          <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="epin4" onkeydown="backPinFocus(event,'epin3')">
+        </div>
+        <button class="btn bs" style="width:100%;margin-top:.35rem" onclick="assinarComoEmpresa()">✅ Confirmar Assinatura da Empresa</button>
+        <button class="btn bg" style="width:100%;margin-top:.35rem;font-size:.72rem" onclick="abrirCriarPinUsuario()">🔑 Criar / Redefinir PIN</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharVerBolGestor()">Fechar</button>
+      <button class="btn bs" id="btnImprimirBol" onclick="imprimirBoletim()" style="display:none">🖨️ Imprimir / PDF</button>
+      <button class="btn" id="btnEditarObs" onclick="abrirEditarObs()" style="display:none">📝 Obs.</button>
+      <button class="btn" id="btnRevisarBol" onclick="revisarBoletim(_bolGestorAtivo.id)" style="display:none">✓ Revisado</button>
+      <button class="btn bd" id="btnCancelarBol" style="display:none" onclick="cancelarBoletim()">🗑 Cancelar Documento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PIN USUARIO -->
+<div class="modal-overlay" id="modalPinUsuario" onclick="if(event.target===this)fecharModalPinUsuario()">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-hdr">
+      <span class="modal-tit">🔑 PIN de Assinatura</span>
+      <button class="btn bd bsm" onclick="fecharModalPinUsuario()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:.8rem;color:var(--text2);margin-bottom:1rem">Este PIN será usado para assinar documentos como representante da empresa.</div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Novo PIN</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp1" oninput="movePinFocus(this,'unp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp2" oninput="movePinFocus(this,'unp3')" onkeydown="backPinFocus(event,'unp1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp3" oninput="movePinFocus(this,'unp4')" onkeydown="backPinFocus(event,'unp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="unp4" onkeydown="backPinFocus(event,'unp3')">
+      </div>
+      <div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Confirmar PIN</div>
+      <div style="display:flex;gap:.5rem">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp1" oninput="movePinFocus(this,'ucp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp2" oninput="movePinFocus(this,'ucp3')" onkeydown="backPinFocus(event,'ucp1')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp3" oninput="movePinFocus(this,'ucp4')" onkeydown="backPinFocus(event,'ucp2')">
+        <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="ucp4" onkeydown="backPinFocus(event,'ucp3')">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalPinUsuario()">Cancelar</button>
+      <button class="btn bs" onclick="salvarPinUsuario()">💾 Salvar PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL COLABORADOR ════════════════════════════════════ -->
+<div class="modal-overlay" id="modalColab" onclick="if(event.target===this)fecharModalColab()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalColabTit">Novo Colaborador</span>
+      <button class="btn bd bsm" onclick="fecharModalColab()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Tipo de vínculo *</span>
+            <button type="button" id="scopeBtn_tipo" class="scope-btn" onclick="toggleScope('tipo')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <select id="cTipo" onchange="togglePerigFields()">
+            <option value="clt">CLT</option>
+            <option value="mei">MEI</option>
+            <option value="pj">PJ</option>
+          </select>
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Custo/hora base (R$)</span>
+            <button type="button" id="scopeBtn_valor_hora" class="scope-btn" onclick="toggleScope('valor_hora')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01">
+        </div>
+        <div class="f" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Nome completo *</span>
+            <button type="button" id="scopeBtn_nome" class="scope-btn" onclick="toggleScope('nome')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cNome" placeholder="João Silva">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>CPF / CNPJ</span>
+            <button type="button" id="scopeBtn_documento" class="scope-btn" onclick="toggleScope('documento')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cDoc" placeholder="000.000.000-00">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>E-mail</span>
+            <button type="button" id="scopeBtn_email" class="scope-btn" onclick="toggleScope('email')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="email" id="cEmail" placeholder="joao@email.com">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Telefone / WhatsApp</span>
+            <button type="button" id="scopeBtn_telefone" class="scope-btn" onclick="toggleScope('telefone')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cTel" placeholder="(11) 99999-9999">
+        </div>
+        <div class="f" id="cPerigRow" style="display:none">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Atividade de risco (Periculosidade)?</span>
+            <button type="button" id="scopeBtn_periculoso" class="scope-btn" onclick="toggleScope('periculoso')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <select id="cPericuloso" onchange="togglePercPerig()">
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
+          </select>
+        </div>
+        <div class="f" id="cPercPerigRow" style="display:none"><label>Adicional (%)</label><input type="number" id="cPercPericulosidade" value="30" min="0" max="100" step="0.01"></div>
+        <div class="f" id="cBasePerigRow" style="display:none"><label>Calcular sobre</label>
+          <select id="cPericulosidadeBase">
+            <option value="normal">Horas normais (CLT padrão — TST OJ 259)</option>
+            <option value="total">Horas totais (opção comercial)</option>
+          </select>
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Função / Cargo</span>
+            <button type="button" id="scopeBtn_funcao" class="scope-btn" onclick="toggleScope('funcao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cFuncao" placeholder="Eletricista Industrial">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span id="cAdmissaoLabel">Data de admissão</span>
+            <button type="button" id="scopeBtn_admissao" class="scope-btn" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="date" id="cAdmissao">
+        </div>
+        <div class="f" id="cFimContratoRow" style="display:none">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Término do contrato</span>
+            <button type="button" id="scopeBtn_fim_contrato" class="scope-btn" onclick="toggleScope('fim_contrato')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <input type="date" id="cFimContrato">
+        </div>
+      </div>
+      <div class="f" style="margin-top:.85rem">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+          <span>Observações</span>
+          <button type="button" id="scopeBtn_observacoes" class="scope-btn" onclick="toggleScope('observacoes')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+        </label>
+        <textarea id="cObs" placeholder="Informações adicionais..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalColab()">Cancelar</button>
+      <button class="btn bs" onclick="salvarColab()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL APONTAMENTO ════════════════════════════════════ -->
+<div class="modal-overlay" id="modalApt" onclick="if(event.target===this)fecharModalApt()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit">Registrar Apontamento de Horas</span>
+      <button class="btn bd bsm" onclick="fecharModalApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Colaborador *</label>
+          <select id="aptColab"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Proposta / Projeto *</label>
+          <select id="aptProposta"><option value="">Selecione...</option></select>
+        </div>
+        <div class="f"><label>Data *</label><input type="date" id="aptData"></div>
+        <div class="f"><label>Tipo do dia *</label>
+          <select id="aptTipoDia" onchange="calcularHorasApt()">
+            <option value="util">Dia útil (Seg–Sex)</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+            <option value="feriado">Feriado</option>
+          </select>
+        </div>
+        <div class="f"><label>Jornada de trabalho</label>
+          <select id="aptJornada" onchange="aplicarJornada()">
+            <option value="07-17">07:00 – 17:00</option>
+            <option value="08-18">08:00 – 18:00</option>
+            <option value="08-1730">08:00 – 17:30</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="f"><label>Hora entrada *</label><input type="time" id="aptEntrada" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Hora saída *</label><input type="time" id="aptSaida" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Intervalo início</label><input type="time" id="aptIntInicio" value="12:00" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Intervalo fim</label><input type="time" id="aptIntFim" value="13:00" onchange="calcularHorasApt()"></div>
+      </div>
+
+      <!-- Prévia do cálculo CLT -->
+      <div class="horas-calc" id="horasPrevia" style="display:none">
+        <div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
+        <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="pvNormal">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha" id="pvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="pvPericulosidade">—</span></div>
+        <div class="horas-linha">
+          <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
+          <span class="horas-total-val" id="pvTotal">—</span>
+        </div>
+      </div>
+
+      <div class="f" style="margin-top:.85rem">
+        <label>Descrição das atividades *</label>
+        <textarea id="aptDesc" placeholder="Descreva o que foi executado neste dia/projeto..." style="min-height:90px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalApt()">Cancelar</button>
+      <button class="btn bs" onclick="salvarApontamento()">💾 Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CANCELAR APONTAMENTO ══════════════════════════ -->
+<div class="modal-overlay" id="modalCancelApt" onclick="if(event.target===this)fecharModalCancelApt()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-tit">Cancelar Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalCancelApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="cancelAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+      <div class="f">
+        <label>Motivo do cancelamento <span style="color:var(--red)">*</span></label>
+        <textarea id="txtMotivoCancelApt" placeholder="Descreva o motivo do cancelamento (mínimo 10 caracteres)..." style="min-height:80px"></textarea>
+        <span id="cancelAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+      <div style="background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.2);border-radius:var(--r2);padding:.55rem .75rem;margin-top:.75rem;font-size:.75rem;color:var(--red)">
+        ⚠️ Esta ação não pode ser desfeita. O apontamento será cancelado e não aparecerá mais na listagem padrão.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalCancelApt()">Voltar</button>
+      <button class="btn bd" onclick="confirmarCancelApt()">🗑 Confirmar Cancelamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL REABRIR APONTAMENTO ════════════════════════════ -->
+<div class="modal-overlay" id="modalReabrirApt" onclick="if(event.target===this)fecharModalReabrirApt()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-tit">Reabrir Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalReabrirApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="reabrirAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+      <div class="f">
+        <label>Motivo da reabertura <span style="color:var(--red)">*</span></label>
+        <textarea id="txtMotivoReabrirApt" placeholder="Descreva o motivo da reabertura (mínimo 10 caracteres)..." style="min-height:80px"></textarea>
+        <span id="reabrirAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+      <div style="background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:var(--r2);padding:.55rem .75rem;margin-top:.75rem;font-size:.75rem;color:var(--blue)">
+        ℹ️ O apontamento voltará ao status <strong>pendente</strong> e precisará ser aprovado novamente.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalReabrirApt()">Voltar</button>
+      <button class="btn bp" onclick="confirmarReabrirApt()">🔓 Confirmar Reabertura</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDITAR APONTAMENTO ═════════════════════════════ -->
+<div class="modal-overlay" id="modalEditarApt" onclick="if(event.target===this)fecharModalEditarApt()">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-hdr">
+      <span class="modal-tit">✏️ Editar Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalEditarApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Context: colaborador + proposta (read-only) -->
+      <div id="editAptCtx" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Data *</label><input type="date" id="eAptData"></div>
+        <div class="f"><label>Tipo do dia *</label>
+          <select id="eAptTipoDia" onchange="calcularHorasEditApt()">
+            <option value="util">Dia útil (Seg–Sex)</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+            <option value="feriado">Feriado</option>
+          </select>
+        </div>
+        <div class="f"><label>Jornada de trabalho</label>
+          <select id="eAptJornada" onchange="aplicarJornadaEdit()">
+            <option value="07-17">07:00 – 17:00</option>
+            <option value="08-18">08:00 – 18:00</option>
+            <option value="08-1730">08:00 – 17:30</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="f"><label>Hora entrada *</label><input type="time" id="eAptEntrada" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Hora saída *</label><input type="time" id="eAptSaida" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Intervalo início</label><input type="time" id="eAptIntInicio" onchange="calcularHorasEditApt()"></div>
+        <div class="f"><label>Intervalo fim</label><input type="time" id="eAptIntFim" onchange="calcularHorasEditApt()"></div>
+      </div>
+
+      <!-- Prévia do cálculo CLT -->
+      <div class="horas-calc" id="eHorasPrevia" style="display:none;margin-top:.85rem">
+        <div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
+        <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="ePvNormal">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="ePvExtra50">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="ePvExtra100">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="ePvNoturno">—</span></div>
+        <div class="horas-linha" id="ePvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="ePvPericulosidade">—</span></div>
+        <div class="horas-linha">
+          <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
+          <span class="horas-total-val" id="ePvTotal">—</span>
+        </div>
+      </div>
+
+      <div class="f" style="margin-top:.85rem">
+        <label>Descrição das atividades *</label>
+        <textarea id="eAptDesc" placeholder="Descreva o que foi executado neste dia/projeto..." style="min-height:90px"></textarea>
+      </div>
+      <div class="f" style="margin-top:.65rem">
+        <label>Motivo da edição <span style="color:var(--red)">*</span></label>
+        <textarea id="eAptMotivoEdit" placeholder="Descreva o motivo da alteração (mínimo 10 caracteres)..." style="min-height:70px"></textarea>
+        <span id="eAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalEditarApt()">Cancelar</button>
+      <button class="btn ba" onclick="salvarEdicaoApt()">💾 Salvar Edição</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL HISTÓRICO APONTAMENTO ══════════════════════════ -->
+<div class="modal-overlay" id="modalHistoricoApt" onclick="if(event.target===this)fecharModalHistoricoApt()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-hdr">
+      <span class="modal-tit">📜 Histórico do Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalHistoricoApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="historicoAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:1rem;font-size:.8rem;color:var(--text2)"></div>
+      <div id="historicoAptTimeline" style="display:flex;flex-direction:column;gap:.75rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalHistoricoApt()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ADICIONAR EMPRESA ═════════════════════════════ -->
+<div class="modal-overlay" id="modalAddEmpresa" onclick="if(event.target===this)fecharModalAddEmpresa()">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalAddEmpTit">Adicionar a outra empresa</span>
+      <button class="btn bd bsm" onclick="fecharModalAddEmpresa()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:.82rem;color:var(--text2);margin-bottom:1rem" id="modalAddEmpNome"></div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Selecione as empresas:</div>
+      <div id="addEmpCheck" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalAddEmpresa()">Cancelar</button>
+      <button class="btn bs" onclick="salvarAdicionarEmpresa()">💾 Salvar vínculos</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DOCUMENTO ══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDoc" onclick="if(event.target===this)fecharModalDoc()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalDocTit">Adicionar Documento</span>
+      <button class="btn bd bsm" onclick="fecharModalDoc()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Tipo de documento *</label>
+          <select id="docTipo">
+            <option value="">Selecione...</option>
+            <option value="rg">RG</option>
+            <option value="cpf">CPF</option>
+            <option value="pis">PIS/PASEP</option>
+            <option value="ctps">CTPS</option>
+            <option value="cnpj">CNPJ (MEI)</option>
+            <option value="contrato">Contrato</option>
+            <option value="comprovante_residencia">Comprovante de Residência</option>
+            <option value="certidao">Certidão (nasc./casam.)</option>
+            <option value="nf_mei">NF MEI</option>
+            <option value="comprovante_pagamento">Comprovante de Pagamento</option>
+            <option value="holerite">Holerite</option>
+            <option value="atestado">Atestado Médico</option>
+            <option value="advertencia">Advertência</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="f"><label>Descrição</label><input type="text" id="docDesc" placeholder="Ex: Contrato MEI abr/2026"></div>
+        <div class="f"><label>Data do documento</label><input type="date" id="docData"></div>
+        <div class="f"><label>Data de vencimento</label><input type="date" id="docVenc" placeholder="Deixe em branco se não vence"></div>
+        <div class="f"><label>Aviso por e-mail</label>
+          <select id="docAvisoDias">
+            <option value="0">Sem aviso por e-mail</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+            <option value="90">90 dias antes</option>
+          </select>
+        </div>
+        <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
+        <div class="f" style="grid-column:1/-1">
+          <label>Arquivo (PDF, imagem, Word)</label>
+          <input type="file" id="docArquivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
+            style="padding:.4rem .6rem;font-size:.8rem;cursor:pointer">
+          <div id="docArquivoAtual" style="margin-top:.4rem;font-size:.75rem;color:var(--text3);display:none">
+            Arquivo atual: <a id="docArquivoLink" href="#" target="_blank" style="color:var(--accent)"></a>
+            <button onclick="removerArquivoAtual()" style="margin-left:.5rem;background:none;border:none;color:#f85149;cursor:pointer;font-size:.75rem">✕ remover</button>
+          </div>
+          <div id="docUploadProgress" style="display:none;margin-top:.35rem;font-size:.75rem;color:var(--text3)">⏳ Enviando arquivo...</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalDoc()">Cancelar</button>
+      <button class="btn bs" onclick="salvarDoc()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL SAÚDE/NR ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalSaude" onclick="if(event.target===this)fecharModalSaude()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="modalSaudeTit">Adicionar ASO / Certificado NR</span>
+      <button class="btn bd bsm" onclick="fecharModalSaude()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Tipo *</label>
+          <select id="saudeTipo">
+            <option value="aso_adm">ASO Admissional</option>
+            <option value="aso_per">ASO Periódico</option>
+            <option value="aso_dem">ASO Demissional</option>
+            <option value="nr10">NR-10 (Eletricidade)</option>
+            <option value="nr35">NR-35 (Trabalho em Altura)</option>
+            <option value="nr12">NR-12 (Máquinas)</option>
+            <option value="nr18">NR-18 (Construção Civil)</option>
+            <option value="sep">SEP (Sistema Elétrico de Potência)</option>
+            <option value="outro_nr">Outro Certificado</option>
+          </select>
+        </div>
+        <div class="f"><label>Instituição / Médico</label><input type="text" id="saudeInst" placeholder="Ex: SESMT / Dr. João"></div>
+        <div class="f"><label>Data de emissão *</label><input type="date" id="saudeEmissao"></div>
+        <div class="f"><label>Data de vencimento *</label><input type="date" id="saudeVenc"></div>
+        <div class="f"><label>Carga horária (cursos NR)</label><input type="number" id="saudeCH" placeholder="40" min="0"></div>
+        <div class="f"><label>Resultado (ASO)</label>
+          <select id="saudeResult">
+            <option value="">N/A</option>
+            <option value="apto">Apto</option>
+            <option value="apto_restricao">Apto com restrição</option>
+            <option value="inapto">Inapto</option>
+          </select>
+        </div>
+        <div class="f"><label>Aviso por e-mail</label>
+          <select id="saudeAvisoDias">
+            <option value="0">Sem aviso</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+            <option value="90">90 dias antes</option>
+          </select>
+        </div>
+        <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="saudeObs" style="min-height:56px"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalSaude()">Cancelar</button>
+      <button class="btn bs" id="btnSalvarSaude" onclick="salvarSaude()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EPI ═════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEpi" onclick="if(event.target===this)fecharModalEpi()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-tit">Ficha de Entrega de EPI</span>
+      <button class="btn bd bsm" onclick="fecharModalEpi()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>EPI *</label>
+          <select id="epiItem">
+            <option value="">Selecione...</option>
+            <option value="capacete">Capacete de segurança</option>
+            <option value="luva_borracha">Luva de borracha isolante</option>
+            <option value="luva_raspa">Luva de raspa</option>
+            <option value="botina">Botina de segurança</option>
+            <option value="oculos">Óculos de proteção</option>
+            <option value="protetor_auricular">Protetor auricular</option>
+            <option value="cinto_seguranca">Cinto de segurança/talabarte</option>
+            <option value="vestimenta_nr10">Vestimenta NR-10</option>
+            <option value="detector_tensao">Detector de tensão</option>
+            <option value="outro_epi">Outro EPI</option>
+          </select>
+        </div>
+        <div class="f"><label>Descrição / Marca</label><input type="text" id="epiDesc" placeholder="Ex: Capacete 3M ABS Amarelo"></div>
+        <div class="f"><label>CA (Cert. Aprovação) *</label><input type="text" id="epiCA" placeholder="Ex: CA 12345"></div>
+        <div class="f"><label>Data de entrega *</label><input type="date" id="epiEntrega"></div>
+        <div class="f"><label>Data de substituição</label><input type="date" id="epiSubs"></div>
+        <div class="f"><label>Quantidade</label><input type="number" id="epiQtd" value="1" min="1"></div>
+        <div class="f"><label>Aviso de substituição</label>
+          <select id="epiAvisoDias">
+            <option value="0">Sem aviso</option>
+            <option value="7">7 dias antes</option>
+            <option value="15">15 dias antes</option>
+            <option value="30" selected>30 dias antes</option>
+            <option value="60">60 dias antes</option>
+          </select>
+        </div>
+        <div class="f" style="grid-column:1/-1">
+          <label>Observações</label>
+          <textarea id="epiObs" style="min-height:56px" placeholder="O colaborador declara ter recebido o EPI acima e se compromete a utilizá-lo..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalEpi()">Cancelar</button>
+      <button class="btn bs" id="btnSalvarEpi" onclick="salvarEpi()">💾 Registrar Entrega</button>
+    </div>
+  </div>
+</div>
+
+<div id="rhToast"></div>
+
+</div>
+</div>
+
 <!-- PROPOSTA DETALHE -->
 
 </div><!-- /wrap -->
@@ -5113,6 +8312,8 @@ function rExecTimeline(){
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
 <script src="js/modules/historico.js"></script>
+<script src="js/modules/gestao-inline.js"></script>
+<script src="js/modules/rh-inline.js"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
@@ -5303,17 +8504,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Envia mensagem para o iframe do Gestão CEO no formato correto
+// Navega para seção do Gestão CEO (agora inline — não precisa mais de postMessage)
 function gestaoMsg(sec) {
-  var frame = document.getElementById('frame-gestao');
-  if (frame && frame.contentWindow) {
-    frame.contentWindow.postMessage({ type: 'SHOW_SEC', sec: sec }, '*');
-  }
-  // Atualiza botão ativo no sidebar
-  document.querySelectorAll('#sidebar-nav-mod .nav-item').forEach(function(b){ b.classList.remove('on'); });
-  var btns = document.querySelectorAll('#sidebar-nav-mod .nav-item');
-  var map = { dia:0, semana:1, mes:2, trimestre:3, calendario:4 };
-  if (btns[map[sec]]) btns[map[sec]].classList.add('on');
+  if (typeof gestaoShowSec === 'function') gestaoShowSec(sec);
 }
 
 window.addEventListener('router:change', function(e) {
