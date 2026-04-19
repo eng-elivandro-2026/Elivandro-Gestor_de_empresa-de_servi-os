@@ -18,6 +18,10 @@
   window.rHistorico = function () {
     _atualizarContador();
     _popularPropostas(null);
+    var fs = document.getElementById('hFiltroStatus');
+    if (fs) fs.value = '';
+    var fc = document.getElementById('hFiltroCliente');
+    if (fc) fc.value = '';
     renderLista();
   };
 
