@@ -586,9 +586,13 @@ body.master-admin .scope-btn{display:inline-block!important}
   <!-- ══ SEÇÃO DESPESAS ════════════════════════════════════ -->
   <div class="sec" id="sec-despesas">
 
-    <!-- Formulário Nova Despesa -->
+    <!-- Formulário Nova Despesa (recolhido por padrão) -->
     <div class="card">
-      <div class="ch"><span class="ct">💰 Nova Despesa</span></div>
+      <div class="ch" onclick="toggleNovaDespesa()" style="cursor:pointer;user-select:none">
+        <span class="ct">💰 Nova Despesa</span>
+        <span id="novaDespesaArrow" style="color:var(--text3);font-size:.85rem;transition:transform .2s">▼</span>
+      </div>
+      <div id="novaDespesaForm" style="display:none">
       <div class="g2" style="gap:.85rem">
         <div class="f">
           <label>Colaborador *</label>
@@ -646,6 +650,7 @@ body.master-admin .scope-btn{display:inline-block!important}
       <div style="margin-top:.75rem;display:flex;justify-content:flex-end">
         <button class="btn bs" onclick="salvarDespesa()">💾 Salvar Despesa</button>
       </div>
+      </div><!-- /novaDespesaForm -->
     </div>
 
     <!-- Lista de Despesas -->
@@ -5645,6 +5650,14 @@ async function _popularProjetosDesp() {
       }).join('');
 }
 
+function toggleNovaDespesa() {
+  var form  = document.getElementById('novaDespesaForm');
+  var arrow = document.getElementById('novaDespesaArrow');
+  var open  = form.style.display === 'none';
+  form.style.display  = open ? '' : 'none';
+  arrow.textContent   = open ? '▲' : '▼';
+}
+
 function _popularColabsDespesa() {
   var sel = document.getElementById('dColabId');
   var cur = sel.value;
@@ -5756,6 +5769,9 @@ async function salvarDespesa() {
   document.getElementById('dValor').value = '';
   document.getElementById('dDesc').value  = '';
   toast('Despesa registrada!', 'ok');
+  // Recolher formulário após salvar
+  document.getElementById('novaDespesaForm').style.display = 'none';
+  document.getElementById('novaDespesaArrow').textContent  = '▼';
   carregarDespesas();
 }
 
