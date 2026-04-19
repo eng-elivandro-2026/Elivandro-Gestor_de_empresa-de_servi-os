@@ -175,6 +175,7 @@ body.master-admin .scope-btn{display:inline-block!important}
   </div>
   <div class="nav-rh">
     <button class="nav-rh-btn on" onclick="showSec('colaboradores',this)">👷 Colaboradores</button>
+    <button class="nav-rh-btn" onclick="showSec('integracoes',this)">🏭 Integrações</button>
     <button class="nav-rh-btn" onclick="showSec('apontamentos',this)">⏱️ Apontamentos</button>
     <button class="nav-rh-btn" onclick="showSec('boletins',this)">📋 Boletins</button>
     <button class="nav-rh-btn" onclick="showSec('despesas',this)">💰 Despesas</button>
@@ -273,6 +274,7 @@ body.master-admin .scope-btn{display:inline-block!important}
         <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
         <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
         <button class="tab-btn" id="tabBtnFerias" style="display:none" onclick="showTab('ferias',this)">🌴 Férias</button>
+        <button class="tab-btn" onclick="showTab('integracoes-colab',this)">🏭 Integrações</button>
       </div>
 
       <!-- Tab Dados -->
@@ -337,6 +339,14 @@ body.master-admin .scope-btn{display:inline-block!important}
         <div id="feriasStatus"></div>
         <div class="doc-list" id="feriasList" style="margin-top:.75rem"></div>
       </div>
+
+      <!-- Tab Integrações do colaborador -->
+      <div class="tab-sec" id="tab-integracoes-colab">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalIntegracao(null,true)">+ Nova integração</button>
+        </div>
+        <div class="doc-list" id="integColabList"></div>
+      </div>
     </div>
   </div>
 
@@ -398,6 +408,84 @@ body.master-admin .scope-btn{display:inline-block!important}
       <div class="modal-footer">
         <button class="btn bg bsm" onclick="fecharModalFerias()">Cancelar</button>
         <button class="btn bs bsm" onclick="salvarFerias()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO INTEGRAÇÕES ══════════════════════════════════ -->
+  <div class="sec" id="sec-integracoes">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">🏭 Controle de Integrações em Clientes</span>
+        <div class="br">
+          <input type="text" id="buscaInteg" placeholder="🔍 Buscar cliente ou colaborador..." oninput="filtrarIntegracoes()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:240px">
+          <select id="filtroIntegStatus" onchange="filtrarIntegracoes()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos</option>
+            <option value="ok">Válidas</option>
+            <option value="alerta">Vencendo</option>
+            <option value="vencido">Vencidas</option>
+          </select>
+          <button class="btn bs bsm" onclick="abrirModalIntegracao(null,false)">+ Nova integração</button>
+        </div>
+      </div>
+      <div id="integList"></div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL INTEGRAÇÃO ══════════════════════════════════ -->
+  <div class="modal-overlay" id="modalIntegracao" onclick="if(event.target===this)fecharModalIntegracao()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-tit" id="modalIntegTit">Nova Integração</span>
+        <button class="btn bd bsm" onclick="fecharModalIntegracao()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="g2" style="gap:.85rem">
+          <div class="f" style="grid-column:1/-1">
+            <label>Colaborador</label>
+            <select id="iColab">
+              <option value="">— selecione —</option>
+            </select>
+          </div>
+          <div class="f" style="grid-column:1/-1">
+            <label>Nome do cliente *</label>
+            <input type="text" id="iCliente" placeholder="Ex: Petrobrás S.A.">
+          </div>
+          <div class="f">
+            <label>Cidade</label>
+            <input type="text" id="iCidade" placeholder="Ex: São Paulo – SP">
+          </div>
+          <div class="f">
+            <label>Data da integração *</label>
+            <input type="date" id="iData">
+          </div>
+          <div class="f">
+            <label>Válido até</label>
+            <input type="date" id="iValidade">
+          </div>
+          <div class="f">
+            <label>Contato para renovação</label>
+            <input type="text" id="iContatoNome" placeholder="Nome do contato">
+          </div>
+          <div class="f">
+            <label>Fone do contato</label>
+            <input type="text" id="iContatoFone" placeholder="(11) 99999-9999">
+          </div>
+          <div class="f">
+            <label>E-mail do contato</label>
+            <input type="email" id="iContatoEmail" placeholder="contato@cliente.com.br">
+          </div>
+        </div>
+        <div class="f" style="margin-top:.85rem">
+          <label>Observações</label>
+          <textarea id="iObs" placeholder="Observações sobre a integração..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg bsm" onclick="fecharModalIntegracao()">Cancelar</button>
+        <button class="btn bs bsm" onclick="salvarIntegracao()">Salvar</button>
       </div>
     </div>
   </div>
@@ -1264,6 +1352,7 @@ function showSec(id, btn) {
     btn.classList.add('on');
   }
   if (id === 'colaboradores') { carregarColabs(); carregarPendentes(); }
+  if (id === 'integracoes') carregarIntegracoes();
   if (id === 'apontamentos') {
     verificarColabProprio().then(function(){
       carregarApontamentos();
@@ -1284,6 +1373,7 @@ function showTab(id, btn) {
   if (id === 'saude' && _colabAtivo) carregarSaude(_colabAtivo.id);
   if (id === 'epis' && _colabAtivo) carregarEpis(_colabAtivo.id);
   if (id === 'ferias' && _colabAtivo) carregarFerias(_colabAtivo.id);
+  if (id === 'integracoes-colab' && _colabAtivo) carregarIntegracoesColab(_colabAtivo.id);
 }
 
 // ══ EMPRESA ATIVA ════════════════════════════════════════════
@@ -1606,6 +1696,26 @@ async function gerarAlertas() {
       alertas.push({ cls:'alerta-red', txt: '🔴 Férias VENCIDAS — ' + nome + ' (período ' + fmtData(f.periodo_inicio) + ')' });
     } else if (dias <= 60) {
       alertas.push({ cls:'alerta-yellow', txt: '🟡 Férias vencem em ' + dias + ' dias — ' + nome + ' (período ' + fmtData(f.periodo_inicio) + ')' });
+    }
+  });
+
+  // Integrações vencendo/vencidas
+  var { data: integAlert } = await sb
+    .from('rh_integracoes')
+    .select('valido_ate, cliente_nome, colaboradores(nome)')
+    .eq('empresa_id', empId)
+    .not('valido_ate', 'is', null);
+  (integAlert || []).forEach(function(r) {
+    var dias = diasAteVencer(r.valido_ate);
+    if (dias === null) return;
+    var colab   = r.colaboradores ? r.colaboradores.nome : '?';
+    var cliente = r.cliente_nome || '?';
+    if (dias < 0) {
+      alertas.push({ cls:'alerta-red',    txt: '🔴 Integração VENCIDA — ' + colab + ' @ ' + cliente });
+      emailAlerts.push({ doc: 'Integração', colab: colab + ' @ ' + cliente, dataDoc: null, dataVenc: r.valido_ate, status: 'VENCIDA' });
+    } else if (dias <= 30) {
+      alertas.push({ cls:'alerta-yellow', txt: '🟡 Integração vence em ' + dias + ' dias — ' + colab + ' @ ' + cliente });
+      emailAlerts.push({ doc: 'Integração', colab: colab + ' @ ' + cliente, dataDoc: null, dataVenc: r.valido_ate, status: 'Vence em ' + dias + ' dia(s)' });
     }
   });
 
@@ -3500,6 +3610,227 @@ async function excluirFerias(id) {
   await sb.from('rh_ferias').delete().eq('id', id);
   toast('Excluído.', 'ok');
   carregarFerias(_colabAtivo.id);
+}
+
+// ══ INTEGRAÇÕES ═══════════════════════════════════════════════
+var _integEditId    = null;
+var _integFromColab = false;   // true = aberto da aba do colaborador
+var _integAll       = [];      // cache global de todas as integrações
+
+async function carregarIntegracoes() {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('rh_integracoes')
+    .select('*, colaboradores(id, nome)')
+    .eq('empresa_id', empId)
+    .order('valido_ate', { ascending: true, nullsFirst: false });
+  _integAll = data || [];
+  renderIntegracoes(_integAll);
+}
+
+async function carregarIntegracoesColab(colabId) {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('rh_integracoes')
+    .select('*')
+    .eq('empresa_id', empId)
+    .eq('colaborador_id', colabId)
+    .order('valido_ate', { ascending: true, nullsFirst: false });
+  renderIntegracoesColab(data || []);
+}
+
+function _integStatusInfo(valido_ate) {
+  if (!valido_ate) return { cls: 'bdg-gray', txt: 'Sem validade' };
+  var dias = diasAteVencer(valido_ate);
+  if (dias === null) return { cls: 'bdg-gray', txt: '—' };
+  if (dias < 0)    return { cls: 'bdg-red',    txt: 'Vencida'              };
+  if (dias <= 30)  return { cls: 'bdg-red',    txt: 'Vence em ' + dias + ' dias' };
+  if (dias <= 90)  return { cls: 'bdg-yellow', txt: 'Vence em ' + dias + ' dias' };
+  return { cls: 'bdg-green', txt: 'Válida'  };
+}
+
+function _integStatusKey(valido_ate) {
+  if (!valido_ate) return 'ok';
+  var dias = diasAteVencer(valido_ate);
+  if (dias === null) return 'ok';
+  if (dias < 0)   return 'vencido';
+  if (dias <= 90) return 'alerta';
+  return 'ok';
+}
+
+function renderIntegracoes(lista) {
+  var el = document.getElementById('integList');
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhuma integração cadastrada.</div>';
+    return;
+  }
+  el.innerHTML = '<table class="apt-table" style="margin-top:.5rem">'
+    + '<thead><tr>'
+      + '<th>Colaborador</th><th>Cliente</th><th>Cidade</th>'
+      + '<th>Integração</th><th>Válido até</th><th>Status</th>'
+      + '<th>Contato</th><th>Fone</th><th></th>'
+    + '</tr></thead><tbody>'
+    + lista.map(function(r) {
+        var si  = _integStatusInfo(r.valido_ate);
+        var rid = r.id.replace(/'/g, "\\'");
+        var colab = r.colaboradores ? r.colaboradores.nome : '—';
+        return '<tr>'
+          + '<td class="apt-nome">' + colab + '</td>'
+          + '<td style="font-weight:600;color:var(--text)">' + (r.cliente_nome||'—') + '</td>'
+          + '<td>' + (r.cliente_cidade||'—') + '</td>'
+          + '<td>' + fmtData(r.data_integracao) + '</td>'
+          + '<td>' + fmtData(r.valido_ate) + '</td>'
+          + '<td><span class="bdg ' + si.cls + '">' + si.txt + '</span></td>'
+          + '<td>' + (r.contato_nome||'—') + (r.contato_email ? '<br><span style="font-size:.68rem;color:var(--text3)">' + r.contato_email + '</span>' : '') + '</td>'
+          + '<td>' + (r.contato_fone||'—') + '</td>'
+          + '<td><div style="display:flex;gap:.3rem">'
+            + '<button class="btn bg bsm" onclick="abrirModalIntegracao(\'' + rid + '\',false)">✏️</button>'
+            + '<button class="btn bd bsm" onclick="excluirIntegracao(\'' + rid + '\')">🗑️</button>'
+          + '</div></td>'
+        + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+function renderIntegracoesColab(lista) {
+  var el = document.getElementById('integColabList');
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:.5rem 0">Nenhuma integração cadastrada para este colaborador.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(function(r) {
+    var si  = _integStatusInfo(r.valido_ate);
+    var rid = r.id.replace(/'/g, "\\'");
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(88,166,255,.1)">🏭</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">' + (r.cliente_nome||'—') + (r.cliente_cidade ? ' — ' + r.cliente_cidade : '') + '</div>'
+        + '<div class="doc-meta">'
+          + 'Integração: ' + fmtData(r.data_integracao)
+          + (r.valido_ate ? ' · Válido até: ' + fmtData(r.valido_ate) : '')
+          + (r.contato_nome ? ' · Contato: ' + r.contato_nome : '')
+          + (r.contato_fone ? ' · ' + r.contato_fone : '')
+        + '</div>'
+      + '</div>'
+      + '<span class="bdg ' + si.cls + '">' + si.txt + '</span>'
+      + '<div style="display:flex;gap:.3rem">'
+        + '<button class="btn bg bsm" onclick="abrirModalIntegracao(\'' + rid + '\',true)">✏️</button>'
+        + '<button class="btn bd bsm" onclick="excluirIntegracao(\'' + rid + '\')">🗑️</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+function filtrarIntegracoes() {
+  var q = (document.getElementById('buscaInteg').value || '').toLowerCase();
+  var st = document.getElementById('filtroIntegStatus').value;
+  var lista = _integAll.filter(function(r) {
+    var nome   = ((r.colaboradores && r.colaboradores.nome) || '').toLowerCase();
+    var cliente= (r.cliente_nome || '').toLowerCase();
+    var matchQ = !q || nome.includes(q) || cliente.includes(q);
+    var matchS = !st || _integStatusKey(r.valido_ate) === st;
+    return matchQ && matchS;
+  });
+  renderIntegracoes(lista);
+}
+
+async function _popularColabsInteg() {
+  var el = document.getElementById('iColab');
+  if (!el) return;
+  if (!_colabs || !_colabs.length) await carregarColabs();
+  el.innerHTML = '<option value="">— selecione —</option>'
+    + (_colabs || []).map(function(c) {
+        return '<option value="' + c.id + '">' + c.nome + '</option>';
+      }).join('');
+}
+
+async function abrirModalIntegracao(id, fromColab) {
+  _integEditId    = id || null;
+  _integFromColab = !!fromColab;
+  document.getElementById('modalIntegTit').textContent = id ? 'Editar Integração' : 'Nova Integração';
+  await _popularColabsInteg();
+
+  if (!id) {
+    document.getElementById('iColab').value        = (_integFromColab && _colabAtivo) ? _colabAtivo.id : '';
+    document.getElementById('iCliente').value      = '';
+    document.getElementById('iCidade').value       = '';
+    document.getElementById('iData').value         = '';
+    document.getElementById('iValidade').value     = '';
+    document.getElementById('iContatoNome').value  = '';
+    document.getElementById('iContatoFone').value  = '';
+    document.getElementById('iContatoEmail').value = '';
+    document.getElementById('iObs').value          = '';
+  } else {
+    var src = _integFromColab
+      ? null
+      : _integAll.find(function(x) { return x.id === id; });
+    if (!src) {
+      var empId = await getEmpresaId();
+      var { data } = await sb.from('rh_integracoes').select('*').eq('id', id).single();
+      src = data;
+    }
+    if (!src) return;
+    document.getElementById('iColab').value        = src.colaborador_id || '';
+    document.getElementById('iCliente').value      = src.cliente_nome   || '';
+    document.getElementById('iCidade').value       = src.cliente_cidade || '';
+    document.getElementById('iData').value         = src.data_integracao|| '';
+    document.getElementById('iValidade').value     = src.valido_ate     || '';
+    document.getElementById('iContatoNome').value  = src.contato_nome   || '';
+    document.getElementById('iContatoFone').value  = src.contato_fone   || '';
+    document.getElementById('iContatoEmail').value = src.contato_email  || '';
+    document.getElementById('iObs').value          = src.observacoes    || '';
+  }
+  document.getElementById('modalIntegracao').classList.add('on');
+}
+
+function fecharModalIntegracao() {
+  document.getElementById('modalIntegracao').classList.remove('on');
+}
+
+async function salvarIntegracao() {
+  var cliente = document.getElementById('iCliente').value.trim();
+  var data    = document.getElementById('iData').value;
+  if (!cliente) { toast('Informe o nome do cliente.', 'err'); return; }
+  if (!data)    { toast('Informe a data da integração.', 'err'); return; }
+
+  var empId   = await getEmpresaId();
+  var colabId = document.getElementById('iColab').value || null;
+  var dados   = {
+    empresa_id:      empId,
+    colaborador_id:  colabId,
+    cliente_nome:    cliente,
+    cliente_cidade:  document.getElementById('iCidade').value.trim()       || null,
+    data_integracao: data,
+    valido_ate:      document.getElementById('iValidade').value             || null,
+    contato_nome:    document.getElementById('iContatoNome').value.trim()   || null,
+    contato_fone:    document.getElementById('iContatoFone').value.trim()   || null,
+    contato_email:   document.getElementById('iContatoEmail').value.trim()  || null,
+    observacoes:     document.getElementById('iObs').value.trim()           || null
+  };
+
+  var r = _integEditId
+    ? await sb.from('rh_integracoes').update(dados).eq('id', _integEditId)
+    : await sb.from('rh_integracoes').insert(dados);
+  if (r.error) { toast('Erro: ' + r.error.message, 'err'); return; }
+  toast(_integEditId ? 'Integração atualizada!' : 'Integração cadastrada!', 'ok');
+  fecharModalIntegracao();
+  if (_integFromColab && _colabAtivo) {
+    carregarIntegracoesColab(_colabAtivo.id);
+  } else {
+    carregarIntegracoes();
+  }
+  gerarAlertas();
+}
+
+async function excluirIntegracao(id) {
+  if (!confirm('Excluir esta integração?')) return;
+  await sb.from('rh_integracoes').delete().eq('id', id);
+  toast('Excluída.', 'ok');
+  if (_integFromColab && _colabAtivo) {
+    carregarIntegracoesColab(_colabAtivo.id);
+  } else {
+    carregarIntegracoes();
+  }
 }
 
 // ══ PENDENTES ════════════════════════════════════════════════
