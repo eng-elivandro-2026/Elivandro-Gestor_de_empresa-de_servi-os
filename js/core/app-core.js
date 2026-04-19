@@ -17,12 +17,37 @@ var uid=function(){return Math.random().toString(36).slice(2,10)+Date.now().toSt
 var money=function(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)};
 var fmtBRL=money;
 
-// ── Navegação do Dashboard — rola e expande o painel ──────────
+// ── Navegação do Dashboard — rola e expande o painel (com accordeon) ──
+var _DASH_PANELS = [
+  { card: 'ceoDashCard',       body: 'ceoDashBody',       tog: 'togCeoDash' },
+  { card: 'propostasCard',     body: 'propostasBody',      tog: 'togPropostas' },
+  { card: 'metaPanel',         body: 'metaBody',           tog: 'togMeta' },
+  { card: 'visaoGeralCard',    body: 'visaoGeralBody',     tog: 'togVisaoGeral' },
+  { card: 'analisePanel',      body: 'analiseBody',        tog: 'togAnalise' },
+  { card: 'rankingCard',       body: 'rankingBody',        tog: 'togRanking' },
+  { card: 'catAnaliseCard',    body: 'catAnaliseBody',     tog: 'togCatAnalise' },
+  { card: 'ciclosCard',        body: 'ciclosDashBody',     tog: 'togCiclosDash' },
+  { card: 'execTimelineCard',  body: 'execTlBody',         tog: 'togExecTimeline' },
+  { card: 'fechMesCard',       body: 'fechMesBody',        tog: 'togFechMes' },
+];
+
 window.irParaPainel = function(cardId, togFn) {
   if (typeof go === 'function') go('dashboard', null);
   setTimeout(function() {
     var card = document.getElementById(cardId);
     if (!card) return;
+    // Recolher todos os outros painéis (accordeon)
+    _DASH_PANELS.forEach(function(p) {
+      if (p.card === cardId) return;
+      var b = document.getElementById(p.body);
+      if (!b) return;
+      var hidden = b.style.display === 'none' || b.style.display === '';
+      if (!hidden) {
+        var fn = window[p.tog];
+        if (typeof fn === 'function') fn();
+      }
+    });
+    // Expandir o painel alvo se estiver recolhido
     var togFunc = window[togFn];
     if (typeof togFunc === 'function') {
       var body = card.querySelector('[style*="display: none"], [style*="display:none"]');
