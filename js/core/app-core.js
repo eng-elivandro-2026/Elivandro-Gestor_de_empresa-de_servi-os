@@ -19,8 +19,10 @@ var fmtBRL=money;
 
 // ── Navegação do Dashboard — rola e expande o painel (com accordeon) ──
 var _DASH_PANELS = [
-  { card: 'ceoDashCard',       body: 'ceoDashBody',       tog: 'togCeoDash' },
+  { card: 'motorDecisaoCard',  body: 'motorDecisaoBody',   tog: 'togMotorDecisao' },
+  { card: 'ceoDashCard',       body: 'ceoDashBody',        tog: 'togCeoDash' },
   { card: 'propostasCard',     body: 'propostasBody',      tog: 'togPropostas' },
+  { card: 'porFaseCard',       body: 'porFaseBody',        tog: 'togPorFase' },
   { card: 'metaPanel',         body: 'metaBody',           tog: 'togMeta' },
   { card: 'visaoGeralCard',    body: 'visaoGeralBody',     tog: 'togVisaoGeral' },
   { card: 'analisePanel',      body: 'analiseBody',        tog: 'togAnalise' },
@@ -1326,6 +1328,10 @@ function rDash(rankTarget, sortBy){
   }
 
   if(typeof carregarCeoDash==='function') carregarCeoDash();
+  if(typeof runDecisionEngine==='function'){
+    var _deB=Q('motorDecisaoBody');
+    if(_deB&&_deB.style.display!=='none') runDecisionEngine();
+  }
   rProps();
 }
 function flt(f,el){

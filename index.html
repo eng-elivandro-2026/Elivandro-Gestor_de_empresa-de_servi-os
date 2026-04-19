@@ -630,6 +630,21 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 <!-- DASHBOARD -->
 <div id="dashboard" class="sec on">
 
+  <!-- MOTOR DE DECISÃO -->
+  <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
+    <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
+      <span class="ct">🧠 Motor de Decisão</span>
+      <span id="motorDecisaoChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▼ expandir</span>
+    </div>
+    <div id="motorDecisaoBody" style="display:none;padding-top:.9rem">
+      <div id="deResumoExec" style="margin-bottom:.85rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div id="deAlertas"></div>
+        <div id="deDecisoes"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- CEO EXECUTIVE DASHBOARD -->
   <div class="card" id="ceoDashCard" style="margin-bottom:.8rem;border-color:rgba(240,165,0,.45)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togCeoDash()">
@@ -662,9 +677,14 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <div class="pg" id="pG"><div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta</p></div></div>
     </div>
   </div>
-  <div class="card" style="margin-bottom:.8rem">
-    <div class="ch"><span class="ct">📈 Por Fase</span></div>
-    <div class="ph-g" id="phG"></div>
+  <div class="card" id="porFaseCard" style="margin-bottom:.8rem">
+    <div class="ch" style="cursor:pointer" onclick="togPorFase()">
+      <span class="ct">📈 Por Fase</span>
+      <span id="porFaseChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▼ expandir</span>
+    </div>
+    <div id="porFaseBody" style="display:none">
+      <div class="ph-g" id="phG"></div>
+    </div>
   </div>
 
   <!-- PAINEL DE METAS -->
@@ -2336,6 +2356,59 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 <script>
 var FAS_PIPELINE=['aprovado','andamento','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
 var FAS_NEGOC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
+
+function togMotorDecisao(){
+  var b=Q('motorDecisaoBody'), ch=Q('motorDecisaoChevron');
+  if(!b||!ch) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  ch.textContent=open?'▼ expandir':'▲ recolher';
+  if(!open && typeof runDecisionEngine==='function') runDecisionEngine();
+}
+
+function togPorFase(){
+  var b=Q('porFaseBody'), ch=Q('porFaseChevron');
+  if(!b||!ch) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  ch.textContent=open?'▼ expandir':'▲ recolher';
+}
+
+function renderDecisionEngine(res){
+  var b=Q('motorDecisaoBody');
+  if(!b||b.style.display==='none') return;
+
+  // Resumo executivo
+  var sumEl=Q('deResumoExec');
+  if(sumEl) sumEl.innerHTML='<div style="background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:.65rem .9rem;font-size:.78rem;color:var(--text);line-height:1.65">'+esc(res.executive_summary)+'</div>';
+
+  // Alertas
+  var corImpacto={alto:'var(--red)',medio:'var(--accent)',baixo:'var(--text3)',critico:'#ff5555'};
+  var aEl=Q('deAlertas');
+  if(aEl){
+    aEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🚨 Alertas ('+res.alerts.length+')</div>'
+      +(res.alerts.length?res.alerts.map(function(a){
+        var cor=corImpacto[a.tipo==='critico'?'critico':a.impacto]||'var(--text3)';
+        return '<div style="padding:.4rem .55rem;border-left:3px solid '+cor+';background:var(--bg3);border-radius:0 4px 4px 0;margin-bottom:.35rem">'
+          +'<div style="font-size:.74rem;color:'+cor+';font-weight:600;line-height:1.4">'+(a.icone?a.icone+' ':'')+esc(a.mensagem)+'</div>'
+          +(a.valor>0?'<div style="font-size:.68rem;color:var(--text3);margin-top:.1rem">Valor em risco: '+money(a.valor)+'</div>':'')
+          +'</div>';
+      }).join(''):'<div style="font-size:.74rem;color:var(--green);padding:.3rem 0">✅ Nenhum alerta crítico</div>');
+  }
+
+  // Decisões
+  var dEl=Q('deDecisoes');
+  if(dEl){
+    dEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">✅ Ações ('+res.decisions.length+')</div>'
+      +res.decisions.map(function(d){
+        return '<div style="padding:.4rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;margin-bottom:.35rem">'
+          +'<div style="font-size:.74rem;font-weight:700;color:var(--text)"><span style="color:var(--accent);margin-right:.25rem">'+d.prioridade+'.</span>'+esc(d.titulo)+'</div>'
+          +'<div style="font-size:.69rem;color:var(--text3);margin-top:.15rem;line-height:1.4">'+esc(d.descricao)+'</div>'
+          +(d.impacto_financeiro>0?'<div style="font-size:.69rem;color:var(--green);margin-top:.1rem">Impacto: '+money(d.impacto_financeiro)+'</div>':'')
+          +'</div>';
+      }).join('');
+  }
+}
 
 function togCeoDash(){
   var b=Q('ceoDashBody'), ch=Q('ceoDashChevron');
@@ -4863,6 +4936,7 @@ function rExecTimeline(){
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
 <script src="js/core/app-core.js"></script>
+<script src="js/services/decision-engine/index.js"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js"></script>
 <script src="js/modules/categoria-analise.js?v=2"></script>

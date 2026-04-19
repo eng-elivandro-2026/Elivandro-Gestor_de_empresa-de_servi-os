@@ -17,6 +17,8 @@
       tipo: 'inline',
       nav: [
         { label: 'Dashboard',         icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
+        { label: '↳ Motor de Decisão',icon: '🧠', action: "irParaPainel('motorDecisaoCard','togMotorDecisao')" },
+        { label: '↳ Visão Executiva', icon: '🏢', action: "irParaPainel('ceoDashCard','togCeoDash')" },
         { label: '↳ Metas',           icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
         { label: '↳ Visão Geral',     icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
         { label: '↳ Análise IA',      icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
