@@ -179,6 +179,7 @@ body.master-admin .scope-btn{display:inline-block!important}
     <button class="nav-rh-btn" onclick="showSec('apontamentos',this)">⏱️ Apontamentos</button>
     <button class="nav-rh-btn" onclick="showSec('boletins',this)">📋 Boletins</button>
     <button class="nav-rh-btn" onclick="showSec('despesas',this)">💰 Despesas</button>
+    <button class="nav-rh-btn" onclick="showSec('ferias-geral',this)">🌴 Férias</button>
     <button class="nav-rh-btn" onclick="abrirConfigEmails()" style="margin-left:auto;font-size:.75rem;opacity:.7">🔔 E-mails de Alerta</button>
   </div>
 
@@ -497,6 +498,29 @@ body.master-admin .scope-btn{display:inline-block!important}
         <button class="btn bg bsm" onclick="fecharModalIntegracao()">Cancelar</button>
         <button class="btn bs bsm" onclick="salvarIntegracao()">Salvar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO FÉRIAS GERAL ════════════════════════════════ -->
+  <div class="sec" id="sec-ferias-geral">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">🌴 Análise Geral de Férias — Colaboradores CLT</span>
+        <div class="br">
+          <input type="text" id="buscaFeriasGeral" placeholder="🔍 Buscar colaborador..." oninput="filtrarFeriasGeral()"
+            style="padding:.35rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:220px">
+          <select id="filtroFeriasStatus" onchange="filtrarFeriasGeral()"
+            style="padding:.35rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit">
+            <option value="">Todos os status</option>
+            <option value="vencido">Vencidas</option>
+            <option value="alerta">Vencendo em breve</option>
+            <option value="pendente">Pendentes</option>
+            <option value="agendado">Agendadas</option>
+            <option value="gozado">Gozadas</option>
+          </select>
+        </div>
+      </div>
+      <div id="feriasGeralList"></div>
     </div>
   </div>
 
@@ -1363,6 +1387,7 @@ function showSec(id, btn) {
   }
   if (id === 'colaboradores') { carregarColabs(); carregarPendentes(); }
   if (id === 'integracoes') carregarIntegracoes();
+  if (id === 'ferias-geral') carregarFeriasGeral();
   if (id === 'apontamentos') {
     verificarColabProprio().then(function(){
       carregarApontamentos();
@@ -3621,6 +3646,135 @@ async function excluirFerias(id) {
   await sb.from('rh_ferias').delete().eq('id', id);
   toast('Excluído.', 'ok');
   carregarFerias(_colabAtivo.id);
+}
+
+// ── Análise geral de férias ──────────────────────────────────
+var _feriasGeralCache = [];
+
+async function carregarFeriasGeral() {
+  var empId = await getEmpresaId();
+
+  // Buscar todos CLT vinculados
+  var { data: vinculos } = await sb.from('colaborador_empresas')
+    .select('colaborador_id').eq('empresa_id', empId).eq('ativo', true);
+  var ids = (vinculos || []).map(function(v) { return v.colaborador_id; });
+  if (!ids.length) { _feriasGeralCache = []; renderFeriasGeral(_feriasGeralCache); return; }
+
+  var { data: colabs } = await sb.from('colaboradores')
+    .select('id, nome, admissao, tipo').in('id', ids).eq('tipo', 'clt').eq('ativo', true).order('nome');
+
+  var { data: registros } = await sb.from('rh_ferias')
+    .select('*').eq('empresa_id', empId).in('colaborador_id', ids);
+
+  var hoje = new Date();
+  var regMap = {};
+  (registros || []).forEach(function(r) {
+    if (!regMap[r.colaborador_id]) regMap[r.colaborador_id] = [];
+    regMap[r.colaborador_id].push(r);
+  });
+
+  _feriasGeralCache = (colabs || []).map(function(c) {
+    var admissao = c.admissao;
+    var periodos = [];
+    if (admissao) {
+      var adm  = new Date(admissao + 'T00:00:00');
+      var anos = hoje.getFullYear() - adm.getFullYear();
+      if (hoje.getMonth() < adm.getMonth() ||
+          (hoje.getMonth() === adm.getMonth() && hoje.getDate() < adm.getDate())) anos--;
+      for (var a = 0; a <= anos; a++) {
+        var pIni = new Date(adm); pIni.setFullYear(adm.getFullYear() + a);
+        var pFim = new Date(pIni); pFim.setFullYear(pIni.getFullYear() + 1); pFim.setDate(pFim.getDate() - 1);
+        var venc = new Date(pIni); venc.setFullYear(pIni.getFullYear() + 2); venc.setDate(venc.getDate() - 1);
+        var pIso  = pIni.toISOString().slice(0, 10);
+        var vIso  = venc.toISOString().slice(0, 10);
+        var reg   = (regMap[c.id] || []).find(function(r) { return r.periodo_inicio === pIso; });
+        var diasVenc = Math.floor((venc - hoje) / 864e5);
+        var statusKey;
+        if (reg) {
+          statusKey = reg.status || 'pendente';
+        } else if (diasVenc < 0)  { statusKey = 'vencido'; }
+        else if (diasVenc <= 60)  { statusKey = 'alerta';  }
+        else                      { statusKey = 'pendente'; }
+        periodos.push({ pIso: pIso, pFim: pFim.toISOString().slice(0,10), vIso: vIso, diasVenc: diasVenc, reg: reg, statusKey: statusKey });
+      }
+    }
+    return { colab: c, periodos: periodos };
+  });
+
+  renderFeriasGeral(_feriasGeralCache);
+}
+
+function filtrarFeriasGeral() {
+  var q  = (document.getElementById('buscaFeriasGeral').value || '').toLowerCase();
+  var st = document.getElementById('filtroFeriasStatus').value;
+  var lista = _feriasGeralCache.filter(function(row) {
+    var matchQ  = !q  || row.colab.nome.toLowerCase().includes(q);
+    var matchSt = !st || row.periodos.some(function(p) { return p.statusKey === st; });
+    return matchQ && matchSt;
+  });
+  renderFeriasGeral(lista);
+}
+
+function renderFeriasGeral(lista) {
+  var el = document.getElementById('feriasGeralList');
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum colaborador CLT encontrado.</div>';
+    return;
+  }
+
+  var statusInfo = {
+    vencido:  { cls: 'bdg-red',    txt: 'VENCIDAS'         },
+    alerta:   { cls: 'bdg-yellow', txt: 'Vencendo'         },
+    pendente: { cls: 'bdg-blue',   txt: 'Pendente'         },
+    agendado: { cls: 'bdg-blue',   txt: 'Agendado'         },
+    gozado:   { cls: 'bdg-green',  txt: 'Gozado'           }
+  };
+
+  el.innerHTML = lista.map(function(row) {
+    var c = row.colab;
+    var ini = c.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+    var cid = c.id.replace(/'/g, "\\'");
+
+    var periodosCols = row.periodos.length
+      ? row.periodos.map(function(p) {
+          var si = statusInfo[p.statusKey] || statusInfo.pendente;
+          var diasTxt = p.statusKey === 'vencido'
+            ? Math.abs(p.diasVenc) + ' dias atrás'
+            : p.statusKey === 'alerta'
+              ? 'Vence em ' + p.diasVenc + ' dias'
+              : p.reg && p.reg.ferias_inicio
+                ? fmtData(p.reg.ferias_inicio) + (p.reg.ferias_fim ? ' – ' + fmtData(p.reg.ferias_fim) : '')
+                : 'Venc. ' + fmtData(p.vIso);
+          return '<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .7rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);min-width:0">'
+            + '<div style="min-width:0;flex:1">'
+              + '<div style="font-size:.72rem;font-weight:600;color:var(--text)">Período ' + fmtData(p.pIso) + '</div>'
+              + '<div style="font-size:.67rem;color:var(--text3);margin-top:.1rem">' + diasTxt + '</div>'
+            + '</div>'
+            + '<span class="bdg ' + si.cls + '" style="white-space:nowrap">' + si.txt + '</span>'
+            + '</div>';
+        }).join('')
+      : '<div style="color:var(--text3);font-size:.75rem;padding:.3rem 0">Sem admissão cadastrada</div>';
+
+    return '<div style="display:flex;gap:1rem;align-items:flex-start;padding:.85rem 0;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;gap:.65rem;min-width:200px;flex-shrink:0">'
+        + '<div style="width:38px;height:38px;border-radius:50%;background:rgba(240,165,0,.15);border:2px solid rgba(240,165,0,.3);display:grid;place-items:center;font-size:.78rem;font-weight:700;color:var(--accent);flex-shrink:0">' + ini + '</div>'
+        + '<div>'
+          + '<div style="font-size:.85rem;font-weight:700;color:var(--text)">' + c.nome + '</div>'
+          + '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">Admissão: ' + fmtData(c.admissao) + '</div>'
+        + '</div>'
+      + '</div>'
+      + '<div style="flex:1;display:flex;flex-wrap:wrap;gap:.4rem">' + periodosCols + '</div>'
+      + '<button class="btn ba bsm" style="flex-shrink:0" onclick="abrirDetalheFeriasGeral(\'' + cid + '\')">Ver ficha</button>'
+    + '</div>';
+  }).join('');
+}
+
+async function abrirDetalheFeriasGeral(colabId) {
+  await abrirDetalhe(colabId);
+  // Ir direto para a aba férias
+  var btn = document.getElementById('tabBtnFerias');
+  if (btn) { showTab('ferias', btn); btn.classList.add('on'); }
 }
 
 // ══ INTEGRAÇÕES ═══════════════════════════════════════════════
