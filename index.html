@@ -638,10 +638,12 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     </div>
     <div id="motorDecisaoBody" style="display:none;padding-top:.9rem">
       <div id="deResumoExec" style="margin-bottom:.85rem"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      <div id="deFocoSemana" style="margin-bottom:.85rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem">
         <div id="deAlertas"></div>
         <div id="deDecisoes"></div>
       </div>
+      <div id="deOportunidades"></div>
     </div>
   </div>
 
@@ -2377,36 +2379,82 @@ function togPorFase(){
 function renderDecisionEngine(res){
   var b=Q('motorDecisaoBody');
   if(!b||b.style.display==='none') return;
+  var corPri={Alta:'var(--red)',Média:'var(--accent)',Baixa:'var(--text3)'};
+  var corImp={alto:'var(--red)',medio:'var(--accent)',baixo:'var(--text3)',critico:'#ff5555'};
 
-  // Resumo executivo
+  // ── Resumo executivo
   var sumEl=Q('deResumoExec');
-  if(sumEl) sumEl.innerHTML='<div style="background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:.65rem .9rem;font-size:.78rem;color:var(--text);line-height:1.65">'+esc(res.executive_summary)+'</div>';
+  if(sumEl) sumEl.innerHTML=''
+    +'<div style="background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.7rem 1rem">'
+    +'<div style="font-size:.68rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem">📋 Cenário atual</div>'
+    +'<div style="font-size:.79rem;color:var(--text);line-height:1.7">'+esc(res.executive_summary)+'</div>'
+    +'</div>';
 
-  // Alertas
-  var corImpacto={alto:'var(--red)',medio:'var(--accent)',baixo:'var(--text3)',critico:'#ff5555'};
-  var aEl=Q('deAlertas');
-  if(aEl){
-    aEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🚨 Alertas ('+res.alerts.length+')</div>'
-      +(res.alerts.length?res.alerts.map(function(a){
-        var cor=corImpacto[a.tipo==='critico'?'critico':a.impacto]||'var(--text3)';
-        return '<div style="padding:.4rem .55rem;border-left:3px solid '+cor+';background:var(--bg3);border-radius:0 4px 4px 0;margin-bottom:.35rem">'
-          +'<div style="font-size:.74rem;color:'+cor+';font-weight:600;line-height:1.4">'+(a.icone?a.icone+' ':'')+esc(a.mensagem)+'</div>'
-          +(a.valor>0?'<div style="font-size:.68rem;color:var(--text3);margin-top:.1rem">Valor em risco: '+money(a.valor)+'</div>':'')
+  // ── Foco da semana
+  var focoEl=Q('deFocoSemana');
+  if(focoEl&&res.weekly_focus&&res.weekly_focus.length){
+    focoEl.innerHTML=''
+      +'<div style="background:rgba(240,165,0,.07);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.7rem 1rem">'
+      +'<div style="font-size:.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🎯 Foco da semana</div>'
+      +res.weekly_focus.map(function(f){
+        var cor=corPri[f.prioridade_label]||'var(--text3)';
+        return '<div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.4rem">'
+          +'<span style="font-size:.82rem;font-weight:800;color:'+cor+';flex-shrink:0;width:16px">'+f.posicao+'.</span>'
+          +'<div style="flex:1">'
+          +'<div style="font-size:.77rem;font-weight:700;color:var(--text)">'+esc(f.titulo)+'</div>'
+          +'<div style="font-size:.69rem;color:var(--text3);margin-top:.1rem;line-height:1.4">'+esc(f.motivo)+'</div>'
+          +(f.impacto>0?'<div style="font-size:.69rem;color:var(--green);margin-top:.1rem">Impacto estimado: '+money(f.impacto)+'</div>':'')
+          +'</div>'
+          +'<span style="font-size:.63rem;font-weight:700;color:'+cor+';flex-shrink:0;padding:.12rem .35rem;border:1px solid '+cor+';border-radius:20px">'+f.prioridade_label+'</span>'
           +'</div>';
-      }).join(''):'<div style="font-size:.74rem;color:var(--green);padding:.3rem 0">✅ Nenhum alerta crítico</div>');
+      }).join('')
+      +'</div>';
   }
 
-  // Decisões
+  // ── Alertas
+  var aEl=Q('deAlertas');
+  if(aEl) aEl.innerHTML=''
+    +'<div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.45rem">🚨 Alertas ('+res.alerts.length+')</div>'
+    +(res.alerts.length?res.alerts.map(function(a){
+      var cor=corImp[a.tipo==='critico'?'critico':a.impacto]||'var(--text3)';
+      return '<div style="padding:.38rem .5rem;border-left:3px solid '+cor+';background:var(--bg3);border-radius:0 4px 4px 0;margin-bottom:.32rem">'
+        +'<div style="font-size:.73rem;color:'+cor+';font-weight:600;line-height:1.4">'+(a.icone?a.icone+' ':'')+esc(a.mensagem)+'</div>'
+        +(a.valor>0?'<div style="font-size:.67rem;color:var(--text3);margin-top:.08rem">Em risco: '+money(a.valor)+'</div>':'')
+        +'</div>';
+    }).join(''):'<div style="font-size:.74rem;color:var(--green);padding:.3rem 0">✅ Sem alertas críticos</div>');
+
+  // ── Decisões com score
   var dEl=Q('deDecisoes');
-  if(dEl){
-    dEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">✅ Ações ('+res.decisions.length+')</div>'
-      +res.decisions.map(function(d){
-        return '<div style="padding:.4rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;margin-bottom:.35rem">'
-          +'<div style="font-size:.74rem;font-weight:700;color:var(--text)"><span style="color:var(--accent);margin-right:.25rem">'+d.prioridade+'.</span>'+esc(d.titulo)+'</div>'
-          +'<div style="font-size:.69rem;color:var(--text3);margin-top:.15rem;line-height:1.4">'+esc(d.descricao)+'</div>'
-          +(d.impacto_financeiro>0?'<div style="font-size:.69rem;color:var(--green);margin-top:.1rem">Impacto: '+money(d.impacto_financeiro)+'</div>':'')
+  if(dEl) dEl.innerHTML=''
+    +'<div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.45rem">⚡ Decisões ('+res.decisions.length+')</div>'
+    +res.decisions.map(function(d,i){
+      var cor=corPri[d.prioridade_label]||'var(--text3)';
+      return '<div style="padding:.38rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;margin-bottom:.32rem">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.3rem">'
+        +'<div style="font-size:.73rem;font-weight:700;color:var(--text);flex:1"><span style="color:var(--accent);margin-right:.2rem">'+(i+1)+'.</span>'+esc(d.titulo)+'</div>'
+        +'<span style="font-size:.6rem;font-weight:700;color:'+cor+';flex-shrink:0;padding:.1rem .3rem;border:1px solid '+cor+';border-radius:20px">'+d.prioridade_label+'</span>'
+        +'</div>'
+        +'<div style="font-size:.68rem;color:var(--text3);margin-top:.1rem;line-height:1.4">'+esc(d.descricao)+'</div>'
+        +(d.impacto_financeiro_estimado>0?'<div style="font-size:.67rem;color:var(--green);margin-top:.08rem">Impacto: '+money(d.impacto_financeiro_estimado)+'</div>':'')
+        +'<div style="font-size:.62rem;color:var(--text3);margin-top:.1rem">Score: '+d.score_total+'/15 · '+d.impacto_nota+'+'+d.urgencia_nota+'+'+d.risco_nota+'</div>'
+        +'</div>';
+    }).join('');
+
+  // ── Oportunidades
+  var oEl=Q('deOportunidades');
+  if(oEl&&res.opportunities&&res.opportunities.length){
+    oEl.innerHTML=''
+      +'<div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.45rem">💡 Oportunidades</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.5rem">'
+      +res.opportunities.map(function(o){
+        return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem">'
+          +'<div style="font-size:.73rem;font-weight:700;color:var(--text)">'+(o.icone?o.icone+' ':'')+esc(o.titulo)+'</div>'
+          +'<div style="font-size:.69rem;color:var(--text2);margin-top:.1rem">'+esc(o.descricao)+'</div>'
+          +(o.valor>0?'<div style="font-size:.72rem;font-weight:700;color:var(--accent);margin-top:.2rem">'+money(o.valor)+'</div>':'')
+          +'<div style="font-size:.65rem;color:var(--text3);margin-top:.08rem">'+esc(o.detalhe)+'</div>'
           +'</div>';
-      }).join('');
+      }).join('')
+      +'</div>';
   }
 }
 
