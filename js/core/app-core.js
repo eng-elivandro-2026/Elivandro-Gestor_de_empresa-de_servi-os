@@ -1300,6 +1300,7 @@ function rDash(rankTarget, sortBy){
       +'<div class="metric-box"><div class="metric-label">Previsão de fechamento do ano</div><div class="metric-val" style="color:var(--green)">'+projFech+'</div><div class="metric-sub">Ritmo atual anualizado</div></div>';
   }
 
+  if(typeof carregarCeoDash==='function') carregarCeoDash();
   rProps();
 }
 function flt(f,el){
