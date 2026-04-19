@@ -931,6 +931,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
         <div class="f" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
+            <input type="checkbox" id="docCompartilhar" style="width:auto;accent-color:var(--accent)">
+            🔗 Compartilhar entre todas as empresas do colaborador
+          </label>
+          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
+        </div>
+        <div class="f" style="grid-column:1/-1">
           <label>Arquivo (PDF, imagem, Word)</label>
           <input type="file" id="docArquivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
             style="padding:.4rem .6rem;font-size:.8rem;cursor:pointer">
@@ -994,6 +1001,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           </select>
         </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="saudeObs" style="min-height:56px"></textarea></div>
+        <div class="f" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
+            <input type="checkbox" id="saudeCompartilhar" style="width:auto;accent-color:var(--accent)">
+            🔗 Compartilhar entre todas as empresas do colaborador
+          </label>
+          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1044,6 +1058,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f" style="grid-column:1/-1">
           <label>Observações</label>
           <textarea id="epiObs" style="min-height:56px" placeholder="O colaborador declara ter recebido o EPI acima e se compromete a utilizá-lo..."></textarea>
+        </div>
+        <div class="f" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
+            <input type="checkbox" id="epiCompartilhar" style="width:auto;accent-color:var(--accent)">
+            🔗 Compartilhar entre todas as empresas do colaborador
+          </label>
+          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
         </div>
       </div>
     </div>
@@ -1620,8 +1641,11 @@ function campo(label, valor) {
 
 // ══ DOCUMENTOS ═══════════════════════════════════════════════
 async function carregarDocs(colabId) {
+  var empId = await getEmpresaId();
   var { data } = await sb.from('rh_documentos')
-    .select('*').eq('colaborador_id', colabId).order('created_at', {ascending:false});
+    .select('*').eq('colaborador_id', colabId)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId)
+    .order('created_at', {ascending:false});
   _docsCache = data || [];
   var el = document.getElementById('docList');
   if (!_docsCache.length) {
@@ -1633,11 +1657,12 @@ async function carregarDocs(colabId) {
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var obsClean = getObsClean(d.observacoes);
     var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
+    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📄</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.tipo) + '</div>'
-        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
+        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + compartBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
       + (d.arquivo_url ? '<a href="' + d.arquivo_url + '" target="_blank" class="btn bg bsm" style="margin-right:.25rem;text-decoration:none">📎</a>' : '')
@@ -1653,8 +1678,11 @@ function editarDocById(id) {
 }
 
 async function carregarSaude(colabId) {
+  var empId = await getEmpresaId();
   var { data } = await sb.from('rh_saude')
-    .select('*').eq('colaborador_id', colabId).order('data_vencimento', {ascending:true});
+    .select('*').eq('colaborador_id', colabId)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId)
+    .order('data_vencimento', {ascending:true});
   _saudeCacheList = data || [];
   var el = document.getElementById('saudeList');
   if (!_saudeCacheList.length) {
@@ -1668,12 +1696,13 @@ async function carregarSaude(colabId) {
     var icon = d.tipo && d.tipo.startsWith('aso') ? '🏥' : '📜';
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
+    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
     var obsClean = getObsClean(d.observacoes);
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(63,185,80,.1);color:var(--green)">' + icon + '</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (labels[d.tipo]||d.tipo) + (d.instituicao ? ' — ' + d.instituicao : '') + '</div>'
-        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + avisoBadge + '</div>'
+        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + avisoBadge + compartBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
       + '<button class="btn ba bsm" onclick="editarSaudeById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
@@ -1683,8 +1712,11 @@ async function carregarSaude(colabId) {
 }
 
 async function carregarEpis(colabId) {
+  var empId = await getEmpresaId();
   var { data } = await sb.from('rh_epis')
-    .select('*').eq('colaborador_id', colabId).order('data_entrega', {ascending:false});
+    .select('*').eq('colaborador_id', colabId)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId)
+    .order('data_entrega', {ascending:false});
   _epiCacheList = data || [];
   var el = document.getElementById('epiList');
   if (!_epiCacheList.length) {
@@ -1695,13 +1727,14 @@ async function carregarEpis(colabId) {
     var sv = statusVencimento(d.data_substituicao);
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var avisoBadge = aviso > 0 && d.data_substituicao ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
+    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
     var obsClean = getObsClean(d.observacoes);
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(240,165,0,.1);color:var(--accent)">🦺</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.item) + '</div>'
         + '<div class="doc-meta">CA: ' + (d.ca||'—') + ' · Entrega: ' + fmtData(d.data_entrega)
-          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
+          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + avisoBadge + compartBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
       + '<button class="btn ba bsm" onclick="editarEpiById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
@@ -3295,6 +3328,7 @@ function _resetModalDoc() {
   document.getElementById('docArquivo').value = '';
   document.getElementById('docArquivoAtual').style.display = 'none';
   document.getElementById('docUploadProgress').style.display = 'none';
+  document.getElementById('docCompartilhar').checked = false;
 }
 
 function abrirModalDoc() {
@@ -3312,6 +3346,7 @@ function editarDoc(d) {
   document.getElementById('docVenc').value      = d.data_vencimento||'';
   document.getElementById('docAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes));
   document.getElementById('docObs').value       = getObsClean(d.observacoes);
+  document.getElementById('docCompartilhar').checked = !d.empresa_id;
   if (d.arquivo_url) {
     var el = document.getElementById('docArquivoAtual');
     el.style.display = '';
@@ -3339,12 +3374,14 @@ async function salvarDoc() {
   var btnSalvar = document.querySelector('#modalDoc .btn.bs');
   if (btnSalvar) btnSalvar.disabled = true;
 
+  var empId = await getEmpresaId();
   var aviso  = document.getElementById('docAvisoDias').value;
   var obsRaw = document.getElementById('docObs').value.trim();
   var obsFinal = (aviso && aviso !== '0') ? ('__aviso:' + aviso + '__' + (obsRaw ? '\n' + obsRaw : '')) : obsRaw;
 
   var row = {
     colaborador_id: _colabAtivo.id,
+    empresa_id:     document.getElementById('docCompartilhar').checked ? null : empId,
     tipo:           document.getElementById('docTipo').value,
     descricao:      document.getElementById('docDesc').value.trim(),
     data_documento: document.getElementById('docData').value  || null,
@@ -3410,6 +3447,7 @@ function abrirModalSaude(tipo) {
   ['saudeTipo','saudeInst','saudeEmissao','saudeVenc','saudeCH','saudeObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('saudeResult').value='';
   document.getElementById('saudeAvisoDias').value='30';
+  document.getElementById('saudeCompartilhar').checked = false;
   if (tipo==='aso') document.getElementById('saudeTipo').value='aso_per';
   document.getElementById('modalSaudeTit').textContent='Adicionar ASO / Certificado NR';
   document.getElementById('btnSalvarSaude').textContent='💾 Salvar';
@@ -3427,6 +3465,7 @@ function editarSaudeById(id) {
   document.getElementById('saudeResult').value = d.resultado||'';
   document.getElementById('saudeAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
   document.getElementById('saudeObs').value = getObsClean(d.observacoes);
+  document.getElementById('saudeCompartilhar').checked = !d.empresa_id;
   document.getElementById('modalSaudeTit').textContent='Editar Registro';
   document.getElementById('btnSalvarSaude').textContent='💾 Atualizar';
   document.getElementById('modalSaude').classList.add('on');
@@ -3434,11 +3473,13 @@ function editarSaudeById(id) {
 function fecharModalSaude() { document.getElementById('modalSaude').classList.remove('on'); }
 async function salvarSaude() {
   if (!_colabAtivo) return;
+  var empId = await getEmpresaId();
   var aviso = parseInt(document.getElementById('saudeAvisoDias').value)||0;
   var obsRaw = document.getElementById('saudeObs').value.trim();
   var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
+    empresa_id:     document.getElementById('saudeCompartilhar').checked ? null : empId,
     tipo: document.getElementById('saudeTipo').value,
     instituicao: document.getElementById('saudeInst').value.trim(),
     data_emissao: document.getElementById('saudeEmissao').value||null,
@@ -3475,6 +3516,7 @@ function abrirModalEpi() {
   ['epiItem','epiDesc','epiCA','epiEntrega','epiSubs','epiObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('epiQtd').value='1';
   document.getElementById('epiAvisoDias').value='30';
+  document.getElementById('epiCompartilhar').checked = false;
   document.getElementById('btnSalvarEpi').textContent='💾 Registrar Entrega';
   document.getElementById('modalEpi').classList.add('on');
 }
@@ -3490,17 +3532,20 @@ function editarEpiById(id) {
   document.getElementById('epiQtd').value = d.quantidade||1;
   document.getElementById('epiAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
   document.getElementById('epiObs').value = getObsClean(d.observacoes);
+  document.getElementById('epiCompartilhar').checked = !d.empresa_id;
   document.getElementById('btnSalvarEpi').textContent='💾 Atualizar';
   document.getElementById('modalEpi').classList.add('on');
 }
 function fecharModalEpi() { document.getElementById('modalEpi').classList.remove('on'); }
 async function salvarEpi() {
   if (!_colabAtivo) return;
+  var empId = await getEmpresaId();
   var aviso = parseInt(document.getElementById('epiAvisoDias').value)||0;
   var obsRaw = document.getElementById('epiObs').value.trim();
   var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
+    empresa_id:     document.getElementById('epiCompartilhar').checked ? null : empId,
     item: document.getElementById('epiItem').value,
     descricao: document.getElementById('epiDesc').value.trim(),
     ca: document.getElementById('epiCA').value.trim(),
