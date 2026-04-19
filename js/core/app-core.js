@@ -913,12 +913,12 @@ function rAnaliseInt(){
 // NAV
 function go(id,btn){
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on')});
-  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on')});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('on')});
   if(id!=='nova') hideActionBar();
   else if(!editId) hideActionBar();
   Q(id).classList.add('on');
   if(btn){btn.classList.add('on')}
-  else{var map={dashboard:0,nova:1,templates:2,escopos:3,analise:4,registro:5,changelog:6};var bs=document.querySelectorAll('.nb');if(map[id]!==undefined)bs[map[id]].classList.add('on')}
+  else{var map={dashboard:0,nova:1,templates:2,escopos:3,analise:4,registro:5,changelog:6};var bs=document.querySelectorAll('.nav-item');if(map[id]!==undefined&&bs[map[id]])bs[map[id]].classList.add('on')}
 }
 
 // WIZARD
