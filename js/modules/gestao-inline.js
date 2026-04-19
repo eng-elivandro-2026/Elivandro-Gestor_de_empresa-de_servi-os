@@ -2,8 +2,6 @@
 // Migrado de gestao.html — usa window.sbClient compartilhado
 // Funções principais: gestaoShowSec, loadNuvem, abrirDia
 (function() {
-<script>
-
 var _sb = window.sbClient; // usa cliente global
 // Debounce para não salvar a cada tecla
 
@@ -78,10 +76,6 @@ async function sbProtegerGestao() {
   if (!data?.user) { // redirect handled by main portal }
 
 }
-
-
-<script>
-
 // ===== DADOS =====
 
 let dados = {
@@ -3289,10 +3283,6 @@ var _tb=document.getElementById('theme-btn'); if(_tb) _tb.textContent=dados.them
 // Atualizar janelas a cada minuto
 
 setInterval(()=>{renderJanelas();atualizarDataHoje();},60000);
-
-
-<script>
-
 function _gestaoShowSecAlias(id) {
 
   // Chamar função original

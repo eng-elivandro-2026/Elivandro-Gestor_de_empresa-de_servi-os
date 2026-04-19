@@ -1,8 +1,6 @@
 // ══ Módulo RH / Equipes (inline) ══
 // Migrado de pages/rh.html — usa window.sbClient compartilhado
 (function() {
-<script>
-
 // ── Hora de Brasília (UTC-3) ──────────────────────────────────
 function agoraBrasilia() {
   return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Sao_Paulo'}));
