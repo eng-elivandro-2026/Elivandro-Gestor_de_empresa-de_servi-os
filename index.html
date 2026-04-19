@@ -629,6 +629,44 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="sec on">
+
+  <!-- CEO EXECUTIVE DASHBOARD -->
+  <div class="card" id="ceoDashCard" style="margin-bottom:.8rem;border-color:rgba(240,165,0,.45)">
+    <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togCeoDash()">
+      <span class="ct">🏢 Visão Executiva</span>
+      <span id="ceoDashChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▲</span>
+    </div>
+    <div id="ceoDashBody" style="padding-top:.9rem">
+      <div class="kpi-g" id="ceoKpis" style="margin-bottom:.9rem"></div>
+      <div id="ceoPhaseBars" style="margin-bottom:1rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem" id="ceoBottom">
+        <div id="ceoTopCli"></div>
+        <div id="ceoMes"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPOSTAS -->
+  <div class="card" id="propostasCard" style="margin-bottom:.8rem">
+    <div class="ch" style="cursor:pointer" onclick="togPropostas()">
+      <span class="ct">⭐ Propostas</span>
+      <div class="br" onclick="event.stopPropagation()">
+        <button class="btn bp bsm" onclick="newProposal()">+ Nova</button>
+        <button class="btn bg bsm" onclick="document.getElementById('iFile').click()">📥 Importar</button>
+      </div>
+      <span id="propostasChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
+    </div>
+    <div id="propostasBody" style="display:none">
+      <div class="sb"><input type="text" id="srch" placeholder="🔍 Buscar..." oninput="rProps()"></div>
+      <div class="ft" id="phaseFilters"></div>
+      <div class="pg" id="pG"><div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta</p></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:.8rem">
+    <div class="ch"><span class="ct">📈 Por Fase</span></div>
+    <div class="ph-g" id="phG"></div>
+  </div>
+
   <!-- PAINEL DE METAS -->
   <div id="metaPanel" class="card" style="margin-bottom:.8rem">
     <div class="ch" style="cursor:pointer" onclick="togMeta()">
@@ -2312,6 +2350,141 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 <script>
+var FAS_PIPELINE=['aprovado','andamento','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+var FAS_NEGOC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
+
+function togCeoDash(){
+  var b=Q('ceoDashBody'), ch=Q('ceoDashChevron');
+  if(!b||!ch) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'';
+  ch.textContent=open?'▼ expandir':'▲';
+}
+
+function carregarCeoDash(){
+  var b=Q('ceoDashBody');
+  if(!b||b.style.display==='none') return;
+  var hoje=new Date();
+  var mesAtual=hoje.getMonth(), anoAtual=hoje.getFullYear();
+  var nomeMeses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  var pipeline=props.filter(function(p){return FAS_PIPELINE.indexOf(p.fas)>=0;});
+  var valPipeline=pipeline.reduce(function(s,p){return s+n2(p.val);},0);
+  var cntPipeline=pipeline.length;
+
+  var negoc=props.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
+  var valNegoc=negoc.reduce(function(s,p){return s+n2(p.val);},0);
+  var cntNegoc=negoc.length;
+
+  var atrasadas=props.filter(function(p){return p.fas==='atrasado';});
+  var valAtr=atrasadas.reduce(function(s,p){return s+n2(p.val);},0);
+
+  var fechMes=props.filter(function(p){
+    if(FAS_FECHADO.indexOf(p.fas)<0) return false;
+    var d=p.dtFech?new Date(p.dtFech+'T12:00:00'):(p.dat2?new Date(p.dat2+'T12:00:00'):null);
+    return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
+  });
+  var valFechMes=fechMes.reduce(function(s,p){return s+n2(p.val);},0);
+
+  var novasMes=props.filter(function(p){
+    if(p.fas==='em_elaboracao') return false;
+    var d=p.dat2?new Date(p.dat2+'T12:00:00'):null;
+    return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
+  });
+
+  var _pAno=getPropsAno(); var _fAno=getFechAno();
+  var taxaGanho=_pAno.length>0?((_fAno.length/_pAno.length)*100).toFixed(1):'0.0';
+  var ticketMedio=cntPipeline>0?valPipeline/cntPipeline:0;
+  var recAnoVal=typeof getRecAno==='function'?getRecAno():0;
+
+  // KPIs
+  var kpiEl=Q('ceoKpis');
+  if(kpiEl){
+    var tGanho=parseFloat(taxaGanho);
+    var corTaxa=tGanho>=50?'var(--green)':(tGanho>=25?'var(--accent)':'var(--red)');
+    kpiEl.innerHTML=[
+      {v:money(valPipeline),l:'💰 Pipeline Ativo',c:'var(--accent)'},
+      {v:cntPipeline,l:'🔧 Em Execução',c:'var(--blue)'},
+      {v:cntNegoc+' prop. / '+money(valNegoc),l:'⏳ Em Negociação',c:'var(--purple)'},
+      {v:fechMes.length+' / '+money(valFechMes),l:'✅ Fechado no Mês',c:'var(--green)'},
+      {v:taxaGanho+'%',l:'📈 Taxa de Ganho',c:corTaxa},
+      {v:money(ticketMedio),l:'🎯 Ticket Médio Exec.',c:'var(--cyan)'}
+    ].map(function(k){
+      return '<div class="kpi"><span class="kpi-v" style="color:'+k.c+'">'+k.v+'</span><div class="kpi-l">'+k.l+'</div></div>';
+    }).join('');
+  }
+
+  // Phase bars
+  var barsEl=Q('ceoPhaseBars');
+  if(barsEl){
+    var phData=FAS_PIPELINE.map(function(f){
+      var ps=props.filter(function(p){return p.fas===f;});
+      return {f:f,n:(FASE[f]||{n:f}).n,i:(FASE[f]||{i:''}).i,cnt:ps.length,val:ps.reduce(function(s,p){return s+n2(p.val);},0)};
+    }).filter(function(d){return d.cnt>0;});
+    var maxV=phData.reduce(function(mx,d){return Math.max(mx,d.val);},1);
+    barsEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Distribuição por Fase</div>'
+      +phData.map(function(d){
+        var pct=Math.max(2,Math.round((d.val/maxV)*100));
+        var col=d.f==='atrasado'?'var(--red)':(d.f.indexOf('em_pausa')===0?'var(--accent)':'var(--green)');
+        return '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.38rem">'
+          +'<div style="width:140px;font-size:.71rem;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+d.n+'">'+(d.i?d.i+' ':'')+d.n+'</div>'
+          +'<div style="flex:1;background:var(--bg3);border-radius:4px;height:13px;overflow:hidden">'
+          +'<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:4px"></div></div>'
+          +'<div style="width:28px;text-align:right;font-size:.71rem;font-weight:700;color:var(--text);flex-shrink:0">'+d.cnt+'</div>'
+          +'<div style="width:90px;text-align:right;font-size:.71rem;color:var(--text3);flex-shrink:0">'+money(d.val)+'</div>'
+          +'</div>';
+      }).join('');
+  }
+
+  // Top Clientes por pipeline
+  var cliEl=Q('ceoTopCli');
+  if(cliEl){
+    var porCli={};
+    pipeline.forEach(function(p){
+      var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
+      if(!porCli[cli]) porCli[cli]={n:cli,cnt:0,val:0};
+      porCli[cli].cnt++;
+      porCli[cli].val+=n2(p.val);
+    });
+    var top5=Object.keys(porCli).map(function(k){return porCli[k];}).sort(function(a,b){return b.val-a.val;}).slice(0,5);
+    cliEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🏆 Top Clientes em Execução</div>'
+      +(top5.length?top5.map(function(c,i){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.76rem">'
+          +'<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%" title="'+esc(c.n)+'">'+(i+1)+'. '+esc(c.n)+'</span>'
+          +'<span style="color:var(--accent);font-weight:700;flex-shrink:0">'+money(c.val)+'</span>'
+          +'</div>';
+      }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Sem dados no pipeline.</p>');
+  }
+
+  // Resumo do mês
+  var mesEl=Q('ceoMes');
+  if(mesEl){
+    var nomeMes=nomeMeses[mesAtual];
+    var rows=[
+      ['Novas enviadas',novasMes.length,'var(--blue)'],
+      ['Fechamentos no mês',fechMes.length,'var(--green)'],
+      ['Valor fechado',money(valFechMes),'var(--accent)'],
+      ['Receita no ano',money(recAnoVal),'var(--purple)'],
+      ['Em negociação',cntNegoc+' prop.','var(--text)'],
+      ['⚠️ Atrasadas',atrasadas.length,atrasadas.length>0?'var(--red)':'var(--green)']
+    ];
+    mesEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📅 '+nomeMes+' / '+anoAtual+'</div>'
+      +rows.map(function(r){
+        return '<div style="display:flex;justify-content:space-between;font-size:.76rem;padding:.22rem 0;border-bottom:1px solid var(--border)">'
+          +'<span style="color:var(--text3)">'+r[0]+'</span>'
+          +'<span style="color:'+r[2]+';font-weight:700">'+r[1]+'</span>'
+          +'</div>';
+      }).join('');
+  }
+}
+
+function togPropostas(){
+  var b=Q('propostasBody'), ch=Q('propostasChevron');
+  if(!b||!ch) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  ch.textContent=open?'▼ expandir':'▲';
+}
 function togVisaoGeral(){
   var b=Q('visaoGeralBody'), ch=Q('visaoGeralChevron');
   if(!b||!ch) return;
