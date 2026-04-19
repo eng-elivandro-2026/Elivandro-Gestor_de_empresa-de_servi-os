@@ -4149,7 +4149,7 @@ async function preencherSelectPropostas() {
   var { data } = await sb.from('propostas')
     .select('app_id, numero_proposta, titulo, fase')
     .eq('empresa_id', empId)
-    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado'])
+    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado','taf','sat'])
     .order('numero_proposta', { ascending: false });
   _propostas = data || [];
   var sel = document.getElementById('aptProposta');
@@ -5633,7 +5633,7 @@ async function _popularProjetosDesp() {
   var { data } = await sb.from('propostas')
     .select('app_id, numero_proposta, titulo, cliente, fase')
     .eq('empresa_id', empId)
-    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado'])
+    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado','taf','sat'])
     .order('numero_proposta', { ascending: false });
   _propostas = data || [];
   var sel = document.getElementById('dProjetoId');
