@@ -507,18 +507,11 @@ function init(){
 // ===== NAV =====
 
 function gestaoShowSec(id){
-
+  // Troca seção interna sem tocar no sidebar do portal
   document.querySelectorAll('.gsec').forEach(s=>s.classList.remove('on'));
-
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
-
-  document.getElementById('sec-'+id).classList.add('on');
-
-  const idx={dia:0,semana:1,mes:2,trimestre:3,calendario:4,versoes:5}[id];
-
-  if(idx!==undefined)document.querySelectorAll('.nb')[idx].classList.add('on');
-
-  if(id==='calendario')renderCalendario();
+  var el = document.getElementById('sec-'+id);
+  if(el) el.classList.add('on');
+  if(id==='calendario' && typeof renderCalendario==='function') renderCalendario();
 
   if(id==='versoes')renderVersoes();
 
