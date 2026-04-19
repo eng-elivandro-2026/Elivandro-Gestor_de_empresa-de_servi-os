@@ -17,12 +17,39 @@ var uid=function(){return Math.random().toString(36).slice(2,10)+Date.now().toSt
 var money=function(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)};
 var fmtBRL=money;
 
-// ── Navegação do Dashboard — rola e expande o painel ──────────
+// ── Navegação do Dashboard — rola e expande o painel (com accordeon) ──
+var _DASH_PANELS = [
+  { card: 'motorDecisaoCard',  body: 'motorDecisaoBody',   tog: 'togMotorDecisao' },
+  { card: 'ceoDashCard',       body: 'ceoDashBody',        tog: 'togCeoDash' },
+  { card: 'propostasCard',     body: 'propostasBody',      tog: 'togPropostas' },
+  { card: 'porFaseCard',       body: 'porFaseBody',        tog: 'togPorFase' },
+  { card: 'metaPanel',         body: 'metaBody',           tog: 'togMeta' },
+  { card: 'visaoGeralCard',    body: 'visaoGeralBody',     tog: 'togVisaoGeral' },
+  { card: 'analisePanel',      body: 'analiseBody',        tog: 'togAnalise' },
+  { card: 'rankingCard',       body: 'rankingBody',        tog: 'togRanking' },
+  { card: 'catAnaliseCard',    body: 'catAnaliseBody',     tog: 'togCatAnalise' },
+  { card: 'ciclosCard',        body: 'ciclosDashBody',     tog: 'togCiclosDash' },
+  { card: 'execTimelineCard',  body: 'execTlBody',         tog: 'togExecTimeline' },
+  { card: 'fechMesCard',       body: 'fechMesBody',        tog: 'togFechMes' },
+];
+
 window.irParaPainel = function(cardId, togFn) {
   if (typeof go === 'function') go('dashboard', null);
   setTimeout(function() {
     var card = document.getElementById(cardId);
     if (!card) return;
+    // Recolher todos os outros painéis (accordeon)
+    _DASH_PANELS.forEach(function(p) {
+      if (p.card === cardId) return;
+      var b = document.getElementById(p.body);
+      if (!b) return;
+      var hidden = b.style.display === 'none' || b.style.display === '';
+      if (!hidden) {
+        var fn = window[p.tog];
+        if (typeof fn === 'function') fn();
+      }
+    });
+    // Expandir o painel alvo se estiver recolhido
     var togFunc = window[togFn];
     if (typeof togFunc === 'function') {
       var body = card.querySelector('[style*="display: none"], [style*="display:none"]');
@@ -1301,6 +1328,10 @@ function rDash(rankTarget, sortBy){
   }
 
   if(typeof carregarCeoDash==='function') carregarCeoDash();
+  if(typeof runDecisionEngine==='function'){
+    var _deB=Q('motorDecisaoBody');
+    if(_deB&&_deB.style.display!=='none') runDecisionEngine();
+  }
   rProps();
 }
 function flt(f,el){
@@ -10487,28 +10518,29 @@ function fmMostrarDetalhe(mes, ano){
   if(!lista.length){ el.style.display='none'; return; }
 
   var rows=lista.map(function(p){
-    var trStyle='border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s';
-    return '<tr style="'+trStyle+'" onclick="fmAbrirProposta(\''+p.id+'\')" onmouseover="this.style.background=\'rgba(88,166,255,.08)\'" onmouseout="this.style.background=\'\'">'
-      +'<td style="padding:.35rem .5rem;font-size:.78rem;font-weight:700;color:var(--accent)">'+esc(p.num||'')+'</td>'
-      +'<td style="padding:.35rem .5rem;font-size:.78rem">'+esc(p.cli||'')+(p.csvc||p.cid?' <span style="font-size:.7rem;color:var(--text3)">('+esc(p.csvc||p.cid)+')</span>':'')+'</td>'
-      +'<td style="padding:.35rem .5rem;font-size:.75rem;color:var(--text2)">'+esc(p.tit||'')+'</td>'
-      +'<td style="padding:.35rem .5rem;font-size:.78rem;text-align:right;font-weight:700;color:#3fb950">'+money(n2(p.val))+'</td>'
-      +'<td style="padding:.35rem .5rem;font-size:.75rem;color:var(--text3);text-align:center">'
-        +'<span style="font-size:.65rem;color:#3fb950">↗ Abrir</span>'
-      +'</td>'
-      +'</tr>';
+    var cli=(p.cli||'').trim();
+    var cliAbrev=cli.length>22?cli.slice(0,20)+'…':cli;
+    var cid=(p.csvc||p.cid||'').trim();
+    var tit=(p.tit||'').trim();
+    var titAbrev=tit.length>30?tit.slice(0,28)+'…':tit;
+    return '<div onclick="fmAbrirProposta(\''+p.id+'\')" '
+      +'style="display:flex;justify-content:space-between;align-items:flex-start;'
+      +'padding:.45rem .4rem;border-bottom:1px solid var(--border);cursor:pointer;gap:.5rem;'
+      +'border-radius:4px;transition:background .12s" '
+      +'onmouseover="this.style.background=\'rgba(88,166,255,.08)\'" '
+      +'onmouseout="this.style.background=\'\'">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:.78rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(cli)+(cid?' ('+esc(cid)+')':'')+'">'+esc(cliAbrev)+(cid?' <span style="color:var(--text3);font-weight:400;font-size:.7rem">('+esc(cid)+')</span>':'')+'</div>'
+      +'<div style="font-size:.7rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem" title="'+esc(tit)+'">'+(p.num?'<span style="color:var(--accent)">#'+esc(p.num)+'</span> — ':'')+esc(titAbrev)+'</div>'
+      +'</div>'
+      +'<div style="font-size:.8rem;font-weight:700;color:#3fb950;flex-shrink:0;text-align:right;padding-top:.05rem">'+money(n2(p.val))+'</div>'
+      +'</div>';
   }).join('');
 
   el.style.display='block';
   el.innerHTML='<div style="background:var(--bg3);border-radius:8px;padding:.6rem .8rem;border:1px solid var(--border)">'
-    +'<div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem">📋 '+MESES[mes]+' — '+lista.length+' proposta(s)</div>'
-    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
-    +'<th style="text-align:left;font-size:.68rem;color:var(--text3);padding:.2rem .5rem;border-bottom:2px solid var(--border)">Nº</th>'
-    +'<th style="text-align:left;font-size:.68rem;color:var(--text3);padding:.2rem .5rem;border-bottom:2px solid var(--border)">Cliente</th>'
-    +'<th style="text-align:left;font-size:.68rem;color:var(--text3);padding:.2rem .5rem;border-bottom:2px solid var(--border)">Título</th>'
-    +'<th style="text-align:right;font-size:.68rem;color:var(--text3);padding:.2rem .5rem;border-bottom:2px solid var(--border)">Valor</th>'
-    +'<th style="text-align:left;font-size:.68rem;color:var(--text3);padding:.2rem .5rem;border-bottom:2px solid var(--border)">Cidade</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    +'<div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.45rem">📋 '+MESES[mes]+' — '+lista.length+' proposta(s)</div>'
+    +rows+'</div>';
 }
 
 

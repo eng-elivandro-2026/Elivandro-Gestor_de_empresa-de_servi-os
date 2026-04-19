@@ -16,46 +16,54 @@
       icon: '📊',
       tipo: 'inline',
       nav: [
-        { label: 'Dashboard',         icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
-        { label: '↳ Metas',           icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
-        { label: '↳ Visão Geral',     icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
-        { label: '↳ Análise IA',      icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
-        { label: '↳ Ranking',         icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
-        { label: '↳ Por Categoria',   icon: '📂', action: "irParaPainel('catAnaliseCard','togCatAnalise')" },
-        { label: '↳ KPIs Ciclos',     icon: '📊', action: "irParaPainel('ciclosCard','togCiclosDash')" },
-        { label: '↳ Linha do Tempo',  icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
-        { label: '↳ Fechamentos',     icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
-        { label: 'Templates',         icon: '📋', action: "go('templates',this);rTplMgr()" },
-        { label: 'Banco de Escopos',  icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
-        { label: 'Análise',           icon: '📈', action: "go('analise',this);rAnalise()" },
-        { label: 'Pipeline',          icon: '🔀', action: "go('registro',this);rRegistro()" },
-        { label: 'Versões',           icon: '📋', action: "go('changelog',this)" },
+        { label: 'Dashboard',          icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
+        { separator: true, label: 'Comercial' },
+        { label: '↳ Metas',            icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
+        { label: '↳ Visão Geral',      icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
+        { label: '↳ Análise IA',       icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
+        { label: '↳ Ranking',          icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
+        { label: '↳ Fechamentos',      icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
+        { label: '↳ Linha do Tempo',   icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
+        { separator: true, label: 'Ferramentas' },
+        { label: 'Templates',          icon: '📋', action: "go('templates',this);rTplMgr()" },
+        { label: 'Banco de Escopos',   icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
+        { label: 'Análise',            icon: '📈', action: "go('analise',this);rAnalise()" },
+        { label: 'Pipeline',           icon: '🔀', action: "go('registro',this);rRegistro()" },
+        { label: 'Versões',            icon: '📋', action: "go('changelog',this)" },
       ]
     },
     {
       id: 'gestao',
       label: 'Gestão CEO',
       icon: '🎯',
-      tipo: 'iframe',
-      src: 'gestao.html',
+      tipo: 'inline',
+      init: function () { go('gestao'); if (typeof rGestaoCeo === 'function') rGestaoCeo(); },
       nav: [
-        { label: 'Hoje',        icon: '📅', action: "gestaoMsg('dia')" },
-        { label: 'Semana',      icon: '📆', action: "gestaoMsg('semana')" },
-        { label: 'Mês',         icon: '📊', action: "gestaoMsg('mes')" },
-        { label: 'Trimestre',   icon: '🎯', action: "gestaoMsg('trimestre')" },
-        { label: 'Calendário',  icon: '🗓️', action: "gestaoMsg('calendario')" },
+        { separator: true, label: 'Gestão Executiva' },
+        { label: '↳ Motor de Decisão', icon: '🧠', action: "go('dashboard',this);irParaPainel('motorDecisaoCard','togMotorDecisao')" },
+        { label: '↳ Visão Executiva',  icon: '🏢', action: "go('dashboard',this);irParaPainel('ceoDashCard','togCeoDash')" },
+        { label: '↳ KPIs Ciclos',      icon: '📊', action: "go('dashboard',this);irParaPainel('ciclosCard','togCiclosDash')" },
+        { label: '↳ Por Categoria',    icon: '📂', action: "go('dashboard',this);irParaPainel('catAnaliseCard','togCatAnalise')" },
+        { separator: true, label: 'Planejamento' },
+        { label: 'Hoje',        icon: '📅', action: "go('gestao',this);gestaoShowSec('dia')" },
+        { label: 'Semana',      icon: '📆', action: "go('gestao',this);gestaoShowSec('semana')" },
+        { label: 'Mês',         icon: '📊', action: "go('gestao',this);gestaoShowSec('mes')" },
+        { label: 'Trimestre',   icon: '🎯', action: "go('gestao',this);gestaoShowSec('trimestre')" },
+        { label: 'Calendário',  icon: '🗓️', action: "go('gestao',this);gestaoShowSec('calendario')" },
       ]
     },
     {
       id: 'rh',
       label: 'RH / Equipes',
       icon: '👷',
-      tipo: 'iframe',
-      src: 'pages/rh.html',
+      tipo: 'inline',
+      init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
       nav: [
-        { label: 'Colaboradores', icon: '👷', action: "Router.iframeMsg('rh','SHOW_SEC','colaboradores')" },
-        { label: 'Apontamentos',  icon: '⏱️', action: "Router.iframeMsg('rh','SHOW_SEC','apontamentos')" },
-        { label: 'Boletins',      icon: '📋', action: "Router.iframeMsg('rh','SHOW_SEC','boletins')" },
+        { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',this)" },
+        { label: 'Apontamentos',  icon: '⏱️', action: "go('rh',this);rhShowSec('apontamentos',this)" },
+        { label: 'Boletins',      icon: '📋', action: "go('rh',this);rhShowSec('boletins',this)" },
+        { label: 'Férias',        icon: '🌴', action: "go('rh',this);rhShowSec('ferias-geral',this)" },
+        { label: 'Despesas',      icon: '💰', action: "go('rh',this);rhShowSec('despesas',this)" },
       ]
     },
     {
@@ -66,6 +74,19 @@
       src: 'pages/financeiro.html',
       badge: 'Em breve',
       nav: []
+    },
+    {
+      id: 'historico',
+      label: 'Relacionamento',
+      icon: '💬',
+      tipo: 'inline',
+      init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
+      nav: [
+        { label: 'Todos os registros', icon: '📋', action: "go('historico',this);rHistorico()" },
+        { separator: true, label: 'Filtrar por status' },
+        { label: '↳ Em andamento',     icon: '🔄', action: "go('historico',this);document.getElementById('hFiltroStatus').value='em_andamento';hFiltrar()" },
+        { label: '↳ Resolvidos',        icon: '✅', action: "go('historico',this);document.getElementById('hFiltroStatus').value='resolvido';hFiltrar()" },
+      ]
     }
   ];
 
@@ -157,14 +178,16 @@
         el.innerHTML = '<div class="nav-vazio">Nenhuma seção disponível</div>';
         return;
       }
-      el.innerHTML = mod.nav.map(function (item, i) {
+      el.innerHTML = mod.nav.map(function (item) {
+        if (item.separator) {
+          return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item.label + '</div>';
+        }
         var isSubitem = item.label.indexOf('↳') === 0;
-      var labelClean = isSubitem ? item.label.slice(2) : item.label;
-      return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
-          '<span>' + item.icon + '</span> ' + labelClean +
-          '</button>';
+        var labelClean = isSubitem ? item.label.slice(2) : item.label;
+        return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
+            '<span>' + item.icon + '</span> ' + labelClean +
+            '</button>';
       }).join('');
-      // Ativa o primeiro item
       var primeiro = el.querySelector('.nav-item');
       if (primeiro) primeiro.classList.add('on');
     },
