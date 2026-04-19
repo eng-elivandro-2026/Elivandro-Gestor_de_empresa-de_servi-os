@@ -8324,19 +8324,6 @@ function setAmbiente(amb) {
 }
 </script>
 <script>
-function gestaoShowSec(sec) {
-  var frame = document.getElementById('gestao-frame');
-  if (frame && frame.contentWindow) {
-    frame.contentWindow.postMessage({ type: 'SHOW_SEC', sec: sec }, '*');
-  }
-  // Atualizar botão ativo na nav gestão
-  document.querySelectorAll('#gestao-nav .nb').forEach(function(b){ b.classList.remove('on'); });
-  var secMap = { dia:0, semana:1, mes:2, trimestre:3, calendario:4, versoes:5 };
-  var btns = document.querySelectorAll('#gestao-nav .nb');
-  if (btns[secMap[sec]]) btns[secMap[sec]].classList.add('on');
-  toggleSidebar(false);
-}
-
 function gestaoBackup() {
   var frame = document.getElementById('gestao-frame');
   if (frame && frame.contentWindow) {
