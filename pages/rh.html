@@ -272,6 +272,7 @@ body.master-admin .scope-btn{display:inline-block!important}
         <button class="tab-btn" onclick="showTab('saude',this)">🏥 Saúde/NRs</button>
         <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
         <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
+        <button class="tab-btn" id="tabBtnFerias" style="display:none" onclick="showTab('ferias',this)">🌴 Férias</button>
       </div>
 
       <!-- Tab Dados -->
@@ -326,6 +327,77 @@ body.master-admin .scope-btn{display:inline-block!important}
             <tbody id="horasColabBody"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- Tab Férias (CLT) -->
+      <div class="tab-sec" id="tab-ferias">
+        <div class="br" style="margin:.75rem 0">
+          <button class="btn bs bsm" onclick="abrirModalFerias()">+ Registrar férias</button>
+        </div>
+        <div id="feriasStatus"></div>
+        <div class="doc-list" id="feriasList" style="margin-top:.75rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL FÉRIAS ══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modalFerias" onclick="if(event.target===this)fecharModalFerias()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-tit" id="modalFeriasTit">Registrar Férias</span>
+        <button class="btn bd bsm" onclick="fecharModalFerias()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="g2" style="gap:.85rem">
+          <div class="f">
+            <label>Início do período aquisitivo</label>
+            <input type="date" id="fPeriodoInicio" onchange="calcularPeriodoFerias()">
+          </div>
+          <div class="f">
+            <label>Fim do período aquisitivo</label>
+            <input type="date" id="fPeriodoFim" readonly style="opacity:.6">
+          </div>
+          <div class="f">
+            <label>Vencimento das férias</label>
+            <input type="date" id="fVencimento" readonly style="opacity:.6">
+          </div>
+          <div class="f">
+            <label>Status</label>
+            <select id="fStatus">
+              <option value="pendente">Pendente (não gozadas)</option>
+              <option value="agendado">Agendado</option>
+              <option value="gozado">Gozado</option>
+            </select>
+          </div>
+          <div class="f">
+            <label>Início das férias (gozo)</label>
+            <input type="date" id="fInicio">
+          </div>
+          <div class="f">
+            <label>Fim das férias (gozo)</label>
+            <input type="date" id="fFim">
+          </div>
+          <div class="f">
+            <label>Dias gozados</label>
+            <input type="number" id="fDiasGozados" value="30" min="0" max="30">
+          </div>
+          <div class="f">
+            <label>Dias vendidos — abono pecuniário (máx 10)</label>
+            <input type="number" id="fDiasVendidos" value="0" min="0" max="10">
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;margin-top:.85rem;font-size:.82rem;color:var(--text2)">
+          <input type="checkbox" id="fAdiantamento13" style="accent-color:var(--accent);width:16px;height:16px">
+          Solicitou adiantamento do 13º salário junto com as férias
+        </label>
+        <div class="f" style="margin-top:.85rem">
+          <label>Observações</label>
+          <textarea id="fObs" placeholder="Observações..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg bsm" onclick="fecharModalFerias()">Cancelar</button>
+        <button class="btn bs bsm" onclick="salvarFerias()">Salvar</button>
       </div>
     </div>
   </div>
@@ -645,7 +717,13 @@ body.master-admin .scope-btn{display:inline-block!important}
           </label>
           <input type="text" id="cNome" placeholder="João Silva">
         </div>
-        <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>CPF / CNPJ</span>
+            <button type="button" id="scopeBtn_documento" class="scope-btn" onclick="toggleScope('documento')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cDoc" placeholder="000.000.000-00">
+        </div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span>E-mail</span>
@@ -660,7 +738,11 @@ body.master-admin .scope-btn{display:inline-block!important}
           </label>
           <input type="text" id="cTel" placeholder="(11) 99999-9999">
         </div>
-        <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
+        <div class="f" id="cPerigRow" style="display:none">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Atividade de risco (Periculosidade)?</span>
+            <button type="button" id="scopeBtn_periculoso" class="scope-btn" onclick="toggleScope('periculoso')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
           <select id="cPericuloso" onchange="togglePercPerig()">
             <option value="false">Não</option>
             <option value="true">Sim</option>
@@ -682,10 +764,17 @@ body.master-admin .scope-btn{display:inline-block!important}
         </div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
-            <span>Data de admissão</span>
+            <span id="cAdmissaoLabel">Data de admissão</span>
             <button type="button" id="scopeBtn_admissao" class="scope-btn" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
           <input type="date" id="cAdmissao">
+        </div>
+        <div class="f" id="cFimContratoRow" style="display:none">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Término do contrato</span>
+            <button type="button" id="scopeBtn_fim_contrato" class="scope-btn" onclick="toggleScope('fim_contrato')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <input type="date" id="cFimContrato">
         </div>
       </div>
       <div class="f" style="margin-top:.85rem">
@@ -1194,6 +1283,7 @@ function showTab(id, btn) {
   if (id === 'documentos' && _colabAtivo) carregarDocs(_colabAtivo.id);
   if (id === 'saude' && _colabAtivo) carregarSaude(_colabAtivo.id);
   if (id === 'epis' && _colabAtivo) carregarEpis(_colabAtivo.id);
+  if (id === 'ferias' && _colabAtivo) carregarFerias(_colabAtivo.id);
 }
 
 // ══ EMPRESA ATIVA ════════════════════════════════════════════
@@ -1292,7 +1382,7 @@ async function carregarColabs() {
   // Passo 1: buscar vínculos com tipo e valor_hora específicos desta empresa
   var { data: vinculos, error: errV } = await sb
     .from('colaborador_empresas')
-    .select('colaborador_id, nome, tipo, valor_hora, email, telefone, funcao, admissao, observacoes')
+    .select('colaborador_id, nome, tipo, valor_hora, email, telefone, funcao, admissao, observacoes, documento, periculoso, fim_contrato')
     .eq('empresa_id', empId)
     .eq('ativo', true);
 
@@ -1313,7 +1403,8 @@ async function carregarColabs() {
     empOverrides[v.colaborador_id] = {
       nome: v.nome, tipo: v.tipo, valor_hora: v.valor_hora,
       email: v.email, telefone: v.telefone,
-      funcao: v.funcao, admissao: v.admissao, observacoes: v.observacoes
+      funcao: v.funcao, admissao: v.admissao, observacoes: v.observacoes,
+      documento: v.documento, periculoso: v.periculoso, fim_contrato: v.fim_contrato
     };
   });
 
@@ -1332,14 +1423,17 @@ async function carregarColabs() {
   _colabs = (data || []).map(function(c) {
     var o = empOverrides[c.id] || {};
     return Object.assign({}, c, {
-      nome:        (o.nome        != null) ? o.nome        : c.nome,
-      tipo:        o.tipo        || c.tipo,
-      valor_hora:  (o.valor_hora  != null) ? o.valor_hora  : c.valor_hora,
-      email:       (o.email       != null) ? o.email       : c.email,
-      telefone:    (o.telefone    != null) ? o.telefone    : c.telefone,
-      funcao:      (o.funcao      != null) ? o.funcao      : c.funcao,
-      admissao:    (o.admissao    != null) ? o.admissao    : c.admissao,
-      observacoes: (o.observacoes != null) ? o.observacoes : c.observacoes
+      nome:         (o.nome         != null) ? o.nome         : c.nome,
+      tipo:          o.tipo         || c.tipo,
+      valor_hora:   (o.valor_hora   != null) ? o.valor_hora   : c.valor_hora,
+      email:        (o.email        != null) ? o.email        : c.email,
+      telefone:     (o.telefone     != null) ? o.telefone     : c.telefone,
+      funcao:       (o.funcao       != null) ? o.funcao       : c.funcao,
+      admissao:     (o.admissao     != null) ? o.admissao     : c.admissao,
+      observacoes:  (o.observacoes  != null) ? o.observacoes  : c.observacoes,
+      documento:    (o.documento    != null) ? o.documento    : c.documento,
+      periculoso:   (o.periculoso   != null) ? o.periculoso   : c.periculoso,
+      fim_contrato: (o.fim_contrato != null) ? o.fim_contrato : c.fim_contrato
     });
   });
 
@@ -1497,6 +1591,24 @@ async function gerarAlertas() {
     alertas.push({ cls:'alerta-blue', txt: '⏱️ ' + count + ' apontamento(s) aguardando aprovação' });
   }
 
+  // Férias CLT vencendo
+  var { data: feriasAlert } = await sb
+    .from('rh_ferias')
+    .select('vencimento, periodo_inicio, status, colaboradores(nome)')
+    .eq('empresa_id', empId)
+    .neq('status', 'gozado')
+    .not('vencimento', 'is', null);
+  (feriasAlert || []).forEach(function(f) {
+    var dias = diasAteVencer(f.vencimento);
+    if (dias === null) return;
+    var nome = f.colaboradores ? f.colaboradores.nome : '?';
+    if (dias < 0) {
+      alertas.push({ cls:'alerta-red', txt: '🔴 Férias VENCIDAS — ' + nome + ' (período ' + fmtData(f.periodo_inicio) + ')' });
+    } else if (dias <= 60) {
+      alertas.push({ cls:'alerta-yellow', txt: '🟡 Férias vencem em ' + dias + ' dias — ' + nome + ' (período ' + fmtData(f.periodo_inicio) + ')' });
+    }
+  });
+
   var bar = document.getElementById('alertasBar');
   if (!alertas.length) { bar.innerHTML = ''; } else {
     bar.innerHTML = alertas.map(function(a) {
@@ -1636,6 +1748,10 @@ async function abrirDetalhe(id) {
       '<button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>';
   }
 
+  var isClt = (_colabAtivo.tipo === 'clt');
+  document.getElementById('tabBtnFerias').style.display = isClt ? '' : 'none';
+
+  var admissaoLabel = isClt ? 'Admissão' : 'Início do contrato';
   document.getElementById('detDados').innerHTML =
     campo('Nome', _colabAtivo.nome) +
     campo('Tipo', (_colabAtivo.tipo||'').toUpperCase()) +
@@ -1644,12 +1760,14 @@ async function abrirDetalhe(id) {
     campo('Telefone', _colabAtivo.telefone||'—') +
     campo('Valor/hora', _colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora) + '/h' : '—') +
     campo('Função', _colabAtivo.funcao||'—') +
-    campo('Admissão', fmtData(_colabAtivo.admissao)) +
-    (campo('Obs.', _colabAtivo.observacoes||'—'));
+    campo(admissaoLabel, fmtData(_colabAtivo.admissao)) +
+    (!isClt && _colabAtivo.fim_contrato ? campo('Término do contrato', fmtData(_colabAtivo.fim_contrato)) : '') +
+    campo('Obs.', _colabAtivo.observacoes||'—');
 
   carregarDocs(id);
   carregarSaude(id);
   carregarEpis(id);
+  if (isClt) carregarFerias(id);
 }
 
 function campo(label, valor) {
@@ -2919,11 +3037,15 @@ function calcularHorasApt() {
 
 // ══ MODAIS COLABORADOR ═══════════════════════════════════════
 function togglePerigFields() {
-  var isClt = document.getElementById('cTipo').value === 'clt';
-  document.getElementById('cPerigRow').style.display     = isClt ? '' : 'none';
+  var tipo = document.getElementById('cTipo').value;
+  var isClt = tipo === 'clt';
+  document.getElementById('cPerigRow').style.display        = isClt ? '' : 'none';
   var isPerig = isClt && document.getElementById('cPericuloso').value === 'true';
-  document.getElementById('cPercPerigRow').style.display  = isPerig ? '' : 'none';
-  document.getElementById('cBasePerigRow').style.display  = isPerig ? '' : 'none';
+  document.getElementById('cPercPerigRow').style.display    = isPerig ? '' : 'none';
+  document.getElementById('cBasePerigRow').style.display    = isPerig ? '' : 'none';
+  document.getElementById('cFimContratoRow').style.display  = isClt ? 'none' : '';
+  var lbl = document.getElementById('cAdmissaoLabel');
+  if (lbl) lbl.textContent = isClt ? 'Data de admissão' : 'Início do contrato';
 }
 function togglePercPerig() {
   var isPerig = document.getElementById('cPericuloso').value === 'true';
@@ -2938,8 +3060,8 @@ var _fieldScopes = {};     // 'global' | 'solo' per field
 var _colabRawGlobal = {};  // raw values from colaboradores without overrides
 var _colabRawOverride = {}; // raw values from colaborador_empresas for current empresa
 
-var _SCOPE_FIELDS = ['nome','tipo','valor_hora','email','telefone','funcao','admissao','observacoes'];
-var _SCOPE_INPUT  = { nome:'cNome', tipo:'cTipo', valor_hora:'cValorHora', email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
+var _SCOPE_FIELDS = ['nome','tipo','valor_hora','email','telefone','funcao','admissao','observacoes','documento','periculoso','fim_contrato'];
+var _SCOPE_INPUT  = { nome:'cNome', tipo:'cTipo', valor_hora:'cValorHora', email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs', documento:'cDoc', periculoso:'cPericuloso', fim_contrato:'cFimContrato' };
 
 function updateScopeBtn(field) {
   var btn = document.getElementById('scopeBtn_' + field);
@@ -2980,12 +3102,12 @@ async function abrirModalColab(id) {
   await carregarColabs();
 }
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
-  _fieldScopes = { nome:'global', tipo:'solo', valor_hora:'solo', email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
+  _fieldScopes = { nome:'global', tipo:'solo', valor_hora:'solo', email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global', documento:'global', periculoso:'global', fim_contrato:'solo' };
   _colabRawGlobal = {};
   _colabRawOverride = {};
 
   if (!id) {
-    ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
+    ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cFimContrato','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
     document.getElementById('cTipo').value                = 'mei';
     document.getElementById('cPericuloso').value          = 'false';
     document.getElementById('cPercPericulosidade').value  = '30';
@@ -3003,13 +3125,13 @@ async function abrirModalColab(id) {
     if (c) {
       // Fetch raw global values (from colaboradores, no overrides)
       var { data: rawGlobal } = await sb.from('colaboradores')
-        .select('nome,tipo,valor_hora,email,telefone,funcao,admissao,observacoes').eq('id', id).single();
+        .select('nome,tipo,valor_hora,email,telefone,funcao,admissao,observacoes,documento,periculoso,fim_contrato').eq('id', id).single();
       _colabRawGlobal = rawGlobal || {};
 
       // Fetch company-specific overrides for current empresa
       var empId = await getEmpresaId();
       var { data: rawOv } = await sb.from('colaborador_empresas')
-        .select('email,telefone,funcao,admissao,observacoes,tipo,valor_hora')
+        .select('email,telefone,funcao,admissao,observacoes,tipo,valor_hora,documento,periculoso,fim_contrato')
         .eq('colaborador_id', id).eq('empresa_id', empId).single();
       _colabRawOverride = rawOv || {};
 
@@ -3027,6 +3149,7 @@ async function abrirModalColab(id) {
       document.getElementById('cValorHora').value           = c.valor_hora||'';
       document.getElementById('cFuncao').value              = c.funcao||'';
       document.getElementById('cAdmissao').value            = c.admissao||'';
+      document.getElementById('cFimContrato').value         = c.fim_contrato||'';
       document.getElementById('cObs').value                 = c.observacoes||'';
       document.getElementById('cPericuloso').value          = c.periculoso ? 'true' : 'false';
       document.getElementById('cPercPericulosidade').value  = c.perc_periculosidade || 30;
@@ -3084,18 +3207,17 @@ async function salvarColab() {
   var admissao  = document.getElementById('cAdmissao').value||null;
   var observ    = document.getElementById('cObs').value.trim();
 
-  var nome      = document.getElementById('cNome').value.trim();
-  // Campos sempre globais
-  var dadosGlobal = {
-    documento:            document.getElementById('cDoc').value.trim(),
-    periculoso:           tipo === 'clt' && document.getElementById('cPericuloso').value === 'true',
-    perc_periculosidade:  parseFloat(document.getElementById('cPercPericulosidade').value) || 30,
-    periculosidade_base:  document.getElementById('cPericulosidadeBase').value || 'normal',
-    ativo:                true
-  };
+  var nome        = document.getElementById('cNome').value.trim();
+  var docVal      = document.getElementById('cDoc').value.trim();
+  var periculo    = tipo === 'clt' && document.getElementById('cPericuloso').value === 'true';
+  var percPerig   = parseFloat(document.getElementById('cPercPericulosidade').value) || 30;
+  var basePerig   = document.getElementById('cPericulosidadeBase').value || 'normal';
+  var fimContrato = document.getElementById('cFimContrato').value || null;
+
+  var dadosGlobal = { ativo: true };
   if (!nome) { toast('Informe o nome.','err'); return; }
 
-  // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → manter global anterior
+  // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → salvar só no override
   if (_fieldScopes.nome        !== 'solo') dadosGlobal.nome        = nome;
   if (_fieldScopes.tipo        !== 'solo') dadosGlobal.tipo        = tipo;
   if (_fieldScopes.valor_hora  !== 'solo') dadosGlobal.valor_hora  = valor_hora;
@@ -3104,6 +3226,13 @@ async function salvarColab() {
   if (_fieldScopes.funcao      !== 'solo') dadosGlobal.funcao      = funcao;
   if (_fieldScopes.admissao    !== 'solo') dadosGlobal.admissao    = admissao;
   if (_fieldScopes.observacoes !== 'solo') dadosGlobal.observacoes = observ;
+  if (_fieldScopes.documento   !== 'solo') dadosGlobal.documento   = docVal;
+  if (_fieldScopes.fim_contrato !== 'solo') dadosGlobal.fim_contrato = fimContrato;
+  if (_fieldScopes.periculoso  !== 'solo') {
+    dadosGlobal.periculoso          = periculo;
+    dadosGlobal.perc_periculosidade = percPerig;
+    dadosGlobal.periculosidade_base = basePerig;
+  }
 
   var colabId = _colabEditId;
   var error;
@@ -3112,9 +3241,11 @@ async function salvarColab() {
     var r = await sb.from('colaboradores').update(dadosGlobal).eq('id', colabId);
     error = r.error;
   } else {
-    // Novo: incluir todos os campos no insert
+    // Novo: incluir campos básicos no insert (overrides aplicados depois)
     var dadosInsert = Object.assign({}, dadosGlobal, {
-      email: email, telefone: telefone, funcao: funcao, admissao: admissao, observacoes: observ
+      nome: nome, documento: docVal, email: email, telefone: telefone,
+      funcao: funcao, admissao: admissao, observacoes: observ,
+      periculoso: periculo, perc_periculosidade: percPerig, periculosidade_base: basePerig
     });
     var r2 = await sb.from('colaboradores').insert(dadosInsert).select().single();
     error = r2.error;
@@ -3126,14 +3257,17 @@ async function salvarColab() {
   // Upsert da empresa ativa com todos os overrides
   if (colabId) {
     var overridesEmpAtiva = {
-      nome:        _fieldScopes.nome       === 'solo' ? nome      : null,
-      tipo:        _fieldScopes.tipo       === 'solo' ? tipo       : null,
-      valor_hora:  _fieldScopes.valor_hora === 'solo' ? valor_hora : null,
-      email:       _fieldScopes.email       === 'solo' ? email    : null,
-      telefone:    _fieldScopes.telefone    === 'solo' ? telefone : null,
-      funcao:      _fieldScopes.funcao      === 'solo' ? funcao   : null,
-      admissao:    _fieldScopes.admissao    === 'solo' ? admissao : null,
-      observacoes: _fieldScopes.observacoes === 'solo' ? observ   : null
+      nome:        _fieldScopes.nome        === 'solo' ? nome        : null,
+      tipo:        _fieldScopes.tipo        === 'solo' ? tipo        : null,
+      valor_hora:  _fieldScopes.valor_hora  === 'solo' ? valor_hora  : null,
+      email:       _fieldScopes.email       === 'solo' ? email       : null,
+      telefone:    _fieldScopes.telefone    === 'solo' ? telefone    : null,
+      funcao:      _fieldScopes.funcao      === 'solo' ? funcao      : null,
+      admissao:    _fieldScopes.admissao    === 'solo' ? admissao    : null,
+      observacoes: _fieldScopes.observacoes === 'solo' ? observ      : null,
+      documento:   _fieldScopes.documento   === 'solo' ? docVal      : null,
+      periculoso:  _fieldScopes.periculoso  === 'solo' ? periculo    : null,
+      fim_contrato:_fieldScopes.fim_contrato=== 'solo' ? fimContrato : null
     };
     var { data: existingLink } = await sb.from('colaborador_empresas')
       .select('id').eq('colaborador_id', colabId).eq('empresa_id', empId).maybeSingle();
@@ -3183,6 +3317,189 @@ async function excluirColabAtivo() {
   toast('Colaborador excluído.', 'ok');
   showSec('colaboradores', document.querySelector('.nav-rh-btn'));
   carregarColabs();
+}
+
+// ══ FÉRIAS CLT ═══════════════════════════════════════════════
+var _feriasEditId = null;
+var _feriasCache  = [];
+
+async function carregarFerias(colabId) {
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('rh_ferias')
+    .select('*').eq('colaborador_id', colabId).eq('empresa_id', empId)
+    .order('periodo_inicio', { ascending: false });
+  _feriasCache = data || [];
+  renderFeriasStatus();
+  renderFeriasList();
+}
+
+function renderFeriasStatus() {
+  var div = document.getElementById('feriasStatus');
+  if (!div) return;
+  var colab = _colabAtivo;
+  if (!colab || !colab.admissao) {
+    div.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:.5rem 0">Data de admissão não informada.</div>';
+    return;
+  }
+  var adm  = new Date(colab.admissao + 'T00:00:00');
+  var hoje = new Date();
+  var anos = hoje.getFullYear() - adm.getFullYear();
+  if (hoje.getMonth() < adm.getMonth() ||
+      (hoje.getMonth() === adm.getMonth() && hoje.getDate() < adm.getDate())) anos--;
+
+  var html = '';
+  for (var a = 0; a <= anos; a++) {
+    var pIni = new Date(adm); pIni.setFullYear(adm.getFullYear() + a);
+    var pFim = new Date(pIni); pFim.setFullYear(pIni.getFullYear() + 1); pFim.setDate(pFim.getDate() - 1);
+    var venc = new Date(pIni); venc.setFullYear(pIni.getFullYear() + 2); venc.setDate(venc.getDate() - 1);
+    var pIso = pIni.toISOString().slice(0, 10);
+    var reg  = _feriasCache.find(function(f) { return f.periodo_inicio === pIso; });
+    var diasVenc = Math.floor((venc - hoje) / 864e5);
+    var statusLabel, statusCls;
+    if (reg) {
+      var s = reg.status || 'pendente';
+      statusLabel = s === 'gozado' ? 'Gozado' : s === 'agendado' ? 'Agendado' : 'Pendente';
+      statusCls   = s === 'gozado' ? 'bdg-green' : s === 'agendado' ? 'bdg-blue' : 'bdg-yellow';
+    } else if (diasVenc < 0) {
+      statusLabel = 'VENCIDAS'; statusCls = 'bdg-red';
+    } else if (diasVenc <= 60) {
+      statusLabel = 'Vence em ' + diasVenc + ' dias'; statusCls = 'bdg-yellow';
+    } else {
+      statusLabel = 'Disponíveis'; statusCls = 'bdg-blue';
+    }
+    html += '<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.35rem">'
+      + '<div style="flex:1">'
+        + '<div style="font-size:.82rem;font-weight:600">Período ' + fmtData(pIso) + ' — ' + fmtData(pFim.toISOString().slice(0,10)) + '</div>'
+        + '<div style="font-size:.72rem;color:var(--text2);margin-top:.1rem">Vencimento: ' + fmtData(venc.toISOString().slice(0,10)) + '</div>'
+      + '</div>'
+      + '<span class="bdg ' + statusCls + '">' + statusLabel + '</span>'
+      + '</div>';
+  }
+  div.innerHTML = html || '<div style="color:var(--text3);font-size:.82rem">Nenhum período calculado.</div>';
+}
+
+function renderFeriasList() {
+  var list = document.getElementById('feriasList');
+  if (!list) return;
+  if (!_feriasCache.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:.5rem 0">Nenhuma férias registrada.</div>';
+    return;
+  }
+  list.innerHTML = _feriasCache.map(function(f) {
+    var s = f.status || 'pendente';
+    var sCls = s === 'gozado' ? 'bdg-green' : s === 'agendado' ? 'bdg-blue' : 'bdg-yellow';
+    var sTxt = s === 'gozado' ? 'Gozado' : s === 'agendado' ? 'Agendado' : 'Pendente';
+    var meta = [];
+    if (f.ferias_inicio) meta.push('Gozo: ' + fmtData(f.ferias_inicio) + (f.ferias_fim ? ' – ' + fmtData(f.ferias_fim) : ''));
+    if (f.dias_gozados)  meta.push(f.dias_gozados + ' dias gozados');
+    if (f.dias_vendidos) meta.push(f.dias_vendidos + ' dias vendidos (abono)');
+    if (f.adiantamento_13) meta.push('13º adiantado');
+    var fid = f.id.replace(/'/g, "\\'");
+    return '<div class="doc-item">'
+      + '<div class="doc-icon" style="background:rgba(63,185,80,.1)">🌴</div>'
+      + '<div class="doc-info">'
+        + '<div class="doc-nome">Férias — período ' + fmtData(f.periodo_inicio) + '</div>'
+        + '<div class="doc-meta">' + (meta.join(' · ') || '—') + '</div>'
+      + '</div>'
+      + '<span class="bdg ' + sCls + '">' + sTxt + '</span>'
+      + '<div style="display:flex;gap:.3rem">'
+        + '<button class="btn bg bsm" onclick="abrirModalFerias(\'' + fid + '\')">✏️</button>'
+        + '<button class="btn bd bsm" onclick="excluirFerias(\'' + fid + '\')">🗑️</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+async function abrirModalFerias(id) {
+  _feriasEditId = id || null;
+  document.getElementById('modalFeriasTit').textContent = id ? 'Editar Férias' : 'Registrar Férias';
+  if (!id) {
+    var admissao = _colabAtivo && _colabAtivo.admissao;
+    var nextInicio = admissao || '';
+    if (admissao) {
+      var adm = new Date(admissao + 'T00:00:00');
+      var hoje = new Date();
+      for (var a = 0; a <= hoje.getFullYear() - adm.getFullYear() + 1; a++) {
+        var pIni = new Date(adm); pIni.setFullYear(adm.getFullYear() + a);
+        var pIso = pIni.toISOString().slice(0, 10);
+        if (!_feriasCache.find(function(f) { return f.periodo_inicio === pIso; })) {
+          nextInicio = pIso; break;
+        }
+      }
+    }
+    document.getElementById('fPeriodoInicio').value = nextInicio;
+    calcularPeriodoFerias();
+    document.getElementById('fStatus').value = 'pendente';
+    document.getElementById('fInicio').value = '';
+    document.getElementById('fFim').value = '';
+    document.getElementById('fDiasGozados').value = '30';
+    document.getElementById('fDiasVendidos').value = '0';
+    document.getElementById('fAdiantamento13').checked = false;
+    document.getElementById('fObs').value = '';
+  } else {
+    var f = _feriasCache.find(function(x) { return x.id === id; });
+    if (!f) return;
+    document.getElementById('fPeriodoInicio').value = f.periodo_inicio || '';
+    document.getElementById('fPeriodoFim').value    = f.periodo_fim    || '';
+    document.getElementById('fVencimento').value    = f.vencimento     || '';
+    document.getElementById('fStatus').value        = f.status         || 'pendente';
+    document.getElementById('fInicio').value        = f.ferias_inicio  || '';
+    document.getElementById('fFim').value           = f.ferias_fim     || '';
+    document.getElementById('fDiasGozados').value   = f.dias_gozados   != null ? f.dias_gozados  : 30;
+    document.getElementById('fDiasVendidos').value  = f.dias_vendidos  != null ? f.dias_vendidos : 0;
+    document.getElementById('fAdiantamento13').checked = !!f.adiantamento_13;
+    document.getElementById('fObs').value           = f.observacoes    || '';
+  }
+  document.getElementById('modalFerias').classList.add('on');
+}
+
+function calcularPeriodoFerias() {
+  var v = document.getElementById('fPeriodoInicio').value;
+  if (!v) return;
+  var ini  = new Date(v + 'T00:00:00');
+  var fim  = new Date(ini); fim.setFullYear(ini.getFullYear() + 1); fim.setDate(fim.getDate() - 1);
+  var venc = new Date(ini); venc.setFullYear(ini.getFullYear() + 2); venc.setDate(venc.getDate() - 1);
+  document.getElementById('fPeriodoFim').value = fim.toISOString().slice(0, 10);
+  document.getElementById('fVencimento').value = venc.toISOString().slice(0, 10);
+}
+
+function fecharModalFerias() {
+  document.getElementById('modalFerias').classList.remove('on');
+}
+
+async function salvarFerias() {
+  var periodoInicio = document.getElementById('fPeriodoInicio').value;
+  if (!periodoInicio) { toast('Informe o início do período aquisitivo.', 'err'); return; }
+  var empId = await getEmpresaId();
+  var dados = {
+    colaborador_id: _colabAtivo.id,
+    empresa_id:     empId,
+    periodo_inicio: periodoInicio,
+    periodo_fim:    document.getElementById('fPeriodoFim').value  || null,
+    vencimento:     document.getElementById('fVencimento').value  || null,
+    status:         document.getElementById('fStatus').value,
+    ferias_inicio:  document.getElementById('fInicio').value      || null,
+    ferias_fim:     document.getElementById('fFim').value         || null,
+    dias_gozados:   parseInt(document.getElementById('fDiasGozados').value)  || 0,
+    dias_vendidos:  parseInt(document.getElementById('fDiasVendidos').value) || 0,
+    adiantamento_13:document.getElementById('fAdiantamento13').checked,
+    observacoes:    document.getElementById('fObs').value.trim() || null
+  };
+  var r = _feriasEditId
+    ? await sb.from('rh_ferias').update(dados).eq('id', _feriasEditId)
+    : await sb.from('rh_ferias').insert(dados);
+  if (r.error) { toast('Erro: ' + r.error.message, 'err'); return; }
+  toast(_feriasEditId ? 'Férias atualizada!' : 'Férias registrada!', 'ok');
+  fecharModalFerias();
+  carregarFerias(_colabAtivo.id);
+  gerarAlertas();
+}
+
+async function excluirFerias(id) {
+  if (!confirm('Excluir registro de férias?')) return;
+  await sb.from('rh_ferias').delete().eq('id', id);
+  toast('Excluído.', 'ok');
+  carregarFerias(_colabAtivo.id);
 }
 
 // ══ PENDENTES ════════════════════════════════════════════════
