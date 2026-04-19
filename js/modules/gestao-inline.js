@@ -1,7 +1,5 @@
-// ══ Módulo Gestão CEO (inline) ══
+// ══ Módulo Gestão CEO (inline) ══ v2
 // Migrado de gestao.html — usa window.sbClient compartilhado
-// Funções principais: gestaoShowSec, loadNuvem, abrirDia
-(function() {
 var _sb = window.sbClient; // usa cliente global
 // Debounce para não salvar a cada tecla
 
@@ -73,7 +71,7 @@ async function sbProtegerGestao() {
 
   const { data } = await _sb.auth.getUser();
 
-  if (!data?.user) { // redirect handled by main portal }
+  if (!data?.user) { /* auth handled by main portal — redirect via login.html */ return; }
 
 }
 // ===== DADOS =====
@@ -3313,16 +3311,21 @@ function updateThemeBtn() {
 }
 
   // Expor funções necessárias globalmente para os event listeners inline
-  window.gestaoShowSec = gestaoShowSec;
-  window.abrirDia = typeof abrirDia !== 'undefined' ? abrirDia : function(){};
-  window.togglePrio = typeof togglePrio !== 'undefined' ? togglePrio : function(){};
-  window.addTarefa = typeof addTarefa !== 'undefined' ? addTarefa : function(){};
-  window.addExplosao = typeof addExplosao !== 'undefined' ? addExplosao : function(){};
-  window.renderCalendario = typeof renderCalendario !== 'undefined' ? renderCalendario : function(){};
+window.gestaoShowSec = gestaoShowSec;
+window.abrirDia = typeof abrirDia !== 'undefined' ? abrirDia : function(){};
+window.togglePrio = typeof togglePrio !== 'undefined' ? togglePrio : function(){};
+window.addTarefa = typeof addTarefa !== 'undefined' ? addTarefa : function(){};
+window.addExplosao = typeof addExplosao !== 'undefined' ? addExplosao : function(){};
+window.renderCalendario = typeof renderCalendario !== 'undefined' ? renderCalendario : function(){};
 
-  window.rGestaoCeo = function() {
+window.rGestaoCeo = function() {
     gestaoShowSec('dia');
     if(typeof loadNuvem === 'function') loadNuvem();
   };
 
-})();
+// ── Expor para uso global ──────────────────────────────────────
+window.gestaoShowSec = typeof gestaoShowSec === 'function' ? gestaoShowSec : function(){};
+window.rGestaoCeo = function() {
+  if(typeof gestaoShowSec === 'function') gestaoShowSec('dia');
+  if(typeof loadNuvem === 'function') loadNuvem();
+};
