@@ -2031,6 +2031,108 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 
+<!-- HISTÓRICO DE RELACIONAMENTO -->
+<div id="historico" class="sec">
+  <div style="max-width:960px;margin:0 auto;padding:.5rem 0">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--blue)">💬 Histórico de Relacionamento</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-top:.2rem">Registros de conversas, decisões e próximas ações por cliente</div>
+      </div>
+      <button class="nb" onclick="hNovoRegistro()" style="background:var(--blue);color:#fff;border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700">+ Novo Registro</button>
+    </div>
+
+    <!-- Formulário -->
+    <div id="hFormWrap" style="display:none;margin-bottom:1rem">
+      <div class="card" style="border-color:rgba(88,166,255,.35);padding:1rem">
+        <div style="font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:.7rem" id="hFormTitulo">📝 Novo Registro</div>
+        <form id="hForm" onsubmit="hSalvarForm();return false">
+          <input type="hidden" id="hEditId">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Data / Hora</div>
+              <input type="datetime-local" id="hData" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Canal</div>
+              <select id="hCanal" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+                <option>WhatsApp</option><option>Reunião</option><option>E-mail</option><option>Telefone</option><option>Outro</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Cliente *</div>
+              <input type="text" id="hCliente" placeholder="Ex: JDE - Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Contato</div>
+              <input type="text" id="hContato" placeholder="Ex: Rafael Soares" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+          </div>
+          <div style="margin-bottom:.6rem">
+            <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Resumo da conversa *</div>
+            <textarea id="hResumo" rows="2" placeholder="O que foi discutido?" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem;resize:vertical"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">✅ Decisão</div>
+              <input type="text" id="hDecisao" placeholder="O que foi decidido?" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">⏳ Pendência</div>
+              <input type="text" id="hPendencia" placeholder="O que ficou pendente?" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">⚡ Próxima Ação</div>
+              <input type="text" id="hProximaAcao" placeholder="Ex: Follow-up terça-feira" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">👤 Responsável</div>
+              <input type="text" id="hResponsavel" placeholder="Ex: Elivandro" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.8rem">
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Status</div>
+              <select id="hStatus" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+                <option value="em_andamento">Em andamento</option>
+                <option value="resolvido">Resolvido</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">🔗 Proposta vinculada</div>
+              <select id="hPropostaId" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+                <option value="">— nenhuma —</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end">
+            <button type="button" class="nb" onclick="hCancelarForm()" style="font-size:.75rem;color:var(--text3);border:1px solid var(--border);border-radius:5px;padding:.34rem .9rem">Cancelar</button>
+            <button type="submit" class="nb" style="background:var(--blue);color:#fff;border-radius:5px;padding:.34rem 1rem;font-size:.75rem;font-weight:700">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.7rem;flex-wrap:wrap">
+      <input type="text" id="hFiltroCliente" placeholder="🔍 Filtrar por cliente..." oninput="hFiltrar()" style="flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.32rem .6rem;font-size:.75rem">
+      <select id="hFiltroStatus" onchange="hFiltrar()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.32rem .6rem;font-size:.75rem">
+        <option value="">Todos os status</option>
+        <option value="em_andamento">Em andamento</option>
+        <option value="resolvido">Resolvido</option>
+        <option value="cancelado">Cancelado</option>
+      </select>
+      <span style="font-size:.7rem;color:var(--text3)"><span id="hContador">0</span> registros</span>
+    </div>
+
+    <!-- Lista -->
+    <div id="historicoLista"></div>
+
+  </div>
+</div>
+
 <!-- PROPOSTA DETALHE -->
 
 </div><!-- /wrap -->
@@ -5010,6 +5112,7 @@ function rExecTimeline(){
 <script src="js/modules/gantt.js"></script>
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
+<script src="js/modules/historico.js"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>

@@ -149,6 +149,36 @@
   };
 
   // ════════════════════════════════════════════════════════
+  // HISTÓRICO DE RELACIONAMENTO
+  // ════════════════════════════════════════════════════════
+
+  window.sbSalvarHistorico = async function (lista) {
+    if (!window.sbClient || !lista) return;
+    var res = await window.sbClient
+      .from('configuracoes')
+      .upsert({ chave: 'tf_historico', valor: lista, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+    if (res.error) console.error('[supabase-sync] Erro ao salvar histórico:', res.error.message);
+    else console.log('%chistórico salvo na nuvem (' + lista.length + ' registros)', 'color:green');
+    return res;
+  };
+
+  window.sbCarregarHistorico = async function () {
+    if (!window.sbClient) return [];
+    var res = await window.sbClient
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'tf_historico')
+      .single();
+    if (res.error) { console.warn('[supabase-sync] Sem histórico na nuvem ainda.'); return []; }
+    if (res.data && res.data.valor) {
+      try { localStorage.setItem('tf_historico', JSON.stringify(res.data.valor)); } catch(e) {}
+      console.log('%chistórico carregado da nuvem (' + res.data.valor.length + ' registros)', 'color:#58a6ff');
+      return res.data.valor;
+    }
+    return [];
+  };
+
+  // ════════════════════════════════════════════════════════
   // INICIALIZAÇÃO
   // ════════════════════════════════════════════════════════
   waitForClient(function () {

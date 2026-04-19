@@ -71,6 +71,19 @@
       src: 'pages/financeiro.html',
       badge: 'Em breve',
       nav: []
+    },
+    {
+      id: 'historico',
+      label: 'Relacionamento',
+      icon: '💬',
+      tipo: 'inline',
+      init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
+      nav: [
+        { label: 'Todos os registros', icon: '📋', action: "go('historico',this);rHistorico()" },
+        { separator: true, label: 'Filtrar por status' },
+        { label: '↳ Em andamento',     icon: '🔄', action: "go('historico',this);document.getElementById('hFiltroStatus').value='em_andamento';hFiltrar()" },
+        { label: '↳ Resolvidos',        icon: '✅', action: "go('historico',this);document.getElementById('hFiltroStatus').value='resolvido';hFiltrar()" },
+      ]
     }
   ];
 
