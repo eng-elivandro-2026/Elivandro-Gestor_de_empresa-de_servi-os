@@ -4149,7 +4149,7 @@ async function preencherSelectPropostas() {
   var { data } = await sb.from('propostas')
     .select('app_id, numero_proposta, titulo, fase')
     .eq('empresa_id', empId)
-    .not('fase', 'in', '("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
+    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado'])
     .order('numero_proposta', { ascending: false });
   _propostas = data || [];
   var sel = document.getElementById('aptProposta');
@@ -5628,15 +5628,14 @@ async function salvarAdicionarEmpresa() {
 // ══ DESPESAS ══════════════════════════════════════════════════
 
 async function _popularProjetosDesp() {
-  if (!_propostas.length) {
-    var empId = await getEmpresaId();
-    var { data } = await sb.from('propostas')
-      .select('app_id, numero_proposta, titulo, cliente, fase')
-      .eq('empresa_id', empId)
-      .not('fase', 'in', '("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
-      .order('numero_proposta', { ascending: false });
-    _propostas = data || [];
-  }
+  // Always refresh — proposal stages can change while user is in the session
+  var empId = await getEmpresaId();
+  var { data } = await sb.from('propostas')
+    .select('app_id, numero_proposta, titulo, cliente, fase')
+    .eq('empresa_id', empId)
+    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado'])
+    .order('numero_proposta', { ascending: false });
+  _propostas = data || [];
   var sel = document.getElementById('dProjetoId');
   if (!sel) return;
   var cur = sel.value;
