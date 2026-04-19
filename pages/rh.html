@@ -931,13 +931,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="docObs" style="min-height:56px"></textarea></div>
         <div class="f" style="grid-column:1/-1">
-          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
-            <input type="checkbox" id="docCompartilhar" style="width:auto;accent-color:var(--accent)">
-            🔗 Compartilhar entre todas as empresas do colaborador
-          </label>
-          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
-        </div>
-        <div class="f" style="grid-column:1/-1">
           <label>Arquivo (PDF, imagem, Word)</label>
           <input type="file" id="docArquivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
             style="padding:.4rem .6rem;font-size:.8rem;cursor:pointer">
@@ -1001,13 +994,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           </select>
         </div>
         <div class="f" style="grid-column:1/-1"><label>Observações</label><textarea id="saudeObs" style="min-height:56px"></textarea></div>
-        <div class="f" style="grid-column:1/-1">
-          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
-            <input type="checkbox" id="saudeCompartilhar" style="width:auto;accent-color:var(--accent)">
-            🔗 Compartilhar entre todas as empresas do colaborador
-          </label>
-          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
-        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1058,13 +1044,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f" style="grid-column:1/-1">
           <label>Observações</label>
           <textarea id="epiObs" style="min-height:56px" placeholder="O colaborador declara ter recebido o EPI acima e se compromete a utilizá-lo..."></textarea>
-        </div>
-        <div class="f" style="grid-column:1/-1">
-          <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem;font-weight:500">
-            <input type="checkbox" id="epiCompartilhar" style="width:auto;accent-color:var(--accent)">
-            🔗 Compartilhar entre todas as empresas do colaborador
-          </label>
-          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">Desmarcado = visível apenas na empresa ativa</div>
         </div>
       </div>
     </div>
@@ -1657,14 +1636,16 @@ async function carregarDocs(colabId) {
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var obsClean = getObsClean(d.observacoes);
     var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
-    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
+    var shared = !d.empresa_id;
+    var toggleBtn = '<button onclick="toggleDocCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📄</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.tipo) + '</div>'
-        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + compartBadge + '</div>'
+        + '<div class="doc-meta">' + fmtData(d.data_documento) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + toggleBtn
       + (d.arquivo_url ? '<a href="' + d.arquivo_url + '" target="_blank" class="btn bg bsm" style="margin-right:.25rem;text-decoration:none">📎</a>' : '')
       + '<button class="btn ba bsm" onclick="editarDocById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirDoc(\'' + d.id + '\')">🗑</button>'
@@ -1696,15 +1677,17 @@ async function carregarSaude(colabId) {
     var icon = d.tipo && d.tipo.startsWith('aso') ? '🏥' : '📜';
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
-    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
     var obsClean = getObsClean(d.observacoes);
+    var shared = !d.empresa_id;
+    var toggleBtn = '<button onclick="toggleSaudeCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(63,185,80,.1);color:var(--green)">' + icon + '</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (labels[d.tipo]||d.tipo) + (d.instituicao ? ' — ' + d.instituicao : '') + '</div>'
-        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + avisoBadge + compartBadge + '</div>'
+        + '<div class="doc-meta">Emissão: ' + fmtData(d.data_emissao) + (d.data_vencimento ? ' · <span class="doc-status ' + sv.cls + '">' + sv.txt + '</span>' : '') + (d.resultado ? ' · ' + d.resultado.toUpperCase() : '') + avisoBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + toggleBtn
       + '<button class="btn ba bsm" onclick="editarSaudeById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirSaude(\'' + d.id + '\')">🗑</button>'
     + '</div>';
@@ -1727,16 +1710,18 @@ async function carregarEpis(colabId) {
     var sv = statusVencimento(d.data_substituicao);
     var aviso = getAvisoDiasFromObs(d.observacoes);
     var avisoBadge = aviso > 0 && d.data_substituicao ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
-    var compartBadge = !d.empresa_id ? ' · <span style="font-size:.68rem;background:rgba(88,166,255,.15);color:var(--blue);padding:.05rem .3rem;border-radius:3px">🔗 compartilhado</span>' : '';
     var obsClean = getObsClean(d.observacoes);
+    var shared = !d.empresa_id;
+    var toggleBtn = '<button onclick="toggleEpiCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(240,165,0,.1);color:var(--accent)">🦺</div>'
       + '<div class="doc-info">'
         + '<div class="doc-nome">' + (d.descricao||d.item) + '</div>'
         + '<div class="doc-meta">CA: ' + (d.ca||'—') + ' · Entrega: ' + fmtData(d.data_entrega)
-          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + avisoBadge + compartBadge + '</div>'
+          + (d.data_substituicao ? ' · <span class="doc-status ' + sv.cls + '">Subst: ' + sv.txt + '</span>' : '') + avisoBadge + '</div>'
         + (obsClean ? '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">' + obsClean + '</div>' : '')
       + '</div>'
+      + toggleBtn
       + '<button class="btn ba bsm" onclick="editarEpiById(\'' + d.id + '\')" style="margin-right:.25rem">✏️</button>'
       + '<button class="btn bd bsm" onclick="excluirEpi(\'' + d.id + '\')">🗑</button>'
     + '</div>';
@@ -3328,7 +3313,6 @@ function _resetModalDoc() {
   document.getElementById('docArquivo').value = '';
   document.getElementById('docArquivoAtual').style.display = 'none';
   document.getElementById('docUploadProgress').style.display = 'none';
-  document.getElementById('docCompartilhar').checked = false;
 }
 
 function abrirModalDoc() {
@@ -3346,7 +3330,6 @@ function editarDoc(d) {
   document.getElementById('docVenc').value      = d.data_vencimento||'';
   document.getElementById('docAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes));
   document.getElementById('docObs').value       = getObsClean(d.observacoes);
-  document.getElementById('docCompartilhar').checked = !d.empresa_id;
   if (d.arquivo_url) {
     var el = document.getElementById('docArquivoAtual');
     el.style.display = '';
@@ -3381,7 +3364,6 @@ async function salvarDoc() {
 
   var row = {
     colaborador_id: _colabAtivo.id,
-    empresa_id:     document.getElementById('docCompartilhar').checked ? null : empId,
     tipo:           document.getElementById('docTipo').value,
     descricao:      document.getElementById('docDesc').value.trim(),
     data_documento: document.getElementById('docData').value  || null,
@@ -3395,7 +3377,6 @@ async function salvarDoc() {
   var file = fileInput.files[0];
   if (file) {
     document.getElementById('docUploadProgress').style.display = '';
-    var ext = file.name.split('.').pop();
     var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     var path = _colabAtivo.id + '/' + Date.now() + '_' + safeName;
     var { data: upData, error: upErr } = await sb.storage
@@ -3406,7 +3387,6 @@ async function salvarDoc() {
     row.arquivo_url  = urlData.publicUrl;
     row.arquivo_nome = file.name;
   } else if (_docArquivoRemover) {
-    // Remove arquivo existente do storage
     var docAtual = _docsCache.find(function(x){ return x.id === _docEditId; });
     if (docAtual && docAtual.arquivo_url) {
       var oldPath = decodeURIComponent(docAtual.arquivo_url.split('/documentos-rh/')[1] || '').split('?')[0];
@@ -3420,6 +3400,7 @@ async function salvarDoc() {
   if (_docEditId) {
     ({ error } = await sb.from('rh_documentos').update(row).eq('id', _docEditId));
   } else {
+    row.empresa_id = empId;
     ({ error } = await sb.from('rh_documentos').insert(row));
   }
   if (btnSalvar) btnSalvar.disabled = false;
@@ -3447,7 +3428,6 @@ function abrirModalSaude(tipo) {
   ['saudeTipo','saudeInst','saudeEmissao','saudeVenc','saudeCH','saudeObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('saudeResult').value='';
   document.getElementById('saudeAvisoDias').value='30';
-  document.getElementById('saudeCompartilhar').checked = false;
   if (tipo==='aso') document.getElementById('saudeTipo').value='aso_per';
   document.getElementById('modalSaudeTit').textContent='Adicionar ASO / Certificado NR';
   document.getElementById('btnSalvarSaude').textContent='💾 Salvar';
@@ -3465,7 +3445,6 @@ function editarSaudeById(id) {
   document.getElementById('saudeResult').value = d.resultado||'';
   document.getElementById('saudeAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
   document.getElementById('saudeObs').value = getObsClean(d.observacoes);
-  document.getElementById('saudeCompartilhar').checked = !d.empresa_id;
   document.getElementById('modalSaudeTit').textContent='Editar Registro';
   document.getElementById('btnSalvarSaude').textContent='💾 Atualizar';
   document.getElementById('modalSaude').classList.add('on');
@@ -3479,7 +3458,6 @@ async function salvarSaude() {
   var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
-    empresa_id:     document.getElementById('saudeCompartilhar').checked ? null : empId,
     tipo: document.getElementById('saudeTipo').value,
     instituicao: document.getElementById('saudeInst').value.trim(),
     data_emissao: document.getElementById('saudeEmissao').value||null,
@@ -3494,6 +3472,7 @@ async function salvarSaude() {
     var res = await sb.from('rh_saude').update(row).eq('id', _saudeEditId);
     error = res.error;
   } else {
+    row.empresa_id = empId;
     var res = await sb.from('rh_saude').insert(row);
     error = res.error;
   }
@@ -3516,7 +3495,6 @@ function abrirModalEpi() {
   ['epiItem','epiDesc','epiCA','epiEntrega','epiSubs','epiObs'].forEach(function(f){ document.getElementById(f).value=''; });
   document.getElementById('epiQtd').value='1';
   document.getElementById('epiAvisoDias').value='30';
-  document.getElementById('epiCompartilhar').checked = false;
   document.getElementById('btnSalvarEpi').textContent='💾 Registrar Entrega';
   document.getElementById('modalEpi').classList.add('on');
 }
@@ -3532,7 +3510,6 @@ function editarEpiById(id) {
   document.getElementById('epiQtd').value = d.quantidade||1;
   document.getElementById('epiAvisoDias').value = String(getAvisoDiasFromObs(d.observacoes)||30);
   document.getElementById('epiObs').value = getObsClean(d.observacoes);
-  document.getElementById('epiCompartilhar').checked = !d.empresa_id;
   document.getElementById('btnSalvarEpi').textContent='💾 Atualizar';
   document.getElementById('modalEpi').classList.add('on');
 }
@@ -3545,7 +3522,6 @@ async function salvarEpi() {
   var obsVal = aviso > 0 ? '__aviso:' + aviso + '__\n' + obsRaw : obsRaw;
   var row = {
     colaborador_id: _colabAtivo.id,
-    empresa_id:     document.getElementById('epiCompartilhar').checked ? null : empId,
     item: document.getElementById('epiItem').value,
     descricao: document.getElementById('epiDesc').value.trim(),
     ca: document.getElementById('epiCA').value.trim(),
@@ -3560,6 +3536,7 @@ async function salvarEpi() {
     var res = await sb.from('rh_epis').update(row).eq('id', _epiEditId);
     error = res.error;
   } else {
+    row.empresa_id = empId;
     var res = await sb.from('rh_epis').insert(row);
     error = res.error;
   }
@@ -3572,6 +3549,32 @@ async function excluirEpi(id) {
   if (!confirm('Excluir registro de EPI?')) return;
   await sb.from('rh_epis').delete().eq('id',id);
   toast('Excluído.','ok');
+  if (_colabAtivo) carregarEpis(_colabAtivo.id);
+}
+
+// ── Toggle de vínculo de empresa por registro ─────────────────
+async function toggleDocCompartilhar(id) {
+  var empId = await getEmpresaId();
+  var doc = _docsCache.find(function(x){ return x.id === id; });
+  if (!doc) return;
+  var novoEmpId = doc.empresa_id ? null : empId;
+  await sb.from('rh_documentos').update({ empresa_id: novoEmpId }).eq('id', id);
+  if (_colabAtivo) carregarDocs(_colabAtivo.id);
+}
+async function toggleSaudeCompartilhar(id) {
+  var empId = await getEmpresaId();
+  var rec = _saudeCacheList.find(function(x){ return x.id === id; });
+  if (!rec) return;
+  var novoEmpId = rec.empresa_id ? null : empId;
+  await sb.from('rh_saude').update({ empresa_id: novoEmpId }).eq('id', id);
+  if (_colabAtivo) carregarSaude(_colabAtivo.id);
+}
+async function toggleEpiCompartilhar(id) {
+  var empId = await getEmpresaId();
+  var rec = _epiCacheList.find(function(x){ return x.id === id; });
+  if (!rec) return;
+  var novoEmpId = rec.empresa_id ? null : empId;
+  await sb.from('rh_epis').update({ empresa_id: novoEmpId }).eq('id', id);
   if (_colabAtivo) carregarEpis(_colabAtivo.id);
 }
 
