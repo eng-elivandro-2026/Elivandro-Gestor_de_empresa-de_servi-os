@@ -637,8 +637,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="g2" style="gap:.85rem">
         <div class="f" style="grid-column:1/-1"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
         <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
-        <div class="f"><label>E-mail</label><input type="email" id="cEmail" placeholder="joao@email.com"></div>
-        <div class="f"><label>Telefone / WhatsApp</label><input type="text" id="cTel" placeholder="(11) 99999-9999"></div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>E-mail</span>
+            <button type="button" id="scopeBtn_email" onclick="toggleScope('email')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="email" id="cEmail" placeholder="joao@email.com">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Telefone / WhatsApp</span>
+            <button type="button" id="scopeBtn_telefone" onclick="toggleScope('telefone')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cTel" placeholder="(11) 99999-9999">
+        </div>
         <div class="f" id="cPerigRow" style="display:none"><label>Atividade de risco (Periculosidade)?</label>
           <select id="cPericuloso" onchange="togglePercPerig()">
             <option value="false">Não</option>
@@ -652,11 +664,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
             <option value="total">Horas totais (opção comercial)</option>
           </select>
         </div>
-        <div class="f"><label>Função / Cargo</label><input type="text" id="cFuncao" placeholder="Eletricista Industrial"></div>
-        <div class="f"><label>Data de admissão</label><input type="date" id="cAdmissao"></div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Função / Cargo</span>
+            <button type="button" id="scopeBtn_funcao" onclick="toggleScope('funcao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cFuncao" placeholder="Eletricista Industrial">
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Data de admissão</span>
+            <button type="button" id="scopeBtn_admissao" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="date" id="cAdmissao">
+        </div>
       </div>
       <div class="f" style="margin-top:.85rem">
-        <label>Observações</label>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+          <span>Observações</span>
+          <button type="button" id="scopeBtn_observacoes" onclick="toggleScope('observacoes')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+        </label>
         <textarea id="cObs" placeholder="Informações adicionais..."></textarea>
       </div>
       <!-- Seleção de empresas -->
@@ -1261,7 +1288,7 @@ async function carregarColabs() {
   // Passo 1: buscar vínculos com tipo e valor_hora específicos desta empresa
   var { data: vinculos, error: errV } = await sb
     .from('colaborador_empresas')
-    .select('colaborador_id, tipo, valor_hora')
+    .select('colaborador_id, tipo, valor_hora, email, telefone, funcao, admissao, observacoes')
     .eq('empresa_id', empId)
     .eq('ativo', true);
 
@@ -1279,7 +1306,11 @@ async function carregarColabs() {
   // Mapa de overrides por empresa
   var empOverrides = {};
   vinculos.forEach(function(v){
-    empOverrides[v.colaborador_id] = { tipo: v.tipo, valor_hora: v.valor_hora };
+    empOverrides[v.colaborador_id] = {
+      tipo: v.tipo, valor_hora: v.valor_hora,
+      email: v.email, telefone: v.telefone,
+      funcao: v.funcao, admissao: v.admissao, observacoes: v.observacoes
+    };
   });
 
   // Passo 2: buscar dados dos colaboradores
@@ -1297,8 +1328,13 @@ async function carregarColabs() {
   _colabs = (data || []).map(function(c) {
     var o = empOverrides[c.id] || {};
     return Object.assign({}, c, {
-      tipo:       o.tipo       || c.tipo,
-      valor_hora: (o.valor_hora != null) ? o.valor_hora : c.valor_hora
+      tipo:        o.tipo        || c.tipo,
+      valor_hora:  (o.valor_hora  != null) ? o.valor_hora  : c.valor_hora,
+      email:       (o.email       != null) ? o.email       : c.email,
+      telefone:    (o.telefone    != null) ? o.telefone    : c.telefone,
+      funcao:      (o.funcao      != null) ? o.funcao      : c.funcao,
+      admissao:    (o.admissao    != null) ? o.admissao    : c.admissao,
+      observacoes: (o.observacoes != null) ? o.observacoes : c.observacoes
     });
   });
 
@@ -2893,6 +2929,45 @@ function togglePercPerig() {
 var _colabEditId = null;
 var _todasEmpresas = [];
 var _colabAddEmpId = null;
+var _fieldScopes = {};     // 'global' | 'solo' per field
+var _colabRawGlobal = {};  // raw values from colaboradores without overrides
+var _colabRawOverride = {}; // raw values from colaborador_empresas for current empresa
+
+var _SCOPE_FIELDS = ['email','telefone','funcao','admissao','observacoes'];
+var _SCOPE_INPUT  = { email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
+
+function updateScopeBtn(field) {
+  var btn = document.getElementById('scopeBtn_' + field);
+  if (!btn) return;
+  var isSolo = _fieldScopes[field] === 'solo';
+  btn.textContent = isSolo ? '🏢 Só esta' : '🔗 Todas';
+  if (isSolo) {
+    btn.style.borderColor = 'rgba(240,165,0,.45)';
+    btn.style.background  = 'rgba(240,165,0,.1)';
+    btn.style.color       = 'var(--accent)';
+  } else {
+    btn.style.borderColor = 'rgba(88,166,255,.4)';
+    btn.style.background  = 'rgba(88,166,255,.1)';
+    btn.style.color       = 'var(--blue)';
+  }
+}
+
+function toggleScope(field) {
+  var nowSolo = _fieldScopes[field] !== 'solo';
+  _fieldScopes[field] = nowSolo ? 'solo' : 'global';
+  var inputId = _SCOPE_INPUT[field];
+  if (inputId) {
+    var el = document.getElementById(inputId);
+    if (el) {
+      if (!nowSolo) {
+        // toggling back to global → show raw global value
+        el.value = _colabRawGlobal[field] || '';
+      }
+      // toggling to solo → keep current input value as the override
+    }
+  }
+  updateScopeBtn(field);
+}
 
 async function abrirModalColab(id) {
   _colabEditId = id || null;
@@ -2900,6 +2975,11 @@ async function abrirModalColab(id) {
   await carregarColabs();
 }
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
+  // Reset field scopes to "global" by default
+  _fieldScopes = { email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
+  _colabRawGlobal = {};
+  _colabRawOverride = {};
+
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
     document.getElementById('cTipo').value                = 'mei';
@@ -2907,15 +2987,34 @@ async function abrirModalColab(id) {
     document.getElementById('cPercPericulosidade').value  = '30';
     document.getElementById('cPericulosidadeBase').value  = 'normal';
     togglePerigFields();
+    _SCOPE_FIELDS.forEach(updateScopeBtn);
   } else {
     var c = _colabs.find(function(x){ return x.id===id; });
 
-if (!c && id) {
-  await carregarColabs();
-  c = _colabs.find(function(x){ return x.id===id; });
-}
+    if (!c && id) {
+      await carregarColabs();
+      c = _colabs.find(function(x){ return x.id===id; });
+    }
 
-if (c) {
+    if (c) {
+      // Fetch raw global values (from colaboradores, no overrides)
+      var { data: rawGlobal } = await sb.from('colaboradores')
+        .select('email,telefone,funcao,admissao,observacoes').eq('id', id).single();
+      _colabRawGlobal = rawGlobal || {};
+
+      // Fetch company-specific overrides for current empresa
+      var empId = await getEmpresaId();
+      var { data: rawOv } = await sb.from('colaborador_empresas')
+        .select('email,telefone,funcao,admissao,observacoes,tipo,valor_hora')
+        .eq('colaborador_id', id).eq('empresa_id', empId).single();
+      _colabRawOverride = rawOv || {};
+
+      // Set scope: 'solo' if override exists (not null), else 'global'
+      _SCOPE_FIELDS.forEach(function(f) {
+        _fieldScopes[f] = (_colabRawOverride[f] != null) ? 'solo' : 'global';
+      });
+
+      // Populate fields with merged values (c already has company-merged data)
       document.getElementById('cNome').value                = c.nome||'';
       document.getElementById('cTipo').value                = c.tipo||'mei';
       document.getElementById('cDoc').value                 = c.documento||'';
@@ -2929,6 +3028,7 @@ if (c) {
       document.getElementById('cPercPericulosidade').value  = c.perc_periculosidade || 30;
       document.getElementById('cPericulosidadeBase').value  = c.periculosidade_base || 'normal';
       togglePerigFields();
+      _SCOPE_FIELDS.forEach(updateScopeBtn);
     }
   }
   // Carregar checkboxes de empresas
@@ -2973,59 +3073,112 @@ function fecharModalColab() {
 }
 
 async function salvarColab() {
-  var dados = {
-    nome: document.getElementById('cNome').value.trim(),
-    tipo: document.getElementById('cTipo').value,
-    documento: document.getElementById('cDoc').value.trim(),
-    email: document.getElementById('cEmail').value.trim(),
-    telefone: document.getElementById('cTel').value.trim(),
-    valor_hora:           parseFloat(document.getElementById('cValorHora').value)||null,
-    funcao:               document.getElementById('cFuncao').value.trim(),
-    admissao:             document.getElementById('cAdmissao').value||null,
-    observacoes:          document.getElementById('cObs').value.trim(),
-    periculoso:           document.getElementById('cTipo').value === 'clt' && document.getElementById('cPericuloso').value === 'true',
+  var empId     = await getEmpresaId();
+  var tipo      = document.getElementById('cTipo').value;
+  var valor_hora= parseFloat(document.getElementById('cValorHora').value)||null;
+  var email     = document.getElementById('cEmail').value.trim();
+  var telefone  = document.getElementById('cTel').value.trim();
+  var funcao    = document.getElementById('cFuncao').value.trim();
+  var admissao  = document.getElementById('cAdmissao').value||null;
+  var observ    = document.getElementById('cObs').value.trim();
+
+  // Campos sempre globais
+  var dadosGlobal = {
+    nome:                 document.getElementById('cNome').value.trim(),
+    documento:            document.getElementById('cDoc').value.trim(),
+    periculoso:           tipo === 'clt' && document.getElementById('cPericuloso').value === 'true',
     perc_periculosidade:  parseFloat(document.getElementById('cPercPericulosidade').value) || 30,
     periculosidade_base:  document.getElementById('cPericulosidadeBase').value || 'normal',
     ativo:                true
   };
-  if (!dados.nome) { toast('Informe o nome.','err'); return; }
+  if (!dadosGlobal.nome) { toast('Informe o nome.','err'); return; }
+
+  // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → manter global anterior
+  if (_fieldScopes.email       !== 'solo') dadosGlobal.email       = email;
+  if (_fieldScopes.telefone    !== 'solo') dadosGlobal.telefone    = telefone;
+  if (_fieldScopes.funcao      !== 'solo') dadosGlobal.funcao      = funcao;
+  if (_fieldScopes.admissao    !== 'solo') dadosGlobal.admissao    = admissao;
+  if (_fieldScopes.observacoes !== 'solo') dadosGlobal.observacoes = observ;
 
   // Coletar empresas selecionadas
   var empsSel = (_todasEmpresas||[]).filter(function(e) {
     var chk = document.getElementById('chkEmp_' + e.id);
     return chk && chk.checked;
-  }).map(function(e){ return e.id; });
-
+  });
   if (!empsSel.length) { toast('Selecione ao menos uma empresa.','err'); return; }
 
   var colabId = _colabEditId;
   var error;
 
   if (colabId) {
-    // Edição
-    var r = await sb.from('colaboradores').update(dados).eq('id', colabId);
+    var r = await sb.from('colaboradores').update(dadosGlobal).eq('id', colabId);
     error = r.error;
   } else {
-    // Novo
-    var r2 = await sb.from('colaboradores').insert(dados).select().single();
+    // Novo: incluir todos os campos no insert
+    var dadosInsert = Object.assign({}, dadosGlobal, {
+      email: email, telefone: telefone, funcao: funcao, admissao: admissao, observacoes: observ
+    });
+    var r2 = await sb.from('colaboradores').insert(dadosInsert).select().single();
     error = r2.error;
     if (!error && r2.data) colabId = r2.data.id;
   }
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
 
-  // Sincronizar vínculos de empresa — deletar todos e reinserir os selecionados
+  // Sincronizar vínculos: upsert inteligente (preserva overrides de outras empresas)
   if (colabId) {
-    await sb.from('colaborador_empresas').delete().eq('colaborador_id', colabId);
+    // Buscar links existentes para preservar dados de outras empresas
+    var { data: existingLinks } = await sb.from('colaborador_empresas')
+      .select('empresa_id, ativo').eq('colaborador_id', colabId);
+    var existingMap = {};
+    (existingLinks || []).forEach(function(l) { existingMap[l.empresa_id] = l; });
 
-    for (var i = 0; i < empsSel.length; i++) {
-      await sb.from('colaborador_empresas').insert({
-        colaborador_id: colabId,
-        empresa_id:     empsSel[i],
-        ativo:          true,
-        tipo:           dados.tipo,
-        valor_hora:     dados.valor_hora
-      });
+    // Overrides da empresa ativa (null = usar global)
+    var overridesEmpAtiva = {
+      tipo:        tipo,
+      valor_hora:  valor_hora,
+      email:       _fieldScopes.email       === 'solo' ? email    : null,
+      telefone:    _fieldScopes.telefone    === 'solo' ? telefone : null,
+      funcao:      _fieldScopes.funcao      === 'solo' ? funcao   : null,
+      admissao:    _fieldScopes.admissao    === 'solo' ? admissao : null,
+      observacoes: _fieldScopes.observacoes === 'solo' ? observ   : null
+    };
+
+    for (var i = 0; i < _todasEmpresas.length; i++) {
+      var emp = _todasEmpresas[i];
+      var chk = document.getElementById('chkEmp_' + emp.id);
+      var isChecked = chk && chk.checked;
+      var isAtiva = emp.id === empId;
+      var existing = existingMap[emp.id];
+
+      if (isChecked) {
+        if (isAtiva) {
+          // Empresa ativa: upsert com todos os overrides
+          if (existing) {
+            await sb.from('colaborador_empresas').update(Object.assign({ativo:true}, overridesEmpAtiva))
+              .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
+          } else {
+            await sb.from('colaborador_empresas').insert(Object.assign({colaborador_id:colabId,empresa_id:emp.id,ativo:true}, overridesEmpAtiva));
+          }
+        } else {
+          // Outra empresa: só ativar, não mexer em overrides existentes
+          if (existing) {
+            if (!existing.ativo) await sb.from('colaborador_empresas').update({ativo:true})
+              .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
+          } else {
+            await sb.from('colaborador_empresas').insert({
+              colaborador_id:colabId, empresa_id:emp.id, ativo:true,
+              tipo:tipo, valor_hora:valor_hora
+            });
+          }
+        }
+      } else {
+        // Desmarcado: desativar se existia
+        if (existing && existing.ativo) {
+          await sb.from('colaborador_empresas').update({ativo:false})
+            .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
+        }
+      }
     }
   }
 
