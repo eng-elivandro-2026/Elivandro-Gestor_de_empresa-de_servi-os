@@ -629,6 +629,28 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="sec on">
+
+  <!-- PROPOSTAS -->
+  <div class="card" id="propostasCard" style="margin-bottom:.8rem">
+    <div class="ch" style="cursor:pointer" onclick="togPropostas()">
+      <span class="ct">⭐ Propostas</span>
+      <div class="br" onclick="event.stopPropagation()">
+        <button class="btn bp bsm" onclick="newProposal()">+ Nova</button>
+        <button class="btn bg bsm" onclick="document.getElementById('iFile').click()">📥 Importar</button>
+      </div>
+      <span id="propostasChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
+    </div>
+    <div id="propostasBody" style="display:none">
+      <div class="sb"><input type="text" id="srch" placeholder="🔍 Buscar..." oninput="rProps()"></div>
+      <div class="ft" id="phaseFilters"></div>
+      <div class="pg" id="pG"><div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta</p></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:.8rem">
+    <div class="ch"><span class="ct">📈 Por Fase</span></div>
+    <div class="ph-g" id="phG"></div>
+  </div>
+
   <!-- PAINEL DE METAS -->
   <div id="metaPanel" class="card" style="margin-bottom:.8rem">
     <div class="ch" style="cursor:pointer" onclick="togMeta()">
@@ -838,22 +860,6 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     </div>
   </div>
 
-  <div class="card" id="propostasCard">
-    <div class="ch">
-      <span class="ct">⭐ Propostas</span>
-      <div class="br">
-        <button class="btn bp bsm" onclick="newProposal()">+ Nova</button>
-        <button class="btn bg bsm" onclick="document.getElementById('iFile').click()">📥 Importar</button>
-      </div>
-    </div>
-    <div class="sb"><input type="text" id="srch" placeholder="🔍 Buscar..." oninput="rProps()"></div>
-    <div class="ft" id="phaseFilters"></div>
-    <div class="pg" id="pG"><div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta</p></div></div>
-  </div>
-  <div class="card">
-    <div class="ch"><span class="ct">📈 Por Fase</span></div>
-    <div class="ph-g" id="phG"></div>
-  </div>
 </div>
 
 <!-- NOVA PROPOSTA -->
@@ -2312,6 +2318,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 <script>
+function togPropostas(){
+  var b=Q('propostasBody'), ch=Q('propostasChevron');
+  if(!b||!ch) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  ch.textContent=open?'▼ expandir':'▲';
+}
 function togVisaoGeral(){
   var b=Q('visaoGeralBody'), ch=Q('visaoGeralChevron');
   if(!b||!ch) return;
