@@ -2419,21 +2419,24 @@ function carregarCeoDash(){
 
   var cliEl=Q('ceoTopCli');
   if(cliEl){
-    var porCli={};
-    pipeline.forEach(function(p){
-      var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
-      if(!porCli[cli]) porCli[cli]={n:cli,cnt:0,val:0};
-      porCli[cli].cnt++;
-      porCli[cli].val+=n2(p.val);
-    });
-    var top5=Object.keys(porCli).map(function(k){return porCli[k];}).sort(function(a,b){return b.val-a.val;}).slice(0,5);
-    cliEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🏆 Top Clientes em Execução</div>'
-      +(top5.length?top5.map(function(c,i){
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.76rem">'
-          +'<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%" title="'+esc(c.n)+'">'+(i+1)+'. '+esc(c.n)+'</span>'
-          +'<span style="color:var(--accent);font-weight:700;flex-shrink:0">'+money(c.val)+'</span>'
+    var pipeSorted=pipeline.slice().sort(function(a,b){return n2(b.val)-n2(a.val);});
+    cliEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📋 Propostas em Execução</div>'
+      +(pipeSorted.length?'<div style="max-height:260px;overflow-y:auto">'+pipeSorted.map(function(p){
+        var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
+        var tit=(p.tit||p.num||'—').trim();
+        var fase=FASE[p.fas]||{n:p.fas,i:''};
+        var isAtr=p.fas==='atrasado';
+        var isPausa=p.fas.indexOf('em_pausa')===0;
+        var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
+        return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.32rem 0;border-bottom:1px solid var(--border);gap:.4rem">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:.75rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(cli)+'">'+esc(cli)+'</div>'
+          +'<div style="font-size:.68rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+          +'<div style="font-size:.65rem;color:'+corFase+';margin-top:.1rem">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
+          +'</div>'
+          +'<div style="font-size:.76rem;font-weight:700;color:var(--accent);flex-shrink:0;text-align:right">'+money(n2(p.val))+'</div>'
           +'</div>';
-      }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Sem dados no pipeline.</p>');
+      }).join('')+'</div>':'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Sem propostas em execução.</p>');
   }
 
   var mesEl=Q('ceoMes');
