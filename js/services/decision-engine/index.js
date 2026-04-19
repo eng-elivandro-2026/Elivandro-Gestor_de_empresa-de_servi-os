@@ -408,33 +408,44 @@
   function generateExecutiveSummary(data, alertas, decisoes, oportunidades) {
     var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     var mesAtual = meses[new Date().getMonth()];
+
+    // Texto simples (compatibilidade)
     var partes = [];
-
-    // Cenário atual
-    var sit = 'Você tem ' + data.pipeline.count + ' proposta' + (data.pipeline.count !== 1 ? 's' : '') + ' ativa' + (data.pipeline.count !== 1 ? 's' : '') + ' valendo ' + _fmt(data.pipeline.valor) + '.';
-    sit += data.kpis.fechMes > 0
-      ? ' Em ' + mesAtual + ': ' + data.kpis.fechMes + ' fechamento' + (data.kpis.fechMes > 1 ? 's' : '') + ' (' + _fmt(data.kpis.valFechMes) + ').'
-      : ' Nenhum fechamento em ' + mesAtual + ' ainda.';
-    sit += ' Conversão do ano: ' + data.kpis.taxaConv.toFixed(1) + '%.';
+    var sit = data.pipeline.count + ' proposta' + (data.pipeline.count !== 1 ? 's' : '') + ' ativa' + (data.pipeline.count !== 1 ? 's' : '') + ' valendo ' + _fmt(data.pipeline.valor) + '.';
     partes.push(sit);
-
-    // Principal risco
     var criticos = alertas.filter(function (a) { return a.tipo === 'critico' || a.impacto === 'alto'; });
-    if (criticos.length) {
-      partes.push('Principal risco: ' + criticos[0].mensagem + (criticos[0].valor > 0 ? ' (' + _fmt(criticos[0].valor) + ')' : '') + '.');
+    if (criticos.length) partes.push('Risco: ' + criticos[0].mensagem + '.');
+    if (decisoes.length) partes.push('Ação: ' + decisoes[0].titulo.replace(/^[^\s]+\s/, '') + '.');
+
+    // Itens estruturados para exibição em tópicos
+    var itens = [];
+    itens.push({ icone: '📊', label: 'Pipeline ativo', valor: _fmt(data.pipeline.valor) + ' em ' + data.pipeline.count + ' proposta' + (data.pipeline.count !== 1 ? 's' : '') });
+    itens.push({ icone: '⏳', label: 'Em negociação', valor: data.negociacao.count + ' proposta' + (data.negociacao.count !== 1 ? 's' : '') + ' (' + _fmt(_soma(data.negociacao.lista)) + ')' });
+
+    if (data.kpis.fechMes > 0) {
+      itens.push({ icone: '✅', label: 'Fechamentos em ' + mesAtual, valor: data.kpis.fechMes + ' negócio' + (data.kpis.fechMes !== 1 ? 's' : '') + ' — ' + _fmt(data.kpis.valFechMes) });
+    } else {
+      itens.push({ icone: '⚪', label: 'Fechamentos em ' + mesAtual, valor: 'Nenhum ainda' });
     }
 
-    // Principal oportunidade
+    itens.push({ icone: '📈', label: 'Conversão do ano', valor: data.kpis.taxaConv.toFixed(1) + '% (' + data.kpis.fechAno + ' de ' + data.kpis.totalAno + ' propostas)' });
+    itens.push({ icone: '💰', label: 'Receita no ano', valor: _fmt(data.kpis.recAno) });
+
+    if (data.atrasadas.count > 0) {
+      itens.push({ icone: '🔴', label: 'Risco crítico', valor: data.atrasadas.count + ' proposta' + (data.atrasadas.count !== 1 ? 's' : '') + ' atrasada' + (data.atrasadas.count !== 1 ? 's' : '') + ' — ' + _fmt(_soma(data.atrasadas.lista)) });
+    } else if (criticos.length) {
+      itens.push({ icone: '🟡', label: 'Atenção', valor: criticos[0].mensagem });
+    }
+
     if (oportunidades.length) {
-      partes.push('Maior oportunidade: ' + oportunidades[0].titulo.toLowerCase() + ' — ' + oportunidades[0].descricao + '.');
+      itens.push({ icone: '💡', label: 'Oportunidade', valor: oportunidades[0].descricao });
     }
 
-    // Ação recomendada
     if (decisoes.length) {
-      partes.push('Ação imediata: ' + decisoes[0].titulo.replace(/^[^\s]+\s/, '') + '.');
+      itens.push({ icone: '⚡', label: 'Ação imediata', valor: decisoes[0].titulo.replace(/^[^\s]+\s/, '') });
     }
 
-    return partes.join(' ');
+    return { texto: partes.join(' '), itens: itens };
   }
 
   // ── runDecisionEngine ─────────────────────────────────────────
@@ -451,7 +462,8 @@
       decisions:         decisions,
       opportunities:     opportunities,
       weekly_focus:      weekly_focus,
-      executive_summary: executive_summary,
+      executive_summary: executive_summary.texto,
+      executive_items:   executive_summary.itens,
       _data:             data
     };
     window._deResult = result;

@@ -2386,8 +2386,16 @@ function renderDecisionEngine(res){
   var sumEl=Q('deResumoExec');
   if(sumEl) sumEl.innerHTML=''
     +'<div style="background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.7rem 1rem">'
-    +'<div style="font-size:.68rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem">📋 Cenário atual</div>'
-    +'<div style="font-size:.79rem;color:var(--text);line-height:1.7">'+esc(res.executive_summary)+'</div>'
+    +'<div style="font-size:.68rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📋 Cenário atual</div>'
+    +((res.executive_items&&res.executive_items.length)
+      ? res.executive_items.map(function(it){
+          return '<div style="display:flex;gap:.5rem;align-items:baseline;padding:.22rem 0;border-bottom:1px solid rgba(88,166,255,.1);font-size:.76rem">'
+            +'<span style="flex-shrink:0;width:20px;text-align:center">'+it.icone+'</span>'
+            +'<span style="color:var(--text3);flex-shrink:0;min-width:130px;font-size:.7rem">'+esc(it.label)+'</span>'
+            +'<span style="color:var(--text);font-weight:600">'+esc(it.valor)+'</span>'
+            +'</div>';
+        }).join('')
+      : '<div style="font-size:.79rem;color:var(--text);line-height:1.7">'+esc(res.executive_summary)+'</div>')
     +'</div>';
 
   // ── Foco da semana
@@ -2420,6 +2428,16 @@ function renderDecisionEngine(res){
       return '<div style="padding:.38rem .5rem;border-left:3px solid '+cor+';background:var(--bg3);border-radius:0 4px 4px 0;margin-bottom:.32rem">'
         +'<div style="font-size:.73rem;color:'+cor+';font-weight:600;line-height:1.4">'+(a.icone?a.icone+' ':'')+esc(a.mensagem)+'</div>'
         +(a.valor>0?'<div style="font-size:.67rem;color:var(--text3);margin-top:.08rem">Em risco: '+money(a.valor)+'</div>':'')
+        +(a.propostas&&a.propostas.length
+          ? '<div style="margin-top:.3rem;padding:.2rem .4rem;background:rgba(0,0,0,.15);border-radius:3px">'
+            +a.propostas.map(function(p){
+              return '<div style="font-size:.64rem;color:var(--text2);padding:.07rem 0;display:flex;justify-content:space-between;gap:.4rem">'
+                +'<span>• '+(p.loc||p.cli||'N/I')+(p.tit?' — '+esc(p.tit):'')+'</span>'
+                +'<span style="color:var(--accent);font-weight:600;flex-shrink:0">'+money(n2(p.val))+'</span>'
+                +'</div>';
+            }).join('')
+            +'</div>'
+          : '')
         +'</div>';
     }).join(''):'<div style="font-size:.74rem;color:var(--green);padding:.3rem 0">✅ Sem alertas críticos</div>');
 

@@ -16,22 +16,25 @@
       icon: '📊',
       tipo: 'inline',
       nav: [
-        { label: 'Dashboard',         icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
-        { label: '↳ Motor de Decisão',icon: '🧠', action: "irParaPainel('motorDecisaoCard','togMotorDecisao')" },
-        { label: '↳ Visão Executiva', icon: '🏢', action: "irParaPainel('ceoDashCard','togCeoDash')" },
-        { label: '↳ Metas',           icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
-        { label: '↳ Visão Geral',     icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
-        { label: '↳ Análise IA',      icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
-        { label: '↳ Ranking',         icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
-        { label: '↳ Por Categoria',   icon: '📂', action: "irParaPainel('catAnaliseCard','togCatAnalise')" },
-        { label: '↳ KPIs Ciclos',     icon: '📊', action: "irParaPainel('ciclosCard','togCiclosDash')" },
-        { label: '↳ Linha do Tempo',  icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
-        { label: '↳ Fechamentos',     icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
-        { label: 'Templates',         icon: '📋', action: "go('templates',this);rTplMgr()" },
-        { label: 'Banco de Escopos',  icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
-        { label: 'Análise',           icon: '📈', action: "go('analise',this);rAnalise()" },
-        { label: 'Pipeline',          icon: '🔀', action: "go('registro',this);rRegistro()" },
-        { label: 'Versões',           icon: '📋', action: "go('changelog',this)" },
+        { label: 'Dashboard',          icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
+        { separator: true, label: 'Gestão Executiva' },
+        { label: '↳ Motor de Decisão', icon: '🧠', action: "irParaPainel('motorDecisaoCard','togMotorDecisao')" },
+        { label: '↳ Visão Executiva',  icon: '🏢', action: "irParaPainel('ceoDashCard','togCeoDash')" },
+        { label: '↳ KPIs Ciclos',      icon: '📊', action: "irParaPainel('ciclosCard','togCiclosDash')" },
+        { label: '↳ Por Categoria',    icon: '📂', action: "irParaPainel('catAnaliseCard','togCatAnalise')" },
+        { separator: true, label: 'Comercial' },
+        { label: '↳ Metas',            icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
+        { label: '↳ Visão Geral',      icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
+        { label: '↳ Análise IA',       icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
+        { label: '↳ Ranking',          icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
+        { label: '↳ Fechamentos',      icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
+        { label: '↳ Linha do Tempo',   icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
+        { separator: true, label: 'Ferramentas' },
+        { label: 'Templates',          icon: '📋', action: "go('templates',this);rTplMgr()" },
+        { label: 'Banco de Escopos',   icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
+        { label: 'Análise',            icon: '📈', action: "go('analise',this);rAnalise()" },
+        { label: 'Pipeline',           icon: '🔀', action: "go('registro',this);rRegistro()" },
+        { label: 'Versões',            icon: '📋', action: "go('changelog',this)" },
       ]
     },
     {
@@ -159,14 +162,16 @@
         el.innerHTML = '<div class="nav-vazio">Nenhuma seção disponível</div>';
         return;
       }
-      el.innerHTML = mod.nav.map(function (item, i) {
+      el.innerHTML = mod.nav.map(function (item) {
+        if (item.separator) {
+          return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item.label + '</div>';
+        }
         var isSubitem = item.label.indexOf('↳') === 0;
-      var labelClean = isSubitem ? item.label.slice(2) : item.label;
-      return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
-          '<span>' + item.icon + '</span> ' + labelClean +
-          '</button>';
+        var labelClean = isSubitem ? item.label.slice(2) : item.label;
+        return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this)">' +
+            '<span>' + item.icon + '</span> ' + labelClean +
+            '</button>';
       }).join('');
-      // Ativa o primeiro item
       var primeiro = el.querySelector('.nav-item');
       if (primeiro) primeiro.classList.add('on');
     },
