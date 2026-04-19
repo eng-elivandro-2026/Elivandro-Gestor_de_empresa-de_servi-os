@@ -621,14 +621,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div style="background:rgba(240,165,0,.09);border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:.8rem 1rem;margin-bottom:.9rem">
         <div style="font-size:.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.65rem">⚡ Configuração por Empresa (específica para cada empresa)</div>
         <div class="g2" style="gap:.85rem">
-          <div class="f"><label>Tipo de vínculo *</label>
+          <div class="f">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+              <span>Tipo de vínculo *</span>
+              <button type="button" id="scopeBtn_tipo" onclick="toggleScope('tipo')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+            </label>
             <select id="cTipo" onchange="togglePerigFields()">
               <option value="clt">CLT</option>
               <option value="mei">MEI</option>
               <option value="pj">PJ</option>
             </select>
           </div>
-          <div class="f"><label>Custo/hora base (R$)</label>
+          <div class="f">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+              <span>Custo/hora base (R$)</span>
+              <button type="button" id="scopeBtn_valor_hora" onclick="toggleScope('valor_hora')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+            </label>
             <input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01">
           </div>
         </div>
@@ -2933,8 +2941,8 @@ var _fieldScopes = {};     // 'global' | 'solo' per field
 var _colabRawGlobal = {};  // raw values from colaboradores without overrides
 var _colabRawOverride = {}; // raw values from colaborador_empresas for current empresa
 
-var _SCOPE_FIELDS = ['email','telefone','funcao','admissao','observacoes'];
-var _SCOPE_INPUT  = { email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
+var _SCOPE_FIELDS = ['tipo','valor_hora','email','telefone','funcao','admissao','observacoes'];
+var _SCOPE_INPUT  = { tipo:'cTipo', valor_hora:'cValorHora', email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
 
 function updateScopeBtn(field) {
   var btn = document.getElementById('scopeBtn_' + field);
@@ -2975,8 +2983,8 @@ async function abrirModalColab(id) {
   await carregarColabs();
 }
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
-  // Reset field scopes to "global" by default
-  _fieldScopes = { email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
+  // Reset field scopes: tipo/valor_hora default solo (per-company); rest default global
+  _fieldScopes = { tipo:'solo', valor_hora:'solo', email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
   _colabRawGlobal = {};
   _colabRawOverride = {};
 
@@ -2999,7 +3007,7 @@ async function abrirModalColab(id) {
     if (c) {
       // Fetch raw global values (from colaboradores, no overrides)
       var { data: rawGlobal } = await sb.from('colaboradores')
-        .select('email,telefone,funcao,admissao,observacoes').eq('id', id).single();
+        .select('tipo,valor_hora,email,telefone,funcao,admissao,observacoes').eq('id', id).single();
       _colabRawGlobal = rawGlobal || {};
 
       // Fetch company-specific overrides for current empresa
@@ -3094,6 +3102,8 @@ async function salvarColab() {
   if (!dadosGlobal.nome) { toast('Informe o nome.','err'); return; }
 
   // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → manter global anterior
+  if (_fieldScopes.tipo        !== 'solo') dadosGlobal.tipo        = tipo;
+  if (_fieldScopes.valor_hora  !== 'solo') dadosGlobal.valor_hora  = valor_hora;
   if (_fieldScopes.email       !== 'solo') dadosGlobal.email       = email;
   if (_fieldScopes.telefone    !== 'solo') dadosGlobal.telefone    = telefone;
   if (_fieldScopes.funcao      !== 'solo') dadosGlobal.funcao      = funcao;
@@ -3135,8 +3145,8 @@ async function salvarColab() {
 
     // Overrides da empresa ativa (null = usar global)
     var overridesEmpAtiva = {
-      tipo:        tipo,
-      valor_hora:  valor_hora,
+      tipo:        _fieldScopes.tipo       === 'solo' ? tipo       : null,
+      valor_hora:  _fieldScopes.valor_hora === 'solo' ? valor_hora : null,
       email:       _fieldScopes.email       === 'solo' ? email    : null,
       telefone:    _fieldScopes.telefone    === 'solo' ? telefone : null,
       funcao:      _fieldScopes.funcao      === 'solo' ? funcao   : null,
