@@ -119,6 +119,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px}
 .modal-overlay.on{display:flex}
 .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(680px,100%);max-height:90vh;overflow-y:auto}
+.scope-btn{display:none}
+body.master-admin .scope-btn{display:inline-block!important}
 .modal-box::-webkit-scrollbar{width:4px}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1}
 .modal-tit{font-size:.95rem;font-weight:700;color:var(--text)}
@@ -617,45 +619,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn bd bsm" onclick="fecharModalColab()">✕</button>
     </div>
     <div class="modal-body">
-      <!-- Seção por empresa — sempre visível no topo -->
-      <div style="background:rgba(240,165,0,.09);border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:.8rem 1rem;margin-bottom:.9rem">
-        <div style="font-size:.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.65rem">⚡ Configuração por Empresa (específica para cada empresa)</div>
-        <div class="g2" style="gap:.85rem">
-          <div class="f">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
-              <span>Tipo de vínculo *</span>
-              <button type="button" id="scopeBtn_tipo" onclick="toggleScope('tipo')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
-            </label>
-            <select id="cTipo" onchange="togglePerigFields()">
-              <option value="clt">CLT</option>
-              <option value="mei">MEI</option>
-              <option value="pj">PJ</option>
-            </select>
-          </div>
-          <div class="f">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
-              <span>Custo/hora base (R$)</span>
-              <button type="button" id="scopeBtn_valor_hora" onclick="toggleScope('valor_hora')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
-            </label>
-            <input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01">
-          </div>
-        </div>
-      </div>
-
       <div class="g2" style="gap:.85rem">
-        <div class="f" style="grid-column:1/-1"><label>Nome completo *</label><input type="text" id="cNome" placeholder="João Silva"></div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Tipo de vínculo *</span>
+            <button type="button" id="scopeBtn_tipo" class="scope-btn" onclick="toggleScope('tipo')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <select id="cTipo" onchange="togglePerigFields()">
+            <option value="clt">CLT</option>
+            <option value="mei">MEI</option>
+            <option value="pj">PJ</option>
+          </select>
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Custo/hora base (R$)</span>
+            <button type="button" id="scopeBtn_valor_hora" class="scope-btn" onclick="toggleScope('valor_hora')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);cursor:pointer;white-space:nowrap;font-weight:500">🏢 Só esta</button>
+          </label>
+          <input type="number" id="cValorHora" placeholder="60.00" min="0" step="0.01">
+        </div>
+        <div class="f" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Nome completo *</span>
+            <button type="button" id="scopeBtn_nome" class="scope-btn" onclick="toggleScope('nome')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          </label>
+          <input type="text" id="cNome" placeholder="João Silva">
+        </div>
         <div class="f"><label>CPF / CNPJ</label><input type="text" id="cDoc" placeholder="000.000.000-00"></div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span>E-mail</span>
-            <button type="button" id="scopeBtn_email" onclick="toggleScope('email')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+            <button type="button" id="scopeBtn_email" class="scope-btn" onclick="toggleScope('email')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
           <input type="email" id="cEmail" placeholder="joao@email.com">
         </div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span>Telefone / WhatsApp</span>
-            <button type="button" id="scopeBtn_telefone" onclick="toggleScope('telefone')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+            <button type="button" id="scopeBtn_telefone" class="scope-btn" onclick="toggleScope('telefone')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
           <input type="text" id="cTel" placeholder="(11) 99999-9999">
         </div>
@@ -675,14 +676,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span>Função / Cargo</span>
-            <button type="button" id="scopeBtn_funcao" onclick="toggleScope('funcao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+            <button type="button" id="scopeBtn_funcao" class="scope-btn" onclick="toggleScope('funcao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
           <input type="text" id="cFuncao" placeholder="Eletricista Industrial">
         </div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span>Data de admissão</span>
-            <button type="button" id="scopeBtn_admissao" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+            <button type="button" id="scopeBtn_admissao" class="scope-btn" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
           <input type="date" id="cAdmissao">
         </div>
@@ -690,14 +691,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="f" style="margin-top:.85rem">
         <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
           <span>Observações</span>
-          <button type="button" id="scopeBtn_observacoes" onclick="toggleScope('observacoes')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
+          <button type="button" id="scopeBtn_observacoes" class="scope-btn" onclick="toggleScope('observacoes')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
         </label>
         <textarea id="cObs" placeholder="Informações adicionais..."></textarea>
-      </div>
-      <!-- Seleção de empresas -->
-      <div style="margin-top:.85rem;padding:.85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
-        <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">🏢 Vincular às Empresas</div>
-        <div id="cEmpresasCheck" style="display:flex;flex-wrap:wrap;gap:.6rem"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1296,7 +1292,7 @@ async function carregarColabs() {
   // Passo 1: buscar vínculos com tipo e valor_hora específicos desta empresa
   var { data: vinculos, error: errV } = await sb
     .from('colaborador_empresas')
-    .select('colaborador_id, tipo, valor_hora, email, telefone, funcao, admissao, observacoes')
+    .select('colaborador_id, nome, tipo, valor_hora, email, telefone, funcao, admissao, observacoes')
     .eq('empresa_id', empId)
     .eq('ativo', true);
 
@@ -1315,7 +1311,7 @@ async function carregarColabs() {
   var empOverrides = {};
   vinculos.forEach(function(v){
     empOverrides[v.colaborador_id] = {
-      tipo: v.tipo, valor_hora: v.valor_hora,
+      nome: v.nome, tipo: v.tipo, valor_hora: v.valor_hora,
       email: v.email, telefone: v.telefone,
       funcao: v.funcao, admissao: v.admissao, observacoes: v.observacoes
     };
@@ -1336,6 +1332,7 @@ async function carregarColabs() {
   _colabs = (data || []).map(function(c) {
     var o = empOverrides[c.id] || {};
     return Object.assign({}, c, {
+      nome:        (o.nome        != null) ? o.nome        : c.nome,
       tipo:        o.tipo        || c.tipo,
       valor_hora:  (o.valor_hora  != null) ? o.valor_hora  : c.valor_hora,
       email:       (o.email       != null) ? o.email       : c.email,
@@ -2941,8 +2938,8 @@ var _fieldScopes = {};     // 'global' | 'solo' per field
 var _colabRawGlobal = {};  // raw values from colaboradores without overrides
 var _colabRawOverride = {}; // raw values from colaborador_empresas for current empresa
 
-var _SCOPE_FIELDS = ['tipo','valor_hora','email','telefone','funcao','admissao','observacoes'];
-var _SCOPE_INPUT  = { tipo:'cTipo', valor_hora:'cValorHora', email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
+var _SCOPE_FIELDS = ['nome','tipo','valor_hora','email','telefone','funcao','admissao','observacoes'];
+var _SCOPE_INPUT  = { nome:'cNome', tipo:'cTipo', valor_hora:'cValorHora', email:'cEmail', telefone:'cTel', funcao:'cFuncao', admissao:'cAdmissao', observacoes:'cObs' };
 
 function updateScopeBtn(field) {
   var btn = document.getElementById('scopeBtn_' + field);
@@ -2983,8 +2980,7 @@ async function abrirModalColab(id) {
   await carregarColabs();
 }
   document.getElementById('modalColabTit').textContent = id ? 'Editar Colaborador' : 'Novo Colaborador';
-  // Reset field scopes: tipo/valor_hora default solo (per-company); rest default global
-  _fieldScopes = { tipo:'solo', valor_hora:'solo', email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
+  _fieldScopes = { nome:'global', tipo:'solo', valor_hora:'solo', email:'global', telefone:'global', funcao:'global', admissao:'global', observacoes:'global' };
   _colabRawGlobal = {};
   _colabRawOverride = {};
 
@@ -3007,7 +3003,7 @@ async function abrirModalColab(id) {
     if (c) {
       // Fetch raw global values (from colaboradores, no overrides)
       var { data: rawGlobal } = await sb.from('colaboradores')
-        .select('tipo,valor_hora,email,telefone,funcao,admissao,observacoes').eq('id', id).single();
+        .select('nome,tipo,valor_hora,email,telefone,funcao,admissao,observacoes').eq('id', id).single();
       _colabRawGlobal = rawGlobal || {};
 
       // Fetch company-specific overrides for current empresa
@@ -3039,8 +3035,6 @@ async function abrirModalColab(id) {
       _SCOPE_FIELDS.forEach(updateScopeBtn);
     }
   }
-  // Carregar checkboxes de empresas
-  await renderCheckEmpresasModal(id);
   document.getElementById('modalColab').classList.add('on');
 }
 
@@ -3090,18 +3084,19 @@ async function salvarColab() {
   var admissao  = document.getElementById('cAdmissao').value||null;
   var observ    = document.getElementById('cObs').value.trim();
 
+  var nome      = document.getElementById('cNome').value.trim();
   // Campos sempre globais
   var dadosGlobal = {
-    nome:                 document.getElementById('cNome').value.trim(),
     documento:            document.getElementById('cDoc').value.trim(),
     periculoso:           tipo === 'clt' && document.getElementById('cPericuloso').value === 'true',
     perc_periculosidade:  parseFloat(document.getElementById('cPercPericulosidade').value) || 30,
     periculosidade_base:  document.getElementById('cPericulosidadeBase').value || 'normal',
     ativo:                true
   };
-  if (!dadosGlobal.nome) { toast('Informe o nome.','err'); return; }
+  if (!nome) { toast('Informe o nome.','err'); return; }
 
   // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → manter global anterior
+  if (_fieldScopes.nome        !== 'solo') dadosGlobal.nome        = nome;
   if (_fieldScopes.tipo        !== 'solo') dadosGlobal.tipo        = tipo;
   if (_fieldScopes.valor_hora  !== 'solo') dadosGlobal.valor_hora  = valor_hora;
   if (_fieldScopes.email       !== 'solo') dadosGlobal.email       = email;
@@ -3109,13 +3104,6 @@ async function salvarColab() {
   if (_fieldScopes.funcao      !== 'solo') dadosGlobal.funcao      = funcao;
   if (_fieldScopes.admissao    !== 'solo') dadosGlobal.admissao    = admissao;
   if (_fieldScopes.observacoes !== 'solo') dadosGlobal.observacoes = observ;
-
-  // Coletar empresas selecionadas
-  var empsSel = (_todasEmpresas||[]).filter(function(e) {
-    var chk = document.getElementById('chkEmp_' + e.id);
-    return chk && chk.checked;
-  });
-  if (!empsSel.length) { toast('Selecione ao menos uma empresa.','err'); return; }
 
   var colabId = _colabEditId;
   var error;
@@ -3135,16 +3123,10 @@ async function salvarColab() {
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
 
-  // Sincronizar vínculos: upsert inteligente (preserva overrides de outras empresas)
+  // Upsert da empresa ativa com todos os overrides
   if (colabId) {
-    // Buscar links existentes para preservar dados de outras empresas
-    var { data: existingLinks } = await sb.from('colaborador_empresas')
-      .select('empresa_id, ativo').eq('colaborador_id', colabId);
-    var existingMap = {};
-    (existingLinks || []).forEach(function(l) { existingMap[l.empresa_id] = l; });
-
-    // Overrides da empresa ativa (null = usar global)
     var overridesEmpAtiva = {
+      nome:        _fieldScopes.nome       === 'solo' ? nome      : null,
       tipo:        _fieldScopes.tipo       === 'solo' ? tipo       : null,
       valor_hora:  _fieldScopes.valor_hora === 'solo' ? valor_hora : null,
       email:       _fieldScopes.email       === 'solo' ? email    : null,
@@ -3153,42 +3135,13 @@ async function salvarColab() {
       admissao:    _fieldScopes.admissao    === 'solo' ? admissao : null,
       observacoes: _fieldScopes.observacoes === 'solo' ? observ   : null
     };
-
-    for (var i = 0; i < _todasEmpresas.length; i++) {
-      var emp = _todasEmpresas[i];
-      var chk = document.getElementById('chkEmp_' + emp.id);
-      var isChecked = chk && chk.checked;
-      var isAtiva = emp.id === empId;
-      var existing = existingMap[emp.id];
-
-      if (isChecked) {
-        if (isAtiva) {
-          // Empresa ativa: upsert com todos os overrides
-          if (existing) {
-            await sb.from('colaborador_empresas').update(Object.assign({ativo:true}, overridesEmpAtiva))
-              .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
-          } else {
-            await sb.from('colaborador_empresas').insert(Object.assign({colaborador_id:colabId,empresa_id:emp.id,ativo:true}, overridesEmpAtiva));
-          }
-        } else {
-          // Outra empresa: só ativar, não mexer em overrides existentes
-          if (existing) {
-            if (!existing.ativo) await sb.from('colaborador_empresas').update({ativo:true})
-              .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
-          } else {
-            await sb.from('colaborador_empresas').insert({
-              colaborador_id:colabId, empresa_id:emp.id, ativo:true,
-              tipo:tipo, valor_hora:valor_hora
-            });
-          }
-        }
-      } else {
-        // Desmarcado: desativar se existia
-        if (existing && existing.ativo) {
-          await sb.from('colaborador_empresas').update({ativo:false})
-            .eq('colaborador_id', colabId).eq('empresa_id', emp.id);
-        }
-      }
+    var { data: existingLink } = await sb.from('colaborador_empresas')
+      .select('id').eq('colaborador_id', colabId).eq('empresa_id', empId).maybeSingle();
+    if (existingLink) {
+      await sb.from('colaborador_empresas').update(Object.assign({ativo:true}, overridesEmpAtiva))
+        .eq('colaborador_id', colabId).eq('empresa_id', empId);
+    } else {
+      await sb.from('colaborador_empresas').insert(Object.assign({colaborador_id:colabId, empresa_id:empId, ativo:true}, overridesEmpAtiva));
     }
   }
 
@@ -5028,6 +4981,14 @@ async function rejeitarDespesa(id) {
         var empLabel = document.getElementById('rhEmpresaLabel');
         if (empLabel) empLabel.textContent = emp.nome_curto;
       }
+    }
+  } catch(e) {}
+
+  // Detectar master admin
+  try {
+    var { data: authData } = await sb.auth.getUser();
+    if (authData && authData.user && authData.user.email === 'nascimento.gaube@gmail.com') {
+      document.body.classList.add('master-admin');
     }
   } catch(e) {}
 
