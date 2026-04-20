@@ -8375,15 +8375,20 @@ async function iniciarPlataforma() {
             ativo:              true
           }).select('id').single();
 
-          if (_novo.data && _convite.data.empresa_id) {
-            await window.sbClient.from('usuario_empresas').insert({
-              usuario_id: _novo.data.id,
-              empresa_id: _convite.data.empresa_id,
-              ativo:      true
-            });
+          if (_novo.error) {
+            console.warn('[init] Erro ao criar usuário via convite:', _novo.error.message);
+          } else {
+            if (_novo.data && _convite.data.empresa_id) {
+              var _veInst = await window.sbClient.from('usuario_empresas').insert({
+                usuario_id: _novo.data.id,
+                empresa_id: _convite.data.empresa_id,
+                ativo:      true
+              });
+              if (_veInst.error) console.warn('[init] Erro ao vincular empresa:', _veInst.error.message);
+            }
+            await window.sbClient.from('convites').update({ usado: true }).eq('id', _convite.data.id);
+            console.log('%c[init] Primeiro login via convite — usuário criado', 'color:#3fb950;font-weight:700');
           }
-          await window.sbClient.from('convites').update({ usado: true }).eq('id', _convite.data.id);
-          console.log('%c[init] Primeiro login via convite — usuário criado', 'color:#3fb950;font-weight:700');
         } else {
           // Verificar se é colaborador puro
           var _cc = await window.sbClient
