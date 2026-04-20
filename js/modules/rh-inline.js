@@ -4525,10 +4525,127 @@ async function rejeitarDespesa(id) {
 })();
   // Expor funções globais necessárias para onclick handlers
   window.rhShowSec = rhShowSec;
-  window.filtrarColabs = typeof filtrarColabs !== 'undefined' ? filtrarColabs : function(){};
-  window.abrirColab = typeof abrirColab !== 'undefined' ? abrirColab : function(){};
-  window.carregarApontamentos = typeof carregarApontamentos !== 'undefined' ? carregarApontamentos : function(){};
-  window.carregarBoletins = typeof carregarBoletins !== 'undefined' ? carregarBoletins : function(){};
+  window.showTab = showTab;
+  window.setModoApt = setModoApt;
+  window.filtrarColabs = filtrarColabs;
+  window.carregarApontamentos = carregarApontamentos;
+  window.carregarBoletins = carregarBoletins;
+  window.gerarRelatorioHoras = gerarRelatorioHoras;
+  window.filtrarHorasColab = filtrarHorasColab;
+  window.limparFiltroHoras = limparFiltroHoras;
+
+  // E-mails de alerta
+  window.abrirConfigEmails = abrirConfigEmails;
+  window.fecharConfigEmails = fecharConfigEmails;
+  window.adicionarEmailAlerta = adicionarEmailAlerta;
+  window.removerEmailAlerta = removerEmailAlerta;
+  window.salvarConfigEmails = salvarConfigEmails;
+
+  // Colaboradores
+  window.abrirModalColab = abrirModalColab;
+  window.abrirColab = abrirModalColab;
+  window.fecharModalColab = fecharModalColab;
+  window.editarColab = editarColab;
+  window.desativarColab = desativarColab;
+  window.excluirColabAtivo = excluirColabAtivo;
+  window.toggleInativos = toggleInativos;
+  window.reativarColabById = reativarColabById;
+  window.excluirColabById = excluirColabById;
+  window.abrirModalAdicionarEmpresa = abrirModalAdicionarEmpresa;
+  window.fecharModalAddEmpresa = fecharModalAddEmpresa;
+  window.salvarAdicionarEmpresa = salvarAdicionarEmpresa;
+
+  // Férias
+  window.abrirModalFerias = abrirModalFerias;
+  window.fecharModalFerias = fecharModalFerias;
+  window.salvarFerias = salvarFerias;
+  window.excluirFerias = excluirFerias;
+  window.filtrarFeriasGeral = filtrarFeriasGeral;
+  window.abrirDetalheFeriasGeral = abrirDetalheFeriasGeral;
+
+  // Integrações
+  window.abrirModalIntegracao = abrirModalIntegracao;
+  window.fecharModalIntegracao = fecharModalIntegracao;
+  window.salvarIntegracao = salvarIntegracao;
+  window.excluirIntegracao = excluirIntegracao;
+  window.filtrarIntegracoes = filtrarIntegracoes;
+  window.aprovarPendente = aprovarPendente;
+  window.rejeitarPendente = rejeitarPendente;
+
+  // Apontamentos
+  window.abrirModalApontamento = abrirModalApontamento;
+  window.abrirModalAptColab = abrirModalAptColab;
+  window.fecharModalApt = fecharModalApt;
+  window.salvarApontamento = salvarApontamento;
+  window.aprovarApt = aprovarApt;
+  window.rejeitarApt = rejeitarApt;
+  window.abrirModalCancelApt = abrirModalCancelApt;
+  window.confirmarCancelApt = confirmarCancelApt;
+  window.fecharModalCancelApt = fecharModalCancelApt;
+  window.abrirModalReabrirApt = abrirModalReabrirApt;
+  window.confirmarReabrirApt = confirmarReabrirApt;
+  window.fecharModalReabrirApt = fecharModalReabrirApt;
+  window.abrirModalEditarApt = abrirModalEditarApt;
+  window.fecharModalEditarApt = fecharModalEditarApt;
+  window.salvarEdicaoApt = salvarEdicaoApt;
+  window.carregarHistoricoApt = carregarHistoricoApt;
+  window.fecharModalHistoricoApt = fecharModalHistoricoApt;
+  window.aplicarJornada = aplicarJornada;
+  window.aplicarJornadaEdit = aplicarJornadaEdit;
+  window.calcularHorasApt = calcularHorasApt;
+  window.calcularHorasEditApt = calcularHorasEditApt;
+  window.togglePerigFields = togglePerigFields;
+  window.togglePercPerig = togglePercPerig;
+  window.updateScopeBtn = updateScopeBtn;
+  window.toggleScope = toggleScope;
+
+  // Documentos
+  window.abrirModalDoc = abrirModalDoc;
+  window.fecharModalDoc = fecharModalDoc;
+  window.editarDoc = editarDoc;
+  window.editarDocById = editarDocById;
+  window.removerArquivoAtual = removerArquivoAtual;
+  window.salvarDoc = salvarDoc;
+  window.excluirDoc = excluirDoc;
+  window.toggleDocCompartilhar = toggleDocCompartilhar;
+
+  // Saúde
+  window.abrirModalSaude = abrirModalSaude;
+  window.fecharModalSaude = fecharModalSaude;
+  window.editarSaudeById = editarSaudeById;
+  window.salvarSaude = salvarSaude;
+  window.excluirSaude = excluirSaude;
+  window.toggleSaudeCompartilhar = toggleSaudeCompartilhar;
+
+  // EPI
+  window.abrirModalEpi = abrirModalEpi;
+  window.fecharModalEpi = fecharModalEpi;
+  window.editarEpiById = editarEpiById;
+  window.salvarEpi = salvarEpi;
+  window.excluirEpi = excluirEpi;
+  window.toggleEpiCompartilhar = toggleEpiCompartilhar;
+
+  // Boletins
+  window.abrirModalGerarBoletim = abrirModalGerarBoletim;
+  window.fecharModalGerarBol = fecharModalGerarBol;
+  window.previewApontamentosBol = previewApontamentosBol;
+  window.gerarBoletim = gerarBoletim;
+  window.abrirBoletimGestor = abrirBoletimGestor;
+  window.fecharVerBolGestor = fecharVerBolGestor;
+  window.salvarObservacoesBoletim = salvarObservacoesBoletim;
+  window.revisarBoletim = revisarBoletim;
+  window.assinarComoPrestadorGestor = assinarComoPrestadorGestor;
+  window.assinarComoEmpresa = assinarComoEmpresa;
+  window.cancelarBoletim = cancelarBoletim;
+  window.abrirCriarPinUsuario = abrirCriarPinUsuario;
+  window.fecharModalPinUsuario = fecharModalPinUsuario;
+  window.salvarPinUsuario = salvarPinUsuario;
+
+  // Despesas
+  window.toggleNovaDespesa = toggleNovaDespesa;
+  window.salvarDespesa = salvarDespesa;
+  window.aprovarDespesa = aprovarDespesa;
+  window.rejeitarDespesa = rejeitarDespesa;
 
   // Init quando módulo RH for ativado
   window.rRH = function() {
