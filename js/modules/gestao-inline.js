@@ -3480,8 +3480,23 @@ function updateThemeBtn() {
 
 }
 
+// ── Navegação direta para seção do Planejamento (usada pelo sidebar) ─────────
+// Garante que a área gestão está visível e exibe a sub-seção correta.
+// Independe de go() para evitar efeitos colaterais externos.
+function gestaoNav(sec){
+  // 1. Mostra a área gestão se estiver oculta
+  var secEl=document.getElementById('gestao');
+  if(secEl&&!secEl.classList.contains('on')){
+    document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});
+    secEl.classList.add('on');
+  }
+  // 2. Exibe a sub-seção e injeta inteligência da IA
+  gestaoShowSec(sec);
+}
+
 // ── Expor funções para uso global pelos event listeners inline ────────────────
 window.gestaoShowSec  = typeof gestaoShowSec  === 'function' ? gestaoShowSec  : function(){};
+window.gestaoNav      = typeof gestaoNav      === 'function' ? gestaoNav      : function(){};
 window.setPrio        = typeof setPrio        === 'function' ? setPrio        : function(){};
 window.abrirDia       = typeof abrirDia       !== 'undefined' ? abrirDia       : function(){};
 window.togglePrio     = typeof togglePrio     !== 'undefined' ? togglePrio     : function(){};
