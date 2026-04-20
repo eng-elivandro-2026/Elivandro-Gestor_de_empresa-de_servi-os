@@ -6,9 +6,13 @@
 (function () {
 
   // Estado global da empresa ativa
-  window._empresaAtiva = null;
-  window._perfilUsuario = null;
-  window._empresasUsuario = [];
+  window._empresaAtiva      = null;
+  window._perfilUsuario     = null;
+  window._modulosPermitidos = null; // null = sem restrição
+  window._usuarioDbId       = null;
+  window._nomeUsuario       = null;
+  window._emailUsuario      = null;
+  window._empresasUsuario   = [];
 
   // ── Carregar empresas do usuário logado ──────────────────
   window.carregarEmpresasUsuario = async function () {
@@ -18,11 +22,12 @@
       if (!authData || !authData.user) return [];
 
       var authId = authData.user.id;
+      window._emailUsuario = authData.user.email || null;
 
       // Buscar usuário pelo auth_id
       var { data: usuario } = await window.sbClient
         .from('usuarios')
-        .select('id, nome, perfil')
+        .select('id, nome, email, perfil, modulos_permitidos, ativo')
         .eq('auth_id', authId)
         .maybeSingle();
 
@@ -30,7 +35,28 @@
         console.warn('[multi-empresa] usuário não encontrado para auth_id:', authId);
         return [];
       }
-      window._perfilUsuario = usuario.perfil;
+
+      // Redireciona usuário desativado
+      if (usuario.ativo === false) {
+        await window.sbClient.auth.signOut();
+        window.location.href = '/login.html';
+        return [];
+      }
+
+      window._perfilUsuario     = usuario.perfil;
+      window._modulosPermitidos = usuario.modulos_permitidos || null;
+      window._usuarioDbId       = usuario.id;
+      window._nomeUsuario       = usuario.nome;
+
+      // Sincroniza email no registro se estiver ausente
+      if (!usuario.email && authData.user.email) {
+        window.sbClient.from('usuarios')
+          .update({ email: authData.user.email })
+          .eq('id', usuario.id)
+          .then(function(){});
+      } else if (usuario.email) {
+        window._emailUsuario = usuario.email;
+      }
 
       // Buscar empresas vinculadas pelo usuario_id (não depende de RLS/auth.uid)
       var { data: vinculos, error: errV } = await window.sbClient

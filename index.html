@@ -2134,6 +2134,11 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 
+<!-- ══ MÓDULO ADMINISTRAÇÃO ══ -->
+<div id="admin" class="sec">
+  <!-- conteúdo renderizado dinamicamente por rUsuarios() em usuarios.js -->
+</div>
+
 <!-- ══ MÓDULO GESTÃO CEO (inline) ══ -->
 <style id="gestao-styles">
 #gestao-wrap body.light{
@@ -8315,6 +8320,7 @@ function rExecTimeline(){
 <script src="js/modules/historico.js"></script>
 <script src="js/modules/gestao-inline.js"></script>
 <script src="js/modules/rh-inline.js"></script>
+<script src="js/modules/usuarios.js"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
@@ -8353,28 +8359,68 @@ async function iniciarPlataforma() {
   // 1. Auth
   if (typeof protegerPagina === 'function') await protegerPagina();
 
-  // Bloquear colaboradores puros — redirecionar para portal correto
+  // Verificar tipo de usuário e tratar primeiro login de convidados
   try {
     var _au = await window.sbClient.auth.getUser();
     if (_au.data && _au.data.user) {
-      // Verificar se é dono ou gestor primeiro
+      var _authUser = _au.data.user;
+
+      // Verificar registro em usuarios
       var _usr = await window.sbClient
-        .from('usuarios').select('perfil')
-        .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
-      // Se é dono ou gestor, fica na plataforma principal
-      if (_usr.data && (_usr.data.perfil === 'dono' || _usr.data.perfil === 'gestor')) {
-        // OK — continuar normalmente
-      } else {
-        // Verificar se é colaborador puro
-        var _cc = await window.sbClient
+        .from('usuarios').select('id, perfil, ativo, modulos_permitidos')
+        .eq('auth_id', _authUser.id).maybeSingle();
+
+      if (!_usr.data) {
+        // Sem registro: verificar se veio de convite
+        var _convite = await window.sbClient
+          .from('convites').select('*')
+          .eq('email', (_authUser.email || '').toLowerCase())
+          .eq('usado', false).maybeSingle();
+
+        if (_convite.data) {
+          // Criar usuário a partir do convite
+          var _novo = await window.sbClient.from('usuarios').insert({
+            auth_id:            _authUser.id,
+            nome:               _convite.data.nome,
+            email:              _authUser.email,
+            perfil:             'gestor',
+            modulos_permitidos: _convite.data.modulos_permitidos || null,
+            ativo:              true
+          }).select('id').single();
+
+          if (_novo.data && _convite.data.empresa_id) {
+            await window.sbClient.from('usuario_empresas').insert({
+              usuario_id: _novo.data.id,
+              empresa_id: _convite.data.empresa_id,
+              ativo:      true
+            });
+          }
+          await window.sbClient.from('convites').update({ usado: true }).eq('id', _convite.data.id);
+          console.log('%c[init] Primeiro login via convite — usuário criado', 'color:#3fb950;font-weight:700');
+        } else {
+          // Verificar se é colaborador puro
+          var _cc = await window.sbClient
+            .from('colaboradores').select('id')
+            .eq('auth_id', _authUser.id).eq('ativo', true).maybeSingle();
+          if (!_cc.error && _cc.data) {
+            window.location.href = '/pages/colaborador.html'; return;
+          }
+        }
+      } else if (_usr.data.ativo === false) {
+        // Usuário desativado — redirecionar
+        await window.sbClient.auth.signOut();
+        window.location.href = '/login.html'; return;
+      } else if (_usr.data.perfil !== 'dono' && _usr.data.perfil !== 'gestor') {
+        // Colaborador puro — verificar tabela colaboradores
+        var _cc2 = await window.sbClient
           .from('colaboradores').select('id')
-          .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
-        if (!_cc.error && _cc.data) {
+          .eq('auth_id', _authUser.id).eq('ativo', true).maybeSingle();
+        if (!_cc2.error && _cc2.data) {
           window.location.href = '/pages/colaborador.html'; return;
         }
       }
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[init] verificação de usuário:', e); }
 
   // 2. SUPABASE = FONTE PRIMÁRIA — sempre carrega da nuvem e sobrescreve localStorage
   try {
@@ -8406,7 +8452,7 @@ async function iniciarPlataforma() {
     }
   } catch(e) {}
 
-    // 4. Usuário no header
+  // 4. Usuário no header
   try {
     var { data } = await window.sbClient.auth.getUser();
     if (data && data.user) {
@@ -8416,23 +8462,48 @@ async function iniciarPlataforma() {
     }
   } catch(e) {}
 
-  // 5. Carregar empresas e mostrar seletor
+  // 5. Carregar empresas e mostrar seletor (também preenche _perfilUsuario e _modulosPermitidos)
   try {
     var _emps = await carregarEmpresasUsuario();
     renderizarSeletorEmpresa(_emps);
     console.log('%c[init] ' + _emps.length + ' empresa(s) carregada(s)', 'color:#f0a500;font-weight:700');
   } catch(e) { console.warn('[init] empresas:', e); }
 
-  // 3. Tema
+  // 5b. Registrar módulo Admin se for dono
+  if (window._perfilUsuario === 'dono') {
+    Router.registrar({
+      id:    'admin',
+      label: 'Administração',
+      icon:  '⚙️',
+      tipo:  'inline',
+      init:  function () { go('admin'); if (typeof rUsuarios === 'function') rUsuarios(); },
+      nav: [
+        { label: 'Usuários',  icon: '👥', action: "go('admin',this);rUsuarios()" },
+        { label: 'Convidar',  icon: '✉️', action: "go('admin',this);uConvidar()" },
+      ]
+    });
+  }
+
+  // 5c. Aplicar filtro de permissões no sidebar
+  if (typeof Router !== 'undefined' && typeof Router.aplicarPermissoes === 'function') {
+    Router.aplicarPermissoes(window._modulosPermitidos);
+  }
+
+  // 5d. Log de login (não aguarda)
+  if (typeof registrarLog === 'function') {
+    registrarLog('login', null);
+  }
+
+  // 6. Tema
   var tema = localStorage.getItem('tf_theme') || 'dark';
   document.body.classList.toggle('light', tema === 'light');
   document.getElementById('btn-tema').textContent = tema === 'light' ? '🌙' : '☀️';
 
-  // 4. Data no header
+  // 7. Data no header
   atualizarDataHeader();
   setInterval(atualizarDataHeader, 60000);
 
-  // 5. Sincroniza variável global props com o que veio da nuvem
+  // 8. Sincroniza variável global props com o que veio da nuvem
   try {
     var _pLocal = JSON.parse(localStorage.getItem('tf_props') || '[]');
     if (typeof props !== 'undefined' && _pLocal.length) {
@@ -8440,8 +8511,12 @@ async function iniciarPlataforma() {
     }
   } catch(e) {}
 
-  // 6. Router — restaura última rota
+  // 9. Router — restaura última rota (respeitando permissões)
   var ultimaRota = localStorage.getItem('tf_route') || 'comercial';
+  // Se a rota salva não estiver disponível para este usuário, volta para a primeira permitida
+  if (window._modulosPermitidos && window._modulosPermitidos.indexOf(ultimaRota) < 0 && ultimaRota !== 'admin') {
+    ultimaRota = window._modulosPermitidos[0] || 'comercial';
+  }
   Router.init(ultimaRota);
 
   // 6. Esconde loading
