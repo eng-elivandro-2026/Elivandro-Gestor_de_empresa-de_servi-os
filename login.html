@@ -101,8 +101,21 @@
   function mostrarErro(t){ msg.style.color="#ff7b72"; msg.textContent=t; }
   function mostrarSucesso(t){ msg.style.color="#3fb950"; msg.textContent=t; }
 
-  // Verificar se tem sessão ativa ao carregar
+  // Verificar se tem sessão ativa ao carregar (inclui magic link no hash)
   async function verificarSessao() {
+    // Se há token de magic link no hash, aguardar Supabase processar antes de checar
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      await new Promise((resolve) => {
+        const timeout = setTimeout(resolve, 5000);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session || event === 'SIGNED_IN') {
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+            resolve();
+          }
+        });
+      });
+    }
     const { data } = await supabase.auth.getUser();
     if (data?.user) await decidirDestino(data.user);
   }

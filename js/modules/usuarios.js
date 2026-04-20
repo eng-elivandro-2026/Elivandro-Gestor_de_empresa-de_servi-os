@@ -193,7 +193,10 @@
 
       var { error: errM } = await window.sbClient.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: { shouldCreateUser: true }
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: window.location.origin + '/'
+        }
       });
       if (errM) throw errM;
 
