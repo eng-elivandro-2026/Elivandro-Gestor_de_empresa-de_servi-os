@@ -2067,6 +2067,22 @@ function addValorSec(){
 }
 function remSec(id){escSecs=escSecs.filter(function(s){return s.id!==id});rEsc();}
 
+function addGanttSec(){
+  var ja=escSecs.some(function(s){return isPrazo(s);});
+  if(ja){toast('ℹ️ Seção de cronograma já existe.','ok');
+    var el=document.querySelector('#escList .es');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
+  escSecs.push({id:uid(),num:'',titulo:'PRAZO / CRONOGRAMA',desc:'',subs:[]});
+  rEsc();
+  toast('📅 Seção Gantt inserida');
+  setTimeout(function(){
+    var el=Q('ganttPrev');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },200);
+}
+
 function addSub(si){
   escSecs[si].subs.push({id:uid(),nome:'Novo Item',desc:''});rEsc();
   setTimeout(function(){var nb=document.querySelectorAll('.esb-n');if(nb.length)nb[nb.length-1].focus();},80);
