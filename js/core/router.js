@@ -59,11 +59,11 @@
       tipo: 'inline',
       init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
       nav: [
-        { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',this)" },
-        { label: 'Apontamentos',  icon: '⏱️', action: "go('rh',this);rhShowSec('apontamentos',this)" },
-        { label: 'Boletins',      icon: '📋', action: "go('rh',this);rhShowSec('boletins',this)" },
-        { label: 'Férias',        icon: '🌴', action: "go('rh',this);rhShowSec('ferias-geral',this)" },
-        { label: 'Despesas',      icon: '💰', action: "go('rh',this);rhShowSec('despesas',this)" },
+        { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',null)" },
+        { label: 'Apontamentos',  icon: '⏱️', action: "go('rh',this);rhShowSec('apontamentos',null)" },
+        { label: 'Boletins',      icon: '📋', action: "go('rh',this);rhShowSec('boletins',null)" },
+        { label: 'Férias',        icon: '🌴', action: "go('rh',this);rhShowSec('ferias-geral',null)" },
+        { label: 'Despesas',      icon: '💰', action: "go('rh',this);rhShowSec('despesas',null)" },
       ]
     },
     {
