@@ -421,3 +421,35 @@
     padding: 1.5rem 0.8rem;
   }
 }
+
+/* ── 480px: celulares pequenos ─────────────────────────────────── */
+@media (max-width: 480px) {
+  html { font-size: 13px; }
+
+  .wrap { padding: 0.4rem; }
+
+  /* Sidebar mais estreita */
+  :root { --sidebar-w: 260px; }
+
+  /* Modais ocupam quase toda a tela */
+  .modal-box { width: min(98vw, 420px) !important; max-height: 90vh; overflow-y: auto; }
+
+  /* Inputs sem zoom no iPhone */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Tabelas com scroll */
+  .ft-wrap, .table-wrap { overflow-x: auto; }
+
+  /* Botões com área de toque mínima de 44px (guideline Apple/Google) */
+  .btn, .bsm { min-height: 44px; }
+  .bxs        { min-height: 36px; }
+
+  /* Oculta colunas secundárias de tabelas em telas muito pequenas */
+  .col-hidden-xs { display: none !important; }
+
+  /* Nav itens do sidebar: área de toque maior */
+  .nav-item { padding: 0.6rem 0.75rem !important; min-height: 40px; }
+
+  /* Mod btn (módulos no topo do sidebar) */
+  .mod-btn { padding: 0.6rem 0.5rem !important; }
+}

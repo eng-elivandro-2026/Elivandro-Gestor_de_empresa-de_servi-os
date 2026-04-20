@@ -533,6 +533,74 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 .pd-tab:hover{color:var(--text2)}
 .pd-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .pd-panel{display:none}.pd-panel.on{display:block}
+
+/* ══ RESPONSIVIDADE GLOBAL MOBILE ══════════════════════════════════ */
+
+/* Tablet 768px */
+@media(max-width:768px){
+  html { font-size: 15px; }
+  body { overflow-x: hidden; }
+
+  /* Wrap */
+  .wrap { padding: .7rem; }
+
+  /* Cards */
+  .card { padding: .8rem; margin-bottom: .75rem; }
+  .ch   { flex-wrap: wrap; gap: .35rem; }
+
+  /* Grids → 1 coluna */
+  .g2,.g3,.g4 { grid-template-columns: 1fr !important; }
+  .ga         { grid-template-columns: repeat(auto-fit,minmax(min(280px,100%),1fr)); }
+  .kpi-g      { grid-template-columns: repeat(2,1fr); }
+
+  /* Evita zoom automático em inputs no iPhone */
+  .f input,.f select,.f textarea { font-size: 16px !important; }
+  input, select, textarea        { font-size: 16px; }
+
+  /* Botões */
+  .btn  { font-size: .74rem; padding: .5rem .8rem; }
+  .bsm  { font-size: .68rem; }
+
+  /* Header */
+  .hdr  { padding: 0 .75rem; gap: .5rem; }
+  .logo-sub { display: none; }
+
+  /* Nav horizontal com scroll */
+  .nav  { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nb   { flex-shrink: 0; }
+
+  /* Sidebar */
+  .sidebar { max-width: 85vw; }
+
+  /* Modal responsivo */
+  .modal-box { width: min(96vw,520px) !important; max-height: 88vh; overflow-y: auto; }
+}
+
+/* Mobile 480px */
+@media(max-width:480px){
+  html { font-size: 13.5px; }
+
+  .wrap { padding: .45rem; }
+  .card { padding: .65rem; }
+
+  /* KPIs: 2 por linha → 1 em tela muito pequena */
+  .kpi-g { grid-template-columns: 1fr !important; }
+
+  /* Botões com área mínima de toque (44px) */
+  .btn  { min-height: 40px; }
+  .bsm  { min-height: 34px; }
+
+  /* Modal quase full-screen */
+  .modal-box { width: min(99vw,380px) !important; padding: .75rem; border-radius: 10px; }
+
+  /* Nav items do sidebar: área de toque maior */
+  .nav-item  { padding: .65rem .75rem !important; min-height: 38px; }
+  .mod-btn   { padding: .65rem .5rem !important; }
+
+  /* Tabelas: scroll horizontal */
+  .bt-wrap, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
 </style>
 </head>
 
@@ -2433,6 +2501,78 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 .toast{position:fixed;bottom:1rem;right:1rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.55rem 1rem;font-size:.78rem;color:var(--text);z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
 #gestao-wrap .toast.show{opacity:1;transform:translateY(0)}
+
+/* ── RESPONSIVIDADE MOBILE — Gestão CEO ─────────────────────────── */
+@media(max-width:768px){
+  /* Grids colapsam para 1 coluna (alta especificidade necessária) */
+  #gestao-wrap .g2,
+  #gestao-wrap .g3,
+  #gestao-wrap .g4 { grid-template-columns:1fr !important; }
+
+  /* Padding reduzido */
+  #gestao-wrap .wrap { padding:.55rem; }
+  #gestao-wrap .card { padding:.75rem; margin-bottom:.75rem; }
+
+  /* Card header empilha em mobile */
+  #gestao-wrap .card-hdr { flex-wrap:wrap; gap:.4rem; }
+
+  /* Inputs: evita zoom automático no iPhone (mínimo 16px) */
+  #gestao-wrap .f input,
+  #gestao-wrap .f select,
+  #gestao-wrap .f textarea,
+  #gestao-wrap .input-row input { font-size:16px !important; }
+
+  /* Navegação horizontal com scroll */
+  #gestao-wrap .nav { overflow-x:auto; flex-wrap:nowrap; padding-bottom:2px; }
+  #gestao-wrap .nb  { white-space:nowrap; flex-shrink:0; }
+
+  /* Linha de botões empilha */
+  #gestao-wrap .br  { flex-wrap:wrap; }
+
+  /* KPI cards: mínimo 2 por linha em tablet, 1 em mobile pequeno */
+  #gestao-wrap .kpi-grid,
+  #gestao-wrap .g4.kpi-g { grid-template-columns:repeat(2,1fr) !important; }
+
+  /* Tabelas com scroll horizontal */
+  #gestao-wrap .table-wrap { overflow-x:auto; }
+  #gestao-wrap table       { min-width:480px; }
+
+  /* Modais responsivos */
+  #gestao-wrap .modal-box  { width:min(98vw,520px) !important; padding:.9rem; }
+
+  /* Seção de sugestões IA: fontes ligeiramente maiores para legibilidade */
+  #sugestoes-ia-dia,
+  #sugestoes-ia-semana,
+  #sugestoes-ia-mes,
+  #sugestoes-ia-trim { font-size:.8rem; }
+
+  /* Input row de adicionar tarefas/prioridades */
+  #gestao-wrap .input-row { flex-wrap:wrap; gap:.4rem; }
+  #gestao-wrap .input-row input { min-width:0; width:100%; }
+}
+
+@media(max-width:480px){
+  /* 1 coluna absoluta */
+  #gestao-wrap .g2,
+  #gestao-wrap .g3,
+  #gestao-wrap .g4,
+  #gestao-wrap .kpi-grid { grid-template-columns:1fr !important; }
+
+  /* Fontes de título e label ligeiramente maiores para touch */
+  #gestao-wrap .card-title { font-size:.8rem; }
+  #gestao-wrap .card-sub   { font-size:.72rem; }
+
+  /* Badges e botões pequenos: área de toque mínima */
+  #gestao-wrap .btn     { min-height:36px; }
+  #gestao-wrap .btn-sm  { min-height:30px; padding:.3rem .65rem; font-size:.72rem; }
+
+  /* Header da seção: empilha */
+  #gestao-wrap .hdr-right { gap:.25rem; }
+  #gestao-wrap .today-lbl { display:none; }  /* oculta data no topo em telas muito pequenas */
+
+  /* Wrap com padding mínimo */
+  #gestao-wrap .wrap { padding:.4rem; }
+}
 </style>
 <div id="gestao" class="sec">
 <div id="gestao-wrap">
