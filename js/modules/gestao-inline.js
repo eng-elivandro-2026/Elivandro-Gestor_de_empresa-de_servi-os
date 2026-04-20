@@ -587,7 +587,7 @@ function renderSugestoesIA(secId){
         +'</div>'
         +(jaPreenchida
           ?'<span style="font-size:.61rem;color:var(--text3);flex-shrink:0;margin-top:.1rem;font-style:italic">P'+n+' preenchida</span>'
-          :'<button class="btn ba btn-sm" style="flex-shrink:0;font-size:.62rem;padding:.15rem .4rem" onclick="setPrio('+n+','+JSON.stringify(textoSugestao)+')">→ P'+n+'</button>')
+          :'<button class="btn ba btn-sm" style="flex-shrink:0;font-size:.62rem;padding:.15rem .4rem" data-pn="'+n+'" data-txt="'+textoSugestao.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" onclick="setPrio(+this.dataset.pn,this.dataset.txt)">→ P'+n+'</button>')
         +'</div>';
     }).join('');
 
