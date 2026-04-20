@@ -4542,6 +4542,7 @@ async function rejeitarDespesa(id) {
   window.salvarConfigEmails = salvarConfigEmails;
 
   // Colaboradores
+  window.abrirDetalhe = abrirDetalhe;
   window.abrirModalColab = abrirModalColab;
   window.abrirColab = abrirModalColab;
   window.fecharModalColab = fecharModalColab;
