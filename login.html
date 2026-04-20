@@ -98,12 +98,16 @@
   const formLogin  = document.getElementById("formLogin");
   const rolePicker = document.getElementById("rolePicker");
 
+  // Perfis que ficam no portal principal
+  const PERFIS_PORTAL = ['dono','gestor','admin','diretoria','comercial','engenharia','operacao','parceiro','visualizador'];
+  // Perfis que vão para o portal do colaborador/prestador
+  const PERFIS_COLABORADOR = ['colaborador','prestador'];
+
   function mostrarErro(t){ msg.style.color="#ff7b72"; msg.textContent=t; }
   function mostrarSucesso(t){ msg.style.color="#3fb950"; msg.textContent=t; }
 
   // Verificar se tem sessão ativa ao carregar (inclui magic link no hash)
   async function verificarSessao() {
-    // Se há token de magic link no hash, aguardar Supabase processar antes de checar
     if (window.location.hash && window.location.hash.includes('access_token')) {
       await new Promise((resolve) => {
         const timeout = setTimeout(resolve, 5000);
@@ -122,88 +126,120 @@
 
   // Decidir para onde ir após login
   async function decidirDestino(user) {
+    // 1. Verificar perfil em usuarios (portal principal)
     const { data: usuario } = await supabase
-      .from('usuarios').select('perfil').eq('auth_id', user.id).eq('ativo', true).maybeSingle();
+      .from('usuarios').select('perfil, ativo').eq('auth_id', user.id).maybeSingle();
 
-    const ehGestorOuDono = usuario && (usuario.perfil === 'dono' || usuario.perfil === 'gestor' || usuario.perfil === 'admin');
+    // Usuário desativado
+    if (usuario && usuario.ativo === false) {
+      await supabase.auth.signOut();
+      mostrarErro("Sua conta está desativada. Contate o administrador.");
+      return;
+    }
+
+    const perfil = usuario ? usuario.perfil : null;
+    const ehPortalPrincipal = PERFIS_PORTAL.indexOf(perfil) >= 0;
+    const ehPerfilColaborador = PERFIS_COLABORADOR.indexOf(perfil) >= 0;
+
+    // 2. Verificar se existe registro em colaboradores (por auth_id, depois por email)
+    let ehColaborador = false;
+    let colabId = null;
 
     const { data: colab } = await supabase
       .from('colaboradores').select('id').eq('auth_id', user.id).eq('ativo', true).maybeSingle();
 
-    // Verificar também pelo email (fallback)
-    let ehColaborador = !!colab;
-    if (!ehColaborador) {
+    if (colab) {
+      ehColaborador = true;
+      colabId = colab.id;
+    } else {
+      // Fallback por email — vincula auth_id de forma confiável
       const { data: colabEmail } = await supabase
         .from('colaboradores').select('id').eq('email', user.email).eq('ativo', true).maybeSingle();
-      ehColaborador = !!colabEmail;
-      // Vincular auth_id automaticamente
       if (colabEmail) {
-        supabase.from('colaboradores').update({ auth_id: user.id }).eq('id', colabEmail.id).then(()=>{});
+        ehColaborador = true;
+        colabId = colabEmail.id;
+        // Vincular auth_id com await e tratamento de erro
+        const { error: errLink } = await supabase
+          .from('colaboradores').update({ auth_id: user.id }).eq('id', colabEmail.id);
+        if (errLink) console.warn('[login] Erro ao vincular auth_id:', errLink.message);
       }
     }
 
-    if (ehGestorOuDono && ehColaborador) {
-      // Duplo papel — mostrar seletor
+    // 3. Decidir destino
+    // Perfil explícito de colaborador/prestador no sistema → portal do colaborador
+    if (ehPerfilColaborador) {
+      window.location.href = '/pages/colaborador.html'; return;
+    }
+
+    // Usuário do portal principal E também colaborador → seletor de papel
+    if (ehPortalPrincipal && ehColaborador) {
       formLogin.style.display = 'none';
       rolePicker.style.display = 'block';
       return;
     }
 
-    if (ehGestorOuDono) {
+    // Apenas portal principal
+    if (ehPortalPrincipal) {
       window.location.href = '/'; return;
     }
 
+    // Apenas colaborador (sem perfil no sistema de usuários)
     if (ehColaborador) {
       window.location.href = '/pages/colaborador.html'; return;
     }
 
-    // Sem perfil — acesso ao sistema principal
+    // Sem nenhum perfil reconhecido → portal principal (acesso básico)
     window.location.href = '/';
   }
 
-  // Login
+  // Login com email e senha
   document.getElementById("btnLogin").addEventListener("click", async () => {
     msg.textContent = '';
     const email = document.getElementById("email").value.trim();
     const senha = document.getElementById("senha").value.trim();
     if (!email || !senha) { mostrarErro("Preencha email e senha."); return; }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-    if (error) { mostrarErro(error.message); return; }
+    const btnLogin = document.getElementById("btnLogin");
+    btnLogin.disabled = true; btnLogin.textContent = 'Entrando...';
 
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    btnLogin.disabled = false; btnLogin.textContent = 'Entrar';
+
+    if (error) { mostrarErro(error.message); return; }
     const { data } = await supabase.auth.getUser();
     if (data?.user) await decidirDestino(data.user);
   });
 
-  // Entrar como empresa
+  // Seletor de papel: entrar como empresa (portal principal)
   document.getElementById("btnEntrarEmpresa").addEventListener("click", () => {
     window.location.href = '/';
   });
 
-  // Entrar como prestador
+  // Seletor de papel: entrar como prestador
   document.getElementById("btnEntrarPrestador").addEventListener("click", () => {
     window.location.href = '/pages/colaborador.html';
   });
 
-  // Voltar
+  // Voltar ao formulário
   document.getElementById("btnVoltar").addEventListener("click", async () => {
     await supabase.auth.signOut();
     formLogin.style.display = 'block';
     rolePicker.style.display = 'none';
     document.getElementById("email").value = '';
     document.getElementById("senha").value = '';
+    msg.textContent = '';
   });
 
-  // Esqueci a senha
+  // Recuperação de senha
   document.getElementById("btnReset").addEventListener("click", async () => {
     msg.textContent = '';
     const email = document.getElementById("email").value.trim();
     if (!email) { mostrarErro("Digite seu email primeiro."); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://sistemas-propostas.vercel.app/login.html"
+      redirectTo: window.location.origin + '/login.html'
     });
     if (error) { mostrarErro(error.message); return; }
-    mostrarSucesso("Link de redefinição enviado!");
+    mostrarSucesso("Link de redefinição enviado! Verifique seu e-mail.");
   });
 
   // Enter para login

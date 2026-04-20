@@ -17,6 +17,23 @@
     { id: 'historico',  label: 'Relacionamento',   icon: '💬' },
   ];
 
+  var PERFIS_LISTA = [
+    { id: 'dono',         label: 'Dono',            desc: 'Acesso total, sem restrições' },
+    { id: 'admin',        label: 'Admin',            desc: 'Administrador com acesso total' },
+    { id: 'gestor',       label: 'Gestor',           desc: 'Gestão geral do sistema' },
+    { id: 'diretoria',    label: 'Diretoria',        desc: 'Visão estratégica e relatórios' },
+    { id: 'comercial',    label: 'Comercial',        desc: 'Propostas e pipeline comercial' },
+    { id: 'engenharia',   label: 'Engenharia',       desc: 'Projetos e equipes técnicas' },
+    { id: 'operacao',     label: 'Operação',         desc: 'Execução e apontamentos' },
+    { id: 'parceiro',     label: 'Parceiro',         desc: 'Acesso externo limitado' },
+    { id: 'visualizador', label: 'Visualizador',     desc: 'Somente leitura' },
+    { id: 'colaborador',  label: 'Colaborador',      desc: 'Portal do colaborador — apontamentos' },
+    { id: 'prestador',    label: 'Prestador',        desc: 'Portal do prestador — apontamentos' },
+  ];
+
+  // Perfis que acessam o portal do colaborador (não o portal principal)
+  var PERFIS_COLAB = ['colaborador', 'prestador'];
+
   // ── Renderiza o painel de administração ──────────────────
   window.rUsuarios = async function () {
     var sec = document.getElementById('admin');
@@ -78,7 +95,7 @@
           '<div style="width:34px;height:34px;background:var(--accent);border-radius:50%;display:grid;place-items:center;font-weight:800;color:#000;flex-shrink:0;font-size:.78rem">' + initials + '</div>' +
           '<div style="flex:1;min-width:0;overflow:hidden">' +
             '<div style="font-weight:600;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(u.nome) + '</div>' +
-            '<div style="font-size:.7rem;color:var(--text3)">' + _escHtml(u.perfil || '') + ' — ' + modStr + '</div>' +
+            '<div style="font-size:.7rem;color:var(--text3)">' + _perfilLabel(u.perfil) + ' — ' + modStr + '</div>' +
           '</div>' +
           badge +
           '<div style="display:flex;gap:.25rem;flex-shrink:0">' +
@@ -99,10 +116,11 @@
       _convites.forEach(function (c) {
         var mods = c.modulos_permitidos && c.modulos_permitidos.length ? c.modulos_permitidos.join(', ') : 'Acesso total';
         var data = c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR') : '';
+        var perfilTxt = _perfilLabel(c.perfil || 'gestor');
         html += '<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2)">' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-weight:600;font-size:.84rem">' + _escHtml(c.nome) + ' <span style="font-size:.72rem;color:var(--text3)">(' + _escHtml(c.email) + ')</span></div>' +
-            '<div style="font-size:.7rem;color:var(--text3)">Módulos: ' + _escHtml(mods) + (data ? ' · Enviado ' + data : '') + '</div>' +
+            '<div style="font-size:.7rem;color:var(--text3)">' + perfilTxt + ' · Módulos: ' + _escHtml(mods) + (data ? ' · Enviado ' + data : '') + '</div>' +
           '</div>' +
           '<span class="bdg" style="background:rgba(240,165,0,.15);color:var(--accent);flex-shrink:0">Aguardando</span>' +
           '<button class="btn bd bxs" title="Revogar convite" onclick="uRevogarConvite(\'' + c.id + '\')">✕</button>' +
@@ -143,6 +161,11 @@
   // ── Modal: Convidar usuário ──────────────────────────────
   window.uConvidar = function () {
     _fecharModal('modal-usuarios');
+
+    var perfilOpts = PERFIS_LISTA.map(function (p) {
+      return '<option value="' + p.id + '">' + p.label + ' — ' + p.desc + '</option>';
+    }).join('');
+
     var modHtml = MODULOS_LISTA.map(function (m) {
       return '<label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.82rem">' +
         '<input type="checkbox" name="mod-inv" value="' + m.id + '" style="cursor:pointer"> ' +
@@ -154,7 +177,13 @@
       '<div class="g" style="gap:.75rem">' +
         '<div class="f"><label>Nome *</label><input type="text" id="inv-nome" placeholder="Nome completo"></div>' +
         '<div class="f"><label>E-mail *</label><input type="email" id="inv-email" placeholder="email@exemplo.com"></div>' +
-        '<div class="f"><label>Módulos Permitidos</label>' +
+        '<div class="f"><label>Perfil *</label>' +
+          '<select id="inv-perfil" onchange="uAtualizarModulosPorPerfil()" style="width:100%;padding:.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;cursor:pointer">' +
+          perfilOpts +
+          '</select>' +
+          '<p id="inv-perfil-nota" style="font-size:.68rem;color:var(--text3);margin-top:.25rem"></p>' +
+        '</div>' +
+        '<div class="f" id="inv-modulos-bloco"><label>Módulos Permitidos</label>' +
           '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem;display:flex;flex-direction:column;gap:.5rem">' +
           modHtml + '</div>' +
           '<p style="font-size:.68rem;color:var(--text3);margin-top:.25rem">Deixe todos desmarcados para dar acesso a todos os módulos.</p>' +
@@ -165,40 +194,108 @@
     );
 
     document.body.appendChild(modal);
-    setTimeout(function () { var el = document.getElementById('inv-nome'); if (el) el.focus(); }, 50);
+    setTimeout(function () {
+      var el = document.getElementById('inv-nome');
+      if (el) el.focus();
+      uAtualizarModulosPorPerfil();
+    }, 50);
+  };
+
+  // Mostra/oculta o bloco de módulos baseado no perfil selecionado
+  window.uAtualizarModulosPorPerfil = function () {
+    var sel = document.getElementById('inv-perfil');
+    var bloco = document.getElementById('inv-modulos-bloco');
+    var nota = document.getElementById('inv-perfil-nota');
+    if (!sel) return;
+    var perfil = sel.value;
+    var ehColab = PERFIS_COLAB.indexOf(perfil) >= 0;
+    if (bloco) bloco.style.display = ehColab ? 'none' : '';
+    if (nota) {
+      if (ehColab) {
+        nota.textContent = '⚠️ Colaborador/Prestador terá acesso apenas ao portal de apontamentos.';
+        nota.style.color = 'var(--accent)';
+      } else {
+        nota.textContent = '';
+      }
+    }
   };
 
   window.uEnviarConvite = async function () {
-    var nome  = (document.getElementById('inv-nome')  || {}).value || '';
-    var email = (document.getElementById('inv-email') || {}).value || '';
+    var nome   = (document.getElementById('inv-nome')   || {}).value || '';
+    var email  = (document.getElementById('inv-email')  || {}).value || '';
+    var perfil = (document.getElementById('inv-perfil') || {}).value || 'gestor';
     if (!nome.trim() || !email.trim()) { alert('Preencha nome e e-mail.'); return; }
 
     var checks = document.querySelectorAll('input[name="mod-inv"]:checked');
     var modulos = Array.from(checks).map(function (cb) { return cb.value; });
+    var ehColab = PERFIS_COLAB.indexOf(perfil) >= 0;
 
     var btn = document.querySelector('#modal-usuarios .btn.ba');
     if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
     try {
       var empresaId = window.getEmpresaAtivaId ? window.getEmpresaAtivaId() : null;
+      var authUserId = (await window.sbClient.auth.getUser()).data.user.id;
 
-      var { error: errI } = await window.sbClient.from('convites').insert({
-        email:              email.trim().toLowerCase(),
-        nome:               nome.trim(),
-        modulos_permitidos: modulos.length ? modulos : null,
-        empresa_id:         empresaId,
-        criado_por:         (await window.sbClient.auth.getUser()).data.user.id
-      });
-      if (errI) throw errI;
+      if (ehColab) {
+        // Colaborador/Prestador: criar diretamente em colaboradores + salvar convite
+        var { error: errC } = await window.sbClient.from('colaboradores').insert({
+          nome:     nome.trim(),
+          email:    email.trim().toLowerCase(),
+          cargo:    perfil === 'prestador' ? 'Prestador' : 'Colaborador',
+          ativo:    true
+        });
+        if (errC) throw errC;
 
-      var { error: errM } = await window.sbClient.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: window.location.origin + '/'
+        // Vincular à empresa se houver empresa ativa
+        if (empresaId) {
+          var { data: colabNovo } = await window.sbClient
+            .from('colaboradores').select('id')
+            .eq('email', email.trim().toLowerCase()).maybeSingle();
+          if (colabNovo) {
+            await window.sbClient.from('colaborador_empresas').insert({
+              colaborador_id: colabNovo.id,
+              empresa_id:     empresaId,
+              ativo:          true
+            });
+          }
         }
-      });
-      if (errM) throw errM;
+
+        // Registrar convite para rastreamento
+        await window.sbClient.from('convites').insert({
+          email:              email.trim().toLowerCase(),
+          nome:               nome.trim(),
+          perfil:             perfil,
+          modulos_permitidos: null,
+          empresa_id:         empresaId,
+          criado_por:         authUserId
+        });
+
+        // Enviar magic link para o portal do colaborador
+        var { error: errM } = await window.sbClient.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + '/pages/colaborador.html' }
+        });
+        if (errM) throw errM;
+
+      } else {
+        // Usuário do portal principal: registrar convite com perfil e módulos
+        var { error: errI } = await window.sbClient.from('convites').insert({
+          email:              email.trim().toLowerCase(),
+          nome:               nome.trim(),
+          perfil:             perfil,
+          modulos_permitidos: modulos.length ? modulos : null,
+          empresa_id:         empresaId,
+          criado_por:         authUserId
+        });
+        if (errI) throw errI;
+
+        var { error: errM } = await window.sbClient.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + '/' }
+        });
+        if (errM) throw errM;
+      }
 
       _fecharModal('modal-usuarios');
       alert('Convite enviado para ' + email + '!\nO usuário receberá um e-mail com link de acesso.');
@@ -215,6 +312,11 @@
     if (!u) return;
     _fecharModal('modal-usuarios');
 
+    var perfilOpts = PERFIS_LISTA.map(function (p) {
+      var sel = (u.perfil === p.id) ? ' selected' : '';
+      return '<option value="' + p.id + '"' + sel + '>' + p.label + ' — ' + p.desc + '</option>';
+    }).join('');
+
     var modHtml = MODULOS_LISTA.map(function (m) {
       var checked = u.modulos_permitidos === null ||
         (Array.isArray(u.modulos_permitidos) && u.modulos_permitidos.indexOf(m.id) >= 0);
@@ -228,11 +330,17 @@
       : '<button class="btn bs bsm" onclick="uToggleAtivo(\'' + u.id + '\',true)">✅ Reativar</button>';
 
     var modal = _criarModal('modal-usuarios',
-      '✏️ Permissões — ' + _escHtml(u.nome),
-      '<div class="f"><label>Módulos Permitidos</label>' +
-        '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem;display:flex;flex-direction:column;gap:.5rem">' +
-        modHtml + '</div>' +
-        '<p style="font-size:.68rem;color:var(--text3);margin-top:.25rem">Marque todos para dar acesso total.</p>' +
+      '✏️ Editar — ' + _escHtml(u.nome),
+      '<div class="g" style="gap:.75rem">' +
+        '<div class="f"><label>Perfil</label>' +
+          '<select id="edit-perfil" style="width:100%;padding:.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;cursor:pointer">' +
+          perfilOpts + '</select>' +
+        '</div>' +
+        '<div class="f"><label>Módulos Permitidos</label>' +
+          '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem;display:flex;flex-direction:column;gap:.5rem">' +
+          modHtml + '</div>' +
+          '<p style="font-size:.68rem;color:var(--text3);margin-top:.25rem">Marque todos para dar acesso total. Colaborador/Prestador não usam módulos.</p>' +
+        '</div>' +
       '</div>',
       acaoBtn +
       '<div style="display:flex;gap:.4rem">' +
@@ -248,10 +356,15 @@
     var checks = document.querySelectorAll('input[name="mod-edit"]:checked');
     var modulos = Array.from(checks).map(function (cb) { return cb.value; });
     var todosChecked = modulos.length === MODULOS_LISTA.length;
+    var perfilSel = document.getElementById('edit-perfil');
+    var novoPerfil = perfilSel ? perfilSel.value : null;
 
     try {
+      var payload = { modulos_permitidos: todosChecked ? null : modulos };
+      if (novoPerfil) payload.perfil = novoPerfil;
+
       var { error } = await window.sbClient.from('usuarios')
-        .update({ modulos_permitidos: todosChecked ? null : modulos })
+        .update(payload)
         .eq('id', id);
       if (error) throw error;
       _fecharModal('modal-usuarios');
@@ -380,6 +493,11 @@
     var el = document.getElementById(id);
     if (el) el.remove();
   };
+
+  function _perfilLabel(perfil) {
+    var p = PERFIS_LISTA.find(function(x){ return x.id === perfil; });
+    return _escHtml(p ? p.label : (perfil || '?'));
+  }
 
   function _escHtml(str) {
     if (!str) return '';

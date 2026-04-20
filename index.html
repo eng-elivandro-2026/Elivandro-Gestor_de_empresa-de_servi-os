@@ -8346,6 +8346,11 @@ async function iniciarPlataforma() {
   // 1. Auth
   if (typeof protegerPagina === 'function') await protegerPagina();
 
+  // Perfis que ficam no portal principal
+  var _PERFIS_PORTAL = ['dono','gestor','admin','diretoria','comercial','engenharia','operacao','parceiro','visualizador'];
+  // Perfis que devem ir para o portal do colaborador/prestador
+  var _PERFIS_COLAB = ['colaborador','prestador'];
+
   // Verificar tipo de usuário e tratar primeiro login de convidados
   try {
     var _au = await window.sbClient.auth.getUser();
@@ -8358,19 +8363,20 @@ async function iniciarPlataforma() {
         .eq('auth_id', _authUser.id).maybeSingle();
 
       if (!_usr.data) {
-        // Sem registro: verificar se veio de convite
+        // Sem registro em usuarios: verificar se veio de convite
         var _convite = await window.sbClient
           .from('convites').select('*')
           .eq('email', (_authUser.email || '').toLowerCase())
           .eq('usado', false).maybeSingle();
 
         if (_convite.data) {
-          // Criar usuário a partir do convite
+          // Primeiro login via convite — criar registro em usuarios
+          var _perfil_convite = _convite.data.perfil || 'gestor';
           var _novo = await window.sbClient.from('usuarios').insert({
             auth_id:            _authUser.id,
             nome:               _convite.data.nome,
             email:              _authUser.email,
-            perfil:             'gestor',
+            perfil:             _perfil_convite,
             modulos_permitidos: _convite.data.modulos_permitidos || null,
             ativo:              true
           }).select('id').single();
@@ -8387,29 +8393,42 @@ async function iniciarPlataforma() {
               if (_veInst.error) console.warn('[init] Erro ao vincular empresa:', _veInst.error.message);
             }
             await window.sbClient.from('convites').update({ usado: true }).eq('id', _convite.data.id);
-            console.log('%c[init] Primeiro login via convite — usuário criado', 'color:#3fb950;font-weight:700');
+            console.log('%c[init] Primeiro login via convite — usuário criado (perfil: ' + _perfil_convite + ')', 'color:#3fb950;font-weight:700');
+
+            // Se o perfil do convite é colaborador/prestador, redirecionar
+            if (_PERFIS_COLAB.indexOf(_perfil_convite) >= 0) {
+              window.location.href = '/pages/colaborador.html'; return;
+            }
           }
         } else {
-          // Verificar se é colaborador puro
+          // Não tem convite — verificar se é colaborador puro (só em colaboradores, não em usuarios)
+          // Tenta por auth_id primeiro, depois por email (fallback para auth_id não vinculado)
           var _cc = await window.sbClient
             .from('colaboradores').select('id')
             .eq('auth_id', _authUser.id).eq('ativo', true).maybeSingle();
           if (!_cc.error && _cc.data) {
             window.location.href = '/pages/colaborador.html'; return;
           }
+          // Fallback por email
+          var _ccEmail = await window.sbClient
+            .from('colaboradores').select('id')
+            .eq('email', (_authUser.email || '').toLowerCase()).eq('ativo', true).maybeSingle();
+          if (!_ccEmail.error && _ccEmail.data) {
+            // Vincular auth_id antes de redirecionar
+            await window.sbClient.from('colaboradores')
+              .update({ auth_id: _authUser.id }).eq('id', _ccEmail.data.id);
+            window.location.href = '/pages/colaborador.html'; return;
+          }
         }
+
       } else if (_usr.data.ativo === false) {
-        // Usuário desativado — redirecionar
+        // Usuário desativado
         await window.sbClient.auth.signOut();
         window.location.href = '/login.html'; return;
-      } else if (_usr.data.perfil !== 'dono' && _usr.data.perfil !== 'gestor') {
-        // Colaborador puro — verificar tabela colaboradores
-        var _cc2 = await window.sbClient
-          .from('colaboradores').select('id')
-          .eq('auth_id', _authUser.id).eq('ativo', true).maybeSingle();
-        if (!_cc2.error && _cc2.data) {
-          window.location.href = '/pages/colaborador.html'; return;
-        }
+
+      } else if (_PERFIS_COLAB.indexOf(_usr.data.perfil) >= 0) {
+        // Perfil colaborador/prestador no sistema de usuários → portal do colaborador
+        window.location.href = '/pages/colaborador.html'; return;
       }
     }
   } catch(e) { console.warn('[init] verificação de usuário:', e); }
@@ -8461,8 +8480,8 @@ async function iniciarPlataforma() {
     console.log('%c[init] ' + _emps.length + ' empresa(s) carregada(s)', 'color:#f0a500;font-weight:700');
   } catch(e) { console.warn('[init] empresas:', e); }
 
-  // 5b. Registrar módulo Admin se for dono
-  if (window._perfilUsuario === 'dono') {
+  // 5b. Registrar módulo Admin se for dono ou admin
+  if (window._perfilUsuario === 'dono' || window._perfilUsuario === 'admin') {
     Router.registrar({
       id:    'admin',
       label: 'Administração',
