@@ -91,6 +91,7 @@
   ];
 
   var _moduloAtivo = null;
+  var _modulosPermitidos = null; // null = sem restrição
 
   // ── API pública ──────────────────────────────────────────
   window.Router = {
@@ -149,7 +150,15 @@
 
     // Registra um novo módulo dinamicamente
     registrar: function (mod) {
-      MODULOS.push(mod);
+      if (!MODULOS.find(function(m){ return m.id === mod.id; })) {
+        MODULOS.push(mod);
+      }
+      this._renderSidebarModulos();
+    },
+
+    // Aplica filtro de permissões no sidebar
+    aplicarPermissoes: function (lista) {
+      _modulosPermitidos = lista; // null = tudo; [] = nada; ['comercial'] = só comercial
       this._renderSidebarModulos();
     },
 
@@ -162,7 +171,12 @@
     _renderSidebarModulos: function () {
       var el = document.getElementById('sidebar-modulos');
       if (!el) return;
-      el.innerHTML = MODULOS.map(function (m) {
+      var lista = _modulosPermitidos
+        ? MODULOS.filter(function (m) {
+            return _modulosPermitidos.indexOf(m.id) >= 0 || m.id === 'admin';
+          })
+        : MODULOS;
+      el.innerHTML = lista.map(function (m) {
         return '<button class="mod-btn nb" data-mod="' + m.id + '" onclick="Router.ir(\'' + m.id + '\')">' +
           '<span class="mod-icon">' + m.icon + '</span>' +
           '<span class="mod-label">' + m.label + '</span>' +
