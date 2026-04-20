@@ -2327,31 +2327,40 @@ function valorSecEditorHTML(){
     +'</tbody></table></div></div>';
 }
 
-// ── Barra de símbolos para inserção rápida em textareas de escopo ──
-var _ESC_SYMS = ['• ','- ','– ','→ ','✓ ','✗ ','▪ ','① ','② ','③ '];
+// ── Seletor de símbolos para textareas de escopo ──
+var _ESC_SYMS = [
+  {v:'• ', l:'• Marcador redondo'},
+  {v:'- ', l:'- Traço simples'},
+  {v:'– ', l:'– Travessão'},
+  {v:'→ ', l:'→ Seta direita'},
+  {v:'✓ ', l:'✓ Check / OK'},
+  {v:'✗ ', l:'✗ Não / Excluir'},
+  {v:'▪ ', l:'▪ Quadrado pequeno'},
+  {v:'① ', l:'① Número 1'},
+  {v:'② ', l:'② Número 2'},
+  {v:'③ ', l:'③ Número 3'},
+  {v:'④ ', l:'④ Número 4'},
+  {v:'⑤ ', l:'⑤ Número 5'}
+];
 function escSymBar(){
-  return '<div class="esc-sym-bar">'
-    +_ESC_SYMS.map(function(s){
-      return '<button type="button" class="esc-sym-btn nb" onclick="escInsertSym(this,'+JSON.stringify(s)+')" title="Inserir '+s.trim()+'">'+s.trim()+'</button>';
+  return '<select class="esc-sym-sel" onchange="escInsertSym(this)">'
+    +'<option value="">＋ Inserir símbolo de tópico...</option>'
+    +_ESC_SYMS.map(function(o){
+      return '<option value="'+o.v+'">'+o.l+'</option>';
     }).join('')
-    +'</div>';
+    +'</select>';
 }
-function escInsertSym(btn, sym){
-  var bar=btn.closest('.esc-sym-bar');
-  if(!bar)return;
-  var ta=bar.nextElementSibling;
+function escInsertSym(sel){
+  var sym=sel.value;
+  if(!sym){return;}
+  sel.value=''; // reset para placeholder
+  var ta=sel.nextElementSibling;
   if(!ta||ta.tagName!=='TEXTAREA')return;
+  ta.focus();
   var s=ta.selectionStart, e=ta.selectionEnd, v=ta.value;
-  // Insere no início da linha atual se cursor está no meio de uma linha sem texto selecionado
-  if(s===e){
-    var lineStart=v.lastIndexOf('\n',s-1)+1;
-    var lineText=v.substring(lineStart,s);
-    if(lineText.trim()==='') s=lineStart; // cursor no início da linha vazia
-  }
   ta.value=v.substring(0,s)+sym+v.substring(e);
   ta.selectionStart=ta.selectionEnd=s+sym.length;
   ta.dispatchEvent(new Event('input'));
-  ta.focus();
 }
 
 function rEsc(){
