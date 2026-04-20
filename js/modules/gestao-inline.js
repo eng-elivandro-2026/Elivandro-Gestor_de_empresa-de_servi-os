@@ -500,6 +500,9 @@ function init(){
 
   renderCheckContr();
 
+  // Pré-carrega cache do Motor de Decisão em background (sem bloquear init)
+  setTimeout(function(){ getOrRunDecisionEngine(); }, 500);
+
 }
 
 
@@ -511,10 +514,157 @@ function gestaoShowSec(id){
   document.querySelectorAll('.gsec').forEach(s=>s.classList.remove('on'));
   var el = document.getElementById('sec-'+id);
   if(el) el.classList.add('on');
-  if(id==='calendario' && typeof renderCalendario==='function') renderCalendario();
 
-  if(id==='versoes')renderVersoes();
+  // Persiste seção ativa para restaurar ao voltar ao módulo
+  dados.secAtiva = id;
 
+  // Re-renderiza e injeta sugestões da IA por seção
+  if(id==='dia'){
+    renderPrios();renderTarefas();renderExplosoes();renderAbertos();
+    renderSugestoesIA('dia');
+  }
+  if(id==='semana'){ renderSemana(); renderSugestoesIA('semana'); }
+  if(id==='mes')   { renderKPIs();   renderSugestoesIA('mes'); }
+  if(id==='trimestre'){ renderTrim(); renderSugestoesIA('trimestre'); }
+  if(id==='calendario'){ if(typeof renderCalendario==='function') renderCalendario(); }
+  if(id==='versoes'){ renderVersoes(); }
+}
+
+// ── Bridge: obtém resultado do Motor de Decisão (lazy + cache 5min) ──────────
+function getOrRunDecisionEngine(){
+  if(window._deResult && window._deResult._ts && (Date.now()-window._deResult._ts)<300000){
+    return window._deResult;
+  }
+  if(typeof runDecisionEngine==='function' && window.props && window.props.length>0){
+    var r=runDecisionEngine();
+    if(r) r._ts=Date.now();
+    return r;
+  }
+  return null;
+}
+
+// ── Importa sugestão da IA como prioridade do dia ─────────────────────────────
+function setPrio(n, texto){
+  var dia=getDia();
+  dia.prios['p'+n]=texto;
+  save();
+  renderPrios();
+  renderSugestoesIA('dia'); // atualiza botões (mostra "preenchida")
+}
+
+// ── Renderiza sugestões contextuais da IA em cada seção de planejamento ───────
+function renderSugestoesIA(secId){
+  var r=getOrRunDecisionEngine();
+
+  if(secId==='dia'){
+    var cont=document.getElementById('sugestoes-ia-dia');
+    if(!cont)return;
+    if(!r||(!r.decisions.length&&!r.alerts.length)){cont.innerHTML='';return;}
+
+    var corPri={Alta:'var(--red)',Média:'var(--accent)',Baixa:'var(--text3)'};
+    var corImp={alto:'var(--red)',medio:'var(--accent)',baixo:'var(--text3)',critico:'#ff5555'};
+
+    var criticos=r.alerts.filter(function(a){return a.tipo==='critico'||a.impacto==='alto';});
+    var alertasHtml=criticos.map(function(a){
+      var cor=corImp[a.tipo==='critico'?'critico':a.impacto]||'var(--red)';
+      return '<div style="padding:.28rem .55rem;border-left:3px solid '+cor+';background:rgba(255,85,85,.05);border-radius:0 4px 4px 0;margin-bottom:.22rem;font-size:.72rem;color:var(--text)">'
+        +(a.icone?a.icone+' ':'')+esc(a.mensagem)
+        +(a.valor>0?'<span style="color:var(--accent);margin-left:.45rem;font-size:.67rem">'+(typeof money==='function'?money(a.valor):a.valor)+'</span>':'')
+        +'</div>';
+    }).join('');
+
+    var dia=getDia();
+    var decsHtml=r.decisions.slice(0,3).map(function(d,i){
+      var n=i+1;
+      var jaPreenchida=dia.prios['p'+n]&&dia.prios['p'+n].trim().length>0;
+      var cor=corPri[d.prioridade_label]||'var(--text3)';
+      var textoSugestao=d.titulo.replace(/^[^\s]+\s/,'');
+      return '<div style="display:flex;align-items:flex-start;gap:.45rem;padding:.28rem .4rem;background:var(--bg3);border:1px solid var(--border);border-radius:5px;margin-bottom:.22rem">'
+        +'<span style="font-size:.62rem;font-weight:800;color:'+cor+';flex-shrink:0;margin-top:.1rem;min-width:26px;text-align:center;border:1px solid '+cor+';border-radius:3px;padding:.05rem .2rem">'+d.prioridade_label+'</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.72rem;font-weight:600;color:var(--text);line-height:1.3">'+esc(d.titulo)+'</div>'
+        +'<div style="font-size:.65rem;color:var(--text3);margin-top:.06rem;line-height:1.35">'+esc(d.descricao)+'</div>'
+        +'</div>'
+        +(jaPreenchida
+          ?'<span style="font-size:.61rem;color:var(--text3);flex-shrink:0;margin-top:.1rem;font-style:italic">P'+n+' preenchida</span>'
+          :'<button class="btn ba btn-sm" style="flex-shrink:0;font-size:.62rem;padding:.15rem .4rem" onclick="setPrio('+n+','+JSON.stringify(textoSugestao)+')">→ P'+n+'</button>')
+        +'</div>';
+    }).join('');
+
+    cont.innerHTML='<div style="background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.2);border-radius:var(--r);padding:.5rem .7rem;margin-bottom:.65rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">'
+      +'<span style="font-size:.63rem;font-weight:700;color:#79b8ff;text-transform:uppercase;letter-spacing:.07em">🧠 Motor de Decisão — sugestões para hoje</span>'
+      +'<button class="nb" style="font-size:.63rem;color:var(--text3);padding:.1rem .3rem" onclick="document.getElementById(\'sugestoes-ia-dia\').style.display=\'none\'">✕</button>'
+      +'</div>'
+      +(alertasHtml?'<div style="margin-bottom:.35rem">'+alertasHtml+'</div>':'')
+      +'<div style="font-size:.61rem;color:var(--text3);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.05em">Sugestões de prioridade</div>'
+      +decsHtml
+      +'</div>';
+    return;
+  }
+
+  if(secId==='semana'){
+    var cont=document.getElementById('sugestoes-ia-semana');
+    if(!cont)return;
+    if(!r||!r.weekly_focus||!r.weekly_focus.length){cont.innerHTML='';return;}
+
+    var corPri={Alta:'var(--red)',Média:'var(--accent)',Baixa:'var(--text3)'};
+    cont.innerHTML='<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.22);border-radius:var(--r);padding:.55rem .8rem;margin-bottom:.7rem">'
+      +'<div style="font-size:.63rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">🎯 Foco da semana — Motor de Decisão</div>'
+      +r.weekly_focus.map(function(f){
+        var cor={Alta:'var(--red)',Média:'var(--accent)',Baixa:'var(--text3)'}[f.prioridade_label]||'var(--text3)';
+        return '<div style="display:flex;gap:.5rem;align-items:flex-start;padding:.25rem 0;border-bottom:1px solid rgba(240,165,0,.1)">'
+          +'<span style="font-weight:800;color:'+cor+';flex-shrink:0;font-size:.74rem;width:16px">'+f.posicao+'.</span>'
+          +'<div style="flex:1">'
+          +'<div style="font-size:.73rem;font-weight:600;color:var(--text)">'+esc(f.titulo)+'</div>'
+          +'<div style="font-size:.65rem;color:var(--text3);margin-top:.05rem;line-height:1.4">'+esc(f.motivo)+'</div>'
+          +(f.impacto>0?'<div style="font-size:.64rem;color:var(--green);margin-top:.05rem">Impacto estimado: '+(typeof money==='function'?money(f.impacto):f.impacto)+'</div>':'')
+          +'</div>'
+          +'<span style="font-size:.59rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:20px;padding:.08rem .28rem;flex-shrink:0">'+f.prioridade_label+'</span>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+    return;
+  }
+
+  if(secId==='mes'){
+    var cont=document.getElementById('sugestoes-ia-mes');
+    if(!cont)return;
+    if(!r||!r.executive_items||!r.executive_items.length){cont.innerHTML='';return;}
+
+    cont.innerHTML='<div style="background:rgba(63,185,80,.06);border:1px solid rgba(63,185,80,.22);border-radius:var(--r);padding:.55rem .8rem;margin-bottom:.7rem">'
+      +'<div style="font-size:.63rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">📊 Inteligência em tempo real — Motor de Decisão</div>'
+      +r.executive_items.map(function(it){
+        return '<div style="display:flex;gap:.45rem;align-items:baseline;padding:.18rem 0;border-bottom:1px solid rgba(63,185,80,.1);font-size:.74rem">'
+          +'<span style="flex-shrink:0;width:20px;text-align:center">'+it.icone+'</span>'
+          +'<span style="color:var(--text3);flex-shrink:0;min-width:115px;font-size:.67rem">'+esc(it.label)+'</span>'
+          +'<span style="color:var(--text);font-weight:600">'+esc(it.valor)+'</span>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+    return;
+  }
+
+  if(secId==='trimestre'){
+    var cont=document.getElementById('sugestoes-ia-trim');
+    if(!cont)return;
+    if(!r||!r.opportunities||!r.opportunities.length){cont.innerHTML='';return;}
+
+    cont.innerHTML='<div style="background:rgba(188,140,255,.06);border:1px solid rgba(188,140,255,.22);border-radius:var(--r);padding:.55rem .8rem;margin-bottom:.7rem">'
+      +'<div style="font-size:.63rem;font-weight:700;color:#bc8cff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">💡 Oportunidades identificadas — Motor de Decisão</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:.4rem">'
+      +r.opportunities.map(function(o){
+        return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:.38rem .55rem">'
+          +'<div style="font-size:.71rem;font-weight:600;color:var(--text)">'+(o.icone?o.icone+' ':'')+esc(o.titulo)+'</div>'
+          +'<div style="font-size:.66rem;color:var(--text2);margin-top:.07rem;line-height:1.35">'+esc(o.descricao)+'</div>'
+          +(o.valor>0?'<div style="font-size:.69rem;font-weight:700;color:var(--accent);margin-top:.12rem">'+(typeof money==='function'?money(o.valor):o.valor)+'</div>':'')
+          +'<div style="font-size:.61rem;color:var(--text3);margin-top:.04rem">'+esc(o.detalhe)+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +'</div>';
+    return;
+  }
 }
 
 
@@ -716,6 +866,18 @@ function renderAlertas(){
     }
 
   });
+
+  // Alertas críticos do Motor de Decisão
+  var r=getOrRunDecisionEngine();
+  if(r&&r.alerts&&r.alerts.length){
+    var criticos=r.alerts.filter(function(a){return a.tipo==='critico'||a.impacto==='alto';});
+    criticos.forEach(function(a){
+      cont.innerHTML+='<div class="alerta danger">'+esc(a.icone||'⚠')
+        +' <strong>Motor de Decisão:</strong> '+esc(a.mensagem)
+        +(a.valor>0?' — <span style="color:var(--accent)">'+money(a.valor)+'</span>':'')
+        +'</div>';
+    });
+  }
 
 }
 
@@ -2169,23 +2331,39 @@ function toggleCheckSeg(el){
 
 function renderKPIs(){
 
+  // Tenta enriquecer KPIs com dados reais de window.props
+  var r=getOrRunDecisionEngine();
+  var autoKpi = r && r._data ? r._data.kpis : null;
+
   const k=dados.kpi;
 
-  document.getElementById('k-enviadas').textContent=k.env||0;
+  // Se dados automáticos disponíveis: usa fechamentos do mês atual como "aprovadas"
+  var env = k.env||0;
+  var apr = k.apr||0;
+  var val = k.val||0;
+  var acum = k.acum||0;
 
-  document.getElementById('k-aprovadas').textContent=k.apr||0;
+  if(autoKpi){
+    // Enriquece com dados reais — fechamentos do mês e receita do ano
+    // Mantém os manuais se o automático for zero (usuário pode ter dados além do sistema)
+    apr  = autoKpi.fechMes  || apr;
+    val  = autoKpi.valFechMes || val;
+    acum = autoKpi.recAno   || acum;
+  }
 
-  const val=k.val||0;
+  document.getElementById('k-enviadas').textContent=env;
+
+  document.getElementById('k-aprovadas').textContent=apr;
 
   document.getElementById('k-valor').textContent='R$ '+(val>=1000?Math.round(val/1000)+'k':val.toLocaleString('pt-BR'));
 
-  const tx=k.env?Math.round((k.apr/k.env)*100):0;
+  const tx = autoKpi && autoKpi.taxaConv > 0
+    ? Math.round(autoKpi.taxaConv)
+    : (env ? Math.round((apr/env)*100) : 0);
 
   document.getElementById('k-tx').textContent=tx+'%';
 
   const meta=2730000;
-
-  const acum=k.acum||0;
 
   const metaPct=Math.min(100,Math.round((acum/meta)*100));
 
@@ -2206,6 +2384,10 @@ function renderKPIs(){
   depBar.className='prog-fill'+(dep>80?'':dep>60?' ':'');
 
   depBar.style.background=dep>80?'var(--red)':dep>60?'var(--orange)':'var(--green)';
+
+  // Indicador visual de fonte dos dados
+  var srcEl=document.getElementById('k-fonte-dados');
+  if(srcEl) srcEl.textContent = autoKpi ? '🔄 dados em tempo real' : '✏️ dados manuais';
 
 }
 
@@ -2419,9 +2601,19 @@ function renderTrim(){
 
   const dep=t.dep||90;
 
-  document.getElementById('trim-fat').textContent='R$ '+fat.toLocaleString('pt-BR');
+  // Meta dinâmica: usa valor salvo em dados.trim.meta, com fallback para 4.800.000
+  var metaBase = t.meta || 4800000;
 
-  const pctMeta=Math.round((fat/4800000)*100);
+  // Enriquece com receita real do Motor de Decisão se disponível
+  var r = getOrRunDecisionEngine();
+  var fatReal = (r && r._data && r._data.kpis && r._data.kpis.recAno > 0) ? r._data.kpis.recAno : fat;
+
+  document.getElementById('trim-fat').textContent='R$ '+fatReal.toLocaleString('pt-BR');
+
+  var trimMetaLbl=document.getElementById('trim-meta-lbl');
+  if(trimMetaLbl) trimMetaLbl.textContent='de R$ '+metaBase.toLocaleString('pt-BR')+' (meta 3 anos)';
+
+  const pctMeta=Math.round((fatReal/metaBase)*100);
 
   document.getElementById('trim-pct-meta').textContent=pctMeta+'% do caminho';
 
@@ -3311,14 +3503,12 @@ window.addTarefa = typeof addTarefa !== 'undefined' ? addTarefa : function(){};
 window.addExplosao = typeof addExplosao !== 'undefined' ? addExplosao : function(){};
 window.renderCalendario = typeof renderCalendario !== 'undefined' ? renderCalendario : function(){};
 
-window.rGestaoCeo = function() {
-    gestaoShowSec('dia');
-    if(typeof loadNuvem === 'function') loadNuvem();
-  };
-
 // ── Expor para uso global ──────────────────────────────────────
 window.gestaoShowSec = typeof gestaoShowSec === 'function' ? gestaoShowSec : function(){};
+window.setPrio       = typeof setPrio       === 'function' ? setPrio       : function(){};
 window.rGestaoCeo = function() {
-  if(typeof gestaoShowSec === 'function') gestaoShowSec('dia');
+  // Restaura a seção onde o usuário estava; cai em 'dia' se nunca foi definida
+  var secParaAbrir = (dados && dados.secAtiva) ? dados.secAtiva : 'dia';
+  if(typeof gestaoShowSec === 'function') gestaoShowSec(secParaAbrir);
   if(typeof loadNuvem === 'function') loadNuvem();
 };

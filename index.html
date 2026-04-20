@@ -2481,6 +2481,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
   <div id="alertas-dia"></div>
 
+  <!-- Sugestões do Motor de Decisão para o dia -->
+
+  <div id="sugestoes-ia-dia"></div>
+
 
 
 <!-- FRASES MOTIVACIONAIS -->
@@ -2731,7 +2735,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <div class="gsec" id="sec-semana">
 
+  <!-- Foco da semana — Motor de Decisão -->
 
+  <div id="sugestoes-ia-semana"></div>
 
   <!-- GRADE DA SEMANA -->
 
@@ -2901,7 +2907,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <div class="gsec" id="sec-mes">
 
+  <!-- Inteligência em tempo real — Motor de Decisão -->
 
+  <div id="sugestoes-ia-mes"></div>
 
   <!-- KPIs -->
 
@@ -2911,7 +2919,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
       <div class="card-title">📊 Números do Mês</div>
 
-      <button class="btn ba btn-sm" onclick="abrirModalAtualizar()">Atualizar</button>
+      <div style="display:flex;align-items:center;gap:.5rem">
+
+        <span id="k-fonte-dados" style="font-size:.62rem;color:var(--text3)"></span>
+
+        <button class="btn ba btn-sm" onclick="abrirModalAtualizar()">Atualizar</button>
+
+      </div>
 
     </div>
 
@@ -3035,7 +3049,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 <div class="gsec" id="sec-trimestre">
 
+  <!-- Oportunidades identificadas — Motor de Decisão -->
 
+  <div id="sugestoes-ia-trim"></div>
 
   <!-- META ESTRATÉGICA -->
 
@@ -3055,7 +3071,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
         <div class="trim-valor" id="trim-fat">R$ 0</div>
 
-        <div class="trim-de">de R$ 4.800.000 (meta 3 anos)</div>
+        <div class="trim-de" id="trim-meta-lbl">de R$ 4.800.000 (meta 3 anos)</div>
 
         <div class="trim-pct" id="trim-pct-meta">0% do caminho</div>
 

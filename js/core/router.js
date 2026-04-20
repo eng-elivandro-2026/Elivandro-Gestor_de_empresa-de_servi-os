@@ -45,11 +45,11 @@
         { label: '↳ KPIs Ciclos',      icon: '📊', action: "go('dashboard',this);irParaPainel('ciclosCard','togCiclosDash')" },
         { label: '↳ Por Categoria',    icon: '📂', action: "go('dashboard',this);irParaPainel('catAnaliseCard','togCatAnalise')" },
         { separator: true, label: 'Planejamento' },
-        { label: 'Hoje',        icon: '📅', action: "go('gestao',this);gestaoShowSec('dia')" },
-        { label: 'Semana',      icon: '📆', action: "go('gestao',this);gestaoShowSec('semana')" },
-        { label: 'Mês',         icon: '📊', action: "go('gestao',this);gestaoShowSec('mes')" },
-        { label: 'Trimestre',   icon: '🎯', action: "go('gestao',this);gestaoShowSec('trimestre')" },
-        { label: 'Calendário',  icon: '🗓️', action: "go('gestao',this);gestaoShowSec('calendario')" },
+        { label: '↳ Hoje',       icon: '📅', action: "go('gestao',this);gestaoShowSec('dia')" },
+        { label: '↳ Semana',    icon: '📆', action: "go('gestao',this);gestaoShowSec('semana')" },
+        { label: '↳ Mês',       icon: '📊', action: "go('gestao',this);gestaoShowSec('mes')" },
+        { label: '↳ Trimestre', icon: '🎯', action: "go('gestao',this);gestaoShowSec('trimestre')" },
+        { label: '↳ Calendário',icon: '🗓️', action: "go('gestao',this);gestaoShowSec('calendario')" },
       ]
     },
     {
