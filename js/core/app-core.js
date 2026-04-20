@@ -2310,10 +2310,10 @@ function valorSecEditorHTML(){
   return '<div class="pp-valor-editor" style="margin-top:.6rem;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg2)">'
     +'<div style="padding:.5rem .7rem;background:var(--bg3);border-bottom:1px solid var(--border);font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase">Prévia automática dos valores desta seção</div>'
     +'<div style="padding:.55rem .7rem;font-size:.7rem;color:var(--text3);border-bottom:1px solid var(--border)">Os dados abaixo vêm da fase 2 / fase 4. Aqui na fase 3 você pode apenas posicionar esta seção na ordem da proposta e editar o número/título.</div>'
-    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.76rem">'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem">'
     +'<thead><tr>'
-    +'<th style="padding:.45rem .5rem;background:var(--bg3);border-bottom:1px solid var(--border);text-align:left;color:var(--text3);font-size:.66rem;text-transform:uppercase">Itens</th>'
-    +'<th style="padding:.45rem .5rem;background:var(--bg3);border-bottom:1px solid var(--border);text-align:right;color:var(--text3);font-size:.66rem;text-transform:uppercase">Valor</th>'
+    +'<th style="padding:.5rem .6rem;background:var(--bg3);border-bottom:1px solid var(--border);text-align:left;color:var(--text3);font-size:.75rem;text-transform:uppercase">Itens</th>'
+    +'<th style="padding:.5rem .6rem;background:var(--bg3);border-bottom:1px solid var(--border);text-align:right;color:var(--text3);font-size:.75rem;text-transform:uppercase">Valor</th>'
     +'</tr></thead><tbody>'
     +(detRows || '<tr><td colspan="2" style="padding:.75rem;text-align:center;color:var(--text3)">Nenhum item detalhado marcado para exibição. Os totais abaixo continuam válidos.</td></tr>')
     +(vs>0?'<tr><td style="padding:.42rem .5rem;border-top:1px solid var(--border)">'+(detRows?'Soma dos Serviços':'Serviços')+'</td><td style="padding:.42rem .5rem;border-top:1px solid var(--border);text-align:right">'+money(vs)+'</td></tr>':'')
@@ -2325,6 +2325,33 @@ function valorSecEditorHTML(){
     +(vd>0?'<tr><td style="padding:.42rem .5rem;border-top:1px solid var(--border)">Desconto total</td><td style="padding:.42rem .5rem;border-top:1px solid var(--border);text-align:right">- '+money(vd)+'</td></tr>':'')
     +'<tr><td style="padding:.5rem .5rem;border-top:1px solid var(--border);font-weight:800;background:rgba(63,185,80,.08)">TOTAL GERAL</td><td style="padding:.5rem .5rem;border-top:1px solid var(--border);text-align:right;font-weight:800;background:rgba(63,185,80,.08)">'+money(vtot)+'</td></tr>'
     +'</tbody></table></div></div>';
+}
+
+// ── Barra de símbolos para inserção rápida em textareas de escopo ──
+var _ESC_SYMS = ['• ','- ','– ','→ ','✓ ','✗ ','▪ ','① ','② ','③ '];
+function escSymBar(){
+  return '<div class="esc-sym-bar">'
+    +_ESC_SYMS.map(function(s){
+      return '<button type="button" class="esc-sym-btn nb" onclick="escInsertSym(this,'+JSON.stringify(s)+')" title="Inserir '+s.trim()+'">'+s.trim()+'</button>';
+    }).join('')
+    +'</div>';
+}
+function escInsertSym(btn, sym){
+  var bar=btn.closest('.esc-sym-bar');
+  if(!bar)return;
+  var ta=bar.nextElementSibling;
+  if(!ta||ta.tagName!=='TEXTAREA')return;
+  var s=ta.selectionStart, e=ta.selectionEnd, v=ta.value;
+  // Insere no início da linha atual se cursor está no meio de uma linha sem texto selecionado
+  if(s===e){
+    var lineStart=v.lastIndexOf('\n',s-1)+1;
+    var lineText=v.substring(lineStart,s);
+    if(lineText.trim()==='') s=lineStart; // cursor no início da linha vazia
+  }
+  ta.value=v.substring(0,s)+sym+v.substring(e);
+  ta.selectionStart=ta.selectionEnd=s+sym.length;
+  ta.dispatchEvent(new Event('input'));
+  ta.focus();
 }
 
 function rEsc(){
@@ -2360,7 +2387,8 @@ function rEsc(){
       +(isValor
          ? '<div class="hint" style="margin:.2rem 0 .5rem 0">Esta seção puxa automaticamente os valores do orçamento e aparece na posição em que você deixar aqui. Você pode mover para cima/baixo, editar o número e clicar em Atualizar valores quando quiser recarregar com os descontos atuais. e trocar o título.</div>'
          : '')
-      +'<textarea class="esb-d" style="width:100%;margin-top:.45rem;min-height:66px;background:var(--bg2)" '
+      +escSymBar()
+      +'<textarea class="esb-d" style="width:100%;margin-top:.2rem;background:var(--bg2)" '
       +'placeholder="'+(isValor?'Texto opcional acima da tabela de valores...':'Descrição da seção (vai direto na proposta)...')+'" '
       +'oninput="escSecs['+si+'].desc=this.value;autoResize(this)">'+esc(sec.desc||'')+'</textarea>'
       +(isValor ? valorSecEditorHTML() : '')
@@ -2379,7 +2407,8 @@ function rEsc(){
           +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value">'
           +'<button class="btn bd bxs es-delsub" data-si="'+si+'" data-subi="'+subi+'" style="flex-shrink:0">×</button>'
           +'</div>'
-          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.3rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this)">'+esc(sub.desc||'')+'</textarea>'
+          +escSymBar()
+          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.2rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this)">'+esc(sub.desc||'')+'</textarea>'
           +'</div>'
       }).join(''))
       +'</div>';
