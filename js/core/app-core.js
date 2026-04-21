@@ -5961,6 +5961,48 @@ function stplAbrirModal(){
   Q('stplModal').style.display='flex';
 }
 
+// Abre modal de template no contexto da proposta (Step 3 - Escopo)
+function stplAbrirModalInline(){
+  var tpls=getStpls();
+  var cont=Q('stplModalLista');if(!cont)return;
+  if(!tpls.length){
+    cont.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:.82rem">'
+      +'Nenhum template criado.<br>Acesse <b>Templates</b> no menu lateral para criar os primeiros.'
+      +'</div>';
+  }else{
+    cont.innerHTML=tpls.map(function(t){
+      var n=(t.escopoIds||[]).length;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;border-radius:var(--r2);cursor:pointer;border:1px solid var(--border);background:var(--bg3);transition:background .15s" '
+        +'onclick="stplAplicarInline(\''+t.id+'\')" onmouseover="this.style.background=\'var(--bg4,var(--hover))\'" onmouseout="this.style.background=\'var(--bg3)\'">'
+        +'<div><div style="font-weight:600;font-size:.86rem;color:var(--text)">'+esc(t.nome)+'</div>'
+        +(t.desc?'<div style="font-size:.71rem;color:var(--text2)">'+esc(t.desc)+'</div>':'')
+        +'</div>'
+        +'<span style="font-size:.72rem;color:var(--accent);font-weight:600;white-space:nowrap;margin-left:.8rem">'+n+' escopo(s) ▶</span>'
+        +'</div>';
+    }).join('');
+  }
+  Q('stplModal').style.display='flex';
+}
+
+// Aplica template direto na proposta (Step 3 - sem precisar do painel inline)
+function stplAplicarInline(id){
+  var t=getStpls().find(function(x){return x.id===id;});if(!t)return;
+  beLoadDB();
+  var ids=t.escopoIds||[];
+  var adicionados=0;
+  ids.forEach(function(eid){
+    var e=_beEscopos.find(function(x){return x.id===eid;});
+    if(!e)return;
+    var subsForProp=(e.subs||[]).map(function(s){return{id:uid(),nome:s.nome||s.titulo||'',desc:s.desc||''};});
+    escSecs.push({id:uid(),num:'',titulo:e.titulo||'',desc:e.conteudo||'',subs:subsForProp});
+    adicionados++;
+  });
+  Q('stplModal').style.display='none';
+  if(adicionados===0){alert('Nenhum escopo deste template foi encontrado no banco. Verifique o Banco de Escopos.');return;}
+  rEsc();
+  if(typeof toast==='function')toast('✔ Template "'+t.nome+'" aplicado — '+adicionados+' escopo(s) adicionado(s)!','ok');
+}
+
 // Aplica template no Banco de Escopos (marca os checkboxes correspondentes)
 function stplAplicar(id){
   var t=getStpls().find(function(x){return x.id===id;});if(!t)return;
