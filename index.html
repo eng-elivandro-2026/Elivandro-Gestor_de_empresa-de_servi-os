@@ -564,8 +564,11 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   .btn  { font-size: .74rem; padding: .5rem .8rem; }
   .bsm  { font-size: .68rem; }
 
-  /* Header */
-  .hdr  { padding: 0 .75rem; gap: .5rem; }
+  /* Header — 2 linhas no mobile: aumenta altura para cobrir ícone tema/usuário/Sair */
+  :root { --hdr-h: 82px; }
+  .hdr  { height: var(--hdr-h); flex-wrap: wrap; padding: .28rem .75rem; gap: .35rem; align-content: center; row-gap: 0; }
+  .hdr-left  { flex: 1 1 auto; min-width: 0; }
+  .hdr-right { flex: 0 0 auto; }
   .logo-sub { display: none; }
 
   /* Nav horizontal com scroll */
@@ -6034,7 +6037,7 @@ function carregarCeoDash(){
           +'<div style="font-size:.68rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(tit)+'">'+esc(tit)+'</div>'
           +'<div style="font-size:.65rem;color:'+corFase+';margin-top:.1rem">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
           +'</div>'
-          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;text-align:right;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+money(n2(p.val))+'</div>'
+          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;text-align:right;white-space:nowrap">'+money(n2(p.val))+'</div>'
           +'</div>';
       }).join('')+'</div>':'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Sem propostas em execução.</p>');
   }
@@ -6054,7 +6057,7 @@ function carregarCeoDash(){
       +rows.map(function(r){
         return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.4rem;font-size:.74rem;padding:.22rem 0;border-bottom:1px solid var(--border);min-width:0">'
           +'<span style="color:var(--text3);flex:1;white-space:nowrap">'+r[0]+'</span>'
-          +'<span style="color:'+r[2]+';font-weight:700;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">'+r[1]+'</span>'
+          +'<span style="color:'+r[2]+';font-weight:700;flex-shrink:0;text-align:right;white-space:nowrap">'+r[1]+'</span>'
           +'</div>';
       }).join('');
   }
