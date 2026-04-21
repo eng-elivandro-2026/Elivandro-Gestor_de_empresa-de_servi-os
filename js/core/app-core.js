@@ -2070,6 +2070,19 @@ function addValorSec(){
 }
 function remSec(id){escSecs=escSecs.filter(function(s){return s.id!==id});rEsc();}
 
+// Move escopo para a posição digitada e renumera todos sequencialmente
+function escMoverPorNumero(si, valor){
+  var destino = parseInt(valor, 10);
+  if(isNaN(destino) || destino < 1) return;
+  var total = escSecs.length;
+  var pos = Math.min(destino - 1, total - 1); // converte para índice 0-based
+  if(pos === si) return; // mesma posição, nada a fazer
+  var sec = escSecs.splice(si, 1)[0];
+  escSecs.splice(pos, 0, sec);
+  rEsc(); // rEsc já renumera todos sequencialmente
+  if(typeof toast === 'function') toast('Seção movida para posição ' + (pos + 1));
+}
+
 function addGanttSec(){
   var ja=escSecs.some(function(s){return isPrazo(s);});
   if(ja){toast('ℹ️ Seção de cronograma já existe.','ok');
@@ -2390,6 +2403,8 @@ function rEsc(){
     el.innerHTML='<div class="emp"><div class="emp-i">🔧</div><p>Clique em "+ Nova Seção" para começar.</p></div>';
     return;
   }
+  // Garante numeração sequencial antes de renderizar
+  escSecs.forEach(function(s,i){s.num=String(i+1);});
   var tot=escSecs.length;
   el.innerHTML=escSecs.map(function(sec,si){
     var isFirst=si===0,isLast=si===tot-1;
@@ -2402,8 +2417,11 @@ function rEsc(){
       +'<button class="btn bg bxs es-dn" data-si="'+si+'" title="Mover para baixo" style="padding:.1rem .3rem;line-height:1;opacity:'+(isLast?'0.2':'1')+'" '+(isLast?'disabled':'')+'>▼</button>'
       +'</div>'
       +'<input class="es-num" value="'+esc(sec.num||String(si+1))+'" placeholder="#" '
-      +'style="width:44px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.28rem .3rem;font-family:inherit;font-size:.8rem" '
-      +'oninput="escSecs['+si+'].num=this.value">'
+      +'style="width:44px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.28rem .3rem;font-family:inherit;font-size:.8rem;cursor:text" '
+      +'title="Digite o número desejado e pressione Enter para reposicionar" '
+      +'oninput="escSecs['+si+'].num=this.value" '
+      +'onkeydown="if(event.key===\'Enter\'){escMoverPorNumero('+si+',this.value);this.blur();event.preventDefault();}" '
+      +'onblur="escMoverPorNumero('+si+',this.value)">'
       +'<input class="es-ti" value="'+esc(sec.titulo)+'" placeholder="Título da seção" '
       +'oninput="escSecs['+si+'].titulo=this.value">'
       +'<div class="br" style="flex-shrink:0">'
