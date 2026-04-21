@@ -149,6 +149,36 @@
   };
 
   // ════════════════════════════════════════════════════════
+  // TEMPLATES DE SERVIÇO (tf_svc_templates)
+  // ════════════════════════════════════════════════════════
+
+  window.sbSalvarSvcTemplates = async function (tpls) {
+    if (!window.sbClient || !tpls) return;
+    var res = await window.sbClient
+      .from('configuracoes')
+      .upsert({ chave: 'tf_svc_templates', valor: tpls, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+    if (res.error) console.error('[supabase-sync] Erro ao salvar templates de serviço:', res.error.message);
+    else console.log('%ctemplates de serviço salvos na nuvem (' + tpls.length + ')', 'color:green;font-weight:700');
+    return res;
+  };
+
+  window.sbCarregarSvcTemplates = async function () {
+    if (!window.sbClient) return [];
+    var res = await window.sbClient
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'tf_svc_templates')
+      .single();
+    if (res.error) { console.warn('[supabase-sync] Sem templates de serviço na nuvem ainda.'); return []; }
+    if (res.data && res.data.valor && res.data.valor.length) {
+      try { localStorage.setItem('tf_svc_templates', JSON.stringify(res.data.valor)); } catch(e) {}
+      console.log('%ctemplates de serviço carregados da nuvem (' + res.data.valor.length + ')', 'color:#58a6ff;font-weight:700');
+      return res.data.valor;
+    }
+    return [];
+  };
+
+  // ════════════════════════════════════════════════════════
   // HISTÓRICO DE RELACIONAMENTO
   // ════════════════════════════════════════════════════════
 
@@ -229,6 +259,18 @@
         updated_at: new Date().toISOString()
       }, { onConflict: 'chave' });
     }
+    // Templates de Serviço
+    var svcTpls = backup.svcTemplates;
+    if (!svcTpls || !svcTpls.length) {
+      try { svcTpls = JSON.parse(localStorage.getItem('tf_svc_templates') || '[]'); } catch(e) {}
+    }
+    if (svcTpls && svcTpls.length) {
+      await window.sbClient.from('configuracoes').upsert({
+        chave: 'tf_svc_templates',
+        valor: svcTpls,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    }
     return res;
   };
 
@@ -259,6 +301,12 @@
     if (rCfg.data && rCfg.data.valor) {
       try { localStorage.setItem('tf_prc', JSON.stringify(rCfg.data.valor)); } catch(e) {}
       console.log('%cconfig carregada da nuvem', 'color:#58a6ff');
+    }
+    // Carregar templates de serviço
+    var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').single();
+    if (rSvc.data && rSvc.data.valor && rSvc.data.valor.length) {
+      try { localStorage.setItem('tf_svc_templates', JSON.stringify(rSvc.data.valor)); } catch(e) {}
+      console.log('%ctemplates de serviço carregados da nuvem (' + rSvc.data.valor.length + ')', 'color:#58a6ff');
     }
     return true;
   };

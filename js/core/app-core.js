@@ -5828,8 +5828,14 @@ function dTpl(id){if(!confirm('Excluir?'))return;saveTpls(getTpls().filter(funct
 // Armazenado em localStorage key: 'tf_svc_templates'
 var _stplId = null;
 
-function getStpls(){var t=LS('tf_svc_templates');return t||[];}
-function saveStpls(t){LS('tf_svc_templates',t);}
+function getStpls(){
+  // Tenta localStorage; se vazio e Supabase disponível, a carga já foi feita no init
+  return LS('tf_svc_templates') || [];
+}
+function saveStpls(t){
+  LS('tf_svc_templates', t); // salva local imediatamente
+  if(typeof window.sbSalvarSvcTemplates === 'function') window.sbSalvarSvcTemplates(t); // sync nuvem
+}
 
 // Abre formulário para novo template
 function stplOpenForm(){
