@@ -25,7 +25,7 @@
         { label: '↳ Fechamentos',      icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
         { label: '↳ Linha do Tempo',   icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
         { separator: true, label: 'Ferramentas' },
-        { label: 'Templates',          icon: '📋', action: "go('templates',this);rTplMgr()" },
+        { label: 'Templates',          icon: '📋', action: "go('templates',this);beLoadDB();stplRenderLista()" },
         { label: 'Banco de Escopos',   icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
         { label: 'Análise',            icon: '📈', action: "go('analise',this);rAnalise()" },
         { label: 'Pipeline',           icon: '🔀', action: "go('registro',this);rRegistro()" },

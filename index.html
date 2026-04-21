@@ -1552,40 +1552,65 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
 </div>
 
-<!-- TEMPLATES -->
+<!-- TEMPLATES DE SERVIÇO -->
 <div id="templates" class="sec">
-  <div class="card">
-    <div class="ch"><span class="ct">📋 Templates</span><button class="btn bs bsm" onclick="openTF()">+ Novo</button></div>
-    <div style="overflow-x:auto"><table class="tmt">
-      <thead><tr><th>Grupo</th><th>Título</th><th>Descrição</th><th>Ações</th></tr></thead>
-      <tbody id="tMB"></tbody>
-    </table></div>
+
+  <!-- Cabeçalho -->
+  <div class="card" style="margin-bottom:.8rem">
+    <div class="ch">
+      <div>
+        <span class="ct">📋 Templates de Serviço</span>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">Sequências de escopos pré-montadas por tipo de serviço. No Banco de Escopos clique em "Usar Template" para aplicar.</div>
+      </div>
+      <button class="btn bs bsm" onclick="stplOpenForm()">+ Novo Template</button>
+    </div>
   </div>
-  <div class="card" id="tFrm" style="display:none">
-    <div class="ch"><span class="ct" id="tFT">➕ Novo Template</span></div>
-    <div class="g g2">
-      <div class="f"><label>Grupo</label><select id="tG">
-        <option value="ESCOPO_FORNECIMENTO">Escopo Fornecimento</option>
-        <option value="OBJETIVO">Objetivo do Serviço</option>
-        <option value="OBRIG_CONTRATADA">Obrig. Contratada</option>
-        <option value="OBRIG_CONTRATANTE">Obrig. Contratante</option>
-        <option value="EXCLUSOES">Exclusões</option>
-        <option value="PRAZO">Prazo/Cronograma</option>
-        <option value="IMPOSTOS">Impostos</option>
-        <option value="PAGAMENTO">Pagamento</option>
-        <option value="VALIDADE">Validade</option>
-        <option value="GARANTIA">Garantia</option>
-        <option value="FORNECIMENTO">Fornecimento</option>
-        <option value="GERAL">Geral</option>
-      </select></div>
-      <div class="f"><label>Título</label><input type="text" id="tTit" placeholder="Nome do template"></div>
-      <div class="f"><label>Descrição</label><input type="text" id="tDsc" placeholder="Subtítulo"></div>
+
+  <!-- Lista de templates -->
+  <div id="stplLista"></div>
+
+  <!-- Formulário criar/editar -->
+  <div class="card" id="stplForm" style="display:none;margin-top:.8rem">
+    <div class="ch" style="margin-bottom:.8rem">
+      <span class="ct" id="stplFormTitle">➕ Novo Template de Serviço</span>
+      <button class="btn bg bsm" onclick="stplCancelar()">✕ Cancelar</button>
     </div>
-    <div class="f" style="margin-top:.6rem"><label>Conteúdo</label><textarea id="tCon" style="min-height:130px" placeholder="Texto completo…"></textarea></div>
-    <div class="br" style="margin-top:.7rem">
-      <button class="btn bs" onclick="saveT()">💾 Salvar</button>
-      <button class="btn bg" onclick="document.getElementById('tFrm').style.display='none'">Cancelar</button>
+
+    <div class="g g2" style="margin-bottom:.7rem">
+      <div class="f">
+        <label>Nome do Template</label>
+        <input type="text" id="stplNome" placeholder="Ex: Montagem de Painéis">
+      </div>
+      <div class="f">
+        <label>Descrição <span style="font-size:.65rem;font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <input type="text" id="stplDesc" placeholder="Breve descrição do tipo de serviço">
+      </div>
     </div>
+
+    <div style="margin-bottom:.5rem">
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--text3);letter-spacing:.06em;margin-bottom:.25rem">Escopos incluídos neste template</div>
+      <div style="font-size:.72rem;color:var(--text2);margin-bottom:.5rem">Selecione os escopos do Banco de Dados que fazem parte deste tipo de serviço.</div>
+      <input type="text" id="stplBusca" placeholder="🔍 Filtrar escopos..." oninput="stplRenderPicker()" style="width:100%;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;box-sizing:border-box;margin-bottom:.5rem">
+      <div id="stplPicker" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r2);padding:.6rem;background:var(--bg2)"></div>
+    </div>
+
+    <div class="br" style="margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--border)">
+      <button class="btn bs" onclick="stplSalvar()">💾 Salvar Template</button>
+      <button class="btn bg" onclick="stplCancelar()">Cancelar</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: SELECIONAR TEMPLATE (usado no Banco de Escopos) -->
+<div id="stplModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--r);padding:1.5rem;width:min(500px,94vw);max-height:80vh;display:flex;flex-direction:column;gap:.75rem;box-shadow:0 8px 40px rgba(0,0,0,.45);border:1px solid var(--border)">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:700;font-size:.97rem;color:var(--text)">📋 Selecionar Template</span>
+      <button class="btn bg bsm" onclick="Q('stplModal').style.display='none'">✕</button>
+    </div>
+    <div style="font-size:.74rem;color:var(--text2)">Escolha um template para marcar automaticamente os escopos correspondentes na biblioteca. Depois clique em "Adicionar na Proposta".</div>
+    <div id="stplModalLista" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:.35rem"></div>
   </div>
 </div>
 
@@ -1670,6 +1695,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="ch">
           <span class="ct">📚 Biblioteca de Escopos</span>
           <div class="br">
+            <button class="btn bg bsm" onclick="stplAbrirModal()" title="Marcar automaticamente os escopos de um template">📋 Usar Template</button>
             <button class="btn bs" onclick="beAdicionarNaProposta()" title="Adiciona os escopos marcados à proposta em edição">✅ Adicionar na Proposta</button>
           </div>
         </div>
