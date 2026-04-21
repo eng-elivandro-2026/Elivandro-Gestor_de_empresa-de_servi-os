@@ -5805,6 +5805,182 @@ function saveT(){
 }
 function dTpl(id){if(!confirm('Excluir?'))return;saveTpls(getTpls().filter(function(x){return x.id!==id}));rTplMgr()}
 
+// ─── TEMPLATES DE SERVIÇO (stpl) ───────────────────────────────────────────
+// Sequências de escopos pré-montados por tipo de serviço.
+// Armazenado em localStorage key: 'tf_svc_templates'
+var _stplId = null;
+
+function getStpls(){var t=LS('tf_svc_templates');return t||[];}
+function saveStpls(t){LS('tf_svc_templates',t);}
+
+// Abre formulário para novo template
+function stplOpenForm(){
+  _stplId=null;
+  Q('stplFormTitle').textContent='➕ Novo Template de Serviço';
+  Q('stplNome').value='';Q('stplDesc').value='';Q('stplBusca').value='';
+  beLoadDB();
+  stplRenderPicker([]);
+  Q('stplForm').style.display='block';
+  Q('stplForm').scrollIntoView({behavior:'smooth'});
+}
+
+// Carrega template existente para edição
+function stplEditar(id){
+  var t=getStpls().find(function(x){return x.id===id});if(!t)return;
+  _stplId=id;
+  Q('stplFormTitle').textContent='✏️ Editar Template';
+  Q('stplNome').value=t.nome||'';Q('stplDesc').value=t.desc||'';Q('stplBusca').value='';
+  beLoadDB();
+  stplRenderPicker(t.escopoIds||[]);
+  Q('stplForm').style.display='block';
+  Q('stplForm').scrollIntoView({behavior:'smooth'});
+}
+
+function stplCancelar(){_stplId=null;Q('stplForm').style.display='none';}
+
+// Renderiza picker de escopos do banco (preserva checks ao filtrar)
+function stplRenderPicker(selectedIds){
+  var picker=Q('stplPicker');if(!picker)return;
+  // Se chamado sem argumento (oninput), preserva estado atual dos checkboxes
+  if(selectedIds===undefined){
+    var cur=[];
+    [].slice.call(document.querySelectorAll('.stplCheck:checked')).forEach(function(c){cur.push(c.value);});
+    selectedIds=cur;
+  }
+  var busca=(Q('stplBusca')?Q('stplBusca').value:'').toLowerCase().trim();
+  var escopos=_beEscopos||[];
+  // Agrupar por grupo
+  var grupos={};
+  escopos.forEach(function(e){var g=e.grupo||'GERAL';if(!grupos[g])grupos[g]=[];grupos[g].push(e);});
+  var html='';
+  Object.keys(grupos).sort().forEach(function(g){
+    var items=grupos[g].filter(function(e){return !busca||(e.titulo||'').toLowerCase().indexOf(busca)>=0||(e.descricao||'').toLowerCase().indexOf(busca)>=0;});
+    if(!items.length)return;
+    html+='<div style="font-size:.63rem;font-weight:700;text-transform:uppercase;color:var(--accent);padding:.4rem 0 .15rem;letter-spacing:.06em;border-top:1px solid var(--border);margin-top:.3rem">'+esc(g)+'</div>';
+    items.forEach(function(e){
+      var checked=selectedIds.indexOf(e.id)>=0;
+      html+='<label style="display:flex;align-items:flex-start;gap:.5rem;padding:.3rem .3rem;border-radius:4px;cursor:pointer">'
+        +'<input type="checkbox" class="stplCheck" value="'+e.id+'"'+(checked?' checked':'')+' style="margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">'
+        +'<span style="font-size:.8rem;font-weight:600;color:var(--text)">'+esc(e.titulo)+'</span>'
+        +(e.descricao?'<span style="font-size:.7rem;color:var(--text2);margin-left:.2rem;font-weight:400">'+esc(e.descricao)+'</span>':'')
+        +'</label>';
+    });
+  });
+  if(!escopos.length){
+    html='<div style="color:var(--text3);font-size:.8rem;padding:1.2rem;text-align:center">Nenhum escopo no banco. Cadastre escopos no Banco de Escopos primeiro.</div>';
+  }else if(!html){
+    html='<div style="color:var(--text3);font-size:.8rem;padding:.8rem;text-align:center">Nenhum escopo encontrado para "'+esc(busca)+'"</div>';
+  }
+  picker.innerHTML=html;
+}
+
+// Salva o template (cria ou atualiza)
+function stplSalvar(){
+  var nome=(Q('stplNome').value||'').trim();
+  if(!nome){alert('Informe o nome do template.');return;}
+  var checks=[].slice.call(document.querySelectorAll('.stplCheck:checked'));
+  var escopoIds=checks.map(function(c){return c.value;});
+  var tpls=getStpls();
+  var now=new Date().toISOString();
+  var e={id:_stplId||uid(),nome:nome,desc:Q('stplDesc').value||'',escopoIds:escopoIds,criadoEm:now};
+  if(_stplId){
+    var existing=tpls.find(function(x){return x.id===_stplId;});
+    if(existing)e.criadoEm=existing.criadoEm||now;
+    var i=tpls.findIndex(function(x){return x.id===_stplId;});
+    if(i>=0)tpls[i]=e;else tpls.push(e);
+  }else{tpls.push(e);}
+  saveStpls(tpls);
+  _stplId=null;
+  Q('stplForm').style.display='none';
+  stplRenderLista();
+  if(typeof toast==='function')toast('Template "'+nome+'" salvo!');
+}
+
+// Exclui template
+function stplDeletar(id){
+  if(!confirm('Excluir este template de serviço?'))return;
+  saveStpls(getStpls().filter(function(x){return x.id!==id;}));
+  stplRenderLista();
+}
+
+// Renderiza lista de templates na página
+function stplRenderLista(){
+  var cont=Q('stplLista');if(!cont)return;
+  beLoadDB();
+  var tpls=getStpls();
+  if(!tpls.length){
+    cont.innerHTML='<div class="card" style="text-align:center;color:var(--text3);padding:2.5rem 1rem">'
+      +'<div style="font-size:2rem;margin-bottom:.5rem">📋</div>'
+      +'<div style="font-weight:600;margin-bottom:.3rem">Nenhum template criado ainda</div>'
+      +'<div style="font-size:.78rem">Clique em "+ Novo Template" para criar o primeiro conjunto de escopos por tipo de serviço.</div>'
+      +'</div>';
+    return;
+  }
+  cont.innerHTML=tpls.map(function(t){
+    var ids=t.escopoIds||[];
+    var nomes=ids.map(function(eid){var e=(_beEscopos||[]).find(function(x){return x.id===eid;});return e?e.titulo:null;}).filter(Boolean);
+    var tags=nomes.slice(0,5).map(function(n){
+      return '<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:.12rem .42rem;font-size:.67rem;color:var(--text2)">'+esc(n)+'</span>';
+    }).join('');
+    if(nomes.length>5)tags+='<span style="font-size:.67rem;color:var(--text3)">+' +(nomes.length-5)+' mais</span>';
+    return '<div class="card" style="margin-bottom:.6rem">'
+      +'<div class="ch" style="margin-bottom:'+(nomes.length?'.5rem':'0')+'">'
+      +'<div><span class="ct" style="font-size:.93rem">'+esc(t.nome)+'</span>'
+      +(t.desc?'<div style="font-size:.72rem;color:var(--text2);margin-top:.15rem">'+esc(t.desc)+'</div>':'')
+      +'</div>'
+      +'<div class="br">'
+      +'<span style="font-size:.7rem;color:var(--text3);align-self:center">'+ids.length+' escopo(s)</span>'
+      +'<button class="btn bg bsm" onclick="stplEditar(\''+t.id+'\')">✏️ Editar</button>'
+      +'<button class="btn bd bsm" onclick="stplDeletar(\''+t.id+'\')">🗑</button>'
+      +'</div></div>'
+      +(nomes.length?'<div style="display:flex;flex-wrap:wrap;gap:.3rem">'+tags+'</div>':'<div style="font-size:.71rem;color:var(--text3);font-style:italic">Nenhum escopo selecionado</div>')
+      +'</div>';
+  }).join('');
+}
+
+// Abre modal de seleção de template no Banco de Escopos
+function stplAbrirModal(){
+  var tpls=getStpls();
+  var cont=Q('stplModalLista');if(!cont)return;
+  if(!tpls.length){
+    cont.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:.82rem">'
+      +'Nenhum template criado.<br>Acesse <b>Templates</b> no menu lateral para criar os primeiros.'
+      +'</div>';
+  }else{
+    cont.innerHTML=tpls.map(function(t){
+      var n=(t.escopoIds||[]).length;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;border-radius:var(--r2);cursor:pointer;border:1px solid var(--border);background:var(--bg3);transition:background .15s" '
+        +'onclick="stplAplicar(\''+t.id+'\')" onmouseover="this.style.background=\'var(--bg4,var(--hover))\'" onmouseout="this.style.background=\'var(--bg3)\'">'
+        +'<div><div style="font-weight:600;font-size:.86rem;color:var(--text)">'+esc(t.nome)+'</div>'
+        +(t.desc?'<div style="font-size:.71rem;color:var(--text2)">'+esc(t.desc)+'</div>':'')
+        +'</div>'
+        +'<span style="font-size:.72rem;color:var(--accent);font-weight:600;white-space:nowrap;margin-left:.8rem">'+n+' escopo(s) ▶</span>'
+        +'</div>';
+    }).join('');
+  }
+  Q('stplModal').style.display='flex';
+}
+
+// Aplica template no Banco de Escopos (marca os checkboxes correspondentes)
+function stplAplicar(id){
+  var t=getStpls().find(function(x){return x.id===id;});if(!t)return;
+  var ids=t.escopoIds||[];
+  // Desmarca todos
+  document.querySelectorAll('.beCheck').forEach(function(c){c.checked=false;});
+  // Marca os do template (se estiverem visíveis no DOM)
+  var marcados=0;
+  ids.forEach(function(eid){
+    var cb=document.querySelector('.beCheck[data-id="'+eid+'"]');
+    if(cb){cb.checked=true;marcados++;}
+  });
+  beContarSelecionados();
+  Q('stplModal').style.display='none';
+  var msg='Template "'+t.nome+'" aplicado! '+marcados+' escopo(s) marcado(s).';
+  if(marcados<ids.length)msg+=' ('+(ids.length-marcados)+' não encontrado(s) — verifique o Banco de Escopos.)';
+  if(typeof toast==='function')toast(msg);else alert(msg);
+}
+// ─── FIM TEMPLATES DE SERVIÇO ───────────────────────────────────────────────
+
 // ESCOPO DB
 function rT(){
   var sel=Q('eTS'),flt=(Q('eTF')&&Q('eTF').value||'').toLowerCase();if(!sel)return;
