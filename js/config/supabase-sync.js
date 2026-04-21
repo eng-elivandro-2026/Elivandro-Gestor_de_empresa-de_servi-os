@@ -138,7 +138,7 @@
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'tf_meta')
-      .single();
+      .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem metas na nuvem ainda.'); return null; }
     if (res.data && res.data.valor) {
       LS('tf_meta', res.data.valor);
@@ -168,8 +168,8 @@
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'tf_svc_templates')
-      .single();
-    if (res.error) { console.warn('[supabase-sync] Sem templates de serviço na nuvem ainda.'); return []; }
+      .maybeSingle();
+    if (res.error) { console.warn('[supabase-sync] Erro ao carregar templates de serviço:', res.error.message); return []; }
     if (res.data && res.data.valor && res.data.valor.length) {
       try { localStorage.setItem('tf_svc_templates', JSON.stringify(res.data.valor)); } catch(e) {}
       console.log('%ctemplates de serviço carregados da nuvem (' + res.data.valor.length + ')', 'color:#58a6ff;font-weight:700');
@@ -198,7 +198,7 @@
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'tf_historico')
-      .single();
+      .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem histórico na nuvem ainda.'); return []; }
     if (res.data && res.data.valor) {
       try { localStorage.setItem('tf_historico', JSON.stringify(res.data.valor)); } catch(e) {}
@@ -277,13 +277,13 @@
   window.sbCarregarBackup = async function () {
     if (!window.sbClient) return null;
     // Carregar templates
-    var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').single();
+    var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').maybeSingle();
     if (rTpl.data && rTpl.data.valor) {
       try { localStorage.setItem('tf_tpls', JSON.stringify(rTpl.data.valor)); } catch(e) {}
       console.log('%ctemplates carregados da nuvem', 'color:#58a6ff');
     }
     // Carregar escopos
-    var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').single();
+    var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').maybeSingle();
     if (rEsc.data && rEsc.data.valor) {
       try {
         // Normaliza campo: registros antigos usam 'titulo' como grupo, novos usam 'grupo'
@@ -297,13 +297,13 @@
       console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
     }
     // Carregar config
-    var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').single();
+    var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').maybeSingle();
     if (rCfg.data && rCfg.data.valor) {
       try { localStorage.setItem('tf_prc', JSON.stringify(rCfg.data.valor)); } catch(e) {}
       console.log('%cconfig carregada da nuvem', 'color:#58a6ff');
     }
     // Carregar templates de serviço
-    var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').single();
+    var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').maybeSingle();
     if (rSvc.data && rSvc.data.valor && rSvc.data.valor.length) {
       try { localStorage.setItem('tf_svc_templates', JSON.stringify(rSvc.data.valor)); } catch(e) {}
       console.log('%ctemplates de serviço carregados da nuvem (' + rSvc.data.valor.length + ')', 'color:#58a6ff');
