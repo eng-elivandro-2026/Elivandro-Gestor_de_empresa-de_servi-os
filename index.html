@@ -5938,7 +5938,7 @@ function togCeoDash(){
 
 function carregarCeoDash(){
   var b=Q('ceoDashBody');
-  if(!b||b.style.display==='none') return;
+  if(!b) return;
   var hoje=new Date();
   var mesAtual=hoje.getMonth(), anoAtual=hoje.getFullYear();
   var nomeMeses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];

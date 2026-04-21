@@ -3510,3 +3510,13 @@ window.rGestaoCeo = function() {
   if(typeof gestaoShowSec === 'function') gestaoShowSec(secParaAbrir);
   if(typeof loadNuvem === 'function') loadNuvem();
 };
+
+// Chamado por rDash() sempre que uma proposta muda de status
+// Atualiza a seção de planejamento ativa sem precisar que o usuário navegue nela
+window.gestaoRefreshActive = function() {
+  // Só age se o módulo de Gestão estiver visível na tela
+  var gestaoSec = document.getElementById('gestao');
+  if(!gestaoSec || !gestaoSec.classList.contains('on')) return;
+  var secAtiva = (dados && dados.secAtiva) ? dados.secAtiva : null;
+  if(secAtiva && typeof gestaoShowSec === 'function') gestaoShowSec(secAtiva);
+};
