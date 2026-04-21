@@ -6029,10 +6029,10 @@ function carregarCeoDash(){
         var isAtr=p.fas==='atrasado';
         var isPausa=p.fas.indexOf('em_pausa')===0;
         var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
-        return '<div style="padding:.32rem 0;border-bottom:1px solid var(--border)">'
-          +'<div style="font-size:.75rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(cli)+'">'+esc(cli)+'</div>'
-          +'<div style="font-size:.68rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:.06rem" title="'+esc(tit)+'">'+esc(tit)+'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.15rem">'
+        return '<div style="padding:.35rem 0;border-bottom:1px solid var(--border)">'
+          +'<div style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+          +'<div style="font-size:.66rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:.08rem" title="'+esc(cli)+'">'+esc(cli)+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.18rem">'
           +'<div style="font-size:.65rem;color:'+corFase+'">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
           +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);white-space:nowrap">'+money(n2(p.val))+'</div>'
           +'</div>'
