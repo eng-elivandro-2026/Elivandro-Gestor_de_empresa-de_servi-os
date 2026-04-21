@@ -5932,6 +5932,8 @@ function stplRenderLista(){
   var cont=Q('stplLista');if(!cont)return;
   beLoadDB();
   var tpls=getStpls();
+  // Se há templates locais, empurra para Supabase (garante sync de templates criados antes da nuvem)
+  if(tpls.length && typeof window.sbSalvarSvcTemplates==='function') window.sbSalvarSvcTemplates(tpls);
   if(!tpls.length){
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--text3);padding:2.5rem 1rem">'
       +'<div style="font-size:2rem;margin-bottom:.5rem">📋</div>'
