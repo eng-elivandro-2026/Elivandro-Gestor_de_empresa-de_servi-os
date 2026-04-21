@@ -270,6 +270,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .conv-mid{color:#d4a017;font-weight:700}
 .conv-bad{color:var(--red);font-weight:700}
 .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+#ceoBottom{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
 .metric-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem}
 .metric-label{font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.18rem}
 .metric-val{font-size:1.05rem;font-weight:700}
@@ -583,10 +584,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   .modal-box { width: min(96vw,520px) !important; max-height: 88vh; overflow-y: auto; }
 
   /* ── Visão Executiva mobile ── */
-  #ceoDashBody  { overflow-x: hidden; }
-  /* Colunas lado a lado → empilhadas no mobile */
-  #ceoBottom    { grid-template-columns: 1fr !important; }
-  /* KPI cards da visão executiva: 2 colunas (não colapsa para 1 como o global) */
+  #ceoBottom    { grid-template-columns: 1fr; }
   #ceoKpis.kpi-g { grid-template-columns: repeat(2,1fr) !important; }
 }
 
@@ -738,7 +736,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div id="ceoDashBody" style="padding-top:.9rem">
       <div class="kpi-g" id="ceoKpis" style="margin-bottom:.9rem"></div>
       <div id="ceoPhaseBars" style="margin-bottom:1rem"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem" id="ceoBottom">
+      <div id="ceoBottom">
         <div id="ceoTopCli"></div>
         <div id="ceoMes"></div>
       </div>
@@ -6031,13 +6029,13 @@ function carregarCeoDash(){
         var isAtr=p.fas==='atrasado';
         var isPausa=p.fas.indexOf('em_pausa')===0;
         var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
-        return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.32rem 0;border-bottom:1px solid var(--border);gap:.4rem;min-width:0">'
-          +'<div style="flex:1;min-width:0">'
+        return '<div style="padding:.32rem 0;border-bottom:1px solid var(--border)">'
           +'<div style="font-size:.75rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(cli)+'">'+esc(cli)+'</div>'
-          +'<div style="font-size:.68rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(tit)+'">'+esc(tit)+'</div>'
-          +'<div style="font-size:.65rem;color:'+corFase+';margin-top:.1rem">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
+          +'<div style="font-size:.68rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:.06rem" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.15rem">'
+          +'<div style="font-size:.65rem;color:'+corFase+'">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
+          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);white-space:nowrap">'+money(n2(p.val))+'</div>'
           +'</div>'
-          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;text-align:right;white-space:nowrap">'+money(n2(p.val))+'</div>'
           +'</div>';
       }).join('')+'</div>':'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Sem propostas em execução.</p>');
   }
