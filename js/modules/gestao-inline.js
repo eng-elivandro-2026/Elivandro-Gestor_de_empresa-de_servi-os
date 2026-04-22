@@ -2217,7 +2217,9 @@ function saveSemanaConfig(){
 
       var inp=document.getElementById('se-'+i+'-'+j);
 
-      return {tipo:b.tipo,txt:inp?inp.value.trim():b.txt};
+      var sel=document.getElementById('se-tipo-'+i+'-'+j);
+
+      return {tipo:sel?sel.value:b.tipo,txt:inp?inp.value.trim():b.txt};
 
     });
 
@@ -2271,7 +2273,17 @@ function renderSemana(){
 
       if(_semanaEditando){
 
-        blHTML+='<div class="wd-block '+cls+'" style="padding:.2rem">'
+        var tipoOpts=['fazer','mover','construir','jiu'].map(function(t){
+
+          var labels={fazer:'Ação — Fazer',mover:'Ação — Se Mover',construir:'Ação — Construir/Crescer',jiu:'Jiu-jitsu'};
+
+          return '<option value="'+t+'"'+(b.tipo===t?' selected':'')+'>'+labels[t]+'</option>';
+
+        }).join('');
+
+        blHTML+='<div class="wd-block '+cls+'" style="padding:.2rem;gap:.2rem;flex-direction:column;align-items:stretch">'
+
+          +'<select id="se-tipo-'+i+'-'+j+'" onchange="this.closest(\'.wd-block\').className=\'wd-block wd-\'+this.value" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.65rem;padding:.15rem .3rem;font-family:inherit;margin-bottom:.2rem">'+tipoOpts+'</select>'
 
           +'<input id="se-'+i+'-'+j+'" style="width:100%;background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.72rem;font-family:inherit;outline:none;padding:.1rem 0" value="'+esc(b.txt)+'">'
 
