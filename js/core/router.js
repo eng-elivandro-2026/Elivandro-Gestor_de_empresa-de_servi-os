@@ -33,6 +33,23 @@
       ]
     },
     {
+      id: 'historico',
+      label: 'Relacionamento',
+      icon: '💬',
+      tipo: 'inline',
+      init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
+      nav: [
+        { label: 'Visão Geral',        icon: '📊', action: "go('historico',this);rHistorico()" },
+        { separator: true, label: 'Ação Rápida' },
+        { label: '↳ Atrasados',        icon: '🔴', action: "go('historico',this);hFiltroRapido('atrasados')" },
+        { label: '↳ Alta Prioridade',  icon: '⚡', action: "go('historico',this);hFiltroRapido('alta')" },
+        { label: '↳ Em Andamento',     icon: '🔄', action: "go('historico',this);hFiltroRapido('em_andamento')" },
+        { label: '↳ Resolvidos',       icon: '✅', action: "go('historico',this);hFiltroRapido('resolvido')" },
+        { separator: true, label: 'Registros' },
+        { label: '↳ Todos',            icon: '📋', action: "go('historico',this);hFiltroRapido('todos')" },
+      ]
+    },
+    {
       id: 'gestao',
       label: 'Gestão CEO',
       icon: '🎯',
@@ -75,19 +92,6 @@
       badge: 'Em breve',
       nav: []
     },
-    {
-      id: 'historico',
-      label: 'Relacionamento',
-      icon: '💬',
-      tipo: 'inline',
-      init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
-      nav: [
-        { label: 'Todos os registros', icon: '📋', action: "go('historico',this);rHistorico()" },
-        { separator: true, label: 'Filtrar por status' },
-        { label: '↳ Em andamento',     icon: '🔄', action: "go('historico',this);document.getElementById('hFiltroStatus').value='em_andamento';hFiltrar()" },
-        { label: '↳ Resolvidos',        icon: '✅', action: "go('historico',this);document.getElementById('hFiltroStatus').value='resolvido';hFiltrar()" },
-      ]
-    }
   ];
 
   var _moduloAtivo = null;
