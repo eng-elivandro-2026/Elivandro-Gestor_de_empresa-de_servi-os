@@ -348,15 +348,24 @@
   }
 
   function _popularDatalists() {
-    // Clientes: nomes abreviados das propostas cadastradas
+    // Clientes: entrada única por loc+csvc, com CNPJ se disponível
     var dlCli = document.getElementById('hClienteList');
     if (dlCli && window.props) {
-      var clientes = {};
+      var vistos = {};
+      var opts = [];
       (window.props || []).forEach(function(p) {
-        var nome = (p.loc || '').trim() || (p.cli || '').trim();
-        if (nome) clientes[nome] = 1;
+        var nome  = (p.loc || '').trim() || (p.cli || '').trim();
+        if (!nome) return;
+        var csvc  = (p.csvc || '').trim();
+        var cnpj  = (p.locCnpj || p.cnpj || '').trim();
+        // Monta label: "JDE Jundiaí · Jundiaí - SP · 12.345.678/0001-99"
+        var label = nome;
+        if (csvc)  label += ' · ' + csvc;
+        if (cnpj)  label += ' · ' + cnpj;
+        if (!vistos[label]) { vistos[label] = 1; opts.push(label); }
       });
-      dlCli.innerHTML = Object.keys(clientes).sort().map(function(c){
+      opts.sort();
+      dlCli.innerHTML = opts.map(function(c){
         return '<option value="' + esc(c) + '">';
       }).join('');
     }
