@@ -468,113 +468,169 @@
       var prop = propIdx[h.proposta_id];
       var propLabel = prop ? '#'+(prop.num||'')+(prop.tit?' — '+prop.tit:'') : '';
       var st = h.status||'em_andamento';
-      var cor = corSt[st]||'#9ca3af';
       var atrasado = h.prazo_acao && h.status==='em_andamento' && new Date(h.prazo_acao+'T00:00:00')<new Date();
-      return '<div class="card" style="border-left-color:'+cor+(atrasado?';background:#fff8f8':'')+';">'
-        // Linha de topo: data + canal + status
-        +'<div class="card-top">'
-        +'<span class="tag-canal">'+(icCn[h.canal]||'📝')+' '+esc(h.canal||'')+'</span>'
-        +'<span class="tag-dt">'+fmtDt(h.data)+'</span>'
-        +'<span class="tag-st" style="color:'+cor+';border-color:'+cor+'55">'+esc(lblSt[st]||st)+'</span>'
-        +'<span class="tag-pri">'+esc(lblPri[h.prioridade||'media']||h.prioridade)+'</span>'
-        +'</div>'
-        // Pessoas + proposta
-        +'<div class="card-who">'
-        +(h.cliente?'<span class="lbl-cli">🏢 '+esc(h.cliente)+'</span>':'')
-        +(h.contato?' <span class="lbl-con">👤 '+esc(h.contato)+'</span>':'')
-        +(h.responsavel?' <span class="lbl-resp">· Resp: '+esc(h.responsavel)+'</span>':'')
-        +(propLabel?'<span class="lbl-prop">🔗 '+esc(propLabel)+'</span>':'')
+      var stLabel = {em_andamento:'Em andamento',resolvido:'Resolvido',cancelado:'Cancelado'}[st]||st;
+      var priLabel= {alta:'Alta',media:'Média',baixa:'Baixa'}[h.prioridade||'media'];
+      var canalIco= {WhatsApp:'WhatsApp',Reunião:'Reunião','E-mail':'E-mail',Telefone:'Telefone',Outro:'Outro'}[h.canal]||h.canal||'';
+
+      return '<div class="entrada'+(atrasado?' atrasada':'')+(st==='resolvido'?' resolvida':'')+'">'
+        // Cabeçalho da entrada
+        +'<div class="entrada-meta">'
+        +'<span class="meta-data">'+fmtDt(h.data)+'</span>'
+        +'<span class="meta-sep">|</span>'
+        +'<span class="meta-canal">'+esc(canalIco)+'</span>'
+        +(h.cliente?'<span class="meta-sep">|</span><span class="meta-cli">'+esc(h.cliente)+'</span>':'')
+        +(h.contato?'<span class="meta-sep">·</span><span class="meta-con">'+esc(h.contato)+'</span>':'')
+        +(propLabel?'<span class="meta-sep">|</span><span class="meta-prop">'+esc(propLabel)+'</span>':'')
+        +'<span class="meta-badges">'
+        +'<span class="badge-st '+(st==='resolvido'?'st-ok':atrasado?'st-err':'st-pend')+'">'+stLabel+'</span>'
+        +(atrasado?'<span class="badge-at">ATRASADO</span>':'')
+        +'</span>'
         +'</div>'
         // Corpo
-        +(h.resumo?'<div class="card-row"><span class="row-ic">💬</span><span class="row-body">'+esc(h.resumo)+'</span></div>':'')
-        +(h.decisao?'<div class="card-row"><span class="row-ic">✅</span><span class="row-body row-dec">'+esc(h.decisao)+'</span></div>':'')
-        +(h.pendencia?'<div class="card-row"><span class="row-ic">⏳</span><span class="row-body">'+esc(h.pendencia)+'</span></div>':'')
-        +(h.proxima_acao?'<div class="card-row"><span class="row-ic">⚡</span><span class="row-body row-acao">'
-          +esc(h.proxima_acao)
-          +(h.prazo_acao?' <span class="tag-prazo'+(atrasado?' atrasado':'')+'">📅 '+fmtD(h.prazo_acao)+(atrasado?' ⚠️ Atrasado':'')+'</span>':'')
+        +(h.resumo?'<div class="campo"><span class="campo-lbl">Resumo:</span> <span class="campo-val">'+esc(h.resumo)+'</span></div>':'')
+        +(h.decisao?'<div class="campo"><span class="campo-lbl dec-lbl">Decisão:</span> <span class="campo-val dec-val">'+esc(h.decisao)+'</span></div>':'')
+        +(h.pendencia?'<div class="campo"><span class="campo-lbl">Pendência:</span> <span class="campo-val">'+esc(h.pendencia)+'</span></div>':'')
+        +(h.proxima_acao?'<div class="campo"><span class="campo-lbl acao-lbl">Próxima ação:</span> <span class="campo-val acao-val">'+esc(h.proxima_acao)
+          +(h.prazo_acao?' — prazo: '+fmtD(h.prazo_acao)+(atrasado?' (VENCIDO)':''):'')
+          +(h.responsavel?' | Resp: '+esc(h.responsavel):'')
           +'</span></div>':'')
         +'</div>';
     }
 
-    var gruposHtml = ordem.map(function(k){
+    var gruposHtml = ordem.map(function(k, gi){
       var regs = grupos[k];
       var total = regs.length;
       var resolvidos = regs.filter(function(h){ return h.status==='resolvido'; }).length;
-      var linha = '<div class="grupo-hdr"><div class="grupo-titulo">'+esc(k)+'</div>'
-        +'<div style="display:flex;gap:6px">'
-        +'<span class="gbadge">'+total+' registro'+(total!==1?'s':'')+'</span>'
-        +(resolvidos?'<span class="gbadge verde">'+resolvidos+' resolvido'+(resolvidos!==1?'s':'')+'</span>':'')
-        +'</div></div>'
-        +'<div class="timeline">'
-        +regs.map(function(h,i){
+      var atrasados  = regs.filter(function(h){ return isAtrasado(h); }).length;
+
+      var resumoGrupo = 'Total de interações: <strong>'+total+'</strong>'
+        +(resolvidos?' &nbsp;·&nbsp; Resolvidas: <strong>'+resolvidos+'</strong>':'')
+        +(atrasados?' &nbsp;·&nbsp; <span class="alerta-at">Atrasadas: '+atrasados+'</span>':'');
+
+      return '<div class="grupo">'
+        +'<div class="grupo-titulo"><span class="grupo-num">'+(gi+1)+'.</span> '+esc(k)+'</div>'
+        +'<div class="grupo-resumo">'+resumoGrupo+'</div>'
+        +'<div class="tl">'
+        +regs.map(function(h, i){
           return '<div class="tl-item">'
-            +'<div class="tl-dot"></div>'
-            +(i<regs.length-1?'<div class="tl-line"></div>':'')
-            +'<div class="tl-body">'+cardHtml(h)+'</div>'
+            +'<div class="tl-marcador"><div class="tl-dot"></div>'+(i<regs.length-1?'<div class="tl-fio"></div>':'')+'</div>'
+            +'<div class="tl-corpo">'+cardHtml(h)+'</div>'
             +'</div>';
         }).join('')
+        +'</div>'
         +'</div>';
-      return '<div class="grupo">'+linha+'</div>';
     }).join('');
 
-    if (!ordem.length) gruposHtml = '<p style="color:#999;text-align:center;padding:2.5rem">Nenhum registro para os filtros selecionados.</p>';
+    if (!ordem.length) gruposHtml = '<p class="vazio">Nenhum registro encontrado para os filtros selecionados.</p>';
 
-    var empresa = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
+    var empresa  = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
     var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
     var periodoLabel = filtDe&&filtAte ? fmtD(filtDe)+' a '+fmtD(filtAte) : filtDe ? 'A partir de '+fmtD(filtDe) : filtAte ? 'Até '+fmtD(filtAte) : 'Todo o período';
-    var propSel = filtPropId && propIdx[filtPropId] ? ' · Proposta: #'+(propIdx[filtPropId].num||'') : '';
+    var propSel  = filtPropId && propIdx[filtPropId] ? propIdx[filtPropId].num||'' : '';
+    var assunto  = 'Relatório de Relacionamento com Clientes'
+      +' — Agrupado por '+agrupLabel[agrup]
+      +(propSel?' — Proposta #'+propSel:'')
+      +(filtCli?' — Cliente: '+filtCli:'')
+      +(filtCon?' — Contato: '+filtCon:'');
+    var hoje2    = new Date();
+    var cidadeData = 'Jundiaí, '+hoje2.getDate()+' de '
+      +['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][hoje2.getMonth()]
+      +' de '+hoje2.getFullYear();
 
-    var css = '*{box-sizing:border-box;margin:0;padding:0}'
-      +'body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#f8fafc;padding:20px}'
-      +'.cabecalho{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:20px}'
-      +'.cab-titulo{font-size:20px;font-weight:800;color:#1d4ed8}'
-      +'.cab-sub{font-size:11px;color:#555;margin-top:3px}'
-      +'.cab-meta{text-align:right;font-size:10px;color:#777;line-height:1.6}'
-      +'.grupo{margin-bottom:28px}'
-      +'.grupo-hdr{display:flex;align-items:center;justify-content:space-between;background:#1d4ed8;color:#fff;padding:7px 12px;border-radius:6px;margin-bottom:12px}'
-      +'.grupo-titulo{font-weight:700;font-size:13px}'
-      +'.gbadge{background:rgba(255,255,255,.2);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:600}'
-      +'.gbadge.verde{background:rgba(34,197,94,.35)}'
-      +'.timeline{padding-left:22px}'
+    var css = '@page{size:A4;margin:22mm 18mm}'
+      +'*{box-sizing:border-box;margin:0;padding:0}'
+      +'body{font-family:"Times New Roman",Times,serif;font-size:12pt;color:#000;background:#fff;padding:0}'
+      +'.pagina{max-width:760px;margin:0 auto;padding:32px 40px}'
+      // Topo memorando
+      +'.topo{border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end}'
+      +'.topo-emp{font-size:15pt;font-weight:700;letter-spacing:.02em}'
+      +'.topo-sub{font-size:9pt;color:#444;margin-top:2px}'
+      +'.topo-data{font-size:10pt;text-align:right;color:#333}'
+      +'.memo-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;border-bottom:1px solid #000;padding-bottom:6px}'
+      // Campos para/de/assunto
+      +'.memo-campos{border:1px solid #aaa;border-radius:0;margin-bottom:20px}'
+      +'.mc-linha{display:flex;border-bottom:1px solid #ccc;padding:5px 10px;font-size:11pt}'
+      +'.mc-linha:last-child{border-bottom:none}'
+      +'.mc-rot{font-weight:700;min-width:80px;flex-shrink:0}'
+      +'.mc-val{flex:1}'
+      // Grupos
+      +'.grupo{margin-bottom:22px;page-break-inside:avoid}'
+      +'.grupo-titulo{font-size:12pt;font-weight:700;border-bottom:1.5px solid #000;padding-bottom:3px;margin-bottom:4px}'
+      +'.grupo-num{display:inline-block;min-width:20px}'
+      +'.grupo-resumo{font-size:9pt;color:#555;margin-bottom:10px;font-style:italic}'
+      +'.alerta-at{color:#c00;font-weight:700}'
+      // Timeline
+      +'.tl{padding-left:20px}'
       +'.tl-item{display:flex;gap:0;position:relative;margin-bottom:0}'
-      +'.tl-dot{width:12px;height:12px;border-radius:50%;background:#1d4ed8;flex-shrink:0;margin-top:14px;margin-left:-22px;z-index:1;position:relative}'
-      +'.tl-line{position:absolute;left:-17px;top:26px;bottom:-14px;width:2px;background:#dde3f0;z-index:0}'
-      +'.tl-body{flex:1;margin-bottom:14px}'
-      +'.card{background:#fff;border:1px solid #e5e7eb;border-left:4px solid #1d4ed8;border-radius:6px;padding:10px 12px}'
-      +'.card-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}'
-      +'.tag-canal{font-size:11px;font-weight:700;color:#1d4ed8}'
-      +'.tag-dt{font-size:10px;color:#6b7280}'
-      +'.tag-st{font-size:9px;font-weight:700;border:1px solid;border-radius:20px;padding:1px 7px}'
-      +'.tag-pri{font-size:9px;color:#6b7280}'
-      +'.card-who{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:7px;padding-bottom:7px;border-bottom:1px dashed #e5e7eb}'
-      +'.lbl-cli{font-weight:700;font-size:11px;color:#111}'
-      +'.lbl-con{font-size:11px;color:#374151}'
-      +'.lbl-resp{font-size:10px;color:#6b7280}'
-      +'.lbl-prop{font-size:10px;color:#1d4ed8;background:#eff6ff;border-radius:3px;padding:1px 6px;margin-left:auto}'
-      +'.card-row{display:flex;gap:6px;margin-bottom:4px;align-items:flex-start}'
-      +'.row-ic{font-size:11px;flex-shrink:0;margin-top:1px}'
-      +'.row-body{font-size:11px;color:#374151;line-height:1.5}'
-      +'.row-dec{font-weight:600;color:#16a34a}'
-      +'.row-acao{color:#1d4ed8}'
-      +'.tag-prazo{font-size:10px;background:#f0f4ff;border-radius:3px;padding:1px 5px;margin-left:4px}'
-      +'.tag-prazo.atrasado{background:#fef2f2;color:#dc2626;font-weight:700}'
-      +'.rodape{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:9px;color:#9ca3af;text-align:center}'
-      +'@media print{body{background:#fff;padding:12px}.grupo{page-break-inside:avoid}}';
+      +'.tl-marcador{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;margin-left:-20px}'
+      +'.tl-dot{width:8px;height:8px;border-radius:50%;background:#000;flex-shrink:0;margin-top:16px;border:1.5px solid #000}'
+      +'.tl-fio{width:1px;flex:1;background:#aaa;min-height:12px}'
+      +'.tl-corpo{flex:1;margin-bottom:12px}'
+      // Entrada
+      +'.entrada{border:1px solid #ccc;border-left:3px solid #000;padding:8px 10px;font-size:10.5pt;background:#fff}'
+      +'.entrada.atrasada{border-left-color:#c00;background:#fffafa}'
+      +'.entrada.resolvida{border-left-color:#1a7a3a;opacity:.9}'
+      +'.entrada-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px dashed #ccc;font-size:9.5pt}'
+      +'.meta-data{font-weight:700}'
+      +'.meta-sep{color:#aaa;margin:0 2px}'
+      +'.meta-canal{font-style:italic}'
+      +'.meta-cli{font-weight:700}'
+      +'.meta-con{color:#333}'
+      +'.meta-prop{color:#1a3a7a;font-size:9pt}'
+      +'.meta-badges{margin-left:auto;display:flex;gap:4px;flex-shrink:0}'
+      +'.badge-st{font-size:8pt;font-weight:700;border:1px solid;padding:0 5px;border-radius:2px}'
+      +'.st-ok{color:#1a7a3a;border-color:#1a7a3a}'
+      +'.st-pend{color:#7a5a00;border-color:#c8a000}'
+      +'.st-err{color:#c00;border-color:#c00}'
+      +'.badge-at{font-size:8pt;font-weight:700;color:#c00;border:1px solid #c00;padding:0 5px;border-radius:2px}'
+      // Campos do corpo
+      +'.campo{margin-bottom:3px;line-height:1.5}'
+      +'.campo-lbl{font-weight:700;font-size:10pt}'
+      +'.campo-val{font-size:10.5pt}'
+      +'.dec-lbl{color:#1a7a3a}'
+      +'.dec-val{color:#1a7a3a;font-weight:600}'
+      +'.acao-lbl{color:#1a3a7a}'
+      +'.acao-val{color:#1a3a7a}'
+      // Rodapé
+      +'.assinatura{margin-top:36px;border-top:1px solid #000;padding-top:10px;display:flex;justify-content:space-between}'
+      +'.ass-bloco{text-align:center;font-size:10pt}'
+      +'.ass-linha{border-top:1px solid #000;width:200px;margin:24px auto 4px}'
+      +'.rodape{margin-top:24px;border-top:1px solid #ccc;padding-top:6px;font-size:8pt;color:#888;text-align:center}'
+      +'.vazio{text-align:center;padding:2rem;color:#888;font-style:italic}'
+      +'@media print{body{padding:0}.pagina{padding:0 10px}}'
+      +'@media screen{body{background:#e5e7eb}.pagina{box-shadow:0 2px 16px rgba(0,0,0,.15)}}';
 
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
-      +'<title>Relatório de Relacionamento — '+empresa+'</title>'
-      +'<style>'+css+'</style></head><body>'
-      +'<div class="cabecalho">'
-      +'<div><div class="cab-titulo">💬 Relacionamento com Clientes</div>'
-      +'<div class="cab-sub">'+esc(empresa)+' · Agrupado por: '+agrupLabel[agrup]+propSel+(filtCli?' · Cliente: '+filtCli:'')+(filtCon?' · Contato: '+filtCon:'')+(filtResp?' · Resp: '+filtResp:'')+'</div>'
-      +'<div class="cab-sub">Período: '+periodoLabel+'</div></div>'
-      +'<div class="cab-meta">Gerado em:<br>'+new Date().toLocaleString('pt-BR')+'<br><strong>'+list.length+' registro'+(list.length!==1?'s':'')+'</strong></div>'
+      +'<title>Memorando — Relacionamento — '+esc(empresa)+'</title>'
+      +'<style>'+css+'</style></head><body><div class="pagina">'
+      // Topo
+      +'<div class="topo">'
+      +'<div><div class="topo-emp">'+esc(empresa)+'</div><div class="topo-sub">Relatório Interno de Relacionamento com Clientes</div></div>'
+      +'<div class="topo-data">'+cidadeData+'</div>'
       +'</div>'
+      // Título Memorando
+      +'<div class="memo-titulo">Memorando</div>'
+      // Campos
+      +'<div class="memo-campos">'
+      +'<div class="mc-linha"><span class="mc-rot">Para:</span><span class="mc-val">Equipe Comercial / Gestão</span></div>'
+      +'<div class="mc-linha"><span class="mc-rot">De:</span><span class="mc-val">Sistema de Relacionamento — '+esc(empresa)+'</span></div>'
+      +'<div class="mc-linha"><span class="mc-rot">Assunto:</span><span class="mc-val">'+esc(assunto)+'</span></div>'
+      +'<div class="mc-linha"><span class="mc-rot">Período:</span><span class="mc-val">'+periodoLabel+' &nbsp;·&nbsp; <strong>'+list.length+' registro'+(list.length!==1?'s':'')+'</strong></span></div>'
+      +(filtCon?'<div class="mc-linha"><span class="mc-rot">Contato:</span><span class="mc-val">'+esc(filtCon)+'</span></div>':'')
+      +(filtCli?'<div class="mc-linha"><span class="mc-rot">Cliente:</span><span class="mc-val">'+esc(filtCli)+'</span></div>':'')
+      +'</div>'
+      // Corpo
       +gruposHtml
-      +'<div class="rodape">Relatório gerado automaticamente · Portal '+esc(empresa)+'</div>'
-      +'</body></html>';
+      // Assinatura
+      +'<div class="assinatura">'
+      +'<div class="ass-bloco"><div class="ass-linha"></div>Gestor Responsável</div>'
+      +'<div class="ass-bloco"><div class="ass-linha"></div>Aprovado por</div>'
+      +'</div>'
+      +'<div class="rodape">Documento gerado automaticamente em '+new Date().toLocaleString('pt-BR')+' · '+esc(empresa)+'</div>'
+      +'</div></body></html>';
 
-    var win = window.open('','_blank','width=900,height=750');
+    var win = window.open('','_blank','width=860,height=800');
     if (!win) { alert('Permita pop-ups para gerar o relatório.'); return; }
     win.document.write(html);
     win.document.close();
