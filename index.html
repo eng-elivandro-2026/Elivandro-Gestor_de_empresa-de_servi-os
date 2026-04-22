@@ -719,6 +719,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
       <span class="ct">🧠 Motor de Decisão</span>
+      <div class="br" onclick="event.stopPropagation()">
+        <button class="btn bg bsm" onclick="runDecisionEngine();event.stopPropagation()">🔄 Atualizar</button>
+      </div>
       <span id="motorDecisaoChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▼ expandir</span>
     </div>
     <div id="motorDecisaoBody" style="display:none;padding-top:.9rem">
@@ -736,6 +739,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="ceoDashCard" style="margin-bottom:.8rem;border-color:rgba(240,165,0,.45)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togCeoDash()">
       <span class="ct">🏢 Visão Executiva</span>
+      <div class="br" onclick="event.stopPropagation()">
+        <button class="btn bg bsm" onclick="carregarCeoDash();event.stopPropagation()">🔄 Atualizar</button>
+      </div>
       <span id="ceoDashChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▲</span>
     </div>
     <div id="ceoDashBody" style="padding-top:.9rem">

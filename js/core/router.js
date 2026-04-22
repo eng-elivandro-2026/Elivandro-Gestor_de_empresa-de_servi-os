@@ -15,9 +15,11 @@
       label: 'Comercial',
       icon: '📊',
       tipo: 'inline',
+      init: function () { go('dashboard'); setTimeout(function(){ irParaPainel('propostasCard','togPropostas'); }, 60); },
       nav: [
         { label: 'Dashboard',          icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
         { separator: true, label: 'Comercial' },
+        { label: '↳ Propostas',        icon: '📄', action: "go('dashboard',this);irParaPainel('propostasCard','togPropostas')" },
         { label: '↳ Metas',            icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
         { label: '↳ Visão Geral',      icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
         { label: '↳ Análise IA',       icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
