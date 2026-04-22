@@ -8636,6 +8636,9 @@ async function iniciarPlataforma() {
     if (typeof sbCarregarBackup === 'function') {
       await sbCarregarBackup();
     }
+    // Carregar dados que não fazem parte do backup
+    if (typeof sbCarregarHistorico === 'function') sbCarregarHistorico();
+    if (typeof sbCarregarMeta === 'function') sbCarregarMeta();
   } catch(e) { console.warn('[init] erro nuvem:', e); }
 
   // 3. Normaliza escopos

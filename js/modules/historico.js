@@ -109,6 +109,16 @@
     if (fp) fp.value = '';
     renderPainelCeo();
     renderLista();
+    // Carregar da nuvem e re-renderizar com dados atualizados
+    if (typeof sbCarregarHistorico === 'function') {
+      sbCarregarHistorico().then(function(lista) {
+        if (lista && lista.length) {
+          renderPainelCeo();
+          renderLista();
+          _atualizarContador();
+        }
+      });
+    }
   };
 
   // ── Render da lista ──────────────────────────────────────
