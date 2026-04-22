@@ -2414,7 +2414,6 @@ function rEsc(){
     var isValor=isValorSec(sec);
     return '<div class="es" data-sid="'+sec.id+'" data-si="'+si+'">'
       +'<div class="es-hd">'
-      +'<div class="es-drag-handle" data-si="'+si+'" draggable="true" title="Arrastar para reordenar" style="cursor:grab;padding:.15rem .35rem;color:var(--text3);font-size:1.1rem;flex-shrink:0;user-select:none;line-height:1;align-self:center">⠿</div>'
       +'<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-right:3px">'
       +'<button class="btn bg bxs es-up" data-si="'+si+'" title="Mover para cima" style="padding:.1rem .3rem;line-height:1;opacity:'+(isFirst?'0.2':'1')+'" '+(isFirst?'disabled':'')+'>▲</button>'
       +'<button class="btn bg bxs es-dn" data-si="'+si+'" title="Mover para baixo" style="padding:.1rem .3rem;line-height:1;opacity:'+(isLast?'0.2':'1')+'" '+(isLast?'disabled':'')+'>▼</button>'
@@ -2464,107 +2463,6 @@ function rEsc(){
   }).join('');
 
   setTimeout(autoResizeAll, 0);
-
-  // ── Drag-and-drop para reordenar seções (desktop + mobile) ──
-  var _td = {si:null,el:null,ghost:null,offsetY:0,overEl:null};
-  var _tdRaf = null; // requestAnimationFrame id
-  var _tdHighlight = null; // elemento com es-drop-target atualmente
-
-  function _escCleanDrag(){
-    if(_tdRaf){cancelAnimationFrame(_tdRaf);_tdRaf=null;}
-    if(_td.ghost){_td.ghost.remove();_td.ghost=null;}
-    if(_tdHighlight){_tdHighlight.classList.remove('es-drop-target');_tdHighlight=null;}
-    if(_td.el) _td.el.style.opacity='';
-    _td={si:null,el:null,ghost:null,offsetY:0,overEl:null};
-    _escDragSi=null;
-  }
-  function _escDoDrop(destEl){
-    if(!destEl||destEl===_td.el) return;
-    var destSi=parseInt(destEl.getAttribute('data-si'),10);
-    var srcSi=_td.si!==null?_td.si:_escDragSi;
-    if(isNaN(destSi)||destSi===srcSi) return;
-    var sec=escSecs.splice(srcSi,1)[0];
-    escSecs.splice(destSi,0,sec);
-    rEsc();
-  }
-  function _escSetHighlight(esBelow){
-    if(esBelow===_tdHighlight) return; // sem mudança, sem DOM
-    if(_tdHighlight) _tdHighlight.classList.remove('es-drop-target');
-    _tdHighlight = (esBelow&&esBelow!==_td.el) ? esBelow : null;
-    if(_tdHighlight) _tdHighlight.classList.add('es-drop-target');
-    _td.overEl = _tdHighlight;
-  }
-
-  // Desktop (mouse)
-  el.addEventListener('dragstart',function(e){
-    var h=e.target.closest('.es-drag-handle');if(!h){e.preventDefault();return;}
-    _escDragSi=parseInt(h.getAttribute('data-si'),10);
-    e.dataTransfer.effectAllowed='move';
-    setTimeout(function(){var d=el.querySelector('.es[data-si="'+_escDragSi+'"]');if(d)d.style.opacity='0.4';},0);
-  });
-  el.addEventListener('dragover',function(e){
-    if(_escDragSi===null)return;
-    var d=e.target.closest('.es');if(!d)return;
-    e.preventDefault();e.dataTransfer.dropEffect='move';
-    _escSetHighlight(d);
-  });
-  el.addEventListener('dragleave',function(e){
-    if(!e.relatedTarget||!el.contains(e.relatedTarget)) _escSetHighlight(null);
-  });
-  el.addEventListener('drop',function(e){
-    e.preventDefault();
-    _escDoDrop(e.target.closest('.es'));
-    _escCleanDrag();
-  });
-  el.addEventListener('dragend',function(){_escCleanDrag();});
-
-  // Mobile (touch) — otimizado com requestAnimationFrame
-  el.addEventListener('touchstart',function(e){
-    var h=e.target.closest('.es-drag-handle');if(!h)return;
-    var esDiv=h.closest('.es');
-    _td.si=parseInt(esDiv.getAttribute('data-si'),10);
-    _td.el=esDiv;
-    var t=e.touches[0],r=esDiv.getBoundingClientRect();
-    _td.offsetY=t.clientY-r.top;
-    var g=document.createElement('div');
-    var titulo=esDiv.querySelector('.es-ti')?esDiv.querySelector('.es-ti').value:'';
-    g.style.cssText='position:fixed;left:4px;right:4px;top:'+r.top+'px;padding:.5rem .8rem;opacity:.85;z-index:9999;pointer-events:none;background:var(--bg2);border:2px dashed var(--accent);border-radius:8px;font-weight:700;font-size:.82rem;color:var(--accent);box-shadow:0 4px 20px rgba(0,0,0,.4);will-change:top';
-    g.textContent='⠿  '+titulo;
-    document.body.appendChild(g);
-    _td.ghost=g;
-    esDiv.style.opacity='0.25';
-    e.preventDefault();
-  },{passive:false});
-
-  el.addEventListener('touchmove',function(e){
-    if(_td.si===null)return;
-    e.preventDefault();
-    var t=e.touches[0];
-    var cx=t.clientX,cy=t.clientY;
-    if(_tdRaf) return; // já tem frame agendado
-    _tdRaf=requestAnimationFrame(function(){
-      _tdRaf=null;
-      if(_td.ghost) _td.ghost.style.top=(cy-_td.offsetY)+'px';
-      // detecta elemento abaixo do dedo
-      if(_td.ghost) _td.ghost.style.visibility='hidden';
-      var below=document.elementFromPoint(cx,cy);
-      if(_td.ghost) _td.ghost.style.visibility='';
-      _escSetHighlight(below&&below.closest('.es[data-si]'));
-    });
-  },{passive:false});
-
-  el.addEventListener('touchend',function(e){
-    if(_td.si===null)return;
-    if(_tdRaf){cancelAnimationFrame(_tdRaf);_tdRaf=null;}
-    if(_td.ghost) _td.ghost.style.visibility='hidden';
-    var t=e.changedTouches[0];
-    var below=document.elementFromPoint(t.clientX,t.clientY);
-    var esBelow=below&&below.closest('.es[data-si]');
-    _escDoDrop(esBelow||_td.overEl);
-    _escCleanDrag();
-  },{passive:false});
-
-  el.addEventListener('touchcancel',function(){_escCleanDrag();});
 
   el.onclick=function(e){
     var btn=e.target.closest('button');if(!btn)return;
