@@ -101,6 +101,7 @@
     _filtroRapido = '';
     _atualizarContador();
     _popularPropostas(null);
+    _popularDatalists();
     var fs = document.getElementById('hFiltroStatus');
     if (fs) fs.value = '';
     var fc = document.getElementById('hFiltroCliente');
@@ -315,6 +316,7 @@
     s('hResponsavel', h ? h.responsavel  : '');
     s('hStatus',      h ? (h.status || 'em_andamento') : 'em_andamento');
     _popularPropostas(h ? h.proposta_id : null);
+    _popularDatalists();
   }
 
   function _popularPropostas(selecionado) {
@@ -322,13 +324,51 @@
     if (!sel || !window.props) return;
     var opts = '<option value="">— nenhuma —</option>';
     var pList = (window.props || []).slice().sort(function (a, b) {
-      return (a.loc || a.cli || '').localeCompare(b.loc || b.cli || '');
+      return (a.num || '').localeCompare(b.num || '');
     });
     pList.forEach(function (p) {
-      var lbl = (p.loc || p.cli || 'N/I') + (p.tit ? ' — ' + p.tit : '') + (p.num ? ' #' + p.num : '');
+      var num  = p.num  || '';
+      var tit  = p.tit  || '';
+      var abrev = _abrevCliente(p.loc || p.cli || '');
+      var lbl = (num ? '#' + num + ' — ' : '') + tit + (abrev ? ' — ' + abrev : '');
       opts += '<option value="' + esc(p.id) + '"' + (selecionado === p.id ? ' selected' : '') + '>' + esc(lbl) + '</option>';
     });
     sel.innerHTML = opts;
+  }
+
+  function _abrevCliente(nome) {
+    if (!nome) return '';
+    // Se já é curto (≤20 chars), usa direto
+    if (nome.length <= 20) return nome;
+    // Sigla: iniciais de palavras com 3+ letras, exceto conectivos
+    var stop = { de:1, da:1, do:1, das:1, dos:1, e:1, em:1, br:1, ltda:1, s:1, a:1 };
+    var sigla = nome.split(/\s+/).filter(function(w){ return w.length >= 3 && !stop[w.toLowerCase()]; })
+      .map(function(w){ return w[0].toUpperCase(); }).join('');
+    return sigla.length >= 2 ? sigla : nome.slice(0, 18) + '…';
+  }
+
+  function _popularDatalists() {
+    // Clientes: nomes abreviados das propostas cadastradas
+    var dlCli = document.getElementById('hClienteList');
+    if (dlCli && window.props) {
+      var clientes = {};
+      (window.props || []).forEach(function(p) {
+        var nome = (p.loc || '').trim() || (p.cli || '').trim();
+        if (nome) clientes[nome] = 1;
+      });
+      dlCli.innerHTML = Object.keys(clientes).sort().map(function(c){
+        return '<option value="' + esc(c) + '">';
+      }).join('');
+    }
+    // Contatos: nomes únicos já registrados no histórico
+    var dlCon = document.getElementById('hContatoList');
+    if (dlCon) {
+      var contatos = {};
+      hLS().forEach(function(h){ if (h.contato) contatos[h.contato.trim()] = 1; });
+      dlCon.innerHTML = Object.keys(contatos).sort().map(function(c){
+        return '<option value="' + esc(c) + '">';
+      }).join('');
+    }
   }
 
   function _atualizarContador() {
