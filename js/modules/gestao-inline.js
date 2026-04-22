@@ -23,9 +23,13 @@ function sbSaveGestao(dados) {
 
   _saveTimer = setTimeout(async function() {
 
+    var sb = window.sbClient || _sb;
+
+    if (!sb) return;
+
     try {
 
-      await _sb.from('configuracoes').upsert({
+      await sb.from('configuracoes').upsert({
 
         chave: _gestaoChave,
 
@@ -49,9 +53,13 @@ function sbSaveGestao(dados) {
 
 async function sbLoadGestao() {
 
+  var sb = window.sbClient || _sb;
+
+  if (!sb) return null;
+
   try {
 
-    const res = await _sb.from('configuracoes')
+    const res = await sb.from('configuracoes')
 
       .select('valor')
 
@@ -3537,6 +3545,9 @@ init();
 
 (async function(){
   await _initGestaoChave();
+  // Recarregar localStorage agora com a chave correta do usuário
+  load();
+  init();
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })();
