@@ -8891,6 +8891,7 @@ async function convidarUsuario() {
     } else {
       var insUser = await window.sbClient.from('usuarios').insert({
         auth_id: authId,
+        email:   email.trim().toLowerCase(),
         nome:    nome.trim(),
         perfil:  perfil,
         ativo:   true
