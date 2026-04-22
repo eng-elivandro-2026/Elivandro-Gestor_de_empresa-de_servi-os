@@ -846,43 +846,139 @@ function atualizarPrioPct(){
 
 // ===== JANELAS =====
 
+var JANELAS_DEFAULT=[
+
+  {hora:'9h30',horaNum:9.5,lbl:'Abertura',status:'Prioridades do dia'},
+
+  {hora:'12h00',horaNum:12,lbl:'Janela 1',status:'E-mail + Zap'},
+
+  {hora:'17h00',horaNum:17,lbl:'Janela 2',status:'E-mail + Zap'},
+
+  {hora:'17h30',horaNum:17.5,lbl:'Fechamento',status:'Processar anotações'}
+
+];
+
+function getJanelas(){return (dados.janelasConfig&&dados.janelasConfig.length)?dados.janelasConfig:JANELAS_DEFAULT;}
+
+function parseHora(s){var p=s.replace('h',':').split(':');return parseInt(p[0])+(parseInt(p[1]||0)/60);}
+
 function renderJanelas(){
 
-  const now=new Date();
+  var wrap=document.getElementById('janelas-wrap');
 
-  const h=now.getHours()+now.getMinutes()/60;
+  if(!wrap)return;
 
-  const janelas=[
+  var now=new Date();
 
-    {id:'j-manha',hora:9.5,ids:'js-abertura',lbl:'Aberta'},
+  var h=now.getHours()+now.getMinutes()/60;
 
-    {id:'j-meio',hora:12,ids:'js-meio',lbl:'Aberta'},
+  var jans=getJanelas();
 
-    {id:'j-tarde',hora:17,ids:'js-tarde',lbl:'Aberta'},
+  wrap.innerHTML='';
 
-    {id:'j-fecha',hora:17.5,ids:'js-fecha',lbl:'Hora de fechar'}
+  jans.forEach(function(j,i){
 
-  ];
+    var horaNum=j.horaNum!=null?j.horaNum:parseHora(j.hora);
 
-  janelas.forEach(j=>{
+    var ativa=Math.abs(h-horaNum)<0.5;
 
-    const el=document.getElementById(j.id);
+    var passada=h>horaNum+0.5;
 
-    const sl=document.getElementById(j.ids);
+    var div=document.createElement('div');
 
-    if(Math.abs(h-j.hora)<0.5){
+    div.className='janela'+(ativa?' ativa':passada?' passada':'');
 
-      el.classList.add('ativa');
+    div.innerHTML='<div class="janela-hora">'+esc(j.hora)+'</div>'
 
-      if(sl)sl.textContent='🟢 Agora';
+      +'<div class="janela-lbl">'+esc(j.lbl)+'</div>'
 
-    } else if(h>j.hora+0.5){
+      +'<div class="janela-status">'+(ativa?'🟢 Agora':esc(j.status))+'</div>';
 
-      el.classList.add('passada');
-
-    }
+    wrap.appendChild(div);
 
   });
+
+}
+
+function toggleJanelaConfig(){
+
+  var area=document.getElementById('janela-config-area');
+
+  if(!area)return;
+
+  if(area.style.display==='none'){
+
+    area.style.display='block';
+
+    _renderJanelaConfigForm();
+
+  } else {
+
+    area.style.display='none';
+
+  }
+
+}
+
+function _renderJanelaConfigForm(){
+
+  var area=document.getElementById('janela-config-area');
+
+  var jans=getJanelas();
+
+  area.innerHTML='<div style="font-size:.72rem;font-weight:600;color:var(--text3);margin-bottom:.5rem">Configure seus horários de comunicação:</div>'
+
+    +jans.map(function(j,i){
+
+      return '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">'
+
+        +'<input style="width:60px;padding:.28rem .4rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;text-align:center;font-family:inherit" '
+
+        +'id="jc-hora-'+i+'" value="'+esc(j.hora)+'" placeholder="9h30">'
+
+        +'<input style="flex:1;padding:.28rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit" '
+
+        +'id="jc-lbl-'+i+'" value="'+esc(j.lbl)+'" placeholder="Label">'
+
+        +'<input style="flex:2;padding:.28rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit" '
+
+        +'id="jc-status-'+i+'" value="'+esc(j.status)+'" placeholder="Descrição">'
+
+        +'</div>';
+
+    }).join('')
+
+    +'<button class="btn bg btn-sm" style="margin-top:.25rem" onclick="saveJanelaConfig()">💾 Salvar</button>';
+
+}
+
+function saveJanelaConfig(){
+
+  var jans=getJanelas().map(function(j,i){
+
+    var hora=document.getElementById('jc-hora-'+i);
+
+    var lbl=document.getElementById('jc-lbl-'+i);
+
+    var status=document.getElementById('jc-status-'+i);
+
+    if(!hora)return j;
+
+    var horaVal=(hora.value||j.hora).trim();
+
+    return {hora:horaVal,horaNum:parseHora(horaVal),lbl:(lbl.value||j.lbl).trim(),status:(status.value||j.status).trim()};
+
+  });
+
+  dados.janelasConfig=jans;
+
+  save();
+
+  renderJanelas();
+
+  document.getElementById('janela-config-area').style.display='none';
+
+  toast('Janelas de comunicação salvas!','ok');
 
 }
 
@@ -2071,6 +2167,68 @@ function saveReflexao(){getDia().reflexao=document.getElementById('reflexao-dia'
 
 // ===== SEMANA =====
 
+var SEMANA_DEFAULT=[
+
+  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
+
+  [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Reuniões / Follow-up'}],
+
+  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
+
+  [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Cliente fixo'}],
+
+  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Proposta — manhã'},{tipo:'construir',txt:'CEO — tarde'}]
+
+];
+
+var _semanaEditando=false;
+
+function getSemanaConfig(){return (dados.semanaConfig&&dados.semanaConfig.length)?dados.semanaConfig:SEMANA_DEFAULT;}
+
+function toggleSemanaEdit(){
+
+  _semanaEditando=!_semanaEditando;
+
+  var btn=document.getElementById('btn-semana-edit');
+
+  if(btn)btn.textContent=_semanaEditando?'💾 Salvar':'✏️ Editar';
+
+  if(!_semanaEditando) saveSemanaConfig();
+
+  renderSemana();
+
+}
+
+function saveSemanaConfig(){
+
+  var blocos=getSemanaConfig();
+
+  var novo=blocos.map(function(dia,i){
+
+    return dia.map(function(b,j){
+
+      var inp=document.getElementById('se-'+i+'-'+j);
+
+      return {tipo:b.tipo,txt:inp?inp.value.trim():b.txt};
+
+    });
+
+  });
+
+  dados.semanaConfig=novo;
+
+  save();
+
+  _semanaEditando=false;
+
+  var btn=document.getElementById('btn-semana-edit');
+
+  if(btn)btn.textContent='✏️ Editar';
+
+  toast('Semana salva!','ok');
+
+}
+
 function renderSemana(){
 
   const grid=document.getElementById('week-grid');grid.innerHTML='';
@@ -2085,21 +2243,7 @@ function renderSemana(){
 
   const dias=['Seg','Ter','Qua','Qui','Sex'];
 
-  const jiu=[1,3,5];
-
-  const blocos=[
-
-    [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
-
-    [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Reuniões / Follow-up'}],
-
-    [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
-
-    [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Cliente fixo'}],
-
-    [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Proposta — manhã'},{tipo:'construir',txt:'CEO — tarde'}]
-
-  ];
+  const blocos=getSemanaConfig();
 
   for(let i=0;i<5;i++){
 
@@ -2113,15 +2257,27 @@ function renderSemana(){
 
     let blHTML='';
 
-    blocos[i].forEach(b=>{
+    (blocos[i]||[]).forEach(function(b,j){
 
       const cls='wd-'+b.tipo;
 
-      blHTML+=`<div class="wd-block ${cls}">${b.txt}</div>`;
+      if(_semanaEditando){
+
+        blHTML+='<div class="wd-block '+cls+'" style="padding:.2rem">'
+
+          +'<input id="se-'+i+'-'+j+'" style="width:100%;background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.72rem;font-family:inherit;outline:none;padding:.1rem 0" value="'+esc(b.txt)+'">'
+
+          +'</div>';
+
+      } else {
+
+        blHTML+='<div class="wd-block '+cls+'">'+esc(b.txt)+'</div>';
+
+      }
 
     });
 
-    div.innerHTML=`<div class="wd-hdr"><span class="wd-name">${dias[i]}</span><span class="wd-date">${d.getDate()}/${d.getMonth()+1}</span></div><div class="wd-body">${blHTML}</div>`;
+    div.innerHTML='<div class="wd-hdr"><span class="wd-name">'+dias[i]+'</span><span class="wd-date">'+d.getDate()+'/'+(d.getMonth()+1)+'</span></div><div class="wd-body">'+blHTML+'</div>';
 
     grid.appendChild(div);
 

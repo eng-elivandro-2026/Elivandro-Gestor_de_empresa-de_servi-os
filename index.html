@@ -2787,55 +2787,15 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
       <div class="card-title">📱 Janelas de Comunicação</div>
 
-      <div class="card-sub">Fora dos horários — foco total</div>
+      <button class="btn ba btn-sm" onclick="toggleJanelaConfig()" title="Configurar janelas">⚙️ Configurar</button>
 
     </div>
 
-    <div class="janela-wrap" id="janelas-wrap">
+    <div class="janela-wrap" id="janelas-wrap"></div>
 
-      <div class="janela" id="j-manha">
+    <div id="janela-config-area" style="display:none;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem"></div>
 
-        <div class="janela-hora">9h30</div>
-
-        <div class="janela-lbl">Abertura</div>
-
-        <div class="janela-status" id="js-abertura">Prioridades do dia</div>
-
-      </div>
-
-      <div class="janela" id="j-meio">
-
-        <div class="janela-hora">12h00</div>
-
-        <div class="janela-lbl">Janela 1</div>
-
-        <div class="janela-status" id="js-meio">E-mail + Zap</div>
-
-      </div>
-
-      <div class="janela" id="j-tarde">
-
-        <div class="janela-hora">17h00</div>
-
-        <div class="janela-lbl">Janela 2</div>
-
-        <div class="janela-status" id="js-tarde">E-mail + Zap</div>
-
-      </div>
-
-      <div class="janela" id="j-fecha">
-
-        <div class="janela-hora">17h30</div>
-
-        <div class="janela-lbl">Fechamento</div>
-
-        <div class="janela-status" id="js-fecha">Processar anotações</div>
-
-      </div>
-
-    </div>
-
-    <div style="font-size:.72rem;color:var(--text3);text-align:center">Status do WhatsApp: <em>"Respondo mensagens às 12h e 17h"</em></div>
+    <div style="font-size:.72rem;color:var(--text3);text-align:center;margin-top:.5rem">Status do WhatsApp: <em>"Respondo mensagens às 12h e 17h"</em></div>
 
   </div>
 
@@ -2972,7 +2932,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
       <div class="card-title">📆 Esta Semana</div>
 
-      <div class="card-sub" id="semana-periodo"></div>
+      <div style="display:flex;align-items:center;gap:.5rem"><span class="card-sub" id="semana-periodo"></span><button class="btn ba btn-sm" onclick="toggleSemanaEdit()" id="btn-semana-edit">✏️ Editar</button></div>
 
     </div>
 
