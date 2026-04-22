@@ -398,32 +398,41 @@
     var ate = document.getElementById('rRelAte');
     if (de && !de.value) de.value = y+'-'+mo+'-01';
     if (ate && !ate.value) ate.value = y+'-'+mo+'-'+String(new Date(y,hoje.getMonth()+1,0).getDate()).padStart(2,'0');
+    // Popular select de propostas
+    var selProp = document.getElementById('rRelProposta');
+    if (selProp && window.props) {
+      var optsP = '<option value="">Todas</option>';
+      (window.props||[]).slice().sort(function(a,b){ return (a.num||'').localeCompare(b.num||''); }).forEach(function(p){
+        optsP += '<option value="'+esc(p.id)+'">#'+(p.num||'')+(p.tit?' — '+p.tit.slice(0,50):'')+' ('+esc(p.loc||p.cli||'')+')</option>';
+      });
+      selProp.innerHTML = optsP;
+    }
     m.style.display = 'flex';
   };
 
   window.hGerarRelatorio = function() {
-    var agrup    = (document.getElementById('rRelAgrup')  ||{}).value || 'cliente';
-    var filtSt   = (document.getElementById('rRelStatus') ||{}).value || '';
-    var filtDe   = (document.getElementById('rRelDe')     ||{}).value || '';
-    var filtAte  = (document.getElementById('rRelAte')    ||{}).value || '';
-    var filtCli  = ((document.getElementById('rRelCliente')||{}).value||'').toLowerCase().trim();
-    var filtResp = ((document.getElementById('rRelResp')  ||{}).value||'').toLowerCase().trim();
+    var agrup      = (document.getElementById('rRelAgrup')   ||{}).value || 'cliente';
+    var filtSt     = (document.getElementById('rRelStatus')  ||{}).value || '';
+    var filtDe     = (document.getElementById('rRelDe')      ||{}).value || '';
+    var filtAte    = (document.getElementById('rRelAte')     ||{}).value || '';
+    var filtCli    = ((document.getElementById('rRelCliente') ||{}).value||'').toLowerCase().trim();
+    var filtCon    = ((document.getElementById('rRelContato') ||{}).value||'').toLowerCase().trim();
+    var filtPropId = (document.getElementById('rRelProposta') ||{}).value || '';
+    var filtResp   = ((document.getElementById('rRelResp')    ||{}).value||'').toLowerCase().trim();
 
-    var list = hLS();
-
-    if (filtSt)   list = list.filter(function(h){ return h.status === filtSt; });
-    if (filtCli)  list = list.filter(function(h){ return (h.cliente||'').toLowerCase().indexOf(filtCli)>=0; });
-    if (filtResp) list = list.filter(function(h){ return (h.responsavel||'').toLowerCase().indexOf(filtResp)>=0; });
-    if (filtDe)   list = list.filter(function(h){ return h.data && h.data.slice(0,10) >= filtDe; });
-    if (filtAte)  list = list.filter(function(h){ return h.data && h.data.slice(0,10) <= filtAte; });
-
-    list.sort(function(a,b){ return new Date(a.data)-new Date(b.data); });
-
-    // Monta índice de propostas por id
     var propIdx = {};
     (window.props||[]).forEach(function(p){ propIdx[p.id] = p; });
 
-    // Função de chave de agrupamento
+    var list = hLS();
+    if (filtSt)     list = list.filter(function(h){ return h.status === filtSt; });
+    if (filtCli)    list = list.filter(function(h){ return (h.cliente||'').toLowerCase().indexOf(filtCli)>=0; });
+    if (filtCon)    list = list.filter(function(h){ return (h.contato||'').toLowerCase().indexOf(filtCon)>=0; });
+    if (filtPropId) list = list.filter(function(h){ return h.proposta_id === filtPropId; });
+    if (filtResp)   list = list.filter(function(h){ return (h.responsavel||'').toLowerCase().indexOf(filtResp)>=0; });
+    if (filtDe)     list = list.filter(function(h){ return h.data && h.data.slice(0,10) >= filtDe; });
+    if (filtAte)    list = list.filter(function(h){ return h.data && h.data.slice(0,10) <= filtAte; });
+    list.sort(function(a,b){ return new Date(a.data)-new Date(b.data); });
+
     function chave(h) {
       if (agrup==='cliente')     return h.cliente || '(sem cliente)';
       if (agrup==='contato')     return h.contato || '(sem contato)';
@@ -436,103 +445,141 @@
       return 'Todos os registros';
     }
 
-    // Agrupar
-    var grupos = {};
-    var ordem  = [];
-    list.forEach(function(h) {
+    var grupos = {}, ordem = [];
+    list.forEach(function(h){
       var k = chave(h);
-      if (!grupos[k]) { grupos[k] = []; ordem.push(k); }
+      if (!grupos[k]) { grupos[k]=[]; ordem.push(k); }
       grupos[k].push(h);
     });
 
-    var lblSt  = { em_andamento:'Em andamento', resolvido:'Resolvido', cancelado:'Cancelado' };
-    var lblPri = { alta:'Alta', media:'Média', baixa:'Baixa' };
-    var icCn   = { WhatsApp:'WhatsApp', Reunião:'Reunião', 'E-mail':'E-mail', Telefone:'Telefone', Outro:'Outro' };
-
-    function fmtDt(s) {
-      if (!s) return '';
-      var d = new Date(s);
+    function fmtDt(s){
+      if(!s) return '';
+      var d=new Date(s);
       return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }
-    function fmtDtSimples(s) {
-      if (!s) return '';
-      return new Date(s+'T00:00:00').toLocaleDateString('pt-BR');
+    function fmtD(s){ if(!s) return ''; return new Date(s+'T00:00:00').toLocaleDateString('pt-BR'); }
+
+    var icCn = {WhatsApp:'💬',Reunião:'🤝','E-mail':'📧',Telefone:'📞',Outro:'📝'};
+    var lblSt = {em_andamento:'Em andamento',resolvido:'Resolvido',cancelado:'Cancelado'};
+    var corSt = {em_andamento:'#f59e0b',resolvido:'#16a34a',cancelado:'#9ca3af'};
+    var lblPri= {alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
+
+    function cardHtml(h){
+      var prop = propIdx[h.proposta_id];
+      var propLabel = prop ? '#'+(prop.num||'')+(prop.tit?' — '+prop.tit:'') : '';
+      var st = h.status||'em_andamento';
+      var cor = corSt[st]||'#9ca3af';
+      var atrasado = h.prazo_acao && h.status==='em_andamento' && new Date(h.prazo_acao+'T00:00:00')<new Date();
+      return '<div class="card" style="border-left-color:'+cor+(atrasado?';background:#fff8f8':'')+';">'
+        // Linha de topo: data + canal + status
+        +'<div class="card-top">'
+        +'<span class="tag-canal">'+(icCn[h.canal]||'📝')+' '+esc(h.canal||'')+'</span>'
+        +'<span class="tag-dt">'+fmtDt(h.data)+'</span>'
+        +'<span class="tag-st" style="color:'+cor+';border-color:'+cor+'55">'+esc(lblSt[st]||st)+'</span>'
+        +'<span class="tag-pri">'+esc(lblPri[h.prioridade||'media']||h.prioridade)+'</span>'
+        +'</div>'
+        // Pessoas + proposta
+        +'<div class="card-who">'
+        +(h.cliente?'<span class="lbl-cli">🏢 '+esc(h.cliente)+'</span>':'')
+        +(h.contato?' <span class="lbl-con">👤 '+esc(h.contato)+'</span>':'')
+        +(h.responsavel?' <span class="lbl-resp">· Resp: '+esc(h.responsavel)+'</span>':'')
+        +(propLabel?'<span class="lbl-prop">🔗 '+esc(propLabel)+'</span>':'')
+        +'</div>'
+        // Corpo
+        +(h.resumo?'<div class="card-row"><span class="row-ic">💬</span><span class="row-body">'+esc(h.resumo)+'</span></div>':'')
+        +(h.decisao?'<div class="card-row"><span class="row-ic">✅</span><span class="row-body row-dec">'+esc(h.decisao)+'</span></div>':'')
+        +(h.pendencia?'<div class="card-row"><span class="row-ic">⏳</span><span class="row-body">'+esc(h.pendencia)+'</span></div>':'')
+        +(h.proxima_acao?'<div class="card-row"><span class="row-ic">⚡</span><span class="row-body row-acao">'
+          +esc(h.proxima_acao)
+          +(h.prazo_acao?' <span class="tag-prazo'+(atrasado?' atrasado':'')+'">📅 '+fmtD(h.prazo_acao)+(atrasado?' ⚠️ Atrasado':'')+'</span>':'')
+          +'</span></div>':'')
+        +'</div>';
     }
 
-    var empresa = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
-    var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
-    var periodoLabel = filtDe && filtAte ? fmtDtSimples(filtDe)+' a '+fmtDtSimples(filtAte) : filtDe ? 'A partir de '+fmtDtSimples(filtDe) : filtAte ? 'Até '+fmtDtSimples(filtAte) : 'Todo o período';
-
-    var gruposHtml = ordem.map(function(k) {
+    var gruposHtml = ordem.map(function(k){
       var regs = grupos[k];
       var total = regs.length;
       var resolvidos = regs.filter(function(h){ return h.status==='resolvido'; }).length;
-      var linhas = regs.map(function(h) {
-        var prop = propIdx[h.proposta_id];
-        var propLabel = prop ? '#'+(prop.num||'')+(prop.tit?' — '+prop.tit.slice(0,40):'') : '';
-        return '<tr>'
-          +'<td>'+fmtDt(h.data)+'</td>'
-          +'<td>'+esc(h.cliente||'')+'</td>'
-          +'<td>'+esc(h.canal||'')+'</td>'
-          +'<td style="max-width:240px">'+esc(h.resumo||'')+'</td>'
-          +'<td>'+esc(h.decisao||'')+'</td>'
-          +'<td>'+esc(h.proxima_acao||'')+(h.prazo_acao?' ('+fmtDtSimples(h.prazo_acao)+')':'')+'</td>'
-          +'<td>'+esc(h.responsavel||'')+'</td>'
-          +'<td>'+esc(lblSt[h.status]||h.status)+'</td>'
-          +(agrup!=='negocio'?'<td>'+esc(propLabel)+'</td>':'')
-          +'</tr>';
-      }).join('');
-      var thProp = agrup!=='negocio' ? '<th>Proposta</th>' : '';
-      return '<div class="grupo">'
-        +'<div class="grupo-hdr">'+esc(k)
-        +'<span class="grupo-badge">'+total+' registro'+(total!==1?'s':'')+'</span>'
-        +(resolvidos?'<span class="grupo-badge verde">'+resolvidos+' resolvido'+(resolvidos!==1?'s':'')+'</span>':'')
-        +'</div>'
-        +'<table><thead><tr><th>Data/Hora</th><th>Cliente</th><th>Canal</th><th>Resumo</th><th>Decisão</th><th>Próxima Ação</th><th>Responsável</th><th>Status</th>'+thProp+'</tr></thead>'
-        +'<tbody>'+linhas+'</tbody></table>'
+      var linha = '<div class="grupo-hdr"><div class="grupo-titulo">'+esc(k)+'</div>'
+        +'<div style="display:flex;gap:6px">'
+        +'<span class="gbadge">'+total+' registro'+(total!==1?'s':'')+'</span>'
+        +(resolvidos?'<span class="gbadge verde">'+resolvidos+' resolvido'+(resolvidos!==1?'s':'')+'</span>':'')
+        +'</div></div>'
+        +'<div class="timeline">'
+        +regs.map(function(h,i){
+          return '<div class="tl-item">'
+            +'<div class="tl-dot"></div>'
+            +(i<regs.length-1?'<div class="tl-line"></div>':'')
+            +'<div class="tl-body">'+cardHtml(h)+'</div>'
+            +'</div>';
+        }).join('')
         +'</div>';
+      return '<div class="grupo">'+linha+'</div>';
     }).join('');
 
-    if (!ordem.length) {
-      gruposHtml = '<p style="color:#999;text-align:center;padding:2rem">Nenhum registro encontrado para os filtros selecionados.</p>';
-    }
+    if (!ordem.length) gruposHtml = '<p style="color:#999;text-align:center;padding:2.5rem">Nenhum registro para os filtros selecionados.</p>';
+
+    var empresa = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
+    var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
+    var periodoLabel = filtDe&&filtAte ? fmtD(filtDe)+' a '+fmtD(filtAte) : filtDe ? 'A partir de '+fmtD(filtDe) : filtAte ? 'Até '+fmtD(filtAte) : 'Todo o período';
+    var propSel = filtPropId && propIdx[filtPropId] ? ' · Proposta: #'+(propIdx[filtPropId].num||'') : '';
+
+    var css = '*{box-sizing:border-box;margin:0;padding:0}'
+      +'body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#f8fafc;padding:20px}'
+      +'.cabecalho{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:20px}'
+      +'.cab-titulo{font-size:20px;font-weight:800;color:#1d4ed8}'
+      +'.cab-sub{font-size:11px;color:#555;margin-top:3px}'
+      +'.cab-meta{text-align:right;font-size:10px;color:#777;line-height:1.6}'
+      +'.grupo{margin-bottom:28px}'
+      +'.grupo-hdr{display:flex;align-items:center;justify-content:space-between;background:#1d4ed8;color:#fff;padding:7px 12px;border-radius:6px;margin-bottom:12px}'
+      +'.grupo-titulo{font-weight:700;font-size:13px}'
+      +'.gbadge{background:rgba(255,255,255,.2);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:600}'
+      +'.gbadge.verde{background:rgba(34,197,94,.35)}'
+      +'.timeline{padding-left:22px}'
+      +'.tl-item{display:flex;gap:0;position:relative;margin-bottom:0}'
+      +'.tl-dot{width:12px;height:12px;border-radius:50%;background:#1d4ed8;flex-shrink:0;margin-top:14px;margin-left:-22px;z-index:1;position:relative}'
+      +'.tl-line{position:absolute;left:-17px;top:26px;bottom:-14px;width:2px;background:#dde3f0;z-index:0}'
+      +'.tl-body{flex:1;margin-bottom:14px}'
+      +'.card{background:#fff;border:1px solid #e5e7eb;border-left:4px solid #1d4ed8;border-radius:6px;padding:10px 12px}'
+      +'.card-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}'
+      +'.tag-canal{font-size:11px;font-weight:700;color:#1d4ed8}'
+      +'.tag-dt{font-size:10px;color:#6b7280}'
+      +'.tag-st{font-size:9px;font-weight:700;border:1px solid;border-radius:20px;padding:1px 7px}'
+      +'.tag-pri{font-size:9px;color:#6b7280}'
+      +'.card-who{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:7px;padding-bottom:7px;border-bottom:1px dashed #e5e7eb}'
+      +'.lbl-cli{font-weight:700;font-size:11px;color:#111}'
+      +'.lbl-con{font-size:11px;color:#374151}'
+      +'.lbl-resp{font-size:10px;color:#6b7280}'
+      +'.lbl-prop{font-size:10px;color:#1d4ed8;background:#eff6ff;border-radius:3px;padding:1px 6px;margin-left:auto}'
+      +'.card-row{display:flex;gap:6px;margin-bottom:4px;align-items:flex-start}'
+      +'.row-ic{font-size:11px;flex-shrink:0;margin-top:1px}'
+      +'.row-body{font-size:11px;color:#374151;line-height:1.5}'
+      +'.row-dec{font-weight:600;color:#16a34a}'
+      +'.row-acao{color:#1d4ed8}'
+      +'.tag-prazo{font-size:10px;background:#f0f4ff;border-radius:3px;padding:1px 5px;margin-left:4px}'
+      +'.tag-prazo.atrasado{background:#fef2f2;color:#dc2626;font-weight:700}'
+      +'.rodape{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:9px;color:#9ca3af;text-align:center}'
+      +'@media print{body{background:#fff;padding:12px}.grupo{page-break-inside:avoid}}';
 
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
       +'<title>Relatório de Relacionamento — '+empresa+'</title>'
-      +'<style>'
-      +'*{box-sizing:border-box;margin:0;padding:0}'
-      +'body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a1a;padding:20px}'
-      +'.cabecalho{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:16px}'
-      +'.cab-titulo{font-size:18px;font-weight:800;color:#1d4ed8}'
-      +'.cab-sub{font-size:11px;color:#555;margin-top:3px}'
-      +'.cab-meta{text-align:right;font-size:10px;color:#666}'
-      +'.grupo{margin-bottom:20px;page-break-inside:avoid}'
-      +'.grupo-hdr{background:#1d4ed8;color:#fff;padding:5px 10px;font-weight:700;font-size:12px;border-radius:4px 4px 0 0;display:flex;align-items:center;gap:8px}'
-      +'.grupo-badge{background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:10px;font-weight:600}'
-      +'.grupo-badge.verde{background:rgba(34,197,94,.4)}'
-      +'table{width:100%;border-collapse:collapse;font-size:10px}'
-      +'th{background:#f0f4ff;color:#1d4ed8;padding:4px 6px;text-align:left;border:1px solid #dde3f0;font-size:9px;text-transform:uppercase;letter-spacing:.04em}'
-      +'td{padding:4px 6px;border:1px solid #e5e7eb;vertical-align:top;line-height:1.4}'
-      +'tr:nth-child(even) td{background:#f9fafb}'
-      +'.rodape{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:9px;color:#999;text-align:center}'
-      +'@media print{body{padding:10px}.grupo{page-break-inside:avoid}}'
-      +'</style></head><body>'
+      +'<style>'+css+'</style></head><body>'
       +'<div class="cabecalho">'
-      +'<div><div class="cab-titulo">💬 Relatório de Relacionamento</div>'
-      +'<div class="cab-sub">'+esc(empresa)+' · Agrupado por '+agrupLabel[agrup]+(filtCli?' · Cliente: '+filtCli:'')+(filtResp?' · Resp: '+filtResp:'')+'</div>'
+      +'<div><div class="cab-titulo">💬 Relacionamento com Clientes</div>'
+      +'<div class="cab-sub">'+esc(empresa)+' · Agrupado por: '+agrupLabel[agrup]+propSel+(filtCli?' · Cliente: '+filtCli:'')+(filtCon?' · Contato: '+filtCon:'')+(filtResp?' · Resp: '+filtResp:'')+'</div>'
       +'<div class="cab-sub">Período: '+periodoLabel+'</div></div>'
-      +'<div class="cab-meta">Gerado em: '+new Date().toLocaleString('pt-BR')+'<br>Total: '+(list.length)+' registros</div>'
+      +'<div class="cab-meta">Gerado em:<br>'+new Date().toLocaleString('pt-BR')+'<br><strong>'+list.length+' registro'+(list.length!==1?'s':'')+'</strong></div>'
       +'</div>'
       +gruposHtml
-      +'<div class="rodape">Relatório gerado automaticamente pelo Portal Tecfusion</div>'
+      +'<div class="rodape">Relatório gerado automaticamente · Portal '+esc(empresa)+'</div>'
       +'</body></html>';
 
-    var win = window.open('','_blank','width=1100,height=750');
+    var win = window.open('','_blank','width=900,height=750');
     if (!win) { alert('Permita pop-ups para gerar o relatório.'); return; }
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(function(){ win.print(); }, 600);
+    setTimeout(function(){ win.print(); }, 700);
     document.getElementById('m-rel-relatorio').style.display = 'none';
   };
 
