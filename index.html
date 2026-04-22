@@ -4228,7 +4228,84 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 </div>
 
+<!-- ══ MODAL GUIA DE FLUXO ══ -->
+<div class="modal-bg" id="m-guia">
+  <div class="modal-box" style="max-width:660px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-hdr">
+      <div class="modal-title">❓ Guia de Fluxo de Trabalho</div>
+      <button class="modal-close" onclick="fecharModal('m-guia')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- Abas -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);">
+        <button class="guia-tab guia-tab-ativo" onclick="guiaAba(0)" style="flex:1;padding:.7rem .5rem;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:transparent;border-bottom:2px solid var(--accent);color:var(--accent);">📄 Proposta</button>
+        <button class="guia-tab" onclick="guiaAba(1)" style="flex:1;padding:.7rem .5rem;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:transparent;border-bottom:2px solid transparent;color:var(--text2);">📞 Follow-up</button>
+        <button class="guia-tab" onclick="guiaAba(2)" style="flex:1;padding:.7rem .5rem;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:transparent;border-bottom:2px solid transparent;color:var(--text2);">📅 Semana CEO</button>
+        <button class="guia-tab" onclick="guiaAba(3)" style="flex:1;padding:.7rem .5rem;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:transparent;border-bottom:2px solid transparent;color:var(--text2);">🤝 Relacionamento</button>
+      </div>
+      <!-- Painel 0: Ciclo de proposta -->
+      <div class="guia-panel" style="padding:1.2rem 1rem;display:block;">
+        <p style="font-size:.82rem;color:var(--text2);margin:0 0 1rem;">Ciclo completo de vida de uma proposta no sistema.</p>
+        <div class="guia-step"><div class="guia-step-num">1</div><div class="guia-step-body"><div class="guia-step-title">Criar a proposta</div><div class="guia-step-desc">Em <strong>Propostas</strong>, clique em <strong>+ Nova Proposta</strong>. Preencha número, cliente, descrição, valor e defina a fase inicial como <em>Em Andamento</em>.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">2</div><div class="guia-step-body"><div class="guia-step-title">Acompanhar no CEO</div><div class="guia-step-desc">A proposta aparece automaticamente em <strong>Propostas em Ciclo</strong> (Gestão CEO) enquanto estiver em andamento.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">3</div><div class="guia-step-body"><div class="guia-step-title">Registrar follow-up</div><div class="guia-step-desc">A proposta aparece em <strong>Follow-ups Pendentes</strong>. Após contato com o cliente, registre a visita em <strong>Relacionamento</strong> e atualize o status se necessário.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">4</div><div class="guia-step-body"><div class="guia-step-title">Atualizar o status</div><div class="guia-step-desc">Abra a proposta em <strong>Propostas</strong> e mude a fase para: <em>Aprovado</em>, <em>Finalizado</em>, <em>Virou Budget</em> ou um dos status de <em>Perdido</em>. A proposta sairá automaticamente do follow-up.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">5</div><div class="guia-step-body"><div class="guia-step-title">Encerrar o ciclo</div><div class="guia-step-desc">Propostas aprovadas e finalizadas entram nos KPIs do trimestre. Propostas perdidas são removidas de todos os painéis ativos.</div></div></div>
+      </div>
+      <!-- Painel 1: Follow-up -->
+      <div class="guia-panel" style="padding:1.2rem 1rem;display:none;">
+        <p style="font-size:.82rem;color:var(--text2);margin:0 0 1rem;">Como registrar e concluir um follow-up de proposta.</p>
+        <div class="guia-step"><div class="guia-step-num">1</div><div class="guia-step-body"><div class="guia-step-title">Verificar follow-ups pendentes</div><div class="guia-step-desc">No painel <strong>Follow-ups Pendentes</strong> (Gestão CEO), veja a lista ordenada por valor. Cada linha mostra Nr, descrição, cliente e valor.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">2</div><div class="guia-step-body"><div class="guia-step-title">Entrar em contato com o cliente</div><div class="guia-step-desc">Faça a ligação, e-mail ou reunião. Anote o que foi discutido para registrar no histórico.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">3</div><div class="guia-step-body"><div class="guia-step-title">Registrar em Relacionamento</div><div class="guia-step-desc">Vá até a seção <strong>Relacionamento</strong> (ou no módulo de histórico) e adicione uma entrada com data, tipo de contato e observação sobre a conversa.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">4</div><div class="guia-step-body"><div class="guia-step-title">Atualizar status da proposta</div><div class="guia-step-desc">Se houve avanço, abra a proposta em <strong>Propostas</strong> e atualize a fase. Se perdida, mude para o status correto de perdido — ela sairá da lista de follow-ups.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">5</div><div class="guia-step-body"><div class="guia-step-title">Verificar na próxima semana</div><div class="guia-step-desc">Repita na reunião de segunda: revise os follow-ups pendentes, priorize pelo valor e defina quem fará contato nessa semana.</div></div></div>
+      </div>
+      <!-- Painel 2: Semana CEO -->
+      <div class="guia-panel" style="padding:1.2rem 1rem;display:none;">
+        <p style="font-size:.82rem;color:var(--text2);margin:0 0 1rem;">Fluxo semanal do CEO para manter o negócio em movimento.</p>
+        <div class="guia-step"><div class="guia-step-num">1</div><div class="guia-step-body"><div class="guia-step-title">Segunda — Reunião 9h30</div><div class="guia-step-desc">Revise a lista da <strong>Reunião de Segunda</strong>, adicione pautas e marque os itens concluídos da semana anterior. Atualize os KPIs do trimestre.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">2</div><div class="guia-step-body"><div class="guia-step-title">Planejar a semana (Esta Semana)</div><div class="guia-step-desc">Em <strong>Esta Semana</strong>, edite os blocos de compromissos. Classifique cada um como <em>Ação — Fazer</em>, <em>Ação — Se Mover</em> ou <em>Ação — Construir/Crescer</em>.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">3</div><div class="guia-step-body"><div class="guia-step-title">Verificar propostas em ciclo</div><div class="guia-step-desc">Revise <strong>Propostas em Ciclo</strong> para garantir que todas as propostas ativas têm follow-up planejado para a semana.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">4</div><div class="guia-step-body"><div class="guia-step-title">Executar follow-ups</div><div class="guia-step-desc">Durante a semana, execute os contatos planejados e registre cada interação em <strong>Relacionamento</strong>.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">5</div><div class="guia-step-body"><div class="guia-step-title">Sexta — Revisão rápida</div><div class="guia-step-desc">Verifique as <strong>Janelas de Comunicação</strong> da semana e atualize os KPIs. Prepare as pautas para a próxima reunião de segunda.</div></div></div>
+      </div>
+      <!-- Painel 3: Relacionamento -->
+      <div class="guia-panel" style="padding:1.2rem 1rem;display:none;">
+        <p style="font-size:.82rem;color:var(--text2);margin:0 0 1rem;">Como usar o módulo de Relacionamento para nutrir clientes.</p>
+        <div class="guia-step"><div class="guia-step-num">1</div><div class="guia-step-body"><div class="guia-step-title">O que é o Relacionamento</div><div class="guia-step-desc">O painel <strong>Relacionamento do Mês</strong> mostra automaticamente todos os contatos e visitas registradas no módulo de Histórico para o mês atual.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">2</div><div class="guia-step-body"><div class="guia-step-title">Registrar um contato</div><div class="guia-step-desc">Acesse <strong>Histórico / Relacionamento</strong>, clique em <strong>+ Novo Contato</strong> e preencha: data, cliente, tipo de interação e observações da conversa.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">3</div><div class="guia-step-body"><div class="guia-step-title">Vincular à proposta</div><div class="guia-step-desc">Se o contato foi sobre uma proposta específica, mencione o número da proposta nas observações. Isso cria um histórico rastreável por negócio.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">4</div><div class="guia-step-body"><div class="guia-step-title">Revisar no fechamento do mês</div><div class="guia-step-desc">Ao final de cada mês, revise o painel de Relacionamento para ver quantos clientes foram contatados e identificar quem precisa de atenção no próximo mês.</div></div></div>
+        <div class="guia-step"><div class="guia-step-num">5</div><div class="guia-step-body"><div class="guia-step-title">Manter cadência</div><div class="guia-step-desc">O ideal é ter pelo menos um ponto de contato por mês com cada cliente ativo. Use os follow-ups como gatilho para manter esse ritmo.</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Botão flutuante Guia -->
+<button id="btn-guia-flutuante" onclick="abrirModal('m-guia')" title="Guia de Fluxo" style="position:fixed;bottom:1.4rem;right:1.4rem;z-index:900;background:var(--accent);color:#fff;border:none;border-radius:50%;width:3rem;height:3rem;font-size:1.3rem;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;">❓</button>
+
+<style>
+.guia-tab-ativo { border-bottom-color: var(--accent) !important; color: var(--accent) !important; }
+.guia-step { display:flex;gap:.8rem;align-items:flex-start;margin-bottom:1rem;background:var(--bg3);border-radius:8px;padding:.8rem; }
+.guia-step-num { min-width:1.6rem;height:1.6rem;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;flex-shrink:0; }
+.guia-step-title { font-weight:600;font-size:.88rem;color:var(--text);margin-bottom:.25rem; }
+.guia-step-desc { font-size:.8rem;color:var(--text2);line-height:1.5; }
+</style>
+
+<script>
+function guiaAba(n){
+  document.querySelectorAll('.guia-tab').forEach(function(t,i){
+    t.classList.toggle('guia-tab-ativo', i===n);
+    t.style.borderBottomColor = i===n ? 'var(--accent)' : 'transparent';
+    t.style.color = i===n ? 'var(--accent)' : 'var(--text2)';
+  });
+  document.querySelectorAll('.guia-panel').forEach(function(p,i){
+    p.style.display = i===n ? 'block' : 'none';
+  });
+}
+</script>
 
 <div class="toast" id="toast"></div>
 

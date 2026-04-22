@@ -69,6 +69,7 @@
         { label: '↳ Mês',       icon: '📊', action: "gestaoNav('mes')" },
         { label: '↳ Trimestre', icon: '🎯', action: "gestaoNav('trimestre')" },
         { label: '↳ Calendário',icon: '🗓️', action: "gestaoNav('calendario')" },
+        { label: '↳ Guia de Fluxo', icon: '❓', action: "abrirModal('m-guia')" },
       ]
     },
     {
