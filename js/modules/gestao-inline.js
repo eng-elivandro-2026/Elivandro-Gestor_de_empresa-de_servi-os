@@ -2340,8 +2340,6 @@ function renderCiclos(){
                .sort(function(a,b){return (b.val||0)-(a.val||0);});
   var exec=all.filter(function(p){return FAS_EXE.indexOf(p.fas)>=0;})
               .sort(function(a,b){
-                // atrasado primeiro, depois por valor
-                var aAtr=p.fas==='atrasado'?0:1; // note: intentional closure over loop var not used; use a/b
                 var aOrd=a.fas==='atrasado'?0:1;
                 var bOrd=b.fas==='atrasado'?0:1;
                 if(aOrd!==bOrd) return aOrd-bOrd;
