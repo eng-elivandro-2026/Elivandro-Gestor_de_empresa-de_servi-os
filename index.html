@@ -8905,22 +8905,27 @@ async function convidarUsuario() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
 
   try {
-    // Tenta obter auth_id via RPC (usuário já convidado pelo Supabase dashboard)
-    var rpcRes = await window.sbClient.rpc('get_auth_id_by_email', { p_email: email.trim().toLowerCase() });
-    var authId = rpcRes.data;
+    var emailLower = email.trim().toLowerCase();
+    var novoUserId = null;
+    var authId = null;
 
-    if (!authId) throw new Error('Usuário não encontrado. Certifique-se de que ' + email + ' aceitou o convite e criou a senha antes de continuar.');
+    // 1. Verificar se já existe na tabela usuarios (usuário já cadastrado em outra empresa)
+    var existingByEmail = await window.sbClient.from('usuarios').select('id,auth_id').eq('email', emailLower).maybeSingle();
+    if (existingByEmail.data) {
+      novoUserId = existingByEmail.data.id;
+      authId = existingByEmail.data.auth_id;
+    }
 
-    // Verificar se já existe na tabela usuarios
-    var existing = await window.sbClient.from('usuarios').select('id').eq('auth_id', authId).maybeSingle();
-    var novoUserId;
+    if (!novoUserId) {
+      // 2. Tentar obter auth_id via RPC (usuário convidado pelo Supabase mas ainda não cadastrado)
+      var rpcRes = await window.sbClient.rpc('get_auth_id_by_email', { p_email: emailLower });
+      authId = rpcRes.data;
 
-    if (existing.data) {
-      novoUserId = existing.data.id;
-    } else {
+      if (!authId) throw new Error('Usuário não encontrado. Certifique-se de que ' + email + ' aceitou o convite e criou a senha antes de continuar.');
+
       var insUser = await window.sbClient.from('usuarios').insert({
         auth_id: authId,
-        email:   email.trim().toLowerCase(),
+        email:   emailLower,
         nome:    nome.trim(),
         perfil:  perfil,
         ativo:   true
