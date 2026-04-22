@@ -556,6 +556,43 @@ function salvarConfigEmails() {
   fecharConfigEmails();
 }
 
+async function testarEnvioEmails() {
+  var emails = getEmailsAlerta();
+  if (!emails.length) { toast('Nenhum e-mail cadastrado.', 'err'); return; }
+  var btn = document.querySelector('[onclick="testarEnvioEmails()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  var corpo = '=== TESTE DE ALERTA — Sistema TecFusion ===\n\n'
+    + 'Este é um e-mail de teste enviado manualmente.\n'
+    + 'Se você recebeu esta mensagem, os alertas automáticos de vencimento estão configurados corretamente.\n\n'
+    + 'Data do teste: ' + new Date().toLocaleString('pt-BR') + '\n'
+    + '——————————————————\n'
+    + 'Sistema de Gestão Elivandro — TecFusion';
+  var ok = 0, fail = 0;
+  await Promise.all(emails.map(async function(email) {
+    try {
+      var r = await fetch('https://formsubmit.co/ajax/' + email, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: '✅ Teste de Alerta — Sistema TecFusion ' + new Date().toLocaleDateString('pt-BR'),
+          Mensagem: corpo,
+          _template: 'box'
+        })
+      });
+      var data = await r.json();
+      if (data.success === 'true' || data.success === true) ok++; else fail++;
+    } catch(e) { fail++; }
+  }));
+  if (btn) { btn.disabled = false; btn.textContent = '📧 Enviar Teste'; }
+  // Limpa trava diária para o próximo alerta real também ser enviado
+  localStorage.removeItem('rh_alert_email_date');
+  if (fail === 0) {
+    toast('✅ Teste enviado para ' + ok + ' e-mail(s)! Verifique a caixa de entrada.', 'ok');
+  } else {
+    toast('⚠️ ' + ok + ' enviado(s), ' + fail + ' falhou. Confirme o link de ativação do formsubmit.', 'err');
+  }
+}
+
 // ══ DETALHE COLABORADOR ══════════════════════════════════════
 async function abrirDetalhe(id) {
   if (!_colabs || !_colabs.length) {
@@ -4543,6 +4580,7 @@ async function rejeitarDespesa(id) {
   window.adicionarEmailAlerta = adicionarEmailAlerta;
   window.removerEmailAlerta = removerEmailAlerta;
   window.salvarConfigEmails = salvarConfigEmails;
+  window.testarEnvioEmails = testarEnvioEmails;
 
   // Colaboradores
   window.abrirDetalhe = abrirDetalhe;

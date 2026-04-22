@@ -4454,9 +4454,12 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <button class="btn bd bsm" onclick="fecharConfigEmails()">✕</button>
       </div>
       <div class="modal-body">
-        <p style="font-size:.8rem;color:var(--text3);margin-bottom:1rem">
+        <p style="font-size:.8rem;color:var(--text3);margin-bottom:.6rem">
           Estes e-mails receberão notificações automáticas quando documentos estiverem vencidos ou próximos do vencimento (1× por dia).
         </p>
+        <div style="font-size:.73rem;color:var(--accent);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);border-radius:6px;padding:.45rem .7rem;margin-bottom:1rem">
+          ⚠️ <strong>Primeiro uso:</strong> o serviço de e-mail envia uma confirmação para cada endereço novo. O destinatário precisa clicar no link recebido antes de começar a receber alertas.
+        </div>
         <div id="emailAlertaList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
         <div style="display:flex;gap:.5rem">
           <input type="email" id="novoEmailAlerta" placeholder="novo@email.com"
@@ -4467,6 +4470,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       </div>
       <div class="modal-footer">
         <button class="btn bg" onclick="fecharConfigEmails()">Fechar</button>
+        <button class="btn bd" onclick="testarEnvioEmails()" title="Força envio imediato ignorando trava diária">📧 Enviar Teste</button>
         <button class="btn bs" onclick="salvarConfigEmails()">💾 Salvar</button>
       </div>
     </div>
