@@ -2319,41 +2319,69 @@ function renderSemana(){
 
 function renderCiclos(){
 
-  var list=document.getElementById('ciclos-list');
+  var elNeg=document.getElementById('ciclos-negociacao');
+  var elExe=document.getElementById('ciclos-execucao');
+  if(!elNeg&&!elExe)return;
 
-  if(!list)return;
+  var FAS_EXE=['aprovado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
 
-  var ps=(window.props||[]).filter(function(p){return p.fas==='andamento';});
+  var FASE_LABEL={
+    aprovado:{n:'Aprovado',c:'var(--green)'},
+    taf:{n:'TAF',c:'var(--blue)'},
+    sat:{n:'SAT',c:'var(--blue)'},
+    atrasado:{n:'Atrasado',c:'var(--red)'},
+    em_pausa_falta_material:{n:'Pausa — Material',c:'var(--accent)'},
+    em_pausa_aguardando_cliente:{n:'Pausa — Cliente',c:'var(--accent)'},
+    em_pausa_aguardando_terceiro:{n:'Pausa — Terceiro',c:'var(--accent)'}
+  };
 
-  if(!ps.length){list.innerHTML='<div class="empty">Nenhuma proposta em andamento — dados da Visão Executiva</div>';return;}
+  var all=window.props||[];
+  var negoc=all.filter(function(p){return p.fas==='andamento';})
+               .sort(function(a,b){return (b.val||0)-(a.val||0);});
+  var exec=all.filter(function(p){return FAS_EXE.indexOf(p.fas)>=0;})
+              .sort(function(a,b){
+                // atrasado primeiro, depois por valor
+                var aAtr=p.fas==='atrasado'?0:1; // note: intentional closure over loop var not used; use a/b
+                var aOrd=a.fas==='atrasado'?0:1;
+                var bOrd=b.fas==='atrasado'?0:1;
+                if(aOrd!==bOrd) return aOrd-bOrd;
+                return (b.val||0)-(a.val||0);
+              });
 
-  list.innerHTML='';
-
-  ps.forEach(function(p){
-
-    var div=document.createElement('div');
-
-    div.className='ciclo-item';
-
-    div.innerHTML='<div class="ciclo-num">'+esc(p.num||'')+'</div>'
-
+  function itemHtml(p, showBadge){
+    var badgeHtml='';
+    if(showBadge && FASE_LABEL[p.fas]){
+      var fl=FASE_LABEL[p.fas];
+      badgeHtml='<span style="font-size:.6rem;font-weight:700;color:'+fl.c+';background:'+fl.c+'22;border:1px solid '+fl.c+'55;border-radius:3px;padding:.1rem .35rem;margin-top:.2rem;display:inline-block">'+fl.n+'</span>';
+    }
+    return '<div class="ciclo-item">'
+      +'<div class="ciclo-num">'+esc(p.num||'')+'</div>'
       +'<div class="ciclo-body">'
-
       +'<div style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.3">'+esc(p.tit||'')+'</div>'
-
-      +'<div style="font-size:.68rem;color:var(--text3);margin-top:.1rem">'+esc(p.cli||p.loc||'')+'</div>'
-
+      +'<div style="font-size:.68rem;color:var(--text3);margin-top:.05rem">'+esc(p.cli||p.loc||'')+'</div>'
+      +badgeHtml
       +'</div>'
-
       +'<div style="text-align:right;flex-shrink:0">'
-
       +(p.val?'<div style="font-size:.68rem;color:var(--green)">R$ '+Number(p.val).toLocaleString('pt-BR')+'</div>':'')
-
+      +'</div>'
       +'</div>';
+  }
 
-    list.appendChild(div);
+  function secLabel(icon, titulo, cor){
+    return '<div style="font-size:.63rem;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:.06em;padding:.5rem .1rem .3rem;border-bottom:1px solid var(--border);margin-bottom:.35rem">'+icon+' '+titulo+'</div>';
+  }
 
-  });
+  if(elNeg){
+    elNeg.innerHTML= negoc.length
+      ? secLabel('🤝','Em Negociação','var(--accent)')+negoc.map(function(p){return itemHtml(p,false);}).join('')
+      : secLabel('🤝','Em Negociação','var(--text3)')+'<div class="empty" style="padding:.5rem 0;font-size:.75rem">Nenhuma proposta em negociação</div>';
+  }
+
+  if(elExe){
+    elExe.innerHTML= exec.length
+      ? secLabel('🔧','Em Execução','var(--blue)')+exec.map(function(p){return itemHtml(p,true);}).join('')
+      : secLabel('🔧','Em Execução','var(--text3)')+'<div class="empty" style="padding:.5rem 0;font-size:.75rem">Nenhuma proposta em execução</div>';
+  }
 
 }
 
