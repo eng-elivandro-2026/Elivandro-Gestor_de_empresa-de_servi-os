@@ -188,7 +188,20 @@
 
       var bordaEsq = atrasado ? '#ef4444' : (venceHoje ? '#f59e0b' : cor);
 
+      // Proposta vinculada
+      var propCard = '';
+      if (h.proposta_id && window.props) {
+        var pp = (window.props||[]).find(function(x){ return x.id === h.proposta_id; });
+        if (pp) {
+          var ppAbrev = _abrevCliente(pp.loc || pp.cli || '');
+          propCard = '<div style="font-size:.68rem;color:var(--blue);margin-bottom:.25rem">'
+            + '🔗 #'+(pp.num||'')+' — '+esc(pp.tit||'')+(ppAbrev?' — '+ppAbrev:'')
+            + '</div>';
+        }
+      }
+
       return '<div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+ bordaEsq +';border-radius:8px;padding:.7rem 1rem;margin-bottom:.5rem">'
+        // Linha 1: data | canal | prazo | prioridade | status | ações
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.3rem">'
         + '<div style="font-size:.7rem;color:var(--text3);display:flex;align-items:center;flex-wrap:wrap;gap:.2rem">'
         + dtF + ' &nbsp;' + ic + ' ' + esc(h.canal || '')
@@ -203,13 +216,18 @@
         + '<button class="nb" onclick="hEditar(\''+h.id+'\')" title="Editar" style="font-size:.7rem;color:var(--text3)">✏️</button>'
         + '<button class="nb" onclick="hDeletar(\''+h.id+'\')" title="Deletar" style="font-size:.7rem;color:var(--text3)">🗑️</button>'
         + '</div></div>'
-        + '<div style="font-size:.78rem;font-weight:700;color:var(--text)">' + esc(h.cliente || '')
-        + (h.contato ? ' <span style="font-weight:400;color:var(--text2);font-size:.73rem">| '+esc(h.contato)+'</span>' : '') + '</div>'
-        + (h.resumo       ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.18rem">📝 '+esc(h.resumo)+'</div>' : '')
-        + (h.decisao      ? '<div style="font-size:.71rem;color:var(--green);margin-top:.12rem">✅ '+esc(h.decisao)+'</div>' : '')
-        + (h.pendencia    ? '<div style="font-size:.71rem;color:var(--accent);margin-top:.1rem">⏳ '+esc(h.pendencia)+'</div>' : '')
-        + (h.proxima_acao ? '<div style="font-size:.71rem;color:var(--blue);margin-top:.1rem;font-weight:600">⚡ '+esc(h.proxima_acao)+'</div>' : '')
-        + (h.responsavel  ? '<div style="font-size:.66rem;color:var(--text3);margin-top:.1rem">👤 '+esc(h.responsavel)+'</div>' : '')
+        // Linha 2: proposta vinculada
+        + propCard
+        // Linha 3: resumo (negrito, maior)
+        + (h.resumo    ? '<div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.22rem">📝 '+esc(h.resumo)+'</div>' : '')
+        // Linha 4: decisão (normal)
+        + (h.decisao   ? '<div style="font-size:.74rem;color:var(--green);margin-bottom:.15rem">✅ '+esc(h.decisao)+'</div>' : '')
+        // Linha 5: pendência
+        + (h.pendencia ? '<div style="font-size:.72rem;color:var(--accent);margin-bottom:.12rem">⏳ '+esc(h.pendencia)+'</div>' : '')
+        // Linha 6: contato
+        + (h.contato   ? '<div style="font-size:.7rem;color:var(--text2);margin-bottom:.08rem">👤 '+esc(h.contato)+'</div>' : '')
+        // Linha 7: cliente
+        + (h.cliente   ? '<div style="font-size:.7rem;color:var(--text3)">🏢 '+esc(h.cliente)+'</div>' : '')
         + '</div>';
     }).join('');
   }
