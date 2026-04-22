@@ -5,6 +5,18 @@ var _sb = window.sbClient; // usa cliente global
 
 let _saveTimer = null;
 
+// Chave dinâmica por usuário — inicializada em _initGestaoChave()
+var _gestaoChave = 'tf_planejador';
+
+async function _initGestaoChave() {
+  try {
+    var r = await (window.sbClient || _sb).auth.getUser();
+    if (r.data && r.data.user && r.data.user.id) {
+      _gestaoChave = 'tf_planejador_' + r.data.user.id;
+    }
+  } catch(e) {}
+}
+
 function sbSaveGestao(dados) {
 
   clearTimeout(_saveTimer);
@@ -15,7 +27,7 @@ function sbSaveGestao(dados) {
 
       await _sb.from('configuracoes').upsert({
 
-        chave: 'tf_planejador',
+        chave: _gestaoChave,
 
         valor: dados,
 
@@ -43,9 +55,9 @@ async function sbLoadGestao() {
 
       .select('valor')
 
-      .eq('chave', 'tf_planejador')
+      .eq('chave', _gestaoChave)
 
-      .single();
+      .maybeSingle();
 
     if (res.data && res.data.valor) return res.data.valor;
 
@@ -186,9 +198,9 @@ function applyDados(parsed) {
 
 function load(){
 
-  // Carregar localStorage como fallback imediato
+  // Carregar localStorage como fallback imediato (chave por usuário)
 
-  const s=localStorage.getItem('tf_planejador');
+  const s=localStorage.getItem(_gestaoChave) || localStorage.getItem('tf_planejador');
 
   if(s)try{ applyDados(JSON.parse(s)); }catch(e){}
 
@@ -200,7 +212,7 @@ function save(){
 
   // Salva localStorage + nuvem
 
-  localStorage.setItem('tf_planejador',JSON.stringify(dados));
+  localStorage.setItem(_gestaoChave,JSON.stringify(dados));
 
   if(typeof sbSaveGestao==='function') sbSaveGestao(dados);
 
@@ -218,7 +230,7 @@ async function loadNuvem(){
 
       applyDados(cloud);
 
-      localStorage.setItem('tf_planejador',JSON.stringify(dados));
+      localStorage.setItem(_gestaoChave,JSON.stringify(dados));
 
       // Re-renderizar tudo com dados da nuvem
 
@@ -2932,7 +2944,7 @@ function importarBackup(){
 
         await _sb.from('configuracoes').upsert({
 
-          chave:'tf_planejador',
+          chave:_gestaoChave,
 
           valor:dados,
 
@@ -3442,7 +3454,10 @@ function renderVersoes(){
 
 init();
 
-if(typeof loadNuvem==="function") loadNuvem();
+(async function(){
+  await _initGestaoChave();
+  if(typeof loadNuvem==="function") loadNuvem();
+})();
 
 renderFrases();
 
