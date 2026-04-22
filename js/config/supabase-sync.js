@@ -209,6 +209,36 @@
   };
 
   // ════════════════════════════════════════════════════════
+  // E-MAILS DE ALERTA RH (rh_alert_emails)
+  // ════════════════════════════════════════════════════════
+
+  window.sbSalvarEmailsAlerta = async function (emails) {
+    if (!window.sbClient) return;
+    var res = await window.sbClient
+      .from('configuracoes')
+      .upsert({ chave: 'rh_alert_emails', valor: emails, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+    if (res.error) console.error('[supabase-sync] Erro ao salvar e-mails de alerta:', res.error.message);
+    else console.log('%ce-mails de alerta salvos na nuvem (' + emails.length + ')', 'color:green;font-weight:700');
+    return res;
+  };
+
+  window.sbCarregarEmailsAlerta = async function () {
+    if (!window.sbClient) return null;
+    var res = await window.sbClient
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'rh_alert_emails')
+      .maybeSingle();
+    if (res.error) { console.warn('[supabase-sync] Sem e-mails de alerta na nuvem.'); return null; }
+    if (res.data && res.data.valor && res.data.valor.length) {
+      try { localStorage.setItem('rh_alert_emails', JSON.stringify(res.data.valor)); } catch(e) {}
+      console.log('%ce-mails de alerta carregados da nuvem (' + res.data.valor.length + ')', 'color:#58a6ff;font-weight:700');
+      return res.data.valor;
+    }
+    return null;
+  };
+
+  // ════════════════════════════════════════════════════════
   // INICIALIZAÇÃO
   // ════════════════════════════════════════════════════════
   waitForClient(function () {

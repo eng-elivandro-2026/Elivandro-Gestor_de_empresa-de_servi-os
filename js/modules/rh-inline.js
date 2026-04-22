@@ -498,10 +498,11 @@ async function gerarAlertas() {
 
 // ══ CONFIGURAÇÃO DE E-MAILS DE ALERTA ════════════════════════
 function getEmailsAlerta() {
-  try {
-    var saved = JSON.parse(localStorage.getItem('rh_alert_emails') || '[]');
-    return saved.length ? saved : ['nascimento.gaube@gmail.com'];
-  } catch(e) { return ['nascimento.gaube@gmail.com']; }
+  try { return JSON.parse(localStorage.getItem('rh_alert_emails') || '[]'); } catch(e) { return []; }
+}
+
+function _syncEmailsNuvem(emails) {
+  if (typeof window.sbSalvarEmailsAlerta === 'function') window.sbSalvarEmailsAlerta(emails);
 }
 
 function abrirConfigEmails() {
@@ -537,6 +538,7 @@ function adicionarEmailAlerta() {
   if (emails.includes(email)) { toast('E-mail já cadastrado.', 'err'); return; }
   emails.push(email);
   localStorage.setItem('rh_alert_emails', JSON.stringify(emails));
+  _syncEmailsNuvem(emails);
   inp.value = '';
   renderEmailAlertaList();
 }
@@ -545,6 +547,7 @@ function removerEmailAlerta(idx) {
   var emails = getEmailsAlerta();
   emails.splice(idx, 1);
   localStorage.setItem('rh_alert_emails', JSON.stringify(emails));
+  _syncEmailsNuvem(emails);
   renderEmailAlertaList();
 }
 
@@ -4652,6 +4655,8 @@ async function rejeitarDespesa(id) {
   window.rRH = function() {
     // Sincronizar empresa ativa
     if(typeof getEmpresaAtivaId === 'function') _empresaId = getEmpresaAtivaId();
+    // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
+    if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
     if(typeof carregarColabs === 'function') carregarColabs();
     if(typeof gerarAlertas === 'function') gerarAlertas();
