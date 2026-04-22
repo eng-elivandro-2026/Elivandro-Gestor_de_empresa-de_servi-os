@@ -2199,12 +2199,11 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
             <div>
               <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Cliente *</div>
-              <input type="text" id="hCliente" list="hClienteList" placeholder="Ex: JDE - Jundiaí" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
-              <datalist id="hClienteList"></datalist>
+              <input type="text" id="hCliente" placeholder="Ex: JDE - Jundiaí" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
             </div>
             <div>
               <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Contato</div>
-              <input type="text" id="hContato" list="hContatoList" placeholder="Ex: Rafael Soares" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
+              <input type="text" id="hContato" placeholder="Ex: Rafael Soares" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.32rem .5rem;font-size:.75rem">
               <datalist id="hContatoList"></datalist>
             </div>
           </div>
@@ -4282,6 +4281,37 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
   </div>
 
+</div>
+
+<!-- ══ MODAL NOVO CONTATO ══ -->
+<div class="modal-bg" id="m-novo-contato">
+  <div class="modal" style="width:min(420px,97vw)">
+    <div class="modal-hdr"><div class="modal-title">👤 Novo Contato</div><button class="modal-close" onclick="fecharModal('m-novo-contato')">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
+      <div class="f"><label>Nome *</label><input id="ncNome" type="text" placeholder="Ex: Rafael Soares" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+      <div class="f"><label>Empresa / Cliente</label><input id="ncEmpresa" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+      <div class="g2">
+        <div class="f"><label>E-mail</label><input id="ncEmail" type="email" placeholder="email@..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+        <div class="f"><label>Telefone</label><input id="ncTelefone" type="text" placeholder="(11) 99999-0000" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-novo-contato')">Cancelar</button><button class="btn ba" onclick="salvarNovoContato()">Salvar Contato</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL NOVO CLIENTE ══ -->
+<div class="modal-bg" id="m-novo-cliente">
+  <div class="modal" style="width:min(420px,97vw)">
+    <div class="modal-hdr"><div class="modal-title">🏢 Novo Cliente</div><button class="modal-close" onclick="fecharModal('m-novo-cliente')">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
+      <div class="f"><label>Nome / Razão Social *</label><input id="ncliNome" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+      <div class="g2">
+        <div class="f"><label>CNPJ</label><input id="ncliCnpj" type="text" placeholder="00.000.000/0000-00" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+        <div class="f"><label>Cidade</label><input id="ncliCidade" type="text" placeholder="Ex: Jundiaí - SP" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-novo-cliente')">Cancelar</button><button class="btn ba" onclick="salvarNovoCliente()">Salvar Cliente</button></div>
+  </div>
 </div>
 
 <!-- ══ MODAL GUIA DE FLUXO ══ -->
@@ -8648,8 +8678,9 @@ function rExecTimeline(){
 <script src="js/modules/gantt.js"></script>
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
-<script src="js/modules/historico.js?v=3"></script>
-<script src="js/modules/gestao-inline.js?v=3"></script>
+<script src="js/modules/historico.js?v=4"></script>
+<script src="js/modules/gestao-inline.js?v=4"></script>
+<script src="js/modules/cadastro.js?v=1"></script>
 <script src="js/modules/rh-inline.js"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->

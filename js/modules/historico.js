@@ -97,11 +97,21 @@
   };
 
   // ── Init chamado pelo Router ─────────────────────────────
+  function _wireAcInputs() {
+    var elCli = document.getElementById('hCliente');
+    var elCts = document.getElementById('hContato');
+    if (typeof acSetup === 'function') {
+      acSetup(elCli, 'cliente');
+      acSetup(elCts, 'contato');
+    }
+  }
+
   window.rHistorico = function () {
     _filtroRapido = '';
     _atualizarContador();
     _popularPropostas(null);
     _popularDatalists();
+    _wireAcInputs();
     var fs = document.getElementById('hFiltroStatus');
     if (fs) fs.value = '';
     var fc = document.getElementById('hFiltroCliente');
@@ -335,6 +345,7 @@
     s('hStatus',      h ? (h.status || 'em_andamento') : 'em_andamento');
     _popularPropostas(h ? h.proposta_id : null);
     _popularDatalists();
+    _wireAcInputs();
   }
 
   function _popularPropostas(selecionado) {
