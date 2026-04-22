@@ -460,11 +460,12 @@ async function gerarAlertas() {
     }).join('');
   }
 
-  // Enviar e-mail de alerta (máximo 1 por dia, para todos os e-mails configurados)
+  // Enviar e-mail de alerta (máximo 2× por dia: manhã e tarde)
   if (emailAlerts.length) {
-    var hoje = new Date().toISOString().slice(0,10);
+    var agora = new Date();
+    var periodo = agora.toISOString().slice(0,10) + (agora.getHours() < 12 ? '-M' : '-T');
     var ultimoEnvio = localStorage.getItem('rh_alert_email_date');
-    if (ultimoEnvio !== hoje) {
+    if (ultimoEnvio !== periodo) {
       var emails = getEmailsAlerta();
       var linhas = emailAlerts.map(function(a, i) {
         return (i+1) + '. ' + a.doc
@@ -490,7 +491,7 @@ async function gerarAlertas() {
             })
           });
         }));
-        localStorage.setItem('rh_alert_email_date', hoje);
+        localStorage.setItem('rh_alert_email_date', periodo);
       } catch(e) { console.warn('Email de alerta não enviado:', e); }
     }
   }
