@@ -3081,9 +3081,17 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
     <div style="margin-top:.75rem">
 
-      <div class="sec-lbl" style="margin-bottom:.35rem">📝 Pauta compartilhada</div>
+      <div class="sec-lbl" style="margin-bottom:.4rem">📝 Pauta compartilhada</div>
 
-      <textarea class="captura-area" id="reuniao-segunda-pauta" rows="4" placeholder="Adicione itens de pauta, anotações e decisões da reunião..." oninput="saveReuniaoSegunda()"></textarea>
+      <div id="reuniao-segunda-lista"></div>
+
+      <div style="display:flex;gap:.4rem;margin-top:.5rem">
+
+        <input id="reuniao-segunda-input" class="captura-area" style="flex:1;padding:.38rem .6rem;font-size:.78rem;border-radius:var(--r2);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:inherit" placeholder="Novo item de pauta..." onkeydown="if(event.key==='Enter')adicionarReuniaoItem()">
+
+        <button class="btn bg btn-sm" onclick="adicionarReuniaoItem()">+ Adicionar</button>
+
+      </div>
 
     </div>
 
