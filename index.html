@@ -8875,42 +8875,42 @@ async function convidarUsuario() {
   var btn = document.getElementById('btnConvidar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
 
-  var tempPass = _gerarSenhaTemp();
-
   try {
-    // 1. Criar conta de autenticação
-    var signRes = await window.sbClient.auth.signUp({ email: email.trim(), password: tempPass });
-    if (signRes.error) throw new Error(signRes.error.message);
+    // Tenta obter auth_id via RPC (usuário já convidado pelo Supabase dashboard)
+    var rpcRes = await window.sbClient.rpc('get_auth_id_by_email', { p_email: email.trim().toLowerCase() });
+    var authId = rpcRes.data;
 
-    var authId = signRes.data.user && signRes.data.user.id;
-    if (!authId) throw new Error('Não foi possível obter o ID do usuário criado.');
+    if (!authId) throw new Error('Usuário não encontrado. Certifique-se de que ' + email + ' aceitou o convite e criou a senha antes de continuar.');
 
-    // 2. Inserir em usuarios
-    var insUser = await window.sbClient.from('usuarios').insert({
-      auth_id: authId,
-      nome:    nome.trim(),
-      perfil:  perfil,
-      ativo:   true
-    }).select('id').single();
+    // Verificar se já existe na tabela usuarios
+    var existing = await window.sbClient.from('usuarios').select('id').eq('auth_id', authId).maybeSingle();
+    var novoUserId;
 
-    if (insUser.error) throw new Error('Erro ao criar usuário: ' + insUser.error.message);
-    var novoUserId = insUser.data.id;
+    if (existing.data) {
+      novoUserId = existing.data.id;
+    } else {
+      var insUser = await window.sbClient.from('usuarios').insert({
+        auth_id: authId,
+        nome:    nome.trim(),
+        perfil:  perfil,
+        ativo:   true
+      }).select('id').single();
+      if (insUser.error) throw new Error('Erro ao criar usuário: ' + insUser.error.message);
+      novoUserId = insUser.data.id;
+    }
 
-    // 3. Vincular à empresa
-    var insEmp = await window.sbClient.from('usuario_empresas').insert({
+    // Vincular à empresa (ignorar se já vinculado)
+    var insEmp = await window.sbClient.from('usuario_empresas').upsert({
       usuario_id: novoUserId,
       empresa_id: empId,
       ativo:      true
-    });
+    }, { onConflict: 'usuario_id,empresa_id' });
     if (insEmp.error) throw new Error('Erro ao vincular empresa: ' + insEmp.error.message);
 
-    // Sucesso — mostrar senha temporária
     document.getElementById('invResultado').innerHTML =
       '<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:.8rem;margin-top:.8rem">'
-      + '<div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:.4rem">✅ Usuário criado com sucesso!</div>'
-      + '<div style="font-size:.75rem;color:var(--text2);margin-bottom:.3rem">' + email + ' receberá um e-mail de confirmação do Supabase.</div>'
-      + '<div style="font-size:.75rem;color:var(--text2)">Senha temporária: <strong style="font-family:monospace;background:var(--bg3);padding:.1rem .35rem;border-radius:4px;color:var(--text)">' + tempPass + '</strong></div>'
-      + '<div style="font-size:.68rem;color:var(--text3);margin-top:.3rem">Compartilhe esta senha com ' + nome.trim() + '. Ele pode alterá-la após o primeiro acesso.</div>'
+      + '<div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:.3rem">✅ Acesso configurado com sucesso!</div>'
+      + '<div style="font-size:.75rem;color:var(--text2)">' + nome.trim() + ' (' + email + ') já pode entrar no portal com a empresa selecionada.</div>'
       + '</div>';
 
     _carregarListaUsuarios();
@@ -8918,9 +8918,11 @@ async function convidarUsuario() {
     document.getElementById('invEmail').value = '';
 
   } catch(e) {
-    alert('Erro: ' + e.message);
+    document.getElementById('invResultado').innerHTML =
+      '<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:.75rem;margin-top:.8rem;font-size:.78rem;color:#ef4444">'
+      + '❌ ' + e.message + '</div>';
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📨 Enviar Convite'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Configurar Acesso'; }
   }
 }
 </script>
@@ -8939,14 +8941,17 @@ async function convidarUsuario() {
 
     <!-- Formulário convite -->
     <div style="border-top:1px solid var(--border);padding-top:1rem">
-      <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem">Convidar novo usuário</div>
+      <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Configurar acesso de usuário convidado</div>
+      <div style="font-size:.72rem;color:var(--text3);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.45rem .65rem;margin-bottom:.75rem">
+        📋 <strong>Pré-requisito:</strong> o usuário precisa ter sido convidado pelo Supabase (Authentication → Users → Invite) e já ter criado a senha antes de continuar.
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
         <div>
           <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Nome *</div>
-          <input type="text" id="invNome" placeholder="Ex: Adriano Silva" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
+          <input type="text" id="invNome" placeholder="Ex: Adriano" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
         </div>
         <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">E-mail *</div>
+          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">E-mail (mesmo do convite) *</div>
           <input type="email" id="invEmail" placeholder="adriano@tecfusion.com.br" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
         </div>
         <div>
@@ -8961,10 +8966,7 @@ async function convidarUsuario() {
           <select id="invEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"></select>
         </div>
       </div>
-      <div style="font-size:.68rem;color:var(--text3);margin-bottom:.7rem;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:.45rem .65rem">
-        ℹ️ Um e-mail de confirmação será enviado ao novo usuário. Após confirmar, ele usa a senha temporária exibida aqui para entrar.
-      </div>
-      <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.5rem;font-size:.82rem;font-weight:700">📨 Enviar Convite</button>
+      <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.5rem;font-size:.82rem;font-weight:700">✅ Configurar Acesso</button>
       <div id="invResultado"></div>
     </div>
   </div>
