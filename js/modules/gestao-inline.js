@@ -2367,7 +2367,7 @@ function renderFollowups(){
 
   if(!list)return;
 
-  var EXCLUIR=['finalizado','aprovado','perdido'];
+  var EXCLUIR=['finalizado','aprovado','perdido','virou_budget','perdido_valor_alto','perdido_concorrente','perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro'];
 
   var ps=(window.props||[]).filter(function(p){ return EXCLUIR.indexOf(p.fas)<0; });
 
