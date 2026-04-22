@@ -387,5 +387,154 @@
 
   window.getHistoricoData = function () { return hLS(); };
 
+  // ── Relatório / Impressão ────────────────────────────────────
+  window.hAbrirRelatorio = function() {
+    var m = document.getElementById('m-rel-relatorio');
+    if (!m) return;
+    // Pré-preencher período com mês atual
+    var hoje = new Date();
+    var y = hoje.getFullYear(), mo = String(hoje.getMonth()+1).padStart(2,'0');
+    var de = document.getElementById('rRelDe');
+    var ate = document.getElementById('rRelAte');
+    if (de && !de.value) de.value = y+'-'+mo+'-01';
+    if (ate && !ate.value) ate.value = y+'-'+mo+'-'+String(new Date(y,hoje.getMonth()+1,0).getDate()).padStart(2,'0');
+    m.style.display = 'flex';
+  };
+
+  window.hGerarRelatorio = function() {
+    var agrup    = (document.getElementById('rRelAgrup')  ||{}).value || 'cliente';
+    var filtSt   = (document.getElementById('rRelStatus') ||{}).value || '';
+    var filtDe   = (document.getElementById('rRelDe')     ||{}).value || '';
+    var filtAte  = (document.getElementById('rRelAte')    ||{}).value || '';
+    var filtCli  = ((document.getElementById('rRelCliente')||{}).value||'').toLowerCase().trim();
+    var filtResp = ((document.getElementById('rRelResp')  ||{}).value||'').toLowerCase().trim();
+
+    var list = hLS();
+
+    if (filtSt)   list = list.filter(function(h){ return h.status === filtSt; });
+    if (filtCli)  list = list.filter(function(h){ return (h.cliente||'').toLowerCase().indexOf(filtCli)>=0; });
+    if (filtResp) list = list.filter(function(h){ return (h.responsavel||'').toLowerCase().indexOf(filtResp)>=0; });
+    if (filtDe)   list = list.filter(function(h){ return h.data && h.data.slice(0,10) >= filtDe; });
+    if (filtAte)  list = list.filter(function(h){ return h.data && h.data.slice(0,10) <= filtAte; });
+
+    list.sort(function(a,b){ return new Date(a.data)-new Date(b.data); });
+
+    // Monta índice de propostas por id
+    var propIdx = {};
+    (window.props||[]).forEach(function(p){ propIdx[p.id] = p; });
+
+    // Função de chave de agrupamento
+    function chave(h) {
+      if (agrup==='cliente')     return h.cliente || '(sem cliente)';
+      if (agrup==='contato')     return h.contato || '(sem contato)';
+      if (agrup==='canal')       return h.canal   || '(sem canal)';
+      if (agrup==='responsavel') return h.responsavel || '(sem responsável)';
+      if (agrup==='negocio') {
+        var p = propIdx[h.proposta_id];
+        return p ? '#'+(p.num||'')+(p.tit?' — '+p.tit:'') : '(sem proposta vinculada)';
+      }
+      return 'Todos os registros';
+    }
+
+    // Agrupar
+    var grupos = {};
+    var ordem  = [];
+    list.forEach(function(h) {
+      var k = chave(h);
+      if (!grupos[k]) { grupos[k] = []; ordem.push(k); }
+      grupos[k].push(h);
+    });
+
+    var lblSt  = { em_andamento:'Em andamento', resolvido:'Resolvido', cancelado:'Cancelado' };
+    var lblPri = { alta:'Alta', media:'Média', baixa:'Baixa' };
+    var icCn   = { WhatsApp:'WhatsApp', Reunião:'Reunião', 'E-mail':'E-mail', Telefone:'Telefone', Outro:'Outro' };
+
+    function fmtDt(s) {
+      if (!s) return '';
+      var d = new Date(s);
+      return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+    function fmtDtSimples(s) {
+      if (!s) return '';
+      return new Date(s+'T00:00:00').toLocaleDateString('pt-BR');
+    }
+
+    var empresa = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
+    var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
+    var periodoLabel = filtDe && filtAte ? fmtDtSimples(filtDe)+' a '+fmtDtSimples(filtAte) : filtDe ? 'A partir de '+fmtDtSimples(filtDe) : filtAte ? 'Até '+fmtDtSimples(filtAte) : 'Todo o período';
+
+    var gruposHtml = ordem.map(function(k) {
+      var regs = grupos[k];
+      var total = regs.length;
+      var resolvidos = regs.filter(function(h){ return h.status==='resolvido'; }).length;
+      var linhas = regs.map(function(h) {
+        var prop = propIdx[h.proposta_id];
+        var propLabel = prop ? '#'+(prop.num||'')+(prop.tit?' — '+prop.tit.slice(0,40):'') : '';
+        return '<tr>'
+          +'<td>'+fmtDt(h.data)+'</td>'
+          +'<td>'+esc(h.cliente||'')+'</td>'
+          +'<td>'+esc(h.canal||'')+'</td>'
+          +'<td style="max-width:240px">'+esc(h.resumo||'')+'</td>'
+          +'<td>'+esc(h.decisao||'')+'</td>'
+          +'<td>'+esc(h.proxima_acao||'')+(h.prazo_acao?' ('+fmtDtSimples(h.prazo_acao)+')':'')+'</td>'
+          +'<td>'+esc(h.responsavel||'')+'</td>'
+          +'<td>'+esc(lblSt[h.status]||h.status)+'</td>'
+          +(agrup!=='negocio'?'<td>'+esc(propLabel)+'</td>':'')
+          +'</tr>';
+      }).join('');
+      var thProp = agrup!=='negocio' ? '<th>Proposta</th>' : '';
+      return '<div class="grupo">'
+        +'<div class="grupo-hdr">'+esc(k)
+        +'<span class="grupo-badge">'+total+' registro'+(total!==1?'s':'')+'</span>'
+        +(resolvidos?'<span class="grupo-badge verde">'+resolvidos+' resolvido'+(resolvidos!==1?'s':'')+'</span>':'')
+        +'</div>'
+        +'<table><thead><tr><th>Data/Hora</th><th>Cliente</th><th>Canal</th><th>Resumo</th><th>Decisão</th><th>Próxima Ação</th><th>Responsável</th><th>Status</th>'+thProp+'</tr></thead>'
+        +'<tbody>'+linhas+'</tbody></table>'
+        +'</div>';
+    }).join('');
+
+    if (!ordem.length) {
+      gruposHtml = '<p style="color:#999;text-align:center;padding:2rem">Nenhum registro encontrado para os filtros selecionados.</p>';
+    }
+
+    var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+      +'<title>Relatório de Relacionamento — '+empresa+'</title>'
+      +'<style>'
+      +'*{box-sizing:border-box;margin:0;padding:0}'
+      +'body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a1a;padding:20px}'
+      +'.cabecalho{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:16px}'
+      +'.cab-titulo{font-size:18px;font-weight:800;color:#1d4ed8}'
+      +'.cab-sub{font-size:11px;color:#555;margin-top:3px}'
+      +'.cab-meta{text-align:right;font-size:10px;color:#666}'
+      +'.grupo{margin-bottom:20px;page-break-inside:avoid}'
+      +'.grupo-hdr{background:#1d4ed8;color:#fff;padding:5px 10px;font-weight:700;font-size:12px;border-radius:4px 4px 0 0;display:flex;align-items:center;gap:8px}'
+      +'.grupo-badge{background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:10px;font-weight:600}'
+      +'.grupo-badge.verde{background:rgba(34,197,94,.4)}'
+      +'table{width:100%;border-collapse:collapse;font-size:10px}'
+      +'th{background:#f0f4ff;color:#1d4ed8;padding:4px 6px;text-align:left;border:1px solid #dde3f0;font-size:9px;text-transform:uppercase;letter-spacing:.04em}'
+      +'td{padding:4px 6px;border:1px solid #e5e7eb;vertical-align:top;line-height:1.4}'
+      +'tr:nth-child(even) td{background:#f9fafb}'
+      +'.rodape{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:9px;color:#999;text-align:center}'
+      +'@media print{body{padding:10px}.grupo{page-break-inside:avoid}}'
+      +'</style></head><body>'
+      +'<div class="cabecalho">'
+      +'<div><div class="cab-titulo">💬 Relatório de Relacionamento</div>'
+      +'<div class="cab-sub">'+esc(empresa)+' · Agrupado por '+agrupLabel[agrup]+(filtCli?' · Cliente: '+filtCli:'')+(filtResp?' · Resp: '+filtResp:'')+'</div>'
+      +'<div class="cab-sub">Período: '+periodoLabel+'</div></div>'
+      +'<div class="cab-meta">Gerado em: '+new Date().toLocaleString('pt-BR')+'<br>Total: '+(list.length)+' registros</div>'
+      +'</div>'
+      +gruposHtml
+      +'<div class="rodape">Relatório gerado automaticamente pelo Portal Tecfusion</div>'
+      +'</body></html>';
+
+    var win = window.open('','_blank','width=1100,height=750');
+    if (!win) { alert('Permita pop-ups para gerar o relatório.'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); }, 600);
+    document.getElementById('m-rel-relatorio').style.display = 'none';
+  };
+
   console.log('%c[Histórico] carregado', 'color:#58a6ff;font-weight:700');
 })();
