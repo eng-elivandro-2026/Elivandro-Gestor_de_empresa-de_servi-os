@@ -2397,9 +2397,6 @@ function renderFollowups(){
 
   var ps=(window.props||[]).filter(function(p){ return EXCLUIR.indexOf(p.fas)<0; });
 
-  // Ordenar por valor decrescente (prioridade)
-  ps=ps.slice().sort(function(a,b){ return (b.val||0)-(a.val||0); });
-
   if(!ps.length){list.innerHTML='<div class="empty">Nenhum follow-up pendente</div>';return;}
 
   // Índice de historico por proposta_id (mais recente primeiro)
@@ -2414,11 +2411,33 @@ function renderFollowups(){
     histIdx[k].sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   });
 
+  var hoje=new Date(); hoje.setHours(0,0,0,0);
+
+  // Função que retorna grupo de urgência de cada proposta:
+  // 0 = tem prazo de próxima ação vencido
+  // 1 = sem nenhum contato registrado
+  // 2 = sem próxima ação definida mas tem contato
+  // 3 = com contato e próxima ação no prazo
+  function urgencia(p){
+    var entries=histIdx[p.id]||[];
+    if(!entries.length) return 1;
+    var comAcao=entries.filter(function(h){return h.proxima_acao&&h.prazo_acao;})[0];
+    if(comAcao && new Date(comAcao.prazo_acao)<hoje) return 0;
+    if(!comAcao) return 2;
+    return 3;
+  }
+
+  // Ordenar: grupo urgência ASC, depois valor DESC
+  ps=ps.slice().sort(function(a,b){
+    var ua=urgencia(a), ub=urgencia(b);
+    if(ua!==ub) return ua-ub;
+    return (b.val||0)-(a.val||0);
+  });
+
   list.innerHTML='';
 
   // Calcular valor máximo para barra de prioridade visual
-  var maxVal=ps[0]?ps[0].val||0:0;
-  var hoje=new Date(); hoje.setHours(0,0,0,0);
+  var maxVal=Math.max.apply(null,ps.map(function(p){return p.val||0;}));
 
   function diasDiff(dataStr){
     var d=new Date(dataStr); d.setHours(0,0,0,0);
