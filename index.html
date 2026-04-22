@@ -8920,21 +8920,11 @@ async function convidarUsuario() {
     }
 
     if (!novoUserId) {
-      // 2. Tentar obter auth_id via RPC (usuário convidado pelo Supabase mas ainda não cadastrado)
-      var rpcRes = await window.sbClient.rpc('get_auth_id_by_email', { p_email: emailLower });
-      authId = rpcRes.data;
-
-      if (!authId) throw new Error('Usuário não encontrado. Certifique-se de que ' + email + ' aceitou o convite e criou a senha antes de continuar.');
-
-      var insUser = await window.sbClient.from('usuarios').insert({
-        auth_id: authId,
-        email:   emailLower,
-        nome:    nome.trim(),
-        perfil:  perfil,
-        ativo:   true
-      }).select('id').single();
-      if (insUser.error) throw new Error('Erro ao criar usuário: ' + insUser.error.message);
-      novoUserId = insUser.data.id;
+      // Usuário não está na tabela — não temos como criar sem auth_id válido
+      throw new Error(
+        'Usuário não encontrado no sistema. Se já tem acesso a outra empresa, use "Vincular à Empresa" acima. ' +
+        'Para um usuário completamente novo, peça para ele entrar no portal uma vez (com convite do Supabase) e tente novamente.'
+      );
     }
 
     // Vincular à empresa (ignorar se já vinculado)
@@ -9044,7 +9034,7 @@ function _vinMsg(msg, tipo) {
       <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
       <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Configurar acesso de usuário convidado</div>
       <div style="font-size:.72rem;color:var(--text3);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.45rem .65rem;margin-bottom:.75rem">
-        📋 <strong>Pré-requisito:</strong> o usuário precisa ter sido convidado pelo Supabase (Authentication → Users → Invite) e já ter criado a senha antes de continuar.
+        📋 <strong>Use este campo apenas para usuários que já entraram no portal ao menos uma vez.</strong> Para vincular alguém já cadastrado a uma nova empresa, use "Adicionar usuário existente" acima.
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
         <div>
