@@ -2177,15 +2177,15 @@ function saveReflexao(){getDia().reflexao=document.getElementById('reflexao-dia'
 
 var SEMANA_DEFAULT=[
 
-  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
+  [{tipo:'fazer',txt:'Foco — Proposta'},{tipo:'mover',txt:'Visita / Campo'}],
 
   [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Reuniões / Follow-up'}],
 
-  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Foco — Proposta'}],
+  [{tipo:'fazer',txt:'Foco — Proposta'},{tipo:'mover',txt:'Visita / Campo'}],
 
   [{tipo:'mover',txt:'Visitas / Campo'},{tipo:'mover',txt:'Cliente fixo'}],
 
-  [{tipo:'jiu',txt:'Jiu-jitsu'},{tipo:'fazer',txt:'Proposta — manhã'},{tipo:'construir',txt:'CEO — tarde'}]
+  [{tipo:'fazer',txt:'Proposta — manhã'},{tipo:'construir',txt:'CEO — tarde'}]
 
 ];
 
@@ -2273,9 +2273,9 @@ function renderSemana(){
 
       if(_semanaEditando){
 
-        var tipoOpts=['fazer','mover','construir','jiu'].map(function(t){
+        var tipoOpts=['fazer','mover','construir'].map(function(t){
 
-          var labels={fazer:'Ação — Fazer',mover:'Ação — Se Mover',construir:'Ação — Construir/Crescer',jiu:'Jiu-jitsu'};
+          var labels={fazer:'Ação — Fazer',mover:'Ação — Se Mover',construir:'Ação — Construir/Crescer'};
 
           return '<option value="'+t+'"'+(b.tipo===t?' selected':'')+'>'+labels[t]+'</option>';
 
