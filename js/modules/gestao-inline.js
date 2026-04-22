@@ -2376,43 +2376,89 @@ function renderFollowups(){
 
   if(!ps.length){list.innerHTML='<div class="empty">Nenhum follow-up pendente</div>';return;}
 
+  // Índice de historico por proposta_id (mais recente primeiro)
+  var hist=(typeof window.getHistoricoData==='function')?window.getHistoricoData():[];
+  var histIdx={};
+  hist.forEach(function(h){
+    if(!h.proposta_id) return;
+    if(!histIdx[h.proposta_id]) histIdx[h.proposta_id]=[];
+    histIdx[h.proposta_id].push(h);
+  });
+  Object.keys(histIdx).forEach(function(k){
+    histIdx[k].sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
+  });
+
   list.innerHTML='';
 
   // Calcular valor máximo para barra de prioridade visual
   var maxVal=ps[0]?ps[0].val||0:0;
+  var hoje=new Date(); hoje.setHours(0,0,0,0);
+
+  function diasDiff(dataStr){
+    var d=new Date(dataStr); d.setHours(0,0,0,0);
+    return Math.round((hoje-d)/(1000*60*60*24));
+  }
+
+  function fmtData(dataStr){
+    if(!dataStr) return '';
+    var d=new Date(dataStr);
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  }
 
   ps.forEach(function(p,idx){
 
     var pct=maxVal>0?Math.round(((p.val||0)/maxVal)*100):0;
-
     var priBg=idx===0?'var(--red)':idx<3?'var(--accent)':'var(--text3)';
 
-    var div=document.createElement('div');
+    var entries=histIdx[p.id]||[];
+    var last=entries[0]||null;
 
-    div.style.cssText='padding:.5rem .55rem;border-bottom:1px solid var(--border);display:flex;gap:.6rem;align-items:flex-start';
+    // Próxima ação: do registro mais recente que tem proxima_acao
+    var comAcao=entries.filter(function(h){ return h.proxima_acao; })[0]||null;
+
+    // Bloco de último contato
+    var contatoHtml='';
+    if(last){
+      var dias=diasDiff(last.data);
+      var corDias=dias<=7?'var(--green)':dias<=14?'var(--accent)':'var(--red)';
+      var lblDias=dias===0?'hoje':dias===1?'ontem':dias+'d atrás';
+      var canalIco={WhatsApp:'💬',Email:'📧',Visita:'🤝',Telefone:'📞',Reunião:'🗂️'}[last.canal]||'📌';
+      contatoHtml='<div style="display:flex;align-items:center;gap:.3rem;margin-top:.35rem;flex-wrap:wrap">'
+        +'<span style="font-size:.66rem;color:'+corDias+';font-weight:700">'+canalIco+' '+lblDias+'</span>'
+        +(last.decisao?'<span style="font-size:.63rem;color:var(--text3)">· '+esc(last.decisao.slice(0,60))+(last.decisao.length>60?'…':'')+'</span>':'')
+        +'</div>';
+    } else {
+      contatoHtml='<div style="margin-top:.35rem;font-size:.66rem;color:var(--red);font-weight:600">⚠ Sem contato registrado</div>';
+    }
+
+    // Bloco de próxima ação
+    var acaoHtml='';
+    if(comAcao && comAcao.proxima_acao){
+      var prazoStr=comAcao.prazo_acao?fmtData(comAcao.prazo_acao):'';
+      var prazoAtrasado=comAcao.prazo_acao && new Date(comAcao.prazo_acao)<hoje;
+      var corPrazo=prazoAtrasado?'var(--red)':comAcao.prazo_acao?'var(--accent)':'var(--text3)';
+      acaoHtml='<div style="margin-top:.25rem;font-size:.67rem;display:flex;align-items:center;gap:.3rem">'
+        +'<span style="color:var(--blue)">⚡ '+esc(comAcao.proxima_acao.slice(0,55))+(comAcao.proxima_acao.length>55?'…':'')+'</span>'
+        +(prazoStr?'<span style="color:'+corPrazo+';font-weight:600">'+(prazoAtrasado?'⏰ ':'')+prazoStr+'</span>':'')
+        +'</div>';
+    }
+
+    var div=document.createElement('div');
+    div.style.cssText='padding:.55rem .55rem;border-bottom:1px solid var(--border);display:flex;gap:.6rem;align-items:flex-start';
 
     div.innerHTML='<div style="flex-shrink:0;margin-top:.15rem">'
-
-      +'<div style="width:6px;height:40px;background:var(--border);border-radius:3px;overflow:hidden">'
-
+      +'<div style="width:6px;height:48px;background:var(--border);border-radius:3px;overflow:hidden">'
       +'<div style="width:100%;height:'+pct+'%;background:'+priBg+';border-radius:3px;margin-top:auto;transition:.3s"></div>'
-
       +'</div></div>'
-
       +'<div style="flex:1;min-width:0">'
-
       +'<div style="font-size:.75rem;font-weight:700;color:var(--text);line-height:1.3">'+esc(p.tit||'')+'</div>'
-
-      +'<div style="font-size:.68rem;color:var(--text3);margin-top:.1rem">'+esc(p.cli||p.loc||'')+'</div>'
-
+      +'<div style="font-size:.68rem;color:var(--text3);margin-top:.05rem">'+esc(p.cli||p.loc||'')+'</div>'
+      +contatoHtml
+      +acaoHtml
       +'</div>'
-
       +'<div style="flex-shrink:0;text-align:right">'
-
       +'<div style="font-size:.65rem;color:var(--text3);font-family:monospace">'+esc(p.num||'')+'</div>'
-
       +(p.val?'<div style="font-size:.72rem;color:var(--green);font-weight:600;margin-top:.1rem">R$ '+Number(p.val).toLocaleString('pt-BR')+'</div>':'')
-
       +'</div>';
 
     list.appendChild(div);
