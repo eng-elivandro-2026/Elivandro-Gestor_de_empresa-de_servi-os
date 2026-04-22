@@ -2544,9 +2544,14 @@ function rEsc(){
     _td.overEl=esBelow||null;
   },{passive:false});
 
-  el.addEventListener('touchend',function(){
+  el.addEventListener('touchend',function(e){
     if(_td.si===null)return;
-    _escDoDrop(_td.overEl);
+    // Esconde ghost para que elementFromPoint ache o elemento correto abaixo do dedo
+    if(_td.ghost) _td.ghost.style.visibility='hidden';
+    var t=e.changedTouches[0];
+    var below=document.elementFromPoint(t.clientX,t.clientY);
+    var esBelow=below&&below.closest('.es[data-si]');
+    _escDoDrop(esBelow||_td.overEl);
     _escCleanDrag();
   });
 
