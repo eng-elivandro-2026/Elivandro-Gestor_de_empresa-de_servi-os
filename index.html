@@ -3004,7 +3004,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
         <div class="card-title">📋 Propostas em Ciclo</div>
 
-        <button class="btn ba btn-sm" onclick="abrirModalCiclo()">+ Proposta</button>
+        <div class="card-sub">🔄 Geral — Visão Executiva</div>
 
       </div>
 
@@ -3026,7 +3026,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
         <div class="card-title">📞 Follow-ups Pendentes</div>
 
-        <button class="btn ba btn-sm" onclick="abrirModalFollowup()">+ Follow-up</button>
+        <div class="card-sub">🔄 Geral — Motor de Decisão</div>
 
       </div>
 
@@ -3072,7 +3072,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
       <div class="card-title">☕ Reunião de Segunda — 9h30</div>
 
-      <div class="card-sub">30 minutos com você mesmo</div>
+      <div class="card-sub">🔄 Geral — todos podem editar</div>
 
     </div>
 
@@ -3117,6 +3117,14 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="task-body"><div class="task-txt">Tem algum alerta de conformidade esta semana?</div></div>
 
       </div>
+
+    </div>
+
+    <div style="margin-top:.75rem">
+
+      <div class="sec-lbl" style="margin-bottom:.35rem">📝 Pauta compartilhada</div>
+
+      <textarea class="captura-area" id="reuniao-segunda-pauta" rows="4" placeholder="Adicione itens de pauta, anotações e decisões da reunião..." oninput="saveReuniaoSegunda()"></textarea>
 
     </div>
 
@@ -3185,47 +3193,21 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 
 
-  <div class="g2">
+  <!-- RELACIONAMENTO DO MÊS -->
 
-    <!-- FUNIL ABERTO -->
+  <div class="card">
 
-    <div class="card">
+    <div class="card-hdr">
 
-      <div class="card-hdr">
+      <div class="card-title">🤝 Relacionamento do Mês</div>
 
-        <div class="card-title">🔵 Funil de Propostas</div>
-
-        <button class="btn ba btn-sm" onclick="abrirModalFunil()">+ Proposta</button>
-
-      </div>
-
-      <div id="funil-list">
-
-        <div class="empty" id="funil-empty">Nenhuma proposta no funil</div>
-
-      </div>
+      <div class="card-sub">Dados do módulo Relacionamento</div>
 
     </div>
 
+    <div id="funil-list">
 
-
-    <!-- CONFORMIDADE -->
-
-    <div class="card">
-
-      <div class="card-hdr">
-
-        <div class="card-title">🛡️ Conformidade da Equipe</div>
-
-        <button class="btn ba btn-sm" onclick="abrirModalEquipe()">Gerenciar</button>
-
-      </div>
-
-      <div id="conf-list">
-
-        <div class="empty" id="conf-empty">Nenhum membro cadastrado</div>
-
-      </div>
+      <div class="empty">Nenhum relacionamento registrado este mês</div>
 
     </div>
 

@@ -239,6 +239,33 @@
   };
 
   // ════════════════════════════════════════════════════════
+  // GESTÃO CEO — DADOS GERAIS COMPARTILHADOS
+  // ════════════════════════════════════════════════════════
+
+  window.sbSaveGestaoGeral = function (dados) {
+    clearTimeout(window._geralSaveTimer);
+    window._geralSaveTimer = setTimeout(async function () {
+      if (!window.sbClient || !dados) return;
+      await window.sbClient.from('configuracoes').upsert({
+        chave: 'tf_planejador_geral',
+        valor: dados,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chave' });
+    }, 1500);
+  };
+
+  window.sbLoadGestaoGeral = async function () {
+    if (!window.sbClient) return null;
+    var res = await window.sbClient
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'tf_planejador_geral')
+      .maybeSingle();
+    if (res.data && res.data.valor) return res.data.valor;
+    return null;
+  };
+
+  // ════════════════════════════════════════════════════════
   // INICIALIZAÇÃO
   // ════════════════════════════════════════════════════════
   waitForClient(function () {

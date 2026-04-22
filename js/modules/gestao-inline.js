@@ -88,29 +88,29 @@ async function sbProtegerGestao() {
 }
 // ===== DADOS =====
 
+// Individual: cada usuário tem o seu
 let dados = {
 
   dias:{},          // chave: 'YYYY-MM-DD' → {prios,tarefas,abertos,reflexao,explosoes}
 
   diaAtivo:'',      // data sendo visualizada
 
-  ciclos:[],
-
-  followups:[],
-
   visitas:[],
 
+  theme:'dark'
+
+};
+
+// Geral: compartilhado por todos os usuários
+var dadosGeral = {
+
   kpi:{env:0,apr:0,val:0,acum:0,dep:0},
-
-  funil:[],
-
-  equipe:[],
 
   crescimento:'',
 
   proxPasso:'',
 
-  trim:{fat:2100000,dep:90},
+  trim:{fat:2100000,dep:90,meta:4800000},
 
   revVelocidade:'',
 
@@ -118,7 +118,7 @@ let dados = {
 
   checkContr:[],
 
-  theme:'dark'
+  reuniaoSegunda:''
 
 };
 
@@ -190,6 +190,10 @@ function applyDados(parsed) {
 
   }
 
+  // Migrar campos geral do formato antigo
+  var geralFields = ['kpi','crescimento','proxPasso','trim','revVelocidade','revMudanca','checkContr'];
+  geralFields.forEach(function(k){ if(parsed[k]!==undefined && parsed[k]!==null){ if(typeof parsed[k]==='object' && !Array.isArray(parsed[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],parsed[k]); } else { dadosGeral[k]=dadosGeral[k]||parsed[k]; } delete parsed[k]; } });
+
   dados=Object.assign(dados,parsed);
 
 }
@@ -203,6 +207,11 @@ function load(){
   const s=localStorage.getItem(_gestaoChave) || localStorage.getItem('tf_planejador');
 
   if(s)try{ applyDados(JSON.parse(s)); }catch(e){}
+
+  // Carregar dados gerais compartilhados
+  const sg=localStorage.getItem('tf_planejador_geral');
+
+  if(sg)try{ var pg=JSON.parse(sg); if(pg&&typeof pg==='object') Object.keys(pg).forEach(function(k){ if(dadosGeral[k]!==undefined){ if(typeof dadosGeral[k]==='object'&&!Array.isArray(dadosGeral[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],pg[k]); } else { dadosGeral[k]=pg[k]; } } }); }catch(e){}
 
 }
 
@@ -241,6 +250,66 @@ async function loadNuvem(){
     }
 
   } catch(e){ console.warn('[gestao] erro ao carregar nuvem:', e); }
+
+}
+
+
+
+function saveGeral(){
+
+  localStorage.setItem('tf_planejador_geral',JSON.stringify(dadosGeral));
+
+  if(typeof sbSaveGestaoGeral==='function') sbSaveGestaoGeral(dadosGeral);
+
+}
+
+
+
+async function loadNuvemGeral(){
+
+  try {
+
+    if(typeof sbLoadGestaoGeral==='function'){
+
+      var cloud=await sbLoadGestaoGeral();
+
+      if(cloud){
+
+        Object.keys(cloud).forEach(function(k){ if(dadosGeral[k]!==undefined){ if(typeof dadosGeral[k]==='object'&&!Array.isArray(dadosGeral[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],cloud[k]); } else { dadosGeral[k]=cloud[k]; } } });
+
+        localStorage.setItem('tf_planejador_geral',JSON.stringify(dadosGeral));
+
+        _aplicarGeralNaUI();
+
+        console.log('%c[gestao] dados gerais carregados da nuvem','color:#F05A1A;font-weight:700');
+
+      }
+
+    }
+
+  } catch(e){ console.warn('[gestao] erro ao carregar geral da nuvem:', e); }
+
+}
+
+
+
+function _aplicarGeralNaUI(){
+
+  var el;
+
+  if((el=document.getElementById('crescimento-mes')))el.value=dadosGeral.crescimento||'';
+
+  if((el=document.getElementById('prox-passo')))el.value=dadosGeral.proxPasso||'';
+
+  if((el=document.getElementById('rev-velocidade')))el.value=dadosGeral.revVelocidade||'';
+
+  if((el=document.getElementById('rev-mudanca')))el.value=dadosGeral.revMudanca||'';
+
+  renderTrim();
+
+  renderCheckContr();
+
+  renderReuniaoSegunda();
 
 }
 
@@ -486,34 +555,24 @@ function init(){
 
   renderSemana();
 
-  renderCiclos();
-
-  renderFollowups();
-
   renderVisitas();
 
   renderKPIs();
 
-  renderFunil();
-
-  renderEquipe();
+  renderRelacionamentoMes();
 
   renderTrim();
 
   renderFabricantes();
 
-  if(dados.crescimento)document.getElementById('crescimento-mes').value=dados.crescimento;
+  _aplicarGeralNaUI();
 
-  if(dados.proxPasso)document.getElementById('prox-passo').value=dados.proxPasso;
-
-  if(dados.revVelocidade)document.getElementById('rev-velocidade').value=dados.revVelocidade;
-
-  if(dados.revMudanca)document.getElementById('rev-mudanca').value=dados.revMudanca;
-
-  renderCheckContr();
-
-  // Pré-carrega cache do Motor de Decisão em background
-  setTimeout(function(){ getOrRunDecisionEngine(); }, 500);
+  // Pré-carrega cache do Motor de Decisão e renderiza seções auto-pull
+  setTimeout(function(){
+    getOrRunDecisionEngine();
+    renderCiclos();
+    renderFollowups();
+  }, 600);
 
 }
 
@@ -535,8 +594,8 @@ function gestaoShowSec(id){
     renderPrios();renderTarefas();renderExplosoes();renderAbertos();
     renderSugestoesIA('dia');
   }
-  if(id==='semana'){ renderSemana(); renderSugestoesIA('semana'); }
-  if(id==='mes')   { renderKPIs();   renderSugestoesIA('mes'); }
+  if(id==='semana'){ renderSemana(); renderCiclos(); renderFollowups(); renderVisitas(); renderReuniaoSegunda(); renderSugestoesIA('semana'); }
+  if(id==='mes')   { renderKPIs(); renderRelacionamentoMes(); renderSugestoesIA('mes'); }
   if(id==='trimestre'){ renderTrim(); renderSugestoesIA('trimestre'); }
   if(id==='calendario'){ if(typeof renderCalendario==='function') renderCalendario(); }
   if(id==='versoes'){ renderVersoes(); }
@@ -839,45 +898,6 @@ function renderAlertas(){
 
   const hoje=new Date();
 
-  dados.equipe.forEach(p=>{
-
-    ['aso','int','exam'].forEach(tipo=>{
-
-      if(!p[tipo])return;
-
-      const venc=new Date(p[tipo]);
-
-      const diff=Math.ceil((venc-hoje)/(1000*60*60*24));
-
-      const labels={aso:'ASO',int:'Integração',exam:'Exame médico'};
-
-      if(diff<=7&&diff>=0){
-
-        cont.innerHTML+=`<div class="alerta danger">⚠ <strong>${labels[tipo]} de ${p.nome}</strong> vence em ${diff} dia${diff!==1?'s':''}! Providenciar urgente.</div>`;
-
-      } else if(diff<=30&&diff>=0){
-
-        cont.innerHTML+=`<div class="alerta warn">⚠ <strong>${labels[tipo]} de ${p.nome}</strong> vence em ${diff} dias.</div>`;
-
-      }
-
-    });
-
-  });
-
-  dados.followups.forEach(f=>{
-
-    const env=new Date(f.data);
-
-    const diff=Math.ceil((hoje-env)/(1000*60*60*24));
-
-    if(diff>=10){
-
-      cont.innerHTML+=`<div class="alerta warn">📞 Follow-up ${f.num} — ${f.cliente} enviada há ${diff} dias sem resposta.</div>`;
-
-    }
-
-  });
 
   // Alertas críticos do Motor de Decisão
   var r=getOrRunDecisionEngine();
@@ -2119,49 +2139,41 @@ function renderSemana(){
 
 
 
-// ===== CICLOS =====
+// ===== CICLOS — auto-pull de Visão Executiva (window.props) =====
 
 function renderCiclos(){
 
-  const list=document.getElementById('ciclos-list');
+  var list=document.getElementById('ciclos-list');
 
   if(!list)return;
 
-  if(!dados.ciclos.length){list.innerHTML='<div class="empty">Nenhuma proposta em andamento</div>';return;}
+  var ps=(window.props||[]).filter(function(p){return p.fas==='andamento';});
+
+  if(!ps.length){list.innerHTML='<div class="empty">Nenhuma proposta em andamento — dados da Visão Executiva</div>';return;}
 
   list.innerHTML='';
 
-  const fases=['','Visita técnica','Organizar campo','Levantar materiais','Escopo e cronograma','Aguardando cotações','Valores e margens','Revisão final','Envio da proposta'];
+  ps.forEach(function(p){
 
-  dados.ciclos.forEach((c,i)=>{
-
-    const pct=Math.round((c.dia/8)*100);
-
-    const div=document.createElement('div');
+    var div=document.createElement('div');
 
     div.className='ciclo-item';
 
-    div.innerHTML=`<div class="ciclo-num">${c.num}</div>
+    div.innerHTML='<div class="ciclo-num">'+esc(p.num||'')+'</div>'
 
-    <div class="ciclo-body">
+      +'<div class="ciclo-body">'
 
-      <div class="ciclo-cliente">${c.cliente}</div>
+      +'<div class="ciclo-cliente">'+esc(p.cli||p.loc||'')+'</div>'
 
-      <div class="ciclo-fase">${fases[c.dia]||'Dia '+c.dia}</div>
+      +'<div class="ciclo-fase">'+esc(p.tit||'')+'</div>'
 
-      <div class="ciclo-progress"><div class="ciclo-bar" style="width:${pct}%"></div></div>
+      +'</div>'
 
-    </div>
+      +'<div style="text-align:right">'
 
-    <div style="text-align:right">
+      +(p.val?'<div style="font-size:.68rem;color:var(--green)">R$ '+Number(p.val).toLocaleString('pt-BR')+'</div>':'')
 
-      <div class="ciclo-dia">Dia ${c.dia}/8</div>
-
-      ${c.valor?`<div style="font-size:.68rem;color:var(--green)">R$ ${Number(c.valor).toLocaleString('pt-BR')}</div>`:''}
-
-    </div>
-
-    <button class="task-del" onclick="delCiclo(${i})">✕</button>`;
+      +'</div>';
 
     list.appendChild(div);
 
@@ -2169,87 +2181,51 @@ function renderCiclos(){
 
 }
 
-function salvarCiclo(){
-
-  const num=document.getElementById('mc-num').value.trim();
-
-  const cliente=document.getElementById('mc-cliente').value.trim();
-
-  if(!num||!cliente)return;
-
-  dados.ciclos.push({num,cliente,dia:parseInt(document.getElementById('mc-fase').value),valor:document.getElementById('mc-valor').value});
-
-  save();renderCiclos();fecharModal('m-ciclo');toast('Proposta adicionada ao ciclo');
-
-}
-
-function delCiclo(i){dados.ciclos.splice(i,1);save();renderCiclos();}
 
 
-
-// ===== FOLLOWUPS =====
+// ===== FOLLOWUPS — auto-pull do Motor de Decisão =====
 
 function renderFollowups(){
 
-  const list=document.getElementById('followups-list');
+  var list=document.getElementById('followups-list');
 
   if(!list)return;
 
-  if(!dados.followups.length){list.innerHTML='<div class="empty">Nenhum follow-up pendente</div>';return;}
+  var r=getOrRunDecisionEngine();
+
+  var items=r&&r.decisions&&r.decisions.length?r.decisions.slice(0,5):[];
+
+  if(!items.length){list.innerHTML='<div class="empty">Nenhum follow-up pendente — dados do Motor de Decisão</div>';return;}
 
   list.innerHTML='';
 
-  const hoje=new Date();
+  var corPri={Alta:'var(--red)',Média:'var(--accent)',Baixa:'var(--text3)'};
 
-  dados.followups.forEach((f,i)=>{
+  items.forEach(function(d){
 
-    const env=new Date(f.data);
+    var cor=corPri[d.prioridade_label]||'var(--text3)';
 
-    const diff=Math.ceil((hoje-env)/(1000*60*60*24));
-
-    const cls=diff>=10?'danger':diff>=5?'warn':'ok';
-
-    const div=document.createElement('div');
+    var div=document.createElement('div');
 
     div.className='fu-item';
 
-    div.innerHTML=`<div class="fu-dias ${cls}">${diff}d</div>
+    div.style.cssText='display:flex;align-items:flex-start;gap:.5rem;padding:.45rem .5rem;border-bottom:1px solid var(--border)';
 
-    <div class="fu-body">
+    div.innerHTML='<span style="font-size:.62rem;font-weight:800;color:'+cor+';min-width:34px;text-align:center;border:1px solid '+cor+';border-radius:3px;padding:.05rem .25rem">'+esc(d.prioridade_label||'')+'</span>'
 
-      <div class="fu-prop">${f.num} — ${f.cliente}</div>
+      +'<div style="flex:1;min-width:0">'
 
-      <div class="fu-cliente">${f.servico}${f.valor?` · R$ ${Number(f.valor).toLocaleString('pt-BR')}`:''}</div>
+      +'<div style="font-size:.75rem;font-weight:600;color:var(--text);line-height:1.3">'+esc(d.titulo?(d.titulo.replace(/^[^\s]+\s/,'')):''  )+'</div>'
 
-    </div>
+      +(d.descricao?'<div style="font-size:.67rem;color:var(--text3);margin-top:.04rem">'+esc(d.descricao)+'</div>':'')
 
-    <span class="bdg ${cls==='danger'?'b-danger':cls==='warn'?'b-warn':'b-ok'}">${cls==='danger'?'Atrasado':cls==='warn'?'Atenção':'OK'}</span>
-
-    <button class="task-del" onclick="delFollowup(${i})">✕</button>`;
+      +'</div>';
 
     list.appendChild(div);
 
   });
 
 }
-
-function salvarFollowup(){
-
-  const num=document.getElementById('mf-num').value.trim();
-
-  const cliente=document.getElementById('mf-cliente').value.trim();
-
-  const data=document.getElementById('mf-data').value;
-
-  if(!num||!cliente||!data)return;
-
-  dados.followups.push({num,cliente,data,servico:document.getElementById('mf-servico').value,valor:document.getElementById('mf-valor').value});
-
-  save();renderFollowups();renderAlertas();fecharModal('m-followup');toast('Follow-up adicionado');
-
-}
-
-function delFollowup(i){dados.followups.splice(i,1);save();renderFollowups();}
 
 
 
@@ -2347,7 +2323,7 @@ function renderKPIs(){
   var r=getOrRunDecisionEngine();
   var autoKpi=r&&r._data?r._data.kpis:null;
 
-  const k=dados.kpi;
+  const k=dadosGeral.kpi;
 
   var env=k.env||0;
   var apr=autoKpi?(autoKpi.fechMes||k.apr||0):(k.apr||0);
@@ -2394,37 +2370,37 @@ function renderKPIs(){
 
 function salvarDados(){
 
-  dados.kpi.env=parseInt(document.getElementById('mk-env').value)||0;
+  dadosGeral.kpi.env=parseInt(document.getElementById('mk-env').value)||0;
 
-  dados.kpi.apr=parseInt(document.getElementById('mk-apr').value)||0;
+  dadosGeral.kpi.apr=parseInt(document.getElementById('mk-apr').value)||0;
 
-  dados.kpi.val=parseFloat(document.getElementById('mk-val').value)||0;
+  dadosGeral.kpi.val=parseFloat(document.getElementById('mk-val').value)||0;
 
-  dados.kpi.acum=parseFloat(document.getElementById('mk-acum').value)||0;
+  dadosGeral.kpi.acum=parseFloat(document.getElementById('mk-acum').value)||0;
 
-  dados.kpi.dep=parseFloat(document.getElementById('mk-dep').value)||0;
+  dadosGeral.kpi.dep=parseFloat(document.getElementById('mk-dep').value)||0;
 
-  dados.trim.fat=parseFloat(document.getElementById('mtr-fat').value)||0;
+  dadosGeral.trim.fat=parseFloat(document.getElementById('mtr-fat').value)||0;
 
-  dados.trim.dep=dados.kpi.dep;
+  dadosGeral.trim.dep=dadosGeral.kpi.dep;
 
-  save();renderKPIs();renderTrim();fecharModal('m-atualizar');toast('Dados atualizados');
+  saveGeral();renderKPIs();renderTrim();fecharModal('m-atualizar');toast('Dados atualizados');
 
 }
 
 function abrirModalAtualizar(){
 
-  document.getElementById('mk-env').value=dados.kpi.env||'';
+  document.getElementById('mk-env').value=dadosGeral.kpi.env||'';
 
-  document.getElementById('mk-apr').value=dados.kpi.apr||'';
+  document.getElementById('mk-apr').value=dadosGeral.kpi.apr||'';
 
-  document.getElementById('mk-val').value=dados.kpi.val||'';
+  document.getElementById('mk-val').value=dadosGeral.kpi.val||'';
 
-  document.getElementById('mk-acum').value=dados.kpi.acum||'';
+  document.getElementById('mk-acum').value=dadosGeral.kpi.acum||'';
 
-  document.getElementById('mk-dep').value=dados.kpi.dep||'';
+  document.getElementById('mk-dep').value=dadosGeral.kpi.dep||'';
 
-  document.getElementById('mtr-fat').value=dados.trim.fat||dados.kpi.acum||'';
+  document.getElementById('mtr-fat').value=dadosGeral.trim.fat||dadosGeral.kpi.acum||'';
 
   abrirModal('m-atualizar');
 
@@ -2436,53 +2412,72 @@ function abrirModalKPI(){abrirModalAtualizar();}
 
 
 
-// ===== FUNIL =====
+// ===== RELACIONAMENTO DO MÊS — auto-pull do módulo Relacionamento =====
 
-function renderFunil(){
+function renderRelacionamentoMes(){
 
-  const list=document.getElementById('funil-list');
+  var list=document.getElementById('funil-list');
 
   if(!list)return;
 
-  if(!dados.funil.length){list.innerHTML='<div class="empty">Nenhuma proposta no funil</div>';return;}
+  var todos=(typeof window.getHistoricoData==='function')?window.getHistoricoData():[];
+
+  var hoje=new Date();
+
+  var mesAtual=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+
+  var doMes=todos.filter(function(h){
+
+    var d=(h.data||h.created_at||h.dataRegistro||'').substring(0,7);
+
+    return d===mesAtual;
+
+  });
+
+  if(!doMes.length){list.innerHTML='<div class="empty">Nenhum relacionamento registrado este mês</div>';return;}
 
   list.innerHTML='';
 
-  const hoje=new Date();
+  var statusCls={resolvido:'b-ok',pendente:'b-warn','em andamento':'b-info'};
 
-  const statusCls={enviada:'b-info',negociando:'b-warn',aguardando:'b-warn',aprovada:'b-ok',perdida:'b-danger'};
+  var statusNome={resolvido:'Resolvido',pendente:'Pendente','em andamento':'Em andamento'};
 
-  const statusNome={enviada:'Enviada',negociando:'Negociando',aguardando:'Aguardando',aprovada:'Aprovada',perdida:'Perdida'};
+  // Resumo no topo
+  var total=doMes.length;
 
-  dados.funil.forEach((f,i)=>{
+  var resolvidos=doMes.filter(function(h){return (h.status||'').toLowerCase()==='resolvido';}).length;
 
-    const env=new Date(f.data+'T12:00:00');
+  var pendentes=total-resolvidos;
 
-    const diff=Math.ceil((hoje-env)/(1000*60*60*24));
+  var resumoDiv=document.createElement('div');
 
-    const div=document.createElement('div');
+  resumoDiv.style.cssText='display:flex;gap:.5rem;padding:.35rem .5rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.25rem';
+
+  resumoDiv.innerHTML='<span class="bdg b-ok">'+resolvidos+' resolvidos</span>'
+
+    +'<span class="bdg b-warn">'+pendentes+' pendentes</span>'
+
+    +'<span style="font-size:.67rem;color:var(--text3);margin-left:auto;align-self:center">'+total+' no mês</span>';
+
+  list.appendChild(resumoDiv);
+
+  doMes.slice(0,10).forEach(function(h){
+
+    var div=document.createElement('div');
 
     div.className='funil-item';
 
-    div.innerHTML=`<div class="funil-num">${f.num}</div>
+    var st=(h.status||'pendente').toLowerCase();
 
-    <div class="funil-body">
+    div.innerHTML='<div class="funil-body">'
 
-      <div class="funil-cliente">${f.cliente}</div>
+      +'<div class="funil-cliente">'+esc(h.cliente||h.titulo||h.assunto||'')+'</div>'
 
-      <div class="funil-desc">${f.servico}${f.valor?` · R$ ${Number(f.valor).toLocaleString('pt-BR')}`:''}</div>
+      +'<div class="funil-desc">'+esc(h.descricao||h.assunto||'')+'</div>'
 
-    </div>
+      +'</div>'
 
-    <div style="text-align:right;flex-shrink:0">
-
-      <span class="bdg ${statusCls[f.status]||'b-muted'}">${statusNome[f.status]||f.status}</span>
-
-      <div class="funil-dias" style="margin-top:.2rem;color:${diff>30?'var(--red)':diff>14?'var(--accent)':'var(--text3)'}">${diff}d</div>
-
-    </div>
-
-    <button class="task-del" onclick="delFunil(${i})">✕</button>`;
+      +'<span class="bdg '+(statusCls[st]||'b-muted')+'">'+( statusNome[st]||st)+'</span>';
 
     list.appendChild(div);
 
@@ -2490,105 +2485,35 @@ function renderFunil(){
 
 }
 
-function salvarFunil(){
-
-  const num=document.getElementById('mfun-num').value.trim();
-
-  const cliente=document.getElementById('mfun-cliente').value.trim();
-
-  const data=document.getElementById('mfun-data').value;
-
-  if(!num||!cliente||!data)return;
-
-  dados.funil.push({num,cliente,data,servico:document.getElementById('mfun-servico').value,valor:document.getElementById('mfun-valor').value,status:document.getElementById('mfun-status').value});
-
-  save();renderFunil();fecharModal('m-funil');toast('Proposta adicionada ao funil');
-
-}
-
-function delFunil(i){dados.funil.splice(i,1);save();renderFunil();}
+function renderFunil(){renderRelacionamentoMes();}
 
 
 
-// ===== EQUIPE =====
+// ===== CRESCIMENTO (Geral) =====
 
-function renderEquipe(){
+function saveCrescimento(){dadosGeral.crescimento=document.getElementById('crescimento-mes').value;saveGeral();}
 
-  const list=document.getElementById('conf-list');
+function saveProxPasso(){dadosGeral.proxPasso=document.getElementById('prox-passo').value;saveGeral();}
 
-  if(!list)return;
 
-  if(!dados.equipe.length){list.innerHTML='<div class="empty">Nenhum membro cadastrado</div>';return;}
 
-  list.innerHTML='';
+// ===== REUNIÃO DE SEGUNDA (Geral) =====
 
-  const hoje=new Date();
+function renderReuniaoSegunda(){
 
-  dados.equipe.forEach((p,i)=>{
+  var el=document.getElementById('reuniao-segunda-pauta');
 
-    const initials=p.nome.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
-
-    const badges=[];
-
-    ['aso','int','exam'].forEach(tipo=>{
-
-      if(!p[tipo])return;
-
-      const venc=new Date(p[tipo]);
-
-      const diff=Math.ceil((venc-hoje)/(1000*60*60*24));
-
-      const labels={aso:'ASO',int:'Integr.',exam:'Exame'};
-
-      const mes=venc.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
-
-      const cls=diff<0?'b-danger':diff<=30?'b-warn':'b-ok';
-
-      badges.push(`<span class="bdg ${cls}">${labels[tipo]} ${mes}</span>`);
-
-    });
-
-    const div=document.createElement('div');
-
-    div.className='conf-item';
-
-    div.innerHTML=`<div class="conf-ava">${initials}</div>
-
-    <div class="conf-name">${p.nome}<div style="font-size:.65rem;color:var(--text3)">${p.func||''}</div></div>
-
-    <div class="conf-badges">${badges.join('')}</div>
-
-    <button class="task-del" onclick="delEquipe(${i})">✕</button>`;
-
-    list.appendChild(div);
-
-  });
+  if(el)el.value=dadosGeral.reuniaoSegunda||'';
 
 }
 
-function salvarEquipe(){
+function saveReuniaoSegunda(){
 
-  const nome=document.getElementById('me-nome').value.trim();
+  var el=document.getElementById('reuniao-segunda-pauta');
 
-  if(!nome)return;
-
-  dados.equipe.push({nome,func:document.getElementById('me-func').value,aso:document.getElementById('me-aso').value,int:document.getElementById('me-int').value,exam:document.getElementById('me-exam').value});
-
-  save();renderEquipe();renderAlertas();fecharModal('m-equipe');toast('Membro adicionado');
-
-  ['me-nome','me-func','me-aso','me-int','me-exam'].forEach(id=>{document.getElementById(id).value='';});
+  if(el){dadosGeral.reuniaoSegunda=el.value;saveGeral();}
 
 }
-
-function delEquipe(i){dados.equipe.splice(i,1);save();renderEquipe();}
-
-
-
-// ===== CRESCIMENTO =====
-
-function saveCrescimento(){dados.crescimento=document.getElementById('crescimento-mes').value;save();}
-
-function saveProxPasso(){dados.proxPasso=document.getElementById('prox-passo').value;save();}
 
 
 
@@ -2596,11 +2521,11 @@ function saveProxPasso(){dados.proxPasso=document.getElementById('prox-passo').v
 
 function renderTrim(){
 
-  const t=dados.trim;
+  const t=dadosGeral.trim;
 
-  const dep=t.dep||90;
+  const dep=t.dep||dadosGeral.kpi.dep||90;
 
-  // Usa receita real do Motor de Decisão se disponível; senão cai em dados.trim.fat
+  // Usa receita real do Motor de Decisão se disponível; senão cai em dadosGeral.trim.fat
   var r=getOrRunDecisionEngine();
   var fatReal=(r&&r._data&&r._data.kpis&&r._data.kpis.recAno>0)?r._data.kpis.recAno:(t.fat||0);
   var metaBase=t.meta||4800000;
@@ -2692,7 +2617,7 @@ function renderCheckContr(){
 
   items.forEach((el,i)=>{
 
-    const done=dados.checkContr&&dados.checkContr[i];
+    const done=dadosGeral.checkContr&&dadosGeral.checkContr[i];
 
     el.classList.toggle('done',!!done);
 
@@ -2712,11 +2637,11 @@ function toggleCheckContr(el){
 
   const i=items.indexOf(el);
 
-  if(!dados.checkContr)dados.checkContr=[];
+  if(!dadosGeral.checkContr)dadosGeral.checkContr=[];
 
-  dados.checkContr[i]=!dados.checkContr[i];
+  dadosGeral.checkContr[i]=!dadosGeral.checkContr[i];
 
-  save();renderCheckContr();
+  saveGeral();renderCheckContr();
 
 }
 
@@ -2726,11 +2651,11 @@ function toggleCheckContr(el){
 
 function saveRevTrim(tipo){
 
-  if(tipo==='velocidade')dados.revVelocidade=document.getElementById('rev-velocidade').value;
+  if(tipo==='velocidade')dadosGeral.revVelocidade=document.getElementById('rev-velocidade').value;
 
-  else dados.revMudanca=document.getElementById('rev-mudanca').value;
+  else dadosGeral.revMudanca=document.getElementById('rev-mudanca').value;
 
-  save();
+  saveGeral();
 
 }
 
@@ -3457,6 +3382,7 @@ init();
 (async function(){
   await _initGestaoChave();
   if(typeof loadNuvem==="function") loadNuvem();
+  if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })();
 
 renderFrases();
