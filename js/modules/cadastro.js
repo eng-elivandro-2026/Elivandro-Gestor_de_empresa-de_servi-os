@@ -236,6 +236,38 @@
   window.cliGetAll      = cliLoad;
   window.ctsSeedFromData = seedFromData;
 
+  // ── Wiring do formulário de Propostas ─────────────────────
+  // Conecta acSetup nos campos pCli, pLoc, pAC, pAC2
+  function wirePropForm() {
+    var g = function(id) { return document.getElementById(id); };
+
+    // Card Cliente
+    if (g('pCli')) acSetup(g('pCli'), 'cliente', function(c) {
+      if (c.cnpj   && g('pCnpj')   && !g('pCnpj').value)   g('pCnpj').value   = c.cnpj;
+      if (c.cidade && g('pCid')    && !g('pCid').value)     g('pCid').value    = c.cidade;
+    });
+
+    // Card Local de Serviço
+    if (g('pLoc')) acSetup(g('pLoc'), 'cliente', function(c) {
+      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
+    });
+
+    // Contato 1
+    if (g('pAC')) acSetup(g('pAC'), 'contato', function(c) {
+      if (c.email    && g('pMail') && !g('pMail').value) g('pMail').value = c.email;
+      if (c.telefone && g('pTel')  && !g('pTel').value)  g('pTel').value  = c.telefone;
+    });
+
+    // Contato 2
+    if (g('pAC2')) acSetup(g('pAC2'), 'contato', function(c) {
+      if (c.email    && g('pMail2') && !g('pMail2').value) g('pMail2').value = c.email;
+      if (c.telefone && g('pTel2')  && !g('pTel2').value)  g('pTel2').value  = c.telefone;
+    });
+  }
+
+  // Exposta para ser chamada após reset do formulário se necessário
+  window.wirePropFormAc = wirePropForm;
+
   // ── Init ──────────────────────────────────────────────────
   function init() {
     seedFromData();
@@ -256,6 +288,8 @@
       });
       try { localStorage.setItem(KEY_CLI, JSON.stringify(merged)); } catch(e) {}
     });
+    // Wire formulário de propostas (campos sempre no DOM)
+    setTimeout(wirePropForm, 600);
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
 
