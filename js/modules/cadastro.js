@@ -409,28 +409,17 @@
   window.ctsSeedFromData = seedFromData;
 
   // ── Wiring do formulário de Propostas ─────────────────────
-  // Conecta acSetup nos campos pCli, pLoc, pAC, pAC2
+  // pCli e pAC são gerenciados pelo sistema original em app-core.js (bindAutoInput/initClientAutoComplete)
+  // Aqui conectamos apenas pLoc e pAC2, que não estão no sistema original
   function wirePropForm() {
     var g = function(id) { return document.getElementById(id); };
 
-    // Card Cliente
-    if (g('pCli')) acSetup(g('pCli'), 'cliente', function(c) {
-      if (c.cnpj   && g('pCnpj')   && !g('pCnpj').value)   g('pCnpj').value   = c.cnpj;
-      if (c.cidade && g('pCid')    && !g('pCid').value)     g('pCid').value    = c.cidade;
-    });
-
-    // Card Local de Serviço
+    // Card Local de Serviço (não coberto pelo app-core.js)
     if (g('pLoc')) acSetup(g('pLoc'), 'cliente', function(c) {
       if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
     });
 
-    // Contato 1
-    if (g('pAC')) acSetup(g('pAC'), 'contato', function(c) {
-      if (c.email    && g('pMail') && !g('pMail').value) g('pMail').value = c.email;
-      if (c.telefone && g('pTel')  && !g('pTel').value)  g('pTel').value  = c.telefone;
-    });
-
-    // Contato 2
+    // Contato 2 (não coberto pelo app-core.js)
     if (g('pAC2')) acSetup(g('pAC2'), 'contato', function(c) {
       if (c.email    && g('pMail2') && !g('pMail2').value) g('pMail2').value = c.email;
       if (c.telefone && g('pTel2')  && !g('pTel2').value)  g('pTel2').value  = c.telefone;

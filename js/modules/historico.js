@@ -101,8 +101,20 @@
     var elCli = document.getElementById('hCliente');
     var elCts = document.getElementById('hContato');
     if (typeof acSetup === 'function') {
-      acSetup(elCli, 'cliente');
-      acSetup(elCts, 'contato');
+      acSetup(elCli, 'cliente', function(c) {
+        // Auto-sugere o primeiro contato cadastrado para este cliente
+        if (!elCts || elCts.value) return;
+        var cts = typeof ctsGetAll === 'function' ? ctsGetAll() : [];
+        var match = cts.find(function(ct) {
+          return ct.empresa && ct.empresa.toLowerCase().indexOf((c.nome || '').toLowerCase()) >= 0;
+        });
+        if (match) elCts.value = match.nome;
+      });
+      acSetup(elCts, 'contato', function(c) {
+        // Auto-preenche hCliente se estiver vazio e o contato tiver empresa
+        if (!elCli || elCli.value || !c.empresa) return;
+        elCli.value = c.empresa;
+      });
     }
   }
 
