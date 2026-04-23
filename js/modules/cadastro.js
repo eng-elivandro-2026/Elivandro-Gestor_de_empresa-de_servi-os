@@ -70,8 +70,12 @@
       cliChanged = true;
     }
 
-    // De propostas
-    (window.props || []).forEach(function(p) {
+    // De propostas — lê localStorage.tf_props diretamente (sempre atualizado pelo Supabase)
+    var allProps = [];
+    try { allProps = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+    if (!allProps.length) allProps = window.props || [];
+
+    allProps.forEach(function(p) {
       var cli = (p.loc || p.cli || '').trim();
       if (cli) addCli(cli, p.locCnpj || p.cnpj || '');
       if (p.ac)  addCts(p.ac,  cli);
@@ -290,6 +294,11 @@
     });
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
+
+    // Re-seed após 2s e 5s para capturar dados carregados do Supabase
+    setTimeout(seedFromData, 2000);
+    setTimeout(seedFromData, 5000);
+
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
 

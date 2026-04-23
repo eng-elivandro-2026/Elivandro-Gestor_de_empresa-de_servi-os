@@ -114,6 +114,7 @@
         if(_mc>0) LS('tf_props',props);
       }
       console.log('%c' + props.length + ' proposta(s) carregada(s) da nuvem' + (empId ? ' [empresa filtrada]' : ''), 'color:#58a6ff;font-weight:700');
+      window.dispatchEvent(new CustomEvent('propostas:loaded', { detail: { props: props } }));
     }
     return props;
   };
