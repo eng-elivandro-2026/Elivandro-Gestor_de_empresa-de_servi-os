@@ -697,17 +697,17 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="ab-actions">
       <button class="btn bs ab-save" onclick="saveP()">💾 Salvar</button>
       <button class="btn bg bsm" onclick="fecharProposta()" title="Salvar e voltar ao Dashboard">🏠 Fechar</button>
+      <button class="btn bd bsm" id="ab-log" onclick="abrirLog()" title="Histórico Comercial">📋 Log</button>
       <button class="btn bd bsm" onclick="cancelEdit()">✕</button>
     </div>
   </div>
-  <!-- Linha 2: etapas de navegação -->
+  <!-- Linha 2: etapas de navegação (ocultas — duplicam as abas do wizard) -->
   <div class="ab-steps">
     <button class="ab-step" id="ab-s1" onclick="step(1)"><span class="ab-sn">1</span><span class="ab-sl">Dados</span></button>
     <button class="ab-step" id="ab-s2" onclick="step(2)"><span class="ab-sn">2</span><span class="ab-sl">Orçamento</span></button>
     <button class="ab-step" id="ab-s3" onclick="step(3)"><span class="ab-sn">3</span><span class="ab-sl">Escopo</span></button>
     <button class="ab-step" id="ab-s4" onclick="step(4)"><span class="ab-sn">4</span><span class="ab-sl">Valores</span></button>
     <button class="ab-step" id="ab-s5" onclick="step(5);genPrev()"><span class="ab-sn">5</span><span class="ab-sl">Preview</span></button>
-    <button class="ab-step" id="ab-log" onclick="abrirLog()"><span class="ab-sn">📋</span><span class="ab-sl">Log</span></button>
   </div>
 </div>
 
