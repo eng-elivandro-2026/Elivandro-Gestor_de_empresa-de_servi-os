@@ -261,8 +261,10 @@ var PHASE_ORDER=[
   'perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido'
 ];
 // Fases consideradas "fechadas" (proposta convertida em negócio)
+// em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
 // atrasado = aprovada mas com atraso na execução → ainda é um fechamento
-var FAS_FECHADO=['aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado'];
+var FAS_FECHADO=['aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
 
 var SEQ=[  {k:'ESCOPO_FORNECIMENTO',t:'ESCOPO DE FORNECIMENTO'},
   {k:'OBJETIVO',t:'OBJETIVO DO SERVIÇO'},
