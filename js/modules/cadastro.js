@@ -235,6 +235,174 @@
     if (typeof toast === 'function') toast('✅ Cliente cadastrado: ' + nome, 'ok');
   };
 
+  // ── Alternar seções no módulo Relacionamento ─────────────
+  window.hShowSec = function(sec) {
+    var secs = ['hSecRegistros', 'hSecClientes', 'hSecContatos'];
+    secs.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = (id === 'hSec' + sec.charAt(0).toUpperCase() + sec.slice(1)) ? '' : 'none';
+    });
+    if (sec === 'clientes') renderTabelaClientes();
+    if (sec === 'contatos') renderTabelaContatos();
+  };
+
+  // ── Editar cliente (reaproveita modal, modo edição) ───────
+  window.editarCliente = function(id) {
+    var list = cliLoad();
+    var item = list.find(function(x) { return x.id === id; });
+    if (!item) return;
+    window._cadEditCliId = id;
+    var g = function(i) { return document.getElementById(i); };
+    g('ncliNome').value   = item.nome   || '';
+    g('ncliCnpj').value   = item.cnpj   || '';
+    g('ncliCidade').value = item.cidade || '';
+    if (typeof abrirModal === 'function') abrirModal('m-novo-cliente');
+  };
+
+  window.excluirCliente = function(id) {
+    if (!confirm('Excluir este cliente?')) return;
+    var list = cliLoad().filter(function(x) { return x.id !== id; });
+    cliSave(list);
+    renderTabelaClientes();
+    if (typeof toast === 'function') toast('Cliente excluído', 'ok');
+  };
+
+  // Sobrescreve salvarNovoCliente para suportar edição
+  var _origSalvarCli = window.salvarNovoCliente;
+  window.salvarNovoCliente = function() {
+    var g   = function(i) { return (document.getElementById(i) || {}).value || ''; };
+    var nome = g('ncliNome').trim();
+    if (!nome) { alert('Informe o nome do cliente.'); return; }
+
+    if (window._cadEditCliId) {
+      // Modo edição
+      var list = cliLoad().map(function(x) {
+        return x.id === window._cadEditCliId
+          ? Object.assign({}, x, { nome: nome, cnpj: g('ncliCnpj').trim(), cidade: g('ncliCidade').trim() })
+          : x;
+      });
+      cliSave(list);
+      window._cadEditCliId = null;
+      if (typeof fecharModal === 'function') fecharModal('m-novo-cliente');
+      renderTabelaClientes();
+      if (typeof toast === 'function') toast('✅ Cliente atualizado', 'ok');
+    } else {
+      _origSalvarCli();
+      renderTabelaClientes();
+    }
+  };
+
+  // ── Editar contato (reaproveita modal, modo edição) ───────
+  window.editarContato = function(id) {
+    var list = ctsLoad();
+    var item = list.find(function(x) { return x.id === id; });
+    if (!item) return;
+    window._cadEditCtsId = id;
+    var g = function(i) { return document.getElementById(i); };
+    g('ncNome').value     = item.nome     || '';
+    g('ncEmpresa').value  = item.empresa  || '';
+    g('ncEmail').value    = item.email    || '';
+    g('ncTelefone').value = item.telefone || '';
+    if (typeof abrirModal === 'function') abrirModal('m-novo-contato');
+  };
+
+  window.excluirContato = function(id) {
+    if (!confirm('Excluir este contato?')) return;
+    var list = ctsLoad().filter(function(x) { return x.id !== id; });
+    ctsSave(list);
+    renderTabelaContatos();
+    if (typeof toast === 'function') toast('Contato excluído', 'ok');
+  };
+
+  // Sobrescreve salvarNovoContato para suportar edição
+  var _origSalvarCts = window.salvarNovoContato;
+  window.salvarNovoContato = function() {
+    var g = function(i) { return (document.getElementById(i) || {}).value || ''; };
+    var nome = g('ncNome').trim();
+    if (!nome) { alert('Informe o nome do contato.'); return; }
+
+    if (window._cadEditCtsId) {
+      var list = ctsLoad().map(function(x) {
+        return x.id === window._cadEditCtsId
+          ? Object.assign({}, x, { nome: nome, empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim() })
+          : x;
+      });
+      ctsSave(list);
+      window._cadEditCtsId = null;
+      if (typeof fecharModal === 'function') fecharModal('m-novo-contato');
+      renderTabelaContatos();
+      if (typeof toast === 'function') toast('✅ Contato atualizado', 'ok');
+    } else {
+      _origSalvarCts();
+      renderTabelaContatos();
+    }
+  };
+
+  // ── Render tabela de Clientes ─────────────────────────────
+  function renderTabelaClientes() {
+    var el = document.getElementById('tabelaClientes');
+    if (!el) return;
+    var list = cliLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    if (!list.length) {
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum cliente cadastrado ainda.</div>';
+      return;
+    }
+    function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+      + '<thead><tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Nome / Razão Social</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">CNPJ</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Cidade</th>'
+      + '<th style="padding:.4rem .6rem;width:80px"></th>'
+      + '</tr></thead><tbody>'
+      + list.map(function(x) {
+          return '<tr style="border-bottom:1px solid var(--border)">'
+            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cnpj) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cidade) + '</td>'
+            + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
+            + '<button class="nb" onclick="editarCliente(\'' + x.id + '\')" style="font-size:.72rem;color:var(--blue)">✏️</button>'
+            + '<button class="nb" onclick="excluirCliente(\'' + x.id + '\')" style="font-size:.72rem;color:var(--text3)">🗑️</button>'
+            + '</td></tr>';
+        }).join('')
+      + '</tbody></table>';
+  }
+
+  // ── Render tabela de Contatos ─────────────────────────────
+  function renderTabelaContatos() {
+    var el = document.getElementById('tabelaContatos');
+    if (!el) return;
+    var list = ctsLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    if (!list.length) {
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum contato cadastrado ainda.</div>';
+      return;
+    }
+    function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+      + '<thead><tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Nome</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Empresa</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">E-mail</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Telefone</th>'
+      + '<th style="padding:.4rem .6rem;width:80px"></th>'
+      + '</tr></thead><tbody>'
+      + list.map(function(x) {
+          return '<tr style="border-bottom:1px solid var(--border)">'
+            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.email) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.telefone) + '</td>'
+            + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
+            + '<button class="nb" onclick="editarContato(\'' + x.id + '\')" style="font-size:.72rem;color:var(--blue)">✏️</button>'
+            + '<button class="nb" onclick="excluirContato(\'' + x.id + '\')" style="font-size:.72rem;color:var(--text3)">🗑️</button>'
+            + '</td></tr>';
+        }).join('')
+      + '</tbody></table>';
+  }
+
+  window.renderTabelaClientes = renderTabelaClientes;
+  window.renderTabelaContatos = renderTabelaContatos;
+
   // ── API pública ───────────────────────────────────────────
   window.ctsGetAll      = ctsLoad;
   window.cliGetAll      = cliLoad;

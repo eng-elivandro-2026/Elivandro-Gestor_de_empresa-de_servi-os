@@ -108,6 +108,7 @@
 
   window.rHistorico = function () {
     _filtroRapido = '';
+    if (typeof hShowSec === 'function') hShowSec('registros');
     _atualizarContador();
     _popularPropostas(null);
     _popularDatalists();
