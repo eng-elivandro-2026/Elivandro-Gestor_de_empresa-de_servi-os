@@ -113,11 +113,56 @@
         var _mc=migrarTodasPropostas(props);
         if(_mc>0) LS('tf_props',props);
       }
+
+      // ── Backfill dtFech para propostas fechadas sem data de fechamento ──
+      // Garante que receita é contada no ano do FECHAMENTO, não da criação.
+      // Propostas atualizadas são enviadas de volta ao Supabase em background,
+      // cobrindo todos os usuários e todas as empresas.
+      var _FAS_FECH = ['aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado'];
+      var _hj = new Date().toISOString().slice(0,10);
+      var _dirty = [];
+      props.forEach(function(p) {
+        if (_FAS_FECH.indexOf(p.fas) < 0) return;
+        if (p.dtFech) return;
+        if (!p.dat2 && p.dat) {
+          var _ps = String(p.dat).split('/');
+          if (_ps.length === 3 && _ps[2].length === 4)
+            p.dat2 = _ps[2] + '-' + _ps[1] + '-' + _ps[0];
+        }
+        p.dtFech = p.dat2 || _hj;
+        _dirty.push(p);
+      });
+      if (_dirty.length) {
+        LS('tf_props', props);
+        // Push de volta ao Supabase em background (não bloqueia o carregamento)
+        setTimeout(function() {
+          _sbBackfillDtFech(_dirty, empId);
+        }, 800);
+        console.log('[supabase-sync] dtFech backfill local: ' + _dirty.length + ' proposta(s)');
+      }
+
       console.log('%c' + props.length + ' proposta(s) carregada(s) da nuvem' + (empId ? ' [empresa filtrada]' : ''), 'color:#58a6ff;font-weight:700');
       window.dispatchEvent(new CustomEvent('propostas:loaded', { detail: { props: props } }));
     }
     return props;
   };
+
+  // Envia propostas com dtFech recém-preenchido de volta ao Supabase
+  async function _sbBackfillDtFech(dirty, empId) {
+    try {
+      var LOTE = 10;
+      for (var i = 0; i < dirty.length; i += LOTE) {
+        var rows = dirty.slice(i, i + LOTE).map(propToRow).filter(Boolean);
+        if (!rows.length) continue;
+        var r = await window.sbClient.from('propostas')
+          .upsert(rows, { onConflict: 'app_id', ignoreDuplicates: false });
+        if (r.error) console.warn('[supabase-sync] dtFech backfill lote erro:', r.error.message);
+      }
+      console.log('%c[supabase-sync] dtFech sincronizado na nuvem — ' + dirty.length + ' proposta(s)', 'color:#22c55e;font-weight:700');
+    } catch(e) {
+      console.warn('[supabase-sync] dtFech backfill falhou:', e.message);
+    }
+  }
 
   // ════════════════════════════════════════════════════════
   // METAS / CONFIGURAÇÕES
