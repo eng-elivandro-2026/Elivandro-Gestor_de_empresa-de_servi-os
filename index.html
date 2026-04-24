@@ -1,4 +1,4 @@
-<!-- v2026.04.24.formula -->
+<!-- v2026.04.24.formula.2 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7268,18 +7268,52 @@ function mOnTipo(){
 function mOnCat(){ mCalcPV(); mAtualizarMargemPanel(); }
 
 // Avalia expressão matemática no campo Custo Unit. (suporte a fórmulas tipo Excel)
+// Parser aritmético próprio — não usa eval/Function (compatível com qualquer CSP)
+function mParseExpr(s){
+  var i=0;
+  function ws(){ while(i<s.length && s[i]===' ') i++; }
+  function primary(){
+    ws();
+    if(i<s.length && s[i]==='('){
+      i++;
+      var v=addSub(); ws();
+      if(i<s.length && s[i]===')') i++;
+      return v;
+    }
+    if(i<s.length && (s[i]==='-'||s[i]==='+')){
+      var sign=s[i]==='-'?-1:1; i++;
+      return sign*primary();
+    }
+    var st=i;
+    while(i<s.length && /[\d\.]/.test(s[i])) i++;
+    if(i===st) throw new Error('num');
+    return parseFloat(s.slice(st));
+  }
+  function mulDiv(){
+    var l=primary();
+    while(i<s.length){ ws(); var op=s[i];
+      if(op!=='*'&&op!=='/') break; i++;
+      var r=primary();
+      l = op==='*' ? l*r : (r===0?NaN:l/r);
+    }
+    return l;
+  }
+  function addSub(){
+    var l=mulDiv();
+    while(i<s.length){ ws(); var op=s[i];
+      if(op!=='+'&&op!=='-') break; i++;
+      l = op==='+' ? l+mulDiv() : l-mulDiv();
+    }
+    return l;
+  }
+  try{ var r=addSub(); return isNaN(r)||r<0?0:Math.round(r*100)/100; }
+  catch(e){ return 0; }
+}
 function mEvalCU(){
   var raw=(Q('mCU').value||'').trim();
-  // Remove = inicial (estilo Excel)
-  var expr=raw.replace(/^=/,'').replace(/,/g,'.');
-  // Aceita só caracteres matemáticos — sem eval de código arbitrário
+  var expr=raw.replace(/^=/,'').replace(/,/g,'.').trim();
   if(!expr || !/^[\d\s\+\-\*\/\.\(\)]+$/.test(expr)) return 0;
-  try {
-    // eslint-disable-next-line no-new-func
-    var r=Function('return('+expr+')')();
-    var n=parseFloat(r);
-    return (isNaN(n)||n<0)?0:Math.round(n*100)/100;
-  } catch(e){ return 0; }
+  return mParseExpr(expr);
 }
 function mShowCUHint(){
   var hint=Q('mCUHint'); if(!hint) return;
