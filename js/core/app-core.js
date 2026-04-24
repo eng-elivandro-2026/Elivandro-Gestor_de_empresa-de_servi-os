@@ -2966,7 +2966,9 @@ function normalizeBudgetItem(it){
     equip:(it.equip||it.equipamento||'').toString().trim(),
     inst:(it.inst||it.instalacao||'').toString().trim(),
     tipoTrab:(it.tipoTrab||'').toString().trim(),
-    faseTrab:(it.faseTrab||'').toString().trim()
+    faseTrab:(it.faseTrab||'').toString().trim(),
+    cuFormula:(it.cuFormula||'').toString().trim(),
+    cuLog:Array.isArray(it.cuLog)?it.cuLog:[]
   };
   if(!out.desc) out.desc=getCatLabel(out.t,out.cat);
   return out;
