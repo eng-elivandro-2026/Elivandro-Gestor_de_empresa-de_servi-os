@@ -10518,6 +10518,7 @@ function salvarItemModal(){
 
   fecharItemModal();
   updBT(); rBudg(); cTot(); updKpi();
+  try{ if(editId) upsertCurrentDraft(true); }catch(e){}
 }
 
 
