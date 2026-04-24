@@ -7210,7 +7210,7 @@ function abrirItemModal(it){
     Q('mEquip').value = it.equip || '';
     Q('mInst').value  = it.inst  || '';
     Q('mDesc').value  = it.desc  || '';
-    Q('mCU').value    = it.cu    || 0;
+    Q('mCU').value    = it.cuFormula || it.cu || 0;
     if(Q('mTipoTrab')) Q('mTipoTrab').value = it.tipoTrab || '';
     if(Q('mFaseTrab')) Q('mFaseTrab').value = it.faseTrab || '';
     if(tipo !== 'material'){
@@ -7225,7 +7225,7 @@ function abrirItemModal(it){
       Q('mLink').value  = it.link || '';
     }
   } else {
-    Q('mCU').value=0; Q('mTec').value=1; Q('mDias').value=1; Q('mHpd').value=1; Q('mQtd').value=1;
+    Q('mCU').value=''; Q('mTec').value=1; Q('mDias').value=1; Q('mHpd').value=1; Q('mQtd').value=1;
     Q('mEquip').value=''; Q('mInst').value=''; Q('mDesc').value=''; Q('mLink').value='';
     if(Q('mTipoTrab')) Q('mTipoTrab').value='';
     if(Q('mFaseTrab')) Q('mFaseTrab').value='';
@@ -7267,11 +7267,38 @@ function mOnTipo(){
 
 function mOnCat(){ mCalcPV(); mAtualizarMargemPanel(); }
 
+// Avalia expressão matemática no campo Custo Unit. (suporte a fórmulas tipo Excel)
+function mEvalCU(){
+  var raw=(Q('mCU').value||'').trim();
+  // Remove = inicial (estilo Excel)
+  var expr=raw.replace(/^=/,'').replace(/,/g,'.');
+  // Aceita só caracteres matemáticos — sem eval de código arbitrário
+  if(!expr || !/^[\d\s\+\-\*\/\.\(\)]+$/.test(expr)) return 0;
+  try {
+    // eslint-disable-next-line no-new-func
+    var r=Function('return('+expr+')')();
+    var n=parseFloat(r);
+    return (isNaN(n)||n<0)?0:Math.round(n*100)/100;
+  } catch(e){ return 0; }
+}
+function mShowCUHint(){
+  var hint=Q('mCUHint'); if(!hint) return;
+  var raw=(Q('mCU').value||'').trim();
+  // Mostra hint se tiver operador (fórmula)
+  var temOp=/[\+\*\/]/.test(raw)||(/=/.test(raw)&&raw.length>1);
+  if(temOp){
+    var val=mEvalCU();
+    if(val>0){ hint.textContent='= '+money(val); hint.style.display='block'; return; }
+  }
+  hint.style.display='none';
+}
+
 function mCalcPV(){
+  mShowCUHint();
   var cfg=getPrcAtual();
   var tipo=Q('mTipo').value;
   var cat=Q('mCat').value;
-  var cu=n2(Q('mCU').value);
+  var cu=mEvalCU();
   if(!cat||cu<=0){ Q('mPVPreview').style.display='none'; return; }
   var fmf=calcFMF(cfg,tipo,cat);
   var mult=tipo==='material'?n2(Q('mQtd').value):n2(Q('mTec').value)*n2(Q('mDias').value)*n2(Q('mHpd').value);
@@ -7290,7 +7317,8 @@ function salvarItemModal(){
   var cfg=getPrcAtual();
   var tipo=Q('mTipo').value;
   var cat=Q('mCat').value;
-  var cu=n2(Q('mCU').value);
+  var cu=mEvalCU();
+  var cuFormula=(Q('mCU').value||'').trim();
   if(!cat){toast('Selecione a categoria.','err'); return;}
   if(cu<=0){toast('Informe o custo > 0.','err'); return;}
 
@@ -7313,7 +7341,7 @@ function salvarItemModal(){
   var baseItem=normalizeBudgetItem({
     id:_itemModalId||uid(), t:tipo, cat:cat,
     desc:descDigitada||getCatLabel(tipo,cat),
-    cu:cu, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
+    cu:cu, cuFormula:cuFormula, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
     un1:un1, un2:un2, tec:tec, dias:dias, hpd:hpd,
     inc:true, terc:false, det:true, link:link,
     equip:(Q('mEquip').value||'').trim(),
@@ -7404,7 +7432,7 @@ function mOnMargemChange(val){
 
 function mCalcPVcomFMF(fmf){
   var tipo=Q('mTipo').value;
-  var cu=n2(Q('mCU').value);
+  var cu=mEvalCU();
   if(cu<=0){ Q('mPVPreview').style.display='none'; return; }
   var mult=tipo==='material'?n2(Q('mQtd').value):n2(Q('mTec').value)*n2(Q('mDias').value)*n2(Q('mHpd').value);
   var pvu=cu*fmf; var pvt=pvu*mult;
@@ -8488,7 +8516,11 @@ function rExecTimeline(){
       <!-- Linha 2: Descrição + Custo Unit -->
       <div style="display:flex;gap:.6rem;margin-bottom:.6rem;align-items:flex-end">
         <div class="f" style="flex:1"><label>Descrição do Serviço ou Material</label><input type="text" id="mDesc" placeholder="Ex: MO HN de Eletricistas, Cabo PP 3x2,5mm²..." list="hist-desc"><datalist id="hist-desc"></datalist></div>
-        <div class="f" style="width:210px;flex-shrink:0"><label>Custo Unit. (R$)</label><input type="number" id="mCU" value="0" min="0" step="0.01" oninput="mCalcPV()"></div>
+        <div class="f" style="width:210px;flex-shrink:0">
+          <label>Custo Unit. (R$)</label>
+          <input type="text" id="mCU" inputmode="decimal" placeholder="310,01  ou  =200+110,01" oninput="mCalcPV()" style="font-family:monospace;font-size:.82rem" autocomplete="off">
+          <div id="mCUHint" style="display:none;font-size:.7rem;margin-top:.18rem;color:var(--green);font-weight:700;letter-spacing:.01em"></div>
+        </div>
       </div>
       <!-- Linha 3: Área/Equip + Instalação -->
       <div class="g g2" style="margin-bottom:.6rem">
