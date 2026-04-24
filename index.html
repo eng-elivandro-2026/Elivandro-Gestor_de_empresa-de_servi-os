@@ -618,6 +618,28 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   /* Tabelas: scroll horizontal */
   .bt-wrap, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+/* ── Calculadora Popup ─────────────────────────────────────────────── */
+#calcPop{position:fixed;inset:0;z-index:700;display:none;align-items:center;justify-content:center}
+#calcPop.on{display:flex}
+#calcBox{background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 48px rgba(0,0,0,.75);width:min(288px,92vw);overflow:hidden;user-select:none;animation:calcIn .14s ease-out}
+@keyframes calcIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+#calcBox .calc-display{background:#0d1620;padding:.75rem .9rem .45rem;text-align:right}
+#calcBox .calc-expr{font-size:.72rem;color:#4a6580;min-height:1.1rem;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em}
+#calcBox .calc-val{font-size:2.1rem;font-weight:700;color:#edf0f5;font-family:monospace;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:2.6rem}
+#calcBox .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+#calcBox .calc-grid button{border:none;padding:.82rem .3rem;font-size:1.05rem;font-weight:600;cursor:pointer;line-height:1;transition:filter .1s}
+#calcBox .calc-grid button:active{filter:brightness(1.4)}
+.cb-num{background:#1a2535;color:#e8ecf2}
+.cb-op{background:#0d2040;color:#4ea4f8}
+.cb-fn{background:#1e2f42;color:#8aa8c4}
+.cb-eq{background:#c85f00;color:#fff}
+.cb-zero{grid-column:span 2}
+#calcBox .calc-footer{display:flex;gap:.5rem;padding:.6rem;background:var(--bg2);border-top:1px solid var(--border)}
+#calcBox .calc-footer button{flex:1;padding:.55rem;border:1px solid var(--border);border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s}
+#calcBox .cb-cancel{background:none;color:var(--text3)}
+#calcBox .cb-cancel:hover{background:var(--border)}
+#calcBox .cb-ok{background:var(--accent,#2563eb);color:#fff;border-color:transparent}
+#calcBox .cb-ok:hover{filter:brightness(1.1)}
 </style>
 </head>
 
@@ -7267,6 +7289,69 @@ function mOnTipo(){
 
 function mOnCat(){ mCalcPV(); mAtualizarMargemPanel(); }
 
+// ── Calculadora de Custo Unitário ────────────────────────────────────
+var _cExpr='',_cFresh=false;
+function openCalcCU(ev){
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  var raw=(Q('mCU').value||'').trim().replace(/^=/,'').replace(/,/g,'.');
+  _cExpr=raw||''; _cFresh=false;
+  _cRender();
+  Q('calcPop').classList.add('on');
+}
+function _cPress(v){
+  if(_cFresh&&/[\d.]/.test(v)){_cExpr='';_cFresh=false;}
+  if(v===',')v='.';
+  if(v==='()'){
+    var op=(_cExpr.match(/\(/g)||[]).length,cl=(_cExpr.match(/\)/g)||[]).length;
+    v=(op>cl&&_cExpr.length&&!/[+\-*\/\(]$/.test(_cExpr))?')':'(';
+  }
+  if(/[+\-*\/]/.test(v)&&/[+\-*\/]$/.test(_cExpr)){_cExpr=_cExpr.slice(0,-1);}
+  if(/[+*\/]/.test(v)&&!_cExpr)return;
+  if(v==='.'&&!_cFresh){var seg=_cExpr.split(/[+\-*\/()]/).pop();if(seg.includes('.'))return;}
+  _cExpr+=v;_cFresh=false;_cRender();
+}
+function _cBksp(){
+  if(_cFresh){_cExpr='';_cFresh=false;}else _cExpr=_cExpr.slice(0,-1);
+  _cRender();
+}
+function _cClear(){_cExpr='';_cFresh=false;_cRender();}
+function _cEq(){
+  if(!_cExpr)return;
+  var r=mParseExpr(_cExpr);
+  if(r>0){
+    Q('calcExpr').textContent=_cExpr.replace(/\./g,',')+' =';
+    _cExpr=String(Math.round(r*100)/100);
+    _cFresh=true;
+    _cRenderVal();
+  }
+}
+function _cOK(){
+  var v=_cFresh?parseFloat(_cExpr):mParseExpr(_cExpr);
+  if(v>0){
+    Q('mCU').value=String(Math.round(v*100)/100).replace('.',',');
+    mCalcPV();
+  }
+  Q('calcPop').classList.remove('on');
+}
+function _cCancel(){Q('calcPop').classList.remove('on');}
+function _cRender(){
+  Q('calcExpr').textContent=_cExpr.replace(/\./g,',');
+  _cRenderVal();
+}
+function _cRenderVal(){
+  if(!_cExpr){Q('calcVal').textContent='0';return;}
+  if(_cFresh){
+    var n=parseFloat(_cExpr);
+    Q('calcVal').textContent=isNaN(n)?'0':n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2});
+    return;
+  }
+  var last=_cExpr.split(/[+\-*\/\(\)]/).pop()||'';
+  if(!last){Q('calcVal').textContent='0';return;}
+  var n=parseFloat(last);
+  Q('calcVal').textContent=isNaN(n)?last.replace(/\./g,','):n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:8});
+}
+// ─────────────────────────────────────────────────────────────────────
+
 // Avalia expressão matemática — shunting-yard, sem eval/Function, compatível com qualquer CSP
 function mParseExpr(s){
   var nums=[],ops=[],i=0,n=s.length,prec={'+':1,'-':1,'*':2,'/':2};
@@ -8527,7 +8612,7 @@ function rExecTimeline(){
         <div class="f" style="flex:1"><label>Descrição do Serviço ou Material</label><input type="text" id="mDesc" placeholder="Ex: MO HN de Eletricistas, Cabo PP 3x2,5mm²..." list="hist-desc"><datalist id="hist-desc"></datalist></div>
         <div class="f" style="width:210px;flex-shrink:0">
           <label>Custo Unit. (R$)</label>
-          <input type="text" id="mCU" inputmode="decimal" placeholder="310,01  ou  =200+110,01" oninput="mCalcPV()" style="font-family:monospace;font-size:.82rem" autocomplete="off">
+          <input type="text" id="mCU" inputmode="decimal" placeholder="Clique para abrir calculadora" onclick="openCalcCU(event)" oninput="mCalcPV()" style="font-family:monospace;font-size:.82rem;cursor:pointer" autocomplete="off" readonly>
           <div id="mCUHint" style="display:none;font-size:.7rem;margin-top:.18rem;color:var(--green);font-weight:700;letter-spacing:.01em"></div>
         </div>
       </div>
@@ -8638,6 +8723,41 @@ function rExecTimeline(){
     <div style="padding:.65rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-shrink:0">
       <button onclick="fecharItemModal()" class="btn bg bsm">Cancelar</button>
       <button onclick="salvarItemModal()" class="btn bs" id="btnSalvarItemModal">➕ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Calculadora de Custo Unitário ── -->
+<div id="calcPop" onclick="if(event.target===this)_cCancel()">
+  <div id="calcBox">
+    <div class="calc-display">
+      <div class="calc-expr" id="calcExpr">&nbsp;</div>
+      <div class="calc-val" id="calcVal">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="cb-fn" onclick="_cClear()">C</button>
+      <button class="cb-fn" onclick="_cBksp()">⌫</button>
+      <button class="cb-fn" onclick="_cPress('()')">( )</button>
+      <button class="cb-op" onclick="_cPress('/')">÷</button>
+      <button class="cb-num" onclick="_cPress('7')">7</button>
+      <button class="cb-num" onclick="_cPress('8')">8</button>
+      <button class="cb-num" onclick="_cPress('9')">9</button>
+      <button class="cb-op" onclick="_cPress('*')">×</button>
+      <button class="cb-num" onclick="_cPress('4')">4</button>
+      <button class="cb-num" onclick="_cPress('5')">5</button>
+      <button class="cb-num" onclick="_cPress('6')">6</button>
+      <button class="cb-op" onclick="_cPress('-')">−</button>
+      <button class="cb-num" onclick="_cPress('1')">1</button>
+      <button class="cb-num" onclick="_cPress('2')">2</button>
+      <button class="cb-num" onclick="_cPress('3')">3</button>
+      <button class="cb-op" onclick="_cPress('+')">+</button>
+      <button class="cb-num cb-zero" onclick="_cPress('0')">0</button>
+      <button class="cb-num" onclick="_cPress(',')">&#44;</button>
+      <button class="cb-eq" onclick="_cEq()">=</button>
+    </div>
+    <div class="calc-footer">
+      <button class="cb-cancel" onclick="_cCancel()">Cancelar</button>
+      <button class="cb-ok" onclick="_cOK()">&#10003; OK</button>
     </div>
   </div>
 </div>
