@@ -640,6 +640,27 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 #calcBox .cb-cancel:hover{background:var(--border)}
 #calcBox .cb-ok{background:var(--accent,#2563eb);color:#fff;border-color:transparent}
 #calcBox .cb-ok:hover{filter:brightness(1.1)}
+/* ── Log de Custo Unitário ─────────────────────────────────────────── */
+#cuLogPop .log-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.6);width:min(500px,95vw);max-height:82vh;display:flex;flex-direction:column;overflow:hidden}
+#cuLogPop .log-hdr{padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#cuLogPop .log-title{font-weight:700;font-size:.95rem;color:var(--accent)}
+#cuLogPop .log-list{flex:1;overflow-y:auto;padding:.7rem .9rem;display:flex;flex-direction:column;gap:.5rem;min-height:60px}
+#cuLogPop .log-empty{color:var(--text3);font-size:.82rem;text-align:center;padding:1.4rem 0}
+#cuLogPop .log-entry{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem .5rem .65rem;position:relative}
+#cuLogPop .log-ts{font-size:.68rem;color:var(--text3);margin-bottom:.22rem}
+#cuLogPop .log-txt{font-size:.84rem;white-space:pre-wrap;line-height:1.45;padding-right:1.2rem}
+#cuLogPop .log-del{position:absolute;top:.3rem;right:.35rem;background:none;border:none;cursor:pointer;color:var(--text3);font-size:.75rem;padding:.15rem .3rem;line-height:1;border-radius:4px}
+#cuLogPop .log-del:hover{background:rgba(220,50,50,.15);color:#e05}
+#cuLogPop .log-footer{padding:.65rem .9rem;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:.45rem;flex-shrink:0}
+#cuLogPop .log-footer textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:64px;padding:.45rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:.84rem;line-height:1.4}
+#cuLogPop .log-footer textarea:focus{outline:none;border-color:var(--accent)}
+#cuLogPop .log-actions{display:flex;gap:.5rem;justify-content:flex-end}
+#cuLogPop .log-actions button{padding:.45rem .9rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border)}
+.btn-log-add{background:var(--accent,#2563eb);color:#fff;border-color:transparent!important}
+.btn-log-add:hover{filter:brightness(1.1)}
+.btn-log-cls{background:none;color:var(--text3)}
+.btn-log-cls:hover{background:var(--border)}
+.culog-dot{width:7px;height:7px;background:#22c55e;border-radius:50%;position:absolute;top:1px;right:1px;pointer-events:none}
 </style>
 </head>
 
@@ -7216,6 +7237,7 @@ function _atualizarHistTrab(){
 function abrirItemModal(it){
   _atualizarHistTrab();
   _itemModalId = it ? it.id : null;
+  _cuLog = it ? (it.cuLog||[]) : [];
   var m = Q('itemModal');
   Q('itemModalTit').textContent = it ? '✏️ Editar Item' : '➕ Novo Item';
   Q('btnSalvarItemModal').textContent = it ? '💾 Atualizar' : '➕ Adicionar';
@@ -7257,6 +7279,7 @@ function abrirItemModal(it){
   mCalcPV();
   m.style.display='flex';
   mAtualizarMargemPanel(); // agora cat já está setado
+  cuLogBadge();
   setTimeout(function(){ Q('mCU').focus(); }, 100);
 }
 
@@ -7368,6 +7391,49 @@ function _cKeydown(e){
 document.addEventListener('keydown',_cKeydown);
 // ─────────────────────────────────────────────────────────────────────
 
+// ── Log de Custo Unitário ────────────────────────────────────────────
+var _cuLog=[];
+function cuLogOpen(ev){
+  if(ev)ev.stopPropagation();
+  cuLogRender();
+  Q('cuLogInput').value='';
+  Q('cuLogPop').style.display='flex';
+}
+function cuLogClose(){Q('cuLogPop').style.display='none';}
+function cuLogAdd(){
+  var txt=(Q('cuLogInput').value||'').trim();
+  if(!txt){Q('cuLogInput').focus();return;}
+  var d=new Date();
+  var ts=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  _cuLog.push({ts:ts,txt:txt});
+  Q('cuLogInput').value='';
+  cuLogRender();
+  cuLogBadge();
+  Q('cuLogInput').focus();
+}
+function cuLogDel(i){_cuLog.splice(i,1);cuLogRender();cuLogBadge();}
+function cuLogRender(){
+  var list=Q('cuLogList');
+  if(!_cuLog.length){
+    list.innerHTML='<div class="log-empty">Nenhum registro ainda.<br>Adicione abaixo.</div>';
+    return;
+  }
+  list.innerHTML=_cuLog.map(function(e,i){
+    return '<div class="log-entry">'
+      +'<button class="log-del" onclick="cuLogDel('+i+')" title="Remover">&#10005;</button>'
+      +'<div class="log-ts">&#128337; '+e.ts+'</div>'
+      +'<div class="log-txt">'+e.txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+'</div>'
+      +'</div>';
+  }).join('');
+  list.scrollTop=list.scrollHeight;
+}
+function cuLogBadge(){
+  var btn=Q('btnCuLog'); if(!btn)return;
+  var old=btn.querySelector('.culog-dot'); if(old)old.remove();
+  if(_cuLog.length){var d=document.createElement('span');d.className='culog-dot';btn.appendChild(d);}
+}
+// ────────────────────────────────────────────────────────────────────
+
 // Avalia expressão matemática — shunting-yard, sem eval/Function, compatível com qualquer CSP
 function mParseExpr(s){
   var nums=[],ops=[],i=0,n=s.length,prec={'+':1,'-':1,'*':2,'/':2};
@@ -7451,7 +7517,7 @@ function salvarItemModal(){
   var baseItem=normalizeBudgetItem({
     id:_itemModalId||uid(), t:tipo, cat:cat,
     desc:descDigitada||getCatLabel(tipo,cat),
-    cu:cu, cuFormula:cuFormula, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
+    cu:cu, cuFormula:cuFormula, cuLog:_cuLog, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
     un1:un1, un2:un2, tec:tec, dias:dias, hpd:hpd,
     inc:true, terc:false, det:true, link:link,
     equip:(Q('mEquip').value||'').trim(),
@@ -8631,6 +8697,7 @@ function rExecTimeline(){
           <div style="display:flex;gap:4px;align-items:center">
             <input type="text" id="mCU" inputmode="decimal" placeholder="0,00" oninput="mCalcPV()" onclick="openCalcCU(event)" style="font-family:monospace;font-size:.82rem;flex:1;min-width:0;cursor:pointer" autocomplete="off" readonly>
             <button type="button" onclick="openCalcCU(event)" title="Calculadora" style="flex-shrink:0;border:1px solid var(--border);background:var(--bg3,#2a3545);color:var(--text);border-radius:6px;padding:.32rem .45rem;font-size:1rem;cursor:pointer;line-height:1">&#128425;</button>
+            <button type="button" id="btnCuLog" onclick="cuLogOpen(event)" title="Log / Histórico do custo" style="position:relative;flex-shrink:0;border:1px solid var(--border);background:var(--bg3,#2a3545);color:var(--text);border-radius:6px;padding:.32rem .45rem;font-size:1rem;cursor:pointer;line-height:1">&#128203;</button>
           </div>
           <div id="mCUHint" style="display:none;font-size:.7rem;margin-top:.18rem;color:var(--green);font-weight:700;letter-spacing:.01em"></div>
         </div>
@@ -8777,6 +8844,24 @@ function rExecTimeline(){
     <div class="calc-footer">
       <button class="cb-cancel" onclick="_cCancel()">Cancelar</button>
       <button class="cb-ok" onclick="_cOK()">&#10003; OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Log / Histórico do Custo Unitário ── -->
+<div id="cuLogPop" style="display:none;position:fixed;inset:0;z-index:700;align-items:center;justify-content:center" onclick="if(event.target===this)cuLogClose()">
+  <div class="log-box">
+    <div class="log-hdr">
+      <div class="log-title">&#128203; Log / Histórico do Custo</div>
+      <button onclick="cuLogClose()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text3);padding:.1rem .3rem;line-height:1">&#10005;</button>
+    </div>
+    <div class="log-list" id="cuLogList"></div>
+    <div class="log-footer">
+      <textarea id="cuLogInput" placeholder="Ex: Cotação Fornecedor X em 24/04/2026 — R$90/h&#10;Referência: NF 1234, Proposta Anterior IE-03..."></textarea>
+      <div class="log-actions">
+        <button class="btn-log-cls" onclick="cuLogClose()">Fechar</button>
+        <button class="btn-log-add" onclick="cuLogAdd()">&#43; Adicionar</button>
+      </div>
     </div>
   </div>
 </div>
