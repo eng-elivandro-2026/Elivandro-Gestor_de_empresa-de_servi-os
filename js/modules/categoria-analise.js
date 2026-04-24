@@ -484,6 +484,7 @@ function _atualizarHistTrab(){
 function abrirItemModal(it){
   _atualizarHistTrab();
   _itemModalId = it ? it.id : null;
+  _cuLog = it ? (it.cuLog||[]) : [];
   var m = Q('itemModal');
   Q('itemModalTit').textContent = it ? '✏️ Editar Item' : '➕ Novo Item';
   Q('btnSalvarItemModal').textContent = it ? '💾 Atualizar' : '➕ Adicionar';
@@ -500,7 +501,7 @@ function abrirItemModal(it){
     Q('mEquip').value = it.equip || '';
     Q('mInst').value  = it.inst  || '';
     Q('mDesc').value  = it.desc  || '';
-    Q('mCU').value    = it.cu    || 0;
+    Q('mCU').value    = it.cuFormula || it.cu || 0;
     if(Q('mTipoTrab')) Q('mTipoTrab').value = it.tipoTrab || '';
     if(Q('mFaseTrab')) Q('mFaseTrab').value = it.faseTrab || '';
     if(tipo !== 'material'){
@@ -515,7 +516,7 @@ function abrirItemModal(it){
       Q('mLink').value  = it.link || '';
     }
   } else {
-    Q('mCU').value=0; Q('mTec').value=1; Q('mDias').value=1; Q('mHpd').value=1; Q('mQtd').value=1;
+    Q('mCU').value=''; Q('mTec').value=1; Q('mDias').value=1; Q('mHpd').value=1; Q('mQtd').value=1;
     Q('mEquip').value=''; Q('mInst').value=''; Q('mDesc').value=''; Q('mLink').value='';
     if(Q('mTipoTrab')) Q('mTipoTrab').value='';
     if(Q('mFaseTrab')) Q('mFaseTrab').value='';
@@ -525,6 +526,7 @@ function abrirItemModal(it){
   mCalcPV();
   m.style.display='flex';
   mAtualizarMargemPanel(); // agora cat já está setado
+  if(typeof cuLogBadge==='function') cuLogBadge();
   setTimeout(function(){ Q('mCU').focus(); }, 100);
 }
 
@@ -561,7 +563,7 @@ function mCalcPV(){
   var cfg=getPrcAtual();
   var tipo=Q('mTipo').value;
   var cat=Q('mCat').value;
-  var cu=n2(Q('mCU').value);
+  var cu=typeof mEvalCU==='function'?mEvalCU():n2((Q('mCU').value||'').replace(',','.'));
   if(!cat||cu<=0){ Q('mPVPreview').style.display='none'; return; }
   var fmf=calcFMF(cfg,tipo,cat);
   var mult=tipo==='material'?n2(Q('mQtd').value):n2(Q('mTec').value)*n2(Q('mDias').value)*n2(Q('mHpd').value);
@@ -580,7 +582,8 @@ function salvarItemModal(){
   var cfg=getPrcAtual();
   var tipo=Q('mTipo').value;
   var cat=Q('mCat').value;
-  var cu=n2(Q('mCU').value);
+  var cu=typeof mEvalCU==='function'?mEvalCU():n2((Q('mCU').value||'').replace(',','.'));
+  var cuFormula=(Q('mCU').value||'').trim();
   if(!cat){toast('Selecione a categoria.','err'); return;}
   if(cu<=0){toast('Informe o custo > 0.','err'); return;}
 
@@ -603,7 +606,7 @@ function salvarItemModal(){
   var baseItem=normalizeBudgetItem({
     id:_itemModalId||uid(), t:tipo, cat:cat,
     desc:descDigitada||getCatLabel(tipo,cat),
-    cu:cu, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
+    cu:cu, cuFormula:cuFormula, cuLog:_cuLog, mult:mult, fmf:fmf, pvu:pvu, pvt:pvt,
     un1:un1, un2:un2, tec:tec, dias:dias, hpd:hpd,
     inc:true, terc:false, det:true, link:link,
     equip:(Q('mEquip').value||'').trim(),
@@ -694,7 +697,7 @@ function mOnMargemChange(val){
 
 function mCalcPVcomFMF(fmf){
   var tipo=Q('mTipo').value;
-  var cu=n2(Q('mCU').value);
+  var cu=typeof mEvalCU==='function'?mEvalCU():n2((Q('mCU').value||'').replace(',','.'));
   if(cu<=0){ Q('mPVPreview').style.display='none'; return; }
   var mult=tipo==='material'?n2(Q('mQtd').value):n2(Q('mTec').value)*n2(Q('mDias').value)*n2(Q('mHpd').value);
   var pvu=cu*fmf; var pvt=pvu*mult;
