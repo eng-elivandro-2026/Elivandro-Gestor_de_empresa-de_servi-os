@@ -1,4 +1,4 @@
-<!-- v2026.04.24.formula.3 -->
+<!-- v2026.04.24.formula.4 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7312,7 +7312,13 @@ function mParseExpr(s){
 function mEvalCU(){
   var raw=(Q('mCU').value||'').trim();
   var expr=raw.replace(/^=/,'').replace(/,/g,'.').trim();
-  if(!expr || !/^[\d\s\+\-\*\/\.\(\)]+$/.test(expr)) return 0;
+  if(!expr) return 0;
+  // Verificação por código — sem ambiguidade de regex
+  // aceita: 0-9(48-57) espaço(32) +(43) -(45) *(42) /(47) .(46) ((40) )(41)
+  for(var j=0;j<expr.length;j++){
+    var c=expr.charCodeAt(j);
+    if(!((c>=48&&c<=57)||c===32||c===43||c===45||c===42||c===47||c===46||c===40||c===41)) return 0;
+  }
   return mParseExpr(expr);
 }
 function mShowCUHint(){
