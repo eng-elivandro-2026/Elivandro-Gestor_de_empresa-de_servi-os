@@ -7351,6 +7351,21 @@ function _cRenderVal(){
   var n=parseFloat(last);
   Q('calcVal').textContent=isNaN(n)?last.replace(/\./g,','):n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:8});
 }
+function _cKeydown(e){
+  if(!Q('calcPop')||Q('calcPop').style.display!=='flex')return;
+  var k=e.key;
+  if(k>='0'&&k<='9'){e.preventDefault();_cPress(k);}
+  else if(k==='.'||k===','){e.preventDefault();_cPress(',');}
+  else if(k==='+'||k==='-'||k==='*'){e.preventDefault();_cPress(k);}
+  else if(k==='/'){e.preventDefault();_cPress('/');}
+  else if(k==='('){e.preventDefault();_cExpr+='(';_cFresh=false;_cRender();}
+  else if(k===')'){e.preventDefault();_cExpr+=')';_cFresh=false;_cRender();}
+  else if(k==='='||k==='Enter'){e.preventDefault();_cFresh?_cOK():_cEq();}
+  else if(k==='Backspace'){e.preventDefault();_cBksp();}
+  else if(k==='Delete'){e.preventDefault();_cClear();}
+  else if(k==='Escape'){e.preventDefault();_cCancel();}
+}
+document.addEventListener('keydown',_cKeydown);
 // ─────────────────────────────────────────────────────────────────────
 
 // Avalia expressão matemática — shunting-yard, sem eval/Function, compatível com qualquer CSP
