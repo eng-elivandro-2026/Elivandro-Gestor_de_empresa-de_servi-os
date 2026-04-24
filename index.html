@@ -7292,11 +7292,12 @@ function mOnCat(){ mCalcPV(); mAtualizarMargemPanel(); }
 // ── Calculadora de Custo Unitário ────────────────────────────────────
 var _cExpr='',_cFresh=false;
 function openCalcCU(ev){
-  if(ev){ev.preventDefault();ev.stopPropagation();}
+  if(ev){ev.stopPropagation();}
   var raw=(Q('mCU').value||'').trim().replace(/^=/,'').replace(/,/g,'.');
   _cExpr=raw||''; _cFresh=false;
   _cRender();
-  Q('calcPop').classList.add('on');
+  var p=Q('calcPop'); if(!p)return;
+  p.style.display='flex';
 }
 function _cPress(v){
   if(_cFresh&&/[\d.]/.test(v)){_cExpr='';_cFresh=false;}
@@ -7331,9 +7332,9 @@ function _cOK(){
     Q('mCU').value=String(Math.round(v*100)/100).replace('.',',');
     mCalcPV();
   }
-  Q('calcPop').classList.remove('on');
+  Q('calcPop').style.display='none';
 }
-function _cCancel(){Q('calcPop').classList.remove('on');}
+function _cCancel(){Q('calcPop').style.display='none';}
 function _cRender(){
   Q('calcExpr').textContent=_cExpr.replace(/\./g,',');
   _cRenderVal();
@@ -8612,7 +8613,10 @@ function rExecTimeline(){
         <div class="f" style="flex:1"><label>Descrição do Serviço ou Material</label><input type="text" id="mDesc" placeholder="Ex: MO HN de Eletricistas, Cabo PP 3x2,5mm²..." list="hist-desc"><datalist id="hist-desc"></datalist></div>
         <div class="f" style="width:210px;flex-shrink:0">
           <label>Custo Unit. (R$)</label>
-          <input type="text" id="mCU" inputmode="decimal" placeholder="Clique para abrir calculadora" onclick="openCalcCU(event)" oninput="mCalcPV()" style="font-family:monospace;font-size:.82rem;cursor:pointer" autocomplete="off" readonly>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="text" id="mCU" inputmode="decimal" placeholder="0,00" oninput="mCalcPV()" onclick="openCalcCU(event)" style="font-family:monospace;font-size:.82rem;flex:1;min-width:0;cursor:pointer" autocomplete="off" readonly>
+            <button type="button" onclick="openCalcCU(event)" title="Calculadora" style="flex-shrink:0;border:1px solid var(--border);background:var(--bg3,#2a3545);color:var(--text);border-radius:6px;padding:.32rem .45rem;font-size:1rem;cursor:pointer;line-height:1">&#128425;</button>
+          </div>
           <div id="mCUHint" style="display:none;font-size:.7rem;margin-top:.18rem;color:var(--green);font-weight:700;letter-spacing:.01em"></div>
         </div>
       </div>
@@ -8728,7 +8732,7 @@ function rExecTimeline(){
 </div>
 
 <!-- ── Calculadora de Custo Unitário ── -->
-<div id="calcPop" onclick="if(event.target===this)_cCancel()">
+<div id="calcPop" style="display:none;position:fixed;inset:0;z-index:700;align-items:center;justify-content:center" onclick="if(event.target===this)_cCancel()">
   <div id="calcBox">
     <div class="calc-display">
       <div class="calc-expr" id="calcExpr">&nbsp;</div>
