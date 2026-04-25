@@ -7055,6 +7055,18 @@ document.addEventListener('DOMContentLoaded',function(){
   if(Q('eTF')) Q('eTF').addEventListener('input',rT);
   if(Q('eSF')) Q('eSF').addEventListener('input',rS);
   beLoadDB();
+
+  // Salva rascunho no localStorage antes de qualquer refresh/fechamento de aba
+  window.addEventListener('beforeunload', function(){
+    try{
+      if(typeof proposalFormHasMeaningfulData==='function' && proposalFormHasMeaningfulData()){
+        var sn=buildCurrentProposalSnapshot();
+        var idx=props.findIndex(function(x){return x.id===sn.id;});
+        if(idx>=0) props[idx]=sn; else props.push(sn);
+        LS('tf_props', props);
+      }
+    }catch(e){}
+  });
 });
 // ══════════════════════════════════════════════
 // ANÁLISE FINANCEIRA

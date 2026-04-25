@@ -101,11 +101,38 @@
       .eq('empresa_id', empId)
       .order('updated_at', { ascending: false });
     if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
-    var props = (res.data || []).map(function (r) {
+    var nuvem = (res.data || []).map(function (r) {
       var p = r.dados_json || {};
       if (!p.id && r.app_id) p.id = r.app_id;
       return p;
     });
+    // ── Merge: preserva propostas locais mais recentes ou ausentes no Supabase ──
+    // Evita que dados não-sincronizados (save interrompido) sejam perdidos ao recarregar.
+    var local = LS('tf_props') || [];
+    var merged = nuvem.slice();
+    local.forEach(function(lp) {
+      if (!lp || !lp.id) return;
+      var idx = merged.findIndex(function(sp) { return sp.id === lp.id; });
+      if (idx < 0) {
+        // Proposta local não está no Supabase — preserve e salve em background
+        merged.push(lp);
+        setTimeout(function() {
+          if (typeof sbSalvarProposta === 'function') sbSalvarProposta(lp);
+        }, 500);
+        console.warn('[supabase-sync] Proposta local não encontrada na nuvem, preservando:', lp.id, lp.num||'');
+      } else {
+        // Ambas existem — mantém a mais recente pelo tsSaved
+        var lTs = Number(lp.tsSaved) || 0;
+        var sTs = Number(merged[idx].tsSaved) || 0;
+        if (lTs > sTs) {
+          merged[idx] = lp;
+          setTimeout(function() {
+            if (typeof sbSalvarProposta === 'function') sbSalvarProposta(lp);
+          }, 500);
+        }
+      }
+    });
+    var props = merged;
     if (props.length) {
       LS('tf_props', props);
       // Migrar para stages v1 (idempotente — skipa propostas já migradas)
