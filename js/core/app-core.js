@@ -1420,6 +1420,7 @@ function _propAlerts(p){
   function badge(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.1rem .42rem;font-size:.67rem;color:'+cor+';font-weight:700;margin:.15rem .15rem 0 0;white-space:nowrap">'+txt+'</span>'; }
   if(fas==='em_elaboracao'){ var d=dD(p.dat2); if(d!==null&&d>15) tags+=badge('#d4a017','⚠️ '+d+'d elaboração'); }
   if(FAS_DEC_PA.indexOf(fas)>=0){ var dtRef=(tl.dtEnvio||p.dat2||''); var d=dD(dtRef); if(d!==null){ if(d>60) tags+=badge('#f85149','🔴 '+d+'d decisão'); else if(d>30) tags+=badge('#d4a017','⚠️ '+d+'d decisão'); } }
+  if(fas==='aprovado'){ var d=dD(p.dtFech); if(d!==null){ if(d>30) tags+=badge('#f85149','🔴 gap pré-obra '+d+'d'); else if(d>15) tags+=badge('#d4a017','⚠️ gap pré-obra '+d+'d'); } }
   if(FAS_EXC_PA.indexOf(fas)>=0&&fas!=='atrasado'){ var dtI=tl.dtInicioExec||''; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+d+'d'); }
   if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
   return tags?'<div style="margin-top:.38rem;display:flex;flex-wrap:wrap">'+tags+'</div>':'';
