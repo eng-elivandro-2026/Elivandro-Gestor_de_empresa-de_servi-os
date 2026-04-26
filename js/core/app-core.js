@@ -586,15 +586,26 @@ function updRev(el){
 function rRevs(){
   var tb=Q('revBody');if(!tb)return;
   if(!revs.length){
-    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
     return;
   }
+  // Determina qual revisão é ativa: a última com status='ativa' ou, se nenhuma tiver status, a última
+  var ativaLetter='';
+  for(var i=revs.length-1;i>=0;i--){
+    if(!revs[i].status||revs[i].status==='ativa'){ativaLetter=revs[i].rev;break;}
+  }
+  if(!ativaLetter&&revs.length) ativaLetter=revs[revs.length-1].rev;
   tb.innerHTML=revs.map(function(r){
+    var isAtiva=r.rev===ativaLetter;
+    var stBadge=isAtiva
+      ?'<span style="font-size:.68rem;font-weight:600;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.35);color:#58a6ff;padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Ativa</span>'
+      :'<span style="font-size:.68rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Arquivada</span>';
     return '<tr>'
       +'<td><input value="'+esc(r.rev)+'" data-id="'+r.id+'" data-f="rev" oninput="updRev(this)" style="width:44px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--accent);font-weight:700;font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.dat)+'" data-id="'+r.id+'" data-f="dat" oninput="updRev(this)" style="width:95px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
       +'<td><input value="'+esc(r.por)+'" data-id="'+r.id+'" data-f="por" oninput="updRev(this)" style="width:54px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.desc)+'" data-id="'+r.id+'" data-f="desc" placeholder="Descrição da revisão…" oninput="updRev(this)" style="width:100%;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
+      +'<td style="text-align:center">'+stBadge+'</td>'
       +'<td style="text-align:center"><button class="btn bd bxs" onclick="delRev(&quot;'+r.id+'&quot;)">×</button></td>'
       +'</tr>';
   }).join('');
