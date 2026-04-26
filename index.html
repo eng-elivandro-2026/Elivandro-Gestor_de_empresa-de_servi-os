@@ -8954,83 +8954,93 @@ function rExecTimeline(){
         <span style="font-family:monospace;font-size:.78rem;color:var(--text2)">(X da prop.1 + X da prop.2 + ... + X da prop.12) ÷ 12 = <strong style="color:#d4a017">71 dias</strong></span>
       </div>
 
+      <!-- LEGENDA -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem;padding:.5rem .7rem;background:var(--bg3);border-radius:8px;font-size:.76rem">
+        <span style="color:var(--text3);font-weight:600">Semáforo:</span>
+        <span style="color:#3fb950;font-weight:700">● Verde</span><span style="color:var(--text3)">= dentro do ideal</span>
+        <span style="color:#d4a017;font-weight:700">● Amarelo</span><span style="color:var(--text3)">= atenção, mas aceitável</span>
+        <span style="color:#f85149;font-weight:700">● Vermelho</span><span style="color:var(--text3)">= fora do limite</span>
+      </div>
+
       <div style="font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔵 Ciclo Comercial</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula (Data B − Data A)</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">📞 Prospecção</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data da Visita − Data de Criação da Proposta</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤3d</span> · <span style="color:#d4a017">≤7d</span> · <span style="color:#f97316">&gt;7d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">📞 Prospecção</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data da Visita − Data de Criação da Proposta</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 7d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 15d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 15d</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">📝 Elaboração</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Envio − Data da Visita (ou Criação, se sem visita)</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤5d</span> · <span style="color:#d4a017">≤15d</span> · <span style="color:#f97316">&gt;15d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">📝 Elaboração</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Envio − Data da Visita (ou Criação, se sem visita)</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 6d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 12d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 12d</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">⏳ Decisão do Cliente</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Fechamento − Data de Envio</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤15d</span> · <span style="color:#d4a017">≤30d</span> · <span style="color:#f97316">&gt;30d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">⏳ Decisão do Cliente</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Fechamento − Data de Envio</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 30d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 60d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 60d</td>
           </tr>
           <tr>
-            <td style="padding:.4rem .5rem;font-weight:600">🏆 Ciclo Comercial Total</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Fechamento − Data de Criação da Proposta</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤30d</span> · <span style="color:#d4a017">≤60d</span> · <span style="color:#f97316">&gt;60d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">🏆 Ciclo Comercial Total</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Fechamento − Data de Criação da Proposta</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 45d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 90d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 90d</td>
           </tr>
         </tbody>
       </table>
+
       <div style="font-size:.7rem;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟢 Ciclo de Execução</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula (Data B − Data A)</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">🚀 Gap Pré-Obra</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Início da Execução − Data de Fechamento</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤7d</span> · <span style="color:#d4a017">≤30d</span> · <span style="color:#f97316">&gt;30d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">🚀 Gap Pré-Obra</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Início da Execução − Data de Fechamento<br><span style="color:var(--text3);font-size:.72rem">Quanto tempo depois de fechar o negócio a obra começa</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 15d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 30d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 30d</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">⚙️ Duração da Execução</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Término − Data de Início da Execução</td>
-            <td style="padding:.4rem .5rem;color:var(--text3)">— (sem limite)</td>
+            <td style="padding:.5rem .5rem;font-weight:600">⚙️ Duração da Execução</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Término − Data de Início da Execução</td>
+            <td style="padding:.5rem .5rem;color:var(--text3);font-size:.74rem">— cinza, sem semáforo<br><span style="font-size:.72rem">varia por tipo de projeto</span></td>
           </tr>
           <tr>
-            <td style="padding:.4rem .5rem;font-weight:600">📋 Entrega → 1ª NF</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data da 1ª NF − Data de Aceite (ou Término, se sem aceite)</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤3d</span> · <span style="color:#d4a017">≤10d</span> · <span style="color:#f97316">&gt;10d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">📋 Entrega → 1ª NF</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data da 1ª NF − Data de Aceite (ou Término, se sem aceite)<br><span style="color:var(--text3);font-size:.72rem">Velocidade de faturar após entregar o serviço</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 3d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 7d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 7d</td>
           </tr>
         </tbody>
       </table>
+
       <div style="font-size:.7rem;font-weight:700;color:#d4a017;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟡 Ciclo Financeiro</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">📅 PMR Médio Real</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data do Receb. Final − Data da Última NF emitida</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤30d</span> · <span style="color:#d4a017">≤60d</span> · <span style="color:#f97316">&gt;60d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">📅 PMR Médio Real</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data do Receb. Final − Data da Última NF emitida<br><span style="color:var(--text3);font-size:.72rem">Prazo médio que o cliente demora para pagar</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 30d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 60d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 60d</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:.4rem .5rem;font-weight:600">🔄 Ciclo Financeiro Total</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Data do Receb. Final − Data de Início da Execução</td>
-            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤60d</span> · <span style="color:#d4a017">≤120d</span> · <span style="color:#f97316">&gt;120d</span></td>
+            <td style="padding:.5rem .5rem;font-weight:600">🔄 Ciclo Financeiro Total</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data do Receb. Final − Data de Início da Execução<br><span style="color:var(--text3);font-size:.72rem">Do início da obra até receber o último pagamento</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 60d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 120d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 120d</td>
           </tr>
           <tr>
-            <td style="padding:.4rem .5rem;font-weight:600">💰 Adiantamento Médio</td>
-            <td style="padding:.4rem .5rem;color:var(--text2)">Soma dos Adiantamentos ÷ Soma das NFs × 100%</td>
-            <td style="padding:.4rem .5rem;color:#3fb950">Quanto maior, melhor</td>
+            <td style="padding:.5rem .5rem;font-weight:600">💰 Adiantamento Médio</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Soma dos Adiantamentos ÷ Soma das NFs × 100%<br><span style="color:var(--text3);font-size:.72rem">% do total que você recebe antes de começar</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≥ 40%<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≥ 20%<br><span style="color:#f85149;font-weight:700">● vermelho</span> &lt; 20%</td>
           </tr>
         </tbody>
       </table>
