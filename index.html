@@ -8880,12 +8880,24 @@ function rExecTimeline(){
       <button onclick="closeCiclosFormulas()" style="background:none;border:none;color:var(--text3);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px">✕</button>
     </div>
     <div style="overflow-y:auto;padding:1rem">
+
+      <!-- EXPLICAÇÃO GERAL -->
+      <div style="background:var(--bg3);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:.7rem .9rem;margin-bottom:1rem;font-size:.82rem;line-height:1.6">
+        <strong style="color:var(--text)">Como funciona o cálculo:</strong><br>
+        O sistema percorre todas as propostas com dados preenchidos na <em>Linha do Tempo</em>, calcula a <strong>diferença em dias</strong> entre duas datas para cada proposta, soma tudo e divide pelo total — <strong>média aritmética simples</strong>.<br><br>
+        <strong style="color:var(--accent)">Exemplo real — Elaboração: 71d (12)</strong><br>
+        Existem <strong>12 propostas</strong> com data de visita/contato <em>e</em> data de envio preenchidas. Para cada uma o sistema faz:<br>
+        <span style="font-family:monospace;font-size:.78rem;color:var(--text2)">Data de Envio − Data da Visita = X dias</span><br>
+        Depois soma todos os X e divide por 12:<br>
+        <span style="font-family:monospace;font-size:.78rem;color:var(--text2)">(X da prop.1 + X da prop.2 + ... + X da prop.12) ÷ 12 = <strong style="color:#d4a017">71 dias</strong></span>
+      </div>
+
       <div style="font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔵 Ciclo Comercial</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
@@ -8913,9 +8925,9 @@ function rExecTimeline(){
       <div style="font-size:.7rem;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟢 Ciclo de Execução</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
@@ -8938,9 +8950,9 @@ function rExecTimeline(){
       <div style="font-size:.7rem;font-weight:700;color:#d4a017;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟡 Ciclo Financeiro</div>
       <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
         <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
-          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:30%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Data final − Data inicial = dias por proposta → média</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">🟢🟡🔴</th>
         </tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border)">
