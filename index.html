@@ -762,7 +762,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <!-- MOTOR DE DECISÃO -->
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
-      <span class="ct">🧠 Motor de Decisão</span>
+      <span class="ct">🧠 Motor de Decisão <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura Atual por Negócios — Decisões!!)</span></span>
       <div class="br" onclick="event.stopPropagation()">
         <button class="btn bg bsm" onclick="runDecisionEngine();if(typeof toast==='function')toast('🧠 Motor de Decisão atualizado!','ok');event.stopPropagation()">🔄 Atualizar</button>
       </div>
@@ -883,7 +883,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
   <div class="card" id="analisePanel" style="margin-bottom:.8rem">
     <div class="ch" style="cursor:pointer" onclick="togAnalise()">
-      <span class="ct">🤖 Análise Inteligente</span>
+      <span class="ct">🤖 Análise IA <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura do Passado — Histórico Geral)</span></span>
       <div class="br" onclick="event.stopPropagation()">
         <button class="btn bg bsm" onclick="atualizarAnalise();event.stopPropagation()">🔄 Atualizar</button>
       </div>
