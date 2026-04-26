@@ -4008,6 +4008,22 @@ function aplicarSimulacao(){
 var _metaLLResultado = null;
 var _metaLLSnapshot  = null;
 
+function _populateMetaLLCat(){
+  var sel=Q('metaLLCat'); if(!sel) return;
+  var cur=sel.value;
+  var seen={}, cats=[];
+  (budg||[]).forEach(function(it){
+    if(it.inc===false||!it.cat) return;
+    var tipo=it.t==='material'?'m':'s';
+    var key=it.cat+':'+tipo;
+    if(!seen[key]){ seen[key]=true; cats.push({v:key,l:it.cat+' · '+(tipo==='m'?'Material':'Serviço')}); }
+  });
+  cats.sort(function(a,b){return a.l.localeCompare(b.l);});
+  sel.innerHTML='<option value="">— Proposta inteira —</option>';
+  cats.forEach(function(c){ var o=document.createElement('option'); o.value=c.v; o.textContent=c.l; sel.appendChild(o); });
+  if(cur) sel.value=cur;
+}
+
 function simMetaLL(){
   var llPctAlvo = n2(Q('metaLLPct').value) / 100;
   var res = Q('metaLLResultado');
@@ -4087,6 +4103,68 @@ function simMetaLL(){
   var llReal = pvNovo - custoTotal - pvNovo*taxaDeduc;
   var llPctReal = pvNovo>0 ? (llReal/pvNovo*100) : 0;
 
+  // ── MODO CATEGORIA ESPECÍFICA ────────────────────────────────────────
+  var catSel = Q('metaLLCat') ? (Q('metaLLCat').value||'') : '';
+  if(catSel){
+    var _cp=catSel.split(':'), _catCod=_cp[0], _catTipo=_cp[1], _catIsMat=(_catTipo==='m');
+    var pvCatNT=0, custoCatNT=0, pvCatT=0, fmfCatAtual=null;
+    budg.forEach(function(it){
+      if(it.inc===false||!it.cat) return;
+      var inCat=it.cat===_catCod&&(_catIsMat?(it.t==='material'):(it.t!=='material'));
+      if(!inCat) return;
+      if(it.terc){ pvCatT+=n2(it.pvt); }
+      else{ pvCatNT+=n2(it.pvt); custoCatNT+=n2(it.cu)*n2(it.mult); }
+    });
+    if(custoCatNT<=0){
+      res.innerHTML='<span style="color:#f85149">⚠ '+_catCod+' não tem itens próprios (não-terceirizados) para ajustar.</span>'; return;
+    }
+    fmfCatAtual = pvCatNT>0 ? pvCatNT/custoCatNT : null;
+    var pvOther = pvAtual - pvCatNT - pvCatT;
+    var pvCatNT_novo = pvNovo - pvOther - pvCatT;
+    if(pvCatNT_novo <= 0){
+      res.innerHTML='<span style="color:#f85149">⚠ Meta impossível ajustando só '+_catCod+': os demais itens já superam o PV necessário.</span>'; return;
+    }
+    var novoFmfCat = pvCatNT_novo / custoCatNT;
+    var escalaCat = fmfCatAtual ? novoFmfCat/fmfCatAtual : null;
+    // Converter FMF → margem % da categoria
+    var _aliq2=cfg.aliq;
+    var _aCat=_catIsMat
+      ? 1-(n2(_aliq2.nfM)+n2(_aliq2.rS)+n2(_aliq2.comM)+n2(_aliq2.neg))
+      : 1-(n2(_aliq2.nfS)+n2(_aliq2.rS)+n2(_aliq2.comS)+n2(_aliq2.neg));
+    var novaMargemCat=_catIsMat ? (novoFmfCat*_aCat-1) : (1-1/(novoFmfCat*_aCat));
+    var margemAtualCat=fmfCatAtual!==null?(_catIsMat?(fmfCatAtual*_aCat-1):(1-1/(fmfCatAtual*_aCat))):null;
+    _metaLLResultado={ catCod:_catCod, catTipo:_catTipo, catIsMat:_catIsMat,
+      novoFmfCat:novoFmfCat, fmfCatAtual:fmfCatAtual, escalaCat:escalaCat,
+      novaMargemCat:novaMargemCat, pvNovo:pvNovo, llPct:llPctReal };
+    var diff2=pvNovo-pvAtual, s2=diff2>0?'+':'', cor2=diff2>0?'#3fb950':'#f97316';
+    var corE=escalaCat>=1?'#3fb950':'#f97316';
+    var tipoLabel=_catIsMat?'Material':'Serviço';
+    function _card(label,val,cor){ return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px"><div style="font-size:.68rem;color:var(--text3)">'+label+'</div><div style="font-weight:700;color:'+(cor||'var(--text)')+'">'+val+'</div></div>'; }
+    var h='<div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;">';
+    h+=_card('PV atual',money(pvAtual));
+    h+=_card('PV necessário (total)',money(pvNovo),'#58a6ff');
+    h+=_card('Diferença',s2+money(Math.abs(diff2)),cor2);
+    h+=_card('LL resultante',llPctReal.toFixed(1)+'%<br><span style="font-size:.66rem;color:var(--text3)">'+money(llReal)+'</span>','var(--green)');
+    h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:150px">'
+      +'<div style="font-size:.68rem;color:var(--text3)">FMF '+_catCod+' ('+tipoLabel+')</div>'
+      +'<div style="font-weight:700;color:'+corE+'">'+novoFmfCat.toFixed(4)
+      +(fmfCatAtual!==null?' <span style="font-size:.67rem;color:var(--text3)">(era '+fmfCatAtual.toFixed(4)+')</span>':'')+'</div>'
+      +(escalaCat!==null?'<div style="font-size:.68rem;color:'+corE+'">'+(escalaCat>=1?'+':'')+((escalaCat-1)*100).toFixed(1)+'% escala</div>':'')
+      +'</div>';
+    var marNova=(novaMargemCat*100).toFixed(1);
+    var marAtual=margemAtualCat!==null?((margemAtualCat*100).toFixed(1)):'?';
+    var rotulo=_catIsMat?'Markup s/ custo':'Margem s/ PV';
+    h+='<div style="background:var(--bg);border:2px solid '+corE+';border-radius:6px;padding:.5rem .75rem;min-width:150px">'
+      +'<div style="font-size:.68rem;color:var(--text3)">'+rotulo+' necessária — '+_catCod+'</div>'
+      +'<div style="font-weight:700;font-size:1.05rem;color:'+corE+'">'+marNova+'%</div>'
+      +'<div style="font-size:.66rem;color:var(--text3)">era '+marAtual+'%</div></div>';
+    h+='</div>';
+    res.innerHTML=h;
+    Q('metaLLAplicarBtn').style.display='inline-flex';
+    return;
+  }
+  // ── FIM MODO CATEGORIA ───────────────────────────────────────────────
+
   _metaLLResultado = { pvNovo:pvNovo, fmfS:novoFmfS, fmfM:novoFmfM, escalaS:escalaS, escalaM:escalaM, llPct:llPctReal };
 
   var diff = pvNovo - pvAtual;
@@ -4132,19 +4210,30 @@ function aplicarMetaLL(){
   if(!_metaLLResultado){ alert('Rode o cálculo primeiro.'); return; }
   _metaLLSnapshot = budg.map(function(it){return JSON.parse(JSON.stringify(it));});
   var r = _metaLLResultado;
-  budg.forEach(function(it){
-    if(it.inc===false) return;
-    if(it.t==='material' && r.fmfM!==null && !it.terc){
-      it.fmf=r.fmfM; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
-    } else if(it.t!=='material' && r.fmfS!==null && !it.terc){
-      it.fmf=r.fmfS; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
-    }
-  });
+  if(r.catCod){
+    // Modo categoria: ajusta só itens da categoria selecionada
+    budg.forEach(function(it){
+      if(it.inc===false||it.terc) return;
+      var inCat=it.cat===r.catCod&&(r.catIsMat?(it.t==='material'):(it.t!=='material'));
+      if(!inCat) return;
+      it.fmf=r.novoFmfCat; it.pvu=n2(it.cu)*it.fmf; it.pvt=it.pvu*n2(it.mult);
+    });
+    Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ FMF de '+r.catCod+' ajustado! Margem: '+(r.novaMargemCat*100).toFixed(1)+'% — LL resultante: '+r.llPct.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
+  } else {
+    budg.forEach(function(it){
+      if(it.inc===false) return;
+      if(it.t==='material' && r.fmfM!==null && !it.terc){
+        it.fmf=r.fmfM; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
+      } else if(it.t!=='material' && r.fmfS!==null && !it.terc){
+        it.fmf=r.fmfS; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
+      }
+    });
+    Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ FMFs aplicados! LL% resultante: '+r.llPct.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
+  }
   updBT(); rBudg(); cTot(); updKpi(); rMargens();
   _metaLLResultado=null;
   Q('metaLLAplicarBtn').style.display='none';
   Q('metaLLDesfazerBtn').style.display='inline-flex';
-  Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ FMFs aplicados! LL% resultante: '+r.llPct.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
 }
 
 function desfazerMetaLL(){
