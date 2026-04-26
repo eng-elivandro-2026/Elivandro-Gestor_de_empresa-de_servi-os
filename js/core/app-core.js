@@ -9469,6 +9469,37 @@ function salvarCategoria(){
   else toast('✔ Categoria salva'+(salvarPadrao?' e definida como padrão':'')+'!','ok');
 }
 
+function aplicarMargNaProposta(){
+  if(!editId){ toast('Abra uma proposta primeiro para usar esta função.','err'); return; }
+  var p=props.find(function(x){return x.id===editId;});
+  if(!p||!p.bi||!p.bi.length){ toast('Esta proposta não tem itens de orçamento.','err'); return; }
+  var cod=_catEditKey;
+  var tipo=Q('catTipo').value; // 's' ou 'm'
+  var mar=parseFloat(Q('catMar').value)||0;
+  if(!cod){ toast('Nenhuma categoria selecionada.','err'); return; }
+  // Clona cfg e sobrescreve só a margem desta categoria (não afeta outras propostas)
+  var cfg=JSON.parse(JSON.stringify(getPrcAtual()));
+  if(tipo==='s'){ if(!cfg.s)cfg.s={}; if(!cfg.s[cod])cfg.s[cod]={n:cod,m:0,rMin:0,rMax:0}; cfg.s[cod].m=mar/100; }
+  else           { if(!cfg.m)cfg.m={}; if(!cfg.m[cod])cfg.m[cod]={n:cod,mk:0,rMin:0,rMax:0}; cfg.m[cod].mk=mar/100; }
+  var count=0;
+  p.bi.forEach(function(it){
+    var isMat=(it.t==='material');
+    var match=(tipo==='m')?isMat:!isMat;
+    if(it.cat===cod&&match&&it.inc!==false){
+      var novoFmf=calcFMF(cfg,it.t,it.cat);
+      it.fmf=novoFmf; it.pvu=(it.cu||0)*novoFmf; it.pvt=it.pvu*(it.mult||1);
+      count++;
+    }
+  });
+  if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
+  saveAll();
+  if(typeof rBudg==='function') rBudg();
+  if(typeof updKpi==='function') updKpi();
+  if(typeof rMargens==='function') rMargens();
+  Q('catModal').style.display='none';
+  toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+' nesta proposta!','ok');
+}
+
 function delCategoria(k,tipo){
   var usada=budg.filter(function(it){return it.cat===k&&it.t===tipo;}).length;
   var msg='Excluir categoria '+k+'?';

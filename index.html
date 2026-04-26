@@ -6077,8 +6077,9 @@ function guiaAba(n){
       <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2);cursor:pointer">
         <input type="checkbox" id="catSalvPadrao" style="cursor:pointer"> Salvar também como padrão
       </label>
-      <div style="display:flex;gap:.5rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn bg bsm" onclick="Q('catModal').style.display='none'">Cancelar</button>
+        <button onclick="aplicarMargNaProposta()" style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);border-radius:6px;padding:.3rem .75rem;font-size:.78rem;color:#58a6ff;font-weight:600;cursor:pointer" title="Recalcula apenas os itens desta categoria na proposta aberta, sem alterar o padrão global">📐 Aplicar na Proposta Atual</button>
         <button class="btn bs bsm" onclick="salvarCategoria()">💾 Salvar Categoria</button>
       </div>
     </div>
