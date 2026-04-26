@@ -1411,6 +1411,19 @@ function flt(f,el){
   }
   rProps();
 }
+function _propAlerts(p){
+  var hoje=new Date();
+  function dD(d){ if(!d)return null; var dt=new Date(d+'T12:00:00'); return isNaN(dt)?null:Math.floor((hoje-dt)/86400000); }
+  var FAS_DEC_PA=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+  var FAS_EXC_PA=['aprovado','andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+  var fas=p.fas||'',tl=p.tl||{},tags='';
+  function badge(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.1rem .42rem;font-size:.67rem;color:'+cor+';font-weight:700;margin:.15rem .15rem 0 0;white-space:nowrap">'+txt+'</span>'; }
+  if(fas==='em_elaboracao'){ var d=dD(p.dat2); if(d!==null&&d>15) tags+=badge('#d4a017','⚠️ '+d+'d elaboração'); }
+  if(FAS_DEC_PA.indexOf(fas)>=0){ var dtRef=(tl.dtEnvio||p.dat2||''); var d=dD(dtRef); if(d!==null){ if(d>60) tags+=badge('#f85149','🔴 '+d+'d decisão'); else if(d>30) tags+=badge('#d4a017','⚠️ '+d+'d decisão'); } }
+  if(FAS_EXC_PA.indexOf(fas)>=0&&fas!=='atrasado'){ var dtI=tl.dtInicioExec||''; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+d+'d'); }
+  if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
+  return tags?'<div style="margin-top:.38rem;display:flex;flex-wrap:wrap">'+tags+'</div>':'';
+}
 function rProps(){
   var q=(Q('srch').value||'').toLowerCase();
   var list=props;
@@ -1431,7 +1444,7 @@ function rProps(){
       +(( p.locCnpj||p.cnpj)?'<div class="pc-sub">'+esc(p.locCnpj||p.cnpj)+'</div>':'')
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
-      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span></div>'
+      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)+'</div>'
   }).join('');
 }
 function chSt(id,s){
