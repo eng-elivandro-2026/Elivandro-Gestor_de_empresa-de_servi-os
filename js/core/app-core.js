@@ -1330,6 +1330,68 @@ function rDash(rankTarget, sortBy){
   }
 
   if(typeof carregarCeoDash==='function') carregarCeoDash();
+  function runDecisionEngine(){
+  var elAlertas=Q('deAlertas'),elDecisoes=Q('deDecisoes'),elResumo=Q('deResumoExec'),elFoco=Q('deFocoSemana'),elOpor=Q('deOportunidades');
+  if(!elAlertas) return;
+  var hoje=new Date();
+  function dD(d){ if(!d)return null; var dt=new Date(d+'T12:00:00'); return isNaN(dt)?null:Math.floor((hoje-dt)/86400000); }
+  var FAS_DECISAO=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+  var FAS_EXEC=['aprovado','andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+  function deCard(nivel,titulo,msg,acao){
+    var cor=nivel==='critico'?'#f85149':nivel==='atencao'?'#d4a017':'#3fb950';
+    var bg=nivel==='critico'?'rgba(248,81,73,.07)':nivel==='atencao'?'rgba(212,160,23,.07)':'rgba(63,185,80,.07)';
+    return '<div style="background:'+bg+';border:1px solid '+cor+'44;border-left:3px solid '+cor+';border-radius:8px;padding:.55rem .8rem;margin-bottom:.5rem">'
+      +'<div style="font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:.2rem">'+titulo+'</div>'
+      +'<div style="font-size:.78rem;color:var(--text2);line-height:1.5">'+msg+'</div>'
+      +(acao?'<div style="font-size:.72rem;color:'+cor+';margin-top:.3rem;font-weight:600">→ '+acao+'</div>':'')
+      +'</div>';
+  }
+  var alertasList=[],criticos=0,atencao=0;
+  props.forEach(function(p){
+    var tl=p.tl||{},fas=p.fas||'',val=n2(p.val)||0;
+    var nome='<strong>#'+p.num+' — '+(p.cli||'')+(p.tit?' | '+p.tit.substring(0,35):'')+'</strong>';
+    // Em elaboração parada
+    if(fas==='em_elaboracao'){ var d=dD(p.dat2); if(d!==null&&d>15){ alertasList.push({nivel:'atencao',html:deCard('atencao','📝 Parada em elaboração — '+d+' dias',nome+' em elaboração há '+d+' dias sem enviar.','Enviar ou descartar')}); atencao++; } }
+    // Em decisão travada
+    if(FAS_DECISAO.indexOf(fas)>=0){ var dtRef=tl.dtEnvio||p.dat2||''; var d=dD(dtRef); if(d!==null){ if(d>60){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Decisão travada — '+d+' dias',nome+' — '+money(val)+' aguardando decisão há '+d+' dias.','Follow-up executivo urgente ou mover para Budget')}); criticos++; } else if(d>30){ alertasList.push({nivel:'atencao',html:deCard('atencao','⚠️ Decisão demorada — '+d+' dias',nome+' — '+money(val)+' aguardando há '+d+' dias.','Fazer follow-up esta semana')}); atencao++; } } }
+    // Obra sem NF
+    if(FAS_EXEC.indexOf(fas)>=0){ var dtI=tl.dtInicioExec||''; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0){ alertasList.push({nivel:'critico',html:deCard('critico','⚠️ Obra sem NF — '+d+' dias',nome+' — obra iniciada há '+d+' dias sem NF emitida. Risco de caixa elevado.','Emitir NF imediatamente')}); criticos++; } }
+    // Execução atrasada
+    if(fas==='atrasado'){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Execução Atrasada',nome+' — '+money(val)+' marcada como ATRASADA.','Reagendar com cliente ou acionar equipe')}); criticos++; }
+  });
+  // Inteligência: PMR alto por cliente
+  var pmrCli={};
+  props.forEach(function(p){ var tl=p.tl||{},nfs=tl.nfs||[],dtRF=tl.dtRecebFinal||''; var ultNF=nfs.length>0?nfs.reduce(function(mx,nf){return nf.data>mx?nf.data:mx;},''):null; if(ultNF&&dtRF){ var d=typeof _difD==='function'?_difD(ultNF,dtRF):null; if(d!==null){ var k=(p.cnpj||p.cli||'').trim().toLowerCase(); if(!pmrCli[k]) pmrCli[k]={cli:p.cli,vals:[]}; pmrCli[k].vals.push(d); } } });
+  var decHtml='';
+  Object.keys(pmrCli).forEach(function(k){ var c=pmrCli[k],m=Math.round(c.vals.reduce(function(s,v){return s+v;},0)/c.vals.length); if(m>60&&c.vals.length>=2) decHtml+=deCard('atencao','⚠️ Cliente com PMR alto: '+c.cli,'PMR médio histórico de <strong>'+m+' dias</strong> (base: '+c.vals.length+' pagamentos). Custo financeiro embutido recomendado.','Incluir custo financeiro no próximo orçamento'); });
+  // Inteligência: ciclo comercial
+  var fastFas=props.filter(function(p){ return p.dtFech&&p.dat2&&FAS_FECHADO.indexOf(p.fas)>=0; });
+  if(fastFas.length>=3){ var cicArr=fastFas.map(function(p){ return typeof _difD==='function'?(_difD(p.dat2,p.dtFech)||0):0; }); var cicMed=Math.round(cicArr.reduce(function(s,v){return s+v;},0)/cicArr.length); if(cicMed&&cicMed<=45) decHtml+=deCard('ok','✅ Ciclo comercial competitivo','Serviços fecham em média em <strong>'+cicMed+' dias</strong>. Pipeline saudável.','Manter ritmo de prospecção e follow-up'); }
+  if(!decHtml) decHtml='<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Preencha a Linha do Tempo nas propostas para ativar os padrões de inteligência.</div>';
+  // Resumo
+  var resumoHtml='<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem">'
+    +'<div style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:8px;padding:.4rem .75rem;font-size:.82rem"><strong style="color:#f85149">'+criticos+'</strong> <span style="color:var(--text2)">crítico'+(criticos!==1?'s':'')+' 🔴</span></div>'
+    +'<div style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);border-radius:8px;padding:.4rem .75rem;font-size:.82rem"><strong style="color:#d4a017">'+atencao+'</strong> <span style="color:var(--text2)">atenção ⚠️</span></div>'
+    +(alertasList.length===0?'<div style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);border-radius:8px;padding:.4rem .75rem;font-size:.82rem"><strong style="color:#3fb950">✅</strong> <span style="color:var(--text2)">Tudo ok</span></div>':'')
+    +'</div>';
+  // Foco da semana
+  var focoHtml='<div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">🎯 Foco desta semana</div>';
+  if(alertasList.length===0) focoHtml+='<div style="color:#3fb950;font-size:.83rem;padding:.3rem 0">✅ Nenhum alerta ativo. Pipeline saudável — mantenha o ritmo!</div>';
+  else focoHtml+=alertasList.slice(0,3).map(function(a){return a.html;}).join('');
+  // Demais alertas
+  var todosHtml='';
+  if(alertasList.length>3){
+    todosHtml='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;margin-top:.6rem">Demais alertas</div>';
+    todosHtml+=alertasList.slice(3).map(function(a){return a.html;}).join('');
+  }
+  var decTit='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;margin-top:.8rem">🧠 Padrões & Inteligência</div>';
+  if(elResumo) elResumo.innerHTML=resumoHtml;
+  if(elFoco) elFoco.innerHTML=focoHtml;
+  if(elAlertas) elAlertas.innerHTML=todosHtml;
+  if(elDecisoes) elDecisoes.innerHTML=decTit+decHtml;
+  if(elOpor) elOpor.innerHTML='';
+}
+
   if(typeof runDecisionEngine==='function'){
     runDecisionEngine();
     // Zera o timestamp do cache para que o módulo de Gestão busque dados frescos
@@ -11275,6 +11337,7 @@ function rCiclosDash(){
 
   function _mStr(arr){ var m=_media(arr); return m!==null?m+'d':'—'; }
   function _mCor(arr,bom,ok){ var m=_media(arr); if(m===null) return 'var(--text3)'; return m<=bom?'#3fb950':m<=ok?'#d4a017':'#f97316'; }
+  function _mCorInv(arr,bom,ok){ var m=_media(arr); if(m===null) return 'var(--text3)'; return m>=bom?'#3fb950':m>=ok?'#d4a017':'#f97316'; }
 
   var mProsp=_media(prosp), mElab=_media(elab), mDec=_media(dec), mCom=_media(cicCom);
   var mGap=_media(gapPre), mExec=_media(exec), mEntNF=_media(entNF);
@@ -11295,18 +11358,18 @@ function rCiclosDash(){
   // Comercial
   html+='<div style="font-size:.7rem;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">🔵 Ciclo Comercial</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:.9rem">';
-  html+=kpi('📞','Prospecção',_mStr(prosp),'Contato → Visita',_mCor(prosp,3,7),prosp.length);
-  html+=kpi('📝','Elaboração',_mStr(elab),'Visita/Contato → Envio',_mCor(elab,5,15),elab.length);
-  html+=kpi('⏳','Decisão do Cliente',_mStr(dec),'Envio → Fechamento',_mCor(dec,15,30),dec.length);
-  html+=kpi('🏆','Ciclo Comercial Total',_mStr(cicCom),'Contato → Fechamento',_mCor(cicCom,30,60),cicCom.length);
+  html+=kpi('📞','Prospecção',_mStr(prosp),'Contato → Visita',_mCor(prosp,7,15),prosp.length);
+  html+=kpi('📝','Elaboração',_mStr(elab),'Visita/Contato → Envio',_mCor(elab,6,12),elab.length);
+  html+=kpi('⏳','Decisão do Cliente',_mStr(dec),'Envio → Fechamento',_mCor(dec,30,60),dec.length);
+  html+=kpi('🏆','Ciclo Comercial Total',_mStr(cicCom),'Contato → Fechamento',_mCor(cicCom,45,90),cicCom.length);
   html+='</div>';
 
   // Execução
   html+='<div style="font-size:.7rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">🟢 Ciclo de Execução</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:.9rem">';
-  html+=kpi('🚀','Gap Pré-Obra',_mStr(gapPre),'Fechamento → Início Exec.',_mCor(gapPre,7,30),gapPre.length);
-  html+=kpi('⚙️','Duração da Execução',_mStr(exec),'Início → Término','#3fb950',exec.length);
-  html+=(entNF.length?kpi('📋','Entrega → 1ª NF',_mStr(entNF),'Aceite/Término → NF',_mCor(entNF,3,10),entNF.length):'');
+  html+=kpi('🚀','Gap Pré-Obra',_mStr(gapPre),'Fechamento → Início Exec.',_mCor(gapPre,15,30),gapPre.length);
+  html+=kpi('⚙️','Duração da Execução',_mStr(exec),'Início → Término','var(--text3)',exec.length);
+  html+=(entNF.length?kpi('📋','Entrega → 1ª NF',_mStr(entNF),'Aceite/Término → NF',_mCor(entNF,3,7),entNF.length):'');
   html+='</div>';
 
   // Financeiro
@@ -11314,7 +11377,7 @@ function rCiclosDash(){
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem">';
   html+=(mPMR!==null?kpi('📅','PMR Médio Real',mPMR+'d','Última NF → Recebimento',_mCor(pmr,30,60),pmr.length):'');
   html+=(mCicFin!==null?kpi('🔄','Ciclo Financeiro Total',mCicFin+'d','Início Exec. → Receb. Final',_mCor(cicFin,60,120),cicFin.length):'');
-  html+=(mAdiPct!==null?kpi('💰','Adiantamento Médio',mAdiPct+'%','% do total faturado recebido antec.','#3fb950',adiantPcts.length):'');
+  html+=(mAdiPct!==null?kpi('💰','Adiantamento Médio',mAdiPct+'%','% do total faturado recebido antec.',_mCorInv(adiantPcts,40,20),adiantPcts.length):'');
   html+='</div>';
 
   if(!prosp.length&&!elab.length&&!dec.length&&!cicCom.length&&!exec.length&&!pmr.length){
