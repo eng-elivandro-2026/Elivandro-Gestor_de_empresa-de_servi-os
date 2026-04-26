@@ -1756,6 +1756,12 @@ function _abrirModalNovaRev(propId, preSelectedRevId){
 }
 
 function _confirmarNovaRev(propId){
+  // Sincroniza escSecs/budg/aliq do formulário de volta para props antes de tirar snapshot
+  if(editId===propId && typeof buildCurrentProposalSnapshot==='function'){
+    var _sn=buildCurrentProposalSnapshot();
+    var _idx=props.findIndex(function(x){return x.id===propId;});
+    if(_idx>=0) props[_idx]=_sn; else props.push(_sn);
+  }
   var p=props.find(function(x){return x.id===propId});
   if(!p) return;
   var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
