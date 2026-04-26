@@ -596,9 +596,13 @@ function rRevs(){
   if(!ativaLetter&&revs.length) ativaLetter=revs[revs.length-1].rev;
   tb.innerHTML=revs.map(function(r){
     var isAtiva=r.rev===ativaLetter;
+    var isUltimaAtiva=isAtiva&&revs.length>1;
     var hasSnap=!!r.snapshot;
     var stCell=isAtiva
-      ?'<span style="font-size:.68rem;font-weight:600;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.35);color:#58a6ff;padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Ativa</span>'
+      ?'<div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">'
+        +'<span style="font-size:.68rem;font-weight:600;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.35);color:#58a6ff;padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Ativa</span>'
+        +(isUltimaAtiva?'<button onclick="_desfazerUltimaRev(\''+editId+'\')" title="Desfazer esta revisão e reativar a anterior" style="font-size:.62rem;padding:.1rem .35rem;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.3);border-radius:4px;color:#f85149;cursor:pointer;white-space:nowrap">↩ Desfazer</button>':'')
+      +'</div>'
       :'<div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">'
         +'<span style="font-size:.68rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Arquivada</span>'
         +(hasSnap?'<button onclick="_abrirVisualizacaoRev(\''+editId+'\',\''+r.id+'\')" style="font-size:.66rem;padding:.1rem .35rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;white-space:nowrap">👁 Ver</button>':'')
@@ -1812,6 +1816,36 @@ function _confirmarNovaRev(propId){
   rProps();
   toast('✔ Rev. '+nextLetter+' criada'+(baseLetter?' a partir da Rev. '+baseLetter:'')+' — '+esc(p.num),'ok');
 }
+
+function _desfazerUltimaRev(propId){
+  var p=props.find(function(x){return x.id===propId}); if(!p) return;
+  var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
+  if(pRevs.length<2){ toast('Não há revisão anterior para restaurar.','err'); return; }
+  var ultima=pRevs[pRevs.length-1];
+  if(ultima.status!=='ativa'){ toast('Apenas a revisão ativa pode ser desfeita.','err'); return; }
+  if(!confirm('Desfazer a Rev. '+ultima.rev+'?\n\nEla será excluída e a revisão anterior será reativada com seus dados originais.')){ return; }
+  // Remove a revisão ativa
+  pRevs.pop();
+  // Reativa a última arquivada
+  var anterior=pRevs[pRevs.length-1];
+  var anteriorSnap=anterior.snapshot||null;
+  anterior.status='ativa';
+  p.revs=pRevs;
+  p.revAtual=anterior.rev;
+  var m=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
+  if(m) p.num=m[1]+anterior.rev+'.'+m[2];
+  // Restaura estado live da proposta com o snapshot da revisão anterior
+  if(anteriorSnap) _applySnapToProp(p,anteriorSnap);
+  saveAll();
+  // Atualiza o editor se estiver aberto nesta proposta
+  if(editId===propId){
+    editP(propId);
+    try{ rBudg(); updBT(); updKpi(); rRevs(); }catch(e){}
+  }
+  rProps();
+  toast('↩ Rev. '+ultima.rev+' desfeita — Rev. '+anterior.rev+' reativada.','ok');
+}
+
 function chSt(id,s){
   var p=props.find(function(x){return x.id===id});
   if(!p) return;
