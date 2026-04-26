@@ -225,6 +225,19 @@ var eDB={titulos:[],subtitulos:[]};
 var tplEdits={};var tplTitles={};
 var revs=[];
 
+// ── REVISÕES: campos gravados no snapshot e campos restaurados ao clonar ──────
+var _SNAP_STORE=['val','vS','vM','vD','vDS','vDM','bi','esc','aliq','prc','fas','tit','res','gantt','tensVal','tensCmd','tens'];
+var _SNAP_APPLY=['val','vS','vM','vD','vDS','vDM','bi','esc','aliq','prc','tensVal','tensCmd','tens'];
+function _snapProp(p){
+  var s={};
+  _SNAP_STORE.forEach(function(k){ s[k]=p[k]!==undefined?JSON.parse(JSON.stringify(p[k])):null; });
+  return s;
+}
+function _applySnapToProp(p,snap){
+  if(!snap)return;
+  _SNAP_APPLY.forEach(function(k){ if(snap[k]!==null&&snap[k]!==undefined) p[k]=JSON.parse(JSON.stringify(snap[k])); });
+}
+
 var FASE={
   em_elaboracao:{n:'Em Elaboração',c:'b-and',i:'📝'},
   enviada:{n:'Enviada',c:'b-env',i:'📤'},
@@ -576,15 +589,190 @@ function rRevs(){
     tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
     return;
   }
+  var ativaLetter='';
+  for(var i=revs.length-1;i>=0;i--){
+    if(!revs[i].status||revs[i].status==='ativa'){ativaLetter=revs[i].rev;break;}
+  }
+  if(!ativaLetter&&revs.length) ativaLetter=revs[revs.length-1].rev;
   tb.innerHTML=revs.map(function(r){
+    var isAtiva=r.rev===ativaLetter;
+    var isUltimaAtiva=isAtiva&&revs.length>1;
+    var hasSnap=!!r.snapshot;
+    var stCell=isAtiva
+      ?'<div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">'
+        +'<span style="font-size:.68rem;font-weight:600;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.35);color:#58a6ff;padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Ativa</span>'
+        +(isUltimaAtiva?'<button onclick="_desfazerUltimaRev(\''+editId+'\')" title="Desfazer esta revisão e reativar a anterior" style="font-size:.62rem;padding:.1rem .35rem;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.3);border-radius:4px;color:#f85149;cursor:pointer;white-space:nowrap">↩ Desfazer</button>':'')
+      +'</div>'
+      :'<div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">'
+        +'<span style="font-size:.68rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Arquivada</span>'
+        +(hasSnap?'<button onclick="_abrirVisualizacaoRev(\''+editId+'\',\''+r.id+'\')" style="font-size:.66rem;padding:.1rem .35rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;white-space:nowrap">👁 Ver</button>':'')
+      +'</div>';
     return '<tr>'
       +'<td><input value="'+esc(r.rev)+'" data-id="'+r.id+'" data-f="rev" oninput="updRev(this)" style="width:44px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--accent);font-weight:700;font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.dat)+'" data-id="'+r.id+'" data-f="dat" oninput="updRev(this)" style="width:95px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
       +'<td><input value="'+esc(r.por)+'" data-id="'+r.id+'" data-f="por" oninput="updRev(this)" style="width:54px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.desc)+'" data-id="'+r.id+'" data-f="desc" placeholder="Descrição da revisão…" oninput="updRev(this)" style="width:100%;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
-      +'<td style="text-align:center"><button class="btn bd bxs" onclick="delRev(&quot;'+r.id+'&quot;)">×</button></td>'
+      +'<td style="text-align:center;vertical-align:middle">'+stCell+'</td>'
       +'</tr>';
   }).join('');
+}
+
+function _abrirVisualizacaoRev(propId, revId){ _abrirVisualizacaoRevCompleta(propId, revId); }
+function _novaRevDeVisualizacao(propId, baseRevId){
+  var viz=document.getElementById('_modalVizRev');if(viz)viz.remove();
+  _abrirModalNovaRev(propId, baseRevId);
+}
+
+// ── MODO LEITURA COMPLETO ─────────────────────────────────────────────────────
+var _vizModeState=null;
+
+function _limparVizMode(){
+  if(!_vizModeState) return;
+  var propId=_vizModeState.propId;
+  var p=props.find(function(x){return x.id===propId;});
+  if(p){
+    _applySnapToProp(p,_vizModeState.backupSnap);
+    p.revAtual=_vizModeState.backupRevAtual;
+    p.num=_vizModeState.backupNum;
+  }
+  document.removeEventListener('mousedown',_vizModeClickHandler,true);
+  var b=document.getElementById('_vizModeBanner');if(b)b.remove();
+  var pr=document.getElementById('_vizModePrompt');if(pr)pr.remove();
+  var sv=document.querySelector('.ab-save');
+  if(sv){sv.style.opacity='';sv.style.pointerEvents='';}
+  _vizModeState=null;
+}
+
+function _abrirVisualizacaoRevCompleta(propId, revId){
+  // Cancelar timer de auto-save pendente e fazer flush antes de mudar o estado.
+  // NÃO avança tsSaved — preserva o timestamp do último save real para que a
+  // comparação de merge no reload sempre prefira o dado salvo pelo usuário.
+  clearTimeout(autoDraftTimer);
+  autoDraftTimer=null;
+  if(editId===propId){
+    var _fi=props.findIndex(function(x){return x.id===propId;});
+    var _pFlush=_fi>=0?props[_fi]:null;
+    if(_pFlush){
+      _pFlush.esc=JSON.parse(JSON.stringify(escSecs));
+      _pFlush.bi=JSON.parse(JSON.stringify(budg));
+      _pFlush.revs=JSON.parse(JSON.stringify(revs));
+    }
+  }
+
+  var p=props.find(function(x){return x.id===propId;});
+  if(!p) return;
+  var rev=(p.revs||[]).find(function(r){return r.id===revId;});
+  if(!rev||!rev.snapshot){toast('Esta revisão não possui snapshot salvo.','err');return;}
+
+  // Guarda estado ativo
+  _vizModeState={
+    propId:propId,
+    revId:revId,
+    backupSnap:_snapProp(p),
+    backupRevAtual:p.revAtual||'',
+    backupNum:p.num||''
+  };
+
+  // Aplica snapshot e abre editor
+  _applySnapToProp(p,rev.snapshot);
+  p.revAtual=rev.rev;
+  editP(propId);
+  go('nova',null);
+
+  setTimeout(function(){
+    step(1);
+    try{rBudg();updBT();updKpi();}catch(e){}
+  },160);
+
+  setTimeout(function(){_setupVizModeUI(rev);},320);
+}
+
+function _setupVizModeUI(rev){
+  var ex=document.getElementById('_vizModeBanner');if(ex)ex.remove();
+  var novaEl=document.getElementById('nova');if(!novaEl) return;
+  var banner=document.createElement('div');
+  banner.id='_vizModeBanner';
+  banner.style.cssText='background:rgba(240,165,0,.1);border-bottom:2px solid rgba(240,165,0,.4);padding:.55rem 1.2rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;position:sticky;top:0;z-index:200';
+  banner.innerHTML=
+    '<span style="font-size:.95rem">👁</span>'
+    +'<div style="flex:1;min-width:0">'
+      +'<span style="font-size:.78rem;font-weight:700;color:var(--accent)">Modo Leitura — Rev. '+esc(rev.rev)+(rev.desc?' · '+esc(rev.desc.substring(0,40)):'')+' </span>'
+      +'<span style="font-size:.72rem;color:var(--text3)">(Arquivada em '+esc(rev.dat||'')+')</span>'
+    +'</div>'
+    +'<button onclick="_fecharVisualizacaoRevCompleta()" style="padding:.3rem .7rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.78rem;flex-shrink:0">✕ Fechar</button>'
+    +'<button onclick="_novaRevDeVisualizacaoCompleta()" style="padding:.3rem .85rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.78rem;font-weight:600;flex-shrink:0">+ Nova Revisão a partir desta</button>';
+  novaEl.insertBefore(banner,novaEl.firstChild);
+  // Oculta botão Salvar
+  var sv=document.querySelector('.ab-save');
+  if(sv){sv.style.opacity='.2';sv.style.pointerEvents='none';}
+  // Ativa interceptor
+  document.addEventListener('mousedown',_vizModeClickHandler,true);
+  toast('👁 Rev. '+rev.rev+' em modo leitura. Clique em qualquer campo para criar nova revisão.','ok');
+}
+
+function _vizModeClickHandler(e){
+  if(!_vizModeState) return;
+  // Permite: banner, navegação dos steps, actionBar (exceto .ab-save)
+  var tgt=e.target;
+  if(tgt.closest){
+    if(tgt.closest('#_vizModeBanner')) return;
+    if(tgt.closest('.wz'))            return; // tabs dentro do form
+    var inAB=tgt.closest('#actionBar');
+    if(inAB&&!tgt.closest('.ab-save')) return;
+    if(tgt.closest('#_vizModePrompt')) return;
+  }
+  // Intercepta inputs, selects, textareas, buttons e labels do formulário
+  var tag=tgt.tagName.toLowerCase();
+  if(['input','select','textarea','button','label'].indexOf(tag)<0) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  _showVizModePrompt();
+}
+
+function _showVizModePrompt(){
+  if(document.getElementById('_vizModePrompt')) return;
+  var el=document.createElement('div');
+  el.id='_vizModePrompt';
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center';
+  el.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1.5rem 1.75rem;max-width:400px;width:92%;text-align:center">'
+    +'<div style="font-size:1.5rem;margin-bottom:.5rem">📋</div>'
+    +'<div style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Revisão Arquivada</div>'
+    +'<div style="font-size:.82rem;color:var(--text2);line-height:1.55;margin-bottom:1.25rem">Esta versão está em <strong>modo leitura</strong>.<br>Deseja criar uma nova revisão a partir dela?</div>'
+    +'<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
+      +'<button onclick="document.getElementById(\'_vizModePrompt\').remove()" style="padding:.4rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.82rem">Não, continuar visualizando</button>'
+      +'<button onclick="_novaRevDeVisualizacaoCompleta()" style="padding:.4rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.82rem;font-weight:600">Sim, criar nova revisão</button>'
+    +'</div>'
+    +'</div>';
+  el.addEventListener('click',function(e){if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+}
+
+function _fecharVisualizacaoRevCompleta(){
+  var propId=_vizModeState&&_vizModeState.propId;
+  _limparVizMode(); // restaura p.esc e outras props para o estado ativo correto
+  if(propId){
+    editP(propId);  // carrega p (restaurado) em escSecs + campos do form
+    go('nova',null);
+    // Persiste dados corretos em localStorage + Supabase com timestamp novo,
+    // garantindo que o merge no reload sempre prefira esta versão restaurada.
+    try{ upsertCurrentDraft(true); }catch(e){}
+    setTimeout(function(){try{step(1);rBudg();updBT();updKpi();}catch(e){}},160);
+    toast('Visualização encerrada — edição normal restaurada.','ok');
+  }
+}
+
+function _novaRevDeVisualizacaoCompleta(){
+  var state=_vizModeState;
+  if(!state) return;
+  var pr=document.getElementById('_vizModePrompt');if(pr)pr.remove();
+  var propId=state.propId, revId=state.revId;
+  _fecharVisualizacaoRevCompleta();
+  setTimeout(function(){_abrirModalNovaRev(propId,revId);},420);
+}
+
+function _novaRevDeVisualizacao(propId, baseRevId){
+  var viz=document.getElementById('_modalVizRev');if(viz)viz.remove();
+  _abrirModalNovaRev(propId, baseRevId);
 }
 
 
@@ -680,6 +868,8 @@ function cancelEdit(){
   }
 }
 function fecharProposta(){
+  // Se estiver em modo leitura, restaura dados antes de fechar
+  if(_vizModeState){ _limparVizMode(); }
   // Salva silenciosamente se houver dados significativos, depois vai ao dashboard
   if(proposalFormHasMeaningfulData()){
     upsertCurrentDraft(true);
@@ -1461,13 +1651,58 @@ function rProps(){
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
     var f=FASE[p.fas]||FASE.em_elaboracao||FASE.enviada;
-    var pRevCount=(p.revs||[]).length;
-    var revLabel=pRevCount===0?'Sem revisões':pRevCount+(pRevCount===1?' revisão':' revisões');
+    var pRevs=p.revs||[];
+    var pRevCount=pRevs.length;
+    var revAtual=(p.revAtual||'').trim().toUpperCase();
+    // Badge de revisão atual no topo
+    var revBadge=revAtual
+      ?'<span style="font-size:.65rem;font-weight:700;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.1rem .35rem;border-radius:3px;vertical-align:middle;margin-left:.35rem">Rev. '+revAtual+'</span>'
+      :'';
+    // Lista de revisões (mais recente primeiro)
+    var revListHtml='';
+    if(pRevCount>0){
+      revListHtml=pRevs.slice().reverse().map(function(r,i){
+        var isAtiva=!r.status||r.status==='ativa';
+        var bg=isAtiva?'rgba(88,166,255,.07)':'var(--bg)';
+        var brd=isAtiva?'1px solid rgba(88,166,255,.25)':'1px solid var(--border)';
+        var lc=isAtiva?'#58a6ff':'var(--text3)';
+        var dp=(r.dat||'').split('/');
+        var sd=dp.length>=2?dp[0]+'/'+dp[1]:r.dat||'';
+        // Valor: usa snapshot se arquivada, ou valor atual se ativa
+        var snapVal=r.snapshot&&r.snapshot.val!=null?r.snapshot.val:(isAtiva?p.val:null);
+        var valStr=snapVal!=null?'· '+money(snapVal):'';
+        // Badge de status
+        var stBadge=isAtiva
+          ?'<span style="font-size:.6rem;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.02rem .28rem;border-radius:3px;flex-shrink:0">'+((FASE[p.fas]&&FASE[p.fas].n)||p.fas)+'</span>'
+          :'<span style="font-size:.6rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.02rem .28rem;border-radius:3px;flex-shrink:0">Arquivada</span>';
+        return '<div style="display:flex;align-items:center;gap:.3rem;padding:.2rem .35rem;border-radius:4px;border:'+brd+';background:'+bg+';margin-bottom:.1rem">'
+          +'<span style="font-weight:700;font-size:.72rem;color:'+lc+';min-width:14px;text-align:center;flex-shrink:0">'+esc(r.rev)+'</span>'
+          +'<span style="font-size:.66rem;color:var(--text3);flex-shrink:0">'+esc(sd)+(valStr?' <span style="color:var(--text2)">'+valStr+'</span>':'')+'</span>'
+          +'<span style="flex:1"></span>'
+          +stBadge
+        +'</div>';
+      }).join('');
+    }
+    // Rodapé colapsável + botão
+    var revFooter=
+      '<div style="position:relative;z-index:1;margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border)" onclick="event.stopPropagation()">'
+      +(pRevCount>0
+        ?'<details style="margin-bottom:.35rem" onclick="event.stopPropagation()">'
+          +'<summary style="cursor:pointer;font-size:.72rem;color:var(--text3);list-style:none;outline:none;display:flex;align-items:center;gap:.25rem" onclick="event.stopPropagation()">'
+          +'<span style="font-size:.6rem;display:inline-block">▸</span>'+(pRevCount+(pRevCount===1?' revisão':' revisões'))
+          +'</summary>'
+          +'<div style="margin-top:.3rem">'+revListHtml+'</div>'
+          +'</details>'
+        :'<div style="font-size:.72rem;color:var(--text3);margin-bottom:.35rem">Sem revisões</div>'
+      )
+      +'<button style="display:block;width:100%;padding:.28rem 0;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.74rem;text-align:center" '
+      +'onclick="addRevCard(\''+p.id+'\');event.stopPropagation();">+ Nova Revisão</button>'
+      +'</div>';
     return '<div class="pc" onclick="fmAbrirProposta(\''+p.id+'\')">'
       +'<div class="pc-act" onclick="event.stopPropagation()">'
       +'<select onchange="chSt(\''+p.id+'\',this.value)">'+Object.keys(FASE).map(function(k){return'<option value="'+k+'"'+(p.fas===k?' selected':'')+'>'+FASE[k].n+'</option>'}).join('')+'</select>'
       +'<button class="pc-del" style="background:#2563eb" title="Duplicar proposta" onclick="dupProp(\''+p.id+'\');event.stopPropagation();">⧉</button>'+'<button class="pc-del" onclick="delP(\''+p.id+'\')">×</button></div>'
-      +'<div class="pc-top"><span class="pc-num">'+esc(p.num)+'</span><span class="pc-date">'+p.dat+'</span></div>'
+      +'<div class="pc-top"><span class="pc-num">'+esc(p.num)+'</span>'+revBadge+'<span class="pc-date">'+p.dat+'</span></div>'
       +'<div class="pc-val">'+money(p.val)+'</div>'
       +'<div class="pc-tit">'+esc(p.tit||'')+'</div>'
       +'<div class="pc-cli">'+esc(p.loc||p.cli||'')+'</div>'
@@ -1475,24 +1710,160 @@ function rProps(){
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
       +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
-      +'<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border)">'
-        +'<span style="font-size:.72rem;color:var(--text3)">'+revLabel+'</span>'
-        +'<button onclick="addRevCard(\''+p.id+'\');event.stopPropagation();" style="font-size:.71rem;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;line-height:1.4">+ Nova Rev.</button>'
-      +'</div>'
+      +revFooter
       +'</div>'
   }).join('');
 }
-function addRevCard(id){
-  var p=props.find(function(x){return x.id===id});
+function addRevCard(id){ _abrirModalNovaRev(id); }
+
+function _abrirModalNovaRev(propId, preSelectedRevId){
+  var p=props.find(function(x){return x.id===propId});
   if(!p) return;
   var pRevs=p.revs||[];
   var nextLetter=String.fromCharCode(65+pRevs.length);
-  pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:''});
+
+  // Determina revisão padrão: preSelectedRevId > última ativa > última da lista
+  var defId=preSelectedRevId||'';
+  if(!defId){
+    for(var i=pRevs.length-1;i>=0;i--){
+      if(!pRevs[i].status||pRevs[i].status==='ativa'){defId=pRevs[i].id;break;}
+    }
+  }
+  if(!defId&&pRevs.length) defId=pRevs[pRevs.length-1].id;
+
+  var optHtml='';
+  if(pRevs.length>0){
+    optHtml=pRevs.slice().reverse().map(function(r){
+      var isAtiva=!r.status||r.status==='ativa';
+      var hasSnap=!!r.snapshot;
+      var canSelect=isAtiva||hasSnap;
+      var lbl='Rev. '+r.rev+(r.desc?' — '+(r.desc.length>28?r.desc.substring(0,28)+'…':r.desc):'');
+      var stTxt=isAtiva?' <span style="font-size:.65rem;color:#58a6ff">(ativa)</span>'
+               :hasSnap?' <span style="font-size:.65rem;color:var(--text3)">(arquivada)</span>'
+               :'<span style="font-size:.65rem;color:var(--text3)">(sem snapshot)</span>';
+      return '<label style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-radius:5px;'
+        +(canSelect?'cursor:pointer;':'opacity:.45;cursor:not-allowed;')
+        +'background:var(--bg3);border:1px solid var(--border);margin-bottom:.22rem">'
+        +'<input type="radio" name="_revBase" value="'+r.id+'"'
+        +(r.id===defId?' checked':'')+(canSelect?'':' disabled')+'>'
+        +'<span style="font-size:.8rem;color:var(--text)">'+esc(lbl)+stTxt+'</span>'
+        +'</label>';
+    }).join('');
+  } else {
+    optHtml='<p style="font-size:.8rem;color:var(--text3);margin:.3rem 0">Primeira revisão — criada com os dados atuais da proposta.</p>';
+  }
+
+  var ex=document.getElementById('_modalNovaRev');if(ex)ex.remove();
+  var el=document.createElement('div');
+  el.id='_modalNovaRev';
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center';
+  el.innerHTML=
+    '<div onclick="event.stopPropagation()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;min-width:320px;max-width:460px;width:92%;max-height:85vh;overflow-y:auto">'
+    +'<div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1.1rem">+ Nova Revisão <span style="color:var(--accent)">'+nextLetter+'</span></div>'
+    +(pRevs.length>0
+      ?'<div style="margin-bottom:1rem"><div style="font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:.45rem">Clonar a partir de:</div>'+optHtml+'</div>'
+      :'<div style="margin-bottom:1rem">'+optHtml+'</div>')
+    +'<div style="margin-bottom:1.2rem">'
+      +'<div style="font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:.35rem">Descrição desta revisão:</div>'
+      +'<input id="_novaRevDesc" type="text" placeholder="Ex: Ajuste de escopo conforme reunião…" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:.45rem .6rem;color:var(--text);font-size:.83rem;outline:none">'
+    +'</div>'
+    +'<div style="display:flex;gap:.5rem;justify-content:flex-end">'
+      +'<button onclick="document.getElementById(\'_modalNovaRev\').remove()" style="padding:.38rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.82rem">Cancelar</button>'
+      +'<button onclick="_confirmarNovaRev(\''+propId+'\')" style="padding:.38rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.82rem;font-weight:600">Criar Rev. '+nextLetter+'</button>'
+    +'</div>'
+    +'</div>';
+  el.addEventListener('click',function(e){if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+  setTimeout(function(){var inp=document.getElementById('_novaRevDesc');if(inp)inp.focus();},80);
+}
+
+function _confirmarNovaRev(propId){
+  // Sincroniza escSecs/budg/aliq do formulário de volta para props antes de tirar snapshot
+  if(editId===propId && typeof buildCurrentProposalSnapshot==='function'){
+    var _sn=buildCurrentProposalSnapshot();
+    var _idx=props.findIndex(function(x){return x.id===propId;});
+    if(_idx>=0) props[_idx]=_sn; else props.push(_sn);
+  }
+  var p=props.find(function(x){return x.id===propId});
+  if(!p) return;
+  var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
+  var nextLetter=String.fromCharCode(65+pRevs.length);
+
+  // 1. Congela revisão ativa atual com snapshot completo
+  var activeIdx=-1;
+  for(var i=pRevs.length-1;i>=0;i--){
+    if(!pRevs[i].status||pRevs[i].status==='ativa'){activeIdx=i;break;}
+  }
+  if(activeIdx>=0){
+    pRevs[activeIdx].snapshot=_snapProp(p);
+    pRevs[activeIdx].status='arquivada';
+  }
+
+  // 2. Determina snapshot base para clonar
+  var sel=document.querySelector('#_modalNovaRev input[name="_revBase"]:checked');
+  var baseRevId=sel?sel.value:null;
+  var baseSnap=null;
+  var baseLetter=null;
+  if(baseRevId){
+    var bRev=pRevs.find(function(r){return r.id===baseRevId;});
+    if(bRev){
+      baseLetter=bRev.rev;
+      baseSnap=bRev.snapshot||null;
+    }
+  }
+  // Se não tem snapshot (revisão sem snapshot), usa estado live atual (já congelado acima)
+  if(!baseSnap&&activeIdx>=0) baseSnap=pRevs[activeIdx].snapshot;
+
+  // 3. Cria nova revisão ativa
+  var desc=(document.getElementById('_novaRevDesc')||{}).value||'';
+  desc=desc.trim();
+  pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:desc,status:'ativa',base:baseLetter,snapshot:null});
+
+  // 4. Aplica snapshot ao estado live da proposta
+  _applySnapToProp(p,baseSnap);
+
+  // 5. Atualiza metadados
   p.revs=pRevs;
+  p.revAtual=nextLetter;
+  var m=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
+  if(m) p.num=m[1]+nextLetter+'.'+m[2];
+
+  // 6. Fecha modal, salva e atualiza
+  var modal=document.getElementById('_modalNovaRev');if(modal)modal.remove();
   saveAll();
   rProps();
-  toast('✔ Revisão '+nextLetter+' adicionada — '+esc(p.num),'ok');
+  toast('✔ Rev. '+nextLetter+' criada'+(baseLetter?' a partir da Rev. '+baseLetter:'')+' — '+esc(p.num),'ok');
 }
+
+function _desfazerUltimaRev(propId){
+  var p=props.find(function(x){return x.id===propId}); if(!p) return;
+  var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
+  if(pRevs.length<2){ toast('Não há revisão anterior para restaurar.','err'); return; }
+  var ultima=pRevs[pRevs.length-1];
+  if(ultima.status!=='ativa'){ toast('Apenas a revisão ativa pode ser desfeita.','err'); return; }
+  if(!confirm('Desfazer a Rev. '+ultima.rev+'?\n\nEla será excluída e a revisão anterior será reativada com seus dados originais.')){ return; }
+  // Remove a revisão ativa
+  pRevs.pop();
+  // Reativa a última arquivada
+  var anterior=pRevs[pRevs.length-1];
+  var anteriorSnap=anterior.snapshot||null;
+  anterior.status='ativa';
+  p.revs=pRevs;
+  p.revAtual=anterior.rev;
+  var m=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
+  if(m) p.num=m[1]+anterior.rev+'.'+m[2];
+  // Restaura estado live da proposta com o snapshot da revisão anterior
+  if(anteriorSnap) _applySnapToProp(p,anteriorSnap);
+  saveAll();
+  // Atualiza o editor se estiver aberto nesta proposta
+  if(editId===propId){
+    editP(propId);
+    try{ rBudg(); updBT(); updKpi(); rRevs(); }catch(e){}
+  }
+  rProps();
+  toast('↩ Rev. '+ultima.rev+' desfeita — Rev. '+anterior.rev+' reativada.','ok');
+}
+
 function chSt(id,s){
   var p=props.find(function(x){return x.id===id});
   if(!p) return;
@@ -1724,40 +2095,7 @@ function editP(id){
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
 function saveP(){
-
-// elivandro daqui para baixo
-
-async function importarBackupSupabase(jsonData){
-  if(!window.sbClient){
-    alert('Supabase não conectado!');
-    return;
-  }
-
-  try{
-    const lista = jsonData.propostas || [];
-
-    for(let p of lista){
-      const { error } = await window.sbClient
-        .from('propostas')
-        .insert([p]);
-
-      if(error){
-        console.error('Erro ao inserir:', p.num, error);
-      }else{
-        console.log('OK:', p.num);
-      }
-    }
-
-    alert('✔ Migração concluída!');
-  }catch(e){
-    console.error(e);
-    alert('Erro na migração');
-  }
-}
-
-// elivandro daqui para cima
-  
-var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
+  var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
   var isNew=!editId;
   var sn=buildCurrentProposalSnapshot();
@@ -2544,11 +2882,10 @@ function rEsc(){
       +'<input class="es-num" value="'+esc(sec.num||String(si+1))+'" placeholder="#" '
       +'style="width:44px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.28rem .3rem;font-family:inherit;font-size:.8rem;cursor:text" '
       +'title="Digite o número desejado e pressione Enter para reposicionar" '
-      +'oninput="escSecs['+si+'].num=this.value" '
-      +'onkeydown="if(event.key===\'Enter\'){escMoverPorNumero('+si+',this.value);this.blur();event.preventDefault();}" '
+      +'oninput="escSecs['+si+'].num=this.value" '      +'onkeydown="if(event.key===\'Enter\'){escMoverPorNumero('+si+',this.value);this.blur();event.preventDefault();}" '
       +'onblur="escMoverPorNumero('+si+',this.value)">'
       +'<input class="es-ti" value="'+esc(sec.titulo)+'" placeholder="Título da seção" '
-      +'oninput="escSecs['+si+'].titulo=this.value">'
+      +'oninput="escSecs['+si+'].titulo=this.value;scheduleDraftSave()">'
       +'<div class="br" style="flex-shrink:0">'
       +(isValor
          ? '<button class="btn ba bxs" onclick="atualizarValorSecaoEscopo()" title="Recarregar tabela de valores considerando descontos atuais">↻ Atualizar valores</button><span class="tg2" title="Tabela de valores automática">💰 Auto</span>'
@@ -2561,7 +2898,7 @@ function rEsc(){
       +escSymBar()
       +'<textarea class="esb-d" style="width:100%;margin-top:.2rem;background:var(--bg2)" '
       +'placeholder="'+(isValor?'Texto opcional acima da tabela de valores...':'Descrição da seção (vai direto na proposta)...')+'" '
-      +'oninput="escSecs['+si+'].desc=this.value;autoResize(this)">'+esc(sec.desc||'')+'</textarea>'
+      +'oninput="escSecs['+si+'].desc=this.value;autoResize(this);scheduleDraftSave()">'+esc(sec.desc||'')+'</textarea>'
       +(isValor ? valorSecEditorHTML() : '')
       +(isPrazo(sec) ? ganttEditorHTML(si) : '')
       +(isValor ? '' : (sec.subs||[]).map(function(sub,subi){
@@ -2574,12 +2911,12 @@ function rEsc(){
           +'</div>'
           +'<input value="'+esc(sub.num||'')+'" placeholder="Nº" '
           +'style="width:38px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.2rem .25rem;font-family:inherit;font-size:.76rem" '
-          +'oninput="escSecs['+si+'].subs['+subi+'].num=this.value">'
-          +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value">'
+          +'oninput="escSecs['+si+'].subs['+subi+'].num=this.value;scheduleDraftSave()">'
+          +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value;scheduleDraftSave()">'
           +'<button class="btn bd bxs es-delsub" data-si="'+si+'" data-subi="'+subi+'" style="flex-shrink:0">×</button>'
           +'</div>'
           +escSymBar()
-          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.2rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this)">'+esc(sub.desc||'')+'</textarea>'
+          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.2rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this);scheduleDraftSave()">'+esc(sub.desc||'')+'</textarea>'
           +'</div>'
       }).join(''))
       +'</div>';
@@ -7261,6 +7598,7 @@ function upsertCurrentDraft(silent){
 }
 var autoDraftTimer=null;
 function scheduleDraftSave(){
+  if(_vizModeState) return; // não salva enquanto em modo leitura
   clearTimeout(autoDraftTimer);
   autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 350);
 }
