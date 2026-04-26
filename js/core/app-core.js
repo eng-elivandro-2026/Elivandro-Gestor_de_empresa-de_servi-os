@@ -1404,7 +1404,7 @@ function rProps(){
       +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
       +'<div class="prv-rev-placeholder" data-pid="'+p.id+'" data-open="0"></div></div>'
   }).join('');
-  if(typeof _prvPopulateCardRevisions==='function') setTimeout(_prvPopulateCardRevisions,50);
+  if(typeof _prvPopulateCardRevisions==='function') setTimeout(_prvPopulateCardRevisions,300);
 }
 function chSt(id,s){
   var p=props.find(function(x){return x.id===id});

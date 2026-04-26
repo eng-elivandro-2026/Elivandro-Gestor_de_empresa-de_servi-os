@@ -300,6 +300,7 @@ function _prvConfirmModal() {
 
 function _prvPopulateCardRevisions() {
   var els = document.querySelectorAll('.prv-rev-placeholder');
+  console.log('[revisoes] _prvPopulateCardRevisions:', els.length, 'cards');
   els.forEach(function(el) {
     var pid = el.getAttribute('data-pid');
     if (!pid) return;
@@ -319,7 +320,10 @@ function _prvRefreshCardRevisions(proposalId) {
 }
 
 function _prvRenderCardRevSection(proposalId, el, revs) {
-  if (!el) return;
+  // Re-busca elemento no DOM — evita render em elementos stale após rProps()
+  var live = document.querySelector('.prv-rev-placeholder[data-pid="' + proposalId + '"]');
+  if (!live) return;
+  el = live;
   var isOpen = el.getAttribute('data-open') === '1';
   var count  = revs ? revs.length : 0;
   var activeRev = revs ? revs.find(function(r) { return r.status === 'ativa'; }) : null;
