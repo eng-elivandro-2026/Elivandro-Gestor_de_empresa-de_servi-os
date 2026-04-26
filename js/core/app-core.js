@@ -4109,20 +4109,19 @@ function simMetaLL(){
   var catSel = Q('metaLLCat') ? (Q('metaLLCat').value||'') : '';
   if(catSel){
     var _cp=catSel.split(':'), _catCod=_cp[0], _catTipo=_cp[1], _catIsMat=(_catTipo==='m');
-    var pvCatNT=0, custoCatNT=0, pvCatT=0, fmfCatAtual=null;
+    var pvCatNT=0, custoCatNT=0, fmfCatAtual=null;
     budg.forEach(function(it){
       if(it.inc===false||!it.cat) return;
       var inCat=it.cat===_catCod&&(_catIsMat?(it.t==='material'):(it.t!=='material'));
       if(!inCat) return;
-      if(it.terc){ pvCatT+=n2(it.pvt); }
-      else{ pvCatNT+=n2(it.pvt); custoCatNT+=n2(it.cu)*n2(it.mult); }
+      pvCatNT+=n2(it.pvt); custoCatNT+=n2(it.cu)*n2(it.mult);
     });
     if(custoCatNT<=0){
-      res.innerHTML='<span style="color:#f85149">⚠ '+_catCod+' não tem itens próprios (não-terceirizados) para ajustar.</span>'; return;
+      res.innerHTML='<span style="color:#f85149">⚠ '+_catCod+': nenhum item incluído encontrado nesta proposta.</span>'; return;
     }
     fmfCatAtual = pvCatNT>0 ? pvCatNT/custoCatNT : null;
-    var pvOther = pvAtual - pvCatNT - pvCatT;
-    var pvCatNT_novo = pvNovo - pvOther - pvCatT;
+    var pvOther = pvAtual - pvCatNT;
+    var pvCatNT_novo = pvNovo - pvOther;
     if(pvCatNT_novo <= 0){
       res.innerHTML='<span style="color:#f85149">⚠ Meta impossível ajustando só '+_catCod+': os demais itens já superam o PV necessário.</span>'; return;
     }
@@ -4216,7 +4215,7 @@ function aplicarMetaLL(){
   if(r.catCod){
     // Modo categoria: mesma lógica de aplicarMargNaProposta (persiste em p.bi + savePrcAtual)
     budg.forEach(function(it){
-      if(it.inc===false||it.terc) return;
+      if(it.inc===false) return;
       var inCat=it.cat===r.catCod&&(r.catIsMat?(it.t==='material'):(it.t!=='material'));
       if(inCat) _apItem(it);
     });
@@ -4224,7 +4223,7 @@ function aplicarMetaLL(){
       var _p=props.find(function(x){return x.id===editId;});
       if(_p&&_p.bi){
         _p.bi.forEach(function(it){
-          if(it.inc===false||it.terc) return;
+          if(it.inc===false) return;
           var inCat=it.cat===r.catCod&&(r.catIsMat?(it.t==='material'):(it.t!=='material'));
           if(inCat) _apItem(it);
         });
