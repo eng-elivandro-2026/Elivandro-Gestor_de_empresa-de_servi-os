@@ -4123,7 +4123,8 @@ function simMetaLL(){
     var pvOther = pvAtual - pvCatNT;
     var pvCatNT_novo = pvNovo - pvOther;
     if(pvCatNT_novo <= 0){
-      res.innerHTML='<span style="color:#f85149">⚠ Meta impossível ajustando só '+_catCod+': os demais itens já superam o PV necessário.</span>'; return;
+      var larAtual = pvAtual>0 ? ((pvAtual*(1-taxaDeduc-neg)-custoTotal)/pvAtual*100) : 0;
+      res.innerHTML='<span style="color:#f85149">⚠ A LAR atual desta proposta já é <strong>'+larAtual.toFixed(1)+'%</strong>. Para aumentar a LAR ajustando só '+_catCod+', informe uma meta <strong>acima de '+larAtual.toFixed(1)+'%</strong>.</span>'; return;
     }
     var novoFmfCat = pvCatNT_novo / custoCatNT;
     var escalaCat = fmfCatAtual ? novoFmfCat/fmfCatAtual : null;
