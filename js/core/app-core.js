@@ -586,7 +586,7 @@ function updRev(el){
 function rRevs(){
   var tb=Q('revBody');if(!tb)return;
   if(!revs.length){
-    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
     return;
   }
   var ativaLetter='';
@@ -609,7 +609,6 @@ function rRevs(){
       +'<td><input value="'+esc(r.por)+'" data-id="'+r.id+'" data-f="por" oninput="updRev(this)" style="width:54px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.desc)+'" data-id="'+r.id+'" data-f="desc" placeholder="Descrição da revisão…" oninput="updRev(this)" style="width:100%;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
       +'<td style="text-align:center;vertical-align:middle">'+stCell+'</td>'
-      +'<td style="text-align:center;vertical-align:middle"><button class="btn bd bxs" onclick="delRev(&quot;'+r.id+'&quot;)">×</button></td>'
       +'</tr>';
   }).join('');
 }
