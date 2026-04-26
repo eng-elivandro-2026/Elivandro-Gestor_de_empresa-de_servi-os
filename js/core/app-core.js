@@ -225,6 +225,19 @@ var eDB={titulos:[],subtitulos:[]};
 var tplEdits={};var tplTitles={};
 var revs=[];
 
+// ── REVISÕES: campos gravados no snapshot e campos restaurados ao clonar ──────
+var _SNAP_STORE=['val','vS','vM','vD','vDS','vDM','bi','esc','aliq','prc','fas','tit','res','gantt','tensVal','tensCmd','tens'];
+var _SNAP_APPLY=['val','vS','vM','vD','vDS','vDM','bi','esc','aliq','prc','tensVal','tensCmd','tens'];
+function _snapProp(p){
+  var s={};
+  _SNAP_STORE.forEach(function(k){ s[k]=p[k]!==undefined?JSON.parse(JSON.stringify(p[k])):null; });
+  return s;
+}
+function _applySnapToProp(p,snap){
+  if(!snap)return;
+  _SNAP_APPLY.forEach(function(k){ if(snap[k]!==null&&snap[k]!==undefined) p[k]=JSON.parse(JSON.stringify(snap[k])); });
+}
+
 var FASE={
   em_elaboracao:{n:'Em Elaboração',c:'b-and',i:'📝'},
   enviada:{n:'Enviada',c:'b-env',i:'📤'},
@@ -1472,17 +1485,24 @@ function rProps(){
     var revListHtml='';
     if(pRevCount>0){
       revListHtml=pRevs.slice().reverse().map(function(r,i){
-        var isNew=i===0;
-        var bg=isNew?'rgba(88,166,255,.07)':'var(--bg)';
-        var brd=isNew?'1px solid rgba(88,166,255,.25)':'1px solid var(--border)';
-        var lc=isNew?'#58a6ff':'var(--text3)';
+        var isAtiva=!r.status||r.status==='ativa';
+        var bg=isAtiva?'rgba(88,166,255,.07)':'var(--bg)';
+        var brd=isAtiva?'1px solid rgba(88,166,255,.25)':'1px solid var(--border)';
+        var lc=isAtiva?'#58a6ff':'var(--text3)';
         var dp=(r.dat||'').split('/');
         var sd=dp.length>=2?dp[0]+'/'+dp[1]:r.dat||'';
-        var dc=r.desc||'';if(dc.length>26)dc=dc.substring(0,26)+'…';
-        return '<div style="display:flex;align-items:center;gap:.35rem;padding:.2rem .35rem;border-radius:4px;border:'+brd+';background:'+bg+';margin-bottom:.1rem">'
+        // Valor: usa snapshot se arquivada, ou valor atual se ativa
+        var snapVal=r.snapshot&&r.snapshot.val!=null?r.snapshot.val:(isAtiva?p.val:null);
+        var valStr=snapVal!=null?'· '+money(snapVal):'';
+        // Badge de status
+        var stBadge=isAtiva
+          ?'<span style="font-size:.6rem;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.02rem .28rem;border-radius:3px;flex-shrink:0">'+((FASE[p.fas]&&FASE[p.fas].n)||p.fas)+'</span>'
+          :'<span style="font-size:.6rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.02rem .28rem;border-radius:3px;flex-shrink:0">Arquivada</span>';
+        return '<div style="display:flex;align-items:center;gap:.3rem;padding:.2rem .35rem;border-radius:4px;border:'+brd+';background:'+bg+';margin-bottom:.1rem">'
           +'<span style="font-weight:700;font-size:.72rem;color:'+lc+';min-width:14px;text-align:center;flex-shrink:0">'+esc(r.rev)+'</span>'
-          +'<span style="font-size:.67rem;color:var(--text3);flex-shrink:0">'+esc(sd)+'</span>'
-          +(dc?'<span style="font-size:.67rem;color:var(--text2);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+esc(dc)+'</span>':'')
+          +'<span style="font-size:.66rem;color:var(--text3);flex-shrink:0">'+esc(sd)+(valStr?' <span style="color:var(--text2)">'+valStr+'</span>':'')+'</span>'
+          +'<span style="flex:1"></span>'
+          +stBadge
         +'</div>';
       }).join('');
     }
@@ -1517,20 +1537,117 @@ function rProps(){
       +'</div>'
   }).join('');
 }
-function addRevCard(id){
-  var p=props.find(function(x){return x.id===id});
+function addRevCard(id){ _abrirModalNovaRev(id); }
+
+function _abrirModalNovaRev(propId){
+  var p=props.find(function(x){return x.id===propId});
+  if(!p) return;
+  var pRevs=p.revs||[];
+  var nextLetter=String.fromCharCode(65+pRevs.length);
+
+  // Determina revisão padrão (última ativa ou última da lista)
+  var defId='';
+  for(var i=pRevs.length-1;i>=0;i--){
+    if(!pRevs[i].status||pRevs[i].status==='ativa'){defId=pRevs[i].id;break;}
+  }
+  if(!defId&&pRevs.length) defId=pRevs[pRevs.length-1].id;
+
+  var optHtml='';
+  if(pRevs.length>0){
+    optHtml=pRevs.slice().reverse().map(function(r){
+      var isAtiva=!r.status||r.status==='ativa';
+      var hasSnap=!!r.snapshot;
+      var canSelect=isAtiva||hasSnap;
+      var lbl='Rev. '+r.rev+(r.desc?' — '+(r.desc.length>28?r.desc.substring(0,28)+'…':r.desc):'');
+      var stTxt=isAtiva?' <span style="font-size:.65rem;color:#58a6ff">(ativa)</span>'
+               :hasSnap?' <span style="font-size:.65rem;color:var(--text3)">(arquivada)</span>'
+               :'<span style="font-size:.65rem;color:var(--text3)">(sem snapshot)</span>';
+      return '<label style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-radius:5px;'
+        +(canSelect?'cursor:pointer;':'opacity:.45;cursor:not-allowed;')
+        +'background:var(--bg3);border:1px solid var(--border);margin-bottom:.22rem">'
+        +'<input type="radio" name="_revBase" value="'+r.id+'"'
+        +(r.id===defId?' checked':'')+(canSelect?'':' disabled')+'>'
+        +'<span style="font-size:.8rem;color:var(--text)">'+esc(lbl)+stTxt+'</span>'
+        +'</label>';
+    }).join('');
+  } else {
+    optHtml='<p style="font-size:.8rem;color:var(--text3);margin:.3rem 0">Primeira revisão — criada com os dados atuais da proposta.</p>';
+  }
+
+  var ex=document.getElementById('_modalNovaRev');if(ex)ex.remove();
+  var el=document.createElement('div');
+  el.id='_modalNovaRev';
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center';
+  el.innerHTML=
+    '<div onclick="event.stopPropagation()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;min-width:320px;max-width:460px;width:92%;max-height:85vh;overflow-y:auto">'
+    +'<div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1.1rem">+ Nova Revisão <span style="color:var(--accent)">'+nextLetter+'</span></div>'
+    +(pRevs.length>0
+      ?'<div style="margin-bottom:1rem"><div style="font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:.45rem">Clonar a partir de:</div>'+optHtml+'</div>'
+      :'<div style="margin-bottom:1rem">'+optHtml+'</div>')
+    +'<div style="margin-bottom:1.2rem">'
+      +'<div style="font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:.35rem">Descrição desta revisão:</div>'
+      +'<input id="_novaRevDesc" type="text" placeholder="Ex: Ajuste de escopo conforme reunião…" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:.45rem .6rem;color:var(--text);font-size:.83rem;outline:none">'
+    +'</div>'
+    +'<div style="display:flex;gap:.5rem;justify-content:flex-end">'
+      +'<button onclick="document.getElementById(\'_modalNovaRev\').remove()" style="padding:.38rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.82rem">Cancelar</button>'
+      +'<button onclick="_confirmarNovaRev(\''+propId+'\')" style="padding:.38rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.82rem;font-weight:600">Criar Rev. '+nextLetter+'</button>'
+    +'</div>'
+    +'</div>';
+  el.addEventListener('click',function(e){if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+  setTimeout(function(){var inp=document.getElementById('_novaRevDesc');if(inp)inp.focus();},80);
+}
+
+function _confirmarNovaRev(propId){
+  var p=props.find(function(x){return x.id===propId});
   if(!p) return;
   var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
   var nextLetter=String.fromCharCode(65+pRevs.length);
-  pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:''});
+
+  // 1. Congela revisão ativa atual com snapshot completo
+  var activeIdx=-1;
+  for(var i=pRevs.length-1;i>=0;i--){
+    if(!pRevs[i].status||pRevs[i].status==='ativa'){activeIdx=i;break;}
+  }
+  if(activeIdx>=0){
+    pRevs[activeIdx].snapshot=_snapProp(p);
+    pRevs[activeIdx].status='arquivada';
+  }
+
+  // 2. Determina snapshot base para clonar
+  var sel=document.querySelector('#_modalNovaRev input[name="_revBase"]:checked');
+  var baseRevId=sel?sel.value:null;
+  var baseSnap=null;
+  var baseLetter=null;
+  if(baseRevId){
+    var bRev=pRevs.find(function(r){return r.id===baseRevId;});
+    if(bRev){
+      baseLetter=bRev.rev;
+      baseSnap=bRev.snapshot||null;
+    }
+  }
+  // Se não tem snapshot (revisão sem snapshot), usa estado live atual (já congelado acima)
+  if(!baseSnap&&activeIdx>=0) baseSnap=pRevs[activeIdx].snapshot;
+
+  // 3. Cria nova revisão ativa
+  var desc=(document.getElementById('_novaRevDesc')||{}).value||'';
+  desc=desc.trim();
+  pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:desc,status:'ativa',base:baseLetter,snapshot:null});
+
+  // 4. Aplica snapshot ao estado live da proposta
+  _applySnapToProp(p,baseSnap);
+
+  // 5. Atualiza metadados
   p.revs=pRevs;
   p.revAtual=nextLetter;
-  // Atualiza o número da proposta (ex: "180A.26" → "180C.26")
   var m=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
   if(m) p.num=m[1]+nextLetter+'.'+m[2];
+
+  // 6. Fecha modal, salva e atualiza
+  var modal=document.getElementById('_modalNovaRev');if(modal)modal.remove();
   saveAll();
   rProps();
-  toast('✔ Revisão '+nextLetter+' adicionada — '+esc(p.num),'ok');
+  toast('✔ Rev. '+nextLetter+' criada'+(baseLetter?' a partir da Rev. '+baseLetter:'')+' — '+esc(p.num),'ok');
 }
 function chSt(id,s){
   var p=props.find(function(x){return x.id===id});
