@@ -6924,8 +6924,8 @@ function rCatAnalise(){
   // Valores para o sort conforme tipo selecionado
   function getVal(d){
     if(_catSort==='ll')   return t==='S'?d.llS:t==='M'?d.llM:d.ll;
-    if(_catSort==='apr')  return t==='S'?d.nAprS:t==='M'?d.nAprM:d.nAprTot;
-    if(_catSort==='nao')  return t==='S'?d.nNaoS:t==='M'?d.nNaoM:d.nNaoTot;
+    if(_catSort==='apr')  return t==='S'?d.pvAprS:t==='M'?d.pvAprM:d.pvAprTot;
+    if(_catSort==='nao')  return t==='S'?d.pvNaoS:t==='M'?d.pvNaoM:d.pvNaoTot;
     if(_catSort==='marg') return (t==='S'?d.margS:t==='M'?d.margM:d.margGeral)||0;
     if(_catSort==='tk')   return t==='S'?d.tkS:t==='M'?d.tkM:d.tkGeral;
     return 0;
