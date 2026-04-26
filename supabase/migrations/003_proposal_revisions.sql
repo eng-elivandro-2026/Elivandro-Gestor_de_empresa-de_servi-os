@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS proposal_revisions (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   proposal_id     text        NOT NULL,           -- app_id da proposta (propostas.app_id)
-  empresa_id      text        NOT NULL,           -- necessário para RLS (igual à proposta)
+  empresa_id      uuid        NOT NULL,           -- necessário para RLS (igual à proposta)
   revision_letter text        NOT NULL,           -- 'A', 'B', 'C'... gerado automaticamente
   created_at      timestamptz NOT NULL DEFAULT now(),
   created_by      text,                           -- email/nome do usuário logado
