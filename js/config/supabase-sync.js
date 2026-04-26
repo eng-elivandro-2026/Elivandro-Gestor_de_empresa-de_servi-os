@@ -73,14 +73,42 @@
     return { total, erros };
   };
 
-  window.sbSalvarProposta = async function (p) {
+  function _setCloudBadge(state) {
+    var el = document.getElementById('cloudSyncBadge');
+    if (!el) return;
+    var cfg = {
+      syncing: { text: '☁ Sincronizando…', bg: 'rgba(88,166,255,.15)', color: '#58a6ff', border: 'rgba(88,166,255,.4)' },
+      ok:      { text: '✓ Nuvem',          bg: 'rgba(63,185,80,.15)',  color: '#3fb950', border: 'rgba(63,185,80,.4)'  },
+      err:     { text: '⚠ Falha nuvem',    bg: 'rgba(248,81,73,.15)',  color: '#f85149', border: 'rgba(248,81,73,.4)'  }
+    }[state];
+    if (!cfg) { el.style.display = 'none'; return; }
+    el.textContent = cfg.text;
+    el.style.cssText = 'display:inline-block;font-size:.7rem;padding:.18rem .55rem;border-radius:20px;font-weight:600;letter-spacing:.03em;transition:all .3s;background:' + cfg.bg + ';color:' + cfg.color + ';border:1px solid ' + cfg.border;
+    if (state === 'ok') setTimeout(function() { el.style.display = 'none'; }, 3000);
+  }
+
+  window.sbSalvarProposta = async function (p, _tentativa) {
     if (!window.sbClient || !p) return;
     var row = propToRow(p);
-    if (!row) return; // empresa_id ausente — bloqueado em propToRow
+    if (!row) return;
+    _setCloudBadge('syncing');
     var res = await window.sbClient
       .from('propostas')
       .upsert(row, { onConflict: 'app_id', ignoreDuplicates: false });
-    if (res.error) console.error('[supabase-sync] Erro ao salvar proposta:', res.error.message);
+    if (res.error) {
+      console.error('[supabase-sync] Erro ao salvar proposta:', res.error.message);
+      var tentativa = _tentativa || 1;
+      if (tentativa < 3) {
+        var delay = tentativa * 2000;
+        console.warn('[supabase-sync] Retry ' + tentativa + ' em ' + delay + 'ms…');
+        setTimeout(function() { window.sbSalvarProposta(p, tentativa + 1); }, delay);
+      } else {
+        _setCloudBadge('err');
+        console.error('[supabase-sync] Falha definitiva após 3 tentativas para proposta', p.num || p.id);
+      }
+    } else {
+      _setCloudBadge('ok');
+    }
     return res;
   };
 
@@ -439,6 +467,25 @@
       console.log('%ctemplates de serviço carregados da nuvem (' + rSvc.data.valor.length + ')', 'color:#58a6ff');
     }
     return true;
+  };
+
+  // Recarregar propostas da nuvem e atualizar memória + UI (para sincronizar edições de outros usuários)
+  window.sbRecarregarDaNuvem = async function() {
+    if (!window.sbClient) { alert('Sem conexão com a nuvem.'); return; }
+    var btn = document.getElementById('btnRecarregarNuvem');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Carregando…'; }
+    try {
+      var novos = await window.sbCarregarNuvem();
+      if (novos && novos.length) {
+        if (typeof props !== 'undefined') props = novos;
+        if (typeof rDash === 'function') rDash();
+        if (typeof rProps === 'function') try { rProps(); } catch(e) {}
+        if (typeof toast === 'function') toast('✓ ' + novos.length + ' proposta(s) sincronizadas da nuvem', 'ok');
+      }
+    } catch(e) {
+      if (typeof toast === 'function') toast('Erro ao recarregar da nuvem: ' + e.message, 'err');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '☁ Sincronizar'; }
   };
 
 })();

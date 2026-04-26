@@ -738,6 +738,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="ab-row1">
     <span id="abInfo" class="ab-info">✏️ Editando proposta</span>
     <div class="ab-actions">
+      <span id="cloudSyncBadge" style="display:none;font-size:.7rem;padding:.18rem .55rem;border-radius:20px;font-weight:600;letter-spacing:.03em;transition:all .3s"></span>
       <button class="btn bs ab-save" onclick="saveP()">💾 Salvar</button>
       <button class="btn bg bsm" onclick="fecharProposta()" title="Salvar e voltar ao Dashboard">🏠 Fechar</button>
       <button class="btn bd bsm" id="ab-log" onclick="abrirLog()" title="Histórico Comercial">📋 Log</button>
@@ -806,6 +807,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <button onclick="openCiclosFormulas()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2rem .55rem;font-size:.72rem;color:var(--text2);cursor:pointer">📐 Fórmulas KPI</button>
         <button class="btn bp bsm" onclick="newProposal()">+ Nova</button>
         <button class="btn bg bsm" onclick="document.getElementById('iFile').click()">📥 Importar</button>
+        <button id="btnRecarregarNuvem" class="btn bg bsm" onclick="sbRecarregarDaNuvem()" title="Recarregar propostas da nuvem (sincroniza edições de outros usuários)">☁ Sincronizar</button>
       </div>
       <span id="propostasChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
     </div>
