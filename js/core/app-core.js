@@ -589,7 +589,6 @@ function rRevs(){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:.7rem">Nenhuma revisão.</td></tr>';
     return;
   }
-  // Determina qual revisão é ativa: a última com status='ativa' ou, se nenhuma tiver status, a última
   var ativaLetter='';
   for(var i=revs.length-1;i>=0;i--){
     if(!revs[i].status||revs[i].status==='ativa'){ativaLetter=revs[i].rev;break;}
@@ -597,18 +596,109 @@ function rRevs(){
   if(!ativaLetter&&revs.length) ativaLetter=revs[revs.length-1].rev;
   tb.innerHTML=revs.map(function(r){
     var isAtiva=r.rev===ativaLetter;
-    var stBadge=isAtiva
+    var hasSnap=!!r.snapshot;
+    var stCell=isAtiva
       ?'<span style="font-size:.68rem;font-weight:600;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.35);color:#58a6ff;padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Ativa</span>'
-      :'<span style="font-size:.68rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Arquivada</span>';
+      :'<div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">'
+        +'<span style="font-size:.68rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.15rem .45rem;border-radius:4px;white-space:nowrap">Arquivada</span>'
+        +(hasSnap?'<button onclick="_abrirVisualizacaoRev(\''+editId+'\',\''+r.id+'\')" style="font-size:.66rem;padding:.1rem .35rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;white-space:nowrap">👁 Ver</button>':'')
+      +'</div>';
     return '<tr>'
       +'<td><input value="'+esc(r.rev)+'" data-id="'+r.id+'" data-f="rev" oninput="updRev(this)" style="width:44px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--accent);font-weight:700;font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.dat)+'" data-id="'+r.id+'" data-f="dat" oninput="updRev(this)" style="width:95px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
       +'<td><input value="'+esc(r.por)+'" data-id="'+r.id+'" data-f="por" oninput="updRev(this)" style="width:54px;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem;text-align:center"></td>'
       +'<td><input value="'+esc(r.desc)+'" data-id="'+r.id+'" data-f="desc" placeholder="Descrição da revisão…" oninput="updRev(this)" style="width:100%;padding:.25rem .3rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:.8rem"></td>'
-      +'<td style="text-align:center">'+stBadge+'</td>'
-      +'<td style="text-align:center"><button class="btn bd bxs" onclick="delRev(&quot;'+r.id+'&quot;)">×</button></td>'
+      +'<td style="text-align:center;vertical-align:middle">'+stCell+'</td>'
+      +'<td style="text-align:center;vertical-align:middle"><button class="btn bd bxs" onclick="delRev(&quot;'+r.id+'&quot;)">×</button></td>'
       +'</tr>';
   }).join('');
+}
+
+function _abrirVisualizacaoRev(propId, revId){
+  var p=props.find(function(x){return x.id===propId;});
+  if(!p) return;
+  var rev=(p.revs||[]).find(function(r){return r.id===revId;});
+  if(!rev||!rev.snapshot){ toast('Esta revisão não possui snapshot salvo.','err'); return; }
+  var snap=rev.snapshot;
+  var bi=(snap.bi||[]).filter(function(it){return it.inc!==false;});
+  var escList=snap.esc||[];
+
+  // Orçamento read-only
+  var thS='padding:.3rem .5rem;font-size:.7rem;color:var(--text3);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap';
+  var tdS='padding:.25rem .5rem;font-size:.75rem;color:var(--text);border-bottom:1px solid var(--border)';
+  var budgHtml=bi.length
+    ?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">'
+      +'<thead><tr><th style="'+thS+'">Tipo</th><th style="'+thS+'">Categoria</th><th style="'+thS+'">Descrição</th><th style="'+thS+';text-align:right">Qtd</th><th style="'+thS+';text-align:right">PV Unit</th><th style="'+thS+';text-align:right">Total</th></tr></thead><tbody>'
+      +bi.map(function(it){
+        return '<tr>'
+          +'<td style="'+tdS+'"><span style="font-size:.65rem;font-weight:700;color:'+(it.t==='servico'?'#58a6ff':'#3fb950')+';">'+(it.t==='servico'?'SVC':'MAT')+'</span></td>'
+          +'<td style="'+tdS+';color:var(--text3)">'+esc(it.cat||'')+'</td>'
+          +'<td style="'+tdS+'">'+esc(it.desc||'')+'</td>'
+          +'<td style="'+tdS+';text-align:right">'+((it.mult||1))+'</td>'
+          +'<td style="'+tdS+';text-align:right">'+money(it.pvu||0)+'</td>'
+          +'<td style="'+tdS+';text-align:right;font-weight:600">'+money(it.pvt||0)+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div>'
+    :'<p style="font-size:.8rem;color:var(--text3);margin:.5rem 0">Sem itens de orçamento nesta revisão.</p>';
+
+  // Escopo read-only
+  var escHtml=escList.length
+    ?escList.map(function(s,i){
+        return '<div style="margin-bottom:.75rem;padding:.6rem .75rem;background:var(--bg3);border-radius:6px;border:1px solid var(--border)">'
+          +'<div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.25rem">'+(i+1)+'. '+esc(s.titulo||s.t||'')+'</div>'
+          +(s.desc?'<div style="font-size:.75rem;color:var(--text2);white-space:pre-wrap;line-height:1.5">'+esc(s.desc)+'</div>':'')
+          +'</div>';
+      }).join('')
+    :'<p style="font-size:.8rem;color:var(--text3);margin:.5rem 0">Sem seções de escopo nesta revisão.</p>';
+
+  var fasLabel=(snap.fas&&FASE[snap.fas])?FASE[snap.fas].n:snap.fas||'';
+
+  var ex=document.getElementById('_modalVizRev');if(ex)ex.remove();
+  var el=document.createElement('div');
+  el.id='_modalVizRev';
+  el.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.82);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:1.5rem 1rem';
+  el.innerHTML=
+    '<div onclick="event.stopPropagation()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:100%;max-width:880px;overflow:hidden">'
+    // Header
+    +'<div style="background:rgba(88,166,255,.07);border-bottom:2px solid rgba(88,166,255,.2);padding:1rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.7rem;font-weight:700;color:#58a6ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.25rem">👁 Visualização — Somente Leitura</div>'
+        +'<div style="font-size:1rem;font-weight:700;color:var(--text)">Rev. '+esc(rev.rev)+(rev.desc?' — '+esc(rev.desc):'')+'</div>'
+        +'<div style="font-size:.75rem;color:var(--text3);margin-top:.2rem">Arquivada em '+esc(rev.dat||'')+(fasLabel?' · fase: '+fasLabel:'')+(rev.base?' · clonada de Rev. '+rev.base:'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:.5rem;flex-shrink:0;align-items:center;flex-wrap:wrap">'
+        +'<button onclick="document.getElementById(\'_modalVizRev\').remove()" style="padding:.38rem .8rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.8rem">Fechar</button>'
+        +'<button onclick="_novaRevDeVisualizacao(\''+propId+'\',\''+revId+'\')" style="padding:.38rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.8rem;font-weight:600">+ Nova Revisão a partir desta</button>'
+      +'</div>'
+    +'</div>'
+    // Valores resumo
+    +'<div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:.85rem 1.5rem;border-bottom:1px solid var(--border);background:var(--bg3)">'
+      +'<div><div style="font-size:.65rem;color:var(--text3);text-transform:uppercase">Serviços</div><div style="font-weight:700;color:var(--green);font-size:.95rem">'+money(snap.vS||0)+'</div></div>'
+      +'<div><div style="font-size:.65rem;color:var(--text3);text-transform:uppercase">Materiais</div><div style="font-weight:700;color:var(--green);font-size:.95rem">'+money(snap.vM||0)+'</div></div>'
+      +(snap.vD?'<div><div style="font-size:.65rem;color:var(--text3);text-transform:uppercase">Descontos</div><div style="font-weight:700;color:var(--red);font-size:.95rem">-'+money(snap.vD)+'</div></div>':'')
+      +'<div style="margin-left:auto"><div style="font-size:.65rem;color:var(--text3);text-transform:uppercase">Total</div><div style="font-weight:700;color:var(--green);font-size:1.15rem">'+money(snap.val||0)+'</div></div>'
+    +'</div>'
+    // Corpo
+    +'<div style="padding:1.25rem 1.5rem">'
+      +'<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Orçamento ('+bi.length+' itens incluídos)</div>'
+      +budgHtml
+      +'<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:1.25rem;margin-bottom:.6rem">Escopo ('+escList.length+' seções)</div>'
+      +escHtml
+    +'</div>'
+    // Footer
+    +'<div style="padding:.85rem 1.5rem;border-top:1px solid var(--border);background:var(--bg3);display:flex;justify-content:flex-end;gap:.5rem">'
+      +'<button onclick="document.getElementById(\'_modalVizRev\').remove()" style="padding:.38rem .8rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.8rem">Fechar Visualização</button>'
+      +'<button onclick="_novaRevDeVisualizacao(\''+propId+'\',\''+revId+'\')" style="padding:.38rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.8rem;font-weight:600">+ Nova Revisão a partir desta</button>'
+    +'</div>'
+    +'</div>';
+  el.addEventListener('click',function(e){if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+}
+
+function _novaRevDeVisualizacao(propId, baseRevId){
+  var viz=document.getElementById('_modalVizRev');if(viz)viz.remove();
+  _abrirModalNovaRev(propId, baseRevId);
 }
 
 
@@ -1550,16 +1640,18 @@ function rProps(){
 }
 function addRevCard(id){ _abrirModalNovaRev(id); }
 
-function _abrirModalNovaRev(propId){
+function _abrirModalNovaRev(propId, preSelectedRevId){
   var p=props.find(function(x){return x.id===propId});
   if(!p) return;
   var pRevs=p.revs||[];
   var nextLetter=String.fromCharCode(65+pRevs.length);
 
-  // Determina revisão padrão (última ativa ou última da lista)
-  var defId='';
-  for(var i=pRevs.length-1;i>=0;i--){
-    if(!pRevs[i].status||pRevs[i].status==='ativa'){defId=pRevs[i].id;break;}
+  // Determina revisão padrão: preSelectedRevId > última ativa > última da lista
+  var defId=preSelectedRevId||'';
+  if(!defId){
+    for(var i=pRevs.length-1;i>=0;i--){
+      if(!pRevs[i].status||pRevs[i].status==='ativa'){defId=pRevs[i].id;break;}
+    }
   }
   if(!defId&&pRevs.length) defId=pRevs[pRevs.length-1].id;
 
