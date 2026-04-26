@@ -868,12 +868,11 @@ function cancelEdit(){
   }
 }
 function fecharProposta(){
-  // Se estiver em modo leitura, restaura dados antes de fechar
   if(_vizModeState){ _limparVizMode(); }
-  // Salva silenciosamente se houver dados significativos, depois vai ao dashboard
   if(proposalFormHasMeaningfulData()){
-    upsertCurrentDraft(true);
-    toast('✔ Proposta salva!','ok');
+    var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
+    if(!num||!cli){ alert('Preencha Nº e Cliente antes de fechar.'); return; }
+    saveP(); // mesma validação e salvamento completo do botão Salvar
   }
   editId=null;
   hideActionBar();
