@@ -8840,6 +8840,50 @@ function rExecTimeline(){
     </div>
   </div>
 </div>
+
+<!-- ── MODAL: NOVA REVISÃO DE PROPOSTA ──────────────────────────── -->
+<div id="prvNewRevModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:950;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)_prvCloseModal()">
+  <div style="width:min(520px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 10px 50px rgba(0,0,0,.6)">
+    <!-- Header -->
+    <div style="padding:.85rem 1.2rem .7rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(63,185,80,.06)">
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:#3fb950">🔄 Nova Revisão</div>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:2px">
+          Próxima letra: <strong id="prvRevNextLetter" style="color:var(--text)">…</strong>
+        </div>
+      </div>
+      <button onclick="_prvCloseModal()" style="background:none;border:none;font-size:1.2rem;color:var(--text3);cursor:pointer;padding:.2rem .5rem;line-height:1">✕</button>
+    </div>
+    <!-- Corpo -->
+    <div style="padding:1.1rem 1.2rem">
+      <!-- Clonar de -->
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.28rem">📋 Clonar dados de</label>
+        <select id="prvRevCloneFrom" style="width:100%;padding:.52rem .75rem;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.83rem;font-family:inherit;box-sizing:border-box">
+          <option>Carregando…</option>
+        </select>
+        <div style="font-size:.66rem;color:var(--text3);margin-top:.28rem">A nova revisão começa com uma cópia dos itens e preços da revisão selecionada.</div>
+      </div>
+      <!-- Descrição -->
+      <div style="margin-bottom:.9rem">
+        <label style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.28rem">✏️ Motivo / Descrição <span style="color:var(--red)">*</span></label>
+        <textarea id="prvRevDesc" rows="3" placeholder="Ex: Ajuste de escopo conforme reunião de 15/04…"
+          style="width:100%;padding:.52rem .75rem;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.85rem;font-family:inherit;box-sizing:border-box;resize:vertical;min-height:64px;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'"
+          onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')_prvConfirmModal()"></textarea>
+      </div>
+      <!-- Info -->
+      <div style="background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.18);border-radius:6px;padding:.45rem .75rem;font-size:.69rem;color:var(--accent)">
+        ⚡ A revisão atual será arquivada automaticamente. O histórico completo é mantido no Supabase.
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:.65rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end">
+      <button onclick="_prvCloseModal()" class="btn bg bsm">Cancelar</button>
+      <button id="prvRevConfirmBtn" onclick="_prvConfirmModal()" class="btn bs" style="background:var(--green);color:#000;font-weight:800" disabled>✔ Criar Revisão</button>
+    </div>
+  </div>
+</div>
 </div><!-- /comercial-content -->
     </div>
     <div id="area-frames"></div>
@@ -8869,6 +8913,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=4"></script>
 <script src="js/modules/cadastro.js?v=3"></script>
 <script src="js/modules/rh-inline.js"></script>
+<script src="js/modules/revisoes.js?v=1"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
