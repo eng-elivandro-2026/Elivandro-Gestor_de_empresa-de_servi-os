@@ -644,6 +644,15 @@ function _limparVizMode(){
 }
 
 function _abrirVisualizacaoRevCompleta(propId, revId){
+  // Cancelar timer de auto-save pendente e fazer flush antes de mudar o estado
+  clearTimeout(autoDraftTimer);
+  autoDraftTimer=null;
+  if(editId===propId && typeof buildCurrentProposalSnapshot==='function'){
+    var _sn=buildCurrentProposalSnapshot();
+    var _fi=props.findIndex(function(x){return x.id===propId;});
+    if(_fi>=0) props[_fi]=_sn; else props.push(_sn);
+  }
+
   var p=props.find(function(x){return x.id===propId;});
   if(!p) return;
   var rev=(p.revs||[]).find(function(r){return r.id===revId;});
@@ -7580,6 +7589,7 @@ function upsertCurrentDraft(silent){
 }
 var autoDraftTimer=null;
 function scheduleDraftSave(){
+  if(_vizModeState) return; // não salva enquanto em modo leitura
   clearTimeout(autoDraftTimer);
   autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 350);
 }
