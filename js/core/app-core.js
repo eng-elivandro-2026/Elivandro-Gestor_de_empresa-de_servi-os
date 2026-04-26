@@ -9477,26 +9477,29 @@ function aplicarMargNaProposta(){
   var tipo=Q('catTipo').value; // 's' ou 'm'
   var mar=parseFloat(Q('catMar').value)||0;
   if(!cod){ toast('Nenhuma categoria selecionada.','err'); return; }
-  // Clona cfg e sobrescreve só a margem desta categoria (não afeta outras propostas)
-  var cfg=JSON.parse(JSON.stringify(getPrcAtual()));
-  if(tipo==='s'){ if(!cfg.s)cfg.s={}; if(!cfg.s[cod])cfg.s[cod]={n:cod,m:0,rMin:0,rMax:0}; cfg.s[cod].m=mar/100; }
-  else           { if(!cfg.m)cfg.m={}; if(!cfg.m[cod])cfg.m[cod]={n:cod,mk:0,rMin:0,rMax:0}; cfg.m[cod].mk=mar/100; }
-  var count=0;
-  p.bi.forEach(function(it){
-    var isMat=(it.t==='material');
-    var match=(tipo==='m')?isMat:!isMat;
-    if(it.cat===cod&&match&&it.inc!==false){
-      var novoFmf=calcFMF(cfg,it.t,it.cat);
-      it.fmf=novoFmf; it.pvu=(it.cu||0)*novoFmf; it.pvt=it.pvu*(it.mult||1);
-      count++;
-    }
-  });
-  if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
-  saveAll();
-  if(typeof rBudg==='function') rBudg();
-  if(typeof updKpi==='function') updKpi();
-  if(typeof rMargens==='function') rMargens();
-  toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+' nesta proposta!','ok');
+  try{
+    // Clona cfg e sobrescreve só a margem desta categoria (não afeta outras propostas)
+    var cfg=JSON.parse(JSON.stringify(getPrcAtual()));
+    if(tipo==='s'){ if(!cfg.s)cfg.s={}; if(!cfg.s[cod])cfg.s[cod]={n:cod,m:0,rMin:0,rMax:0}; cfg.s[cod].m=mar/100; }
+    else           { if(!cfg.m)cfg.m={}; if(!cfg.m[cod])cfg.m[cod]={n:cod,mk:0,rMin:0,rMax:0}; cfg.m[cod].mk=mar/100; }
+    var count=0;
+    p.bi.forEach(function(it){
+      var isMat=(it.t==='material');
+      var match=(tipo==='m')?isMat:!isMat;
+      if(it.cat===cod&&match&&it.inc!==false){
+        var novoFmf=calcFMF(cfg,it.t,it.cat);
+        it.fmf=novoFmf; it.pvu=(it.cu||0)*novoFmf; it.pvt=it.pvu*(it.mult||1);
+        count++;
+      }
+    });
+    if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
+    saveAll();
+    try{ rMargens(); }catch(e){}
+    toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+'!','ok');
+  }catch(e){
+    toast('Erro ao aplicar margem: '+e.message,'err');
+    console.error('aplicarMargNaProposta erro:',e);
+  }
 }
 
 function delCategoria(k,tipo){
