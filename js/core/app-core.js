@@ -9478,7 +9478,6 @@ function aplicarMargNaProposta(){
   var mar=parseFloat(Q('catMar').value)||0;
   if(!cod){ toast('Nenhuma categoria selecionada.','err'); return; }
   try{
-    // Clona cfg e sobrescreve só a margem desta categoria (não afeta outras propostas)
     var cfg=JSON.parse(JSON.stringify(getPrcAtual()));
     if(tipo==='s'){ if(!cfg.s)cfg.s={}; if(!cfg.s[cod])cfg.s[cod]={n:cod,m:0,rMin:0,rMax:0}; cfg.s[cod].m=mar/100; }
     else           { if(!cfg.m)cfg.m={}; if(!cfg.m[cod])cfg.m[cod]={n:cod,mk:0,rMin:0,rMax:0}; cfg.m[cod].mk=mar/100; }
@@ -9489,14 +9488,20 @@ function aplicarMargNaProposta(){
       if(it.cat===cod&&match&&it.inc!==false){
         var novoFmf=calcFMF(cfg,it.t,it.cat);
         it.fmf=novoFmf; it.pvu=(it.cu||0)*novoFmf; it.pvt=it.pvu*(it.mult||1);
+        // Sync budg (deep copy used by rBudg renderer)
+        var bi=budg.find(function(b){return b.id===it.id;});
+        if(bi){ bi.fmf=it.fmf; bi.pvu=it.pvu; bi.pvt=it.pvt; }
         count++;
       }
     });
     if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
     saveAll();
-    try{ rMargens(); }catch(e){}
     Q('catModal').style.display='none';
-    toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+'!','ok');
+    try{ rBudg(); }catch(e){ console.warn('rBudg err:',e); }
+    try{ rMargens(); }catch(e){}
+    try{ updKpi(); }catch(e){}
+    var _msg='✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+'!';
+    setTimeout(function(){ toast(_msg,'ok'); }, 80);
   }catch(e){
     toast('Erro ao aplicar margem: '+e.message,'err');
     console.error('aplicarMargNaProposta erro:',e);
