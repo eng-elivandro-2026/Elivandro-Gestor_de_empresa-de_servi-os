@@ -1461,6 +1461,8 @@ function rProps(){
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
     var f=FASE[p.fas]||FASE.em_elaboracao||FASE.enviada;
+    var pRevCount=(p.revs||[]).length;
+    var revLabel=pRevCount===0?'Sem revisões':pRevCount+(pRevCount===1?' revisão':' revisões');
     return '<div class="pc" onclick="fmAbrirProposta(\''+p.id+'\')">'
       +'<div class="pc-act" onclick="event.stopPropagation()">'
       +'<select onchange="chSt(\''+p.id+'\',this.value)">'+Object.keys(FASE).map(function(k){return'<option value="'+k+'"'+(p.fas===k?' selected':'')+'>'+FASE[k].n+'</option>'}).join('')+'</select>'
@@ -1472,8 +1474,24 @@ function rProps(){
       +(( p.locCnpj||p.cnpj)?'<div class="pc-sub">'+esc(p.locCnpj||p.cnpj)+'</div>':'')
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
-      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)+'</div>'
+      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
+      +'<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border)">'
+        +'<span style="font-size:.72rem;color:var(--text3)">'+revLabel+'</span>'
+        +'<button onclick="addRevCard(\''+p.id+'\');event.stopPropagation();" style="font-size:.71rem;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;line-height:1.4">+ Nova Rev.</button>'
+      +'</div>'
+      +'</div>'
   }).join('');
+}
+function addRevCard(id){
+  var p=props.find(function(x){return x.id===id});
+  if(!p) return;
+  var pRevs=p.revs||[];
+  var nextLetter=String.fromCharCode(65+pRevs.length);
+  pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:''});
+  p.revs=pRevs;
+  saveAll();
+  rProps();
+  toast('✔ Revisão '+nextLetter+' adicionada — '+esc(p.num),'ok');
 }
 function chSt(id,s){
   var p=props.find(function(x){return x.id===id});
