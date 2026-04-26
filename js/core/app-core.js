@@ -1461,13 +1461,51 @@ function rProps(){
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
     var f=FASE[p.fas]||FASE.em_elaboracao||FASE.enviada;
-    var pRevCount=(p.revs||[]).length;
-    var revLabel=pRevCount===0?'Sem revisões':pRevCount+(pRevCount===1?' revisão':' revisões');
+    var pRevs=p.revs||[];
+    var pRevCount=pRevs.length;
+    var revAtual=(p.revAtual||'').trim().toUpperCase();
+    // Badge de revisão atual no topo
+    var revBadge=revAtual
+      ?'<span style="font-size:.65rem;font-weight:700;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.1rem .35rem;border-radius:3px;vertical-align:middle;margin-left:.35rem">Rev. '+revAtual+'</span>'
+      :'';
+    // Lista de revisões (mais recente primeiro)
+    var revListHtml='';
+    if(pRevCount>0){
+      revListHtml=pRevs.slice().reverse().map(function(r,i){
+        var isNew=i===0;
+        var bg=isNew?'rgba(88,166,255,.07)':'var(--bg)';
+        var brd=isNew?'1px solid rgba(88,166,255,.25)':'1px solid var(--border)';
+        var lc=isNew?'#58a6ff':'var(--text3)';
+        var dp=(r.dat||'').split('/');
+        var sd=dp.length>=2?dp[0]+'/'+dp[1]:r.dat||'';
+        var dc=r.desc||'';if(dc.length>26)dc=dc.substring(0,26)+'…';
+        return '<div style="display:flex;align-items:center;gap:.35rem;padding:.2rem .35rem;border-radius:4px;border:'+brd+';background:'+bg+';margin-bottom:.1rem">'
+          +'<span style="font-weight:700;font-size:.72rem;color:'+lc+';min-width:14px;text-align:center;flex-shrink:0">'+esc(r.rev)+'</span>'
+          +'<span style="font-size:.67rem;color:var(--text3);flex-shrink:0">'+esc(sd)+'</span>'
+          +(dc?'<span style="font-size:.67rem;color:var(--text2);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+esc(dc)+'</span>':'')
+        +'</div>';
+      }).join('');
+    }
+    // Rodapé colapsável + botão
+    var revFooter=
+      '<div style="position:relative;z-index:1;margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border)" onclick="event.stopPropagation()">'
+      +(pRevCount>0
+        ?'<details style="margin-bottom:.35rem" onclick="event.stopPropagation()">'
+          +'<summary style="cursor:pointer;font-size:.72rem;color:var(--text3);list-style:none;outline:none;display:flex;align-items:center;gap:.25rem" onclick="event.stopPropagation()">'
+          +'<span style="font-size:.6rem;display:inline-block">▸</span>'+(pRevCount+(pRevCount===1?' revisão':' revisões'))
+          +'</summary>'
+          +'<div style="margin-top:.3rem">'+revListHtml+'</div>'
+          +'</details>'
+        :'<div style="font-size:.72rem;color:var(--text3);margin-bottom:.35rem">Sem revisões</div>'
+      )
+      +'<button style="display:block;width:100%;padding:.28rem 0;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.74rem;text-align:center" '
+      +'onclick="addRevCard(\''+p.id+'\');event.stopPropagation();">+ Nova Revisão</button>'
+      +'</div>';
     return '<div class="pc" onclick="fmAbrirProposta(\''+p.id+'\')">'
       +'<div class="pc-act" onclick="event.stopPropagation()">'
       +'<select onchange="chSt(\''+p.id+'\',this.value)">'+Object.keys(FASE).map(function(k){return'<option value="'+k+'"'+(p.fas===k?' selected':'')+'>'+FASE[k].n+'</option>'}).join('')+'</select>'
       +'<button class="pc-del" style="background:#2563eb" title="Duplicar proposta" onclick="dupProp(\''+p.id+'\');event.stopPropagation();">⧉</button>'+'<button class="pc-del" onclick="delP(\''+p.id+'\')">×</button></div>'
-      +'<div class="pc-top"><span class="pc-num">'+esc(p.num)+'</span><span class="pc-date">'+p.dat+'</span></div>'
+      +'<div class="pc-top"><span class="pc-num">'+esc(p.num)+'</span>'+revBadge+'<span class="pc-date">'+p.dat+'</span></div>'
       +'<div class="pc-val">'+money(p.val)+'</div>'
       +'<div class="pc-tit">'+esc(p.tit||'')+'</div>'
       +'<div class="pc-cli">'+esc(p.loc||p.cli||'')+'</div>'
@@ -1475,20 +1513,21 @@ function rProps(){
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
       +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
-      +'<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;margin-top:.55rem;padding-top:.45rem;border-top:1px solid var(--border)">'
-        +'<span style="font-size:.72rem;color:var(--text3)">'+revLabel+'</span>'
-        +'<button onclick="addRevCard(\''+p.id+'\');event.stopPropagation();" style="font-size:.71rem;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;line-height:1.4">+ Nova Rev.</button>'
-      +'</div>'
+      +revFooter
       +'</div>'
   }).join('');
 }
 function addRevCard(id){
   var p=props.find(function(x){return x.id===id});
   if(!p) return;
-  var pRevs=p.revs||[];
+  var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
   var nextLetter=String.fromCharCode(65+pRevs.length);
   pRevs.push({id:uid(),rev:nextLetter,dat:new Date().toLocaleDateString('pt-BR'),por:'EJN',desc:''});
   p.revs=pRevs;
+  p.revAtual=nextLetter;
+  // Atualiza o número da proposta (ex: "180A.26" → "180C.26")
+  var m=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
+  if(m) p.num=m[1]+nextLetter+'.'+m[2];
   saveAll();
   rProps();
   toast('✔ Revisão '+nextLetter+' adicionada — '+esc(p.num),'ok');
