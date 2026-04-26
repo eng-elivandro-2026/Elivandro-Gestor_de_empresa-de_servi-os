@@ -192,12 +192,8 @@ function _prvCreateRevision(proposalId, cloneFromLetter, description) {
             // Invalida cache para buscar novamente
             _prvCache[proposalId] = null;
 
-            // Atualiza campo de letra na proposta
+            // Atualiza campo de letra na proposta (in-memory)
             p.revAtual = newLetter;
-            if (editId === proposalId && Q('pRevAtual')) {
-              Q('pRevAtual').value = newLetter;
-              if (typeof updNumRev === 'function') updNumRev();
-            }
 
             // Sincroniza com LISTA DE REVISÕES do formulário (p.revs)
             _prvSyncRevsList(p, newLetter, description.trim());
@@ -206,6 +202,15 @@ function _prvCreateRevision(proposalId, cloneFromLetter, description) {
             toast('✔ Rev. ' + newLetter + ' criada!', 'ok');
             _prvCloseModal();
             _prvRefreshCardRevisions(proposalId);
+
+            // Atualiza campo REVISÃO e número no formulário — após fechar modal
+            setTimeout(function() {
+              var revField = Q('pRevAtual');
+              if (revField) {
+                revField.value = newLetter;
+                if (typeof updNumRev === 'function') updNumRev();
+              }
+            }, 80);
           });
         });
       };
