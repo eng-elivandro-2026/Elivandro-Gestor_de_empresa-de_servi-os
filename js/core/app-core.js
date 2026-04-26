@@ -614,14 +614,140 @@ function rRevs(){
   }).join('');
 }
 
-function _abrirVisualizacaoRev(propId, revId){
+function _abrirVisualizacaoRev(propId, revId){ _abrirVisualizacaoRevCompleta(propId, revId); }
+function _novaRevDeVisualizacao(propId, baseRevId){
+  var viz=document.getElementById('_modalVizRev');if(viz)viz.remove();
+  _abrirModalNovaRev(propId, baseRevId);
+}
+
+// ── MODO LEITURA COMPLETO ─────────────────────────────────────────────────────
+var _vizModeState=null;
+
+function _limparVizMode(){
+  if(!_vizModeState) return;
+  var propId=_vizModeState.propId;
+  var p=props.find(function(x){return x.id===propId;});
+  if(p){
+    _applySnapToProp(p,_vizModeState.backupSnap);
+    p.revAtual=_vizModeState.backupRevAtual;
+    p.num=_vizModeState.backupNum;
+  }
+  document.removeEventListener('mousedown',_vizModeClickHandler,true);
+  var b=document.getElementById('_vizModeBanner');if(b)b.remove();
+  var pr=document.getElementById('_vizModePrompt');if(pr)pr.remove();
+  var sv=document.querySelector('.ab-save');
+  if(sv){sv.style.opacity='';sv.style.pointerEvents='';}
+  _vizModeState=null;
+}
+
+function _abrirVisualizacaoRevCompleta(propId, revId){
   var p=props.find(function(x){return x.id===propId;});
   if(!p) return;
   var rev=(p.revs||[]).find(function(r){return r.id===revId;});
-  if(!rev||!rev.snapshot){ toast('Esta revisão não possui snapshot salvo.','err'); return; }
-  var snap=rev.snapshot;
-  var bi=(snap.bi||[]).filter(function(it){return it.inc!==false;});
-  var escList=snap.esc||[];
+  if(!rev||!rev.snapshot){toast('Esta revisão não possui snapshot salvo.','err');return;}
+
+  // Guarda estado ativo
+  _vizModeState={
+    propId:propId,
+    revId:revId,
+    backupSnap:_snapProp(p),
+    backupRevAtual:p.revAtual||'',
+    backupNum:p.num||''
+  };
+
+  // Aplica snapshot e abre editor
+  _applySnapToProp(p,rev.snapshot);
+  p.revAtual=rev.rev;
+  editP(propId);
+  go('nova',null);
+
+  setTimeout(function(){
+    step(1);
+    try{rBudg();updBT();updKpi();}catch(e){}
+  },160);
+
+  setTimeout(function(){_setupVizModeUI(rev);},320);
+}
+
+function _setupVizModeUI(rev){
+  var ex=document.getElementById('_vizModeBanner');if(ex)ex.remove();
+  var novaEl=document.getElementById('nova');if(!novaEl) return;
+  var banner=document.createElement('div');
+  banner.id='_vizModeBanner';
+  banner.style.cssText='background:rgba(240,165,0,.1);border-bottom:2px solid rgba(240,165,0,.4);padding:.55rem 1.2rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;position:sticky;top:0;z-index:200';
+  banner.innerHTML=
+    '<span style="font-size:.95rem">👁</span>'
+    +'<div style="flex:1;min-width:0">'
+      +'<span style="font-size:.78rem;font-weight:700;color:var(--accent)">Modo Leitura — Rev. '+esc(rev.rev)+(rev.desc?' · '+esc(rev.desc.substring(0,40)):'')+' </span>'
+      +'<span style="font-size:.72rem;color:var(--text3)">(Arquivada em '+esc(rev.dat||'')+')</span>'
+    +'</div>'
+    +'<button onclick="_fecharVisualizacaoRevCompleta()" style="padding:.3rem .7rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.78rem;flex-shrink:0">✕ Fechar</button>'
+    +'<button onclick="_novaRevDeVisualizacaoCompleta()" style="padding:.3rem .85rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.78rem;font-weight:600;flex-shrink:0">+ Nova Revisão a partir desta</button>';
+  novaEl.insertBefore(banner,novaEl.firstChild);
+  // Oculta botão Salvar
+  var sv=document.querySelector('.ab-save');
+  if(sv){sv.style.opacity='.2';sv.style.pointerEvents='none';}
+  // Ativa interceptor
+  document.addEventListener('mousedown',_vizModeClickHandler,true);
+  toast('👁 Rev. '+rev.rev+' em modo leitura. Clique em qualquer campo para criar nova revisão.','ok');
+}
+
+function _vizModeClickHandler(e){
+  if(!_vizModeState) return;
+  // Permite: banner, navegação dos steps, actionBar (exceto .ab-save)
+  var tgt=e.target;
+  if(tgt.closest){
+    if(tgt.closest('#_vizModeBanner')) return;
+    if(tgt.closest('.wz'))            return; // tabs dentro do form
+    var inAB=tgt.closest('#actionBar');
+    if(inAB&&!tgt.closest('.ab-save')) return;
+    if(tgt.closest('#_vizModePrompt')) return;
+  }
+  // Intercepta inputs, selects, textareas, buttons e labels do formulário
+  var tag=tgt.tagName.toLowerCase();
+  if(['input','select','textarea','button','label'].indexOf(tag)<0) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  _showVizModePrompt();
+}
+
+function _showVizModePrompt(){
+  if(document.getElementById('_vizModePrompt')) return;
+  var el=document.createElement('div');
+  el.id='_vizModePrompt';
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center';
+  el.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1.5rem 1.75rem;max-width:400px;width:92%;text-align:center">'
+    +'<div style="font-size:1.5rem;margin-bottom:.5rem">📋</div>'
+    +'<div style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Revisão Arquivada</div>'
+    +'<div style="font-size:.82rem;color:var(--text2);line-height:1.55;margin-bottom:1.25rem">Esta versão está em <strong>modo leitura</strong>.<br>Deseja criar uma nova revisão a partir dela?</div>'
+    +'<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
+      +'<button onclick="document.getElementById(\'_vizModePrompt\').remove()" style="padding:.4rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.82rem">Não, continuar visualizando</button>'
+      +'<button onclick="_novaRevDeVisualizacaoCompleta()" style="padding:.4rem 1rem;background:var(--blue);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:.82rem;font-weight:600">Sim, criar nova revisão</button>'
+    +'</div>'
+    +'</div>';
+  el.addEventListener('click',function(e){if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+}
+
+function _fecharVisualizacaoRevCompleta(){
+  var propId=_vizModeState&&_vizModeState.propId;
+  _limparVizMode();
+  if(propId){
+    editP(propId);
+    go('nova',null);
+    setTimeout(function(){try{step(1);rBudg();updBT();updKpi();}catch(e){}},160);
+    toast('Visualização encerrada — edição normal restaurada.','ok');
+  }
+}
+
+function _novaRevDeVisualizacaoCompleta(){
+  var state=_vizModeState;
+  if(!state) return;
+  var pr=document.getElementById('_vizModePrompt');if(pr)pr.remove();
+  var propId=state.propId, revId=state.revId;
+  _fecharVisualizacaoRevCompleta();
+  setTimeout(function(){_abrirModalNovaRev(propId,revId);},420);
+}
 
   // Orçamento read-only
   var thS='padding:.3rem .5rem;font-size:.7rem;color:var(--text3);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap';
@@ -794,6 +920,8 @@ function cancelEdit(){
   }
 }
 function fecharProposta(){
+  // Se estiver em modo leitura, restaura dados antes de fechar
+  if(_vizModeState){ _limparVizMode(); }
   // Salva silenciosamente se houver dados significativos, depois vai ao dashboard
   if(proposalFormHasMeaningfulData()){
     upsertCurrentDraft(true);
