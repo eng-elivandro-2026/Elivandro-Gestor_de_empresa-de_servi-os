@@ -9495,7 +9495,7 @@ function aplicarMargNaProposta(){
       }
     });
     if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
-    saveAll();
+    savePrcAtual(cfg); // persiste a nova margem em p.prc + global + chama saveAll()
     Q('catModal').style.display='none';
     try{ rBudg(); }catch(e){ console.warn('rBudg err:',e); }
     try{ rMargens(); }catch(e){}
