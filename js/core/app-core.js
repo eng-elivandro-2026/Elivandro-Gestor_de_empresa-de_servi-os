@@ -1349,6 +1349,38 @@ function flt(f,el){
   }
   rProps();
 }
+function _propAlerts(p){
+  var hoje=new Date();
+  function dD(d){ if(!d)return null; var dt=new Date(d+'T12:00:00'); return isNaN(dt)?null:Math.floor((hoje-dt)/86400000); }
+  function badge(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.1rem .42rem;font-size:.67rem;color:'+cor+';font-weight:700;margin:.15rem .15rem 0 0;white-space:nowrap">'+txt+'</span>'; }
+  function sem(d,bom,ok,label){ if(d===null||d<0)return ''; return badge(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+label); }
+  var fas=p.fas||'',tl=p.tl||{},tags='';
+  var dtC=p.dat2||'',dtV=tl.dtVisita||'',dtE=tl.dtEnvio||'',dtF=p.dtFech||'';
+  var dtI=tl.dtInicioExec||'',dtT=tl.dtTermino||'',dtA=tl.dtAceite||'';
+  var nfs=tl.nfs||[];
+  var FAS_DEC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+  var FAS_EXEC=['andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+  var FAS_DONE=['recebido','finalizado'];
+  if(fas==='em_elaboracao'){
+    if(!dtV) tags+=sem(dD(dtC),7,15,'prospecção');
+    else     tags+=sem(dD(dtV),6,12,'elaboração');
+  }
+  if(FAS_DEC.indexOf(fas)>=0) tags+=sem(dD(dtE||dtC),30,60,'decisão');
+  if(fas==='aprovado') tags+=sem(dD(dtF),15,30,'pré-obra');
+  if(FAS_EXEC.indexOf(fas)>=0){
+    var dExec=dD(dtI);
+    if(dExec!==null) tags+=badge('var(--text3)',dExec+'d execução');
+    var dtRef=dtA||dtT;
+    if(dtRef) tags+=sem(dD(dtRef),3,7,'→ NF');
+    else if(dExec!==null&&dExec>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+dExec+'d');
+    if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
+  }
+  if(FAS_DONE.indexOf(fas)>=0&&dtC&&dtF){
+    var dCic=typeof _difD==='function'?_difD(dtC,dtF):null;
+    if(dCic!==null) tags+=sem(dCic,45,90,'ciclo com.');
+  }
+  return tags?'<div style="margin-top:.38rem;display:flex;flex-wrap:wrap">'+tags+'</div>':'';
+}
 function rProps(){
   var q=(Q('srch').value||'').toLowerCase();
   var list=props;
