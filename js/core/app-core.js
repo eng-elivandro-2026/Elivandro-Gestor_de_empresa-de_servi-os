@@ -9496,7 +9496,6 @@ function aplicarMargNaProposta(){
   if(typeof rBudg==='function') rBudg();
   if(typeof updKpi==='function') updKpi();
   if(typeof rMargens==='function') rMargens();
-  Q('catModal').style.display='none';
   toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+' nesta proposta!','ok');
 }
 
