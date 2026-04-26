@@ -2077,40 +2077,7 @@ function editP(id){
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
 function saveP(){
-
-// elivandro daqui para baixo
-
-async function importarBackupSupabase(jsonData){
-  if(!window.sbClient){
-    alert('Supabase não conectado!');
-    return;
-  }
-
-  try{
-    const lista = jsonData.propostas || [];
-
-    for(let p of lista){
-      const { error } = await window.sbClient
-        .from('propostas')
-        .insert([p]);
-
-      if(error){
-        console.error('Erro ao inserir:', p.num, error);
-      }else{
-        console.log('OK:', p.num);
-      }
-    }
-
-    alert('✔ Migração concluída!');
-  }catch(e){
-    console.error(e);
-    alert('Erro na migração');
-  }
-}
-
-// elivandro daqui para cima
-  
-var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
+  var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
   var isNew=!editId;
   var sn=buildCurrentProposalSnapshot();
@@ -2897,11 +2864,10 @@ function rEsc(){
       +'<input class="es-num" value="'+esc(sec.num||String(si+1))+'" placeholder="#" '
       +'style="width:44px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.28rem .3rem;font-family:inherit;font-size:.8rem;cursor:text" '
       +'title="Digite o número desejado e pressione Enter para reposicionar" '
-      +'oninput="escSecs['+si+'].num=this.value" '
-      +'onkeydown="if(event.key===\'Enter\'){escMoverPorNumero('+si+',this.value);this.blur();event.preventDefault();}" '
+      +'oninput="escSecs['+si+'].num=this.value" '      +'onkeydown="if(event.key===\'Enter\'){escMoverPorNumero('+si+',this.value);this.blur();event.preventDefault();}" '
       +'onblur="escMoverPorNumero('+si+',this.value)">'
       +'<input class="es-ti" value="'+esc(sec.titulo)+'" placeholder="Título da seção" '
-      +'oninput="escSecs['+si+'].titulo=this.value">'
+      +'oninput="escSecs['+si+'].titulo=this.value;scheduleDraftSave()">'
       +'<div class="br" style="flex-shrink:0">'
       +(isValor
          ? '<button class="btn ba bxs" onclick="atualizarValorSecaoEscopo()" title="Recarregar tabela de valores considerando descontos atuais">↻ Atualizar valores</button><span class="tg2" title="Tabela de valores automática">💰 Auto</span>'
@@ -2914,7 +2880,7 @@ function rEsc(){
       +escSymBar()
       +'<textarea class="esb-d" style="width:100%;margin-top:.2rem;background:var(--bg2)" '
       +'placeholder="'+(isValor?'Texto opcional acima da tabela de valores...':'Descrição da seção (vai direto na proposta)...')+'" '
-      +'oninput="escSecs['+si+'].desc=this.value;autoResize(this)">'+esc(sec.desc||'')+'</textarea>'
+      +'oninput="escSecs['+si+'].desc=this.value;autoResize(this);scheduleDraftSave()">'+esc(sec.desc||'')+'</textarea>'
       +(isValor ? valorSecEditorHTML() : '')
       +(isPrazo(sec) ? ganttEditorHTML(si) : '')
       +(isValor ? '' : (sec.subs||[]).map(function(sub,subi){
@@ -2927,12 +2893,12 @@ function rEsc(){
           +'</div>'
           +'<input value="'+esc(sub.num||'')+'" placeholder="Nº" '
           +'style="width:38px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.2rem .25rem;font-family:inherit;font-size:.76rem" '
-          +'oninput="escSecs['+si+'].subs['+subi+'].num=this.value">'
-          +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value">'
+          +'oninput="escSecs['+si+'].subs['+subi+'].num=this.value;scheduleDraftSave()">'
+          +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value;scheduleDraftSave()">'
           +'<button class="btn bd bxs es-delsub" data-si="'+si+'" data-subi="'+subi+'" style="flex-shrink:0">×</button>'
           +'</div>'
           +escSymBar()
-          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.2rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this)">'+esc(sub.desc||'')+'</textarea>'
+          +'<textarea class="esb-d" placeholder="Descrição do sub-item..." style="margin-top:.2rem" oninput="escSecs['+si+'].subs['+subi+'].desc=this.value;autoResize(this);scheduleDraftSave()">'+esc(sub.desc||'')+'</textarea>'
           +'</div>'
       }).join(''))
       +'</div>';
