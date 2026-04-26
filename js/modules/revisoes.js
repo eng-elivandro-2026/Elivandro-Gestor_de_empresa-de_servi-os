@@ -13,6 +13,34 @@ function _prvEmpId() {
        : (window._empresaAtiva ? window._empresaAtiva.id : null);
 }
 
+// ── Iniciais do usuário logado (para campo "Por" da lista) ───────
+function _prvUserInitials() {
+  var u = window._usuarioAtivo;
+  if (!u) return '?';
+  var nome = (u.nome || u.name || u.email || '').trim();
+  var parts = nome.split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return nome.substring(0, 3).toUpperCase() || '?';
+}
+
+// ── Sync com p.revs (Lista de Revisões no Step 1 do formulário) ──
+function _prvSyncRevsList(p, letter, description) {
+  if (!p.revs) p.revs = [];
+  var entry = {
+    id:   typeof uid === 'function' ? uid() : (Date.now().toString(36)),
+    rev:  letter,
+    dat:  new Date().toLocaleDateString('pt-BR'),
+    por:  _prvUserInitials(),
+    desc: description
+  };
+  p.revs.push(entry);
+  // Se a proposta está aberta no editor, sincroniza o array in-memory
+  if (typeof editId !== 'undefined' && editId === p.id) {
+    if (typeof revs !== 'undefined') revs.push(entry);
+    if (typeof rRevs === 'function') rRevs();
+  }
+}
+
 // ── Snapshot dos dados relevantes da proposta ────────────────────
 function _prvSnapshot(p) {
   return JSON.parse(JSON.stringify({
@@ -170,6 +198,9 @@ function _prvCreateRevision(proposalId, cloneFromLetter, description) {
               Q('pRevAtual').value = newLetter;
               if (typeof updNumRev === 'function') updNumRev();
             }
+
+            // Sincroniza com LISTA DE REVISÕES do formulário (p.revs)
+            _prvSyncRevsList(p, newLetter, description.trim());
 
             saveAll();
             toast('✔ Rev. ' + newLetter + ' criada!', 'ok');
