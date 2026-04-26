@@ -973,7 +973,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="ciclosCard">
     <div class="ch" style="cursor:pointer" onclick="togCiclosDash()">
       <span class="ct">📊 KPIs de Ciclos — Média Geral</span>
-      <span id="ciclosDashChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
+      <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
+        <button onclick="openCiclosFormulas()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2rem .55rem;font-size:.72rem;color:var(--text2);cursor:pointer">📐 Fórmulas</button>
+        <span id="ciclosDashChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togCiclosDash()">▼ expandir</span>
+      </div>
     </div>
     <div id="ciclosDashBody" style="display:none">
       <div style="font-size:.72rem;color:var(--text3);margin-bottom:.7rem">
@@ -8225,6 +8228,8 @@ function togCiclosDash(){
   ch.textContent  = open?'▼ expandir':'▲ recolher';
   if(!open) rCiclosDash();
 }
+function openCiclosFormulas(){var el=Q('ciclosFormPop');if(el)el.style.display='flex';}
+function closeCiclosFormulas(){var el=Q('ciclosFormPop');if(el)el.style.display='none';}
 
 function _difD(d1,d2){
   if(!d1||!d2) return null;
@@ -8862,6 +8867,101 @@ function rExecTimeline(){
       <div class="log-actions">
         <button class="btn-log-cls" onclick="cuLogClose()">Fechar</button>
         <button class="btn-log-add" onclick="cuLogAdd()">&#43; Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: FÓRMULAS KPIs DE CICLOS -->
+<div id="ciclosFormPop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeCiclosFormulas()">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.6);width:min(660px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-weight:700;font-size:.95rem;color:var(--accent)">📐 Como são calculados os KPIs de Ciclos</span>
+      <button onclick="closeCiclosFormulas()" style="background:none;border:none;color:var(--text3);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px">✕</button>
+    </div>
+    <div style="overflow-y:auto;padding:1rem">
+      <div style="font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔵 Ciclo Comercial</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">📞 Prospecção</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data da Visita − Data de Criação da Proposta</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤3d</span> · <span style="color:#d4a017">≤7d</span> · <span style="color:#f97316">&gt;7d</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">📝 Elaboração</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Envio − Data da Visita (ou Criação, se sem visita)</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤5d</span> · <span style="color:#d4a017">≤15d</span> · <span style="color:#f97316">&gt;15d</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">⏳ Decisão do Cliente</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Fechamento − Data de Envio</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤15d</span> · <span style="color:#d4a017">≤30d</span> · <span style="color:#f97316">&gt;30d</span></td>
+          </tr>
+          <tr>
+            <td style="padding:.4rem .5rem;font-weight:600">🏆 Ciclo Comercial Total</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Fechamento − Data de Criação da Proposta</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤30d</span> · <span style="color:#d4a017">≤60d</span> · <span style="color:#f97316">&gt;60d</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:.7rem;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟢 Ciclo de Execução</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">🚀 Gap Pré-Obra</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Início da Execução − Data de Fechamento</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤7d</span> · <span style="color:#d4a017">≤30d</span> · <span style="color:#f97316">&gt;30d</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">⚙️ Duração da Execução</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data de Término − Data de Início da Execução</td>
+            <td style="padding:.4rem .5rem;color:var(--text3)">— (sem limite)</td>
+          </tr>
+          <tr>
+            <td style="padding:.4rem .5rem;font-weight:600">📋 Entrega → 1ª NF</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data da 1ª NF − Data de Aceite (ou Término, se sem aceite)</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤3d</span> · <span style="color:#d4a017">≤10d</span> · <span style="color:#f97316">&gt;10d</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:.7rem;font-weight:700;color:#d4a017;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟡 Ciclo Financeiro</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:34%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;white-space:nowrap">Semáforo 🟢🟡🔴</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">📅 PMR Médio Real</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data do Receb. Final − Data da Última NF emitida</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤30d</span> · <span style="color:#d4a017">≤60d</span> · <span style="color:#f97316">&gt;60d</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.4rem .5rem;font-weight:600">🔄 Ciclo Financeiro Total</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Data do Receb. Final − Data de Início da Execução</td>
+            <td style="padding:.4rem .5rem;white-space:nowrap"><span style="color:#3fb950">≤60d</span> · <span style="color:#d4a017">≤120d</span> · <span style="color:#f97316">&gt;120d</span></td>
+          </tr>
+          <tr>
+            <td style="padding:.4rem .5rem;font-weight:600">💰 Adiantamento Médio</td>
+            <td style="padding:.4rem .5rem;color:var(--text2)">Soma dos Adiantamentos ÷ Soma das NFs × 100%</td>
+            <td style="padding:.4rem .5rem;color:#3fb950">Quanto maior, melhor</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="background:var(--bg3);border-radius:8px;padding:.6rem .8rem;font-size:.75rem;color:var(--text3);line-height:1.5">
+        ℹ️ <strong style="color:var(--text2)">Fonte:</strong> Linha do Tempo de cada proposta. Propostas com status <em>Em Elaboração</em> são excluídas. O número entre parênteses mostra quantas propostas contribuíram para cada média.
       </div>
     </div>
   </div>
