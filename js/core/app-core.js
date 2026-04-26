@@ -9495,6 +9495,7 @@ function aplicarMargNaProposta(){
     if(!count){ toast('Nenhum item da categoria '+cod+' encontrado nesta proposta.','warn'); return; }
     saveAll();
     try{ rMargens(); }catch(e){}
+    Q('catModal').style.display='none';
     toast('✔ Margem '+mar.toFixed(1)+'% aplicada a '+count+' item(ns) de '+cod+'!','ok');
   }catch(e){
     toast('Erro ao aplicar margem: '+e.message,'err');
