@@ -1414,15 +1414,42 @@ function flt(f,el){
 function _propAlerts(p){
   var hoje=new Date();
   function dD(d){ if(!d)return null; var dt=new Date(d+'T12:00:00'); return isNaN(dt)?null:Math.floor((hoje-dt)/86400000); }
-  var FAS_DEC_PA=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
-  var FAS_EXC_PA=['aprovado','andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
-  var fas=p.fas||'',tl=p.tl||{},tags='';
   function badge(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.1rem .42rem;font-size:.67rem;color:'+cor+';font-weight:700;margin:.15rem .15rem 0 0;white-space:nowrap">'+txt+'</span>'; }
-  if(fas==='em_elaboracao'){ var d=dD(p.dat2); if(d!==null&&d>15) tags+=badge('#d4a017','⚠️ '+d+'d elaboração'); }
-  if(FAS_DEC_PA.indexOf(fas)>=0){ var dtRef=(tl.dtEnvio||p.dat2||''); var d=dD(dtRef); if(d!==null){ if(d>60) tags+=badge('#f85149','🔴 '+d+'d decisão'); else if(d>30) tags+=badge('#d4a017','⚠️ '+d+'d decisão'); } }
-  if(fas==='aprovado'){ var d=dD(p.dtFech); if(d!==null){ if(d>30) tags+=badge('#f85149','🔴 gap pré-obra '+d+'d'); else if(d>15) tags+=badge('#d4a017','⚠️ gap pré-obra '+d+'d'); } }
-  if(FAS_EXC_PA.indexOf(fas)>=0&&fas!=='atrasado'){ var dtI=tl.dtInicioExec||''; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+d+'d'); }
-  if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
+  function sem(d,bom,ok,label){ if(d===null||d<0)return ''; return badge(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+label); }
+
+  var fas=p.fas||'',tl=p.tl||{},tags='';
+  var dtC=p.dat2||'',dtV=tl.dtVisita||'',dtE=tl.dtEnvio||'',dtF=p.dtFech||'';
+  var dtI=tl.dtInicioExec||'',dtT=tl.dtTermino||'',dtA=tl.dtAceite||'';
+  var nfs=tl.nfs||[];
+
+  var FAS_DEC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+  var FAS_EXEC=['andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+  var FAS_DONE=['recebido','finalizado'];
+
+  // Prospecção ou Elaboração
+  if(fas==='em_elaboracao'){
+    if(!dtV) tags+=sem(dD(dtC),7,15,'prospecção');
+    else     tags+=sem(dD(dtV),6,12,'elaboração');
+  }
+  // Decisão do Cliente
+  if(FAS_DEC.indexOf(fas)>=0) tags+=sem(dD(dtE||dtC),30,60,'decisão');
+  // Gap Pré-Obra
+  if(fas==='aprovado') tags+=sem(dD(dtF),15,30,'pré-obra');
+  // Duração da Execução (cinza) + alertas
+  if(FAS_EXEC.indexOf(fas)>=0){
+    var dExec=dD(dtI);
+    if(dExec!==null) tags+=badge('var(--text3)',dExec+'d execução');
+    var dtRef=dtA||dtT;
+    if(dtRef) tags+=sem(dD(dtRef),3,7,'→ NF');
+    else if(dExec!==null&&dExec>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+dExec+'d');
+    if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
+  }
+  // Ciclo Comercial (propostas finalizadas)
+  if(FAS_DONE.indexOf(fas)>=0&&dtC&&dtF){
+    var dCic=typeof _difD==='function'?_difD(dtC,dtF):null;
+    if(dCic!==null) tags+=sem(dCic,45,90,'ciclo com.');
+  }
+
   return tags?'<div style="margin-top:.38rem;display:flex;flex-wrap:wrap">'+tags+'</div>':'';
 }
 function rProps(){
