@@ -409,15 +409,9 @@
   window.ctsSeedFromData = seedFromData;
 
   // ── Wiring do formulário de Propostas ─────────────────────
-  // pCli e pAC são gerenciados pelo sistema original em app-core.js (bindAutoInput/initClientAutoComplete)
-  // Aqui conectamos apenas pLoc e pAC2, que não estão no sistema original
+  // pCli, pAC e pLoc são gerenciados pelo app-core.js (bindAutoInput/initClientAutoComplete)
   function wirePropForm() {
     var g = function(id) { return document.getElementById(id); };
-
-    // Card Local de Serviço (não coberto pelo app-core.js)
-    if (g('pLoc')) acSetup(g('pLoc'), 'cliente', function(c) {
-      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
-    });
 
     // Contato 2 (não coberto pelo app-core.js)
     if (g('pAC2')) acSetup(g('pAC2'), 'contato', function(c) {
