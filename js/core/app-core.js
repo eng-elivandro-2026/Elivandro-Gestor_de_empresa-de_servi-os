@@ -7455,7 +7455,7 @@ function buildServiceLocDirectory(){
 }
 function getLocCompanySuggestions(query){
   var q=normTxt(query);
-  return buildServiceLocDirectory().filter(function(e){
+  return buildClientDirectory().filter(function(e){
     if(!q) return true;
     return [e.empresa,e.cnpj,e.cidade].map(normTxt).join(' | ').indexOf(q)>=0;
   }).slice(0,12).map(function(e){
