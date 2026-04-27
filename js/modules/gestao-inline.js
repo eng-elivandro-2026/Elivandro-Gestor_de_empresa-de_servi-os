@@ -202,6 +202,20 @@ function applyDados(parsed) {
   var geralFields = ['kpi','crescimento','proxPasso','trim','revVelocidade','revMudanca','checkContr'];
   geralFields.forEach(function(k){ if(parsed[k]!==undefined && parsed[k]!==null){ if(typeof parsed[k]==='object' && !Array.isArray(parsed[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],parsed[k]); } else { dadosGeral[k]=dadosGeral[k]||parsed[k]; } delete parsed[k]; } });
 
+  // Merge profundo de dias: une dias locais e da nuvem sem apagar nenhum.
+  // Para o mesmo dia, mantém o que tiver mais conteúdo (protege contra nuvem desatualizada).
+  if(parsed.dias && typeof parsed.dias==='object'){
+    if(!dados.dias) dados.dias={};
+    Object.keys(parsed.dias).forEach(function(d){
+      var c=parsed.dias[d], l=dados.dias[d];
+      if(!l){ dados.dias[d]=c; return; }
+      var cScore=(c.tarefas||[]).length+(c.explosoes||[]).length+(c.reflexao?1:0)+(c.abertos||[]).length;
+      var lScore=(l.tarefas||[]).length+(l.explosoes||[]).length+(l.reflexao?1:0)+(l.abertos||[]).length;
+      if(cScore>lScore) dados.dias[d]=c;
+    });
+    delete parsed.dias;
+  }
+
   dados=Object.assign(dados,parsed);
 
 }
