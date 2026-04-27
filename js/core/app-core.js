@@ -1357,9 +1357,9 @@ function rRegistro(){
       '<td style="padding:.45rem .7rem;font-family:monospace;font-weight:700;color:var(--accent);white-space:nowrap">'
         +'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);padding:.1rem .38rem;border-radius:4px">'+esc(p.num||'--')+'</span>'
       +'</td>'
-      +'<td style="padding:.45rem .7rem;font-weight:600;white-space:nowrap">'+esc(p.cli||'--')+'</td>'
       +'<td style="padding:.45rem .7rem;color:var(--text2);white-space:nowrap">'+esc(p.dat||p.dat2||'--')+'</td>'
-      +'<td style="padding:.45rem .7rem;color:var(--text2);max-width:340px">'+esc(p.tit||'--')+'</td>'
+      +'<td style="padding:.45rem .7rem;font-weight:700;color:var(--text);min-width:260px;max-width:420px">'+esc(p.tit||'--')+'</td>'
+      +'<td style="padding:.45rem .7rem;color:var(--text2);font-size:.75rem;min-width:140px;max-width:200px">'+esc(p.cli||'--')+'</td>'
       +'<td style="padding:.45rem .7rem">'+bdgHtml+'</td>'
       +'<td style="padding:.45rem .7rem;text-align:right;white-space:nowrap">'+valHtml+'</td>'
       +'<td style="padding:.45rem .7rem;text-align:center"><button class="btn bg bxs" data-pid="'+p.id+'" title="Abrir proposta">&#9998;</button></td>';
