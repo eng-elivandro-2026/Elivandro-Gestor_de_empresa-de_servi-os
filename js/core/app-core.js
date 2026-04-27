@@ -10365,16 +10365,11 @@ function ganttEditorHTML(si){
   // Opções de dias úteis
   var optSab=g.trabSab?'checked':'';
   var optDom=g.trabDom?'checked':'';
-  var ferList=(g.feriados||[]).map(function(f,fi){
-    return '<div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.2rem">'
-      +'<input type="date" value="'+esc(f.data||'')+'" style="padding:.18rem .35rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.77rem" onchange="ganttFerData('+fi+',this.value)">'
-      +'<input type="text" value="'+esc(f.nome||'')+'" placeholder="Nome do feriado" style="flex:1;padding:.18rem .35rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.77rem" oninput="ganttFerNome('+fi+',this.value)">'
-      +'<button onclick="ganttFerDel('+fi+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:0 .2rem">x</button>'
-      +'</div>';
-  }).join('');
+  var ferListHTML=_ganttFerListHTML(g);
 
   var configUteis='<div style="border-top:1px solid var(--border);margin-top:.55rem;padding-top:.5rem">'
-    +'<div style="font-size:.77rem;font-weight:700;color:var(--text2);margin-bottom:.4rem">&#128197; Dias &uacute;teis</div>'
+    +'<button onclick="ganttCalToggle()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;padding:0;margin-bottom:.4rem;color:var(--text2);font-size:.77rem;font-weight:700;width:100%;text-align:left">&#128197; Configura&ccedil;&otilde;es de calend&aacute;rio <span id="ganttCalChev" style="font-size:.65rem;color:var(--text3)">'+(_ganttCalOpen?'▲':'▼')+'</span></button>'
+    +'<div id="ganttCalBody" style="display:'+(_ganttCalOpen?'block':'none')+'">'
     +'<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.45rem">'
     +'<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer">'
     +'<input type="checkbox" '+optSab+' onchange="ganttCfg(\'trabSab\',this.checked)"> Trabalha S&aacute;bado</label>'
@@ -10382,8 +10377,9 @@ function ganttEditorHTML(si){
     +'<input type="checkbox" '+optDom+' onchange="ganttCfg(\'trabDom\',this.checked)"> Trabalha Domingo</label>'
     +'</div>'
     +'<div style="font-size:.75rem;color:var(--text3);margin-bottom:.3rem">Feriados adicionais (municipais, estaduais, pontos facultativos):</div>'
-    +ferList
+    +'<div id="ganttFerList">'+ferListHTML+'</div>'
     +'<button onclick="ganttFerAdd()" style="margin-top:.3rem;padding:.22rem .6rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;font-size:.75rem">+ Feriado</button>'
+    +'</div>'
     +'</div>';
 
   var prev=buildGanttPrev(g);
@@ -10403,17 +10399,38 @@ function ganttEditorHTML(si){
     +'</div>';
 }
 
+var _ganttCalOpen=true;
+function _ganttFerListHTML(g){
+  return (g.feriados||[]).map(function(f,fi){
+    return '<div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.2rem">'
+      +'<input type="date" value="'+esc(f.data||'')+'" style="padding:.18rem .35rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.77rem" onchange="ganttFerData('+fi+',this.value)">'
+      +'<input type="text" value="'+esc(f.nome||'')+'" placeholder="Nome do feriado" style="flex:1;padding:.18rem .35rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.77rem" oninput="ganttFerNome('+fi+',this.value)">'
+      +'<button onclick="ganttFerDel('+fi+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:0 .2rem">x</button>'
+      +'</div>';
+  }).join('');
+}
+function ganttCalToggle(){
+  _ganttCalOpen=!_ganttCalOpen;
+  var body=Q('ganttCalBody'),chev=Q('ganttCalChev');
+  if(body)body.style.display=_ganttCalOpen?'block':'none';
+  if(chev)chev.textContent=_ganttCalOpen?'▲':'▼';
+}
 function ganttRefreshPrev(){var g=getGantt();var el=Q('ganttPrev');if(el)el.innerHTML=buildGanttPrev(g);}
 function ganttReRender(){
   var el=Q('ganttEditorWrap');
   if(el){el.outerHTML=ganttEditorHTML(0);}
   else{rEsc();}
 }
+function ganttFerListRefresh(){
+  var g=getGantt();
+  var el=Q('ganttFerList');
+  if(el)el.innerHTML=_ganttFerListHTML(g);
+}
 function ganttUpd(fi,campo,val){var g=getGantt();if(!g.fases[fi])return;g.fases[fi][campo]=val;saveGantt(g);ganttRefreshPrev();}
 function ganttIni(v){var g=getGantt();g.inicio=v;saveGantt(g);ganttRefreshPrev();}
 function ganttCfg(campo,val){var g=getGantt();g[campo]=val;saveGantt(g);ganttRefreshPrev();}
-function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);ganttReRender();}
-function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);ganttReRender();}
+function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);ganttFerListRefresh();}
+function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);ganttFerListRefresh();}
 function ganttFerData(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].data=v;saveGantt(g);ganttRefreshPrev();}
 function ganttFerNome(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].nome=v;saveGantt(g);}
 function ganttMover(fi,dir){
