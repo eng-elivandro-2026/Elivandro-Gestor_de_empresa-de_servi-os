@@ -262,7 +262,9 @@ var FASE={
   perdido_concorrente:{n:'Perdido Concorrente',c:'b-atr',i:'❌'},
   perdido_cliente_decidiu_nao_fazer:{n:'Perdido Cliente Decidiu Não Fazer',c:'b-atr',i:'❌'},
   perdido_fazer_no_futuro:{n:'Perdido Fazer no Futuro',c:'b-atr',i:'⏳'},
-  perdido:{n:'Perdido',c:'b-atr',i:'❌'}
+  perdido:{n:'Perdido',c:'b-atr',i:'❌'},
+  cancelada:{n:'Cancelada',c:'b-atr',i:'🚫'},
+  virou_outra_proposta:{n:'Virou Outra Proposta',c:'b-f4',i:'🔄'}
 };
 var PHASE_ORDER=[
   'em_elaboracao','enviada','cliente_analisando',
@@ -271,7 +273,8 @@ var PHASE_ORDER=[
   'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro',
   'taf','sat','finalizado','atrasado',
   'virou_budget','perdido_valor_alto','perdido_concorrente',
-  'perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido'
+  'perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido',
+  'cancelada','virou_outra_proposta'
 ];
 // Fases consideradas "fechadas" (proposta convertida em negócio)
 // em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
@@ -1876,6 +1879,10 @@ function chSt(id,s){
     // Abrindo novamente (saindo de fechado para aberto) — só troca a fase
     p.fas=s;
     saveAll();rDash();
+    if(s==='cancelada'||s==='virou_outra_proposta'){
+      if(editId===id){ abrirLog(); }
+      else{ toast((FASE[s]||{i:''}).i+' '+(FASE[s]||{n:s}).n+' — abra a proposta e registre o motivo no LOG.','ok'); }
+    }
   }
 }
 
@@ -7623,6 +7630,7 @@ function scheduleDraftSave(){
   clearTimeout(autoDraftTimer);
   autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 350);
 }
+var _FAS_LOG=['cancelada','virou_outra_proposta'];
 function bindProposalDraftAutoSave(){
   ['pCli','pCnpj','pCid','pAC','pDep','pMail','pTel','pLoc','pCsv','pTit','pRes','pDat','pDatFech','pRevAtual','pFas','vS','vM','vDSval','vDMval','vDSpct','vDMpct'].forEach(function(id){
     var el=Q(id); if(!el || el.__draftBound) return;
@@ -7630,6 +7638,15 @@ function bindProposalDraftAutoSave(){
     el.addEventListener('input', scheduleDraftSave);
     el.addEventListener('change', scheduleDraftSave);
   });
+  var pFasEl=Q('pFas');
+  if(pFasEl && !pFasEl.__logBound){
+    pFasEl.__logBound=true;
+    pFasEl.addEventListener('change',function(){
+      if(_FAS_LOG.indexOf(this.value)>=0){
+        setTimeout(function(){ abrirLog(); }, 400);
+      }
+    });
+  }
 }
 
 // INIT
