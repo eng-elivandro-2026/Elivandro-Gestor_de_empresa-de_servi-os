@@ -644,13 +644,19 @@ function _limparVizMode(){
 }
 
 function _abrirVisualizacaoRevCompleta(propId, revId){
-  // Cancelar timer de auto-save pendente e fazer flush antes de mudar o estado
+  // Cancelar timer de auto-save pendente e fazer flush antes de mudar o estado.
+  // NÃO avança tsSaved — preserva o timestamp do último save real para que a
+  // comparação de merge no reload sempre prefira o dado salvo pelo usuário.
   clearTimeout(autoDraftTimer);
   autoDraftTimer=null;
-  if(editId===propId && typeof buildCurrentProposalSnapshot==='function'){
-    var _sn=buildCurrentProposalSnapshot();
+  if(editId===propId){
     var _fi=props.findIndex(function(x){return x.id===propId;});
-    if(_fi>=0) props[_fi]=_sn; else props.push(_sn);
+    var _pFlush=_fi>=0?props[_fi]:null;
+    if(_pFlush){
+      _pFlush.esc=JSON.parse(JSON.stringify(escSecs));
+      _pFlush.bi=JSON.parse(JSON.stringify(budg));
+      _pFlush.revs=JSON.parse(JSON.stringify(revs));
+    }
   }
 
   var p=props.find(function(x){return x.id===propId;});
@@ -743,10 +749,13 @@ function _showVizModePrompt(){
 
 function _fecharVisualizacaoRevCompleta(){
   var propId=_vizModeState&&_vizModeState.propId;
-  _limparVizMode();
+  _limparVizMode(); // restaura p.esc e outras props para o estado ativo correto
   if(propId){
-    editP(propId);
+    editP(propId);  // carrega p (restaurado) em escSecs + campos do form
     go('nova',null);
+    // Persiste dados corretos em localStorage + Supabase com timestamp novo,
+    // garantindo que o merge no reload sempre prefira esta versão restaurada.
+    try{ upsertCurrentDraft(true); }catch(e){}
     setTimeout(function(){try{step(1);rBudg();updBT();updKpi();}catch(e){}},160);
     toast('Visualização encerrada — edição normal restaurada.','ok');
   }
@@ -859,12 +868,11 @@ function cancelEdit(){
   }
 }
 function fecharProposta(){
-  // Se estiver em modo leitura, restaura dados antes de fechar
   if(_vizModeState){ _limparVizMode(); }
-  // Salva silenciosamente se houver dados significativos, depois vai ao dashboard
   if(proposalFormHasMeaningfulData()){
-    upsertCurrentDraft(true);
-    toast('✔ Proposta salva!','ok');
+    var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
+    if(!num||!cli){ alert('Preencha Nº e Cliente antes de fechar.'); return; }
+    saveP(); // mesma validação e salvamento completo do botão Salvar
   }
   editId=null;
   hideActionBar();
@@ -2215,15 +2223,15 @@ function updKpi(){
   // • terc=true  → você compra/paga o terceiro → custo ABATE o lucro
   // • terc=false → item próprio (MO da equipe ou material de estoque) → custo NÃO abate o lucro (PV vira receita pura)
   // custoSTot/custoMTot = custo real por tipo para os cards visuais (independe de terc)
-  var custoS=0,custoM=0,custoTerc=0,custoSTot=0,custoMTot=0;
+  var custoS=0,custoM=0,custoTerc=0,custoSTot=0,custoMTot=0,custoTercS=0,custoTercM=0;
   budg.forEach(function(it){
     if(it.inc===false) return;
     var cItem = n2(it.cu)*n2(it.mult);
     if(it.terc===true){
       // Terceiro (serviço ou material): você paga → abate lucro
       custoTerc += cItem;
-      if(it.t==='material') custoMTot += cItem;
-      else custoSTot += cItem;
+      if(it.t==='material'){ custoMTot += cItem; custoTercM += cItem; }
+      else { custoSTot += cItem; custoTercS += cItem; }
       return;
     }
     // Item próprio (MO da equipe OU material de estoque):
@@ -2254,10 +2262,9 @@ function updKpi(){
   var recMliq = Math.max(0, pvM - dM);
   var rsS = pvTot>0 ? deducRS*(recSliq/pvTot) : 0;
   var rsM = pvTot>0 ? deducRS*(recMliq/pvTot) : 0;
-  // FIX V345 #7: custoS e custoM agora sempre 0 (itens próprios não abatam LL)
-  // custoTerc já está em custoTotal; para lucro por origem usar parcelas do custoTerc
-  var llS = recSliq - custoS - deducNFS - deducComS - rsS;
-  var llM = recMliq - custoM - deducNFM - deducComM - rsM;
+  // custoTercS/custoTercM = parcela do custo de terceiros por tipo de receita
+  var llS = recSliq - custoTercS - deducNFS - deducComS - rsS;
+  var llM = recMliq - custoTercM - deducNFM - deducComM - rsM;
   var llSPct = recSliq>0 ? (llS/recSliq)*100 : 0;
   var llMPct = recMliq>0 ? (llM/recMliq)*100 : 0;
 
