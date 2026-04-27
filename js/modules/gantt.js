@@ -3,7 +3,10 @@ var GANTT_NOTA_DEFAULT='⚠️ Esse cronograma é apenas uma referência, visão
 
 function getGantt(){
   var p=props.find(function(x){return x.id===editId;});
-  if(!p)return{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[],nota:GANTT_NOTA_DEFAULT};
+  if(!p){
+    if(!_tempGantt)_tempGantt={inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[],nota:GANTT_NOTA_DEFAULT};
+    return _tempGantt;
+  }
   if(!p.gantt)p.gantt={inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[],nota:GANTT_NOTA_DEFAULT};
   if(p.gantt.trabSab===undefined)p.gantt.trabSab=false;
   if(p.gantt.trabDom===undefined)p.gantt.trabDom=false;
@@ -13,7 +16,7 @@ function getGantt(){
 }
 function saveGantt(g){
   var idx=props.findIndex(function(x){return x.id===editId;});
-  if(idx<0)return;
+  if(idx<0){_tempGantt=g;return;}
   props[idx].gantt=g;
   saveAll();
 }
@@ -159,16 +162,7 @@ function ganttEditorHTML(si){
     +'<div></div><div>Tarefa</div><div style="text-align:center">Qtd</div><div>Unidade</div><div>Cor</div><div></div>'
     +'</div>';
 
-  // Feriados
-  var ferList=(g.feriados||[]).map(function(f,fi){
-    return '<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem">'
-      +'<input type="date" value="'+esc(f.data||'')+'" style="flex:0 0 auto;padding:.35rem .4rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:.85rem" onchange="ganttFerData('+fi+',this.value)">'
-      +'<input type="text" value="'+esc(f.nome||'')+'" placeholder="Ex: Corpus Christi" style="flex:1;padding:.35rem .5rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:.85rem" oninput="ganttFerNome('+fi+',this.value)">'
-      +'<button onclick="ganttFerDel('+fi+')" class="nb" style="color:var(--red);flex-shrink:0">×</button>'
-      +'</div>';
-  }).join('');
-
-  var configUteis='<details style="margin-top:.75rem">'
+  var configUteis='<details id="ganttCalDetails" style="margin-top:.75rem">'
     +'<summary style="font-size:.82rem;font-weight:700;color:var(--text2);cursor:pointer;padding:.3rem 0">⚙️ Configurações de calendário</summary>'
     +'<div style="margin-top:.5rem">'
     +'<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:.55rem">'
@@ -176,7 +170,7 @@ function ganttEditorHTML(si){
     +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;cursor:pointer"><input type="checkbox" '+(g.trabDom?'checked':'')+' onchange="ganttCfg(\'trabDom\',this.checked)" style="width:18px;height:18px"> Trabalha Domingo</label>'
     +'</div>'
     +'<div style="font-size:.78rem;color:var(--text3);margin-bottom:.4rem">Feriados municipais / estaduais adicionais:</div>'
-    +ferList
+    +'<div id="ganttFerList">'+ganttFerListHTML(g)+'</div>'
     +'<button onclick="ganttFerAdd()" class="btn bg bsm" style="margin-top:.3rem">+ Feriado</button>'
     +'</div>'
     +'</details>';
@@ -189,7 +183,7 @@ function ganttEditorHTML(si){
 
   var prev=buildGanttPrev(g);
 
-  return '<div style="margin-top:.8rem;border:2px solid var(--accent);border-radius:10px;padding:.9rem;background:var(--bg3)">'
+  return '<div id="ganttEditorWrap" style="margin-top:.8rem;border:2px solid var(--accent);border-radius:10px;padding:.9rem;background:var(--bg3)">'
     +'<div style="font-weight:700;font-size:.9rem;color:var(--accent);margin-bottom:.6rem">📅 Cronograma de tarefas</div>'
     +'<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.65rem">'
     +'<label style="font-size:.9rem;color:var(--text2);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">'
@@ -204,6 +198,34 @@ function ganttEditorHTML(si){
     +notaHtml
     +configUteis
     +'</div>';
+}
+
+// ── Helpers de feriados e re-render ──────────────────────────────────────────
+function ganttFerListHTML(g){
+  return (g.feriados||[]).map(function(f,fi){
+    return '<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem">'
+      +'<input type="date" value="'+esc(f.data||'')+'" style="flex:0 0 auto;padding:.35rem .4rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:.85rem" onchange="ganttFerData('+fi+',this.value)">'
+      +'<input type="text" value="'+esc(f.nome||'')+'" placeholder="Ex: Corpus Christi" style="flex:1;padding:.35rem .5rem;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:.85rem" oninput="ganttFerNome('+fi+',this.value)">'
+      +'<button onclick="ganttFerDel('+fi+')" class="nb" style="color:var(--red);flex-shrink:0">×</button>'
+      +'</div>';
+  }).join('');
+}
+function ganttFerListRefresh(){
+  var g=getGantt();
+  var el=Q('ganttFerList');
+  if(el) el.innerHTML=ganttFerListHTML(g);
+}
+function ganttReRender(){
+  var wrap=Q('ganttEditorWrap');
+  if(!wrap){rEsc();return;}
+  // Preserve <details open> state before replacing HTML
+  var details=wrap.querySelector('#ganttCalDetails');
+  var calWasOpen=details&&details.open;
+  wrap.outerHTML=ganttEditorHTML(0);
+  if(calWasOpen){
+    var newDetails=Q('ganttCalDetails');
+    if(newDetails) newDetails.open=true;
+  }
 }
 
 // ── Funções de mutação ────────────────────────────────────────────────────────
@@ -240,7 +262,7 @@ function ganttUpdUnidade(fi,unidade){
   if(unidade==='dias'&&!f.dur)       f.dur=Math.ceil((f.durHoras||8)/8);
   ganttRecalcOffsets(g);
   saveGantt(g);
-  rEsc();
+  ganttReRender();
 }
 function ganttUpdRel(fi,rel){
   var g=getGantt();
@@ -273,14 +295,14 @@ function ganttAdd(){
   g.fases=fases;
   ganttRecalcOffsets(g);
   saveGantt(g);
-  rEsc();
+  ganttReRender();
 }
 function ganttDel(fi){
   var g=getGantt();
   g.fases.splice(fi,1);
   ganttRecalcOffsets(g);
   saveGantt(g);
-  rEsc();
+  ganttReRender();
 }
 function ganttMover(fi,dir){
   var g=getGantt();
@@ -291,10 +313,10 @@ function ganttMover(fi,dir){
   g.fases=fases;
   ganttRecalcOffsets(g);
   saveGantt(g);
-  rEsc();
+  ganttReRender();
 }
-function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);rEsc();}
-function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);rEsc();}
+function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);ganttFerListRefresh();}
+function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);ganttFerListRefresh();}
 function ganttFerData(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].data=v;saveGantt(g);ganttRefreshPrev();}
 function ganttFerNome(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].nome=v;saveGantt(g);}
 
