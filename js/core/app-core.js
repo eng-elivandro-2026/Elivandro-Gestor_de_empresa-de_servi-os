@@ -7435,6 +7435,40 @@ function applyCompanySelection(rec){
   if(Q('pAC') && !Q('pAC').value && rec.contatos && rec.contatos[0]) Q('pAC').value=rec.contatos[0].nome||'';
   hideAutoBox();
 }
+function buildServiceLocDirectory(){
+  var empresas={};
+  (props||[]).forEach(function(p){
+    var loc=(p.loc||'').trim();
+    if(!loc) return;
+    var key=normTxt(loc)+'|'+normTxt(p.locCnpj||'')+'|'+normTxt(p.csvc||'');
+    if(!empresas[key]){
+      empresas[key]={empresa:loc,cnpj:(p.locCnpj||'').trim(),cidade:(p.csvc||'').trim(),total:0,ultimaTs:0};
+    }
+    var emp=empresas[key];
+    emp.total++;
+    emp.ultimaTs=Math.max(emp.ultimaTs,n2(p.tsSaved||p.ts||0)||0);
+  });
+  return Object.keys(empresas).map(function(k){return empresas[k];}).sort(function(a,b){
+    if((b.total||0)!==(a.total||0)) return (b.total||0)-(a.total||0);
+    return (a.empresa||'').localeCompare(b.empresa||'','pt-BR');
+  });
+}
+function getLocCompanySuggestions(query){
+  var q=normTxt(query);
+  return buildServiceLocDirectory().filter(function(e){
+    if(!q) return true;
+    return [e.empresa,e.cnpj,e.cidade].map(normTxt).join(' | ').indexOf(q)>=0;
+  }).slice(0,12).map(function(e){
+    return {kind:'loc_company',title:e.empresa||'—',meta:[e.cnpj||'Sem CNPJ',e.cidade||'Sem cidade',(e.total||0)+' proposta(s)'].join(' • '),raw:e};
+  });
+}
+function applyLocCompanySelection(rec){
+  if(!rec) return;
+  if(Q('pLoc')) Q('pLoc').value=rec.empresa||'';
+  if(Q('pLocCnpj')) Q('pLocCnpj').value=rec.cnpj||'';
+  if(Q('pCsv')) Q('pCsv').value=rec.cidade||'';
+  hideAutoBox();
+}
 function applyContactSelection(rec){
   if(!rec) return;
   if(Q('pAC')) Q('pAC').value=rec.nome||'';
@@ -7468,6 +7502,7 @@ function pickAutoItem(idx){
   var it=autoState.items[idx];
   if(!it) return;
   if(it.kind==='company') applyCompanySelection(it.raw);
+  if(it.kind==='loc_company') applyLocCompanySelection(it.raw);
   if(it.kind==='contact') applyContactSelection(it.raw);
   if(it.kind==='itemdesc') applyItemDescSelection(it.raw);
 }
@@ -7487,7 +7522,7 @@ function bindAutoInput(input, kind){
   input.__autoBound=true;
   input.setAttribute('autocomplete','off');
   function openNow(){
-    var items = kind==='company' ? getCompanySuggestions(input.value) : (kind==='contact' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
+    var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
     renderAutoItems(input, items, kind);
   }
   input.addEventListener('focus', openNow);
@@ -7510,6 +7545,7 @@ function bindAutoInput(input, kind){
 function initClientAutoComplete(){
   ensureAutoBox();
   bindAutoInput(Q('pCli'),'company');
+  bindAutoInput(Q('pLoc'),'loc_company');
   bindAutoInput(Q('pAC'),'contact');
   bindAutoInput(Q('iDesc'),'itemdesc');
   window.addEventListener('resize', function(){
@@ -7521,7 +7557,7 @@ function initClientAutoComplete(){
   document.addEventListener('click', function(ev){
     var box=ensureAutoBox();
     if(box.contains(ev.target)) return;
-    if(ev.target===Q('pCli') || ev.target===Q('pAC') || ev.target===Q('iDesc')) return;
+    if(ev.target===Q('pCli') || ev.target===Q('pLoc') || ev.target===Q('pAC') || ev.target===Q('iDesc')) return;
     hideAutoBox();
   });
 }
