@@ -2223,15 +2223,15 @@ function updKpi(){
   // • terc=true  → você compra/paga o terceiro → custo ABATE o lucro
   // • terc=false → item próprio (MO da equipe ou material de estoque) → custo NÃO abate o lucro (PV vira receita pura)
   // custoSTot/custoMTot = custo real por tipo para os cards visuais (independe de terc)
-  var custoS=0,custoM=0,custoTerc=0,custoSTot=0,custoMTot=0;
+  var custoS=0,custoM=0,custoTerc=0,custoSTot=0,custoMTot=0,custoTercS=0,custoTercM=0;
   budg.forEach(function(it){
     if(it.inc===false) return;
     var cItem = n2(it.cu)*n2(it.mult);
     if(it.terc===true){
       // Terceiro (serviço ou material): você paga → abate lucro
       custoTerc += cItem;
-      if(it.t==='material') custoMTot += cItem;
-      else custoSTot += cItem;
+      if(it.t==='material'){ custoMTot += cItem; custoTercM += cItem; }
+      else { custoSTot += cItem; custoTercS += cItem; }
       return;
     }
     // Item próprio (MO da equipe OU material de estoque):
@@ -2262,10 +2262,9 @@ function updKpi(){
   var recMliq = Math.max(0, pvM - dM);
   var rsS = pvTot>0 ? deducRS*(recSliq/pvTot) : 0;
   var rsM = pvTot>0 ? deducRS*(recMliq/pvTot) : 0;
-  // FIX V345 #7: custoS e custoM agora sempre 0 (itens próprios não abatam LL)
-  // custoTerc já está em custoTotal; para lucro por origem usar parcelas do custoTerc
-  var llS = recSliq - custoS - deducNFS - deducComS - rsS;
-  var llM = recMliq - custoM - deducNFM - deducComM - rsM;
+  // custoTercS/custoTercM = parcela do custo de terceiros por tipo de receita
+  var llS = recSliq - custoTercS - deducNFS - deducComS - rsS;
+  var llM = recMliq - custoTercM - deducNFM - deducComM - rsM;
   var llSPct = recSliq>0 ? (llS/recSliq)*100 : 0;
   var llMPct = recMliq>0 ? (llM/recMliq)*100 : 0;
 
