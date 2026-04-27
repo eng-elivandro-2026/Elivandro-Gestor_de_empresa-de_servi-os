@@ -7662,6 +7662,15 @@ function renderPhaseControls(){
     }).join('');
     if(!sel.value || !FASE[sel.value]) sel.value='em_elaboracao';
   }
+  var regFas=Q('regFas');
+  if(regFas){
+    var cur=regFas.value;
+    regFas.innerHTML='<option value="">Todas as fases</option>'
+      +phaseKeysOrdered().map(function(k){
+        return '<option value="'+k+'">'+FASE[k].n+'</option>';
+      }).join('');
+    if(cur) regFas.value=cur;
+  }
   var wrap=Q('phaseFilters');
   if(wrap){
     wrap.innerHTML='<span class="ftg on" data-phase="all" onclick="flt(\'all\',this)">Todas</span>'
