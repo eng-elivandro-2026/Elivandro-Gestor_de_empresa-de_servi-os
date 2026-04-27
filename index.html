@@ -715,6 +715,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="sidebar-tools-section" id="tools-comercial">
       <div class="sidebar-section" style="padding-top:.8rem">Ferramentas</div>
       <button class="sb-tool" onclick="abrirFormulas()">📐 Fórmulas</button>
+      <button class="sb-tool" onclick="abrirFluxo()">🗺️ Fluxo de Trabalho</button>
       <button class="sb-tool" onclick="abrirAjuda()">❓ Ajuda</button>
       <button class="sb-tool" onclick="limparPropostasZero()">🗑 Limpar R$0</button>
       <button class="sb-tool" onclick="exportJSON()">⬆️ Exportar JSON</button>
@@ -6062,6 +6063,174 @@ function guiaAba(n){
     </div>
   </div>
 </div>
+<div id="fluxoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)fecharFluxo()">
+  <div style="width:min(860px,97vw);max-height:92vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px 24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--accent)">🗺️ Fluxo de Trabalho — Gestão de Propostas</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Guia didático: o que fazer em cada situação</div>
+      </div>
+      <button class="btn bd bsm" onclick="fecharFluxo()">✕ Fechar</button>
+    </div>
+
+    <!-- CICLO GERAL -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">📍 Ciclo Normal de uma Proposta</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--text2)">📝 Em Elaboração</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--text2)">📤 Enviada</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--text2)">🧐 Cliente Analisando</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--text2)">🔄 Follows 1–4</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--green);font-weight:600">✅ Aprovado</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--green)">🔧 Em Andamento</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--green)">🧾 Faturado</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:var(--green)">💰 Recebido</span>
+        <span style="color:var(--text3);font-size:.9rem">→</span>
+        <span style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);border-radius:20px;padding:.25rem .75rem;font-size:.78rem;color:#818cf8;font-weight:600">🏁 Finalizado</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px">
+
+      <!-- VIROU OUTRA PROPOSTA -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:4px solid #f97316">
+        <div style="font-size:15px;font-weight:800;color:#f97316;margin-bottom:4px">🔄 Virou Outra Proposta</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">Quando o escopo mudou muito, o cliente pediu reformulação ou o valor precisa ser completamente refeito.</div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Abra a proposta original no editor (clique no card do dashboard).</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No campo <strong style="color:var(--text)">FASE</strong>, selecione <strong style="color:#f97316">🔄 Virou Outra Proposta</strong>.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O <strong style="color:var(--text)">LOG abre automaticamente</strong> — registre o motivo com clareza.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Escopo expandido para incluir automação completa da linha L8. Cliente solicitou nova proposta incluindo painéis."</span></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:var(--text)">💾 Salvar</strong> — a proposta original fica arquivada nessa fase.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:var(--text)">🏠 Fechar</strong> para voltar ao dashboard, depois em <strong style="color:var(--accent)">✚ Nova Proposta</strong>.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">6</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Preencha a nova proposta com o próximo número disponível.<br><span style="color:var(--text3);font-size:.73rem">Ex: proposta original era 350A.26 → nova será 351A.26</span></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">7</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No <strong style="color:var(--text)">LOG da nova proposta</strong>, registre a origem.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Originada da proposta 350A.26 — Virou Outra Proposta por expansão de escopo."</span></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#fb923c;line-height:1.5">
+          💡 <strong>Dica:</strong> A proposta original nunca é deletada. Você pode consultá-la no dashboard filtrando pela fase <em>Virou Outra Proposta</em>. Isso mantém o histórico comercial completo.
+        </div>
+      </div>
+
+      <!-- CANCELADA -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:4px solid #ef4444">
+        <div style="font-size:15px;font-weight:800;color:#ef4444;margin-bottom:4px">🚫 Cancelada</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">Quando o cliente cancelou formalmente, o projeto foi suspenso definitivamente ou a empresa decidiu não prosseguir.</div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Abra a proposta no editor.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No campo <strong style="color:var(--text)">FASE</strong>, selecione <strong style="color:#ef4444">🚫 Cancelada</strong>.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O <strong style="color:var(--text)">LOG abre automaticamente</strong> — registre o motivo do cancelamento.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Cliente cancelou projeto por corte de budget em 04/2026. Contato: Mariele."</span></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:var(--text)">💾 Salvar</strong>. A proposta é arquivada.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Se houver possibilidade de retomada futura, registre no LOG: data provável, condição necessária e contato responsável.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#f87171;line-height:1.5">
+          ⚠️ <strong>Atenção:</strong> Use <em>Cancelada</em> para cancelamentos definitivos. Para negócios ainda não ganhos que perderam tração, prefira as fases <em>Perdido</em> correspondentes, que entram nas análises de conversão do dashboard.
+        </div>
+      </div>
+
+      <!-- REVISÕES -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:4px solid var(--accent)">
+        <div style="font-size:15px;font-weight:800;color:var(--accent);margin-bottom:4px">📋 Revisão de Proposta (Rev A → B → C…)</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">Quando o escopo mudou parcialmente, o cliente pediu ajuste de preço ou condição — mas ainda é a mesma proposta.</div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Com a proposta aberta no editor, vá até a aba <strong style="color:var(--text)">Revisões</strong>.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:var(--text)">➕ Nova Revisão</strong> — o sistema salva um snapshot da revisão atual e cria a próxima letra.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Faça as alterações necessárias no orçamento, escopo ou condições.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Salve. O número atualiza automaticamente: <span style="font-family:monospace;color:var(--accent);font-size:.78rem">350A.26 → 350B.26</span></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">As revisões anteriores ficam acessíveis pelo ícone 👁️ no painel de revisões para consulta comparativa.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#58a6ff;line-height:1.5">
+          💡 <strong>Regra prática:</strong> Se o cliente ainda reconhece o número da proposta e o escopo base é o mesmo → <em>Nova Revisão</em>. Se virou outro projeto do zero → <em>Virou Outra Proposta</em> + nova proposta.
+        </div>
+      </div>
+
+      <!-- LOG -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:4px solid var(--purple)">
+        <div style="font-size:15px;font-weight:800;color:var(--purple,#a855f7);margin-bottom:4px">📓 Uso do LOG</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">O LOG é a memória comercial da proposta. Registre tudo que acontece depois que a proposta é enviada.</div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:.8rem;color:var(--text2);line-height:1.5">
+            <span style="color:var(--purple,#a855f7);font-size:.85rem;flex-shrink:0">📌</span>
+            <span><strong style="color:var(--text)">Histórico Comercial:</strong> toda interação com o cliente — ligações, e-mails, reuniões, respostas, objeções, pedidos de desconto.</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:.8rem;color:var(--text2);line-height:1.5">
+            <span style="color:var(--purple,#a855f7);font-size:.85rem;flex-shrink:0">🔧</span>
+            <span><strong style="color:var(--text)">Relatório de Serviço:</strong> anotações técnicas após aprovação — problemas encontrados em campo, soluções aplicadas, observações para o faturamento.</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:.8rem;color:var(--text2);line-height:1.5">
+            <span style="color:var(--purple,#a855f7);font-size:.85rem;flex-shrink:0">🚫</span>
+            <span><strong style="color:var(--text)">Motivo de encerramento:</strong> sempre registre o motivo ao mover para <em>Cancelada</em>, <em>Virou Outra Proposta</em> ou qualquer fase <em>Perdido</em> — o LOG abre automaticamente nessas fases.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="catModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1.4rem;width:min(520px,96vw);max-height:90vh;overflow-y:auto">
     <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;color:var(--accent)" id="catModalTit">➕ Nova Categoria</div>

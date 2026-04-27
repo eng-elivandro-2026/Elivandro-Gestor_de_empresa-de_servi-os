@@ -419,6 +419,8 @@ function abrirAjuda(){ var m=Q('helpModal'); if(m) m.style.display='flex'; }
 function fecharAjuda(){ var m=Q('helpModal'); if(m) m.style.display='none'; }
 function abrirFormulas(){ var m=Q('formulasModal'); if(m) m.style.display='flex'; }
 function fecharFormulas(){ var m=Q('formulasModal'); if(m) m.style.display='none'; }
+function abrirFluxo(){ var m=Q('fluxoModal'); if(m) m.style.display='flex'; }
+function fecharFluxo(){ var m=Q('fluxoModal'); if(m) m.style.display='none'; }
 
 var __syncValorTimer=null;
 function refreshValorSecEscopo(){
