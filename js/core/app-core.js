@@ -821,6 +821,7 @@ function resetWizardState(){
   tplEdits={};
   revs=[];
   eTplId=null;
+  _tempGantt=null;
   try{ rBudg(); }catch(e){}
   try{ rEsc(); }catch(e){}
   try{ rRevs(); }catch(e){}
@@ -1976,7 +1977,7 @@ function dupProp(id){
 function editP(id){
   try{
   var p=props.find(function(x){return x.id===id});if(!p){console.error('editP: proposta não encontrada id='+id);return;}
-  editId=id;
+  editId=id;_tempGantt=null;
   Q('pNum').value=p.num||'';Q('pDat').value=p.dat2||'';Q('pCli').value=p.cli||'';
   if(Q('pDatFech'))Q('pDatFech').value=p.dtFech||'';
   // Carregar timeline
@@ -7552,7 +7553,7 @@ function buildCurrentProposalSnapshot(){
     prz:'',przI:'',przF:'',val2:'',gar:'',pag:'',cforn:'',imp:'',
     ts:[],esc:JSON.parse(JSON.stringify(escSecs)),bi:JSON.parse(JSON.stringify(budg)),revs:JSON.parse(JSON.stringify(revs)),
     log:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.log)?JSON.parse(JSON.stringify(_p.log)):{hist:[],relat:[]}; })(),
-    gantt:(function(){ var _p=props.find(function(x){return x.id===editId;}); var _g=_p&&_p.gantt?JSON.parse(JSON.stringify(_p.gantt)):{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]}; if(_g.trabSab===undefined)_g.trabSab=false; if(_g.trabDom===undefined)_g.trabDom=false; if(!_g.feriados)_g.feriados=[]; return _g; })(),
+    gantt:(function(){ var _p=props.find(function(x){return x.id===editId;}); var _src=_p&&_p.gantt?_p.gantt:(_tempGantt||null); var _g=_src?JSON.parse(JSON.stringify(_src)):{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]}; if(_g.trabSab===undefined)_g.trabSab=false; if(_g.trabDom===undefined)_g.trabDom=false; if(!_g.feriados)_g.feriados=[]; return _g; })(),
     stages:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.stages)?JSON.parse(JSON.stringify(_p.stages)):(typeof criarStagesVazios==='function'?criarStagesVazios():{}); })(),
     prc:(function(){ var c=getPrcAtual(); return {s:JSON.parse(JSON.stringify(c.s)),m:JSON.parse(JSON.stringify(c.m))}; })(),
     tl:(function(){
@@ -7590,6 +7591,7 @@ function upsertCurrentDraft(silent){
   var idx=props.findIndex(function(x){return x.id===sn.id});
   if(idx>=0) props[idx]=sn; else props.push(sn);
   editId=sn.id;
+  _tempGantt=null; // agora está em props[idx].gantt — libera temp
   saveAll();
   rDash();
   if(!silent) toast('✔ Rascunho atualizado!','ok');
@@ -10214,9 +10216,14 @@ function logExcluir(id){
 }
 
 // ══ BLOCO 4 ══
+var _tempGantt=null;
 function getGantt(){
   var p=props.find(function(x){return x.id===editId;});
-  if(!p)return{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]};
+  if(!p){
+    // Proposta ainda não salva: usa armazenamento temporário em memória
+    if(!_tempGantt)_tempGantt={inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]};
+    return _tempGantt;
+  }
   if(!p.gantt)p.gantt={inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]};
   if(p.gantt.trabSab===undefined)p.gantt.trabSab=false;
   if(p.gantt.trabDom===undefined)p.gantt.trabDom=false;
@@ -10225,7 +10232,8 @@ function getGantt(){
 }
 function saveGantt(g){
   var idx=props.findIndex(function(x){return x.id===editId;});
-  if(idx<0)return;props[idx].gantt=g;saveAll();
+  if(idx<0){_tempGantt=g;return;} // sem proposta salva: mantém só em memória
+  props[idx].gantt=g;saveAll();
 }
 
 // Feriados nacionais BR (fixos) — MM-DD
@@ -10380,7 +10388,7 @@ function ganttEditorHTML(si){
 
   var prev=buildGanttPrev(g);
 
-  return '<div style="margin-top:.7rem;border:1px solid var(--accent);border-radius:8px;padding:.75rem;background:var(--bg3)">'
+  return '<div id="ganttEditorWrap" style="margin-top:.7rem;border:1px solid var(--accent);border-radius:8px;padding:.75rem;background:var(--bg3)">'
     +'<div style="font-weight:700;font-size:.82rem;color:var(--accent);margin-bottom:.55rem">&#128197; Cronograma / Gantt</div>'
     +'<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.55rem;flex-wrap:wrap">'
     +'<label style="font-size:.8rem;color:var(--text2);display:flex;align-items:center;gap:.3rem">Data de in&iacute;cio:'
@@ -10396,18 +10404,23 @@ function ganttEditorHTML(si){
 }
 
 function ganttRefreshPrev(){var g=getGantt();var el=Q('ganttPrev');if(el)el.innerHTML=buildGanttPrev(g);}
+function ganttReRender(){
+  var el=Q('ganttEditorWrap');
+  if(el){el.outerHTML=ganttEditorHTML(0);}
+  else{rEsc();}
+}
 function ganttUpd(fi,campo,val){var g=getGantt();if(!g.fases[fi])return;g.fases[fi][campo]=val;saveGantt(g);ganttRefreshPrev();}
 function ganttIni(v){var g=getGantt();g.inicio=v;saveGantt(g);ganttRefreshPrev();}
 function ganttCfg(campo,val){var g=getGantt();g[campo]=val;saveGantt(g);ganttRefreshPrev();}
-function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);rEsc();}
-function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);rEsc();}
+function ganttFerAdd(){var g=getGantt();if(!g.feriados)g.feriados=[];g.feriados.push({data:'',nome:''});saveGantt(g);ganttReRender();}
+function ganttFerDel(fi){var g=getGantt();g.feriados.splice(fi,1);saveGantt(g);ganttReRender();}
 function ganttFerData(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].data=v;saveGantt(g);ganttRefreshPrev();}
 function ganttFerNome(fi,v){var g=getGantt();if(g.feriados[fi])g.feriados[fi].nome=v;saveGantt(g);}
 function ganttMover(fi,dir){
   var g=getGantt();var fases=g.fases;
   var ni=fi+dir;if(ni<0||ni>=fases.length)return;
   var tmp=fases[fi];fases[fi]=fases[ni];fases[ni]=tmp;
-  g.fases=fases;saveGantt(g);rEsc();
+  g.fases=fases;saveGantt(g);ganttReRender();
 }
 function ganttInsAbaixo(fi){
   var g=getGantt();var fases=g.fases||[];
@@ -10416,7 +10429,7 @@ function ganttInsAbaixo(fi){
   var fRef=fases[fi]||{};
   var off=(fRef.offset||0)+(fRef.dur||1);
   fases.splice(fi+1,0,{id:uid(),nome:'Nova Fase',offset:off,dur:1,cor:cor});
-  g.fases=fases;saveGantt(g);rEsc();
+  g.fases=fases;saveGantt(g);ganttReRender();
 }
 function ganttAdd(){
   var g=getGantt();var fases=g.fases||[];
@@ -10425,9 +10438,9 @@ function ganttAdd(){
   var off=0;
   if(fases.length){var last=fases[fases.length-1];off=(last.offset||0)+(last.dur||1);}
   fases.push({id:uid(),nome:'Nova Fase',offset:off,dur:5,cor:cor});
-  g.fases=fases;saveGantt(g);rEsc();
+  g.fases=fases;saveGantt(g);ganttReRender();
 }
-function ganttDel(fi){var g=getGantt();g.fases.splice(fi,1);saveGantt(g);rEsc();}
+function ganttDel(fi){var g=getGantt();g.fases.splice(fi,1);saveGantt(g);ganttReRender();}
 
 function buildGanttPrev(g){
   if(!g||!g.fases||!g.fases.length)return '<div style="font-size:.78rem;color:#999;font-style:italic">Nenhuma fase cadastrada. Clique em + Fase.</div>';
