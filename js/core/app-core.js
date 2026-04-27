@@ -239,32 +239,32 @@ function _applySnapToProp(p,snap){
 }
 
 var FASE={
-  em_elaboracao:{n:'Em Elaboração',c:'b-and',i:'📝'},
+  em_elaboracao:{n:'Em Elaboração',c:'b-elab',i:'📝'},
   enviada:{n:'Enviada',c:'b-env',i:'📤'},
-  cliente_analisando:{n:'Cliente Analisando',c:'b-f1',i:'🧐'},
-  follow1:{n:'Follow 1',c:'b-f1',i:'🔄'},
-  follow2:{n:'Follow 2',c:'b-f2',i:'🔄'},
-  follow3:{n:'Follow 3',c:'b-f3',i:'🔄'},
-  follow4:{n:'Follow 4',c:'b-f4',i:'🔄'},
+  cliente_analisando:{n:'Cliente Analisando',c:'b-neg',i:'🧐'},
+  follow1:{n:'Follow 1',c:'b-neg',i:'🔄'},
+  follow2:{n:'Follow 2',c:'b-neg',i:'🔄'},
+  follow3:{n:'Follow 3',c:'b-neg',i:'🔄'},
+  follow4:{n:'Follow 4',c:'b-neg',i:'🔄'},
   aprovado:{n:'Aprovado',c:'b-apr',i:'✅'},
   andamento:{n:'Em Andamento',c:'b-and',i:'🔧'},
   faturado:{n:'Faturado',c:'b-apr',i:'🧾'},
   recebido:{n:'Recebido',c:'b-fin',i:'💰'},
-  em_pausa_falta_material:{n:'Em Pausa Falta de Material',c:'b-atr',i:'⏸️'},
-  em_pausa_aguardando_cliente:{n:'Em Pausa Aguardando Cliente',c:'b-atr',i:'⏸️'},
-  em_pausa_aguardando_terceiro:{n:'Em Pausa Aguardando Terceiro',c:'b-atr',i:'⏸️'},
-  taf:{n:'TAF',c:'b-f2',i:'🧪'},
-  sat:{n:'SAT',c:'b-f3',i:'🛠️'},
-  finalizado:{n:'Finalizadas',c:'b-fin',i:'🏁'},
-  atrasado:{n:'Atrasadas',c:'b-atr',i:'⚠️'},
-  virou_budget:{n:'Virou Budget',c:'b-f4',i:'📌'},
-  perdido_valor_alto:{n:'Perdido Valor Alto',c:'b-atr',i:'❌'},
-  perdido_concorrente:{n:'Perdido Concorrente',c:'b-atr',i:'❌'},
-  perdido_cliente_decidiu_nao_fazer:{n:'Perdido Cliente Decidiu Não Fazer',c:'b-atr',i:'❌'},
-  perdido_fazer_no_futuro:{n:'Perdido Fazer no Futuro',c:'b-atr',i:'⏳'},
-  perdido:{n:'Perdido',c:'b-atr',i:'❌'},
-  cancelada:{n:'Cancelada',c:'b-atr',i:'🚫'},
-  virou_outra_proposta:{n:'Virou Outra Proposta',c:'b-atr',i:'🚫'}
+  em_pausa_falta_material:{n:'Em Pausa Falta Material',c:'b-pau',i:'⏸️'},
+  em_pausa_aguardando_cliente:{n:'Em Pausa Ag. Cliente',c:'b-pau',i:'⏸️'},
+  em_pausa_aguardando_terceiro:{n:'Em Pausa Ag. Terceiro',c:'b-pau',i:'⏸️'},
+  taf:{n:'TAF',c:'b-and',i:'🧪'},
+  sat:{n:'SAT',c:'b-and',i:'🛠️'},
+  finalizado:{n:'Finalizado',c:'b-fin',i:'🏁'},
+  atrasado:{n:'Atrasado',c:'b-atr',i:'⚠️'},
+  virou_budget:{n:'Virou Budget',c:'b-atr',i:'📌'},
+  perdido_valor_alto:{n:'Perdido Valor Alto',c:'b-per',i:'❌'},
+  perdido_concorrente:{n:'Perdido Concorrente',c:'b-per',i:'❌'},
+  perdido_cliente_decidiu_nao_fazer:{n:'Perdido Não Fazer',c:'b-per',i:'❌'},
+  perdido_fazer_no_futuro:{n:'Perdido Futuro',c:'b-per',i:'⏳'},
+  perdido:{n:'Perdido',c:'b-per',i:'❌'},
+  cancelada:{n:'Cancelada',c:'b-per',i:'🚫'},
+  virou_outra_proposta:{n:'Virou Outra Proposta',c:'b-per',i:'🔄'}
 };
 var PHASE_ORDER=[
   'em_elaboracao','enviada','cliente_analisando',
@@ -1339,26 +1339,13 @@ function rRegistro(){
     return;
   }
 
-  var fasLabel={
-    'em_elaboracao':'Em Elaboração','enviada':'Enviada',
-    'follow1':'Follow-up 1','follow2':'Follow-up 2','follow3':'Follow-up 3','follow4':'Follow-up 4',
-    'aprovado':'Aprovado','andamento':'Em Andamento','finalizado':'Finalizadas','atrasado':'Atrasadas'
-  };
-  var fasCls={
-    'em_elaboracao':'','enviada':'b-env',
-    'follow1':'b-f1','follow2':'b-f2','follow3':'b-f3','follow4':'b-f4',
-    'aprovado':'b-apr','andamento':'b-and','finalizado':'b-fin','atrasado':'b-atr'
-  };
-
   var totalVal=0;
   tbody.innerHTML=list.map(function(p,i){
     var v=parseFloat(p.val)||0;
     totalVal+=v;
     var isOdd=(i%2!==0);
-    var fasNome=fasLabel[p.fas]||p.fas||'--';
-    var fasCl=fasCls[p.fas]||'';
-    var bdgHtml=fasCl ? '<span class="bdg '+fasCl+'">' + esc(fasNome) + '</span>'
-                      : '<span style="font-size:.67rem;color:var(--text3)">' + esc(fasNome) + '</span>';
+    var fasObj=FASE[p.fas]||{n:p.fas||'--',c:'b-elab',i:''};
+    var bdgHtml='<span class="bdg '+fasObj.c+'">'+esc(fasObj.i?(fasObj.i+' '+fasObj.n):fasObj.n)+'</span>';
     var valHtml=v ? '<span style="color:var(--green);font-weight:600">' + money(v) + '</span>'
                   : '<span style="color:var(--text3)">--</span>';
     var tr=document.createElement('tr');
@@ -8486,7 +8473,7 @@ function printDre(){
         +'<td style="padding:5px 8px;font-weight:700;background:#f8f8f8">Cidade</td>'
         +'<td style="padding:5px 8px">'+(p.cid||'—')+'</td>'
         +'<td style="padding:5px 8px;font-weight:700;background:#f8f8f8">Fase</td>'
-        +'<td style="padding:5px 8px">'+(p.fas||'—')+'</td>'
+        +'<td style="padding:5px 8px">'+((FASE[p.fas]&&FASE[p.fas].n)||p.fas||'—')+'</td>'
       +'</tr>'
       +'<tr style="background:#f0f0f0">'
         +'<td style="padding:5px 8px;font-weight:700">Técnico Resp.</td>'
@@ -11980,7 +11967,8 @@ function fmAbrirProposta(id){
   if(cliEl) cliEl.textContent = p.cli || '';
 
   if(badgeEl){
-    badgeEl.innerHTML = p.fas || '';
+    var _fo=FASE[p.fas]||{n:p.fas||'--',c:'b-elab',i:''};
+    badgeEl.innerHTML='<span class="bdg '+_fo.c+'">'+(_fo.i?_fo.i+' ':'')+esc(_fo.n)+'</span>';
   }
 
   go('proposta-detalhe', null);
