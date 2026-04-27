@@ -162,9 +162,9 @@ function ganttEditorHTML(si){
     +'<div></div><div>Tarefa</div><div style="text-align:center">Qtd</div><div>Unidade</div><div>Cor</div><div></div>'
     +'</div>';
 
-  var configUteis='<details id="ganttCalDetails" style="margin-top:.75rem">'
-    +'<summary style="font-size:.82rem;font-weight:700;color:var(--text2);cursor:pointer;padding:.3rem 0">⚙️ Configurações de calendário</summary>'
-    +'<div style="margin-top:.5rem">'
+  var configUteis='<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.5rem">'
+    +'<button onclick="ganttCalToggle()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;padding:.3rem 0;color:var(--text2);font-size:.82rem;font-weight:700;width:100%;text-align:left">⚙️ Configurações de calendário <span id="ganttCalChev" style="font-size:.65rem;color:var(--text3)">'+(_ganttCalOpen?'▲':'▼')+'</span></button>'
+    +'<div id="ganttCalBody" style="display:'+(_ganttCalOpen?'block':'none')+';margin-top:.5rem">'
     +'<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:.55rem">'
     +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;cursor:pointer"><input type="checkbox" '+(g.trabSab?'checked':'')+' onchange="ganttCfg(\'trabSab\',this.checked)" style="width:18px;height:18px"> Trabalha Sábado</label>'
     +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;cursor:pointer"><input type="checkbox" '+(g.trabDom?'checked':'')+' onchange="ganttCfg(\'trabDom\',this.checked)" style="width:18px;height:18px"> Trabalha Domingo</label>'
@@ -173,7 +173,7 @@ function ganttEditorHTML(si){
     +'<div id="ganttFerList">'+ganttFerListHTML(g)+'</div>'
     +'<button onclick="ganttFerAdd()" class="btn bg bsm" style="margin-top:.3rem">+ Feriado</button>'
     +'</div>'
-    +'</details>';
+    +'</div>';
 
   // Nota/aviso
   var notaHtml='<div style="margin-top:.75rem">'
@@ -218,14 +218,7 @@ function ganttFerListRefresh(){
 function ganttReRender(){
   var wrap=Q('ganttEditorWrap');
   if(!wrap){rEsc();return;}
-  // Preserve <details open> state before replacing HTML
-  var details=wrap.querySelector('#ganttCalDetails');
-  var calWasOpen=details&&details.open;
   wrap.outerHTML=ganttEditorHTML(0);
-  if(calWasOpen){
-    var newDetails=Q('ganttCalDetails');
-    if(newDetails) newDetails.open=true;
-  }
 }
 
 // ── Funções de mutação ────────────────────────────────────────────────────────
