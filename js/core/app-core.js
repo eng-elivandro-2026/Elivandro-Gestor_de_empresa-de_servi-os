@@ -2097,6 +2097,16 @@ function saveP(){
   var num=(Q('pNum').value||'').trim(),cli=(Q('pCli').value||'').trim();
   if(!num||!cli){alert('Preencha Nº e Cliente.');return}
   var isNew=!editId;
+  // Auto-criar Rev A se a proposta ainda não tem nenhuma revisão
+  if(revs.length===0){
+    var _hoje=new Date().toLocaleDateString('pt-BR');
+    revs=[{id:uid(),rev:'A',dat:_hoje,por:'EJN',desc:'',status:'ativa',snapshot:null}];
+    if(Q('pRevAtual'))Q('pRevAtual').value='A';
+    var _numAtual=(Q('pNum').value||'').trim();
+    var _mRev=_numAtual.match(/^(\d+)[A-Z]*\.(\d+)$/);
+    if(_mRev)Q('pNum').value=_mRev[1]+'A.'+_mRev[2];
+    rRevs();
+  }
   var sn=buildCurrentProposalSnapshot();
   // ── V466: garante dtFech e dat2 ao salvar proposta fechada ──
   if(FAS_FECHADO.indexOf(sn.fas)>=0){
