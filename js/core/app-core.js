@@ -1980,8 +1980,8 @@ function chSt(id,s){
     p.fas=s;
     saveAll();rDash();
     if(s==='cancelada'||s==='virou_outra_proposta'){
-      if(editId===id){ abrirLog(); }
-      else{ toast((FASE[s]||{i:''}).i+' '+(FASE[s]||{n:s}).n+' — abra a proposta e registre o motivo no LOG.','ok'); }
+      editId=id;
+      abrirLog();
     }
   }
 }
