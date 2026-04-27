@@ -2080,6 +2080,16 @@ function editP(id){
   selTpl = escSecs.length ? [] : (p.ts ? p.ts.slice() : []);
 
   revs=JSON.parse(JSON.stringify(p.revs||[]));
+  // Se revAtual estiver vazio mas houver uma revisão ativa nas revs, sincroniza
+  if(!p.revAtual && revs.length){
+    var _revAtiva=revs.find(function(r){return r.status==='ativa';})||revs[revs.length-1];
+    if(_revAtiva){
+      p.revAtual=_revAtiva.rev;
+      if(Q('pRevAtual'))Q('pRevAtual').value=_revAtiva.rev;
+      var _mN=(p.num||'').match(/^(\d+)[A-Z]*\.(\d+)$/);
+      if(_mN){ p.num=_mN[1]+_revAtiva.rev+'.'+_mN[2]; Q('pNum').value=p.num; }
+    }
+  }
   rRevs();
   cTot();
   if(Q('escTplModal'))Q('escTplModal').style.display='none';
@@ -2124,9 +2134,12 @@ function saveP(){
     if(idx>=0) props[idx]=sn; else props.push(sn);
   }else{
     props.push(sn);
-    advN();
+    advN(); // avança o contador; número do form muda, mas sn já foi salvo com o número correto
   }
   editId=sn.id;saveAll();rDash();
+  // Atualiza o campo de número no form para refletir o que foi salvo (com letra da revisão)
+  if(Q('pNum')&&sn.num) Q('pNum').value=sn.num;
+  if(Q('pRevAtual')&&sn.revAtual) Q('pRevAtual').value=sn.revAtual;
   try{showActionBar(sn);}catch(e){}
   toast('✔Proposta salva!','ok');
 }
