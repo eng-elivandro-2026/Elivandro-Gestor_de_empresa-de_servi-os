@@ -264,7 +264,7 @@ var FASE={
   perdido_fazer_no_futuro:{n:'Perdido Fazer no Futuro',c:'b-atr',i:'⏳'},
   perdido:{n:'Perdido',c:'b-atr',i:'❌'},
   cancelada:{n:'Cancelada',c:'b-atr',i:'🚫'},
-  virou_outra_proposta:{n:'Virou Outra Proposta',c:'b-f4',i:'🔄'}
+  virou_outra_proposta:{n:'Virou Outra Proposta',c:'b-atr',i:'🚫'}
 };
 var PHASE_ORDER=[
   'em_elaboracao','enviada','cliente_analisando',
