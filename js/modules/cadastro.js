@@ -186,11 +186,28 @@
     inputEl.addEventListener('keydown', function(e) { if (e.key === 'Escape') dd.style.display = 'none'; });
   };
 
+  // ── Fechar modais (limpa estado de edição) ────────────────
+  window._fecharModalCliente = function() {
+    window._cadEditCliId = null;
+    var t = document.getElementById('tituloModalCliente');
+    if (t) t.textContent = '🏢 Novo Cliente';
+    if (typeof fecharModal === 'function') fecharModal('m-novo-cliente');
+  };
+  window._fecharModalContato = function() {
+    window._cadEditCtsId = null;
+    var t = document.getElementById('tituloModalContato');
+    if (t) t.textContent = '👤 Novo Contato';
+    if (typeof fecharModal === 'function') fecharModal('m-novo-contato');
+  };
+
   // ── Modal Novo Contato ────────────────────────────────────
   window.abrirModalNovoContato = function(nome, callback) {
     window._cadCtsCb = callback;
+    window._cadEditCtsId = null;
     var g = function(id) { return document.getElementById(id); };
     if (!g('m-novo-contato')) return;
+    var t = document.getElementById('tituloModalContato');
+    if (t) t.textContent = '👤 Novo Contato';
     g('ncNome').value     = nome || '';
     g('ncEmpresa').value  = '';
     g('ncEmail').value    = '';
@@ -214,8 +231,11 @@
   // ── Modal Novo Cliente ────────────────────────────────────
   window.abrirModalNovoCliente = function(nome, callback) {
     window._cadCliCb = callback;
+    window._cadEditCliId = null;
     var g = function(id) { return document.getElementById(id); };
     if (!g('m-novo-cliente')) return;
+    var t = document.getElementById('tituloModalCliente');
+    if (t) t.textContent = '🏢 Novo Cliente';
     g('ncliNome').value   = nome || '';
     g('ncliCnpj').value   = '';
     g('ncliCidade').value = '';
@@ -252,7 +272,10 @@
     var item = list.find(function(x) { return x.id === id; });
     if (!item) return;
     window._cadEditCliId = id;
+    window._cadCliCb = null;
     var g = function(i) { return document.getElementById(i); };
+    var t = document.getElementById('tituloModalCliente');
+    if (t) t.textContent = '✏️ Editar Cliente';
     g('ncliNome').value   = item.nome   || '';
     g('ncliCnpj').value   = item.cnpj   || '';
     g('ncliCidade').value = item.cidade || '';
@@ -275,17 +298,15 @@
     if (!nome) { alert('Informe o nome do cliente.'); return; }
 
     if (window._cadEditCliId) {
-      // Modo edição
       var list = cliLoad().map(function(x) {
         return x.id === window._cadEditCliId
           ? Object.assign({}, x, { nome: nome, cnpj: g('ncliCnpj').trim(), cidade: g('ncliCidade').trim() })
           : x;
       });
       cliSave(list);
-      window._cadEditCliId = null;
-      if (typeof fecharModal === 'function') fecharModal('m-novo-cliente');
+      window._fecharModalCliente();
       renderTabelaClientes();
-      if (typeof toast === 'function') toast('✅ Cliente atualizado', 'ok');
+      if (typeof toast === 'function') toast('✅ Cliente atualizado: ' + nome, 'ok');
     } else {
       _origSalvarCli();
       renderTabelaClientes();
@@ -298,7 +319,10 @@
     var item = list.find(function(x) { return x.id === id; });
     if (!item) return;
     window._cadEditCtsId = id;
+    window._cadCtsCb = null;
     var g = function(i) { return document.getElementById(i); };
+    var t = document.getElementById('tituloModalContato');
+    if (t) t.textContent = '✏️ Editar Contato';
     g('ncNome').value     = item.nome     || '';
     g('ncEmpresa').value  = item.empresa  || '';
     g('ncEmail').value    = item.email    || '';
@@ -328,10 +352,9 @@
           : x;
       });
       ctsSave(list);
-      window._cadEditCtsId = null;
-      if (typeof fecharModal === 'function') fecharModal('m-novo-contato');
+      window._fecharModalContato();
       renderTabelaContatos();
-      if (typeof toast === 'function') toast('✅ Contato atualizado', 'ok');
+      if (typeof toast === 'function') toast('✅ Contato atualizado: ' + nome, 'ok');
     } else {
       _origSalvarCts();
       renderTabelaContatos();

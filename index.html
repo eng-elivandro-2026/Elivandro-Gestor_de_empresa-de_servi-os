@@ -2672,13 +2672,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 #gestao-wrap /* MODAL */
 
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:12px}
-#gestao-wrap .modal-bg.on{display:flex}
-#gestao-wrap .modal{width:min(520px,98vw);background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
-#gestao-wrap .modal-hdr{padding:.85rem 1rem .6rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-#gestao-wrap .modal-title{font-size:.9rem;font-weight:700;color:var(--accent)}
-#gestao-wrap .modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:.1rem .3rem}
-#gestao-wrap .modal-body{padding:1rem;max-height:70vh;overflow-y:auto}
-#gestao-wrap .modal-footer{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:.4rem;justify-content:flex-end}
+.modal-bg.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.modal-hdr{padding:.85rem 1rem .6rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:.9rem;font-weight:700;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:.1rem .3rem}
+.modal-body{padding:1rem;max-height:70vh;overflow-y:auto}
+.modal-footer{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:.4rem;justify-content:flex-end}
 #gestao-wrap /* JANELA STATUS */
 
 .janela-wrap{display:flex;gap:.5rem;margin-bottom:.85rem}
@@ -4420,7 +4420,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 <!-- ══ MODAL NOVO CONTATO ══ -->
 <div class="modal-bg" id="m-novo-contato">
   <div class="modal" style="width:min(420px,97vw)">
-    <div class="modal-hdr"><div class="modal-title">👤 Novo Contato</div><button class="modal-close" onclick="fecharModal('m-novo-contato')">✕</button></div>
+    <div class="modal-hdr"><div class="modal-title" id="tituloModalContato">👤 Novo Contato</div><button class="modal-close" onclick="_fecharModalContato()">✕</button></div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
       <div class="f"><label>Nome *</label><input id="ncNome" type="text" placeholder="Ex: Rafael Soares" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
       <div class="f"><label>Empresa / Cliente</label><input id="ncEmpresa" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
@@ -4429,14 +4429,14 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="f"><label>Telefone</label><input id="ncTelefone" type="text" placeholder="(11) 99999-0000" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-novo-contato')">Cancelar</button><button class="btn ba" onclick="salvarNovoContato()">Salvar Contato</button></div>
+    <div class="modal-footer"><button class="btn bg" onclick="_fecharModalContato()">Cancelar</button><button class="btn ba" onclick="salvarNovoContato()">Salvar Contato</button></div>
   </div>
 </div>
 
 <!-- ══ MODAL NOVO CLIENTE ══ -->
 <div class="modal-bg" id="m-novo-cliente">
   <div class="modal" style="width:min(420px,97vw)">
-    <div class="modal-hdr"><div class="modal-title">🏢 Novo Cliente</div><button class="modal-close" onclick="fecharModal('m-novo-cliente')">✕</button></div>
+    <div class="modal-hdr"><div class="modal-title" id="tituloModalCliente">🏢 Novo Cliente</div><button class="modal-close" onclick="_fecharModalCliente()">✕</button></div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
       <div class="f"><label>Nome / Razão Social *</label><input id="ncliNome" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
       <div class="g2">
@@ -4444,7 +4444,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="f"><label>Cidade</label><input id="ncliCidade" type="text" placeholder="Ex: Jundiaí - SP" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-novo-cliente')">Cancelar</button><button class="btn ba" onclick="salvarNovoCliente()">Salvar Cliente</button></div>
+    <div class="modal-footer"><button class="btn bg" onclick="_fecharModalCliente()">Cancelar</button><button class="btn ba" onclick="salvarNovoCliente()">Salvar Cliente</button></div>
   </div>
 </div>
 
