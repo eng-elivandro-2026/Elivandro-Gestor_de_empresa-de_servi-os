@@ -1111,6 +1111,47 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="f"><label>Fase</label><select id="pFas"></select></div>
       </div>
     </div>
+    <div class="card" id="cardFollowups">
+      <div class="ch"><span class="ct">📞 Follow-ups</span></div>
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+
+        <div>
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 1</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu1dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu1desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 2</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu2dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu2desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 3</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu3dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu3desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 4</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu4dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu4desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div id="fuBadge" style="display:none;font-size:.72rem;color:var(--text3);padding:.35rem .5rem;background:var(--bg3);border-radius:5px;border:1px solid var(--border)"></div>
+
+      </div>
+    </div>
+
     <div class="card" id="cardTimeline">
       <div class="ch" style="cursor:pointer" onclick="togTimeline()">
         <span class="ct">📅 Linha do Tempo Comercial &amp; Financeira</span>

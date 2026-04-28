@@ -2090,6 +2090,11 @@ function editP(id){
   if(Q('pTensVal'))Q('pTensVal').value=p.tensVal||'';
   if(Q('pTensCmd'))Q('pTensCmd').value=p.tensCmd||'';
   var tens=p.tens||[];['pT1F','pT2F','pT3F','pTN','pTPE'].forEach(function(id){var el=Q(id);if(el)el.checked=tens.indexOf(id)>=0;});
+  if(Q('fu1dat'))Q('fu1dat').value=p.fu1dat||'';if(Q('fu1desc'))Q('fu1desc').value=p.fu1desc||'';
+  if(Q('fu2dat'))Q('fu2dat').value=p.fu2dat||'';if(Q('fu2desc'))Q('fu2desc').value=p.fu2desc||'';
+  if(Q('fu3dat'))Q('fu3dat').value=p.fu3dat||'';if(Q('fu3desc'))Q('fu3desc').value=p.fu3desc||'';
+  if(Q('fu4dat'))Q('fu4dat').value=p.fu4dat||'';if(Q('fu4desc'))Q('fu4desc').value=p.fu4desc||'';
+  if(typeof rFuBadge==='function') rFuBadge();
   Q('pRes').value=p.res||'';Q('pFas').value=p.fas||'em_elaboracao';
   Q('vS').value=p.vS||0;Q('vM').value=p.vM||0;Q('vD').value=p.vD||0;
   // Restaurar descontos separados por tipo
@@ -7711,6 +7716,10 @@ function buildCurrentProposalSnapshot(){
     area:Q('pArea')&&Q('pArea').value||'',equip:Q('pEquip')&&Q('pEquip').value||'',
     tensVal:Q('pTensVal')&&Q('pTensVal').value||'',tensCmd:Q('pTensCmd')&&Q('pTensCmd').value||'',
     tens:['pT1F','pT2F','pT3F','pTN','pTPE'].filter(function(id){return Q(id)&&Q(id).checked;}),
+    fu1dat:Q('fu1dat')&&Q('fu1dat').value||'', fu1desc:Q('fu1desc')&&Q('fu1desc').value||'',
+    fu2dat:Q('fu2dat')&&Q('fu2dat').value||'', fu2desc:Q('fu2desc')&&Q('fu2desc').value||'',
+    fu3dat:Q('fu3dat')&&Q('fu3dat').value||'', fu3desc:Q('fu3desc')&&Q('fu3desc').value||'',
+    fu4dat:Q('fu4dat')&&Q('fu4dat').value||'', fu4desc:Q('fu4desc')&&Q('fu4desc').value||'',
     res:Q('pRes').value||'',vS:vs,vM:vm,vD:vd,vDS:vdS,vDM:vdM,val:vs+vm-vd,
     prz:'',przI:'',przF:'',val2:'',gar:'',pag:'',cforn:'',imp:'',
     ts:[],esc:JSON.parse(JSON.stringify(escSecs)),bi:JSON.parse(JSON.stringify(budg)),revs:JSON.parse(JSON.stringify(revs)),
@@ -11757,6 +11766,18 @@ function _fmtK(v){
 // ══════════════════════════════════════════════════════════════
 var _tlNFs = [];
 var _tlAdiantamentos = [];
+
+function rFuBadge(){
+  var badge=Q('fuBadge');if(!badge)return;
+  var datas=[Q('fu4dat'),Q('fu3dat'),Q('fu2dat'),Q('fu1dat')];
+  var ultima=null,idx=-1;
+  for(var i=0;i<datas.length;i++){if(datas[i]&&datas[i].value){ultima=datas[i].value;idx=3-i+1;break;}}
+  if(!ultima){badge.style.display='none';return;}
+  var diff=Math.floor((Date.now()-new Date(ultima+'T12:00:00').getTime())/86400000);
+  var cor=diff>14?'var(--red)':diff>7?'var(--accent)':'var(--green)';
+  badge.style.display='block';
+  badge.innerHTML='Último contato: <strong>Follow-up '+idx+'</strong> — <span style="color:'+cor+';font-weight:700">'+diff+' dia'+(diff!==1?'s':'')+' atrás</span>';
+}
 
 function togTimeline(){
   var b=Q('timelineBody'),ch=Q('timelineChevron');
