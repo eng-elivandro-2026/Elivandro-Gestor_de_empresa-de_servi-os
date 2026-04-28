@@ -4357,9 +4357,16 @@ var _simResultado = null;
   var btnDes2=document.getElementById('simDesfazerBtn');
   if(btnDes2) btnDes2.style.display='none'; // guarda o FMF calculado para poder aplicar
 
+function simModoChange(){
+  var l=document.getElementById('simAlvoLabel');
+  if(l) l.textContent=document.getElementById('simModo').value==='custo'?'Ajustar Custo de':'Ajustar FMF de';
+}
+
 function rodarSimulacao(){
   var meta = n2(document.getElementById('simMeta').value);
   var alvo = document.getElementById('simAlvo').value;
+  var modoEl = document.getElementById('simModo');
+  var modo = modoEl ? modoEl.value : 'fmf';
   var res  = document.getElementById('simResultado');
   document.getElementById('simAplicarBtn').style.display = 'none';
   _simResultado = null;
@@ -4377,6 +4384,47 @@ function rodarSimulacao(){
 
   if(totalAtual <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Nenhum item no orçamento.</span>'; return; }
   if(Math.abs(meta - totalAtual) < 0.01){ res.innerHTML = '<span style="color:#3fb950">✔ O total atual já é igual à meta!</span>'; return; }
+
+  // ── MODO CUSTO ──────────────────────────────────────────────────────
+  if(modo === 'custo'){
+    var scaleM = null, scaleS = null;
+    if(alvo === 'material'){
+      if(totalM <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Não há itens de material no orçamento.</span>'; return; }
+      scaleM = (meta - totalS) / totalM;
+      if(scaleM <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Meta impossível: o custo resultante seria negativo ou zero.</span>'; return; }
+      _simResultado = { modo:'custo', alvo:'material', scaleM:scaleM, scaleS:null, meta:meta, custoMOrig:custoM };
+    } else if(alvo === 'servico'){
+      if(totalS <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Não há itens de serviço no orçamento.</span>'; return; }
+      scaleS = (meta - totalM) / totalS;
+      if(scaleS <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Meta impossível: o custo resultante seria negativo ou zero.</span>'; return; }
+      _simResultado = { modo:'custo', alvo:'servico', scaleM:null, scaleS:scaleS, meta:meta, custoSOrig:custoS };
+    } else {
+      scaleM = scaleS = meta / totalAtual;
+      _simResultado = { modo:'custo', alvo:'ambos', scaleM:scaleM, scaleS:scaleS, meta:meta, custoMOrig:custoM, custoSOrig:custoS };
+    }
+    var diff = meta - totalAtual;
+    var sinal = diff > 0 ? '+' : '';
+    var cor   = diff > 0 ? '#3fb950' : '#f97316';
+    var html  = '<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-start;">';
+    html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Total atual</div><div style="font-weight:700;color:var(--text)">'+ money(totalAtual) +'</div></div>';
+    html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Meta</div><div style="font-weight:700;color:#58a6ff">'+ money(meta) +'</div></div>';
+    html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Diferença</div><div style="font-weight:700;color:'+cor+'">'+ sinal + money(Math.abs(diff)) +'</div></div>';
+    if(scaleM !== null && custoM > 0){
+      var varPctM = ((scaleM - 1) * 100).toFixed(1);
+      var corM = scaleM >= 1 ? '#3fb950' : '#f97316';
+      html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:160px"><div style="font-size:.68rem;color:var(--text3)">Custo Material</div><div style="font-weight:700;color:'+corM+'">'+ money(custoM*scaleM) +' <span style="font-size:.68rem;color:var(--text3)">(era '+ money(custoM) +')</span></div><div style="font-size:.68rem;color:'+corM+'">'+(varPctM>0?'+':'')+varPctM+'%</div></div>';
+    }
+    if(scaleS !== null && custoS > 0){
+      var varPctS = ((scaleS - 1) * 100).toFixed(1);
+      var corS = scaleS >= 1 ? '#3fb950' : '#f97316';
+      html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:160px"><div style="font-size:.68rem;color:var(--text3)">Custo Serviço/MO</div><div style="font-weight:700;color:'+corS+'">'+ money(custoS*scaleS) +' <span style="font-size:.68rem;color:var(--text3)">(era '+ money(custoS) +')</span></div><div style="font-size:.68rem;color:'+corS+'">'+(varPctS>0?'+':'')+varPctS+'%</div></div>';
+    }
+    html += '</div>';
+    res.innerHTML = html;
+    document.getElementById('simAplicarBtn').style.display = 'inline-flex';
+    return;
+  }
+  // ── FIM MODO CUSTO ───────────────────────────────────────────────────
 
   var novoFmfMat = null, novoFmfSvc = null;
   var fmfAtualMat = (custoM > 0) ? (totalM / custoM) : null;
@@ -4457,26 +4505,42 @@ function aplicarSimulacao(){
   var r = _simResultado;
   var cfg = getPrcAtual();
 
-  budg.forEach(function(it){
-    if(it.inc === false) return;
-    if(it.t === 'material' && r.fmfMat !== null){
-      it.fmf = r.fmfMat;
-      it.pvu = it.cu * it.fmf;
-      it.pvt = it.pvu * n2(it.mult);
-    } else if(it.t !== 'material' && r.fmfSvc !== null){
-      it.fmf = r.fmfSvc;
-      it.pvu = it.cu * it.fmf;
-      it.pvt = it.pvu * n2(it.mult);
-    }
-  });
+  if(r.modo === 'custo'){
+    budg.forEach(function(it){
+      if(it.inc === false) return;
+      if(it.t === 'material' && r.scaleM !== null){
+        it.cu = n2(it.cu) * r.scaleM;
+        it.pvu = it.cu * n2(it.fmf);
+        it.pvt = it.pvu * n2(it.mult);
+      } else if(it.t !== 'material' && r.scaleS !== null){
+        it.cu = n2(it.cu) * r.scaleS;
+        it.pvu = it.cu * n2(it.fmf);
+        it.pvt = it.pvu * n2(it.mult);
+      }
+    });
+  } else {
+    budg.forEach(function(it){
+      if(it.inc === false) return;
+      if(it.t === 'material' && r.fmfMat !== null){
+        it.fmf = r.fmfMat;
+        it.pvu = it.cu * it.fmf;
+        it.pvt = it.pvu * n2(it.mult);
+      } else if(it.t !== 'material' && r.fmfSvc !== null){
+        it.fmf = r.fmfSvc;
+        it.pvu = it.cu * it.fmf;
+        it.pvt = it.pvu * n2(it.mult);
+      }
+    });
+  }
 
   updBT(); rBudg();
   _simResultado = null;
   document.getElementById('simAplicarBtn').style.display = 'none';
   var btnDes=document.getElementById('simDesfazerBtn');
   if(btnDes) btnDes.style.display='inline-flex';
+  var tipoMsg = r.modo === 'custo' ? 'Custo aplicado' : 'FMF aplicado';
   document.getElementById('simResultado').innerHTML =
-    '<span style="color:#3fb950">✔ FMF aplicado! Total da proposta atualizado para '+ money(r.meta) +'. Use ↩ Desfazer para voltar aos valores originais.</span>';
+    '<span style="color:#3fb950">✔ '+ tipoMsg +'! Total da proposta atualizado para '+ money(r.meta) +'. Use ↩ Desfazer para voltar aos valores originais.</span>';
 }
 // ─────────────────────────────────────────────────────────────────────
 
