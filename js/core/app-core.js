@@ -424,7 +424,8 @@ var _FLUXO_SECOES={
   's-criacao':{titulo:'Criação',aberto:true},
   's-edicao':{titulo:'Edição',aberto:true},
   's-encer':{titulo:'Encerramento',aberto:true},
-  's-rec':{titulo:'Recursos',aberto:true}
+  's-rec':{titulo:'Recursos',aberto:true},
+  's-backup':{titulo:'Backup & Dados',aberto:true}
 };
 var _FLUXO_TREE=[
   {id:'fl-inicio',icon:'🏠',titulo:'Início',secao:null},
@@ -437,7 +438,9 @@ var _FLUXO_TREE=[
   {id:'fl-virou',icon:'🔄',titulo:'Virou Outra Proposta',secao:'s-encer'},
   {id:'fl-cancelada',icon:'🚫',titulo:'Cancelada',secao:'s-encer'},
   {id:'s-rec',tipo:'secao'},
-  {id:'fl-log',icon:'📓',titulo:'Uso do LOG',secao:'s-rec'}
+  {id:'fl-log',icon:'📓',titulo:'Uso do LOG',secao:'s-rec'},
+  {id:'s-backup',tipo:'secao'},
+  {id:'fl-backup',icon:'💾',titulo:'Backup & Restauração',secao:'s-backup'}
 ];
 function abrirFluxo(){
   var m=Q('fluxoModal'); if(!m) return;
@@ -446,6 +449,27 @@ function abrirFluxo(){
   _fluxoNavTo(_fluxoAtual||'fl-inicio');
 }
 function fecharFluxo(){ var m=Q('fluxoModal'); if(m) m.style.display='none'; }
+
+function abrirBackupModal(){
+  var m=Q('backupModal'); if(!m) return;
+  m.style.display='flex';
+  // Contagens
+  var nProps=(window.props||[]).length;
+  var nTpls=(LS('tf_tpls')||[]).length;
+  if(Q('bkNumPropostas')) Q('bkNumPropostas').textContent=nProps;
+  if(Q('bkNumTemplates')) Q('bkNumTemplates').textContent=nTpls;
+  // Status nuvem
+  var nuvemOk=!!(window.sbClient && window._empresaAtiva);
+  if(Q('bkNuvemIcon')) Q('bkNuvemIcon').textContent=nuvemOk?'✓':'✕';
+  if(Q('bkNuvemIcon')) Q('bkNuvemIcon').style.color=nuvemOk?'#22c55e':'#f87171';
+  if(Q('bkNuvemTxt')) Q('bkNuvemTxt').textContent=nuvemOk?'Nuvem: conectada e ativa':'Nuvem: não conectada (modo local)';
+  // Último backup
+  var ult=localStorage.getItem('tf_ultimo_backup');
+  var el=Q('backupUltimoInfo');
+  if(el) el.textContent=ult?('Último backup: '+new Date(ult).toLocaleString('pt-BR')):'Nenhum backup exportado neste dispositivo ainda';
+}
+function fecharBackupModal(){ var m=Q('backupModal'); if(m) m.style.display='none'; }
+function _bkRegistrarExport(){ localStorage.setItem('tf_ultimo_backup', new Date().toISOString()); abrirBackupModal(); }
 function _fluxoToggleSecao(sid){
   if(_FLUXO_SECOES[sid]) _FLUXO_SECOES[sid].aberto=!_FLUXO_SECOES[sid].aberto;
   var q=Q('fluxoBusca'); _fluxoRenderTree(q?q.value:'');

@@ -723,9 +723,8 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <button class="sb-tool" onclick="abrirFormulas()">📐 Fórmulas</button>
       <button class="sb-tool" onclick="abrirFluxo()">🗺️ Fluxo de Trabalho</button>
       <button class="sb-tool" onclick="abrirAjuda()">❓ Ajuda</button>
+      <button class="sb-tool" onclick="abrirBackupModal()" style="color:#22d3ee;font-weight:600">💾 Backup & Restauração</button>
       <button class="sb-tool" onclick="limparPropostasZero()">🗑 Limpar R$0</button>
-      <button class="sb-tool" onclick="exportJSON()">⬆️ Exportar JSON</button>
-      <button class="sb-tool" onclick="Q('importFile').click()">⬇️ Importar JSON</button>
       <button class="sb-tool" onclick="abrirImportProposta()">📋 Colar JSON</button>
     </div>
 
@@ -6100,6 +6099,106 @@ function guiaAba(n){
     </div>
   </div>
 </div>
+<!-- ====== MODAL BACKUP & RESTAURAÇÃO ====== -->
+<div id="backupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:310;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharBackupModal()">
+  <div style="width:min(640px,98vw);max-height:90vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:0">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1">
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#22d3ee">💾 Backup &amp; Restauração</div>
+        <div id="backupUltimoInfo" style="font-size:.7rem;color:var(--text3);margin-top:2px">Verificando último backup...</div>
+      </div>
+      <button class="btn bd bsm" onclick="fecharBackupModal()">✕ Fechar</button>
+    </div>
+
+    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+
+      <!-- Status do que será salvo -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">O que está incluído no backup</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="backupStatusGrid">
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span style="color:#22c55e;font-size:.9rem">✓</span>
+            <span><strong id="bkNumPropostas">—</strong> Propostas</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span style="color:#22c55e;font-size:.9rem">✓</span>
+            <span><strong id="bkNumTemplates">—</strong> Templates</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span style="color:#22c55e;font-size:.9rem">✓</span>
+            <span>Banco de Escopos</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span style="color:#22c55e;font-size:.9rem">✓</span>
+            <span>Configurações &amp; Categorias</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span style="color:#22c55e;font-size:.9rem">✓</span>
+            <span>Metas &amp; Planejador</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)">
+            <span id="bkNuvemIcon" style="font-size:.9rem">⏳</span>
+            <span id="bkNuvemTxt">Nuvem: verificando...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações principais -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button onclick="exportJSON();_bkRegistrarExport()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 14px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:10px;cursor:pointer;transition:all .15s;color:var(--text)" onmouseover="this.style.borderColor='#22d3ee'" onmouseout="this.style.borderColor='rgba(34,211,238,.3)'">
+          <span style="font-size:1.6rem">⬆️</span>
+          <span style="font-size:.85rem;font-weight:700;color:#22d3ee">Exportar Backup</span>
+          <span style="font-size:.7rem;color:var(--text3);text-align:center">Salva arquivo <code>.json</code> no seu computador</span>
+        </button>
+        <button onclick="Q('importFile').click()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 14px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;cursor:pointer;transition:all .15s;color:var(--text)" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='rgba(249,115,22,.3)'">
+          <span style="font-size:1.6rem">⬇️</span>
+          <span style="font-size:.85rem;font-weight:700;color:#f97316">Restaurar Backup</span>
+          <span style="font-size:.7rem;color:var(--text3);text-align:center">Importa arquivo <code>.json</code> gerado anteriormente</span>
+        </button>
+      </div>
+
+      <!-- Sincronização nuvem -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:.8rem;font-weight:700;color:var(--text2)">☁️ Sincronização com a Nuvem</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:2px">Todas as propostas são salvas automaticamente no Supabase após cada edição. O backup local é uma cópia de segurança adicional.</div>
+        </div>
+        <button class="btn bs bsm" onclick="typeof sbMigrarLocal==='function'&&sbMigrarLocal()" style="flex-shrink:0;white-space:nowrap">☁️ Sincronizar Agora</button>
+      </div>
+
+      <!-- Passo a passo -->
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Como fazer backup corretamente</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#22d3ee;color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0">1</span>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:#22d3ee">⬆️ Exportar Backup</strong> — o arquivo <code style="color:#22d3ee;font-size:.75rem">fortex_backup_AAAAMMDD_HHMM.json</code> é baixado automaticamente.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#22d3ee;color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0">2</span>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.5">Guarde o arquivo em uma pasta segura — ex: <strong style="color:var(--text)">Google Drive / OneDrive / pasta local de backups</strong>. Não deixe apenas no Desktop.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#22d3ee;color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0">3</span>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Frequência recomendada:</strong> ao menos 1× por semana, ou sempre que fechar um negócio importante.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:#f97316;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0">R</span>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.5"><strong style="color:#f97316">Para restaurar:</strong> clique em <strong style="color:#f97316">⬇️ Restaurar Backup</strong>, selecione o arquivo <code style="font-size:.75rem">.json</code>. O sistema faz merge inteligente — propostas existentes não são duplicadas.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#f87171;line-height:1.5">
+        ⚠️ <strong>Atenção:</strong> O backup cobre apenas dados do <strong>localStorage deste navegador</strong>. Se você usa vários navegadores ou dispositivos, a sincronização pela nuvem garante consistência entre eles.
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="fluxoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharFluxo()">
   <div style="width:min(1060px,98vw);height:min(88vh,700px);display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
 
@@ -6159,6 +6258,10 @@ function guiaAba(n){
             <div onclick="_fluxoNavTo('fl-log')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#a855f7'" onmouseout="this.style.borderColor='var(--border)'">
               <div style="font-size:13px;font-weight:700;color:#a855f7">📓 Uso do LOG</div>
               <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Memória comercial e técnica</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-backup')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#22d3ee'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:#22d3ee">💾 Backup &amp; Restauração</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Como proteger e restaurar seus dados</div>
             </div>
           </div>
         </div>
@@ -6362,6 +6465,85 @@ function guiaAba(n){
             </div>
           </div>
         <div style="margin-top:12px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#a855f7;line-height:1.5">💡 <strong>Dica de gestão:</strong> Revisar o LOG antes de cada follow-up mostra profissionalismo e evita repetir perguntas já respondidas. É a memória que sobrevive à rotatividade da equipe.</div>
+        </div>
+        <div data-page="fl-backup" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:#22d3ee;margin-bottom:4px">💾 Backup &amp; Restauração</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Como proteger todos os seus dados e recuperá-los se necessário</div>
+
+          <!-- Onde os dados ficam -->
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px">
+            <div style="font-size:.8rem;font-weight:700;color:#22d3ee;margin-bottom:6px">Onde os dados ficam armazenados</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;gap:8px;align-items:flex-start;font-size:.78rem;color:var(--text2)">
+                <span style="color:#22c55e;font-weight:700;flex-shrink:0">💻 Local</span>
+                <span>No <strong style="color:var(--text)">localStorage do navegador</strong> — imediato, funciona offline. Fica neste dispositivo/navegador específico.</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-start;font-size:.78rem;color:var(--text2)">
+                <span style="color:#22d3ee;font-weight:700;flex-shrink:0">☁️ Nuvem</span>
+                <span>No <strong style="color:var(--text)">Supabase</strong> — sincronizado automaticamente ao salvar cada proposta. Acessível de qualquer dispositivo logado.</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-start;font-size:.78rem;color:var(--text2)">
+                <span style="color:#f97316;font-weight:700;flex-shrink:0">📁 Arquivo</span>
+                <span>O backup <code style="font-size:.75rem">.json</code> — exportação manual que você guarda fora do sistema (HD, Drive, OneDrive).</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Passo a passo exportar -->
+          <div style="font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Como exportar backup</div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#22d3ee;color:#000;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">1</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">No menu lateral, clique em <strong style="color:#22d3ee">💾 Backup &amp; Restauração</strong> para abrir o painel.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#22d3ee;color:#000;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">2</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Confira o resumo: quantidade de propostas, templates e se a nuvem está sincronizada.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#22d3ee;color:#000;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">3</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:#22d3ee">⬆️ Exportar Backup</strong> — o arquivo <code style="font-size:.75rem;color:#22d3ee">fortex_backup_AAAAMMDD_HHMM.json</code> é baixado.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#22d3ee;color:#000;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">4</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Mova o arquivo para uma pasta segura: <strong style="color:var(--text)">Google Drive</strong>, <strong style="color:var(--text)">OneDrive</strong> ou <strong style="color:var(--text)">pasta de backups</strong> no seu HD — nunca deixe só no Desktop.</div>
+            </div>
+          </div>
+
+          <!-- Passo a passo restaurar -->
+          <div style="font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Como restaurar backup</div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#f97316;color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">1</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Abra <strong style="color:#22d3ee">💾 Backup &amp; Restauração</strong> no menu lateral.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#f97316;color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">2</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:#f97316">⬇️ Restaurar Backup</strong> e selecione o arquivo <code style="font-size:.75rem">.json</code> salvo anteriormente.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#f97316;color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">3</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">O sistema faz <strong style="color:var(--text)">merge inteligente</strong>: propostas com o mesmo ID não são duplicadas. Você pode confirmar ou cancelar antes de aplicar.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="background:#f97316;color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0">4</span>
+              <div style="font-size:.79rem;color:var(--text2);line-height:1.5">Após restaurar, clique em <strong style="color:var(--text)">☁️ Sincronizar Agora</strong> para enviar os dados restaurados para a nuvem.</div>
+            </div>
+          </div>
+
+          <!-- Frequência recomendada -->
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px">
+            <div style="font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:5px">Frequência recomendada</div>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:.76rem;color:var(--text3)">
+              <div>🟢 <strong style="color:var(--text2)">Semanal</strong> — mínimo recomendado para uso regular</div>
+              <div>🟡 <strong style="color:var(--text2)">Ao fechar negócio</strong> — sempre que aprovar uma proposta de valor significativo</div>
+              <div>🔴 <strong style="color:var(--text2)">Antes de importar dados</strong> — faça backup antes de qualquer importação ou limpeza</div>
+            </div>
+          </div>
+
+          <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#f87171;line-height:1.5">
+            ⚠️ <strong>Atenção:</strong> Limpar o histórico ou os cookies do navegador apaga o localStorage. A nuvem preserva os dados, mas o backup em arquivo garante uma cópia totalmente independente do sistema.
+          </div>
         </div>
       </div>
     </div>
