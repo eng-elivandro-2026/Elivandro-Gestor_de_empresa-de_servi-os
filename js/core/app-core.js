@@ -11767,8 +11767,28 @@ function _fmtK(v){
 var _tlNFs = [];
 var _tlAdiantamentos = [];
 
+function _podeEditarProposta(){
+  var p=window._perfilUsuario;
+  if(!p) return true; // sem perfil carregado → modo local, permite edição
+  return ['colaborador','prestador'].indexOf(p)<0;
+}
+
 function rFuBadge(){
   var badge=Q('fuBadge');if(!badge)return;
+
+  // Aplica readonly/disabled conforme perfil de acesso
+  var somenteLeitura=!_podeEditarProposta();
+  ['fu1dat','fu2dat','fu3dat','fu4dat'].forEach(function(id){
+    var el=Q(id);if(!el)return;
+    if(somenteLeitura){el.setAttribute('readonly','readonly');el.style.opacity='.55';el.style.cursor='not-allowed';}
+    else{el.removeAttribute('readonly');el.style.opacity='';el.style.cursor='';}
+  });
+  ['fu1desc','fu2desc','fu3desc','fu4desc'].forEach(function(id){
+    var el=Q(id);if(!el)return;
+    if(somenteLeitura){el.setAttribute('readonly','readonly');el.style.opacity='.55';el.style.cursor='not-allowed';}
+    else{el.removeAttribute('readonly');el.style.opacity='';el.style.cursor='';}
+  });
+
   var datas=[Q('fu4dat'),Q('fu3dat'),Q('fu2dat'),Q('fu1dat')];
   var ultima=null,idx=-1;
   for(var i=0;i<datas.length;i++){if(datas[i]&&datas[i].value){ultima=datas[i].value;idx=3-i+1;break;}}
@@ -11776,7 +11796,8 @@ function rFuBadge(){
   var diff=Math.floor((Date.now()-new Date(ultima+'T12:00:00').getTime())/86400000);
   var cor=diff>14?'var(--red)':diff>7?'var(--accent)':'var(--green)';
   badge.style.display='block';
-  badge.innerHTML='Último contato: <strong>Follow-up '+idx+'</strong> — <span style="color:'+cor+';font-weight:700">'+diff+' dia'+(diff!==1?'s':'')+' atrás</span>';
+  badge.innerHTML='Último contato: <strong>Follow-up '+idx+'</strong> — <span style="color:'+cor+';font-weight:700">'+diff+' dia'+(diff!==1?'s':'')+' atrás</span>'
+    +(somenteLeitura?' <span style="color:var(--text3);font-size:.68rem">(somente leitura)</span>':'');
 }
 
 function togTimeline(){
