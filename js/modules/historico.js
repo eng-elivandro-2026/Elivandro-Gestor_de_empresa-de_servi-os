@@ -9,6 +9,13 @@
 
   function genId() { return 'hst_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
 
+  // Retorna datetime local no formato YYYY-MM-DDTHH:MM (sem conversão UTC)
+  function _localDatetimeISO() {
+    var d = new Date();
+    var pad = function(n){ return String(n).padStart(2,'0'); };
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+
   function saveList(list) {
     hLS(list);
     if (typeof sbSalvarHistorico === 'function') sbSalvarHistorico(list);
@@ -310,7 +317,7 @@
     var editId = g('hEditId').value || '';
     var reg = {
       id:           editId || genId(),
-      data:         g('hData').value || new Date().toISOString().slice(0, 16),
+      data:         g('hData').value || _localDatetimeISO(),
       cliente:      (g('hCliente').value    || '').trim(),
       contato:      (g('hContato').value    || '').trim(),
       canal:        g('hCanal').value       || 'WhatsApp',
@@ -344,7 +351,7 @@
     var ftit = document.getElementById('hFormTitulo');
     if (ftit) ftit.textContent = h ? '✏️ Editar Registro' : '📝 Novo Registro';
     s('hEditId',      h ? h.id : '');
-    s('hData',        h ? (h.data || '').slice(0, 16) : new Date().toISOString().slice(0, 16));
+    s('hData',        h ? (h.data || '').slice(0, 16) : _localDatetimeISO());
     s('hCliente',     h ? h.cliente    : '');
     s('hContato',     h ? h.contato    : '');
     s('hCanal',       h ? (h.canal || 'WhatsApp') : 'WhatsApp');
