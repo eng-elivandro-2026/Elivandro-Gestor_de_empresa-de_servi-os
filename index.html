@@ -6800,54 +6800,41 @@ function carregarCeoDash(){
   var cliEl=Q('ceoTopCli');
   if(cliEl){
     var pipeSorted=pipeline.slice().sort(function(a,b){return n2(b.val)-n2(a.val);});
-
-    // ── KPI Alertas Operacionais ──────────────────────────────
-    function _execCard(nivel,titulo,msg,acao){
-      var cor=nivel==='critico'?'#f85149':nivel==='atencao'?'#d4a017':'#3fb950';
-      var bg=nivel==='critico'?'rgba(248,81,73,.07)':nivel==='atencao'?'rgba(212,160,23,.07)':'rgba(63,185,80,.07)';
-      return '<div style="background:'+bg+';border:1px solid '+cor+'44;border-left:3px solid '+cor+';border-radius:8px;padding:.5rem .75rem;margin-bottom:.45rem">'
-        +'<div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.15rem">'+titulo+'</div>'
-        +'<div style="font-size:.75rem;color:var(--text2);line-height:1.45">'+msg+'</div>'
-        +(acao?'<div style="font-size:.7rem;color:'+cor+';margin-top:.25rem;font-weight:600">→ '+acao+'</div>':'')
-        +'</div>';
-    }
-    var _diasDe=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
-    var execAlertas=[];
-    var atrasadasE=pipeline.filter(function(p){return p.fas==='atrasado';});
-    var emPausaE=pipeline.filter(function(p){return p.fas.indexOf('em_pausa')===0;});
-    var aprovadoE=pipeline.filter(function(p){return p.fas==='aprovado';});
-    var semNF=pipeline.filter(function(p){
-      if(['andamento','taf','sat'].indexOf(p.fas)<0) return false;
-      var d=_diasDe((p.tl&&p.tl.dtInicioExec)||p.dtFech||p.dat2);
-      var nfs=(p.tl&&p.tl.nfs)||[];
-      return d!==null&&d>30&&nfs.length===0;
-    });
-    var andLongo=pipeline.filter(function(p){
-      if(p.fas!=='andamento') return false;
-      var d=_diasDe((p.tl&&p.tl.dtInicioExec)||p.dtFech||p.dat2);
-      return d!==null&&d>90;
-    });
-    if(atrasadasE.length) execAlertas.push(_execCard('critico','🔴 '+atrasadasE.length+' serviço'+(atrasadasE.length>1?'s':'')+' com execução ATRASADA',atrasadasE.map(function(p){return esc(p.tit||p.num);}).join(', ')+' — '+money(atrasadasE.reduce(function(s,p){return s+n2(p.val);},0))+' em risco','Reagendar com cliente ou acionar equipe imediatamente'));
-    if(semNF.length) execAlertas.push(_execCard('critico','⚠️ '+semNF.length+' serviço'+(semNF.length>1?'s':'')+' em andamento há +30 dias SEM NF emitida',semNF.map(function(p){return esc(p.tit||p.num);}).join(', '),'Emitir NF imediatamente — risco de caixa'));
-    if(emPausaE.length) execAlertas.push(_execCard('atencao','⏸️ '+emPausaE.length+' serviço'+(emPausaE.length>1?'s':'')+' em Pausa',emPausaE.map(function(p){var fase=FASE[p.fas]||{n:p.fas};return esc(p.tit||p.num)+' ('+fase.n+')';}).join(', '),'Verificar pendência e definir data de retomada'));
-    if(aprovadoE.length) execAlertas.push(_execCard('atencao','✅ '+aprovadoE.length+' serviço'+(aprovadoE.length>1?'s':'')+' aprovado'+(aprovadoE.length>1?'s':'')+' aguardando início',aprovadoE.map(function(p){return esc(p.tit||p.num);}).join(', '),'Confirmar data de início com o cliente'));
-    if(andLongo.length) execAlertas.push(_execCard('atencao','🕐 '+andLongo.length+' serviço'+(andLongo.length>1?'s':'')+' em andamento há mais de 90 dias',andLongo.map(function(p){return esc(p.tit||p.num);}).join(', '),'Revisar cronograma e emitir NF parcial se aplicável'));
-    if(!execAlertas.length) execAlertas.push(_execCard('ok','✅ Fase Operacional sem alertas críticos','Todos os serviços estão dentro do prazo e com NF em dia.',''));
+    var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
+    var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
+    var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
 
     cliEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔧 Serviços Fechados — Fase OPERACIONAL</div>'
-      +'<div style="margin-bottom:.75rem">'+execAlertas.join('')+'</div>'
       +(pipeSorted.length?pipeSorted.map(function(p){
         var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
         var tit=(p.tit||p.num||'—').trim();
-        var fase=FASE[p.fas]||{n:p.fas,i:''};
-        var isAtr=p.fas==='atrasado';
-        var isPausa=p.fas.indexOf('em_pausa')===0;
+        var fas=p.fas||'';
+        var fase=FASE[fas]||{n:fas,i:''};
+        var tl=p.tl||{};
+        var nfs=tl.nfs||[];
+        var isAtr=fas==='atrasado';
+        var isPausa=fas.indexOf('em_pausa')===0;
         var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
+        // Badge de KPI ao lado do status
+        var kpi='';
+        var dtI=tl.dtInicioExec||'', dtA=tl.dtAceite||'', dtT=tl.dtTermino||'', dtF=p.dtFech||'';
+        if(fas==='aprovado')  kpi=_sem(_dd(dtF),15,30,'pré-obra');
+        if(['andamento','taf','sat'].indexOf(fas)>=0){
+          var dEx=_dd(dtI||dtF||p.dat2);
+          if(dEx!==null) kpi+=_sem(dEx,30,60,'execução');
+          if(dtA||dtT) kpi+=_sem(_dd(dtA||dtT),3,7,'→ NF');
+          else if(dEx!==null&&dEx>30&&nfs.length===0) kpi+=_bdg('#f85149','🔴 sem NF '+dEx+'d');
+        }
+        if(isPausa) kpi+=_sem(_dd(dtF||p.dat2),15,30,'pausa');
+        if(isAtr)   kpi+=_bdg('#f85149','🔴 ATRASADA');
         return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">'
           +'<div style="font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;word-break:break-word">'+esc(tit)+'</div>'
           +'<div style="font-size:.66rem;color:var(--text3);margin-top:.1rem;line-height:1.3;word-break:break-word">'+esc(cli)+'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.22rem;gap:.4rem">'
-          +'<div style="font-size:.65rem;color:'+corFase+';flex:1;min-width:0">'+(fase.i?fase.i+' ':'')+fase.n+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.22rem;gap:.4rem;flex-wrap:wrap">'
+          +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.1rem;flex:1;min-width:0">'
+          +'<span style="font-size:.65rem;color:'+corFase+'">'+(fase.i?fase.i+' ':'')+fase.n+'</span>'
+          +kpi
+          +'</div>'
           +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0">'+money(n2(p.val))+'</div>'
           +'</div>'
           +'</div>';
