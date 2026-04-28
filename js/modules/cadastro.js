@@ -186,18 +186,26 @@
     inputEl.addEventListener('keydown', function(e) { if (e.key === 'Escape') dd.style.display = 'none'; });
   };
 
-  // ── Fechar modais (limpa estado de edição) ────────────────
+  // ── Helpers de modal (manipulação direta de style) ───────
+  function _abrirMod(id) {
+    var m = document.getElementById(id);
+    if (m) { m.style.display = 'flex'; m.style.zIndex = '9500'; }
+  }
+  function _fecharMod(id) {
+    var m = document.getElementById(id); if (m) m.style.display = 'none';
+  }
+
   window._fecharModalCliente = function() {
     window._cadEditCliId = null;
     var t = document.getElementById('tituloModalCliente');
     if (t) t.textContent = '🏢 Novo Cliente';
-    if (typeof fecharModal === 'function') fecharModal('m-novo-cliente');
+    _fecharMod('m-novo-cliente');
   };
   window._fecharModalContato = function() {
     window._cadEditCtsId = null;
     var t = document.getElementById('tituloModalContato');
     if (t) t.textContent = '👤 Novo Contato';
-    if (typeof fecharModal === 'function') fecharModal('m-novo-contato');
+    _fecharMod('m-novo-contato');
   };
 
   // ── Modal Novo Contato ────────────────────────────────────
@@ -212,7 +220,7 @@
     g('ncEmpresa').value  = '';
     g('ncEmail').value    = '';
     g('ncTelefone').value = '';
-    if (typeof abrirModal === 'function') abrirModal('m-novo-contato');
+    _abrirMod('m-novo-contato');
   };
 
   window.salvarNovoContato = function() {
@@ -223,7 +231,7 @@
     var list = ctsLoad();
     list.unshift(novo);
     ctsSave(list);
-    if (typeof fecharModal === 'function') fecharModal('m-novo-contato');
+    _fecharMod('m-novo-contato');
     if (typeof window._cadCtsCb === 'function') { window._cadCtsCb(novo); window._cadCtsCb = null; }
     if (typeof toast === 'function') toast('✅ Contato cadastrado: ' + nome, 'ok');
   };
@@ -239,7 +247,7 @@
     g('ncliNome').value   = nome || '';
     g('ncliCnpj').value   = '';
     g('ncliCidade').value = '';
-    if (typeof abrirModal === 'function') abrirModal('m-novo-cliente');
+    _abrirMod('m-novo-cliente');
   };
 
   window.salvarNovoCliente = function() {
@@ -250,7 +258,7 @@
     var list = cliLoad();
     list.unshift(novo);
     cliSave(list);
-    if (typeof fecharModal === 'function') fecharModal('m-novo-cliente');
+    _fecharMod('m-novo-cliente');
     if (typeof window._cadCliCb === 'function') { window._cadCliCb(novo); window._cadCliCb = null; }
     if (typeof toast === 'function') toast('✅ Cliente cadastrado: ' + nome, 'ok');
   };
@@ -279,7 +287,7 @@
     g('ncliNome').value   = item.nome   || '';
     g('ncliCnpj').value   = item.cnpj   || '';
     g('ncliCidade').value = item.cidade || '';
-    if (typeof abrirModal === 'function') abrirModal('m-novo-cliente');
+    _abrirMod('m-novo-cliente');
   };
 
   window.excluirCliente = function(id) {
@@ -327,7 +335,7 @@
     g('ncEmpresa').value  = item.empresa  || '';
     g('ncEmail').value    = item.email    || '';
     g('ncTelefone').value = item.telefone || '';
-    if (typeof abrirModal === 'function') abrirModal('m-novo-contato');
+    _abrirMod('m-novo-contato');
   };
 
   window.excluirContato = function(id) {
