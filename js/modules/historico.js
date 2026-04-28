@@ -173,7 +173,9 @@
     }
 
     if (fc) list = list.filter(function(h){
-      var txt = ((h.cliente || '') + ' ' + (h.responsavel || '')).toLowerCase();
+      var txt = [h.cliente, h.contato, h.responsavel, h.resumo,
+                 h.decisao, h.pendencia, h.proxima_acao]
+                .map(function(v){ return v || ''; }).join(' ').toLowerCase();
       return txt.indexOf(fc.toLowerCase()) >= 0;
     });
 
