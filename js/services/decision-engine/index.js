@@ -17,7 +17,12 @@
     return Math.floor((Date.now() - d.getTime()) / 86400000);
   }
 
-  function _dataProp(p) { return p.dat2 || p.dat || null; }
+  function _dataProp(p) {
+    // Prefere a data do último follow-up preenchido para calcular "dias sem atualização"
+    var fuDates = [p.fu4dat, p.fu3dat, p.fu2dat, p.fu1dat];
+    for (var i = 0; i < fuDates.length; i++) { if (fuDates[i]) return fuDates[i]; }
+    return p.dat2 || p.dat || null;
+  }
   function _val(p)      { return (typeof n2 === 'function') ? n2(p.val) : (isFinite(+p.val) ? +p.val : 0); }
   function _soma(arr)   { return arr.reduce(function (s, p) { return s + _val(p); }, 0); }
   function _fmt(v)      { return (typeof money === 'function') ? money(v) : 'R$' + v; }

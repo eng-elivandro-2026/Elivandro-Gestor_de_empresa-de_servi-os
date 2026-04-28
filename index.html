@@ -80,9 +80,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* BADGES */
 .bdg{display:inline-flex;align-items:center;gap:.2rem;padding:.12rem .45rem;border-radius:20px;font-size:.67rem;font-weight:700}
-.b-env{background:#1c2d4e;color:#79b8ff}.b-f1,.b-f2,.b-f3,.b-f4{background:#2d1d4e;color:#bc8cff}
-.b-apr{background:#12271e;color:#56d364}.b-and{background:#2d1d00;color:#f0a500}
-.b-fin{background:#1c2430;color:#8b949e}.b-atr{background:#3d1212;color:#f85149}
+.b-elab{background:#152332;color:#7bacc8}
+.b-env{background:#1c2d4e;color:#79b8ff}
+.b-f1,.b-f2,.b-f3,.b-f4,.b-neg{background:#2d1d4e;color:#bc8cff}
+.b-apr{background:#0d2219;color:#4ade80}
+.b-and{background:#0e2317;color:#34d399}
+.b-fin{background:#1a2330;color:#8b949e}
+.b-pau{background:#2b1d00;color:#fbbf24}
+.b-atr{background:#2d1600;color:#fb923c}
+.b-per{background:#3d1212;color:#f87171}
 
 /* DASHBOARD */
 .kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:.9rem;margin-bottom:1.2rem}
@@ -715,6 +721,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="sidebar-tools-section" id="tools-comercial">
       <div class="sidebar-section" style="padding-top:.8rem">Ferramentas</div>
       <button class="sb-tool" onclick="abrirFormulas()">📐 Fórmulas</button>
+      <button class="sb-tool" onclick="abrirFluxo()">🗺️ Fluxo de Trabalho</button>
       <button class="sb-tool" onclick="abrirAjuda()">❓ Ajuda</button>
       <button class="sb-tool" onclick="limparPropostasZero()">🗑 Limpar R$0</button>
       <button class="sb-tool" onclick="exportJSON()">⬆️ Exportar JSON</button>
@@ -738,6 +745,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="ab-row1">
     <span id="abInfo" class="ab-info">✏️ Editando proposta</span>
     <div class="ab-actions">
+      <span id="cloudSyncBadge" style="display:none;font-size:.7rem;padding:.18rem .55rem;border-radius:20px;font-weight:600;letter-spacing:.03em;transition:all .3s"></span>
       <button class="btn bs ab-save" onclick="saveP()">💾 Salvar</button>
       <button class="btn bg bsm" onclick="fecharProposta()" title="Salvar e voltar ao Dashboard">🏠 Fechar</button>
       <button class="btn bd bsm" id="ab-log" onclick="abrirLog()" title="Histórico Comercial">📋 Log</button>
@@ -762,7 +770,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <!-- MOTOR DE DECISÃO -->
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
-      <span class="ct">🧠 Motor de Decisão</span>
+      <span class="ct">🧠 Motor de Decisão <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura Atual por Negócios — Decisões!!)</span></span>
       <div class="br" onclick="event.stopPropagation()">
         <button class="btn bg bsm" onclick="runDecisionEngine();if(typeof toast==='function')toast('🧠 Motor de Decisão atualizado!','ok');event.stopPropagation()">🔄 Atualizar</button>
       </div>
@@ -803,8 +811,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <div class="ch" style="cursor:pointer" onclick="togPropostas()">
       <span class="ct">⭐ Propostas</span>
       <div class="br" onclick="event.stopPropagation()">
+        <button onclick="openCiclosFormulas()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2rem .55rem;font-size:.72rem;color:var(--text2);cursor:pointer">📐 Fórmulas KPI</button>
         <button class="btn bp bsm" onclick="newProposal()">+ Nova</button>
         <button class="btn bg bsm" onclick="document.getElementById('iFile').click()">📥 Importar</button>
+        <button id="btnRecarregarNuvem" class="btn bg bsm" onclick="sbRecarregarDaNuvem()" title="Recarregar propostas da nuvem (sincroniza edições de outros usuários)">☁ Sincronizar</button>
       </div>
       <span id="propostasChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
     </div>
@@ -883,7 +893,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   </div>
   <div class="card" id="analisePanel" style="margin-bottom:.8rem">
     <div class="ch" style="cursor:pointer" onclick="togAnalise()">
-      <span class="ct">🤖 Análise Inteligente</span>
+      <span class="ct">🤖 Análise IA <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura do Passado — Histórico Geral)</span></span>
       <div class="br" onclick="event.stopPropagation()">
         <button class="btn bg bsm" onclick="atualizarAnalise();event.stopPropagation()">🔄 Atualizar</button>
       </div>
@@ -945,7 +955,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="catAnaliseCard">
     <div class="ch" style="cursor:pointer" onclick="togCatAnalise()">
       <span class="ct">📂 Análise por Categoria</span>
-      <span id="catAnaliseChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
+      <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
+        <button onclick="openCatInfo()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2rem .55rem;font-size:.72rem;color:var(--text2);cursor:pointer">ℹ️ Como funciona</button>
+        <span id="catAnaliseChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togCatAnalise()">▼ expandir</span>
+      </div>
     </div>
     <div id="catAnaliseBody" style="display:none">
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.5rem">
@@ -973,7 +986,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="ciclosCard">
     <div class="ch" style="cursor:pointer" onclick="togCiclosDash()">
       <span class="ct">📊 KPIs de Ciclos — Média Geral</span>
-      <span id="ciclosDashChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
+      <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
+        <button onclick="openCiclosFormulas()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2rem .55rem;font-size:.72rem;color:var(--text2);cursor:pointer">📐 Fórmulas</button>
+        <span id="ciclosDashChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togCiclosDash()">▼ expandir</span>
+      </div>
     </div>
     <div id="ciclosDashBody" style="display:none">
       <div style="font-size:.72rem;color:var(--text3);margin-bottom:.7rem">
@@ -1052,10 +1068,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
       <div><div style="font-size:.62rem;color:var(--text3);margin-bottom:.25rem;text-transform:uppercase">Próximo nº</div><div class="an-disp" id="pnD">210.26</div></div>
       <div class="f" style="margin:0">
         <label>Revisão</label>
-        <input type="text" id="pRevAtual" placeholder="Ex: A" maxlength="5"
-          style="width:64px;text-transform:uppercase;text-align:center;font-weight:700;font-size:1rem;padding:.35rem .5rem;background:var(--bg);border:1px solid rgba(240,165,0,.35);border-radius:5px;color:var(--accent);font-family:monospace"
-          oninput="this.value=this.value.toUpperCase();updNumRev()"
-          title="Letra ou código da revisão atual (ex: A, B, C, 00, 01)">
+        <input type="text" id="pRevAtual" readonly maxlength="5"
+          style="width:64px;text-transform:uppercase;text-align:center;font-weight:700;font-size:1rem;padding:.35rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--accent);font-family:monospace;cursor:default;opacity:.75"
+          title="Gerenciado automaticamente pelo sistema de revisões">
       </div>
       <div class="br">
         <div class="f" style="margin:0"><label>Base</label><input type="number" id="cBase" value="210" step="10" min="10" style="width:100px" onchange="updN()"></div>
@@ -1078,6 +1093,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
             <th style="width:105px">Data</th>
             <th style="width:65px">Por</th>
             <th>Descrição</th>
+            <th style="width:90px">Status</th>
             <th style="width:36px"></th>
           </tr></thead>
           <tbody id="revBody"></tbody>
@@ -1095,6 +1111,47 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div class="f"><label>Fase</label><select id="pFas"></select></div>
       </div>
     </div>
+    <div class="card" id="cardFollowups">
+      <div class="ch"><span class="ct">📞 Follow-ups</span></div>
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+
+        <div>
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 1</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu1dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu1desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 2</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu2dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu2desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 3</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu3dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu3desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.7rem">
+          <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Follow-up 4</div>
+          <div class="g ga">
+            <div class="f"><label>Data</label><input type="date" id="fu4dat" oninput="rFuBadge()"></div>
+            <div class="f" style="grid-column:span 2"><label>Descrição</label><input type="text" id="fu4desc" placeholder="Resultado do contato, próximos passos..."></div>
+          </div>
+        </div>
+
+        <div id="fuBadge" style="display:none;font-size:.72rem;color:var(--text3);padding:.35rem .5rem;background:var(--bg3);border-radius:5px;border:1px solid var(--border)"></div>
+
+      </div>
+    </div>
+
     <div class="card" id="cardTimeline">
       <div class="ch" style="cursor:pointer" onclick="togTimeline()">
         <span class="ct">📅 Linha do Tempo Comercial &amp; Financeira</span>
@@ -1381,15 +1438,21 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
       <!-- META LUCRO LÍQUIDO -->
       <div id="metaLLBox" style="margin-bottom:.75rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;">
-        <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;" onclick="var b=document.getElementById('metaLLBoxBody');var a=document.getElementById('metaLLBoxArrow');var open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';">
+        <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;" onclick="var b=document.getElementById('metaLLBoxBody');var a=document.getElementById('metaLLBoxArrow');var open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';if(b.style.display!=='none')_populateMetaLLCat();">
           <span id="metaLLBoxArrow" style="font-size:.65rem;color:var(--text3);">▶</span>
           <span style="font-size:.8rem;font-weight:700;color:var(--green);letter-spacing:.04em;">💰 META LUCRO LÍQUIDO %</span>
-          <span style="font-size:.72rem;color:var(--text3);">— calcula o PV necessário para atingir o LL% desejado e ajusta os FMFs</span>
+          <span style="font-size:.72rem;color:var(--text3);">— calcula a margem necessária para atingir o Lucro Após Reserva desejado</span>
         </div>
         <div id="metaLLBoxBody" style="display:none;">
         <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end;margin-top:.65rem;">
           <div>
-            <div style="font-size:.7rem;color:var(--text3);margin-bottom:.2rem;">LL% desejado</div>
+            <div style="font-size:.7rem;color:var(--text3);margin-bottom:.2rem;">Categoria</div>
+            <select id="metaLLCat" style="padding:.33rem .5rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:.82rem;min-width:160px;">
+              <option value="">— Proposta inteira —</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:var(--text3);margin-bottom:.2rem;">LAR% desejado</div>
             <div style="display:flex;align-items:center;gap:.3rem;">
               <input id="metaLLPct" type="number" min="1" max="90" step="0.5" placeholder="Ex: 30"
                 style="width:90px;padding:.35rem .5rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:.82rem;">
@@ -1844,16 +1907,6 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         </select>
         <select id="regFas" onchange="rRegistro()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem">
           <option value="">Todas as fases</option>
-          <option value="em_elaboracao">Em Elaboração</option>
-          <option value="enviada">Enviada</option>
-          <option value="follow1">Follow-up 1</option>
-          <option value="follow2">Follow-up 2</option>
-          <option value="follow3">Follow-up 3</option>
-          <option value="follow4">Follow-up 4</option>
-          <option value="aprovado">Aprovado</option>
-          <option value="andamento">Em Andamento</option>
-          <option value="finalizado">Finalizadas</option>
-          <option value="atrasado">Atrasadas</option>
         </select>
         <span id="regContador" style="font-size:.72rem;color:var(--text3);white-space:nowrap"></span>
       </div>
@@ -1867,9 +1920,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <thead>
           <tr style="background:var(--bg3);border-bottom:2px solid var(--border)">
             <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer" onclick="regSort('num')">Nº Proposta <span id="regSortNum"></span></th>
-            <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer" onclick="regSort('cli')">Cliente <span id="regSortCli"></span></th>
-            <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer" onclick="regSort('dat')">Data <span id="regSortDat"></span></th>
+            <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;cursor:pointer" onclick="regSort('dat')">Data <span id="regSortDat"></span></th>
             <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em">Descrição</th>
+            <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;cursor:pointer" onclick="regSort('cli')">Cliente <span id="regSortCli"></span></th>
             <th style="padding:.5rem .7rem;text-align:left;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em">Fase</th>
             <th style="padding:.5rem .7rem;text-align:right;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer" onclick="regSort('val')">Valor R$ <span id="regSortVal"></span></th>
             <th style="padding:.5rem .7rem;text-align:center;color:var(--accent);font-size:.67rem;text-transform:uppercase;letter-spacing:.05em">Ação</th>
@@ -6047,6 +6100,274 @@ function guiaAba(n){
     </div>
   </div>
 </div>
+<div id="fluxoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharFluxo()">
+  <div style="width:min(1060px,98vw);height:min(88vh,700px);display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+
+    <!-- SIDEBAR ÁRVORE -->
+    <div style="width:220px;min-width:180px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg3);flex-shrink:0">
+      <div style="padding:12px 12px 8px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:800;font-size:13px;color:var(--accent);margin-bottom:8px">🗺️ Fluxos de Trabalho</div>
+        <input id="fluxoBusca" type="text" placeholder="🔍 Pesquisar..." oninput="_fluxoBuscar(this.value)" autocomplete="off"
+          style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:.32rem .5rem;font-size:.75rem;color:var(--text);outline:none">
+      </div>
+      <div id="fluxoArvore" style="flex:1;overflow-y:auto;padding:.35rem .3rem"></div>
+    </div>
+
+    <!-- CONTEÚDO -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div id="fluxoTitHeader" style="font-weight:700;font-size:14px;color:var(--text)">🏠 Início</div>
+        <button class="btn bd bsm" onclick="fecharFluxo()">✕ Fechar</button>
+      </div>
+      <div id="fluxoConteudo" style="flex:1;overflow-y:auto;padding:18px 20px">
+        <div data-page="fl-inicio" style="display:block">
+          <div style="margin-bottom:16px">
+            <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Ciclo Normal de uma Proposta</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:.73rem">
+              <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.2rem .6rem;color:var(--text2)">📝 Em Elaboração</span><span style="color:var(--text3)">→</span>
+              <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.2rem .6rem;color:var(--text2)">📤 Enviada</span><span style="color:var(--text3)">→</span>
+              <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.2rem .6rem;color:var(--text2)">🧐 Analisando</span><span style="color:var(--text3)">→</span>
+              <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.2rem .6rem;color:var(--text2)">🔄 Follow 1–4</span><span style="color:var(--text3)">→</span>
+              <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.2rem .6rem;color:var(--green);font-weight:600">✅ Aprovado</span><span style="color:var(--text3)">→</span>
+              <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.2rem .6rem;color:var(--green)">🔧 Andamento</span><span style="color:var(--text3)">→</span>
+              <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.2rem .6rem;color:var(--green)">🧾 Faturado</span><span style="color:var(--text3)">→</span>
+              <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);border-radius:20px;padding:.2rem .6rem;color:var(--green)">💰 Recebido</span><span style="color:var(--text3)">→</span>
+              <span style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);border-radius:20px;padding:.2rem .6rem;color:#818cf8;font-weight:600">🏁 Finalizado</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+            <div onclick="_fluxoNavTo('fl-criar')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">✚ Criar Nova Proposta</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Do zero ao envio para o cliente</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-editar')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">✏️ Editar Proposta Existente</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Como editar sem perder histórico</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-rev')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">📋 Nova Revisão (Rev A→B→C)</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Quando o escopo muda parcialmente</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-virou')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:#f97316">🔄 Virou Outra Proposta</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Proposta substituída por uma nova</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-cancelada')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:#ef4444">🚫 Cancelada</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Cancelamento definitivo do projeto</div>
+            </div>
+            <div onclick="_fluxoNavTo('fl-log')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#a855f7'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:13px;font-weight:700;color:#a855f7">📓 Uso do LOG</div>
+              <div style="font-size:.72rem;color:var(--text3);margin-top:3px">Memória comercial e técnica</div>
+            </div>
+          </div>
+        </div>
+        <div data-page="fl-criar" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:var(--accent);margin-bottom:4px">✚ Criar Nova Proposta</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Passo a passo do início ao envio para o cliente</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No <strong style="color:var(--text)">Dashboard</strong>, clique em <strong style="color:var(--accent)">✚ Nova Proposta</strong> na barra superior.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O <strong style="color:var(--text)">Nº da proposta</strong> é gerado automaticamente (ex: <code style="font-size:.78rem;color:var(--accent)">350A.26</code>) — você pode editar se necessário.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Aba <strong style="color:var(--text)">CLIENTE</strong> — preencha <strong style="color:var(--text)">Nome do Cliente</strong>. O campo tem autocomplete: comece a digitar e selecione da lista para preencher CNPJ e Cidade automaticamente.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Preencha <strong style="color:var(--text)">Contato 1</strong>: nome, departamento, e-mail e telefone do responsável no cliente.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Aba <strong style="color:var(--text)">LOCAL DO SERVIÇO</strong> — preencha <strong style="color:var(--text)">Cliente do Serviço</strong> (planta/unidade onde o serviço será executado). Também tem autocomplete com CNPJ e Cidade.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Planta JDE Salvador" pode ser diferente do cliente faturado "JDE Matriz SP".</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">6</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Preencha <strong style="color:var(--text)">Título da Proposta</strong> e a <strong style="color:var(--text)">Descrição Resumida</strong> do serviço.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">7</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 2 — Orçamento:</strong> adicione os itens de Serviço e/ou Material. O sistema calcula FMF, PV, total e margens automaticamente.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">8</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 3 — Escopo:</strong> descreva o escopo técnico por seções (clique em ➕ para adicionar seções e sub-itens).</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">9</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique <strong style="color:var(--text)">💾 Salvar</strong> — a <strong style="color:var(--accent)">Revisão A</strong> é criada automaticamente e o número fica <code style="font-size:.78rem;color:var(--accent)">350A.26</code>.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">10</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Exporte o PDF ou Word (Etapa 4) e envie ao cliente. Depois mude a fase para <strong style="color:var(--text)">📤 Enviada</strong>.</div>
+        </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#58a6ff;line-height:1.5">💡 <strong>Auto-draft:</strong> o sistema salva rascunho automaticamente enquanto você digita. Se fechar o browser acidentalmente, a proposta estará salva ao reabrir.</div>
+        </div>
+        <div data-page="fl-editar" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:#0ea5e9;margin-bottom:4px">✏️ Editar Proposta Existente</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Como modificar uma proposta sem perder o histórico</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No <strong style="color:var(--text)">Dashboard</strong>, localize a proposta e clique no card para abri-la no editor.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">A proposta abre com todos os dados preenchidos. Navegue pelas <strong style="color:var(--text)">Etapas 1, 2 e 3</strong> para acessar os campos que deseja alterar.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Alterações simples</strong> (preço de um item, data, telefone, fase): edite diretamente e clique <strong style="color:var(--text)">💾 Salvar</strong>.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Alterações de escopo</strong> (acréscimo/remoção de itens, mudança de condições): idealmente crie uma <strong style="color:#0ea5e9">Nova Revisão</strong> antes de editar, para preservar o histórico da versão anterior.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Após editar, clique <strong style="color:var(--text)">💾 Salvar</strong> ou <strong style="color:var(--text)">🏠 Fechar</strong> — ambos validam Nº e Cliente antes de salvar.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">6</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O sistema sincroniza automaticamente com a nuvem após salvar. O timestamp garante que a versão mais recente sempre prevaleça em múltiplos dispositivos.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#0ea5e9;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">7</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Para consultar versões anteriores, use o ícone <strong style="color:var(--text)">👁️ Visualizar</strong> no painel de Revisões — abre em modo leitura sem alterar a edição atual.</div>
+        </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#0ea5e9;line-height:1.5">⚠️ <strong>Regra importante:</strong> nunca edite uma proposta já enviada sem criar uma nova revisão primeiro. Isso preserva o que o cliente recebeu e o que foi alterado.</div>
+        </div>
+        <div data-page="fl-rev" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:var(--accent);margin-bottom:4px">📋 Nova Revisão (Rev A → B → C…)</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Quando o escopo muda parcialmente mas é ainda a mesma proposta</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Com a proposta aberta, vá até a aba <strong style="color:var(--text)">Revisões</strong> (dentro da Etapa 1).</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique em <strong style="color:var(--accent)">➕ Nova Revisão</strong> — o sistema salva um snapshot completo da revisão atual (escopo + orçamento) e cria a próxima letra.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Faça as alterações necessárias no orçamento e/ou escopo na revisão nova.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique <strong style="color:var(--text)">💾 Salvar</strong> — o número atualiza automaticamente: <code style="font-size:.78rem;color:var(--accent)">350A.26 → 350B.26</code></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">As revisões anteriores ficam acessíveis pelo ícone <strong style="color:var(--text)">👁️</strong> no painel para consulta comparativa (modo leitura).</div>
+        </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#58a6ff;line-height:1.5">💡 <strong>Regra prática:</strong> o cliente ainda reconhece o número da proposta e o escopo base é o mesmo → <em>Nova Revisão</em>. O projeto mudou completamente → <em>Virou Outra Proposta</em> + nova proposta.</div>
+        </div>
+        <div data-page="fl-virou" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:#f97316;margin-bottom:4px">🔄 Virou Outra Proposta</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Quando o projeto muda tão significativamente que precisa ser refeito do zero</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Abra a proposta original no editor (clique no card do dashboard).</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No campo <strong style="color:var(--text)">FASE</strong>, selecione <strong style="color:#f97316">🔄 Virou Outra Proposta</strong>.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O <strong style="color:var(--text)">LOG abre automaticamente</strong> — registre o motivo com clareza.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Escopo expandido para incluir automação completa. Cliente solicitou nova proposta com painéis e instrumentação."</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique <strong style="color:var(--text)">💾 Salvar</strong> — a proposta original fica arquivada nessa fase.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique <strong style="color:var(--text)">🏠 Fechar</strong> para voltar ao dashboard, depois em <strong style="color:var(--accent)">✚ Nova Proposta</strong>.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">6</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Preencha a nova proposta com o próximo número disponível.<br><span style="color:var(--text3);font-size:.73rem">Ex: proposta original era 350A.26 → nova será 351A.26</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#f97316;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">7</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No <strong style="color:var(--text)">LOG da nova proposta</strong>, registre a origem.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Originada da proposta 350A.26 — substituída por expansão de escopo solicitada em 04/2026."</span></div>
+        </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#fb923c;line-height:1.5">💡 <strong>Dica:</strong> A proposta original nunca é deletada. Filtre por "Virou Outra Proposta" no dashboard para consultá-la. Isso mantém o histórico comercial completo.</div>
+        </div>
+        <div data-page="fl-cancelada" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:#ef4444;margin-bottom:4px">🚫 Cancelada</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">Quando o projeto é cancelado formalmente ou suspenso de forma definitiva</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">1</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Abra a proposta no editor.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">2</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">No campo <strong style="color:var(--text)">FASE</strong>, selecione <strong style="color:#ef4444">🚫 Cancelada</strong>.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">3</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">O <strong style="color:var(--text)">LOG abre automaticamente</strong> — registre o motivo do cancelamento.<br><span style="color:var(--text3);font-size:.73rem">Ex: "Cliente cancelou por corte de budget em 04/2026. Possível retomada no Q3. Contato: Mariele (71 9731-6570)."</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">4</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Clique <strong style="color:var(--text)">💾 Salvar</strong>. A proposta é arquivada e sai das análises de pipeline ativo.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">5</span>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Se houver possibilidade de retomada, registre no LOG: data estimada, condição necessária e contato responsável.</div>
+        </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#f87171;line-height:1.5">⚠️ <strong>Cancelada vs Perdido:</strong> use <em>Cancelada</em> para projetos com contrato ou em andamento cancelados definitivamente. Para negócios que não foram fechados (proposta rejeitada), use as fases <em>Perdido</em> correspondentes — elas entram nas métricas de conversão do dashboard.</div>
+        </div>
+        <div data-page="fl-log" style="display:none">
+          <div style="font-size:16px;font-weight:800;color:#a855f7;margin-bottom:4px">📓 Uso do LOG</div>
+          <div style="font-size:.76rem;color:var(--text3);margin-bottom:14px">A memória comercial e técnica da proposta — registre tudo que acontece</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+              <div style="font-size:.82rem;font-weight:700;color:#a855f7;margin-bottom:4px">📌 Histórico Comercial</div>
+              <div style="font-size:.78rem;color:var(--text2);line-height:1.6">Toda interação com o cliente após o envio da proposta:<br>
+              • Ligações e e-mails (data + resumo do que foi dito)<br>
+              • Reuniões e visitas técnicas<br>
+              • Objeções de preço, prazo ou escopo levantadas<br>
+              • Pedidos de desconto e o que foi concedido<br>
+              • Respostas e próximos passos combinados</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+              <div style="font-size:.82rem;font-weight:700;color:#a855f7;margin-bottom:4px">🔧 Relatório de Serviço</div>
+              <div style="font-size:.78rem;color:var(--text2);line-height:1.6">Anotações técnicas após aprovação e durante a execução:<br>
+              • Problemas encontrados em campo e soluções aplicadas<br>
+              • Desvios de escopo (acréscimos ou exclusões)<br>
+              • Observações para o faturamento (horas extras, materiais adicionais)<br>
+              • Pontos de atenção para futuras propostas neste cliente</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+              <div style="font-size:.82rem;font-weight:700;color:#a855f7;margin-bottom:4px">🚫 Motivo de Encerramento</div>
+              <div style="font-size:.78rem;color:var(--text2);line-height:1.6">Sempre registre ao mover para <em>Cancelada</em>, <em>Virou Outra Proposta</em> ou qualquer fase <em>Perdido</em>.<br>
+              O LOG abre automaticamente nessas fases.<br><br>
+              <strong style="color:var(--text)">Bom registro inclui:</strong> data, motivo real, quem decidiu, e possibilidade de retomada futura.</div>
+            </div>
+          </div>
+        <div style="margin-top:12px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#a855f7;line-height:1.5">💡 <strong>Dica de gestão:</strong> Revisar o LOG antes de cada follow-up mostra profissionalismo e evita repetir perguntas já respondidas. É a memória que sobrevive à rotatividade da equipe.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="catModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1.4rem;width:min(520px,96vw);max-height:90vh;overflow-y:auto">
     <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;color:var(--accent)" id="catModalTit">➕ Nova Categoria</div>
@@ -6070,8 +6391,9 @@ function guiaAba(n){
       <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2);cursor:pointer">
         <input type="checkbox" id="catSalvPadrao" style="cursor:pointer"> Salvar também como padrão
       </label>
-      <div style="display:flex;gap:.5rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn bg bsm" onclick="Q('catModal').style.display='none'">Cancelar</button>
+        <button onclick="aplicarMargNaProposta()" style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);border-radius:6px;padding:.3rem .75rem;font-size:.78rem;color:#58a6ff;font-weight:600;cursor:pointer" title="Recalcula apenas os itens desta categoria na proposta aberta, sem alterar o padrão global">📐 Aplicar na Proposta Atual</button>
         <button class="btn bs bsm" onclick="salvarCategoria()">💾 Salvar Categoria</button>
       </div>
     </div>
@@ -6918,8 +7240,8 @@ function rCatAnalise(){
   // Valores para o sort conforme tipo selecionado
   function getVal(d){
     if(_catSort==='ll')   return t==='S'?d.llS:t==='M'?d.llM:d.ll;
-    if(_catSort==='apr')  return t==='S'?d.nAprS:t==='M'?d.nAprM:d.nAprTot;
-    if(_catSort==='nao')  return t==='S'?d.nNaoS:t==='M'?d.nNaoM:d.nNaoTot;
+    if(_catSort==='apr')  return t==='S'?d.pvAprS:t==='M'?d.pvAprM:d.pvAprTot;
+    if(_catSort==='nao')  return t==='S'?d.pvNaoS:t==='M'?d.pvNaoM:d.pvNaoTot;
     if(_catSort==='marg') return (t==='S'?d.margS:t==='M'?d.margM:d.margGeral)||0;
     if(_catSort==='tk')   return t==='S'?d.tkS:t==='M'?d.tkM:d.tkGeral;
     return 0;
@@ -8225,6 +8547,10 @@ function togCiclosDash(){
   ch.textContent  = open?'▼ expandir':'▲ recolher';
   if(!open) rCiclosDash();
 }
+function openCiclosFormulas(){var el=Q('ciclosFormPop');if(el)el.style.display='flex';}
+function closeCiclosFormulas(){var el=Q('ciclosFormPop');if(el)el.style.display='none';}
+function openCatInfo(){var el=Q('catInfoPop');if(el)el.style.display='flex';}
+function closeCatInfo(){var el=Q('catInfoPop');if(el)el.style.display='none';}
 
 function _difD(d1,d2){
   if(!d1||!d2) return null;
@@ -8285,6 +8611,7 @@ function rCiclosDash(){
 
   function _mStr(arr){ var m=_media(arr); return m!==null?m+'d':'—'; }
   function _mCor(arr,bom,ok){ var m=_media(arr); if(m===null) return 'var(--text3)'; return m<=bom?'#3fb950':m<=ok?'#d4a017':'#f97316'; }
+  function _mCorInv(arr,bom,ok){ var m=_media(arr); if(m===null) return 'var(--text3)'; return m>=bom?'#3fb950':m>=ok?'#d4a017':'#f97316'; }
 
   var mProsp=_media(prosp), mElab=_media(elab), mDec=_media(dec), mCom=_media(cicCom);
   var mGap=_media(gapPre), mExec=_media(exec), mEntNF=_media(entNF);
@@ -8305,18 +8632,18 @@ function rCiclosDash(){
   // Comercial
   html+='<div style="font-size:.7rem;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">🔵 Ciclo Comercial</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:.9rem">';
-  html+=kpi('📞','Prospecção',_mStr(prosp),'Contato → Visita',_mCor(prosp,3,7),prosp.length);
-  html+=kpi('📝','Elaboração',_mStr(elab),'Visita/Contato → Envio',_mCor(elab,5,15),elab.length);
-  html+=kpi('⏳','Decisão do Cliente',_mStr(dec),'Envio → Fechamento',_mCor(dec,15,30),dec.length);
-  html+=kpi('🏆','Ciclo Comercial Total',_mStr(cicCom),'Contato → Fechamento',_mCor(cicCom,30,60),cicCom.length);
+  html+=kpi('📞','Prospecção',_mStr(prosp),'Contato → Visita',_mCor(prosp,7,15),prosp.length);
+  html+=kpi('📝','Elaboração',_mStr(elab),'Visita/Contato → Envio',_mCor(elab,6,12),elab.length);
+  html+=kpi('⏳','Decisão do Cliente',_mStr(dec),'Envio → Fechamento',_mCor(dec,30,60),dec.length);
+  html+=kpi('🏆','Ciclo Comercial Total',_mStr(cicCom),'Contato → Fechamento',_mCor(cicCom,45,90),cicCom.length);
   html+='</div>';
 
   // Execução
   html+='<div style="font-size:.7rem;color:#3fb950;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">🟢 Ciclo de Execução</div>';
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:.9rem">';
-  html+=kpi('🚀','Gap Pré-Obra',_mStr(gapPre),'Fechamento → Início Exec.',_mCor(gapPre,7,30),gapPre.length);
-  html+=kpi('⚙️','Duração da Execução',_mStr(exec),'Início → Término','#3fb950',exec.length);
-  html+=(entNF.length?kpi('📋','Entrega → 1ª NF',_mStr(entNF),'Aceite/Término → NF',_mCor(entNF,3,10),entNF.length):'');
+  html+=kpi('🚀','Gap Pré-Obra',_mStr(gapPre),'Fechamento → Início Exec.',_mCor(gapPre,15,30),gapPre.length);
+  html+=kpi('⚙️','Duração da Execução',_mStr(exec),'Início → Término','var(--text3)',exec.length);
+  html+=(entNF.length?kpi('📋','Entrega → 1ª NF',_mStr(entNF),'Aceite/Término → NF',_mCor(entNF,3,7),entNF.length):'');
   html+='</div>';
 
   // Financeiro
@@ -8324,7 +8651,7 @@ function rCiclosDash(){
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem">';
   html+=(mPMR!==null?kpi('📅','PMR Médio Real',mPMR+'d','Última NF → Recebimento',_mCor(pmr,30,60),pmr.length):'');
   html+=(mCicFin!==null?kpi('🔄','Ciclo Financeiro Total',mCicFin+'d','Início Exec. → Receb. Final',_mCor(cicFin,60,120),cicFin.length):'');
-  html+=(mAdiPct!==null?kpi('💰','Adiantamento Médio',mAdiPct+'%','% do total faturado recebido antec.','#3fb950',adiantPcts.length):'');
+  html+=(mAdiPct!==null?kpi('💰','Adiantamento Médio',mAdiPct+'%','% do total faturado recebido antec.',_mCorInv(adiantPcts,40,20),adiantPcts.length):'');
   html+='</div>';
 
   if(!prosp.length&&!elab.length&&!dec.length&&!cicCom.length&&!exec.length&&!pmr.length){
@@ -8867,6 +9194,179 @@ function rExecTimeline(){
   </div>
 </div>
 
+<!-- MODAL: FÓRMULAS KPIs DE CICLOS -->
+<div id="catInfoPop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeCatInfo()">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:1.4rem 1.6rem;position:relative">
+    <button onclick="closeCatInfo()" style="position:absolute;top:.8rem;right:.9rem;background:none;border:none;font-size:1.2rem;color:var(--text3);cursor:pointer">×</button>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)">📂 Como a Análise por Categoria lê os dados</div>
+
+    <div style="background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.1rem;font-size:.82rem;color:var(--text2);line-height:1.7">
+      Os dados são agrupados por <strong>categoria de item de orçamento</strong> (ex: AC-01, MB-01, IE-04…). Cada proposta contribui para as métricas de acordo com o seu <strong>status atual</strong>.
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:.81rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:.4rem .6rem;color:var(--text3);font-weight:600;font-size:.72rem;text-transform:uppercase">Métrica</th>
+          <th style="text-align:left;padding:.4rem .6rem;color:var(--text3);font-weight:600;font-size:.72rem;text-transform:uppercase">Quais propostas entram</th>
+          <th style="text-align:left;padding:.4rem .6rem;color:var(--text3);font-weight:600;font-size:.72rem;text-transform:uppercase">O que representa</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:.55rem .6rem;font-weight:700;color:#3fb950">💰 Lucro Líquido</td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Apenas <strong>fechadas/ganhas</strong></td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Lucro real gerado por categoria — receita menos custo dos itens aprovados</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:.55rem .6rem;font-weight:700;color:#2563eb">✅ Aprovações</td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Apenas <strong>fechadas/ganhas</strong></td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Quantidade e valor dos itens que foram efetivamente vendidos</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:.55rem .6rem;font-weight:700;color:#f97316">⚠️ Não Convertido</td>
+          <td style="padding:.55rem .6rem;color:var(--text2)"><strong>Todas as não ganhas</strong> (enviadas, follow-up, perdidas…)<br><span style="font-size:.75rem;color:var(--text3)">Exclui "Em Elaboração"</span></td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Valor cotado que ainda não virou receita — oportunidade em aberto ou perdida</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:.55rem .6rem;font-weight:700;color:#7c3aed">📝 Margem Média</td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Apenas <strong>fechadas/ganhas</strong></td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">% de margem média dos itens aprovados: (PV − Custo) / PV</td>
+        </tr>
+        <tr>
+          <td style="padding:.55rem .6rem;font-weight:700;color:#0891b2">🎯 Ticket Médio</td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Apenas <strong>fechadas/ganhas</strong></td>
+          <td style="padding:.55rem .6rem;color:var(--text2)">Valor médio por item aprovado nessa categoria</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:1rem;background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.2);border-radius:8px;padding:.65rem 1rem;font-size:.79rem;color:var(--text2);line-height:1.6">
+      <strong style="color:#3fb950">💡 Dica:</strong> Use o filtro <strong>Tipo</strong> (Serviços / Materiais) para separar a análise por origem da receita. Os valores de Lucro Líquido são rateados proporcionalmente entre os itens de cada proposta.
+    </div>
+
+    <div style="text-align:right;margin-top:1rem">
+      <button onclick="closeCatInfo()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:.35rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<div id="ciclosFormPop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeCiclosFormulas()">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.6);width:min(660px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-weight:700;font-size:.95rem;color:var(--accent)">📐 Como são calculados os KPIs de Ciclos</span>
+      <button onclick="closeCiclosFormulas()" style="background:none;border:none;color:var(--text3);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px">✕</button>
+    </div>
+    <div style="overflow-y:auto;padding:1rem">
+
+      <!-- EXPLICAÇÃO GERAL -->
+      <div style="background:var(--bg3);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:.7rem .9rem;margin-bottom:1rem;font-size:.82rem;line-height:1.6">
+        <strong style="color:var(--text)">Como funciona o cálculo:</strong><br>
+        O sistema percorre todas as propostas com dados preenchidos na <em>Linha do Tempo</em>, calcula a <strong>diferença em dias</strong> entre duas datas para cada proposta, soma tudo e divide pelo total — <strong>média aritmética simples</strong>.<br><br>
+        <strong style="color:var(--accent)">Exemplo real — Elaboração: 71d (12)</strong><br>
+        Existem <strong>12 propostas</strong> com data de visita/contato <em>e</em> data de envio preenchidas. Para cada uma o sistema faz:<br>
+        <span style="font-family:monospace;font-size:.78rem;color:var(--text2)">Data de Envio − Data da Visita = X dias</span><br>
+        Depois soma todos os X e divide por 12:<br>
+        <span style="font-family:monospace;font-size:.78rem;color:var(--text2)">(X da prop.1 + X da prop.2 + ... + X da prop.12) ÷ 12 = <strong style="color:#d4a017">71 dias</strong></span>
+      </div>
+
+      <!-- LEGENDA -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem;padding:.5rem .7rem;background:var(--bg3);border-radius:8px;font-size:.76rem">
+        <span style="color:var(--text3);font-weight:600">Semáforo:</span>
+        <span style="color:#3fb950;font-weight:700">● Verde</span><span style="color:var(--text3)">= dentro do ideal</span>
+        <span style="color:#d4a017;font-weight:700">● Amarelo</span><span style="color:var(--text3)">= atenção, mas aceitável</span>
+        <span style="color:#f85149;font-weight:700">● Vermelho</span><span style="color:var(--text3)">= fora do limite</span>
+      </div>
+
+      <div style="font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔵 Ciclo Comercial</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula (Data B − Data A)</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">📞 Prospecção</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data da Visita − Data de Criação da Proposta</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 7d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 15d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 15d</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">📝 Elaboração</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Envio − Data da Visita (ou Criação, se sem visita)</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 6d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 12d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 12d</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">⏳ Decisão do Cliente</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Fechamento − Data de Envio</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 30d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 60d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 60d</td>
+          </tr>
+          <tr>
+            <td style="padding:.5rem .5rem;font-weight:600">🏆 Ciclo Comercial Total</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Fechamento − Data de Criação da Proposta</td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 45d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 90d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 90d</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="font-size:.7rem;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟢 Ciclo de Execução</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula (Data B − Data A)</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">🚀 Gap Pré-Obra</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Início da Execução − Data de Fechamento<br><span style="color:var(--text3);font-size:.72rem">Quanto tempo depois de fechar o negócio a obra começa</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 15d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 30d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 30d</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">⚙️ Duração da Execução</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data de Término − Data de Início da Execução</td>
+            <td style="padding:.5rem .5rem;color:var(--text3);font-size:.74rem">— cinza, sem semáforo<br><span style="font-size:.72rem">varia por tipo de projeto</span></td>
+          </tr>
+          <tr>
+            <td style="padding:.5rem .5rem;font-weight:600">📋 Entrega → 1ª NF</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data da 1ª NF − Data de Aceite (ou Término, se sem aceite)<br><span style="color:var(--text3);font-size:.72rem">Velocidade de faturar após entregar o serviço</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 3d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 7d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 7d</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="font-size:.7rem;font-weight:700;color:#d4a017;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🟡 Ciclo Financeiro</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;width:32%">KPI</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600">Fórmula</th>
+          <th style="text-align:left;padding:.3rem .5rem;font-weight:600;min-width:130px">Semáforo</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">📅 PMR Médio Real</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data do Receb. Final − Data da Última NF emitida<br><span style="color:var(--text3);font-size:.72rem">Prazo médio que o cliente demora para pagar</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 30d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 60d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 60d</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:.5rem .5rem;font-weight:600">🔄 Ciclo Financeiro Total</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Data do Receb. Final − Data de Início da Execução<br><span style="color:var(--text3);font-size:.72rem">Do início da obra até receber o último pagamento</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≤ 60d<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≤ 120d<br><span style="color:#f85149;font-weight:700">● vermelho</span> &gt; 120d</td>
+          </tr>
+          <tr>
+            <td style="padding:.5rem .5rem;font-weight:600">💰 Adiantamento Médio</td>
+            <td style="padding:.5rem .5rem;color:var(--text2);font-size:.77rem">Soma dos Adiantamentos ÷ Soma das NFs × 100%<br><span style="color:var(--text3);font-size:.72rem">% do total que você recebe antes de começar</span></td>
+            <td style="padding:.5rem .5rem;font-size:.74rem;line-height:1.8"><span style="color:#3fb950;font-weight:700">● verde</span> ≥ 40%<br><span style="color:#d4a017;font-weight:700">● amarelo</span> ≥ 20%<br><span style="color:#f85149;font-weight:700">● vermelho</span> &lt; 20%</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="background:var(--bg3);border-radius:8px;padding:.6rem .8rem;font-size:.75rem;color:var(--text3);line-height:1.5">
+        ℹ️ <strong style="color:var(--text2)">Fonte:</strong> Linha do Tempo de cada proposta. Propostas com status <em>Em Elaboração</em> são excluídas. O número entre parênteses mostra quantas propostas contribuíram para cada média.
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="logModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:400;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharLog()">
   <div style="width:min(780px,97vw);max-height:92vh;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)">
     <div style="padding:1rem 1.2rem .7rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
@@ -8963,7 +9463,7 @@ function rExecTimeline(){
 <script src="js/core/router.js"></script>
 <script src="js/modules/categoria-analise.js?v=2"></script>
 <script src="js/modules/cotacao.js"></script>
-<script src="js/modules/gantt.js"></script>
+<script src="js/modules/gantt.js?v=4"></script>
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
 <script src="js/modules/historico.js?v=5"></script>
