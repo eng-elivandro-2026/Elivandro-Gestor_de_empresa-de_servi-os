@@ -521,29 +521,27 @@
       var st = h.status||'em_andamento';
       var atrasado = h.prazo_acao && h.status==='em_andamento' && new Date(h.prazo_acao+'T00:00:00')<new Date();
       var stLabel = {em_andamento:'Em andamento',resolvido:'Resolvido',cancelado:'Cancelado'}[st]||st;
-      var priLabel= {alta:'Alta',media:'Média',baixa:'Baixa'}[h.prioridade||'media'];
-      var canalIco= {WhatsApp:'WhatsApp',Reunião:'Reunião','E-mail':'E-mail',Telefone:'Telefone',Outro:'Outro'}[h.canal]||h.canal||'';
+      var canalIco = h.canal||'';
+      var entCls = 'entrada'+(atrasado?' atrasada':'')+(st==='resolvido'?' resolvida':'')+(st==='cancelado'?' cancelada':'');
+      var badgeCls = 'bs '+(st==='resolvido'?'bs-ok':atrasado?'bs-err':'bs-pend');
 
-      return '<div class="entrada'+(atrasado?' atrasada':'')+(st==='resolvido'?' resolvida':'')+'">'
-        // Cabeçalho da entrada
-        +'<div class="entrada-meta">'
-        +'<span class="meta-data">'+fmtDt(h.data)+'</span>'
-        +'<span class="meta-sep">|</span>'
-        +'<span class="meta-canal">'+esc(canalIco)+'</span>'
-        +(h.cliente?'<span class="meta-sep">|</span><span class="meta-cli">'+esc(h.cliente)+'</span>':'')
-        +(h.contato?'<span class="meta-sep">·</span><span class="meta-con">'+esc(h.contato)+'</span>':'')
-        +(propLabel?'<span class="meta-sep">|</span><span class="meta-prop">'+esc(propLabel)+'</span>':'')
-        +'<span class="meta-badges">'
-        +'<span class="badge-st '+(st==='resolvido'?'st-ok':atrasado?'st-err':'st-pend')+'">'+stLabel+'</span>'
-        +(atrasado?'<span class="badge-at">ATRASADO</span>':'')
+      return '<div class="'+entCls+'">'
+        +'<div class="em">'
+        +'<span class="em-dt">'+fmtDt(h.data)+'</span>'
+        +(canalIco?'<span class="em-sp">|</span><span class="em-cn">'+esc(canalIco)+'</span>':'')
+        +(h.cliente?'<span class="em-sp">|</span><span class="em-cl">'+esc(h.cliente)+'</span>':'')
+        +(h.contato?'<span class="em-sp">·</span><span class="em-co">'+esc(h.contato)+'</span>':'')
+        +(propLabel?'<span class="em-sp">|</span><span class="em-pr">'+esc(propLabel)+'</span>':'')
+        +'<span class="em-badges">'
+        +'<span class="'+badgeCls+'">'+stLabel+'</span>'
+        +(atrasado?'<span class="bs-at">ATRASADO</span>':'')
         +'</span>'
         +'</div>'
-        // Corpo
-        +(h.resumo?'<div class="campo"><span class="campo-lbl">Resumo:</span> <span class="campo-val">'+esc(h.resumo)+'</span></div>':'')
-        +(h.decisao?'<div class="campo"><span class="campo-lbl dec-lbl">Decisão:</span> <span class="campo-val dec-val">'+esc(h.decisao)+'</span></div>':'')
-        +(h.pendencia?'<div class="campo"><span class="campo-lbl">Pendência:</span> <span class="campo-val">'+esc(h.pendencia)+'</span></div>':'')
-        +(h.proxima_acao?'<div class="campo"><span class="campo-lbl acao-lbl">Próxima ação:</span> <span class="campo-val acao-val">'+esc(h.proxima_acao)
-          +(h.prazo_acao?' — prazo: '+fmtD(h.prazo_acao)+(atrasado?' (VENCIDO)':''):'')
+        +(h.resumo?'<div class="campo"><span class="cl">Resumo:</span> <span class="cv">'+esc(h.resumo)+'</span></div>':'')
+        +(h.decisao?'<div class="campo"><span class="cl cl-dec">Decisão:</span> <span class="cv cv-dec">'+esc(h.decisao)+'</span></div>':'')
+        +(h.pendencia?'<div class="campo"><span class="cl">Pendência:</span> <span class="cv">'+esc(h.pendencia)+'</span></div>':'')
+        +(h.proxima_acao?'<div class="campo"><span class="cl cl-ac">Próxima ação:</span> <span class="cv cv-ac">'+esc(h.proxima_acao)
+          +(h.prazo_acao?' — prazo: '+fmtD(h.prazo_acao)+(atrasado?' <strong>(VENCIDO)</strong>':''):'')
           +(h.responsavel?' | Resp: '+esc(h.responsavel):'')
           +'</span></div>':'')
         +'</div>';
@@ -555,21 +553,21 @@
       var resolvidos = regs.filter(function(h){ return h.status==='resolvido'; }).length;
       var atrasados  = regs.filter(function(h){ return isAtrasado(h); }).length;
 
-      var resumoGrupo = 'Total de interações: <strong>'+total+'</strong>'
-        +(resolvidos?' &nbsp;·&nbsp; Resolvidas: <strong>'+resolvidos+'</strong>':'')
-        +(atrasados?' &nbsp;·&nbsp; <span class="alerta-at">Atrasadas: '+atrasados+'</span>':'');
+      var tagsHtml = '<span class="gh-tag">'+total+' registro'+(total!==1?'s':'')+'</span>';
+      if(resolvidos) tagsHtml += '<span class="gh-tag t-ok">✔ '+resolvidos+' resolvido'+(resolvidos!==1?'s':'')+'</span>';
+      if(atrasados)  tagsHtml += '<span class="gh-tag t-err">⚠ '+atrasados+' atrasado'+(atrasados!==1?'s':'')+'</span>';
 
       return '<div class="grupo">'
-        +'<div class="grupo-titulo"><span class="grupo-num">'+(gi+1)+'.</span> '+esc(k)+'</div>'
-        +'<div class="grupo-resumo">'+resumoGrupo+'</div>'
-        +'<div class="tl">'
+        +'<div class="gh"><div class="gh-nome">'+(gi+1)+'. '+esc(k)+'</div><div class="gh-tags">'+tagsHtml+'</div></div>'
+        +'<div class="gb"><div class="tl">'
         +regs.map(function(h, i){
+          var dotCls = 'tl-dot'+(isAtrasado(h)?' d-err':h.status==='resolvido'?' d-ok':h.status==='cancelado'?' d-grey':'');
           return '<div class="tl-item">'
-            +'<div class="tl-marcador"><div class="tl-dot"></div>'+(i<regs.length-1?'<div class="tl-fio"></div>':'')+'</div>'
-            +'<div class="tl-corpo">'+cardHtml(h)+'</div>'
+            +'<div class="tl-m"><div class="'+dotCls+'"></div>'+(i<regs.length-1?'<div class="tl-fio"></div>':'')+'</div>'
+            +'<div class="tl-c">'+cardHtml(h)+'</div>'
             +'</div>';
         }).join('')
-        +'</div>'
+        +'</div></div>'
         +'</div>';
     }).join('');
 
@@ -579,106 +577,131 @@
     var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
     var periodoLabel = filtDe&&filtAte ? fmtD(filtDe)+' a '+fmtD(filtAte) : filtDe ? 'A partir de '+fmtD(filtDe) : filtAte ? 'Até '+fmtD(filtAte) : 'Todo o período';
     var propSel  = filtPropId && propIdx[filtPropId] ? propIdx[filtPropId].num||'' : '';
-    var assunto  = 'Relatório de Relacionamento com Clientes'
-      +' — Agrupado por '+agrupLabel[agrup]
-      +(propSel?' — Proposta #'+propSel:'')
-      +(filtCli?' — Cliente: '+filtCli:'')
-      +(filtCon?' — Contato: '+filtCon:'');
     var hoje2    = new Date();
-    var cidadeData = 'Jundiaí, '+hoje2.getDate()+' de '
+    var cidadeData = hoje2.getDate()+' de '
       +['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][hoje2.getMonth()]
       +' de '+hoje2.getFullYear();
 
-    var css = '@page{size:A4;margin:22mm 18mm}'
+    // Estatísticas globais
+    var totalRegs   = list.length;
+    var nResolvidos = list.filter(function(h){ return h.status==='resolvido'; }).length;
+    var nAndamento  = list.filter(function(h){ return h.status==='em_andamento'&&!isAtrasado(h); }).length;
+    var nAtrasados  = list.filter(isAtrasado).length;
+    var nCancelados = list.filter(function(h){ return h.status==='cancelado'; }).length;
+
+    var css = '@page{size:A4;margin:20mm 18mm}'
       +'*{box-sizing:border-box;margin:0;padding:0}'
-      +'body{font-family:"Times New Roman",Times,serif;font-size:12pt;color:#000;background:#fff;padding:0}'
-      +'.pagina{max-width:760px;margin:0 auto;padding:32px 40px}'
-      // Topo memorando
-      +'.topo{border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end}'
-      +'.topo-emp{font-size:15pt;font-weight:700;letter-spacing:.02em}'
-      +'.topo-sub{font-size:9pt;color:#444;margin-top:2px}'
-      +'.topo-data{font-size:10pt;text-align:right;color:#333}'
-      +'.memo-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;border-bottom:1px solid #000;padding-bottom:6px}'
-      // Campos para/de/assunto
-      +'.memo-campos{border:1px solid #aaa;border-radius:0;margin-bottom:20px}'
-      +'.mc-linha{display:flex;border-bottom:1px solid #ccc;padding:5px 10px;font-size:11pt}'
-      +'.mc-linha:last-child{border-bottom:none}'
-      +'.mc-rot{font-weight:700;min-width:80px;flex-shrink:0}'
-      +'.mc-val{flex:1}'
+      +'body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:#1a1a1a;background:#fff}'
+      +'.pagina{max-width:794px;margin:0 auto;padding:28px 36px}'
+      // Cabeçalho
+      +'.cabecalho{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:3px solid #1e3a5f;margin-bottom:16px}'
+      +'.cab-nome{font-size:17pt;font-weight:700;color:#1e3a5f;letter-spacing:.02em}'
+      +'.cab-sub{font-size:8.5pt;color:#666;margin-top:3px}'
+      +'.cab-icone{font-size:26pt;line-height:1}'
+      // Título
+      +'.rel-bloco{text-align:center;margin-bottom:16px}'
+      +'.rel-titulo{font-size:14pt;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:.06em;line-height:1.3}'
+      +'.rel-sub{font-size:9.5pt;color:#555;margin-top:5px}'
+      +'.linha-dec{height:2px;background:linear-gradient(to right,transparent,#1e3a5f,transparent);margin:10px auto 0;width:55%}'
+      // Metadados
+      +'.meta-box{background:#f0f4f8;border:1px solid #c8d6e5;border-radius:3px;padding:9px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:4px 20px;font-size:9pt}'
+      +'.mi{display:flex;gap:4px;align-items:baseline}'
+      +'.mi-r{font-weight:700;color:#1e3a5f}'
+      +'.mi-v{color:#333}'
+      // Estatísticas
+      +'.stats{display:flex;margin-bottom:20px;border:1px solid #c8d6e5;border-radius:3px;overflow:hidden}'
+      +'.stat{flex:1;text-align:center;padding:8px 4px;border-right:1px solid #c8d6e5}'
+      +'.stat:last-child{border-right:none}'
+      +'.sn{font-size:17pt;font-weight:700;color:#1e3a5f;line-height:1}'
+      +'.sl{font-size:7.5pt;color:#666;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}'
+      +'.stat.s-ok .sn{color:#1a7a3a}.stat.s-pend .sn{color:#7a5a00}.stat.s-err .sn{color:#c00}.stat.s-grey .sn{color:#888}'
       // Grupos
-      +'.grupo{margin-bottom:22px;page-break-inside:avoid}'
-      +'.grupo-titulo{font-size:12pt;font-weight:700;border-bottom:1.5px solid #000;padding-bottom:3px;margin-bottom:4px}'
-      +'.grupo-num{display:inline-block;min-width:20px}'
-      +'.grupo-resumo{font-size:9pt;color:#555;margin-bottom:10px;font-style:italic}'
-      +'.alerta-at{color:#c00;font-weight:700}'
+      +'.grupo{margin-bottom:20px;page-break-inside:avoid}'
+      +'.gh{background:#1e3a5f;color:#fff;padding:7px 12px;border-radius:3px 3px 0 0;display:flex;justify-content:space-between;align-items:center;gap:8px}'
+      +'.gh-nome{font-size:11pt;font-weight:700}'
+      +'.gh-tags{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap}'
+      +'.gh-tag{font-size:7.5pt;background:rgba(255,255,255,.2);border-radius:8px;padding:1px 8px}'
+      +'.gh-tag.t-ok{background:rgba(100,220,130,.25)}.gh-tag.t-err{background:rgba(255,100,100,.3)}'
+      +'.gb{border:1px solid #c8d6e5;border-top:none;border-radius:0 0 3px 3px}'
       // Timeline
-      +'.tl{padding-left:20px}'
-      +'.tl-item{display:flex;gap:0;position:relative;margin-bottom:0}'
-      +'.tl-marcador{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;margin-left:-20px}'
-      +'.tl-dot{width:8px;height:8px;border-radius:50%;background:#000;flex-shrink:0;margin-top:16px;border:1.5px solid #000}'
-      +'.tl-fio{width:1px;flex:1;background:#aaa;min-height:12px}'
-      +'.tl-corpo{flex:1;margin-bottom:12px}'
+      +'.tl{padding:8px 12px}'
+      +'.tl-item{display:flex;position:relative;margin-bottom:0}'
+      +'.tl-m{display:flex;flex-direction:column;align-items:center;width:22px;flex-shrink:0}'
+      +'.tl-dot{width:10px;height:10px;border-radius:50%;background:#1e3a5f;flex-shrink:0;margin-top:13px;border:2px solid #1e3a5f}'
+      +'.tl-dot.d-ok{background:#1a7a3a;border-color:#1a7a3a}.tl-dot.d-err{background:#c00;border-color:#c00}.tl-dot.d-grey{background:#999;border-color:#999}'
+      +'.tl-fio{width:1.5px;flex:1;background:#d0d8e4;min-height:10px}'
+      +'.tl-c{flex:1;margin-bottom:12px}'
       // Entrada
-      +'.entrada{border:1px solid #ccc;border-left:3px solid #000;padding:8px 10px;font-size:10.5pt;background:#fff}'
-      +'.entrada.atrasada{border-left-color:#c00;background:#fffafa}'
-      +'.entrada.resolvida{border-left-color:#1a7a3a;opacity:.9}'
-      +'.entrada-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px dashed #ccc;font-size:9.5pt}'
-      +'.meta-data{font-weight:700}'
-      +'.meta-sep{color:#aaa;margin:0 2px}'
-      +'.meta-canal{font-style:italic}'
-      +'.meta-cli{font-weight:700}'
-      +'.meta-con{color:#333}'
-      +'.meta-prop{color:#1a3a7a;font-size:9pt}'
-      +'.meta-badges{margin-left:auto;display:flex;gap:4px;flex-shrink:0}'
-      +'.badge-st{font-size:8pt;font-weight:700;border:1px solid;padding:0 5px;border-radius:2px}'
-      +'.st-ok{color:#1a7a3a;border-color:#1a7a3a}'
-      +'.st-pend{color:#7a5a00;border-color:#c8a000}'
-      +'.st-err{color:#c00;border-color:#c00}'
-      +'.badge-at{font-size:8pt;font-weight:700;color:#c00;border:1px solid #c00;padding:0 5px;border-radius:2px}'
-      // Campos do corpo
-      +'.campo{margin-bottom:3px;line-height:1.5}'
-      +'.campo-lbl{font-weight:700;font-size:10pt}'
-      +'.campo-val{font-size:10.5pt}'
-      +'.dec-lbl{color:#1a7a3a}'
-      +'.dec-val{color:#1a7a3a;font-weight:600}'
-      +'.acao-lbl{color:#1a3a7a}'
-      +'.acao-val{color:#1a3a7a}'
-      // Rodapé
-      +'.assinatura{margin-top:36px;border-top:1px solid #000;padding-top:10px;display:flex;justify-content:space-between}'
-      +'.ass-bloco{text-align:center;font-size:10pt}'
-      +'.ass-linha{border-top:1px solid #000;width:200px;margin:24px auto 4px}'
-      +'.rodape{margin-top:24px;border-top:1px solid #ccc;padding-top:6px;font-size:8pt;color:#888;text-align:center}'
-      +'.vazio{text-align:center;padding:2rem;color:#888;font-style:italic}'
-      +'@media print{body{padding:0}.pagina{padding:0 10px}}'
-      +'@media screen{body{background:#e5e7eb}.pagina{box-shadow:0 2px 16px rgba(0,0,0,.15)}}';
+      +'.entrada{border:1px solid #dde3ea;border-left:4px solid #1e3a5f;padding:8px 12px;font-size:10pt;background:#fff;border-radius:0 3px 3px 0}'
+      +'.entrada.atrasada{border-left-color:#c00;background:#fff8f8}'
+      +'.entrada.resolvida{border-left-color:#1a7a3a;background:#f6fff8}'
+      +'.entrada.cancelada{border-left-color:#999;opacity:.85}'
+      +'.em{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px dashed #e0e6ee;font-size:9pt}'
+      +'.em-dt{font-weight:700;color:#1e3a5f}.em-sp{color:#ccc;margin:0 2px}.em-cn{font-style:italic;color:#555}'
+      +'.em-cl{font-weight:700}.em-co{color:#444}.em-pr{color:#1e3a5f;font-size:8.5pt}'
+      +'.em-badges{margin-left:auto;display:flex;gap:4px;flex-shrink:0}'
+      +'.bs{font-size:7.5pt;font-weight:700;border:1px solid;padding:1px 7px;border-radius:10px}'
+      +'.bs-ok{color:#1a7a3a;border-color:#1a7a3a;background:#f0fff4}'
+      +'.bs-pend{color:#7a5a00;border-color:#c8a000;background:#fffbf0}'
+      +'.bs-err{color:#c00;border-color:#c00;background:#fff8f8}'
+      +'.bs-at{font-size:7.5pt;font-weight:700;color:#c00;border:1px solid #c00;padding:1px 7px;border-radius:10px;background:#fff0f0}'
+      +'.campo{margin-bottom:3px;line-height:1.55}'
+      +'.cl{font-weight:700;font-size:9.5pt;color:#444}'
+      +'.cv{font-size:10pt}'
+      +'.cl-dec{color:#1a7a3a}.cv-dec{color:#1a7a3a;font-weight:600}'
+      +'.cl-ac{color:#1e3a5f}.cv-ac{color:#1e3a5f}'
+      // Assinatura / Rodapé
+      +'.assinatura{margin-top:38px;display:flex;justify-content:space-between;page-break-inside:avoid}'
+      +'.ass-b{text-align:center;font-size:9.5pt;color:#444}'
+      +'.ass-l{border-top:1px solid #555;width:180px;margin:28px auto 5px}'
+      +'.rodape{margin-top:16px;padding-top:8px;border-top:2px solid #1e3a5f;font-size:7.5pt;color:#888;display:flex;justify-content:space-between}'
+      +'.vazio{text-align:center;padding:2.5rem;color:#888;font-style:italic}'
+      +'@media print{body{background:#fff}.pagina{padding:0;box-shadow:none}}'
+      +'@media screen{body{background:#c9d0d9}.pagina{box-shadow:0 4px 28px rgba(0,0,0,.25);min-height:1060px}}';
 
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
-      +'<title>Memorando — Relacionamento — '+esc(empresa)+'</title>'
+      +'<title>Relatório de Relacionamento — '+esc(empresa)+'</title>'
       +'<style>'+css+'</style></head><body><div class="pagina">'
-      // Topo
-      +'<div class="topo">'
-      +'<div><div class="topo-emp">'+esc(empresa)+'</div><div class="topo-sub">Relatório Interno de Relacionamento com Clientes</div></div>'
-      +'<div class="topo-data">'+cidadeData+'</div>'
+      // Cabeçalho
+      +'<div class="cabecalho">'
+      +'<div><div class="cab-nome">'+esc(empresa)+'</div><div class="cab-sub">Gestão de Clientes e Negócios</div></div>'
+      +'<div class="cab-icone">🤝</div>'
       +'</div>'
-      // Título Memorando
-      +'<div class="memo-titulo">Memorando</div>'
-      // Campos
-      +'<div class="memo-campos">'
-      +'<div class="mc-linha"><span class="mc-rot">Para:</span><span class="mc-val">Equipe Comercial / Gestão</span></div>'
-      +'<div class="mc-linha"><span class="mc-rot">De:</span><span class="mc-val">Sistema de Relacionamento — '+esc(empresa)+'</span></div>'
-      +'<div class="mc-linha"><span class="mc-rot">Assunto:</span><span class="mc-val">'+esc(assunto)+'</span></div>'
-      +'<div class="mc-linha"><span class="mc-rot">Período:</span><span class="mc-val">'+periodoLabel+' &nbsp;·&nbsp; <strong>'+list.length+' registro'+(list.length!==1?'s':'')+'</strong></span></div>'
-      +(filtCon?'<div class="mc-linha"><span class="mc-rot">Contato:</span><span class="mc-val">'+esc(filtCon)+'</span></div>':'')
-      +(filtCli?'<div class="mc-linha"><span class="mc-rot">Cliente:</span><span class="mc-val">'+esc(filtCli)+'</span></div>':'')
+      // Título
+      +'<div class="rel-bloco">'
+      +'<div class="rel-titulo">Relatório de Relacionamento com Clientes e Negócios</div>'
+      +'<div class="rel-sub">Agrupado por '+agrupLabel[agrup]+' &nbsp;·&nbsp; '+periodoLabel+'</div>'
+      +'<div class="linha-dec"></div>'
       +'</div>'
-      // Corpo
+      // Metadados
+      +'<div class="meta-box">'
+      +'<div class="mi"><span class="mi-r">Período:</span><span class="mi-v">'+periodoLabel+'</span></div>'
+      +'<div class="mi"><span class="mi-r">Agrupamento:</span><span class="mi-v">'+agrupLabel[agrup]+'</span></div>'
+      +(filtCli?'<div class="mi"><span class="mi-r">Cliente:</span><span class="mi-v">'+esc(filtCli)+'</span></div>':'')
+      +(filtCon?'<div class="mi"><span class="mi-r">Contato:</span><span class="mi-v">'+esc(filtCon)+'</span></div>':'')
+      +(propSel?'<div class="mi"><span class="mi-r">Proposta:</span><span class="mi-v">#'+esc(propSel)+'</span></div>':'')
+      +(filtResp?'<div class="mi"><span class="mi-r">Responsável:</span><span class="mi-v">'+esc(filtResp)+'</span></div>':'')
+      +'<div class="mi"><span class="mi-r">Emitido em:</span><span class="mi-v">'+cidadeData+'</span></div>'
+      +'</div>'
+      // Estatísticas
+      +'<div class="stats">'
+      +'<div class="stat"><div class="sn">'+totalRegs+'</div><div class="sl">Total</div></div>'
+      +'<div class="stat s-ok"><div class="sn">'+nResolvidos+'</div><div class="sl">Resolvidos</div></div>'
+      +'<div class="stat s-pend"><div class="sn">'+nAndamento+'</div><div class="sl">Em andamento</div></div>'
+      +'<div class="stat s-err"><div class="sn">'+nAtrasados+'</div><div class="sl">Atrasados</div></div>'
+      +'<div class="stat s-grey"><div class="sn">'+nCancelados+'</div><div class="sl">Cancelados</div></div>'
+      +'</div>'
+      // Conteúdo
       +gruposHtml
       // Assinatura
       +'<div class="assinatura">'
-      +'<div class="ass-bloco"><div class="ass-linha"></div>Gestor Responsável</div>'
-      +'<div class="ass-bloco"><div class="ass-linha"></div>Aprovado por</div>'
+      +'<div class="ass-b"><div class="ass-l"></div>Responsável Comercial</div>'
+      +'<div class="ass-b"><div class="ass-l"></div>Aprovado por</div>'
       +'</div>'
-      +'<div class="rodape">Documento gerado automaticamente em '+new Date().toLocaleString('pt-BR')+' · '+esc(empresa)+'</div>'
+      +'<div class="rodape">'
+      +'<span>'+esc(empresa)+' · Sistema de Gestão</span>'
+      +'<span>Documento gerado em '+new Date().toLocaleString('pt-BR')+'</span>'
+      +'</div>'
       +'</div></body></html>';
 
     var win = window.open('','_blank','width=860,height=800');
