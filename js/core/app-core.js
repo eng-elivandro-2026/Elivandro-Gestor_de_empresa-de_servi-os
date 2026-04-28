@@ -410,7 +410,7 @@ function loadAliqUI(){
 }
 
 
-function isPrazo(sec){var t=String(sec.titulo||'').trim().toUpperCase();return t==='PRAZO / CRONOGRAMA'||t==='PRAZO'||t==='CRONOGRAMA'||t==='PRAZO/CRONOGRAMA';}
+function isPrazo(sec){if(sec&&sec.hasGantt)return true;var t=String(sec&&sec.titulo||'').trim().toUpperCase();return t==='PRAZO / CRONOGRAMA'||t==='PRAZO'||t==='CRONOGRAMA'||t==='PRAZO/CRONOGRAMA';}
 function isValorSec(sec){
   return !!(sec && (sec.type==='valor' || String(sec.titulo||'').trim().toUpperCase()==='VALOR'));
 }
@@ -2669,7 +2669,7 @@ function addGanttSec(){
     if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
     return;
   }
-  escSecs.push({id:uid(),num:'',titulo:'PRAZO / CRONOGRAMA',desc:'',subs:[]});
+  escSecs.push({id:uid(),num:'',titulo:'PRAZO / CRONOGRAMA',desc:'',subs:[],hasGantt:true});
   rEsc();
   toast('📅 Seção Gantt inserida');
   setTimeout(function(){
@@ -2982,8 +2982,8 @@ function rEsc(){
     el.innerHTML='<div class="emp"><div class="emp-i">🔧</div><p>Clique em "+ Nova Seção" para começar.</p></div>';
     return;
   }
-  // Garante numeração sequencial antes de renderizar
-  escSecs.forEach(function(s,i){s.num=String(i+1);});
+  // Migra seções antigas: marca hasGantt pelo título para que editar o título não apague o gantt
+  escSecs.forEach(function(s,i){s.num=String(i+1);if(!s.hasGantt){var t=String(s.titulo||'').trim().toUpperCase();if(t==='PRAZO / CRONOGRAMA'||t==='PRAZO'||t==='CRONOGRAMA'||t==='PRAZO/CRONOGRAMA')s.hasGantt=true;}});
   var tot=escSecs.length;
   el.innerHTML=escSecs.map(function(sec,si){
     var isFirst=si===0,isLast=si===tot-1;
