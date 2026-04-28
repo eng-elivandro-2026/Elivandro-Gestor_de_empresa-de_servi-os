@@ -1407,7 +1407,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;" onclick="var b=document.getElementById('simBoxBody');var a=document.getElementById('simBoxArrow');var open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';">
           <span id="simBoxArrow" style="font-size:.65rem;color:var(--text3);">▶</span>
           <span style="font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.04em;">🎯 ATINGIR META</span>
-          <span style="font-size:.72rem;color:var(--text3);">— defina o total desejado e simule o FMF</span>
+          <span style="font-size:.72rem;color:var(--text3);">— simule FMF, Custo por grupo ou por item específico</span>
         </div>
         <div id="simBoxBody" style="display:none;">
         <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end;margin-top:.65rem;">
@@ -1425,10 +1425,11 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
           </div>
           <div>
             <div id="simAlvoLabel" style="font-size:.7rem;color:var(--text3);margin-bottom:.2rem;">Ajustar FMF de</div>
-            <select id="simAlvo" style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:.82rem;">
+            <select id="simAlvo" onchange="simAlvoChange()" style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:.82rem;">
               <option value="material">Material</option>
               <option value="servico">Mão de Obra / Serviço</option>
               <option value="ambos">Ambos (proporcional)</option>
+              <option value="item">⚙ Item específico</option>
             </select>
           </div>
           <div>
@@ -1438,6 +1439,10 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
             <button class="btn bg bsm" id="simAplicarBtn" onclick="aplicarSimulacao()" style="height:32px;display:none;">✔ Aplicar resultado</button>
           </div>
           <button id="simDesfazerBtn" class="btn bd bsm" onclick="desfazerSimulacao()" style="height:32px;display:none">↩ Desfazer</button>
+        </div>
+        <div id="simItemPickerDiv" style="display:none;margin-top:.5rem;">
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.2rem;">Item do orçamento</div>
+          <select id="simItemId" style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:.82rem;min-width:300px;max-width:100%;"></select>
         </div>
         <div id="simResultado" style="margin-top:.65rem;font-size:.8rem;"></div>
         </div><!-- /simBoxBody -->

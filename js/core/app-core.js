@@ -4386,6 +4386,28 @@ function simModoChange(){
   if(l) l.textContent=document.getElementById('simModo').value==='custo'?'Ajustar Custo de':'Ajustar FMF de';
 }
 
+function _populateSimItemPicker(){
+  var sel=document.getElementById('simItemId'); if(!sel) return;
+  sel.innerHTML='';
+  (budg||[]).forEach(function(it,i){
+    if(it.inc===false) return;
+    var nome=it.desc||it.ref||('Item #'+(i+1));
+    var tipo=it.t==='material'?'Mat':'Svc';
+    var opt=document.createElement('option');
+    opt.value=i;
+    opt.textContent='['+tipo+'] '+nome+' — '+money(n2(it.pvt));
+    sel.appendChild(opt);
+  });
+}
+
+function simAlvoChange(){
+  var alvo=document.getElementById('simAlvo').value;
+  var div=document.getElementById('simItemPickerDiv');
+  if(!div) return;
+  if(alvo==='item'){ _populateSimItemPicker(); div.style.display='block'; }
+  else div.style.display='none';
+}
+
 function rodarSimulacao(){
   var meta = n2(document.getElementById('simMeta').value);
   var alvo = document.getElementById('simAlvo').value;
@@ -4422,6 +4444,33 @@ function rodarSimulacao(){
       scaleS = (meta - totalM) / totalS;
       if(scaleS <= 0){ res.innerHTML = '<span style="color:#f85149">⚠ Meta impossível: o custo resultante seria negativo ou zero.</span>'; return; }
       _simResultado = { modo:'custo', alvo:'servico', scaleM:null, scaleS:scaleS, meta:meta, custoSOrig:custoS };
+    } else if(alvo === 'item'){
+      var itemIdxEl = document.getElementById('simItemId');
+      if(!itemIdxEl||itemIdxEl.value===''){ res.innerHTML='<span style="color:#f85149">⚠ Selecione um item.</span>'; return; }
+      var itemIdx = parseInt(itemIdxEl.value);
+      var itSel = budg[itemIdx];
+      if(!itSel){ res.innerHTML='<span style="color:#f85149">⚠ Item não encontrado.</span>'; return; }
+      var fmfI=n2(itSel.fmf), multI=n2(itSel.mult);
+      if(fmfI<=0||multI<=0){ res.innerHTML='<span style="color:#f85149">⚠ Item sem FMF ou multiplicador definido.</span>'; return; }
+      var pvtOther = totalAtual - n2(itSel.pvt);
+      var pvtNeeded = meta - pvtOther;
+      if(pvtNeeded<=0){ res.innerHTML='<span style="color:#f85149">⚠ Meta impossível: o custo resultante seria negativo ou zero.</span>'; return; }
+      var cuNovo = pvtNeeded / (fmfI * multI);
+      var cuOrig = n2(itSel.cu);
+      _simResultado = { modo:'custo', alvo:'item', itemIdx:itemIdx, cuNovo:cuNovo, cuOrig:cuOrig, meta:meta };
+      var diff2=meta-totalAtual, sinal2=diff2>0?'+':'', cor2=diff2>0?'#3fb950':'#f97316';
+      var varPct=cuOrig>0?((cuNovo/cuOrig-1)*100).toFixed(1):'0.0';
+      var corI=cuNovo>=cuOrig?'#3fb950':'#f97316';
+      var nomeI=itSel.desc||itSel.ref||('Item #'+(itemIdx+1));
+      var html2='<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-start;">';
+      html2+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Total atual</div><div style="font-weight:700;color:var(--text)">'+money(totalAtual)+'</div></div>';
+      html2+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Meta</div><div style="font-weight:700;color:#58a6ff">'+money(meta)+'</div></div>';
+      html2+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px"><div style="font-size:.68rem;color:var(--text3)">Diferença</div><div style="font-weight:700;color:'+cor2+'">'+sinal2+money(Math.abs(diff2))+'</div></div>';
+      html2+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:200px"><div style="font-size:.68rem;color:var(--text3)">Custo unitário · '+nomeI+'</div><div style="font-weight:700;color:'+corI+'">'+money(cuNovo)+' <span style="font-size:.68rem;color:var(--text3)">(era '+money(cuOrig)+')</span></div><div style="font-size:.68rem;color:'+corI+'">'+(varPct>0?'+':'')+varPct+'%</div></div>';
+      html2+='</div>';
+      res.innerHTML=html2;
+      document.getElementById('simAplicarBtn').style.display='inline-flex';
+      return;
     } else {
       scaleM = scaleS = meta / totalAtual;
       _simResultado = { modo:'custo', alvo:'ambos', scaleM:scaleM, scaleS:scaleS, meta:meta, custoMOrig:custoM, custoSOrig:custoS };
@@ -4530,18 +4579,27 @@ function aplicarSimulacao(){
   var cfg = getPrcAtual();
 
   if(r.modo === 'custo'){
-    budg.forEach(function(it){
-      if(it.inc === false) return;
-      if(it.t === 'material' && r.scaleM !== null){
-        it.cu = n2(it.cu) * r.scaleM;
-        it.pvu = it.cu * n2(it.fmf);
-        it.pvt = it.pvu * n2(it.mult);
-      } else if(it.t !== 'material' && r.scaleS !== null){
-        it.cu = n2(it.cu) * r.scaleS;
-        it.pvu = it.cu * n2(it.fmf);
-        it.pvt = it.pvu * n2(it.mult);
+    if(r.alvo === 'item'){
+      var itA = budg[r.itemIdx];
+      if(itA && itA.inc !== false){
+        itA.cu = r.cuNovo;
+        itA.pvu = itA.cu * n2(itA.fmf);
+        itA.pvt = itA.pvu * n2(itA.mult);
       }
-    });
+    } else {
+      budg.forEach(function(it){
+        if(it.inc === false) return;
+        if(it.t === 'material' && r.scaleM !== null){
+          it.cu = n2(it.cu) * r.scaleM;
+          it.pvu = it.cu * n2(it.fmf);
+          it.pvt = it.pvu * n2(it.mult);
+        } else if(it.t !== 'material' && r.scaleS !== null){
+          it.cu = n2(it.cu) * r.scaleS;
+          it.pvu = it.cu * n2(it.fmf);
+          it.pvt = it.pvu * n2(it.mult);
+        }
+      });
+    }
   } else {
     budg.forEach(function(it){
       if(it.inc === false) return;
