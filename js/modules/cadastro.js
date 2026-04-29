@@ -276,18 +276,38 @@
 
   // ── Editar cliente (reaproveita modal, modo edição) ───────
   window.editarCliente = function(id) {
-    var list = cliLoad();
-    var item = list.find(function(x) { return x.id === id; });
-    if (!item) return;
+    console.log('[editarCliente] chamado id=', id);
+    var item = (window._cliEditData && window._cliEditData[id]) || null;
+    if (!item) {
+      var list = cliLoad();
+      item = list.find(function(x) { return x.id === id; });
+      if (!item) {
+        console.error('[editarCliente] item NÃO ENCONTRADO. id=', id,
+          '| ids salvos=', cliLoad().map(function(x){return x.id;}));
+        return;
+      }
+    }
+    console.log('[editarCliente] item=', item.nome);
     window._cadEditCliId = id;
     window._cadCliCb = null;
-    var g = function(i) { return document.getElementById(i); };
-    var t = document.getElementById('tituloModalCliente');
-    if (t) t.textContent = '✏️ Editar Cliente';
-    g('ncliNome').value   = item.nome   || '';
-    g('ncliCnpj').value   = item.cnpj   || '';
-    g('ncliCidade').value = item.cidade || '';
-    _abrirMod('m-novo-cliente');
+    try {
+      var t = document.getElementById('tituloModalCliente');
+      if (t) t.textContent = '✏️ Editar Cliente';
+      var f1 = document.getElementById('ncliNome');
+      var f2 = document.getElementById('ncliCnpj');
+      var f3 = document.getElementById('ncliCidade');
+      console.log('[editarCliente] campos: ncliNome=', !!f1, 'ncliCnpj=', !!f2, 'ncliCidade=', !!f3);
+      if (f1) f1.value = item.nome   || '';
+      if (f2) f2.value = item.cnpj   || '';
+      if (f3) f3.value = item.cidade || '';
+      var mEl = document.getElementById('m-novo-cliente');
+      console.log('[editarCliente] modal el=', mEl, '| display atual=', mEl ? mEl.style.display : 'null');
+      _abrirMod('m-novo-cliente');
+      if (mEl) mEl.classList.add('on');
+      console.log('[editarCliente] modal aberto. display=', mEl ? mEl.style.display : 'null');
+    } catch(e) {
+      console.error('[editarCliente] erro:', e.message, e.stack);
+    }
   };
 
   window.excluirCliente = function(id) {
@@ -323,19 +343,40 @@
 
   // ── Editar contato (reaproveita modal, modo edição) ───────
   window.editarContato = function(id) {
-    var list = ctsLoad();
-    var item = list.find(function(x) { return x.id === id; });
-    if (!item) return;
+    console.log('[editarContato] chamado id=', id);
+    var item = (window._ctsEditData && window._ctsEditData[id]) || null;
+    if (!item) {
+      var list = ctsLoad();
+      item = list.find(function(x) { return x.id === id; });
+      if (!item) {
+        console.error('[editarContato] item NÃO ENCONTRADO. id=', id,
+          '| ids salvos=', ctsLoad().map(function(x){return x.id;}));
+        return;
+      }
+    }
+    console.log('[editarContato] item=', item.nome);
     window._cadEditCtsId = id;
     window._cadCtsCb = null;
-    var g = function(i) { return document.getElementById(i); };
-    var t = document.getElementById('tituloModalContato');
-    if (t) t.textContent = '✏️ Editar Contato';
-    g('ncNome').value     = item.nome     || '';
-    g('ncEmpresa').value  = item.empresa  || '';
-    g('ncEmail').value    = item.email    || '';
-    g('ncTelefone').value = item.telefone || '';
-    _abrirMod('m-novo-contato');
+    try {
+      var t = document.getElementById('tituloModalContato');
+      if (t) t.textContent = '✏️ Editar Contato';
+      var f1 = document.getElementById('ncNome');
+      var f2 = document.getElementById('ncEmpresa');
+      var f3 = document.getElementById('ncEmail');
+      var f4 = document.getElementById('ncTelefone');
+      console.log('[editarContato] campos: ncNome=', !!f1, 'ncEmpresa=', !!f2);
+      if (f1) f1.value = item.nome     || '';
+      if (f2) f2.value = item.empresa  || '';
+      if (f3) f3.value = item.email    || '';
+      if (f4) f4.value = item.telefone || '';
+      var mEl = document.getElementById('m-novo-contato');
+      console.log('[editarContato] modal el=', mEl, '| display atual=', mEl ? mEl.style.display : 'null');
+      _abrirMod('m-novo-contato');
+      if (mEl) mEl.classList.add('on');
+      console.log('[editarContato] modal aberto. display=', mEl ? mEl.style.display : 'null');
+    } catch(e) {
+      console.error('[editarContato] erro:', e.message, e.stack);
+    }
   };
 
   window.excluirContato = function(id) {
@@ -374,6 +415,8 @@
     var el = document.getElementById('tabelaClientes');
     if (!el) return;
     var list = cliLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    window._cliEditData = {};
+    list.forEach(function(x) { window._cliEditData[x.id] = x; });
     if (!list.length) {
       el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum cliente cadastrado ainda.</div>';
       return;
@@ -404,6 +447,8 @@
     var el = document.getElementById('tabelaContatos');
     if (!el) return;
     var list = ctsLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    window._ctsEditData = {};
+    list.forEach(function(x) { window._ctsEditData[x.id] = x; });
     if (!list.length) {
       el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum contato cadastrado ainda.</div>';
       return;
