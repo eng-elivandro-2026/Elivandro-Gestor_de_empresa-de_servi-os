@@ -217,9 +217,13 @@
     var t = document.getElementById('tituloModalContato');
     if (t) t.textContent = '👤 Novo Contato';
     g('ncNome').value     = nome || '';
+    if (g('ncDept'))    g('ncDept').value    = '';
     g('ncEmpresa').value  = '';
     g('ncEmail').value    = '';
     g('ncTelefone').value = '';
+    // Autocomplete de empresa (clientes cadastrados) — wired uma vez
+    var empEl = g('ncEmpresa');
+    if (empEl && !empEl._acDone) acSetup(empEl, 'cliente');
     _abrirMod('m-novo-contato');
   };
 
@@ -227,7 +231,7 @@
     var g   = function(id) { return (document.getElementById(id) || {}).value || ''; };
     var nome = g('ncNome').trim();
     if (!nome) { alert('Informe o nome do contato.'); return; }
-    var novo = { id: _id(), nome: nome, empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim(), criado: new Date().toISOString() };
+    var novo = { id: _id(), nome: nome, departamento: g('ncDept').trim(), empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim(), criado: new Date().toISOString() };
     var list = ctsLoad();
     list.unshift(novo);
     ctsSave(list);
@@ -364,11 +368,15 @@
       var f2 = document.getElementById('ncEmpresa');
       var f3 = document.getElementById('ncEmail');
       var f4 = document.getElementById('ncTelefone');
+      var f5 = document.getElementById('ncDept');
       console.log('[editarContato] campos: ncNome=', !!f1, 'ncEmpresa=', !!f2);
-      if (f1) f1.value = item.nome     || '';
-      if (f2) f2.value = item.empresa  || '';
-      if (f3) f3.value = item.email    || '';
-      if (f4) f4.value = item.telefone || '';
+      if (f1) f1.value = item.nome         || '';
+      if (f5) f5.value = item.departamento || '';
+      if (f2) f2.value = item.empresa      || '';
+      if (f3) f3.value = item.email        || '';
+      if (f4) f4.value = item.telefone     || '';
+      // Autocomplete de empresa — wired uma vez
+      if (f2 && !f2._acDone) acSetup(f2, 'cliente');
       var mEl = document.getElementById('m-novo-contato');
       console.log('[editarContato] modal el=', mEl, '| display atual=', mEl ? mEl.style.display : 'null');
       _abrirMod('m-novo-contato');
@@ -397,7 +405,7 @@
     if (window._cadEditCtsId) {
       var list = ctsLoad().map(function(x) {
         return x.id === window._cadEditCtsId
-          ? Object.assign({}, x, { nome: nome, empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim() })
+          ? Object.assign({}, x, { nome: nome, departamento: g('ncDept').trim(), empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim() })
           : x;
       });
       ctsSave(list);
@@ -456,8 +464,9 @@
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
       + '<thead><tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Nome</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Contato</th>'
       + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Empresa</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Depto / Função</th>'
       + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">E-mail</th>'
       + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Telefone</th>'
       + '<th style="padding:.4rem .6rem;width:80px"></th>'
@@ -466,6 +475,7 @@
           return '<tr style="border-bottom:1px solid var(--border)">'
             + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text3);font-size:.75rem">' + esc(x.departamento) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.email) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.telefone) + '</td>'
             + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
