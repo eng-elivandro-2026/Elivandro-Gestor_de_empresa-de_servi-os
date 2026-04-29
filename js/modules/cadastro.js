@@ -139,7 +139,13 @@
       var label = tipo === 'contato' ? 'Contato' : 'Cliente';
 
       dd.innerHTML = hits.map(function(x) {
-        var sub = (tipo === 'contato' ? x.empresa : x.cnpj) || '';
+        var sub;
+        if (tipo === 'contato') {
+          sub = x.empresa || '';
+        } else {
+          var parts = [x.cnpj, x.cidade].filter(Boolean);
+          sub = parts.join(' · ');
+        }
         return '<div class="ac-it" data-id="' + x.id + '" data-nome="' + esc(x.nome) + '">'
           + esc(x.nome)
           + (sub ? '<span class="ac-it-sub">' + esc(sub) + '</span>' : '')
