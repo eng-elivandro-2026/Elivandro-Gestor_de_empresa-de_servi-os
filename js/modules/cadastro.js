@@ -48,6 +48,10 @@
   // ── ID gerador ────────────────────────────────────────────
   function _id() { return 'cad_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
 
+  // ── Normalização para comparação ──────────────────────────
+  function _normCnpj(s) { return String(s || '').replace(/\D/g, ''); }
+  function _normTel(s)  { return String(s || '').replace(/\D/g, ''); }
+
   // ── Seed a partir dos dados existentes ────────────────────
   // Tombstones: nomes explicitamente deletados pelo usuário — seedFromData não recria
   var KEY_CLI_DEL = 'tf_cli_del';
@@ -350,20 +354,31 @@
     if (typeof toast === 'function') toast('Cliente excluído', 'ok');
   };
 
-  // Sobrescreve salvarNovoCliente para suportar edição
+  // Sobrescreve salvarNovoCliente para suportar edição + dedup CNPJ
   var _origSalvarCli = window.salvarNovoCliente;
   window.salvarNovoCliente = function() {
-    var g   = function(i) { return (document.getElementById(i) || {}).value || ''; };
+    var g    = function(i) { return (document.getElementById(i) || {}).value || ''; };
     var nome = g('ncliNome').trim();
     if (!nome) { alert('Informe o nome do cliente.'); return; }
+    var cnpj = _normCnpj(g('ncliCnpj'));
+    if (cnpj) {
+      var dup = cliLoad().find(function(x) {
+        return _normCnpj(x.cnpj) === cnpj && x.id !== window._cadEditCliId;
+      });
+      if (dup) { alert('Já existe um cliente com este CNPJ:\n' + dup.nome); return; }
+    }
 
     if (window._cadEditCliId) {
-      var list = cliLoad().map(function(x) {
+      var all = cliLoad();
+      var old = all.find(function(x) { return x.id === window._cadEditCliId; });
+      var oldNome = old ? old.nome : '';
+      var list = all.map(function(x) {
         return x.id === window._cadEditCliId
           ? Object.assign({}, x, { nome: nome, cnpj: g('ncliCnpj').trim(), cidade: g('ncliCidade').trim() })
           : x;
       });
       cliSave(list);
+      if (oldNome && oldNome !== nome) _atualizarNomeClienteNasPropostas(oldNome, nome);
       window._fecharModalCliente();
       renderTabelaClientes();
       if (typeof toast === 'function') toast('✅ Cliente atualizado: ' + nome, 'ok');
@@ -425,20 +440,35 @@
     if (typeof toast === 'function') toast('Contato excluído', 'ok');
   };
 
-  // Sobrescreve salvarNovoContato para suportar edição
+  // Sobrescreve salvarNovoContato para suportar edição + dedup email/fone
   var _origSalvarCts = window.salvarNovoContato;
   window.salvarNovoContato = function() {
     var g = function(i) { return (document.getElementById(i) || {}).value || ''; };
     var nome = g('ncNome').trim();
     if (!nome) { alert('Informe o nome do contato.'); return; }
+    var email = g('ncEmail').trim().toLowerCase();
+    var tel   = _normTel(g('ncTelefone'));
+    if (email || tel) {
+      var dup = ctsLoad().find(function(x) {
+        if (x.id === window._cadEditCtsId) return false;
+        if (email && x.email && x.email.trim().toLowerCase() === email) return true;
+        if (tel   && _normTel(x.telefone) === tel) return true;
+        return false;
+      });
+      if (dup) { alert('Já existe um contato com este e-mail ou telefone:\n' + dup.nome); return; }
+    }
 
     if (window._cadEditCtsId) {
-      var list = ctsLoad().map(function(x) {
+      var all = ctsLoad();
+      var old = all.find(function(x) { return x.id === window._cadEditCtsId; });
+      var oldNome = old ? old.nome : '';
+      var list = all.map(function(x) {
         return x.id === window._cadEditCtsId
           ? Object.assign({}, x, { nome: nome, departamento: g('ncDept').trim(), empresa: g('ncEmpresa').trim(), email: g('ncEmail').trim(), telefone: g('ncTelefone').trim() })
           : x;
       });
       ctsSave(list);
+      if (oldNome && oldNome !== nome) _atualizarNomeContatoNasPropostas(oldNome, nome);
       window._fecharModalContato();
       renderTabelaContatos();
       if (typeof toast === 'function') toast('✅ Contato atualizado: ' + nome, 'ok');
@@ -447,6 +477,54 @@
       renderTabelaContatos();
     }
   };
+
+  // ── Propagação de renomeação ──────────────────────────────
+  function _atualizarNomeClienteNasPropostas(oldNome, newNome) {
+    if (!oldNome || !newNome || oldNome === newNome) return;
+    var oldL = oldNome.toLowerCase();
+    var props = [];
+    try { props = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+    var changed = false;
+    props = props.map(function(p) {
+      var c = Object.assign({}, p);
+      if ((c.loc || '').toLowerCase() === oldL) { c.loc = newNome; changed = true; }
+      if ((c.cli || '').toLowerCase() === oldL) { c.cli = newNome; changed = true; }
+      return c;
+    });
+    if (changed) {
+      try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+      if (window.props) window.props = props;
+    }
+  }
+
+  function _atualizarNomeContatoNasPropostas(oldNome, newNome) {
+    if (!oldNome || !newNome || oldNome === newNome) return;
+    var oldL = oldNome.toLowerCase();
+    var props = [];
+    try { props = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+    var pChanged = false;
+    props = props.map(function(p) {
+      var c = Object.assign({}, p);
+      if ((c.ac  || '').toLowerCase() === oldL) { c.ac  = newNome; pChanged = true; }
+      if ((c.ac2 || '').toLowerCase() === oldL) { c.ac2 = newNome; pChanged = true; }
+      return c;
+    });
+    if (pChanged) {
+      try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
+      if (window.props) window.props = props;
+    }
+    var hist = [];
+    try { hist = JSON.parse(localStorage.getItem('tf_historico') || '[]'); } catch(e) {}
+    var hChanged = false;
+    hist = hist.map(function(h) {
+      var c = Object.assign({}, h);
+      if ((c.contato || '').toLowerCase() === oldL) { c.contato = newNome; hChanged = true; }
+      return c;
+    });
+    if (hChanged) {
+      try { localStorage.setItem('tf_historico', JSON.stringify(hist)); } catch(e) {}
+    }
+  }
 
   // ── Render tabela de Clientes ─────────────────────────────
   function renderTabelaClientes() {
@@ -525,14 +603,29 @@
   window.ctsSeedFromData = seedFromData;
 
   // ── Wiring do formulário de Propostas ─────────────────────
-  // pCli, pAC e pLoc são gerenciados pelo app-core.js (bindAutoInput/initClientAutoComplete)
   function wirePropForm() {
     var g = function(id) { return document.getElementById(id); };
 
-    // Contato 2 (não coberto pelo app-core.js)
-    if (g('pAC2')) acSetup(g('pAC2'), 'contato', function(c) {
+    // Cliente principal
+    if (g('pCli') && !g('pCli')._acDone) acSetup(g('pCli'), 'cliente', function(c) {
+      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
+    });
+
+    // Contato 1
+    if (g('pAC') && !g('pAC')._acDone) acSetup(g('pAC'), 'contato', function(c) {
+      if (c.email    && g('pMail') && !g('pMail').value) g('pMail').value = c.email;
+      if (c.telefone && g('pTel')  && !g('pTel').value)  g('pTel').value  = c.telefone;
+    });
+
+    // Contato 2
+    if (g('pAC2') && !g('pAC2')._acDone) acSetup(g('pAC2'), 'contato', function(c) {
       if (c.email    && g('pMail2') && !g('pMail2').value) g('pMail2').value = c.email;
       if (c.telefone && g('pTel2')  && !g('pTel2').value)  g('pTel2').value  = c.telefone;
+    });
+
+    // Cliente do serviço (campo separado pLoc)
+    if (g('pLoc') && !g('pLoc')._acDone) acSetup(g('pLoc'), 'cliente', function(c) {
+      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
     });
   }
 
