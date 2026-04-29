@@ -94,9 +94,11 @@
     var fs = document.getElementById('hFiltroStatus');
     var fp = document.getElementById('hFiltroPrioridade');
     var fc = document.getElementById('hFiltroCliente');
+    var fr = document.getElementById('hFiltroResponsavel');
     if (fs) fs.value = '';
     if (fp) fp.value = '';
     if (fc) fc.value = '';
+    if (fr) fr.value = '';
     if (tipo === 'em_andamento' && fs) fs.value = 'em_andamento';
     if (tipo === 'resolvido'    && fs) fs.value = 'resolvido';
     if (tipo === 'alta'         && fp) fp.value = 'alta';
@@ -138,6 +140,8 @@
     if (fc) fc.value = '';
     var fp = document.getElementById('hFiltroPrioridade');
     if (fp) fp.value = '';
+    var fr = document.getElementById('hFiltroResponsavel');
+    if (fr) fr.value = '';
     renderPainelCeo();
     renderLista();
     // Carregar da nuvem e re-renderizar com dados atualizados
@@ -158,9 +162,25 @@
     if (!el) return;
 
     var list = hLS();
-    var fc  = (document.getElementById('hFiltroCliente')    || {}).value || '';
-    var fs  = (document.getElementById('hFiltroStatus')     || {}).value || '';
-    var fp  = (document.getElementById('hFiltroPrioridade') || {}).value || '';
+    var fc  = (document.getElementById('hFiltroCliente')      || {}).value || '';
+    var fs  = (document.getElementById('hFiltroStatus')       || {}).value || '';
+    var fp  = (document.getElementById('hFiltroPrioridade')   || {}).value || '';
+    var fr  = (document.getElementById('hFiltroResponsavel')  || {}).value || '';
+
+    // Preencher opções do select de responsável dinamicamente
+    var selR = document.getElementById('hFiltroResponsavel');
+    if (selR) {
+      var allList   = hLS();
+      var unicos    = [];
+      allList.forEach(function(h) {
+        var r = (h.responsavel || '').trim();
+        if (r && unicos.indexOf(r) < 0) unicos.push(r);
+      });
+      unicos.sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
+      var opcoesHtml = '<option value="">Todos responsáveis</option>'
+        + unicos.map(function(r){ return '<option value="' + r.replace(/"/g,'&quot;') + '"' + (fr === r ? ' selected' : '') + '>' + r + '</option>'; }).join('');
+      if (selR.innerHTML !== opcoesHtml) selR.innerHTML = opcoesHtml;
+    }
 
     // filtro rápido "atrasados" sobrescreve os selects
     if (_filtroRapido === 'atrasados') {
@@ -171,6 +191,8 @@
       if (fs) list = list.filter(function(h){ return h.status === fs; });
       if (fp) list = list.filter(function(h){ return (h.prioridade || 'media') === fp; });
     }
+
+    if (fr) list = list.filter(function(h){ return (h.responsavel || '').trim() === fr; });
 
     if (fc) list = list.filter(function(h){
       var txt = [h.cliente, h.contato, h.responsavel, h.resumo,
