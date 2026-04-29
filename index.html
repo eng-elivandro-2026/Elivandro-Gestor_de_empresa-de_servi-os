@@ -4417,37 +4417,6 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
 </div>
 
-<!-- ══ MODAL NOVO CONTATO ══ -->
-<div class="modal-bg" id="m-novo-contato" style="display:none;z-index:9500">
-  <div class="modal" style="width:min(420px,97vw)">
-    <div class="modal-hdr"><div class="modal-title" id="tituloModalContato">👤 Novo Contato</div><button class="modal-close" onclick="_fecharModalContato()">✕</button></div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
-      <div class="f"><label>Nome *</label><input id="ncNome" type="text" placeholder="Ex: Rafael Soares" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-      <div class="f"><label>Empresa / Cliente</label><input id="ncEmpresa" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-      <div class="g2">
-        <div class="f"><label>E-mail</label><input id="ncEmail" type="email" placeholder="email@..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-        <div class="f"><label>Telefone</label><input id="ncTelefone" type="text" placeholder="(11) 99999-0000" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-      </div>
-    </div>
-    <div class="modal-footer"><button class="btn bg" onclick="_fecharModalContato()">Cancelar</button><button class="btn ba" onclick="salvarNovoContato()">Salvar Contato</button></div>
-  </div>
-</div>
-
-<!-- ══ MODAL NOVO CLIENTE ══ -->
-<div class="modal-bg" id="m-novo-cliente" style="display:none;z-index:9500">
-  <div class="modal" style="width:min(420px,97vw)">
-    <div class="modal-hdr"><div class="modal-title" id="tituloModalCliente">🏢 Novo Cliente</div><button class="modal-close" onclick="_fecharModalCliente()">✕</button></div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:.7rem">
-      <div class="f"><label>Nome / Razão Social *</label><input id="ncliNome" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-      <div class="g2">
-        <div class="f"><label>CNPJ</label><input id="ncliCnpj" type="text" placeholder="00.000.000/0000-00" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-        <div class="f"><label>Cidade</label><input id="ncliCidade" type="text" placeholder="Ex: Jundiaí - SP" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:.38rem .55rem;font-size:.82rem"></div>
-      </div>
-    </div>
-    <div class="modal-footer"><button class="btn bg" onclick="_fecharModalCliente()">Cancelar</button><button class="btn ba" onclick="salvarNovoCliente()">Salvar Cliente</button></div>
-  </div>
-</div>
-
 <!-- ══ MODAL GUIA DE FLUXO ══ -->
 <div class="modal-bg" id="m-guia">
   <div class="modal-box" style="max-width:660px;max-height:88vh;overflow-y:auto;">
@@ -10153,6 +10122,49 @@ function _vinMsg(msg, tipo) {
       <div id="invResultado"></div>
       </div><!-- /novo usuário -->
     </div><!-- /formulário convite -->
+  </div>
+</div>
+
+<!-- ══ MODAIS GLOBAIS: NOVO CONTATO / NOVO CLIENTE ══ -->
+<!-- Ficam fora de qualquer section/wrap para não serem afetados por display:none do pai -->
+<div class="modal-bg" id="m-novo-contato" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;background:rgba(0,0,0,.7)">
+  <div style="background:#1e2535;border:1px solid #334155;border-radius:10px;width:min(420px,97vw);padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #334155">
+      <div id="tituloModalContato" style="font-size:.88rem;font-weight:700;color:#e2e8f0">👤 Novo Contato</div>
+      <button onclick="_fecharModalContato()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem;padding:.2rem .4rem">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.7rem;padding:1rem">
+      <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Nome *</label><input id="ncNome" type="text" placeholder="Ex: Rafael Soares" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+      <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Empresa / Cliente</label><input id="ncEmpresa" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">E-mail</label><input id="ncEmail" type="email" placeholder="email@..." style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+        <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Telefone</label><input id="ncTelefone" type="text" placeholder="(11) 99999-0000" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;padding:.75rem 1rem;border-top:1px solid #334155">
+      <button onclick="_fecharModalContato()" style="padding:.38rem 1rem;background:#1e2535;border:1px solid #334155;color:#94a3b8;border-radius:6px;cursor:pointer;font-size:.82rem">Cancelar</button>
+      <button onclick="salvarNovoContato()" style="padding:.38rem 1rem;background:#f05a1a;border:none;color:#000;border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:700">Salvar Contato</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-novo-cliente" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;background:rgba(0,0,0,.7)">
+  <div style="background:#1e2535;border:1px solid #334155;border-radius:10px;width:min(420px,97vw);padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #334155">
+      <div id="tituloModalCliente" style="font-size:.88rem;font-weight:700;color:#e2e8f0">🏢 Novo Cliente</div>
+      <button onclick="_fecharModalCliente()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem;padding:.2rem .4rem">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.7rem;padding:1rem">
+      <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Nome / Razão Social *</label><input id="ncliNome" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">CNPJ</label><input id="ncliCnpj" type="text" placeholder="00.000.000/0000-00" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+        <div><label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Cidade</label><input id="ncliCidade" type="text" placeholder="Ex: Jundiaí - SP" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;padding:.75rem 1rem;border-top:1px solid #334155">
+      <button onclick="_fecharModalCliente()" style="padding:.38rem 1rem;background:#1e2535;border:1px solid #334155;color:#94a3b8;border-radius:6px;cursor:pointer;font-size:.82rem">Cancelar</button>
+      <button onclick="salvarNovoCliente()" style="padding:.38rem 1rem;background:#f05a1a;border:none;color:#000;border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:700">Salvar Cliente</button>
+    </div>
   </div>
 </div>
 
