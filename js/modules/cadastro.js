@@ -660,36 +660,54 @@
 
     // 1. Corrigir nomes corrompidos
     list = list.map(function(x) {
-      var nome = x.nome || '';
+      var nome  = x.nome  || '';
+      var cnpj  = x.cnpj  || '';
+      var cidade = x.cidade || '';
 
-      // Nome duplicado: "ABCABC" → "ABC"
+      // Nome dobrado: "ABCABC" → "ABC"
       var half = Math.floor(nome.length / 2);
       if (nome.length > 10 && nome.length % 2 === 0 && nome.substring(0, half) === nome.substring(half)) {
         nome = nome.substring(0, half);
         changed = true;
       }
 
-      // Nome com " · cidade · CNPJ" sufixo (formato antigo de seed)
-      var dotIdx = nome.indexOf(' · ');
-      if (dotIdx > 0) {
-        nome = nome.substring(0, dotIdx).trim();
-        changed = true;
+      // Nome com CNPJ embutido → extrair nome limpo
+      var cnpjMatch = nome.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
+      if (cnpjMatch) {
+        var beforeCnpj = nome.substring(0, nome.indexOf(cnpjMatch[0]));
+        // Formato "· CIDADE - UF ·" (bullet)
+        var clean = beforeCnpj.replace(/\s*·.*$/, '').trim();
+        // Formato "- CIDADE - UF -" (traço) se bullet não removeu nada
+        if (clean === beforeCnpj.trim()) {
+          clean = beforeCnpj.replace(/\s+-\s+.+?(?:\s+-\s*[A-Z]{2})?\s*-?\s*$/, '').trim();
+        }
+        if (clean.length > 3) {
+          // Tentar extrair cidade se estiver embutida entre o nome e o CNPJ
+          if (!cidade && beforeCnpj !== clean) {
+            var cidadeStr = beforeCnpj.replace(clean, '').replace(/^\s*[-·]\s*/, '').replace(/\s*[-·]\s*$/, '').trim();
+            if (cidadeStr.length > 2) cidade = cidadeStr;
+          }
+          nome = clean;
+          if (!cnpj) cnpj = cnpjMatch[0];
+          changed = true;
+        }
+      } else {
+        // Sem CNPJ no nome mas tem " · CIDADE" sufixo
+        var bIdx = nome.indexOf(' · ');
+        if (bIdx > 0) {
+          var suffix = nome.substring(bIdx + 3).trim();
+          if (!cidade && suffix) cidade = suffix;
+          nome = nome.substring(0, bIdx).trim();
+          changed = true;
+        }
       }
 
-      // Extrair CNPJ do nome se ele estiver embutido ao final
-      var cnpj = x.cnpj || '';
-      var cnpjInNome = nome.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
-      if (cnpjInNome) {
-        nome = nome.replace(cnpjInNome[0], '').trim().replace(/[·\-,]+$/, '').trim();
-        if (!cnpj) cnpj = cnpjInNome[0];
-        changed = true;
-      }
-
-      if (nome === x.nome && cnpj === x.cnpj) return x;
-      return Object.assign({}, x, { nome: nome, cnpj: cnpj });
+      if (nome === x.nome && cnpj === x.cnpj && cidade === x.cidade) return x;
+      changed = true;
+      return Object.assign({}, x, { nome: nome, cnpj: cnpj, cidade: cidade });
     });
 
-    // 2. Mesclar duplicatas por CNPJ (mantém o registro com nome mais curto/limpo)
+    // 2. Mesclar duplicatas por CNPJ
     var seenCnpj = {};
     var toRemove = [];
     list.forEach(function(x) {
@@ -707,7 +725,7 @@
     });
     if (toRemove.length) list = list.filter(function(x) { return toRemove.indexOf(x.id) < 0; });
 
-    // 3. Remover registros com nome vazio após limpeza
+    // 3. Remover registros com nome vazio
     var before = list.length;
     list = list.filter(function(x) { return (x.nome || '').trim().length > 0; });
     if (list.length !== before) changed = true;
@@ -742,6 +760,7 @@
         if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
       });
       try { localStorage.setItem(KEY_CLI, JSON.stringify(merged)); } catch(e) {}
+      _limparClientes(); // limpa também após retorno do Supabase
     });
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
