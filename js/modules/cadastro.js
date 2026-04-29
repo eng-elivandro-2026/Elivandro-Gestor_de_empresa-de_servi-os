@@ -354,37 +354,58 @@
     if (typeof toast === 'function') toast('Cliente excluído', 'ok');
   };
 
-  // Sobrescreve salvarNovoCliente para suportar edição + dedup CNPJ
+  // Sobrescreve salvarNovoCliente para suportar edição + merge por CNPJ
   var _origSalvarCli = window.salvarNovoCliente;
   window.salvarNovoCliente = function() {
-    var g    = function(i) { return (document.getElementById(i) || {}).value || ''; };
-    var nome = g('ncliNome').trim();
+    var g       = function(i) { return (document.getElementById(i) || {}).value || ''; };
+    var nome    = g('ncliNome').trim();
     if (!nome) { alert('Informe o nome do cliente.'); return; }
-    var cnpj = _normCnpj(g('ncliCnpj'));
-    if (cnpj) {
-      var dup = cliLoad().find(function(x) {
-        return _normCnpj(x.cnpj) === cnpj && x.id !== window._cadEditCliId;
-      });
-      if (dup) { alert('Já existe um cliente com este CNPJ:\n' + dup.nome); return; }
-    }
+    var cnpjRaw = g('ncliCnpj').trim();
+    var cnpj    = _normCnpj(cnpjRaw);
+    var cidade  = g('ncliCidade').trim();
 
     if (window._cadEditCliId) {
-      var all = cliLoad();
-      var old = all.find(function(x) { return x.id === window._cadEditCliId; });
+      var all     = cliLoad();
+      var dup     = cnpj ? all.find(function(x) { return x.id !== window._cadEditCliId && _normCnpj(x.cnpj) === cnpj; }) : null;
+      var old     = all.find(function(x) { return x.id === window._cadEditCliId; });
       var oldNome = old ? old.nome : '';
-      var list = all.map(function(x) {
-        return x.id === window._cadEditCliId
-          ? Object.assign({}, x, { nome: nome, cnpj: g('ncliCnpj').trim(), cidade: g('ncliCidade').trim() })
-          : x;
-      });
+      // Remove o duplicado e atualiza o registro atual
+      var list = all
+        .filter(function(x) { return !dup || x.id !== dup.id; })
+        .map(function(x) {
+          return x.id === window._cadEditCliId
+            ? Object.assign({}, x, { nome: nome, cnpj: cnpjRaw, cidade: cidade })
+            : x;
+        });
       cliSave(list);
       if (oldNome && oldNome !== nome) _atualizarNomeClienteNasPropostas(oldNome, nome);
+      if (dup && dup.nome !== nome)    _atualizarNomeClienteNasPropostas(dup.nome, nome);
       window._fecharModalCliente();
       renderTabelaClientes();
-      if (typeof toast === 'function') toast('✅ Cliente atualizado: ' + nome, 'ok');
+      var msg = dup ? '✅ Clientes unidos: ' + nome : '✅ Cliente atualizado: ' + nome;
+      if (typeof toast === 'function') toast(msg, 'ok');
+
     } else {
-      _origSalvarCli();
-      renderTabelaClientes();
+      // Novo — se CNPJ já existe, atualiza o existente em vez de criar duplicata
+      var dup2 = cnpj ? cliLoad().find(function(x) { return _normCnpj(x.cnpj) === cnpj; }) : null;
+      if (dup2) {
+        var dupOldNome = dup2.nome;
+        var list2 = cliLoad().map(function(x) {
+          return x.id === dup2.id
+            ? Object.assign({}, x, { nome: nome, cnpj: cnpjRaw, cidade: cidade || x.cidade })
+            : x;
+        });
+        cliSave(list2);
+        if (dupOldNome !== nome) _atualizarNomeClienteNasPropostas(dupOldNome, nome);
+        _fecharMod('m-novo-cliente');
+        var merged2 = list2.find(function(x) { return x.id === dup2.id; });
+        if (typeof window._cadCliCb === 'function') { window._cadCliCb(merged2 || dup2); window._cadCliCb = null; }
+        if (typeof toast === 'function') toast('✅ Cliente unido: ' + nome + ' (CNPJ já cadastrado)', 'ok');
+        renderTabelaClientes();
+      } else {
+        _origSalvarCli();
+        renderTabelaClientes();
+      }
     }
   };
 
@@ -632,9 +653,75 @@
   // Exposta para ser chamada após reset do formulário se necessário
   window.wirePropFormAc = wirePropForm;
 
+  // ── Limpeza de clientes corrompidos / duplicados ──────────
+  function _limparClientes() {
+    var list = cliLoad();
+    var changed = false;
+
+    // 1. Corrigir nomes corrompidos
+    list = list.map(function(x) {
+      var nome = x.nome || '';
+
+      // Nome duplicado: "ABCABC" → "ABC"
+      var half = Math.floor(nome.length / 2);
+      if (nome.length > 10 && nome.length % 2 === 0 && nome.substring(0, half) === nome.substring(half)) {
+        nome = nome.substring(0, half);
+        changed = true;
+      }
+
+      // Nome com " · cidade · CNPJ" sufixo (formato antigo de seed)
+      var dotIdx = nome.indexOf(' · ');
+      if (dotIdx > 0) {
+        nome = nome.substring(0, dotIdx).trim();
+        changed = true;
+      }
+
+      // Extrair CNPJ do nome se ele estiver embutido ao final
+      var cnpj = x.cnpj || '';
+      var cnpjInNome = nome.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
+      if (cnpjInNome) {
+        nome = nome.replace(cnpjInNome[0], '').trim().replace(/[·\-,]+$/, '').trim();
+        if (!cnpj) cnpj = cnpjInNome[0];
+        changed = true;
+      }
+
+      if (nome === x.nome && cnpj === x.cnpj) return x;
+      return Object.assign({}, x, { nome: nome, cnpj: cnpj });
+    });
+
+    // 2. Mesclar duplicatas por CNPJ (mantém o registro com nome mais curto/limpo)
+    var seenCnpj = {};
+    var toRemove = [];
+    list.forEach(function(x) {
+      var cn = _normCnpj(x.cnpj);
+      if (!cn) return;
+      if (seenCnpj[cn] !== undefined) {
+        var keeper = seenCnpj[cn];
+        if (!keeper.cidade && x.cidade) { keeper.cidade = x.cidade; changed = true; }
+        if (x.nome !== keeper.nome) _atualizarNomeClienteNasPropostas(x.nome, keeper.nome);
+        toRemove.push(x.id);
+        changed = true;
+      } else {
+        seenCnpj[cn] = x;
+      }
+    });
+    if (toRemove.length) list = list.filter(function(x) { return toRemove.indexOf(x.id) < 0; });
+
+    // 3. Remover registros com nome vazio após limpeza
+    var before = list.length;
+    list = list.filter(function(x) { return (x.nome || '').trim().length > 0; });
+    if (list.length !== before) changed = true;
+
+    if (changed) {
+      cliSave(list);
+      console.log('[Cadastro] clientes após limpeza:', list.length);
+    }
+  }
+
   // ── Init ──────────────────────────────────────────────────
   function init() {
     seedFromData();
+    _limparClientes();
     // Sincronizar da nuvem — adiciona itens novos mas respeita tombstones
     _sbLoad(KEY_CTS, function(v) {
       var local = ctsLoad();
