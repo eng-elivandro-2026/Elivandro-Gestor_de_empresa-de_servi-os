@@ -139,13 +139,15 @@
       var label = tipo === 'contato' ? 'Contato' : 'Cliente';
 
       dd.innerHTML = hits.map(function(x) {
-        var sub;
-        if (tipo === 'contato') {
-          sub = x.empresa || '';
-        } else {
+        if (tipo === 'cliente') {
           var parts = [x.cnpj, x.cidade].filter(Boolean);
-          sub = parts.join(' · ');
+          var info = parts.join(' · ');
+          return '<div class="ac-it" style="flex-direction:column;align-items:flex-start;gap:.15rem" data-id="' + x.id + '" data-nome="' + esc(x.nome) + '">'
+            + '<span style="font-weight:600;line-height:1.3">' + esc(x.nome) + '</span>'
+            + (info ? '<span style="font-size:.67rem;color:var(--text3)">' + esc(info) + '</span>' : '')
+            + '</div>';
         }
+        var sub = x.empresa || '';
         return '<div class="ac-it" data-id="' + x.id + '" data-nome="' + esc(x.nome) + '">'
           + esc(x.nome)
           + (sub ? '<span class="ac-it-sub">' + esc(sub) + '</span>' : '')
