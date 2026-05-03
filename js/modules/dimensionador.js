@@ -75,26 +75,13 @@
     _ds.etapa = 1;
     _renderOverlay();
     var o = _q('dimOverlay');
-    if (o) {
-      o.style.cssText = [
-        'display:flex',
-        'flex-direction:column',
-        'position:fixed',
-        'top:0',
-        'left:0',
-        'width:100vw',
-        'height:100vh',
-        'background:var(--bg1)',
-        'z-index:99999',
-        'overflow:hidden'
-      ].join(';');
-    }
+    if (o) o.classList.add('on');
     _renderEtapa();
   }
 
   function fecharDimensionador() {
     var o = _q('dimOverlay');
-    if (o) o.style.display = 'none';
+    if (o) o.classList.remove('on');
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1068,7 +1055,7 @@
     if (cnt) cnt.textContent = _ds.itens.length;
 
     var m = _q('dimModalInserir');
-    if (m) m.style.display = 'flex';
+    if (m) m.classList.add('on');
   }
 
   function dimConfirmarInserir() {
@@ -1118,7 +1105,7 @@
     try { if (typeof upsertCurrentDraft === 'function' && typeof editId !== 'undefined' && editId) upsertCurrentDraft(true); } catch (e) {}
 
     var m = _q('dimModalInserir');
-    if (m) m.style.display = 'none';
+    if (m) m.classList.remove('on');
     fecharDimensionador();
     _toast(_ds.itens.length + ' itens inseridos no orçamento!', 'ok');
   }
@@ -1182,58 +1169,58 @@
   // RENDER DO OVERLAY (injetado uma vez no DOM)
   // ─────────────────────────────────────────────────────────────
   function _renderOverlay() {
-    if (_q('dimOverlay')) return; // já existe
+    if (_q('dimOverlay')) return;
 
     var html =
-      // ── Overlay principal ──────────────────────────────────
-      '<div id="dimOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:var(--bg1);z-index:99999;flex-direction:column;overflow:hidden">' +
+      // ── Overlay — usa mesma estrutura dos modais do portal ──
+      '<div id="dimOverlay" class="dim-overlay">' +
 
       // Header
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0">' +
-      '<div style="display:flex;align-items:center;gap:.75rem">' +
-      '<span style="font-size:1rem;font-weight:800;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
+      '<div class="dim-hdr">' +
+      '<div style="display:flex;align-items:center;gap:.6rem">' +
+      '<span style="font-size:.85rem;font-weight:700;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
       '</div>' +
-      '<div style="display:flex;gap:.5rem;align-items:center">' +
-      '<button onclick="dimSalvarTemplate()" class="btn bg bsm" title="Salvar como template">⭐ Template</button>' +
-      '<button onclick="fecharDimensionador()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:.3rem .5rem" title="Fechar">✕</button>' +
+      '<div style="display:flex;gap:.4rem;align-items:center">' +
+      '<button onclick="dimSalvarTemplate()" class="btn bg bsm">⭐ Template</button>' +
+      '<button onclick="fecharDimensionador()" class="modal-close" title="Fechar">✕</button>' +
       '</div></div>' +
 
       // Step bar
-      '<div id="dimStepBar" style="display:flex;gap:.4rem;padding:.55rem 1.25rem;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0"></div>' +
+      '<div id="dimStepBar" class="dim-steps"></div>' +
 
       // Content
-      '<div id="dimContent" style="flex:1;min-height:0;overflow-y:auto;padding:1.25rem"></div>' +
+      '<div id="dimContent" class="dim-body"></div>' +
 
       // Footer nav
-      '<div id="dimFooterNav" style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.25rem;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;position:relative;z-index:1">' +
+      '<div class="dim-footer">' +
       '<button id="dimBtnBack" onclick="dimBack()" class="btn bg">← Anterior</button>' +
       '<div style="display:flex;gap:.5rem">' +
       '<button id="dimBtnNext" onclick="dimNext()" class="btn bs">Próximo →</button>' +
       '<button id="dimBtnCalc" onclick="dimCalcular()" class="btn bp" style="display:none">⚡ Calcular Lista</button>' +
-      '</div></div></div>' +
+      '</div></div>' +
 
-      // ── Modal de confirmação de inserção ───────────────────
-      '<div id="dimModalInserir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:6000;align-items:center;justify-content:center;padding:1rem">' +
-      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:min(780px,97vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column">' +
-      '<div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
-      '<span style="font-weight:700;color:var(--accent)">✅ Confirmar Inserção no Orçamento</span>' +
-      '<button onclick="_q(\'dimModalInserir\').style.display=\'none\'" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem">✕</button>' +
       '</div>' +
-      '<div style="padding:.6rem .8rem;background:rgba(88,166,255,.06);border-bottom:1px solid var(--border);font-size:.77rem;color:var(--text2)">' +
-      '⚠️ Itens sem <strong>Custo Unit. R$</strong> serão inseridos com valor zero. Preencha os custos após receber a cotação.' +
+
+      // ── Modal confirmação inserção ──────────────────────────
+      '<div id="dimModalInserir" class="modal-overlay" style="z-index:100001">' +
+      '<div class="modal-box" style="max-width:780px">' +
+      '<div class="modal-hdr">' +
+      '<span class="modal-title">✅ Confirmar Inserção no Orçamento</span>' +
+      '<button onclick="_q(\'dimModalInserir\').classList.remove(\'on\')" class="modal-close">✕</button>' +
       '</div>' +
-      '<div id="dimInserirLista" style="flex:1;overflow-y:auto;padding:.75rem 1rem"></div>' +
-      '<div style="padding:.75rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem">' +
-      '<button onclick="_q(\'dimModalInserir\').style.display=\'none\'" class="btn bg">Cancelar</button>' +
+      '<div style="padding:.55rem .9rem;background:rgba(88,166,255,.07);border-bottom:1px solid var(--border);font-size:.76rem;color:var(--text2)">' +
+      '⚠️ Itens sem <strong>Custo Unit. R$</strong> serão inseridos com valor zero.' +
+      '</div>' +
+      '<div id="dimInserirLista" class="modal-body" style="max-height:55vh"></div>' +
+      '<div class="modal-footer">' +
+      '<button onclick="_q(\'dimModalInserir\').classList.remove(\'on\')" class="btn bg">Cancelar</button>' +
       '<button onclick="dimConfirmarInserir()" class="btn bp" style="font-weight:700">✅ Confirmar e Inserir (<span id="dimInserirCount">0</span> itens)</button>' +
       '</div></div></div>';
 
     var div = document.createElement('div');
     div.innerHTML = html;
-    // Append to <html> (documentElement) instead of <body> so that
-    // body {overflow-x:hidden} cannot clip these position:fixed elements
-    document.documentElement.appendChild(div.firstElementChild);
-    document.documentElement.appendChild(div.lastElementChild);
+    document.body.appendChild(div.firstElementChild);
+    document.body.appendChild(div.lastElementChild);
   }
 
   // ─────────────────────────────────────────────────────────────
