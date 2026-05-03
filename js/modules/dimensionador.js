@@ -1347,7 +1347,7 @@
 
       // Header
       '<div class="dim-hdr">' +
-      '<span style="font-size:.82rem;font-weight:700;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
+      '<span style="font-size:.82rem;font-weight:700;color:var(--accent)">📐 Dimensionar Infra</span>' +
       '<button onclick="fecharDimensionador()" class="modal-close" title="Fechar">✕</button>' +
       '</div>' +
 

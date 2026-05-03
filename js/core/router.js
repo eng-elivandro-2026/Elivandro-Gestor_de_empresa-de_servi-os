@@ -42,7 +42,7 @@
       init: function () { go('dashboard'); },
       nav: [
         { separator: true, label: 'Ferramentas de Engenharia' },
-        { label: 'Dimensionador', icon: '📐', action: "abrirDimensionador()" },
+        { label: 'Dimensionar Infra', icon: '📐', action: "abrirDimensionador()" },
       ]
     },
     {
