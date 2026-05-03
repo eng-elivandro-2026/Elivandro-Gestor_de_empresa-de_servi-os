@@ -72,6 +72,7 @@
   function abrirDimensionador() {
     _ds._propostaId = (typeof editId !== 'undefined') ? editId : null;
     if (!_ds.trechos.length) _ds.trechos.push(_novoTrecho());
+    _ds.etapa = 1;
     _renderOverlay();
     var o = _q('dimOverlay');
     if (o) { o.style.display = 'flex'; }
@@ -1188,10 +1189,10 @@
       '<div id="dimStepBar" style="display:flex;gap:.4rem;padding:.55rem 1.25rem;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0"></div>' +
 
       // Content
-      '<div id="dimContent" style="flex:1;overflow-y:auto;padding:1.25rem"></div>' +
+      '<div id="dimContent" style="flex:1;min-height:0;overflow-y:auto;padding:1.25rem"></div>' +
 
       // Footer nav
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.25rem;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0">' +
+      '<div id="dimFooterNav" style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.25rem;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;position:relative;z-index:1">' +
       '<button id="dimBtnBack" onclick="dimBack()" class="btn bg">← Anterior</button>' +
       '<div style="display:flex;gap:.5rem">' +
       '<button id="dimBtnNext" onclick="dimNext()" class="btn bs">Próximo →</button>' +
