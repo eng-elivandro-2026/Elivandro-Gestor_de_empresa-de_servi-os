@@ -40,7 +40,8 @@
         dp722:0, dp723:0, dp724:0, dp725:0, dp726:0, dp727:0,
         dp728:0, dp729:0, dp739:0
       },
-      reducoes: []    // [{qtd, tipo:'dp730'|'dp731'|'dp732'|'dp733', de, para}]
+      reducoes:   [],  // [{qtd, tipo:'dp730'|'dp731'|'dp732'|'dp733', de, para}]
+      acessorios: {}   // {dp734:0, dp736:0, ...} — acessórios avulsos
     },
     fin: {             // finalizações
       terminal:     false,
@@ -473,6 +474,57 @@
       (redRows || '<div style="font-size:.78rem;color:var(--text3);margin-bottom:.35rem">Nenhuma redução adicionada.</div>') +
       '<button onclick="dimAddReducao()" class="btn bg bsm" style="margin-top:.25rem">+ Adicionar redução</button>' +
       '</div>' +
+
+      // Acessórios
+      (function () {
+        var ac = con.acessorios || {};
+        var ACESS = [
+          // [cod, descricao, temDim]  temDim=true → SKU inclui largura/altura/chapa
+          ['DP734',  'Flange p/ ligação em painel',          true ],
+          ['DP736',  'Emenda interna perfurada (telescópica)',true ],
+          ['DP738',  'Gotejador p/ eletrocalha',             true ],
+          ['DP740',  'Tala p/ eletrocalha perfurada',        true ],
+          ['DP741',  'Tala curta perfurada',                 true ],
+          ['DP749',  'Acoplamento p/ perfil 38×38 mm',       false],
+          ['DP750',  'Acoplamento p/ perfil 38×76 mm',       false],
+          ['DP751',  'Saída horizontal p/ eletroduto',       false],
+          ['DP752',  'Saída vertical p/ eletroduto',         false],
+          ['DP753',  'Terminal c/ saída p/ eletroduto',      true ],
+          ['DP755',  'Junção articulada perfurada',          true ],
+          ['DP757',  'Junção redutora excêntrica',           false],
+          ['DP758',  'Junção redutora concêntrica',          false],
+          ['DP760',  'Segmento de montagem',                 true ],
+          ['DP761',  'Presilha p/ tampa em eletrocalha',     false],
+          ['DP762',  'Guarnição de borracha p/ eletrocalha', false],
+          ['DP763-C','Cinta p/ fechamento de tampa',         false],
+          ['DP764',  'Junção horizontal articulada',         true ],
+          ['DP765',  'Terminal c/ saída p/ perf. 38×38',     true ],
+          ['DP766',  'Terminal c/ saída p/ perf. 38×76',     true ],
+          ['DP770',  'Mata junta p/ curvas horizontais',     false],
+          ['DP771',  'Mata junta p/ curvas vert. internas',  false],
+          ['DP772',  'Mata junta p/ curvas vert. externas',  false],
+          ['DP775',  'Junção vertical de subida',            true ],
+          ['DP776',  'Junção redutora excêntrica ajustável', true ],
+          ['DP859E', 'Mata junta p/ eletrocalha estrutural', false]
+        ];
+        var acRows = ACESS.map(function (a) {
+          var key = a[0].toLowerCase().replace('-', '_');
+          var q   = parseInt(ac[key]) || 0;
+          return '<tr>' +
+            '<td style="font-family:monospace;font-size:.74rem;color:#58a6ff;padding:.25rem .4rem;white-space:nowrap">' + a[0] + '</td>' +
+            '<td style="font-size:.78rem;padding:.25rem .4rem">' + a[1] + '</td>' +
+            '<td style="padding:.25rem .4rem"><input type="number" min="0" value="' + q + '" style="width:58px" class="inp" ' +
+            'onchange="dimAcQtd(\'' + key + '\',this.value)"></td>' +
+            '<td style="font-size:.73rem;color:var(--text3);padding:.25rem .2rem">un</td>' +
+            '</tr>';
+        }).join('');
+        return '<div style="margin-top:1.1rem">' +
+          '<div style="font-size:.73rem;color:var(--text3);font-weight:600;margin-bottom:.4rem">ACESSÓRIOS PARA ELETROCALHA</div>' +
+          '<div style="font-size:.73rem;color:var(--text3);margin-bottom:.5rem">Suportes e mãos francesas são calculados automaticamente nos trechos. Adicione aqui os demais acessórios necessários.</div>' +
+          '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tbody>' + acRows + '</tbody></table></div>' +
+          '</div>';
+      })() +
+
       '</div></div>';
   }
 
@@ -697,6 +749,11 @@
     _ds.conexoes.reducoes[i].tipo = val;
   }
 
+  function dimAcQtd(key, val) {
+    if (!_ds.conexoes.acessorios) _ds.conexoes.acessorios = {};
+    _ds.conexoes.acessorios[key] = parseInt(val) || 0;
+  }
+
   // ─────────────────────────────────────────────────────────────
   // MOTOR DE CÁLCULO
   // ─────────────────────────────────────────────────────────────
@@ -897,6 +954,48 @@
       var desc = (redLabel[tipo] || 'Redução') + ' p/ Eletrocalha — Dispan ' + cod +
                  ' | ' + r.de + '→' + r.para + 'mm | ' + ec.material + ' ' + ec.acabamento;
       itens.push(_item('ME-01', sku, desc, r.qtd, 'un', '7308.90.90'));
+    });
+
+    // Acessórios avulsos
+    var ACESS_DEF = [
+      ['DP734',  'Flange p/ Ligação em Painel',           true ],
+      ['DP736',  'Emenda Interna Perfurada (Telescópica)', true ],
+      ['DP738',  'Gotejador p/ Eletrocalha',              true ],
+      ['DP740',  'Tala p/ Eletrocalha Perfurada',         true ],
+      ['DP741',  'Tala Curta Perfurada',                  true ],
+      ['DP749',  'Acoplamento p/ Perfil 38×38 mm',        false],
+      ['DP750',  'Acoplamento p/ Perfil 38×76 mm',        false],
+      ['DP751',  'Saída Horizontal p/ Eletroduto',        false],
+      ['DP752',  'Saída Vertical p/ Eletroduto',          false],
+      ['DP753',  'Terminal c/ Saída p/ Eletroduto',       true ],
+      ['DP755',  'Junção Articulada Perfurada',           true ],
+      ['DP757',  'Junção Redutora Excêntrica',            false],
+      ['DP758',  'Junção Redutora Concêntrica',           false],
+      ['DP760',  'Segmento de Montagem',                  true ],
+      ['DP761',  'Presilha p/ Tampa em Eletrocalha',      false],
+      ['DP762',  'Guarnição de Borracha p/ Eletrocalha',  false],
+      ['DP763-C','Cinta p/ Fechamento de Tampa',          false],
+      ['DP764',  'Junção Horizontal Articulada',          true ],
+      ['DP765',  'Terminal c/ Saída p/ Perf. 38×38',      true ],
+      ['DP766',  'Terminal c/ Saída p/ Perf. 38×76',      true ],
+      ['DP770',  'Mata Junta p/ Curvas Horizontais',      false],
+      ['DP771',  'Mata Junta p/ Curvas Vert. Internas',   false],
+      ['DP772',  'Mata Junta p/ Curvas Vert. Externas',   false],
+      ['DP775',  'Junção Vertical de Subida',             true ],
+      ['DP776',  'Junção Redutora Excêntrica Ajustável',  true ],
+      ['DP859E', 'Mata Junta p/ Eletrocalha Estrutural',  false]
+    ];
+    var ac = con.acessorios || {};
+    ACESS_DEF.forEach(function (a) {
+      var key = a[0].toLowerCase().replace('-', '_');
+      var q   = parseInt(ac[key]) || 0;
+      if (!q) return;
+      var cod = a[0];
+      var sku = a[2]
+        ? cod + '-' + ec.material + '-' + ec.acabamento + '-' + ec.largura + '/' + ec.altura + '-' + ec.chapa
+        : cod;
+      var desc = a[1] + ' — Dispan ' + cod + (a[2] ? ' | ' + fornDim : '');
+      itens.push(_item('ME-01', sku, desc, q, 'un', '7308.90.10'));
     });
 
     return itens;
@@ -1371,6 +1470,7 @@
   win.dimRemoveReducao     = dimRemoveReducao;
   win.dimReducaoField      = dimReducaoField;
   win.dimReducaoTipo       = dimReducaoTipo;
+  win.dimAcQtd             = dimAcQtd;
   win.dimSetCU             = dimSetCU;
   win.dimEditarItem        = dimEditarItem;
   win.dimDuplicarItem      = dimDuplicarItem;
