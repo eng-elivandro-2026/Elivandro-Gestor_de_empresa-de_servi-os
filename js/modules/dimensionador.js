@@ -76,7 +76,6 @@
     _renderOverlay();
     var o = _q('dimOverlay');
     if (o) {
-      // Use vw/vh units — always relative to viewport, never to containing block
       o.style.cssText = [
         'display:flex',
         'flex-direction:column',
@@ -90,17 +89,12 @@
         'overflow:hidden'
       ].join(';');
     }
-    // Prevent background scroll and force viewport as fixed containing block
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
     _renderEtapa();
   }
 
   function fecharDimensionador() {
     var o = _q('dimOverlay');
     if (o) o.style.display = 'none';
-    document.documentElement.style.overflow = '';
-    document.body.style.overflow = '';
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1236,8 +1230,10 @@
 
     var div = document.createElement('div');
     div.innerHTML = html;
-    document.body.appendChild(div.firstElementChild);
-    document.body.appendChild(div.lastElementChild);
+    // Append to <html> (documentElement) instead of <body> so that
+    // body {overflow-x:hidden} cannot clip these position:fixed elements
+    document.documentElement.appendChild(div.firstElementChild);
+    document.documentElement.appendChild(div.lastElementChild);
   }
 
   // ─────────────────────────────────────────────────────────────
