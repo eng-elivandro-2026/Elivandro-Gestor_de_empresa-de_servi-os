@@ -127,25 +127,28 @@
       var cor   = ativo ? '#f05a1a' : done ? '#22c55e' : '#475569';
       var bg    = ativo ? 'rgba(240,90,26,.12)' : 'transparent';
       return '<button onclick="dimGoTo(' + s.n + ')" style="' +
-        'display:flex;align-items:center;gap:.35rem;padding:.35rem .75rem;' +
+        'display:flex;align-items:center;gap:.28rem;padding:.25rem .55rem;' +
         'border:1px solid ' + (ativo ? '#f05a1a' : done ? '#22c55e' : '#334155') + ';' +
         'border-radius:20px;background:' + bg + ';cursor:pointer;white-space:nowrap;' +
-        'font-size:.72rem;font-weight:' + (ativo ? '700' : '500') + ';color:' + cor + '">' +
-        '<span style="width:17px;height:17px;border-radius:50%;background:' + cor + ';' +
-        'color:#fff;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700">' +
+        'font-size:.69rem;font-weight:' + (ativo ? '700' : '500') + ';color:' + cor + '">' +
+        '<span style="width:15px;height:15px;border-radius:50%;background:' + cor + ';' +
+        'color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0">' +
         (done ? '✓' : s.n) + '</span>' + s.label + '</button>';
-    }).join('<span style="color:#334155;align-self:center;margin:0 .1rem">›</span>');
+    }).join('<span style="color:#334155;align-self:center;font-size:.7rem">›</span>');
   }
 
   function _atualizarBotoesNav() {
-    var btnBack = _q('dimBtnBack');
-    var btnNext = _q('dimBtnNext');
-    var btnCalc = _q('dimBtnCalc');
+    var btnBack    = _q('dimBtnBack');
+    var btnNext    = _q('dimBtnNext');
+    var btnCalc    = _q('dimBtnCalc');
+    var btnExports = _q('dimBtnExports');
     if (!btnBack) return;
     btnBack.style.display = _ds.etapa === 1 ? 'none' : '';
+    if (btnExports) btnExports.style.display = _ds.etapa === 6 ? 'flex' : 'none';
     if (_ds.etapa === 5) {
       btnNext.style.display = 'none';
       btnCalc.style.display = '';
+      btnCalc.textContent = '⚡ Calcular Lista';
     } else if (_ds.etapa === 6) {
       btnNext.style.display = 'none';
       btnCalc.style.display = '';
@@ -510,50 +513,38 @@
     var rows = _ds.itens.map(function (it, i) {
       var cuVal = it.custo_unitario != null ? it.custo_unitario : '';
       return '<tr id="dimItemRow_' + i + '">' +
-        '<td style="color:var(--text3)">' + (i + 1) + '</td>' +
-        '<td><span style="background:rgba(240,90,26,.12);color:#f05a1a;border-radius:4px;padding:.1rem .45rem;font-size:.72rem;font-weight:600">' + it.categoria_me + '</span></td>' +
-        '<td style="font-family:monospace;font-size:.78rem;color:#58a6ff">' + _esc(it.codigo_fabricante) + '</td>' +
-        '<td style="font-size:.8rem;max-width:260px">' + _esc(it.descricao_completa) + '</td>' +
-        '<td style="text-align:right;font-weight:600">' + _fmt(it.quantidade) + '</td>' +
-        '<td>' + _esc(it.unidade) + '</td>' +
-        '<td><input type="number" min="0" step="0.01" placeholder="—" value="' + cuVal + '" ' +
+        '<td style="color:var(--text3);padding:.3rem .5rem">' + (i + 1) + '</td>' +
+        '<td style="padding:.3rem .5rem"><span style="background:rgba(240,90,26,.12);color:#f05a1a;border-radius:4px;padding:.1rem .4rem;font-size:.7rem;font-weight:600">' + it.categoria_me + '</span></td>' +
+        '<td style="font-family:monospace;font-size:.76rem;color:#58a6ff;padding:.3rem .5rem;white-space:nowrap">' + _esc(it.codigo_fabricante) + '</td>' +
+        '<td style="font-size:.78rem;padding:.3rem .5rem">' + _esc(it.descricao_completa) + '</td>' +
+        '<td style="text-align:right;font-weight:600;padding:.3rem .5rem;white-space:nowrap">' + _fmt(it.quantidade) + '</td>' +
+        '<td style="padding:.3rem .5rem;color:var(--text3);font-size:.76rem">' + _esc(it.unidade) + '</td>' +
+        '<td style="padding:.3rem .5rem;font-family:monospace;font-size:.74rem;color:var(--text3)">' + _esc(it.ncm || '—') + '</td>' +
+        '<td style="padding:.3rem .5rem"><input type="number" min="0" step="0.01" placeholder="—" value="' + cuVal + '" ' +
         'onchange="dimSetCU(' + i + ',this.value)" ' +
-        'style="width:90px;background:var(--bg1);border:1px solid var(--border);color:var(--text1);border-radius:4px;padding:.2rem .4rem;font-size:.78rem"></td>' +
-        '<td>' +
-        '<button onclick="dimEditarItem(' + i + ')" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.85rem">✏️</button>' +
-        '<button onclick="dimDuplicarItem(' + i + ')" title="Duplicar" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.85rem">📄</button>' +
-        '<button onclick="dimExcluirItem(' + i + ')" title="Excluir" style="background:none;border:none;cursor:pointer;color:#f85149;font-size:.85rem">🗑</button>' +
+        'style="width:84px;background:var(--bg);border:1px solid var(--border);color:var(--text1);border-radius:4px;padding:.2rem .4rem;font-size:.76rem"></td>' +
+        '<td style="padding:.3rem .3rem;white-space:nowrap">' +
+        '<button onclick="dimEditarItem(' + i + ')" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.82rem;padding:.1rem">✏️</button>' +
+        '<button onclick="dimDuplicarItem(' + i + ')" title="Duplicar" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.82rem;padding:.1rem">📄</button>' +
+        '<button onclick="dimExcluirItem(' + i + ')" title="Excluir" style="background:none;border:none;cursor:pointer;color:#f85149;font-size:.82rem;padding:.1rem">🗑</button>' +
         '</td>' +
         '</tr>';
     }).join('');
 
+    var th = '<th style="padding:.35rem .5rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">';
+    var thr = '<th style="padding:.35rem .5rem;text-align:right;border-bottom:1px solid var(--border)">';
     return '<div>' +
-      // Barra de ações
-      '<div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">' +
-      '<strong style="color:var(--accent)">' + _ds.itens.length + ' itens gerados</strong>' +
-      '<div style="margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap">' +
-      '<button onclick="dimExportExcel()" class="btn bg bsm">📊 Excel</button>' +
-      '<button onclick="dimExportWord()" class="btn bg bsm">📝 Word</button>' +
-      '<button onclick="dimExportPdf()" class="btn bg bsm">📄 PDF</button>' +
-      '<button onclick="dimAbrirInserir()" class="btn bp bsm" style="font-weight:700">✅ Inserir no Orçamento</button>' +
-      '</div></div>' +
-      // Tabela
+      '<p style="margin:0 0 .6rem;font-size:.78rem;color:var(--text3)">' +
+      '<strong style="color:var(--accent)">' + _ds.itens.length + ' itens gerados.</strong>' +
+      ' Preencha o <strong>Custo Unit. R$</strong> após cotação.</p>' +
       '<div style="overflow-x:auto">' +
-      '<table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
-      '<thead><tr style="color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">#</th>' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">Cat.</th>' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">Código</th>' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">Descrição</th>' +
-      '<th style="padding:.4rem .6rem;text-align:right;border-bottom:1px solid var(--border)">Qtd</th>' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">Un</th>' +
-      '<th style="padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--border)">Custo Unit. R$</th>' +
-      '<th style="padding:.4rem .6rem;border-bottom:1px solid var(--border)">Ações</th>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:.78rem">' +
+      '<thead><tr style="color:var(--text3);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;background:var(--bg2)">' +
+      th + '#</th>' + th + 'Cat.</th>' + th + 'Código</th>' + th + 'Descrição</th>' +
+      thr + 'Qtd</th>' + th + 'Un</th>' + th + 'NCM</th>' + th + 'Custo Unit. R$</th>' + th + 'Ações</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
       '</table></div>' +
-      // Legenda
-      '<p class="hint" style="margin-top:.75rem">💡 Preencha o <strong>Custo Unit. R$</strong> após receber a cotação. Os valores serão aplicados ao inserir no orçamento.</p>' +
       '</div>';
   }
 
@@ -1253,10 +1244,8 @@
 
       // Header
       '<div class="dim-hdr">' +
-      '<div style="display:flex;align-items:center;gap:.6rem">' +
-      '<span style="font-size:.85rem;font-weight:700;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
-      '</div>' +
-      '<div style="display:flex;gap:.4rem;align-items:center">' +
+      '<span style="font-size:.82rem;font-weight:700;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
+      '<div style="display:flex;gap:.35rem;align-items:center">' +
       '<button onclick="dimSalvarTemplate()" class="btn bg bsm">⭐ Template</button>' +
       '<button onclick="fecharDimensionador()" class="modal-close" title="Fechar">✕</button>' +
       '</div></div>' +
@@ -1267,12 +1256,18 @@
       // Content
       '<div id="dimContent" class="dim-body"></div>' +
 
-      // Footer nav
+      // Footer nav — botões de exportação aparecem na etapa 6
       '<div class="dim-footer">' +
-      '<button id="dimBtnBack" onclick="dimBack()" class="btn bg">← Anterior</button>' +
-      '<div style="display:flex;gap:.5rem">' +
-      '<button id="dimBtnNext" onclick="dimNext()" class="btn bs">Próximo →</button>' +
-      '<button id="dimBtnCalc" onclick="dimCalcular()" class="btn bp" style="display:none">⚡ Calcular Lista</button>' +
+      '<button id="dimBtnBack" onclick="dimBack()" class="btn bg bsm">← Anterior</button>' +
+      '<div id="dimBtnExports" style="display:none;gap:.3rem;align-items:center">' +
+      '<button onclick="dimExportExcel()" class="btn bg bsm" title="Exportar Excel">📊 Excel</button>' +
+      '<button onclick="dimExportWord()"  class="btn bg bsm" title="Exportar Word">📝 Word</button>' +
+      '<button onclick="dimExportPdf()"   class="btn bg bsm" title="Exportar PDF">📄 PDF</button>' +
+      '<button onclick="dimAbrirInserir()" class="btn bp bsm" style="font-weight:700">✅ Inserir</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:.35rem">' +
+      '<button id="dimBtnNext" onclick="dimNext()" class="btn bs bsm">Próximo →</button>' +
+      '<button id="dimBtnCalc" onclick="dimCalcular()" class="btn bp bsm" style="display:none">⚡ Calcular Lista</button>' +
       '</div></div>' +
 
       '</div>' +
