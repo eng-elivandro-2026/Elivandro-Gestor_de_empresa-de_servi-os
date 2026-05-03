@@ -236,15 +236,15 @@
     return '<div style="border-top:1px solid var(--border);margin-top:.75rem;padding-top:.75rem">' +
       '<div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">⚙️ Parâmetros de Suspensão</div>' +
       _campo('Altura de suspensão',
-        _radioGroup('dimAlt_' + i, alts, String(t.altura_mm), null, true)) +
+        _radioGroup('dimAlt_' + i, alts, String(t.altura_mm), 'dimTrechoChange(' + i + ')', true)) +
       _campo('Espaçamento entre pontos',
-        _radioGroup('dimEsp_' + i, esps, String(t.espacamento), null, true)) +
+        _radioGroup('dimEsp_' + i, esps, String(t.espacamento), 'dimTrechoChange(' + i + ')', true)) +
       _campo('Fixação na viga',
-        _radioGroup('dimFix_' + i, fixs, t.fixacao_viga, null, true)) +
+        _radioGroup('dimFix_' + i, fixs, t.fixacao_viga, 'dimTrechoChange(' + i + ')', true)) +
       _campo('Bitola do vergalhão',
-        _radioGroup('dimBit_' + i, bits, t.bitola_vergalhao, null, true)) +
+        _radioGroup('dimBit_' + i, bits, t.bitola_vergalhao, 'dimTrechoChange(' + i + ')', true)) +
       _campo('Tipo de suporte',
-        _radioGroup('dimSup_' + i, sups, t.tipo_suporte, null, true)) +
+        _radioGroup('dimSup_' + i, sups, t.tipo_suporte, 'dimTrechoChange(' + i + ')', true)) +
       '</div>';
   }
 
@@ -261,9 +261,9 @@
     return '<div style="border-top:1px solid var(--border);margin-top:.75rem;padding-top:.75rem">' +
       '<div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">⚙️ Parâmetros de Parede</div>' +
       _campo('Espaçamento entre pontos',
-        _radioGroup('dimEspP_' + i, esps, String(t.espacamento_parede), null, true)) +
+        _radioGroup('dimEspP_' + i, esps, String(t.espacamento_parede), 'dimTrechoChange(' + i + ')', true)) +
       _campo('Tipo de suporte',
-        _radioGroup('dimSupP_' + i, sups, t.tipo_suporte_parede, null, true)) +
+        _radioGroup('dimSupP_' + i, sups, t.tipo_suporte_parede, 'dimTrechoChange(' + i + ')', true)) +
       '</div>';
   }
 
@@ -329,15 +329,15 @@
     return '<div style="max-width:680px;margin:0 auto">' +
       '<div class="card" style="padding:1.25rem">' +
       '<div class="ct" style="margin-bottom:1rem">⚡ Especificação da Eletrocalha</div>' +
-      _campo('Tipo de perfil', _radioGroup('dimPerfil', perfis, ec.perfil, null, true)) +
-      _campo('Largura', _radioGroup('dimLarg', larguras, String(ec.largura), null, true)) +
-      _campo('Altura da aba', _radioGroup('dimAlt3', alturas, String(ec.altura), null, true)) +
-      _campo('Material', _radioGroup('dimMat', mats, ec.material, null, true)) +
-      _campo('Acabamento', _radioGroup('dimAcab', acabs, ec.acabamento, null, true)) +
-      _campo('Espessura da chapa', _radioGroup('dimChapa', chapas, ec.chapa, null, true)) +
-      _campo('Tampa', _radioGroup('dimTampa', tampas, ec.tampa, null, true)) +
+      _campo('Tipo de perfil', _radioGroup('dimPerfil', perfis, ec.perfil, 'dimEcChange()', true)) +
+      _campo('Largura', _radioGroup('dimLarg', larguras, String(ec.largura), 'dimEcChange()', true)) +
+      _campo('Altura da aba', _radioGroup('dimAlt3', alturas, String(ec.altura), 'dimEcChange()', true)) +
+      _campo('Material', _radioGroup('dimMat', mats, ec.material, 'dimEcChange()', true)) +
+      _campo('Acabamento', _radioGroup('dimAcab', acabs, ec.acabamento, 'dimEcChange()', true)) +
+      _campo('Espessura da chapa', _radioGroup('dimChapa', chapas, ec.chapa, 'dimEcChange()', true)) +
+      _campo('Tampa', _radioGroup('dimTampa', tampas, ec.tampa, 'dimEcChange()', true)) +
       alertaFR +
-      _campo('Divisor / Septo', _radioGroup('dimDiv', divisores, ec.divisor, null, true)) +
+      _campo('Divisor / Septo', _radioGroup('dimDiv', divisores, ec.divisor, 'dimEcChange()', true)) +
       _previewSku() +
       '</div></div>';
   }
@@ -608,6 +608,11 @@
 
   function dimTrechoChange(i) {
     _coletarBloco2();
+    _renderEtapa();
+  }
+
+  function dimEcChange() {
+    _coletarBloco3();
     _renderEtapa();
   }
 
@@ -1292,6 +1297,7 @@
   win.dimAddTrecho         = dimAddTrecho;
   win.dimRemoveTrecho      = dimRemoveTrecho;
   win.dimTrechoChange      = dimTrechoChange;
+  win.dimEcChange          = dimEcChange;
   win.dimAddConexao        = dimAddConexao;
   win.dimRemoveConexao     = dimRemoveConexao;
   win.dimConexaoQtd        = dimConexaoQtd;
