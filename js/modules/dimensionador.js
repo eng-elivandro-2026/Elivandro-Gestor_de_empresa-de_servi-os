@@ -76,18 +76,22 @@
     _renderOverlay();
     var o = _q('dimOverlay');
     if (o) {
-      o.style.display = 'flex';
-      // Force full-viewport coverage — needed in Safari when body has overflow-x:hidden
-      o.style.position  = 'fixed';
-      o.style.top    = '0';
-      o.style.left   = '0';
-      o.style.right  = '0';
-      o.style.bottom = '0';
-      o.style.width  = '100%';
-      o.style.height = '100%';
-      o.style.zIndex = '99999';
+      // Use vw/vh units — always relative to viewport, never to containing block
+      o.style.cssText = [
+        'display:flex',
+        'flex-direction:column',
+        'position:fixed',
+        'top:0',
+        'left:0',
+        'width:100vw',
+        'height:100vh',
+        'background:var(--bg1)',
+        'z-index:99999',
+        'overflow:hidden'
+      ].join(';');
     }
-    // Lock body scroll so Safari/iOS treats viewport as containing block for fixed
+    // Prevent background scroll and force viewport as fixed containing block
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     _renderEtapa();
   }
@@ -95,6 +99,7 @@
   function fecharDimensionador() {
     var o = _q('dimOverlay');
     if (o) o.style.display = 'none';
+    document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
   }
 
