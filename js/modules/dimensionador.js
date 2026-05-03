@@ -207,14 +207,9 @@
   }
 
   function _htmlParamsSusp(t, i) {
-    var alts = [
-      { v: '500',  l: '500 mm' }, { v: '1000', l: '1.000 mm' },
-      { v: '1500', l: '1.500 mm' }, { v: '2000', l: '2.000 mm' },
-      { v: '2500', l: '2.500 mm' }, { v: '3000', l: '3.000 mm' }
-    ];
     var esps = [
-      { v: '0.5', l: '0,5 m' }, { v: '1.0', l: '1,0 m' },
-      { v: '1.5', l: '1,5 m' }, { v: '2.0', l: '2,0 m' }
+      { v: '0.5', l: '0,5 m' }, { v: '1', l: '1,0 m' },
+      { v: '1.5', l: '1,5 m' }, { v: '2', l: '2,0 m' }
     ];
     var fixs = [
       { v: 'grampo_c',   l: '🗜️ Grampo C (DP538)' },
@@ -233,12 +228,15 @@
       { v: 'duplo',      l: 'Duplo DP744' },
       { v: 'reforcado',  l: 'Reforçado DP745' }
     ];
+    // Espaçamento: normaliza para string sem zeros desnecessários
+    var espSel = String(parseFloat(t.espacamento));
     return '<div style="border-top:1px solid var(--border);margin-top:.75rem;padding-top:.75rem">' +
       '<div style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">⚙️ Parâmetros de Suspensão</div>' +
-      _campo('Altura de suspensão',
-        _radioGroup('dimAlt_' + i, alts, String(t.altura_mm), 'dimTrechoChange(' + i + ')', true)) +
+      _campo('Altura de suspensão (mm)',
+        '<input id="dimAlt_' + i + '" type="number" min="100" max="6000" step="50" class="inp" value="' + t.altura_mm + '" style="width:140px" onchange="dimTrechoChange(' + i + ')"> <span style="font-size:.75rem;color:var(--text3)">mm</span>',
+        true) +
       _campo('Espaçamento entre pontos',
-        _radioGroup('dimEsp_' + i, esps, String(t.espacamento), 'dimTrechoChange(' + i + ')', true)) +
+        _radioGroup('dimEsp_' + i, esps, espSel, 'dimTrechoChange(' + i + ')', true)) +
       _campo('Fixação na viga',
         _radioGroup('dimFix_' + i, fixs, t.fixacao_viga, 'dimTrechoChange(' + i + ')', true)) +
       _campo('Bitola do vergalhão',
@@ -250,8 +248,8 @@
 
   function _htmlParamsParede(t, i) {
     var esps = [
-      { v: '0.5', l: '0,5 m' }, { v: '1.0', l: '1,0 m' },
-      { v: '1.5', l: '1,5 m' }, { v: '2.0', l: '2,0 m' }
+      { v: '0.5', l: '0,5 m' }, { v: '1', l: '1,0 m' },
+      { v: '1.5', l: '1,5 m' }, { v: '2', l: '2,0 m' }
     ];
     var sups = [
       { v: 'simples',   l: 'Mão Francesa Simples DP746' },
@@ -547,7 +545,7 @@
       t.comprimento = parseFloat((_q('dimTrechoComp_' + i) || {}).value) || t.comprimento;
       if (!t.comprimento || t.comprimento <= 0) { _toast('Informe o comprimento do Trecho ' + (i + 1) + '.', 'err'); ok = false; }
       if (t.tipo === 'suspensao') {
-        t.altura_mm       = parseInt(_radioVal('dimAlt_' + i)) || t.altura_mm;
+        t.altura_mm       = parseInt((_q('dimAlt_' + i) || {}).value) || t.altura_mm;
         t.espacamento     = parseFloat(_radioVal('dimEsp_' + i)) || t.espacamento;
         t.fixacao_viga    = _radioVal('dimFix_' + i) || t.fixacao_viga;
         t.bitola_vergalhao= _radioVal('dimBit_' + i) || t.bitola_vergalhao;
