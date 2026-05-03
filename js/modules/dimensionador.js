@@ -122,7 +122,7 @@
     ];
     var bar = _q('dimStepBar');
     if (!bar) return;
-    bar.innerHTML = steps.map(function (s) {
+    var pills = steps.map(function (s) {
       var ativo = s.n === _ds.etapa;
       var done  = s.n < _ds.etapa;
       var cor   = ativo ? '#f05a1a' : done ? '#22c55e' : '#475569';
@@ -136,6 +136,8 @@
         'color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0">' +
         (done ? '✓' : s.n) + '</span>' + s.label + '</button>';
     }).join('<span style="color:#334155;align-self:center;font-size:.7rem">›</span>');
+    bar.innerHTML = '<div style="display:flex;align-items:center;gap:.25rem;flex:1;overflow-x:auto;min-width:0">' + pills + '</div>' +
+      '<button onclick="dimSalvarTemplate()" class="btn bg bsm" style="flex-shrink:0;margin-left:.5rem">⭐ Template</button>';
   }
 
   function _atualizarBotoesNav() {
@@ -1344,10 +1346,8 @@
       // Header
       '<div class="dim-hdr">' +
       '<span style="font-size:.82rem;font-weight:700;color:var(--accent)">📐 Dimensionador de Eletrocalha</span>' +
-      '<div style="display:flex;gap:.35rem;align-items:center">' +
-      '<button onclick="dimSalvarTemplate()" class="btn bg bsm">⭐ Template</button>' +
       '<button onclick="fecharDimensionador()" class="modal-close" title="Fechar">✕</button>' +
-      '</div></div>' +
+      '</div>' +
 
       // Step bar
       '<div id="dimStepBar" class="dim-steps"></div>' +
