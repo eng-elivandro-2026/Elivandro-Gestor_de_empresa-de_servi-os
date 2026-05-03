@@ -690,14 +690,19 @@
     var total_verg = pontos * verg_por_ponto;
     var barras_verg = Math.ceil(total_verg / 3);
 
-    // Bitola → código Dispan (série DP608-DP629 / a confirmar com catálogo)
-    var bitMap = { '1/4': 'DP620', '5/16': 'DP621', '3/8': 'DP622', '1/2': 'DP623' };
+    // Bitola → código Dispan DP608 (vergalhão rosca total 3000mm)
+    var bitMap = {
+      '1/4':  'DP608-1/4pol-3000',
+      '5/16': 'DP608-5/16pol-3000',
+      '3/8':  'DP608-3/8pol-3000',
+      '1/2':  'DP608-1/2pol-3000'
+    };
     var bitDesc = { '1/4': '¼"', '5/16': '5⁄16"', '3/8': '⅜"', '1/2': '½"' };
-    var bitCod  = bitMap[t.bitola_vergalhao] || 'DP622';
+    var bitCod  = bitMap[t.bitola_vergalhao] || 'DP608-3/8pol-3000';
     var bitDsc  = bitDesc[t.bitola_vergalhao] || '⅜"';
 
     // Vergalhão
-    itens.push(_item('ME-12', bitCod, 'Vergalhão Roscado ' + bitDsc + ' 3 m — Dispan', barras_verg, 'barra', '7214.20.00'));
+    itens.push(_item('ME-12', bitCod, 'Vergalhão Rosca Total ' + bitDsc + ' 3 m — Dispan', barras_verg, 'barra', '7317.00.90'));
 
     // Fixação na viga
     if (t.fixacao_viga === 'grampo_c') {
@@ -783,43 +788,47 @@
     var ec = _ds.ec;
     var con = _ds.conexoes;
 
-    // Curvas horizontais (DP710 range — código a confirmar com catálogo Dispan)
+    // Mapa ângulo → código Dispan (catálogo 2023, série segmentado)
+    var angToH  = { 90: 'DP710', 45: 'DP711' };  // curva horizontal
+    var angToVI = { 90: 'DP714', 45: 'DP715' };  // curva vert. interna
+    var angToVE = { 90: 'DP712', 45: 'DP713' };  // curva vert. externa
+    var fornDim = 'Indicar ao fornecedor: Cota A (' + ec.largura + 'mm) + B (' + ec.altura + 'mm) | ' + ec.material + ' ' + ec.acabamento;
+
+    // Curvas horizontais
     (con.curvas_h || []).forEach(function (c) {
       if (!c.qtd) return;
-      var cod  = 'CRV-H-' + c.angulo + '-' + ec.largura + '-' + ec.material;
-      var desc = 'Curva Horizontal ' + c.angulo + '° ' + ec.largura + 'mm ' + ec.material + ' ' + ec.acabamento + ' — Dispan (cod. a confirmar)';
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.10'));
+      var cod  = angToH[c.angulo] || 'DP710';
+      var desc = 'Curva Horizontal ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
+      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
     });
 
     // Curvas verticais internas
     (con.curvas_vi || []).forEach(function (c) {
       if (!c.qtd) return;
-      var cod  = 'CRV-VI-' + c.angulo + '-' + ec.largura + '-' + ec.material;
-      var desc = 'Curva Vertical Interna ' + c.angulo + '° ' + ec.largura + 'mm ' + ec.material + ' ' + ec.acabamento + ' — Dispan (cod. a confirmar)';
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.10'));
+      var cod  = angToVI[c.angulo] || 'DP714';
+      var desc = 'Curva Vertical Interna ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
+      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
     });
 
     // Curvas verticais externas
     (con.curvas_ve || []).forEach(function (c) {
       if (!c.qtd) return;
-      var cod  = 'CRV-VE-' + c.angulo + '-' + ec.largura + '-' + ec.material;
-      var desc = 'Curva Vertical Externa ' + c.angulo + '° ' + ec.largura + 'mm ' + ec.material + ' ' + ec.acabamento + ' — Dispan (cod. a confirmar)';
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.10'));
+      var cod  = angToVE[c.angulo] || 'DP712';
+      var desc = 'Curva Vertical Externa ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
+      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
     });
 
     // Tês
     if (con.tes > 0) {
-      var tCod  = 'TE-' + ec.largura + '-' + ec.material;
-      var tDesc = 'Tê / Derivação ' + ec.largura + 'mm ' + ec.material + ' ' + ec.acabamento + ' — Dispan (cod. a confirmar)';
-      itens.push(_item('ME-01', tCod, tDesc, con.tes, 'un', '7308.90.10'));
+      var tDesc = 'Tê Horizontal 90° para Eletrocalha — Dispan DP716 | ' + fornDim;
+      itens.push(_item('ME-01', 'DP716', tDesc, con.tes, 'un', '7308.90.90'));
     }
 
     // Reduções
     (con.reducoes || []).forEach(function (r) {
       if (!r.qtd) return;
-      var cod  = 'RED-' + r.de + '-' + r.para + '-' + ec.material;
-      var desc = 'Redução de Largura ' + r.de + '→' + r.para + 'mm ' + ec.material + ' ' + ec.acabamento + ' — Dispan (cod. a confirmar)';
-      itens.push(_item('ME-01', cod, desc, r.qtd, 'un', '7308.90.10'));
+      var desc = 'Redução Concêntrica p/ Eletrocalha — Dispan DP730 | Indicar: ' + r.de + '→' + r.para + 'mm | ' + ec.material + ' ' + ec.acabamento;
+      itens.push(_item('ME-01', 'DP730', desc, r.qtd, 'un', '7308.90.90'));
     });
 
     return itens;
