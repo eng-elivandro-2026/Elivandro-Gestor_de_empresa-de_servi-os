@@ -32,11 +32,15 @@
       divisor:    'sem'
     },
     conexoes: {        // conexões do trajeto
-      curvas_h:  [],   // [{qtd, angulo}]
-      curvas_vi: [],   // [{qtd, angulo}]
-      curvas_ve: [],   // [{qtd, angulo}]
-      tes:       0,
-      reducoes:  []    // [{qtd, de, para}]
+      serie: 'seg',   // 'seg'=segmentado, 'curv'=curvilinneo, 'estr'=estrutural
+      raio:  '150',   // raio das curvas em mm
+      qtd: {          // quantidade por código base (lowercase)
+        dp710:0, dp711:0, dp712:0, dp713:0, dp714:0, dp715:0,
+        dp716:0, dp717:0, dp718:0, dp719:0, dp720:0, dp721:0,
+        dp722:0, dp723:0, dp724:0, dp725:0, dp726:0, dp727:0,
+        dp728:0, dp729:0, dp739:0
+      },
+      reducoes: []    // [{qtd, tipo:'dp730'|'dp731'|'dp732'|'dp733', de, para}]
     },
     fin: {             // finalizações
       terminal:     false,
@@ -353,68 +357,120 @@
   // BLOCO 4 — CONEXÕES
   // ─────────────────────────────────────────────────────────────
   function _htmlBloco4() {
-    var con = _ds.conexoes;
-    var angulos = ['30', '45', '60', '90'];
+    var con   = _ds.conexoes;
+    var serie = con.serie || 'seg';
+    var raio  = con.raio  || '150';
+    var qtd   = con.qtd   || {};
+    var suf   = { seg: '', curv: 'C', estr: 'E' }[serie] || '';
 
-    function rowConexao(label, key, subkey) {
-      var items = con[key] || [];
-      var rows = items.map(function (c, i) {
-        return '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">' +
-          '<input type="number" min="0" value="' + (c.qtd || 0) + '" style="width:64px" class="inp" ' +
-          'onchange="dimConexaoQtd(\'' + key + '\',' + i + ',this.value)">' +
-          '<span style="color:var(--text3);font-size:.8rem">un</span>' +
-          _selectAngle(key + '_ang_' + i, c.angulo, 'dimConexaoAng(\'' + key + '\',' + i + ',this.value)') +
-          '<button onclick="dimRemoveConexao(\'' + key + '\',' + i + ')" style="background:none;border:none;color:#f85149;cursor:pointer">✕</button>' +
-          '</div>';
-      }).join('');
-      return _campo(label,
-        '<div>' + rows +
-        '<button onclick="dimAddConexao(\'' + key + '\')" class="btn bg bsm" style="margin-top:.3rem">+ Adicionar</button>' +
-        '</div>');
+    function disponivel(s) {
+      if (serie === 'seg')  return true;
+      if (serie === 'curv') return s.indexOf('C') >= 0;
+      if (serie === 'estr') return s.indexOf('E') >= 0;
+      return true;
     }
 
-    function rowSimples(label, key) {
-      return _campo(label,
-        '<input id="dim_' + key + '" type="number" min="0" value="' + (con[key] || 0) + '" class="inp" style="width:80px">');
+    function rowCon(cod, desc, ang, s) {
+      if (!disponivel(s)) return '';
+      var key = cod.toLowerCase();
+      var q   = parseInt(qtd[key]) || 0;
+      return '<tr>' +
+        '<td style="font-family:monospace;font-size:.75rem;color:#58a6ff;white-space:nowrap;padding:.28rem .4rem">' + cod + suf + '</td>' +
+        '<td style="font-size:.8rem;padding:.28rem .4rem">' + desc + '</td>' +
+        '<td style="font-size:.74rem;color:var(--text3);white-space:nowrap;padding:.28rem .4rem">' + ang + '</td>' +
+        '<td style="padding:.28rem .4rem"><input type="number" min="0" value="' + q + '" style="width:60px" class="inp" ' +
+        'onchange="dimConQtd(\'' + key + '\',this.value)"></td>' +
+        '<td style="font-size:.74rem;color:var(--text3);padding:.28rem .2rem">un</td>' +
+        '</tr>';
     }
 
-    function rowReducoes() {
-      var rows = (con.reducoes || []).map(function (r, i) {
-        return '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">' +
-          '<input type="number" min="1" value="' + (r.qtd || 1) + '" style="width:56px" class="inp" ' +
-          'onchange="dimReducaoField(' + i + ',\'qtd\',this.value)"> un' +
-          '<span style="color:var(--text3);font-size:.78rem;margin:0 .3rem">de</span>' +
-          '<input type="number" min="50" value="' + (r.de || 200) + '" style="width:70px" class="inp" ' +
-          'onchange="dimReducaoField(' + i + ',\'de\',this.value)"> mm' +
-          '<span style="color:var(--text3);font-size:.78rem;margin:0 .3rem">→</span>' +
-          '<input type="number" min="50" value="' + (r.para || 100) + '" style="width:70px" class="inp" ' +
-          'onchange="dimReducaoField(' + i + ',\'para\',this.value)"> mm' +
-          '<button onclick="dimRemoveReducao(' + i + ')" style="background:none;border:none;color:#f85149;cursor:pointer">✕</button>' +
-          '</div>';
-      }).join('');
-      return _campo('Reduções de largura',
-        '<div>' + rows +
-        '<button onclick="dimAddReducao()" class="btn bg bsm" style="margin-top:.3rem">+ Adicionar</button>' +
-        '</div>');
+    function grupo(t) {
+      return '<tr><td colspan="5" style="padding:.55rem .4rem .2rem;font-size:.7rem;font-weight:700;color:var(--text3);' +
+        'text-transform:uppercase;letter-spacing:.07em;border-top:1px solid var(--border)">' + t + '</td></tr>';
     }
 
-    return '<div style="max-width:640px;margin:0 auto">' +
-      '<div class="card" style="padding:1.25rem">' +
-      '<div class="ct" style="margin-bottom:.5rem">🔄 Conexões do Trajeto</div>' +
-      '<p class="hint" style="margin-bottom:1rem">Informe as conexões necessárias no trajeto. Deixe 0 onde não houver.</p>' +
-      rowConexao('Curvas horizontais', 'curvas_h') +
-      rowConexao('Curvas verticais internas', 'curvas_vi') +
-      rowConexao('Curvas verticais externas', 'curvas_ve') +
-      rowSimples('Tês / Derivações (un)', 'tes') +
-      rowReducoes() +
-      '</div></div>';
-  }
-
-  function _selectAngle(id, val, onchange) {
-    var opts = ['30', '45', '60', '90'].map(function (a) {
-      return '<option value="' + a + '"' + (String(val) === a ? ' selected' : '') + '>' + a + '°</option>';
+    var serieOpts = [
+      { v: 'seg',  l: 'Segmentado' },
+      { v: 'curv', l: 'Curvilinneo' },
+      { v: 'estr', l: 'Estrutural (virola 180°)' }
+    ].map(function (o) {
+      return '<label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;margin-right:.9rem;font-size:.8rem">' +
+        '<input type="radio" name="dimConSerie" value="' + o.v + '"' + (serie === o.v ? ' checked' : '') +
+        ' onchange="dimConSerie(this.value)"> ' + o.l + '</label>';
     }).join('');
-    return '<select id="' + id + '" class="inp" style="width:80px" onchange="' + onchange + '">' + opts + '</select>';
+
+    var raioOpts = ['150','300','450','600','900'].map(function (r) {
+      return '<option value="' + r + '"' + (raio === r ? ' selected' : '') + '>' + r + ' mm</option>';
+    }).join('');
+
+    var redDesc = { dp730: 'Concêntrica', dp731: 'A direita', dp732: 'A esquerda', dp733: 'De abas' };
+    var redRows = (con.reducoes || []).map(function (r, i) {
+      var tipoOpts = Object.keys(redDesc).map(function (k) {
+        return '<option value="' + k + '"' + (r.tipo === k ? ' selected' : '') + '>' +
+          k.toUpperCase() + suf + ' — ' + redDesc[k] + '</option>';
+      }).join('');
+      return '<div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">' +
+        '<select class="inp" style="font-size:.75rem" onchange="dimReducaoTipo(' + i + ',this.value)">' + tipoOpts + '</select>' +
+        '<input type="number" min="50" value="' + (r.de||200) + '" style="width:68px" class="inp" onchange="dimReducaoField(' + i + ',\'de\',this.value)">' +
+        '<span style="font-size:.74rem;color:var(--text3)">→</span>' +
+        '<input type="number" min="50" value="' + (r.para||100) + '" style="width:68px" class="inp" onchange="dimReducaoField(' + i + ',\'para\',this.value)">' +
+        '<span style="font-size:.74rem;color:var(--text3)">mm ×</span>' +
+        '<input type="number" min="1" value="' + (r.qtd||1) + '" style="width:52px" class="inp" onchange="dimReducaoField(' + i + ',\'qtd\',this.value)">' +
+        '<span style="font-size:.74rem;color:var(--text3)">un</span>' +
+        '<button onclick="dimRemoveReducao(' + i + ')" style="background:none;border:none;color:#f85149;cursor:pointer;font-size:1rem">✕</button>' +
+        '</div>';
+    }).join('');
+
+    return '<div style="max-width:680px;margin:0 auto"><div class="card" style="padding:1.25rem">' +
+      '<div class="ct" style="margin-bottom:.75rem">🔄 Conexões e Acessórios</div>' +
+
+      '<div style="margin-bottom:.75rem">' +
+      '<div style="font-size:.73rem;color:var(--text3);font-weight:600;margin-bottom:.35rem">SÉRIE DAS CONEXÕES</div>' +
+      '<div style="display:flex;flex-wrap:wrap">' + serieOpts + '</div>' +
+      '</div>' +
+
+      '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">' +
+      '<span style="font-size:.73rem;color:var(--text3);font-weight:600">RAIO DAS CURVAS:</span>' +
+      '<select id="dimConRaio" class="inp" style="width:120px" onchange="dimConRaio(this.value)">' + raioOpts + '</select>' +
+      '</div>' +
+
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tbody>' +
+      grupo('Curvas horizontais') +
+      rowCon('DP710','Curva horizontal','90°','SCE') +
+      rowCon('DP711','Curva horizontal','45°','SCE') +
+      grupo('Curvas verticais externas') +
+      rowCon('DP712','Curva vertical externa','90°','SCE') +
+      rowCon('DP713','Curva vertical externa','45°','SCE') +
+      grupo('Curvas verticais internas') +
+      rowCon('DP714','Curva vertical interna','90°','SCE') +
+      rowCon('DP715','Curva vertical interna','45°','SCE') +
+      grupo('Tês / Derivações') +
+      rowCon('DP716','Tê horizontal','90°','SCE') +
+      rowCon('DP717','Tê vertical descida','90°','SCE') +
+      rowCon('DP718','Tê vertical subida','90°','SCE') +
+      rowCon('DP719','Tê vertical descida lateral','90°','SCE') +
+      grupo('Cruzetas / Inversão') +
+      rowCon('DP720','Cruzeta horizontal','90°','SCE') +
+      rowCon('DP721','Curva de inversão','90°','SCE') +
+      rowCon('DP722','Tê reto','90°','S') +
+      rowCon('DP723','Cotovelo reto','90°','S') +
+      rowCon('DP724','Cruzeta reta','90°','S') +
+      grupo('Curvas especiais') +
+      rowCon('DP725','Curva c/ passagem reta subida','90°','SCE') +
+      rowCon('DP739','Curva c/ passagem reta descida','90°','SCE') +
+      grupo('Junções / Desvios') +
+      rowCon('DP726','Junção a direita','45°','SE') +
+      rowCon('DP727','Junção a esquerda','45°','SE') +
+      rowCon('DP728','Desvio horizontal esquerda','45°','SE') +
+      rowCon('DP729','Desvio horizontal direita','45°','SE') +
+      '</tbody></table></div>' +
+
+      '<div style="margin-top:1rem">' +
+      '<div style="font-size:.73rem;color:var(--text3);font-weight:600;margin-bottom:.4rem">REDUÇÕES DE LARGURA</div>' +
+      (redRows || '<div style="font-size:.78rem;color:var(--text3);margin-bottom:.35rem">Nenhuma redução adicionada.</div>') +
+      '<button onclick="dimAddReducao()" class="btn bg bsm" style="margin-top:.25rem">+ Adicionar redução</button>' +
+      '</div>' +
+      '</div></div>';
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -576,8 +632,8 @@
   }
 
   function _coletarBloco4() {
-    var tes = parseInt((_q('dim_tes') || {}).value);
-    if (!isNaN(tes)) _ds.conexoes.tes = tes;
+    var raio = (_q('dimConRaio') || {}).value;
+    if (raio) _ds.conexoes.raio = raio;
     return true;
   }
 
@@ -617,27 +673,23 @@
   // ─────────────────────────────────────────────────────────────
   // CONEXÕES — eventos dinâmicos
   // ─────────────────────────────────────────────────────────────
-  function dimAddConexao(key) {
-    if (!_ds.conexoes[key]) _ds.conexoes[key] = [];
-    _ds.conexoes[key].push({ qtd: 1, angulo: '90' });
+  function dimConSerie(val) {
+    _coletarBloco4();
+    _ds.conexoes.serie = val;
     _renderEtapa();
   }
 
-  function dimRemoveConexao(key, i) {
-    _ds.conexoes[key].splice(i, 1);
-    _renderEtapa();
+  function dimConRaio(val) {
+    _ds.conexoes.raio = val;
   }
 
-  function dimConexaoQtd(key, i, v) {
-    _ds.conexoes[key][i].qtd = parseInt(v) || 0;
-  }
-
-  function dimConexaoAng(key, i, v) {
-    _ds.conexoes[key][i].angulo = v;
+  function dimConQtd(key, val) {
+    if (!_ds.conexoes.qtd) _ds.conexoes.qtd = {};
+    _ds.conexoes.qtd[key] = parseInt(val) || 0;
   }
 
   function dimAddReducao() {
-    _ds.conexoes.reducoes.push({ qtd: 1, de: _ds.ec.largura, para: Math.max(50, _ds.ec.largura - 100) });
+    _ds.conexoes.reducoes.push({ qtd: 1, tipo: 'dp730', de: _ds.ec.largura, para: Math.max(50, _ds.ec.largura - 100) });
     _renderEtapa();
   }
 
@@ -648,6 +700,10 @@
 
   function dimReducaoField(i, field, v) {
     _ds.conexoes.reducoes[i][field] = parseInt(v) || 0;
+  }
+
+  function dimReducaoTipo(i, val) {
+    _ds.conexoes.reducoes[i].tipo = val;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -789,50 +845,67 @@
   // ── Conexões ──
   function _calcConexoes() {
     var itens = [];
-    var ec = _ds.ec;
-    var con = _ds.conexoes;
+    var ec    = _ds.ec;
+    var con   = _ds.conexoes;
+    var serie = con.serie || 'seg';
+    var raio  = con.raio  || '150';
+    var qtd   = con.qtd   || {};
+    var suf   = { seg: '', curv: 'C', estr: 'E' }[serie] || '';
+    var spec  = ec.material + '-' + ec.acabamento + '-' + ec.largura + '/' + ec.altura + '-' + ec.chapa;
+    var fornDim = 'Cota A+B: ' + ec.largura + '×' + ec.altura + 'mm | ' + ec.material + ' ' + ec.acabamento;
 
-    // Mapa ângulo → código Dispan (catálogo 2023, série segmentado)
-    var angToH  = { 90: 'DP710', 45: 'DP711' };  // curva horizontal
-    var angToVI = { 90: 'DP714', 45: 'DP715' };  // curva vert. interna
-    var angToVE = { 90: 'DP712', 45: 'DP713' };  // curva vert. externa
-    var fornDim = 'Indicar ao fornecedor: Cota A (' + ec.largura + 'mm) + B (' + ec.altura + 'mm) | ' + ec.material + ' ' + ec.acabamento;
+    // [cod_base, descricao, angulo, eh_curva, series_disponiveis]
+    var defs = [
+      ['DP710','Curva horizontal',              '90°',true, 'SCE'],
+      ['DP711','Curva horizontal',              '45°',true, 'SCE'],
+      ['DP712','Curva vertical externa',        '90°',true, 'SCE'],
+      ['DP713','Curva vertical externa',        '45°',true, 'SCE'],
+      ['DP714','Curva vertical interna',        '90°',true, 'SCE'],
+      ['DP715','Curva vertical interna',        '45°',true, 'SCE'],
+      ['DP716','Tê horizontal',            '90°',false,'SCE'],
+      ['DP717','Tê vertical descida',      '90°',false,'SCE'],
+      ['DP718','Tê vertical subida',       '90°',false,'SCE'],
+      ['DP719','Tê vertical descida lateral','90°',false,'SCE'],
+      ['DP720','Cruzeta horizontal',            '90°',false,'SCE'],
+      ['DP721','Curva de inversão',        '90°',true, 'SCE'],
+      ['DP722','Tê reto',                  '90°',false,'S'  ],
+      ['DP723','Cotovelo reto',                 '90°',false,'S'  ],
+      ['DP724','Cruzeta reta',                  '90°',false,'S'  ],
+      ['DP725','Curva c/ passagem reta subida', '90°',true, 'SCE'],
+      ['DP726','Junção a direita',    '45°',false,'SE' ],
+      ['DP727','Junção a esquerda',   '45°',false,'SE' ],
+      ['DP728','Desvio horizontal esquerda',    '45°',false,'SE' ],
+      ['DP729','Desvio horizontal direita',     '45°',false,'SE' ],
+      ['DP739','Curva c/ passagem reta descida','90°',true, 'SCE']
+    ];
 
-    // Curvas horizontais
-    (con.curvas_h || []).forEach(function (c) {
-      if (!c.qtd) return;
-      var cod  = angToH[c.angulo] || 'DP710';
-      var desc = 'Curva Horizontal ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
+    defs.forEach(function (d) {
+      var baseCod = d[0], descBase = d[1], ang = d[2], isCurva = d[3], s = d[4];
+      var avail = (serie === 'seg') ||
+                  (serie === 'curv' && s.indexOf('C') >= 0) ||
+                  (serie === 'estr' && s.indexOf('E') >= 0);
+      if (!avail) return;
+      var key = baseCod.toLowerCase();
+      var q   = parseInt(qtd[key]) || 0;
+      if (!q) return;
+      var cod = baseCod + suf;
+      var sku = cod + '-' + spec + (isCurva ? '-R' + raio : '');
+      var desc = descBase + ' ' + ang + ' p/ Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
+      itens.push(_item('ME-01', sku, desc, q, 'un', '7308.90.90'));
     });
-
-    // Curvas verticais internas
-    (con.curvas_vi || []).forEach(function (c) {
-      if (!c.qtd) return;
-      var cod  = angToVI[c.angulo] || 'DP714';
-      var desc = 'Curva Vertical Interna ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
-    });
-
-    // Curvas verticais externas
-    (con.curvas_ve || []).forEach(function (c) {
-      if (!c.qtd) return;
-      var cod  = angToVE[c.angulo] || 'DP712';
-      var desc = 'Curva Vertical Externa ' + c.angulo + '° para Eletrocalha — Dispan ' + cod + ' | ' + fornDim;
-      itens.push(_item('ME-01', cod, desc, c.qtd, 'un', '7308.90.90'));
-    });
-
-    // Tês
-    if (con.tes > 0) {
-      var tDesc = 'Tê Horizontal 90° para Eletrocalha — Dispan DP716 | ' + fornDim;
-      itens.push(_item('ME-01', 'DP716', tDesc, con.tes, 'un', '7308.90.90'));
-    }
 
     // Reduções
+    var redBase  = { dp730:'DP730', dp731:'DP731', dp732:'DP732', dp733:'DP733' };
+    var redLabel = { dp730:'Redução Concêntr.', dp731:'Redução Dir.',
+                     dp732:'Redução Esq.',  dp733:'Redução Abas' };
     (con.reducoes || []).forEach(function (r) {
       if (!r.qtd) return;
-      var desc = 'Redução Concêntrica p/ Eletrocalha — Dispan DP730 | Indicar: ' + r.de + '→' + r.para + 'mm | ' + ec.material + ' ' + ec.acabamento;
-      itens.push(_item('ME-01', 'DP730', desc, r.qtd, 'un', '7308.90.90'));
+      var tipo = r.tipo || 'dp730';
+      var cod  = (redBase[tipo] || 'DP730') + suf;
+      var sku  = cod + '-' + ec.material + '-' + ec.acabamento + '-' + r.de + '/' + ec.altura + '-' + ec.chapa;
+      var desc = (redLabel[tipo] || 'Redução') + ' p/ Eletrocalha — Dispan ' + cod +
+                 ' | ' + r.de + '→' + r.para + 'mm | ' + ec.material + ' ' + ec.acabamento;
+      itens.push(_item('ME-01', sku, desc, r.qtd, 'un', '7308.90.90'));
     });
 
     return itens;
@@ -1296,13 +1369,13 @@
   win.dimRemoveTrecho      = dimRemoveTrecho;
   win.dimTrechoChange      = dimTrechoChange;
   win.dimEcChange          = dimEcChange;
-  win.dimAddConexao        = dimAddConexao;
-  win.dimRemoveConexao     = dimRemoveConexao;
-  win.dimConexaoQtd        = dimConexaoQtd;
-  win.dimConexaoAng        = dimConexaoAng;
+  win.dimConSerie          = dimConSerie;
+  win.dimConRaio           = dimConRaio;
+  win.dimConQtd            = dimConQtd;
   win.dimAddReducao        = dimAddReducao;
   win.dimRemoveReducao     = dimRemoveReducao;
   win.dimReducaoField      = dimReducaoField;
+  win.dimReducaoTipo       = dimReducaoTipo;
   win.dimSetCU             = dimSetCU;
   win.dimEditarItem        = dimEditarItem;
   win.dimDuplicarItem      = dimDuplicarItem;
