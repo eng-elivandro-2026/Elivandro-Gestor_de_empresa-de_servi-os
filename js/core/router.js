@@ -35,6 +35,17 @@
       ]
     },
     {
+      id: 'engenharia',
+      label: 'Engenharia',
+      icon: '📐',
+      tipo: 'inline',
+      init: function () { go('dashboard'); },
+      nav: [
+        { separator: true, label: 'Ferramentas de Engenharia' },
+        { label: 'Dimensionador', icon: '📐', action: "abrirDimensionador()" },
+      ]
+    },
+    {
       id: 'historico',
       label: 'Relacionamento',
       icon: '💬',
