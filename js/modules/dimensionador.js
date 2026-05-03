@@ -75,13 +75,27 @@
     _ds.etapa = 1;
     _renderOverlay();
     var o = _q('dimOverlay');
-    if (o) { o.style.display = 'flex'; }
+    if (o) {
+      o.style.display = 'flex';
+      // Force full-viewport coverage — needed in Safari when body has overflow-x:hidden
+      o.style.position  = 'fixed';
+      o.style.top    = '0';
+      o.style.left   = '0';
+      o.style.right  = '0';
+      o.style.bottom = '0';
+      o.style.width  = '100%';
+      o.style.height = '100%';
+      o.style.zIndex = '99999';
+    }
+    // Lock body scroll so Safari/iOS treats viewport as containing block for fixed
+    document.body.style.overflow = 'hidden';
     _renderEtapa();
   }
 
   function fecharDimensionador() {
     var o = _q('dimOverlay');
     if (o) o.style.display = 'none';
+    document.body.style.overflow = '';
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1173,7 +1187,7 @@
 
     var html =
       // ── Overlay principal ──────────────────────────────────
-      '<div id="dimOverlay" style="display:none;position:fixed;inset:0;background:var(--bg1);z-index:5000;flex-direction:column;overflow:hidden">' +
+      '<div id="dimOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:var(--bg1);z-index:99999;flex-direction:column;overflow:hidden">' +
 
       // Header
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0">' +
