@@ -1362,6 +1362,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
         <div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap">
           <button class="btn bs bsm" id="btnAddItem" onclick="abrirItemModal(null)">➕ Novo Item</button>
           <button class="btn bg bsm" onclick="openImportLote()" title="Importar itens colando colunas do Excel">📥 Importar Lote</button>
+          <button class="btn bsm" onclick="abrirDimensionador()" title="Dimensionar lista de materiais automaticamente" style="background:linear-gradient(135deg,#7c3aed,#f05a1a);color:#fff;font-weight:700;border:none">📐 Dimensionador</button>
           <span style="width:1px;background:var(--border);height:18px;display:inline-block;margin:0 4px"></span>
           <span style="font-size:.67rem;color:var(--text3);margin-right:.2rem">Agrupar:</span>
           <button class="btn bg bxs" onclick="sortBudg('tipo')"  id="sortBudgTipo"  title="Agrupar por Tipo">Tipo</button>
@@ -9659,6 +9660,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=4"></script>
 <script src="js/modules/cadastro.js?v=11"></script>
 <script src="js/modules/rh-inline.js"></script>
+<script src="js/modules/dimensionador.js"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
