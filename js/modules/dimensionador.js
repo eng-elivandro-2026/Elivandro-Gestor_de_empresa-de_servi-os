@@ -271,12 +271,14 @@
   function _htmlBloco3() {
     var ec = _ds.ec;
     var perfis = [
-      { v: 'DP700', l: 'DP700 — Lisa sem virola (Perfil U)' },
-      { v: 'DP701', l: 'DP701 — Lisa c/ virola 90° (Perfil C)' },
-      { v: 'DP702', l: 'DP702 — Perfurada c/ virola 90°' },
-      { v: 'DP703', l: 'DP703 — Lisa c/ virola 180°' },
-      { v: 'DP704', l: 'DP704 — Perfurada c/ virola 180°' },
-      { v: 'DP705', l: 'DP705 — C/ 1 divisor (2 compartimentos)' }
+      { v: 'DP700',  l: 'DP700 — Lisa s/ virola (Perfil U)' },
+      { v: 'DP701',  l: 'DP701 — Lisa c/ virola (Perfil C)' },
+      { v: 'DP702',  l: 'DP702 — Perfurada s/ virola (Perfil U)' },
+      { v: 'DP703',  l: 'DP703 — Perfurada c/ virola (Perfil C)' },
+      { v: 'DP704',  l: 'DP704 — Lisa s/ virola c/ divisor' },
+      { v: 'DP705',  l: 'DP705 — Lisa c/ virola e divisor' },
+      { v: 'DP701E', l: 'DP701E — Lisa estrutural c/ virola 180°' },
+      { v: 'DP703E', l: 'DP703E — Perfurada estrutural c/ virola 180°' }
     ];
     var larguras = [50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000].map(function (l) {
       return { v: String(l), l: l + ' mm' };
