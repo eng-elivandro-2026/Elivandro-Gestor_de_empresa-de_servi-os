@@ -7629,9 +7629,20 @@ function getItemDescSuggestions(query){
 function placeAutoBox(input){
   var box=ensureAutoBox();
   var r=input.getBoundingClientRect();
+  var spaceBelow=window.innerHeight - r.bottom - 8;
+  var spaceAbove=r.top - 8;
+  var maxH=220;
   box.style.left=Math.max(12, Math.round(r.left))+'px';
-  box.style.top=Math.round(r.bottom+6)+'px';
   box.style.width=Math.max(320, Math.round(r.width))+'px';
+  if(spaceAbove > spaceBelow && spaceAbove > 120){
+    box.style.top='';
+    box.style.bottom=(window.innerHeight - Math.round(r.top) + 8)+'px';
+    box.style.maxHeight=Math.min(maxH, Math.max(100, spaceAbove-10))+'px';
+  } else {
+    box.style.bottom='';
+    box.style.top=Math.round(r.bottom+8)+'px';
+    box.style.maxHeight=Math.min(maxH, Math.max(100, spaceBelow-10))+'px';
+  }
 }
 function hideAutoBox(){
   var box=ensureAutoBox();
@@ -7672,6 +7683,15 @@ function applyCompanySelection(rec){
   if(Q('pCnpj')) Q('pCnpj').value=rec.cnpj||'';
   if(Q('pCid')) Q('pCid').value=rec.cidade||'';
   if(Q('pAC') && !Q('pAC').value && rec.contatos && rec.contatos[0]) Q('pAC').value=rec.contatos[0].nome||'';
+  // Enriquece com dados do cadastro de clientes quando disponível
+  if(typeof window.cliGetAll === 'function'){
+    var cadClis=window.cliGetAll();
+    var matched=cadClis.find(function(c){ return normTxt(c.nome)===normTxt(rec.empresa||''); });
+    if(matched){
+      if(!Q('pCnpj').value && matched.cnpj) Q('pCnpj').value=matched.cnpj;
+      if(!Q('pCid').value && matched.cidade) Q('pCid').value=matched.cidade;
+    }
+  }
   hideAutoBox();
 }
 function buildServiceLocDirectory(){
@@ -7764,8 +7784,8 @@ function bindAutoInput(input, kind){
     var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
     renderAutoItems(input, items, kind);
   }
-  input.addEventListener('focus', openNow);
-  input.addEventListener('click', openNow);
+  input.addEventListener('focus', function(){ if(input.value.trim()) openNow(); });
+  input.addEventListener('click', function(){ if(input.value.trim()) openNow(); });
   input.addEventListener('input', openNow);
   input.addEventListener('keydown', function(ev){
     var box=ensureAutoBox();
