@@ -7546,12 +7546,14 @@ function findSelectedCompanyRecord(){
 function getCompanySuggestions(query){
   var q=normTxt(query);
   var dir=buildClientDirectory();
-  // Adiciona clientes cadastrados em Relacionamentos que não têm proposta ainda
+  // Adiciona clientes cadastrados em Relacionamentos — deduplica por nome+CNPJ para mostrar filiais separadas
   if(typeof window.cliGetAll==='function'){
-    var dirNomes={};
-    dir.forEach(function(e){ dirNomes[normTxt(e.empresa)]=true; });
+    var dirKeys={};
+    dir.forEach(function(e){ dirKeys[normTxt(e.empresa)+'|'+_normCnpjDigits(e.cnpj)]=true; });
     window.cliGetAll().forEach(function(c){
-      if(!c.nome||dirNomes[normTxt(c.nome)]) return;
+      if(!c.nome) return;
+      var k=normTxt(c.nome)+'|'+_normCnpjDigits(c.cnpj);
+      if(dirKeys[k]) return;
       dir.push({empresa:c.nome,cnpj:c.cnpj||'',cidade:c.cidade||'',contatos:[],total:0,_fromCad:true});
     });
   }
@@ -7696,14 +7698,21 @@ function renderAutoItems(input, items, kind){
   });
   box.style.display='block';
 }
+function _normCnpjDigits(s){ return (s||'').replace(/\D/g,''); }
 function applyCompanySelection(rec){
   if(!rec) return;
   var empresa=rec.empresa||'';
   var cnpj=rec.cnpj||'';
   var cidade=rec.cidade||'';
-  // Dados do cadastro de Relacionamentos têm prioridade sobre o histórico de propostas
   if(typeof window.cliGetAll==='function'){
-    var cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    var cadMatch=null;
+    // Prioridade: match por CNPJ (evita pegar a filial errada com mesmo nome)
+    if(_normCnpjDigits(cnpj)){
+      cadMatch=window.cliGetAll().find(function(c){ return _normCnpjDigits(c.cnpj)===_normCnpjDigits(cnpj); });
+    }
+    if(!cadMatch){
+      cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    }
     if(cadMatch){
       if(cadMatch.cnpj)   cnpj=cadMatch.cnpj;
       if(cadMatch.cidade) cidade=cadMatch.cidade;
@@ -7737,10 +7746,12 @@ function getLocCompanySuggestions(query){
   var q=normTxt(query);
   var dir=buildClientDirectory();
   if(typeof window.cliGetAll==='function'){
-    var dirNomes={};
-    dir.forEach(function(e){ dirNomes[normTxt(e.empresa)]=true; });
+    var dirKeys={};
+    dir.forEach(function(e){ dirKeys[normTxt(e.empresa)+'|'+_normCnpjDigits(e.cnpj)]=true; });
     window.cliGetAll().forEach(function(c){
-      if(!c.nome||dirNomes[normTxt(c.nome)]) return;
+      if(!c.nome) return;
+      var k=normTxt(c.nome)+'|'+_normCnpjDigits(c.cnpj);
+      if(dirKeys[k]) return;
       dir.push({empresa:c.nome,cnpj:c.cnpj||'',cidade:c.cidade||'',contatos:[],total:0,_fromCad:true});
     });
   }
@@ -7757,7 +7768,13 @@ function applyLocCompanySelection(rec){
   var cnpj=rec.cnpj||'';
   var cidade=rec.cidade||'';
   if(typeof window.cliGetAll==='function'){
-    var cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    var cadMatch=null;
+    if(_normCnpjDigits(cnpj)){
+      cadMatch=window.cliGetAll().find(function(c){ return _normCnpjDigits(c.cnpj)===_normCnpjDigits(cnpj); });
+    }
+    if(!cadMatch){
+      cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    }
     if(cadMatch){
       if(cadMatch.cnpj)   cnpj=cadMatch.cnpj;
       if(cadMatch.cidade) cidade=cadMatch.cidade;
@@ -7847,8 +7864,8 @@ function bindAutoInput(input, kind){
     var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
     renderAutoItems(input, items, kind);
   }
-  input.addEventListener('focus', function(){ if(input.value.trim()) openNow(); });
-  input.addEventListener('click', function(){ if(input.value.trim()) openNow(); });
+  input.addEventListener('focus', openNow);
+  input.addEventListener('click', openNow);
   input.addEventListener('input', openNow);
   input.addEventListener('keydown', function(ev){
     var box=ensureAutoBox();
