@@ -7545,7 +7545,17 @@ function findSelectedCompanyRecord(){
 }
 function getCompanySuggestions(query){
   var q=normTxt(query);
-  return buildClientDirectory().filter(function(e){
+  var dir=buildClientDirectory();
+  // Adiciona clientes cadastrados em Relacionamentos que não têm proposta ainda
+  if(typeof window.cliGetAll==='function'){
+    var dirNomes={};
+    dir.forEach(function(e){ dirNomes[normTxt(e.empresa)]=true; });
+    window.cliGetAll().forEach(function(c){
+      if(!c.nome||dirNomes[normTxt(c.nome)]) return;
+      dir.push({empresa:c.nome,cnpj:c.cnpj||'',cidade:c.cidade||'',contatos:[],total:0,_fromCad:true});
+    });
+  }
+  return dir.filter(function(e){
     if(!q) return true;
     var hay=[e.empresa,e.cnpj,e.cidade].map(normTxt).join(' | ');
     return hay.indexOf(q)>=0;
@@ -7553,7 +7563,7 @@ function getCompanySuggestions(query){
     return {
       kind:'company',
       title:e.empresa||'—',
-      meta:[e.cnpj||'Sem CNPJ', e.cidade||'Sem cidade', (e.total||0)+' proposta(s)'].join(' • '),
+      meta:[e.cnpj||'Sem CNPJ', e.cidade||'Sem cidade', e.total?(e.total+' proposta(s)'):'Cadastro'].join(' • '),
       raw:e
     };
   });
@@ -7576,6 +7586,15 @@ function getContactSuggestions(query){
     contatos=Object.keys(mapa).map(function(k){ return mapa[k]; }).sort(function(a,b){
       if((b.usos||0)!==(a.usos||0)) return (b.usos||0)-(a.usos||0);
       return (a.nome||'').localeCompare(b.nome||'','pt-BR');
+    });
+  }
+  // Adiciona contatos cadastrados em Relacionamentos que não aparecem no histórico
+  if(typeof window.ctsGetAll==='function'){
+    var nomesMapa={};
+    contatos.forEach(function(c){ nomesMapa[normTxt(c.nome)]=true; });
+    window.ctsGetAll().forEach(function(c){
+      if(!c.nome||nomesMapa[normTxt(c.nome)]) return;
+      contatos.push({nome:c.nome,departamento:'',email:c.email||'',tel:c.telefone||'',empresa:c.empresa||'',cnpj:'',cidade:'',usos:0});
     });
   }
   return contatos.filter(function(c){
@@ -7679,19 +7698,21 @@ function renderAutoItems(input, items, kind){
 }
 function applyCompanySelection(rec){
   if(!rec) return;
-  if(Q('pCli')) Q('pCli').value=rec.empresa||'';
-  if(Q('pCnpj')) Q('pCnpj').value=rec.cnpj||'';
-  if(Q('pCid')) Q('pCid').value=rec.cidade||'';
-  if(Q('pAC') && !Q('pAC').value && rec.contatos && rec.contatos[0]) Q('pAC').value=rec.contatos[0].nome||'';
-  // Enriquece com dados do cadastro de clientes quando disponível
-  if(typeof window.cliGetAll === 'function'){
-    var cadClis=window.cliGetAll();
-    var matched=cadClis.find(function(c){ return normTxt(c.nome)===normTxt(rec.empresa||''); });
-    if(matched){
-      if(!Q('pCnpj').value && matched.cnpj) Q('pCnpj').value=matched.cnpj;
-      if(!Q('pCid').value && matched.cidade) Q('pCid').value=matched.cidade;
+  var empresa=rec.empresa||'';
+  var cnpj=rec.cnpj||'';
+  var cidade=rec.cidade||'';
+  // Dados do cadastro de Relacionamentos têm prioridade sobre o histórico de propostas
+  if(typeof window.cliGetAll==='function'){
+    var cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    if(cadMatch){
+      if(cadMatch.cnpj)   cnpj=cadMatch.cnpj;
+      if(cadMatch.cidade) cidade=cadMatch.cidade;
     }
   }
+  if(Q('pCli'))  Q('pCli').value=empresa;
+  if(Q('pCnpj')) Q('pCnpj').value=cnpj;
+  if(Q('pCid'))  Q('pCid').value=cidade;
+  if(Q('pAC') && !Q('pAC').value && rec.contatos && rec.contatos[0]) Q('pAC').value=rec.contatos[0].nome||'';
   hideAutoBox();
 }
 function buildServiceLocDirectory(){
@@ -7730,15 +7751,38 @@ function applyLocCompanySelection(rec){
 }
 function applyContactSelection(rec){
   if(!rec) return;
-  if(Q('pAC')) Q('pAC').value=rec.nome||'';
-  if(Q('pDep')) Q('pDep').value=rec.departamento||'';
-  if(Q('pMail')) Q('pMail').value=rec.email||'';
-  if(Q('pTel')) Q('pTel').value=rec.tel||'';
+  var nome=rec.nome||'';
+  var dept=rec.departamento||'';
+  var email=rec.email||'';
+  var tel=rec.tel||'';
+  // Enriquece com email/telefone do cadastro de Relacionamentos
+  if(typeof window.ctsGetAll==='function'){
+    var cadCt=window.ctsGetAll().find(function(c){ return normTxt(c.nome)===normTxt(nome); });
+    if(cadCt){
+      if(cadCt.email)    email=cadCt.email;
+      if(cadCt.telefone) tel=cadCt.telefone;
+    }
+  }
+  if(Q('pAC'))  Q('pAC').value=nome;
+  if(Q('pDep')) Q('pDep').value=dept;
+  if(Q('pMail'))Q('pMail').value=email;
+  if(Q('pTel')) Q('pTel').value=tel;
   if(Q('pCli') && !Q('pCli').value && rec.empresa) Q('pCli').value=rec.empresa;
   if(Q('pCnpj') && !Q('pCnpj').value && rec.cnpj) Q('pCnpj').value=rec.cnpj;
   if(Q('pCid') && !Q('pCid').value && rec.cidade) Q('pCid').value=rec.cidade;
   hideAutoBox();
 }
+// Expõe busca de contato no histórico para módulos externos (ex: wirePropForm no cadastro.js)
+window.lookupContact=function(nome){
+  var dir=buildClientDirectory();
+  for(var i=0;i<dir.length;i++){
+    var cts=dir[i].contatos||[];
+    for(var j=0;j<cts.length;j++){
+      if(normTxt(cts[j].nome)===normTxt(nome)) return cts[j];
+    }
+  }
+  return null;
+};
 function applyItemDescSelection(rec){
   if(!rec) return;
   if(Q('iDesc')) Q('iDesc').value=rec.desc||'';

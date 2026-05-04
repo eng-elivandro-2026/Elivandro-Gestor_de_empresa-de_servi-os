@@ -644,26 +644,23 @@
   function wirePropForm() {
     var g = function(id) { return document.getElementById(id); };
 
-    // Cliente principal
-    if (g('pCli') && !g('pCli')._acDone) acSetup(g('pCli'), 'cliente', function(c) {
-      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
-    });
-
-    // Contato 1
-    if (g('pAC') && !g('pAC')._acDone) acSetup(g('pAC'), 'contato', function(c) {
-      if (c.email    && g('pMail') && !g('pMail').value) g('pMail').value = c.email;
-      if (c.telefone && g('pTel')  && !g('pTel').value)  g('pTel').value  = c.telefone;
-    });
+    // pCli e pAC são gerenciados por app-core.js (bindAutoInput) — não aplicar acSetup aqui
+    // para evitar dois dropdowns simultâneos.
 
     // Contato 2
     if (g('pAC2') && !g('pAC2')._acDone) acSetup(g('pAC2'), 'contato', function(c) {
       if (c.email    && g('pMail2') && !g('pMail2').value) g('pMail2').value = c.email;
       if (c.telefone && g('pTel2')  && !g('pTel2').value)  g('pTel2').value  = c.telefone;
+      if (g('pDep2') && !g('pDep2').value && typeof window.lookupContact === 'function') {
+        var hist = window.lookupContact(c.nome);
+        if (hist && hist.departamento) g('pDep2').value = hist.departamento;
+      }
     });
 
     // Cliente do serviço (campo separado pLoc)
     if (g('pLoc') && !g('pLoc')._acDone) acSetup(g('pLoc'), 'cliente', function(c) {
-      if (c.cnpj && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
+      if (c.cnpj   && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
+      if (c.cidade && g('pCsv')     && !g('pCsv').value)     g('pCsv').value     = c.cidade;
     });
   }
 
