@@ -98,7 +98,7 @@
   var style = document.createElement('style');
   style.textContent =
     '.ac-wrap{position:relative}'
-    + '.ac-dd{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:9999;background:var(--bg2);border:1px solid var(--border);border-radius:6px;max-height:230px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.22);display:none}'
+    + '.ac-dd{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:9999;background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.22);display:none}'
     + '.ac-it{display:flex;align-items:center;gap:.5rem;padding:.42rem .65rem;cursor:pointer;font-size:.78rem;border-bottom:1px solid var(--border)}'
     + '.ac-it:last-child{border-bottom:none}'
     + '.ac-it:hover,.ac-it:focus{background:var(--bg3)}'
@@ -129,6 +129,22 @@
 
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+    function placeDd() {
+      var r = wrap.getBoundingClientRect();
+      var spaceBelow = window.innerHeight - r.bottom - 6;
+      var spaceAbove = r.top - 6;
+      var maxH = 200;
+      if (spaceAbove > spaceBelow && spaceAbove > 100) {
+        dd.style.top = 'auto';
+        dd.style.bottom = 'calc(100% + 2px)';
+        dd.style.maxHeight = Math.min(maxH, Math.max(80, spaceAbove - 10)) + 'px';
+      } else {
+        dd.style.bottom = 'auto';
+        dd.style.top = 'calc(100% + 2px)';
+        dd.style.maxHeight = Math.min(maxH, Math.max(80, spaceBelow - 10)) + 'px';
+      }
+    }
+
     function render(q) {
       var list  = getList();
       var lower = (q || '').toLowerCase().trim();
@@ -150,6 +166,7 @@
         + '</div>';
 
       dd.style.display = 'block';
+      placeDd();
 
       dd.querySelectorAll('.ac-it').forEach(function(item) {
         item.addEventListener('mousedown', function(e) {

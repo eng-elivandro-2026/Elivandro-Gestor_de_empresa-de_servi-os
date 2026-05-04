@@ -6789,9 +6789,20 @@ function getItemDescSuggestions(query){
 function placeAutoBox(input){
   var box=ensureAutoBox();
   var r=input.getBoundingClientRect();
+  var spaceBelow=window.innerHeight - r.bottom - 8;
+  var spaceAbove=r.top - 8;
+  var maxH=220;
   box.style.left=Math.max(12, Math.round(r.left))+'px';
-  box.style.top=Math.round(r.bottom+6)+'px';
   box.style.width=Math.max(320, Math.round(r.width))+'px';
+  if(spaceAbove > spaceBelow && spaceAbove > 120){
+    box.style.top='';
+    box.style.bottom=(window.innerHeight - Math.round(r.top) + 8)+'px';
+    box.style.maxHeight=Math.min(maxH, Math.max(100, spaceAbove-10))+'px';
+  } else {
+    box.style.bottom='';
+    box.style.top=Math.round(r.bottom+8)+'px';
+    box.style.maxHeight=Math.min(maxH, Math.max(100, spaceBelow-10))+'px';
+  }
 }
 function hideAutoBox(){
   var box=ensureAutoBox();
