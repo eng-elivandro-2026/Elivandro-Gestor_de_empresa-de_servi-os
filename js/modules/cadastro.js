@@ -395,8 +395,8 @@
             : x;
         });
       cliSave(list);
-      if (oldNome && oldNome !== nome) _atualizarNomeClienteNasPropostas(oldNome, nome);
-      if (dup && dup.nome !== nome)    _atualizarNomeClienteNasPropostas(dup.nome, nome);
+      if (oldNome && oldNome !== nome) { _cliDelAdd(oldNome); _atualizarNomeClienteNasPropostas(oldNome, nome); }
+      if (dup && dup.nome !== nome)    { _cliDelAdd(dup.nome); _atualizarNomeClienteNasPropostas(dup.nome, nome); }
       window._fecharModalCliente();
       renderTabelaClientes();
       var msg = dup ? '✅ Clientes unidos: ' + nome : '✅ Cliente atualizado: ' + nome;
@@ -413,7 +413,7 @@
             : x;
         });
         cliSave(list2);
-        if (dupOldNome !== nome) _atualizarNomeClienteNasPropostas(dupOldNome, nome);
+        if (dupOldNome !== nome) { _cliDelAdd(dupOldNome); _atualizarNomeClienteNasPropostas(dupOldNome, nome); }
         _fecharMod('m-novo-cliente');
         var merged2 = list2.find(function(x) { return x.id === dup2.id; });
         if (typeof window._cadCliCb === 'function') { window._cadCliCb(merged2 || dup2); window._cadCliCb = null; }
@@ -506,7 +506,7 @@
           : x;
       });
       ctsSave(list);
-      if (oldNome && oldNome !== nome) _atualizarNomeContatoNasPropostas(oldNome, nome);
+      if (oldNome && oldNome !== nome) { _ctsDelAdd(oldNome); _atualizarNomeContatoNasPropostas(oldNome, nome); }
       window._fecharModalContato();
       renderTabelaContatos();
       if (typeof toast === 'function') toast('✅ Contato atualizado: ' + nome, 'ok');
@@ -657,11 +657,7 @@
       }
     });
 
-    // Cliente do serviço (campo separado pLoc)
-    if (g('pLoc') && !g('pLoc')._acDone) acSetup(g('pLoc'), 'cliente', function(c) {
-      if (c.cnpj   && g('pLocCnpj') && !g('pLocCnpj').value) g('pLocCnpj').value = c.cnpj;
-      if (c.cidade && g('pCsv')     && !g('pCsv').value)     g('pCsv').value     = c.cidade;
-    });
+    // pLoc é gerenciado por app-core.js (bindAutoInput kind:loc_company) — não aplicar acSetup aqui.
   }
 
   // Exposta para ser chamada após reset do formulário se necessário

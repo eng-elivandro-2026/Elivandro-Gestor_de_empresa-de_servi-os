@@ -7735,7 +7735,16 @@ function buildServiceLocDirectory(){
 }
 function getLocCompanySuggestions(query){
   var q=normTxt(query);
-  return buildClientDirectory().filter(function(e){
+  var dir=buildClientDirectory();
+  if(typeof window.cliGetAll==='function'){
+    var dirNomes={};
+    dir.forEach(function(e){ dirNomes[normTxt(e.empresa)]=true; });
+    window.cliGetAll().forEach(function(c){
+      if(!c.nome||dirNomes[normTxt(c.nome)]) return;
+      dir.push({empresa:c.nome,cnpj:c.cnpj||'',cidade:c.cidade||'',contatos:[],total:0,_fromCad:true});
+    });
+  }
+  return dir.filter(function(e){
     if(!q) return true;
     return [e.empresa,e.cnpj,e.cidade].map(normTxt).join(' | ').indexOf(q)>=0;
   }).slice(0,12).map(function(e){
@@ -7744,9 +7753,19 @@ function getLocCompanySuggestions(query){
 }
 function applyLocCompanySelection(rec){
   if(!rec) return;
-  if(Q('pLoc')) Q('pLoc').value=rec.empresa||'';
-  if(Q('pLocCnpj')) Q('pLocCnpj').value=rec.cnpj||'';
-  if(Q('pCsv')) Q('pCsv').value=rec.cidade||'';
+  var empresa=rec.empresa||'';
+  var cnpj=rec.cnpj||'';
+  var cidade=rec.cidade||'';
+  if(typeof window.cliGetAll==='function'){
+    var cadMatch=window.cliGetAll().find(function(c){ return normTxt(c.nome)===normTxt(empresa); });
+    if(cadMatch){
+      if(cadMatch.cnpj)   cnpj=cadMatch.cnpj;
+      if(cadMatch.cidade) cidade=cadMatch.cidade;
+    }
+  }
+  if(Q('pLoc'))    Q('pLoc').value=empresa;
+  if(Q('pLocCnpj')) Q('pLocCnpj').value=cnpj;
+  if(Q('pCsv'))    Q('pCsv').value=cidade;
   hideAutoBox();
 }
 function applyContactSelection(rec){
