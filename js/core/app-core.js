@@ -6899,6 +6899,7 @@ function bindAutoInput(input, kind){
     renderAutoItems(input, items, kind);
   }
   input.addEventListener('focus', function(){ if(input.value.trim()) openNow(); });
+  input.addEventListener('click', function(){ if(input.value.trim()) openNow(); });
   input.addEventListener('input', openNow);
   input.addEventListener('keydown', function(ev){
     var box=ensureAutoBox();
