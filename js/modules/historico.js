@@ -173,8 +173,13 @@
     }
 
     if (fc) list = list.filter(function(h){
+      var propTxt = '';
+      if (h.proposta_id && window.props) {
+        var pp = (window.props||[]).find(function(x){ return x.id === h.proposta_id; });
+        if (pp) propTxt = [(pp.num||''), (pp.tit||''), (pp.cli||''), (pp.loc||'')].join(' ');
+      }
       var txt = [h.cliente, h.contato, h.responsavel, h.resumo,
-                 h.decisao, h.pendencia, h.proxima_acao]
+                 h.decisao, h.pendencia, h.proxima_acao, propTxt]
                 .map(function(v){ return v || ''; }).join(' ').toLowerCase();
       return txt.indexOf(fc.toLowerCase()) >= 0;
     });
