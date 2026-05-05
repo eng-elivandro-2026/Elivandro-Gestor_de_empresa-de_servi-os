@@ -3137,6 +3137,7 @@ let fraseEditIdx=-1;
 function renderFrases(){
 
   const wrap=document.getElementById('frases-wrap');
+  if(!wrap)return;
 
   wrap.innerHTML='';
 
@@ -3170,11 +3171,16 @@ function editarFrase(i){
 
   const f=frases[i]||{icone:'💡',txt:'',autor:''};
 
-  document.getElementById('mfr-icone').value=f.icone||'';
+  var ico=document.getElementById('mfr-icone');
+  var txt=document.getElementById('mfr-txt');
+  var aut=document.getElementById('mfr-autor');
+  if(!ico||!txt||!aut){toast('Modal de frase nÃ£o encontrado');return;}
 
-  document.getElementById('mfr-txt').value=f.txt||'';
+  ico.value=f.icone||'';
 
-  document.getElementById('mfr-autor').value=f.autor||'';
+  txt.value=f.txt||'';
+
+  aut.value=f.autor||'';
 
   abrirModal('m-frase');
 
@@ -3218,9 +3224,9 @@ function toggleTheme(){
 
 
 
-function abrirModal(id){document.getElementById(id).classList.add('on');}
+function abrirModal(id){var m=document.getElementById(id);if(m)m.classList.add('on');}
 
-function fecharModal(id){document.getElementById(id).classList.remove('on');}
+function fecharModal(id){var m=document.getElementById(id);if(m)m.classList.remove('on');}
 
 function abrirModalCiclo(){abrirModal('m-ciclo');}
 
@@ -3242,7 +3248,9 @@ const _abrirModalOrig=abrirModal;
 
 function abrirModal(id){
 
-  document.getElementById(id).classList.add('on');
+  var modal=document.getElementById(id);
+  if(!modal)return;
+  modal.classList.add('on');
 
   if(id==='m-tipos')renderTiposModal();
 
@@ -3906,6 +3914,8 @@ function gestaoNav(sec){
 // ── Expor funções para uso global pelos event listeners inline ────────────────
 window.gestaoShowSec  = typeof gestaoShowSec  === 'function' ? gestaoShowSec  : function(){};
 window.gestaoNav      = typeof gestaoNav      === 'function' ? gestaoNav      : function(){};
+window.abrirModal     = typeof abrirModal     !== 'undefined' ? abrirModal     : function(){};
+window.fecharModal    = typeof fecharModal    !== 'undefined' ? fecharModal    : function(){};
 window.setPrio        = typeof setPrio        === 'function' ? setPrio        : function(){};
 window.abrirDia       = typeof abrirDia       !== 'undefined' ? abrirDia       : function(){};
 window.togglePrio     = typeof togglePrio     !== 'undefined' ? togglePrio     : function(){};
