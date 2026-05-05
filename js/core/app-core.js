@@ -9918,6 +9918,10 @@ var _milCampos = [
 
 function milFechar(){ Q('milModal').style.display='none'; }
 
+function milGetTbody(){
+  return Q('milTbody') || Q('milPrevBody');
+}
+
 function milLimpar(){
   var ta=Q('milRawData'); if(ta) ta.value='';
   _milItens=[]; _milNCols=0;
@@ -10033,7 +10037,8 @@ function milProcessar(){
   if(!dados.length){ Q('milMsg').textContent='Nenhuma linha de dados encontrada.'; return; }
 
   var cfg=getPrcAtual(); _milItens=[]; var erros=0;
-  var tbody=Q('milTbody'); if(!tbody) return;
+  var tbody=milGetTbody();
+  if(!tbody){ Q('milMsg').textContent='Tabela de pré-visualização não encontrada.'; return; }
   tbody.innerHTML='';
 
   dados.forEach(function(linha, idx){
@@ -10232,7 +10237,8 @@ function milRevalidar(){
     if(!it.cat) erros.push('categoria vazia');
     if(!it.cu||it.cu<=0) erros.push('custo inválido');
     it._ok = erros.length===0;
-    var tr = Q('milTbody').querySelector('[data-mil-idx="'+idx+'"]');
+    var tbody = milGetTbody();
+    var tr = tbody ? tbody.querySelector('[data-mil-idx="'+idx+'"]') : null;
     if(!tr) return;
     var pvtCell=tr.querySelector('.mil-pvt'), stCell=tr.querySelector('.mil-st');
     if(pvtCell) pvtCell.textContent = money(it.pvt);
