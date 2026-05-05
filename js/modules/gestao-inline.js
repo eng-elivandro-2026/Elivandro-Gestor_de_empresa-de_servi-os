@@ -3759,15 +3759,20 @@ function renderVersoes(){
 
 // ===== START =====
 
+// 1. Carregar do localStorage imediatamente — sem esperar auth
+load();
+_gestaoLoaded = true; // seguro salvar a partir daqui
 init();
 
+// 2. Async: atualizar chave do usuário e sincronizar com nuvem
 (async function(){
-  await _initGestaoChave();
-  // Carregar dados com a chave correta do usuário
-  load();
-  // Só a partir daqui save() está autorizado — dados foram carregados
-  _gestaoLoaded = true;
-  init();
+  var prevChave = _gestaoChave;
+  await _initGestaoChave(); // pode demorar ou falhar — não bloqueia saves
+  if(_gestaoChave !== prevChave){
+    // Chave mudou — recarregar com dados específicos do usuário
+    load();
+    init();
+  }
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })();
