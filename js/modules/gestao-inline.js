@@ -657,7 +657,7 @@ function init(){
 
   renderJanelas();
 
-  renderAlertas();
+  limparMotorDecisaoGestao();
 
   renderSemana();
 
@@ -698,11 +698,11 @@ function gestaoShowSec(id){
   // Re-renderiza e injeta sugestões da IA por seção
   if(id==='dia'){
     renderPrios();renderTarefas();renderExplosoes();renderAbertos();
-    renderSugestoesIA('dia');
+    limparMotorDecisaoGestao();
   }
-  if(id==='semana'){ renderSemana(); renderCiclos(); renderFollowups(); renderVisitas(); renderReuniaoSegunda(); renderSugestoesIA('semana'); }
-  if(id==='mes')   { renderKPIs(); renderRelacionamentoMes(); renderSugestoesIA('mes'); }
-  if(id==='trimestre'){ renderTrim(); renderSugestoesIA('trimestre'); }
+  if(id==='semana'){ renderSemana(); renderCiclos(); renderFollowups(); renderVisitas(); renderReuniaoSegunda(); limparMotorDecisaoGestao(); }
+  if(id==='mes')   { renderKPIs(); renderRelacionamentoMes(); limparMotorDecisaoGestao(); }
+  if(id==='trimestre'){ renderTrim(); limparMotorDecisaoGestao(); }
   if(id==='calendario'){ if(typeof renderCalendario==='function') renderCalendario(); }
   if(id==='versoes'){ renderVersoes(); }
 }
@@ -726,11 +726,24 @@ function setPrio(n, texto){
   dia.prios['p'+n]=texto;
   save();
   renderPrios();
-  renderSugestoesIA('dia');
+  limparMotorDecisaoGestao();
 }
 
 // ── Renderiza sugestões contextuais da IA em cada seção de planejamento ───────
+function limparMotorDecisaoGestao(){
+  ['alertas-dia','sugestoes-ia-dia','sugestoes-ia-semana','sugestoes-ia-mes','sugestoes-ia-trim'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){
+      el.innerHTML='';
+      el.style.display='';
+    }
+  });
+}
+
 function renderSugestoesIA(secId){
+  limparMotorDecisaoGestao();
+  return;
+
   var r=getOrRunDecisionEngine();
 
   if(secId==='dia'){
@@ -1095,6 +1108,9 @@ function saveJanelaConfig(){
 function renderAlertas(){
 
   const cont=document.getElementById('alertas-dia');
+
+  if(cont)cont.innerHTML='';
+  return;
 
   cont.innerHTML='';
 
