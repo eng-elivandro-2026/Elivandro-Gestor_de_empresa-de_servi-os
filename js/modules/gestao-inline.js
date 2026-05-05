@@ -277,7 +277,15 @@ function applyDados(parsed) {
       // Sem timestamps confiáveis: mantém o que tiver mais conteúdo
       var cScore=(c.tarefas||[]).length+(c.explosoes||[]).length+(c.reflexao?1:0)+(c.abertos||[]).length;
       var lScore=(l.tarefas||[]).length+(l.explosoes||[]).length+(l.reflexao?1:0)+(l.abertos||[]).length;
-      if(cScore>lScore) dados.dias[d]=c;
+      if(cScore>lScore){
+        // Cloud vence por score, mas preserva abertos locais não presentes na nuvem
+        var merged=Object.assign({},c);
+        var localAbertosExtras=(l.abertos||[]).filter(function(la){
+          return !(c.abertos||[]).some(function(ca){return ca.txt===la.txt;});
+        });
+        merged.abertos=(c.abertos||[]).concat(localAbertosExtras);
+        dados.dias[d]=merged;
+      }
     });
     delete parsed.dias;
   }
@@ -321,7 +329,34 @@ function save(){
   if(!_gestaoLoaded) return;
   dados._savedAt = Date.now();
   _gestaoSaveLocal();
+  _salvarAbertosBackup();
   if(typeof sbSaveGestao==='function') sbSaveGestao(dados);
+}
+
+// Backup dedicado dos abertos do dia — chave separada, nunca sobrescrita pelo sync da nuvem
+function _salvarAbertosBackup(){
+  try{
+    var d=dados.diaAtivo||dateStr();
+    var ab=dados.dias&&dados.dias[d]?dados.dias[d].abertos||[]:[];
+    localStorage.setItem('tf_abertos_bak_'+d,JSON.stringify({a:ab,t:dados._savedAt||Date.now()}));
+  }catch(e){}
+}
+
+function _restaurarAbertosSeVazio(d){
+  try{
+    var dia=dados.dias&&dados.dias[d];
+    if(dia&&dia.abertos&&dia.abertos.length>0)return; // já tem abertos — não precisa restaurar
+    var raw=localStorage.getItem('tf_abertos_bak_'+d);
+    if(!raw)return;
+    var bak=JSON.parse(raw);
+    if(bak&&Array.isArray(bak.a)&&bak.a.length>0){
+      if(!dados.dias)dados.dias={};
+      if(!dados.dias[d])dados.dias[d]={prios:{p1:'',p2:'',p3:'',c1:false,c2:false,c3:false},tarefas:[],abertos:[],reflexao:'',explosoes:[]};
+      dados.dias[d].abertos=bak.a;
+      // Persiste a restauração para evitar perda na próxima sincronização
+      if(_gestaoLoaded) _gestaoSaveLocal();
+    }
+  }catch(e){}
 }
 
 // Salva só estado de navegação (diaAtivo, diasAbertos) sem atualizar _savedAt nem Supabase.
@@ -2238,6 +2273,9 @@ function addAberto(){
 function renderAbertos(){
 
   const list=document.getElementById('abertos-list');list.innerHTML='';
+
+  // Tenta restaurar do backup dedicado caso o sync da nuvem tenha apagado os abertos
+  _restaurarAbertosSeVazio(dados.diaAtivo||dateStr());
 
   const _abd=getDia();
 
