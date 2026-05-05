@@ -2939,8 +2939,6 @@ function valorSecEditorHTML(){
       +'<div style="font-size:.68rem;color:var(--text3);margin-top:2px">'
       +'<span style="background:#203248;color:#79b8ff;padding:0 4px;border-radius:3px;font-weight:700;margin-right:4px">'+tipo+'</span>'
       +esc(it.cat||'')
-      +' &nbsp;|&nbsp; Qtd: '+ql
-      +' &nbsp;|&nbsp; PV Unit.: '+money(it.pvu)
       +(it.terc?' &nbsp;|&nbsp; <span style="color:#f97316">●Terc.</span>':'')
       +'</div></td>'
       +'<td style="padding:.38rem .45rem;border-bottom:1px solid var(--border);text-align:right;font-weight:700">'+money(it.pvt)+'</td>'
@@ -5262,8 +5260,6 @@ function genPrev(){try{
       if(it.inst)  l2parts.push('<span style="color:#6b3a1a">⊕ '+esc(it.inst)+'</span>');
       if(it.tipoTrab) l2parts.push('<span style="color:#5b21b6">🔧 '+esc(it.tipoTrab)+'</span>');
       if(it.faseTrab) l2parts.push('<span style="color:#0369a1">📋 '+esc(it.faseTrab)+'</span>');
-      l2parts.push('Qtd: '+ql);
-      l2parts.push('PV Unit.: '+money(it.pvu));
       if(it.terc) l2parts.push('<span style="color:#f97316">●Terc</span>');
       var sub='<div style="font-size:.68rem;color:#555;margin-top:2px">'+l2parts.join(' &nbsp;|&nbsp; ')+'</div>';
       rows+='<tr>'
@@ -6173,7 +6169,6 @@ function expWordDoc(){
       if(it.inst)  subL2a2.push('⊕ '+it.inst);
       if(it.tipoTrab) subL2a2.push('🔧 '+it.tipoTrab);
       if(it.faseTrab) subL2a2.push('📋 '+it.faseTrab);
-      subL2a2.push('Qtd: '+ql2); subL2a2.push('PV Unit.: '+money(it.pvu));
       if(it.terc) subL2a2.push('●Terc');
       var subLine2a=subL2a2.join(' | ');
       var subLine3a='';
