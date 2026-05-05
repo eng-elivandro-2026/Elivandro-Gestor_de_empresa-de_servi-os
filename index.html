@@ -9854,9 +9854,42 @@ function gestaoMsg(sec) {
   if (typeof gestaoShowSec === 'function') gestaoShowSec(sec);
 }
 
+function renderMenuComercialOrganizado() {
+  var nav = document.getElementById('sidebar-nav-mod');
+  if (!nav) return;
+  var itens = [
+    ['🧠', 'Motor de Decisão', "irParaPainel('motorDecisaoCard','togMotorDecisao')"],
+    ['🏢', 'Visão Executiva', "irParaPainel('ceoDashCard','togCeoDash')"],
+    ['⭐', 'Propostas', "go('dashboard',this);irParaPainel('propostasCard','togPropostas')"],
+    ['📈', 'Por Fase', "irParaPainel('porFaseCard','togPorFase')"],
+    ['🎯', 'Metas2026', "irParaPainel('metaPanel','togMeta')"],
+    ['📊', 'Visão Geral', "irParaPainel('visaoGeralCard','togVisaoGeral')"],
+    ['🤖', 'Análise IA', "irParaPainel('analisePanel','togAnalise')"],
+    ['🔄', 'Atualizar', "go('dashboard',this);if(typeof sbRecarregarDaNuvem==='function')sbRecarregarDaNuvem();if(typeof runDecisionEngine==='function')runDecisionEngine();if(typeof carregarCeoDash==='function')carregarCeoDash();if(typeof atualizarAnalise==='function')atualizarAnalise();if(typeof rDash==='function')rDash();if(typeof toast==='function')toast('Comercial atualizado!','ok')"],
+    ['🏢', 'Ranking de Clientes', "irParaPainel('rankingCard','togRanking')"],
+    ['📂', 'Análise por Categoria', "irParaPainel('catAnaliseCard','togCatAnalise')"],
+    ['📊', 'KPIs de Ciclos — Média Geral', "irParaPainel('ciclosCard','togCiclosDash')"],
+    ['📅', 'Linha do Tempo de Execução', "irParaPainel('execTimelineCard','togExecTimeline')"],
+    ['📅', 'Fechamentos por Mês', "irParaPainel('fechMesCard','togFechMes')"]
+  ];
+  nav.innerHTML = itens.map(function(item) {
+    return '<button class="nb nav-item" onclick="' + item[2] + ';Router._setNavAtivo(this)">'
+      + '<span>' + item[0] + '</span> ' + item[1] + '</button>';
+  }).join('');
+  var primeiro = nav.querySelector('.nav-item');
+  if (primeiro) primeiro.classList.add('on');
+}
+
 window.addEventListener('router:change', function(e) {
   var tc = document.getElementById('tools-comercial');
   if (tc) tc.style.display = e.detail.modulo === 'comercial' ? '' : 'none';
+  if (e.detail.modulo === 'comercial') setTimeout(renderMenuComercialOrganizado, 0);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    if (!window.Router || Router.getAtivo() === 'comercial') renderMenuComercialOrganizado();
+  }, 900);
 });
 </script>
 
