@@ -205,11 +205,13 @@ function applyDados(parsed) {
   var geralFields = ['kpi','crescimento','proxPasso','trim','revVelocidade','revMudanca','checkContr'];
   geralFields.forEach(function(k){ if(parsed[k]!==undefined && parsed[k]!==null){ if(typeof parsed[k]==='object' && !Array.isArray(parsed[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],parsed[k]); } else { dadosGeral[k]=dadosGeral[k]||parsed[k]; } delete parsed[k]; } });
 
+  // Compara versões: local vs nuvem via _savedAt (timestamp de última edição do usuário)
+  // _saveNav() NÃO atualiza _savedAt, então este valor só muda em save() real pelo usuário.
+  var localMaisRecente = dados._savedAt && parsed._savedAt && dados._savedAt >= parsed._savedAt;
+
   // Merge profundo de dias: une dias locais e da nuvem sem apagar nenhum.
-  // Se local tem _savedAt mais recente que a nuvem, local sempre vence (preserva deleções).
   if(parsed.dias && typeof parsed.dias==='object'){
     if(!dados.dias) dados.dias={};
-    var localMaisRecente = dados._savedAt && parsed._savedAt && dados._savedAt >= parsed._savedAt;
     Object.keys(parsed.dias).forEach(function(d){
       var c=parsed.dias[d], l=dados.dias[d];
       if(!l){ dados.dias[d]=c; return; }  // dia só existe na nuvem — adiciona
@@ -222,7 +224,16 @@ function applyDados(parsed) {
     delete parsed.dias;
   }
 
-  dados=Object.assign(dados,parsed);
+  // Aplica campos restantes (frases, janelas, visitas, etc.)
+  // Se local é mais recente, não sobrescreve com dados velhos da nuvem.
+  if(!localMaisRecente){
+    dados=Object.assign(dados,parsed);
+  } else {
+    // Local é mais novo — só adiciona campos que não existem localmente
+    Object.keys(parsed).forEach(function(k){
+      if(dados[k]===undefined||dados[k]===null) dados[k]=parsed[k];
+    });
+  }
 
 }
 
@@ -246,16 +257,17 @@ function load(){
 
 
 function save(){
-
-  // Não salva antes de load() terminar — evita sobrescrever dados com objeto vazio
   if(!_gestaoLoaded) return;
-
   dados._savedAt = Date.now();
-
   localStorage.setItem(_gestaoChave,JSON.stringify(dados));
-
   if(typeof sbSaveGestao==='function') sbSaveGestao(dados);
+}
 
+// Salva só estado de navegação (diaAtivo, diasAbertos) sem atualizar _savedAt nem Supabase.
+// Usado em abrirDia() para não inflar o timestamp e enganar a comparação com a nuvem.
+function _saveNav(){
+  if(!_gestaoLoaded) return;
+  localStorage.setItem(_gestaoChave,JSON.stringify(dados));
 }
 
 
@@ -275,6 +287,8 @@ async function loadNuvem(){
       // Re-renderizar tudo com dados da nuvem
 
       if(typeof init==='function') init();
+
+      if(typeof renderFrases==='function') renderFrases();
 
       console.log('%c[gestao] dados carregados da nuvem','color:#F05A1A;font-weight:700');
 
@@ -378,7 +392,7 @@ function abrirDia(d){
 
   }
 
-  save();
+  _saveNav();
 
   renderDiaNav();
 
@@ -3772,6 +3786,7 @@ init();
     // Chave mudou — recarregar com dados específicos do usuário
     load();
     init();
+    renderFrases();
   }
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
