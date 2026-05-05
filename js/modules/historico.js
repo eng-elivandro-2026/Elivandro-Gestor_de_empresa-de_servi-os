@@ -94,9 +94,11 @@
     var fs = document.getElementById('hFiltroStatus');
     var fp = document.getElementById('hFiltroPrioridade');
     var fc = document.getElementById('hFiltroCliente');
+    var fr = document.getElementById('hFiltroResponsavel');
     if (fs) fs.value = '';
     if (fp) fp.value = '';
     if (fc) fc.value = '';
+    if (fr) fr.value = '';
     if (tipo === 'em_andamento' && fs) fs.value = 'em_andamento';
     if (tipo === 'resolvido'    && fs) fs.value = 'resolvido';
     if (tipo === 'alta'         && fp) fp.value = 'alta';
@@ -153,14 +155,28 @@
   };
 
   // ── Render da lista ──────────────────────────────────────
+  function _popularFiltroResponsavel() {
+    var sel = document.getElementById('hFiltroResponsavel');
+    if (!sel) return;
+    var atual = sel.value;
+    var resp = {};
+    hLS().forEach(function(h){ if (h.responsavel) resp[h.responsavel.trim()] = 1; });
+    var opts = Object.keys(resp).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
+    sel.innerHTML = '<option value="">Todos os responsáveis</option>'
+      + opts.map(function(r){ return '<option value="'+r+'"'+(r===atual?' selected':'')+'>'+r+'</option>'; }).join('');
+  }
+
   function renderLista() {
     var el = document.getElementById('historicoLista');
     if (!el) return;
 
+    _popularFiltroResponsavel();
+
     var list = hLS();
-    var fc  = (document.getElementById('hFiltroCliente')    || {}).value || '';
-    var fs  = (document.getElementById('hFiltroStatus')     || {}).value || '';
-    var fp  = (document.getElementById('hFiltroPrioridade') || {}).value || '';
+    var fc  = (document.getElementById('hFiltroCliente')     || {}).value || '';
+    var fs  = (document.getElementById('hFiltroStatus')      || {}).value || '';
+    var fp  = (document.getElementById('hFiltroPrioridade')  || {}).value || '';
+    var fr  = (document.getElementById('hFiltroResponsavel') || {}).value || '';
 
     // filtro rápido "atrasados" sobrescreve os selects
     if (_filtroRapido === 'atrasados') {
@@ -171,6 +187,7 @@
       if (fs) list = list.filter(function(h){ return h.status === fs; });
       if (fp) list = list.filter(function(h){ return (h.prioridade || 'media') === fp; });
     }
+    if (fr) list = list.filter(function(h){ return (h.responsavel || '').trim() === fr; });
 
     if (fc) list = list.filter(function(h){
       var propTxt = '';
