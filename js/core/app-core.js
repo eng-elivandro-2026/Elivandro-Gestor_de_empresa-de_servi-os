@@ -10042,8 +10042,14 @@ function milProcessar(){
     var tipo=(_milColVal(cols,'tipo')||'servico').toLowerCase();
     if(tipo==='s'||tipo.indexOf('serv')===0) tipo='servico';
     else if(tipo==='m'||tipo.indexOf('mat')===0) tipo='material';
+    if(tipo!=='servico'&&tipo!=='material') tipo='servico';
 
     var cat=(_milColVal(cols,'cat')||'').toUpperCase();
+    // Se categoria não mapeada, auto-atribui a primeira disponível para o tipo
+    if(!cat){
+      var catKeys=tipo==='material'?Object.keys(cfg.m||{}):Object.keys(cfg.s||{});
+      cat=catKeys.sort()[0]||'';
+    }
     var desc=_milColVal(cols,'desc');
     var equip=_milColVal(cols,'equip');
     var inst=_milColVal(cols,'inst');
