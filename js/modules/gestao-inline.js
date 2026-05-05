@@ -7,6 +7,7 @@ let _saveTimer = null;
 
 // Chave dinâmica por usuário — inicializada em _initGestaoChave()
 var _gestaoChave = 'tf_planejador';
+var _gestaoChaveFallback = 'tf_planejador';
 
 // Guard: impede save() antes de load() terminar — evita apagar dados com objeto vazio
 var _gestaoLoaded = false;
@@ -169,6 +170,63 @@ function diaHoje(){return dateStr();}
 
 
 
+function _gestaoParseStored(raw){
+  if(!raw) return null;
+  try{
+    var parsed=JSON.parse(raw);
+    return parsed&&typeof parsed==='object'?parsed:null;
+  }catch(e){return null;}
+}
+
+function _gestaoDiaScore(dia){
+  if(!dia||typeof dia!=='object') return 0;
+  var pr=dia.prios||{};
+  return (dia.tarefas||[]).length*4
+    +(dia.explosoes||[]).length*3
+    +(dia.abertos||[]).length*2
+    +(dia.reflexao?2:0)
+    +(pr.p1?1:0)+(pr.p2?1:0)+(pr.p3?1:0)
+    +(pr.c1?1:0)+(pr.c2?1:0)+(pr.c3?1:0);
+}
+
+function _gestaoContentScore(obj){
+  if(!obj||typeof obj!=='object') return 0;
+  var score=0;
+  if(obj.dias&&typeof obj.dias==='object'){
+    Object.keys(obj.dias).forEach(function(d){score+=_gestaoDiaScore(obj.dias[d]);});
+  }
+  score+=(obj.frases||[]).length*3;
+  score+=(obj.visitas||[]).length*2;
+  score+=(obj.fabricantes||[]).length*2;
+  score+=(obj.janelas||[]).length*2;
+  score+=(obj.ciclos||[]).length*2;
+  score+=(obj.followups||[]).length*2;
+  score+=(obj.equipe||[]).length*2;
+  score+=(obj.funil||[]).length*2;
+  return score;
+}
+
+function _gestaoChooseBest(list){
+  return list.filter(Boolean).sort(function(a,b){
+    var at=a._savedAt||0, bt=b._savedAt||0;
+    if(at||bt){
+      if(bt!==at) return bt-at;
+    }
+    var as=_gestaoContentScore(a), bs=_gestaoContentScore(b);
+    if(as!==bs) return bs-as;
+    return 0;
+  })[0]||null;
+}
+
+function _gestaoSaveLocal(){
+  try{localStorage.setItem(_gestaoChave,JSON.stringify(dados));}catch(e){}
+  if(_gestaoChave!==_gestaoChaveFallback){
+    try{localStorage.setItem(_gestaoChaveFallback,JSON.stringify(dados));}catch(e){}
+  }
+}
+
+
+
 function applyDados(parsed) {
 
   if (!parsed) return;
@@ -207,7 +265,7 @@ function applyDados(parsed) {
 
   // Compara versões: local vs nuvem via _savedAt (timestamp de última edição do usuário)
   // _saveNav() NÃO atualiza _savedAt, então este valor só muda em save() real pelo usuário.
-  var localMaisRecente = dados._savedAt && parsed._savedAt && dados._savedAt >= parsed._savedAt;
+  var localMaisRecente = dados._savedAt && (!parsed._savedAt || dados._savedAt >= parsed._savedAt);
 
   // Merge profundo de dias: une dias locais e da nuvem sem apagar nenhum.
   if(parsed.dias && typeof parsed.dias==='object'){
@@ -243,9 +301,12 @@ function load(){
 
   // Carregar localStorage como fallback imediato (chave por usuário)
 
-  const s=localStorage.getItem(_gestaoChave) || localStorage.getItem('tf_planejador');
+  const stored=_gestaoChooseBest([
+    _gestaoParseStored(localStorage.getItem(_gestaoChave)),
+    _gestaoParseStored(localStorage.getItem(_gestaoChaveFallback))
+  ]);
 
-  if(s)try{ applyDados(JSON.parse(s)); }catch(e){}
+  if(stored) applyDados(stored);
 
   // Carregar dados gerais compartilhados
   const sg=localStorage.getItem('tf_planejador_geral');
@@ -259,7 +320,7 @@ function load(){
 function save(){
   if(!_gestaoLoaded) return;
   dados._savedAt = Date.now();
-  localStorage.setItem(_gestaoChave,JSON.stringify(dados));
+  _gestaoSaveLocal();
   if(typeof sbSaveGestao==='function') sbSaveGestao(dados);
 }
 
@@ -267,7 +328,7 @@ function save(){
 // Usado em abrirDia() para não inflar o timestamp e enganar a comparação com a nuvem.
 function _saveNav(){
   if(!_gestaoLoaded) return;
-  localStorage.setItem(_gestaoChave,JSON.stringify(dados));
+  _gestaoSaveLocal();
 }
 
 
@@ -282,7 +343,7 @@ async function loadNuvem(){
 
       applyDados(cloud);
 
-      localStorage.setItem(_gestaoChave,JSON.stringify(dados));
+      _gestaoSaveLocal();
 
       // Re-renderizar tudo com dados da nuvem
 
@@ -3850,6 +3911,15 @@ window.abrirDia       = typeof abrirDia       !== 'undefined' ? abrirDia       :
 window.togglePrio     = typeof togglePrio     !== 'undefined' ? togglePrio     : function(){};
 window.addTarefa      = typeof addTarefa      !== 'undefined' ? addTarefa      : function(){};
 window.addExplosao    = typeof addExplosao    !== 'undefined' ? addExplosao    : function(){};
+window.savePrios      = typeof savePrios      !== 'undefined' ? savePrios      : function(){};
+window.abrirModalTarefa = typeof abrirModalTarefa !== 'undefined' ? abrirModalTarefa : function(){};
+window.salvarTarefa   = typeof salvarTarefa   !== 'undefined' ? salvarTarefa   : function(){};
+window.editarTarefa   = typeof editarTarefa   !== 'undefined' ? editarTarefa   : function(){};
+window.addAberto      = typeof addAberto      !== 'undefined' ? addAberto      : function(){};
+window.saveReflexao   = typeof saveReflexao   !== 'undefined' ? saveReflexao   : function(){};
+window.editarFrase    = typeof editarFrase    !== 'undefined' ? editarFrase    : function(){};
+window.salvarFrase    = typeof salvarFrase    !== 'undefined' ? salvarFrase    : function(){};
+window.renderFrases   = typeof renderFrases   !== 'undefined' ? renderFrases   : function(){};
 window.renderCalendario = typeof renderCalendario !== 'undefined' ? renderCalendario : function(){};
 
 window.rGestaoCeo = function() {
