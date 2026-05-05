@@ -3208,6 +3208,48 @@ function salvarFrase(){
 
 // ===== THEME =====
 
+function bindFraseEditButtons(){
+
+  if(window._gestaoFraseEditBound)return;
+
+  window._gestaoFraseEditBound=true;
+
+  document.addEventListener('click',function(ev){
+
+    var btn=ev.target&&ev.target.closest?ev.target.closest('.frase-edit-btn'):null;
+
+    if(!btn)return;
+
+    ev.preventDefault();
+
+    ev.stopPropagation();
+
+    if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();
+
+    var idx=btn.getAttribute('data-frase-idx');
+
+    if(idx===null||idx===''){
+
+      var call=btn.getAttribute('onclick')||'';
+
+      var match=call.match(/editarFrase\((\d+)\)/);
+
+      idx=match?match[1]:null;
+
+    }
+
+    if(idx!==null&&idx!==''&&typeof window.editarFrase==='function'){
+
+      window.editarFrase(parseInt(idx,10));
+
+    }
+
+  },true);
+
+}
+
+bindFraseEditButtons();
+
 function toggleTheme(){
 
   document.body.classList.toggle('light');
