@@ -2681,6 +2681,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 .modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:.1rem .3rem}
 .modal-body{padding:1rem;max-height:70vh;overflow-y:auto}
 .modal-footer{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:.4rem;justify-content:flex-end}
+#m-frase{padding:18px}
+#m-frase .modal{width:min(560px,calc(100vw - 36px));max-height:calc(100vh - 36px);display:flex;flex-direction:column}
+#m-frase .modal-body{padding:1.15rem 1.25rem;max-height:none;overflow:visible}
+#m-frase .modal-footer{padding:.85rem 1.25rem}
+#m-frase .f{display:flex;flex-direction:column;gap:.32rem}
+#m-frase input,#m-frase textarea{width:100%;box-sizing:border-box}
+#m-frase textarea{min-height:132px;resize:vertical;line-height:1.45}
 #gestao-wrap /* JANELA STATUS */
 
 .janela-wrap{display:flex;gap:.5rem;margin-bottom:.85rem}
@@ -3831,7 +3838,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
   <div class="modal">
 
-    <div class="modal-hdr"><div class="modal-title">Editar Frase</div><button class="modal-close" onclick="fecharModal('m-frase')">✕</button></div>
+    <div class="modal-hdr"><div class="modal-title">Editar Frase</div><button class="modal-close" onclick="fecharModalFrase()">✕</button></div>
 
     <div class="modal-body">
 
@@ -3847,7 +3854,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
     </div>
 
-    <div class="modal-footer"><button class="btn bg" onclick="fecharModal('m-frase')">Cancelar</button><button class="btn ba" onclick="salvarFrase()">Salvar</button></div>
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModalFrase()">Cancelar</button><button class="btn ba" onclick="salvarFrase()">Salvar</button></div>
 
   </div>
 
@@ -9655,7 +9662,7 @@ function rExecTimeline(){
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
 <script src="js/modules/historico.js?v=5"></script>
-<script src="js/modules/gestao-inline.js?v=9"></script>
+<script src="js/modules/gestao-inline.js?v=10"></script>
 <script src="js/modules/cadastro.js?v=11"></script>
 <script src="js/modules/rh-inline.js"></script>
 
