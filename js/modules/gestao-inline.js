@@ -3238,9 +3238,13 @@ function bindFraseEditButtons(){
 
     }
 
-    if(idx!==null&&idx!==''&&typeof window.editarFrase==='function'){
+    if(idx!==null&&idx!==''){
 
-      window.editarFrase(parseInt(idx,10));
+      idx=parseInt(idx,10);
+
+      if(Number.isNaN(idx))return;
+
+      editarFrase(idx);
 
     }
 
