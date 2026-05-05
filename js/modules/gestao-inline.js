@@ -8,6 +8,9 @@ let _saveTimer = null;
 // Chave dinâmica por usuário — inicializada em _initGestaoChave()
 var _gestaoChave = 'tf_planejador';
 
+// Guard: impede save() antes de load() terminar — evita apagar dados com objeto vazio
+var _gestaoLoaded = false;
+
 async function _initGestaoChave() {
   try {
     var r = await (window.sbClient || _sb).auth.getUser();
@@ -203,12 +206,15 @@ function applyDados(parsed) {
   geralFields.forEach(function(k){ if(parsed[k]!==undefined && parsed[k]!==null){ if(typeof parsed[k]==='object' && !Array.isArray(parsed[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],parsed[k]); } else { dadosGeral[k]=dadosGeral[k]||parsed[k]; } delete parsed[k]; } });
 
   // Merge profundo de dias: une dias locais e da nuvem sem apagar nenhum.
-  // Para o mesmo dia, mantém o que tiver mais conteúdo (protege contra nuvem desatualizada).
+  // Se local tem _savedAt mais recente que a nuvem, local sempre vence (preserva deleções).
   if(parsed.dias && typeof parsed.dias==='object'){
     if(!dados.dias) dados.dias={};
+    var localMaisRecente = dados._savedAt && parsed._savedAt && dados._savedAt >= parsed._savedAt;
     Object.keys(parsed.dias).forEach(function(d){
       var c=parsed.dias[d], l=dados.dias[d];
-      if(!l){ dados.dias[d]=c; return; }
+      if(!l){ dados.dias[d]=c; return; }  // dia só existe na nuvem — adiciona
+      if(localMaisRecente) return;         // local é mais novo — mantém sem comparar
+      // Sem timestamps confiáveis: mantém o que tiver mais conteúdo
       var cScore=(c.tarefas||[]).length+(c.explosoes||[]).length+(c.reflexao?1:0)+(c.abertos||[]).length;
       var lScore=(l.tarefas||[]).length+(l.explosoes||[]).length+(l.reflexao?1:0)+(l.abertos||[]).length;
       if(cScore>lScore) dados.dias[d]=c;
@@ -241,7 +247,10 @@ function load(){
 
 function save(){
 
-  // Salva localStorage + nuvem
+  // Não salva antes de load() terminar — evita sobrescrever dados com objeto vazio
+  if(!_gestaoLoaded) return;
+
+  dados._savedAt = Date.now();
 
   localStorage.setItem(_gestaoChave,JSON.stringify(dados));
 
@@ -3754,8 +3763,10 @@ init();
 
 (async function(){
   await _initGestaoChave();
-  // Recarregar localStorage agora com a chave correta do usuário
+  // Carregar dados com a chave correta do usuário
   load();
+  // Só a partir daqui save() está autorizado — dados foram carregados
+  _gestaoLoaded = true;
   init();
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
