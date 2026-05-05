@@ -3254,6 +3254,125 @@ function bindFraseEditButtons(){
 
 bindFraseEditButtons();
 
+// V9: renderizacao das frases sem onclick inline. O botao recebe listener real,
+// e o modal de frase abre por uma funcao dedicada para evitar conflitos com modais globais.
+function abrirModalFrase(){
+  var modal=document.getElementById('m-frase');
+  if(!modal)return;
+  modal.classList.add('on');
+  modal.style.display='flex';
+  modal.style.zIndex='99999';
+  setTimeout(function(){
+    var campo=document.getElementById('mfr-txt');
+    if(campo)campo.focus();
+  },30);
+}
+
+function fecharModalFrase(){
+  var modal=document.getElementById('m-frase');
+  if(!modal)return;
+  modal.classList.remove('on');
+  modal.style.display='';
+  modal.style.zIndex='';
+}
+
+function renderFrases(){
+  var wrap=document.getElementById('frases-wrap');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  var frases=dados.frases&&dados.frases.length?dados.frases:FRASES_DEFAULT;
+
+  frases.forEach(function(f,i){
+    var div=document.createElement('div');
+    div.className='frase-card';
+    div.setAttribute('data-frase-idx',i);
+
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='frase-edit-btn';
+    btn.setAttribute('data-frase-idx',i);
+    btn.textContent='editar';
+    btn.addEventListener('pointerdown',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      editarFrase(i);
+    });
+    btn.addEventListener('click',function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      editarFrase(i);
+    });
+
+    var ico=document.createElement('span');
+    ico.className='frase-icone';
+    ico.textContent=f.icone||'💡';
+
+    var txt=document.createElement('div');
+    txt.className='frase-txt';
+    txt.textContent=f.txt||'Clique em editar para adicionar sua frase...';
+
+    div.appendChild(btn);
+    div.appendChild(ico);
+    div.appendChild(txt);
+
+    if(f.autor){
+      var aut=document.createElement('div');
+      aut.className='frase-autor';
+      aut.textContent='-- '+f.autor;
+      div.appendChild(aut);
+    }
+
+    wrap.appendChild(div);
+  });
+}
+
+function editarFrase(i){
+  fraseEditIdx=i;
+  var frases=dados.frases&&dados.frases.length?dados.frases:JSON.parse(JSON.stringify(FRASES_DEFAULT));
+  var f=frases[i]||{icone:'💡',txt:'',autor:''};
+  var ico=document.getElementById('mfr-icone');
+  var txt=document.getElementById('mfr-txt');
+  var aut=document.getElementById('mfr-autor');
+  if(!ico||!txt||!aut){toast('Modal de frase nao encontrado');return;}
+  ico.value=f.icone||'';
+  txt.value=f.txt||'';
+  aut.value=f.autor||'';
+  abrirModalFrase();
+}
+
+function salvarFrase(){
+  if(!dados.frases||!dados.frases.length)dados.frases=JSON.parse(JSON.stringify(FRASES_DEFAULT));
+  dados.frases[fraseEditIdx]={
+    icone:document.getElementById('mfr-icone').value||'💡',
+    txt:document.getElementById('mfr-txt').value.trim(),
+    autor:document.getElementById('mfr-autor').value.trim()
+  };
+  save();renderFrases();fecharModalFrase();toast('Frase salva');
+}
+
+function bindFraseEditButtonsV9(){
+  if(window._gestaoFraseEditBoundV9)return;
+  window._gestaoFraseEditBoundV9=true;
+  ['pointerdown','mousedown','click'].forEach(function(evt){
+    document.addEventListener(evt,function(ev){
+      var btn=ev.target&&ev.target.closest?ev.target.closest('.frase-edit-btn'):null;
+      if(!btn)return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var idx=btn.getAttribute('data-frase-idx');
+      if(idx===null||idx===''){
+        var card=btn.closest('.frase-card');
+        idx=card?card.getAttribute('data-frase-idx'):null;
+      }
+      idx=parseInt(idx,10);
+      if(Number.isNaN(idx))return;
+      editarFrase(idx);
+    },true);
+  });
+}
+
+bindFraseEditButtonsV9();
+
 function toggleTheme(){
 
   document.body.classList.toggle('light');
@@ -3975,6 +4094,8 @@ window.addAberto      = typeof addAberto      !== 'undefined' ? addAberto      :
 window.saveReflexao   = typeof saveReflexao   !== 'undefined' ? saveReflexao   : function(){};
 window.editarFrase    = typeof editarFrase    !== 'undefined' ? editarFrase    : function(){};
 window.salvarFrase    = typeof salvarFrase    !== 'undefined' ? salvarFrase    : function(){};
+window.abrirModalFrase = typeof abrirModalFrase !== 'undefined' ? abrirModalFrase : function(){};
+window.fecharModalFrase = typeof fecharModalFrase !== 'undefined' ? fecharModalFrase : function(){};
 window.renderFrases   = typeof renderFrases   !== 'undefined' ? renderFrases   : function(){};
 window.renderCalendario = typeof renderCalendario !== 'undefined' ? renderCalendario : function(){};
 

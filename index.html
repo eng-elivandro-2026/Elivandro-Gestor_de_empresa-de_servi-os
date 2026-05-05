@@ -2716,13 +2716,13 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 #gestao-wrap /* FRASES */
 
 .frases-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem}
-#gestao-wrap .frase-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;position:relative;transition:border-color .2s}
+#gestao-wrap .frase-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;position:relative;transition:border-color .2s;pointer-events:auto}
 #gestao-wrap .frase-card:hover{border-color:var(--border2)}
 #gestao-wrap .frase-card:hover .frase-edit-btn{opacity:1}
 #gestao-wrap .frase-icone{font-size:1.2rem;margin-bottom:.4rem;display:block}
 #gestao-wrap .frase-txt{font-size:.82rem;color:var(--text);line-height:1.6;font-style:italic;min-height:38px}
 #gestao-wrap .frase-autor{font-size:.65rem;color:var(--accent);margin-top:.4rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-#gestao-wrap .frase-edit-btn{position:absolute;top:.5rem;right:.5rem;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:var(--r2);padding:.15rem .4rem;font-size:.65rem;cursor:pointer;opacity:1;transition:opacity .15s;font-family:inherit}
+#gestao-wrap .frase-edit-btn{position:absolute;top:.5rem;right:.5rem;z-index:5;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:var(--r2);padding:.15rem .4rem;font-size:.65rem;cursor:pointer;opacity:1;transition:opacity .15s;font-family:inherit;pointer-events:auto}
 #gestao-wrap .frase-edit-btn:hover{color:var(--text);border-color:var(--border2)}
 #gestao-wrap .captura-area{width:100%;padding:.5rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit;resize:none;line-height:1.5;transition:border-color .15s}
 #gestao-wrap .captura-area:focus{outline:none;border-color:var(--blue)}
@@ -9655,7 +9655,7 @@ function rExecTimeline(){
 <script src="js/modules/log-modal.js"></script>
 <script src="js/modules/ui-panels.js"></script>
 <script src="js/modules/historico.js?v=5"></script>
-<script src="js/modules/gestao-inline.js?v=8"></script>
+<script src="js/modules/gestao-inline.js?v=9"></script>
 <script src="js/modules/cadastro.js?v=11"></script>
 <script src="js/modules/rh-inline.js"></script>
 
