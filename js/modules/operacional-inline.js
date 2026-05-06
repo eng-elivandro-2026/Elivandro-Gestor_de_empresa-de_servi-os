@@ -215,7 +215,7 @@
         + '<input id="' + id + '" type="checkbox"' + (val ? ' checked' : '') + '> ' + esc(label) + '</label>';
     }
     if (tipo === 'textarea') {
-      return campo(label, '<textarea id="' + id + '" rows="3" style="' + base + ';resize:vertical">' + esc(val || '') + '</textarea>');
+      return campo(label, '<textarea id="' + id + '" class="op-auto-textarea" rows="3" style="' + base + ';resize:none;overflow:hidden;min-height:84px;line-height:1.45">' + esc(val || '') + '</textarea>');
     }
     if (tipo.indexOf('select:') === 0) {
       return campo(label, '<select id="' + id + '" style="' + base + '">' + listaOptions(tipo.split(':')[1], val, true) + '</select>');
@@ -226,21 +226,22 @@
   function diarioFormHtml() {
     if (!state.diarioForm) return '';
     var dados = state.diarioForm;
-    return '<div style="margin-top:1rem;border:1px solid rgba(88,166,255,.25);border-radius:8px;background:rgba(88,166,255,.04);padding:.8rem">'
-      + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.8rem">'
-      + '<div style="font-size:.85rem;font-weight:800;color:var(--blue)">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
-      + '<button type="button" class="btn bg bsm" data-op-dia-action="cancelar">Cancelar</button></div>'
+    return '<div id="opDiarioFormPanel" style="margin-top:1rem;border:1px solid rgba(88,166,255,.38);border-radius:10px;background:rgba(88,166,255,.06);padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.18)">'
+      + '<div style="position:sticky;top:0;z-index:3;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.7rem .8rem;display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.9rem">'
+      + '<div><div style="font-size:1rem;font-weight:900;color:var(--blue);text-transform:uppercase">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
+      + '<div style="font-size:.74rem;color:var(--text3);margin-top:.15rem">Preencha o registro oficial do dia da obra.</div></div>'
+      + '<button type="button" class="btn bg bsm" data-op-dia-action="cancelar">Voltar</button></div>'
       + '<div id="opDiaMsg" style="display:none;margin-bottom:.75rem;border-radius:7px;padding:.55rem .7rem;font-size:.78rem;font-weight:700"></div>'
       + DIARIO_BLOCOS.map(function (bloco) {
         return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
-          + '<div style="font-size:.72rem;color:var(--accent);font-weight:800;text-transform:uppercase;margin-bottom:.55rem">' + esc(bloco.titulo) + '</div>'
-          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem">'
+          + '<div style="font-size:.78rem;color:var(--accent);font-weight:900;text-transform:uppercase;margin-bottom:.65rem">' + esc(bloco.titulo) + '</div>'
+          + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.7rem">'
           + bloco.campos.map(function (def) { return renderDiarioCampo(def, dados); }).join('')
           + '</div></div>';
       }).join('')
-      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">'
-      + '<button type="button" class="btn bg" data-op-dia-action="cancelar">Cancelar</button>'
-      + '<button type="button" class="btn ba" data-op-dia-action="salvar">Salvar Diario</button>'
+      + '<div style="position:sticky;bottom:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.65rem;display:flex;justify-content:flex-end;gap:.55rem;margin-top:1rem;box-shadow:0 -8px 24px rgba(0,0,0,.18)">'
+      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Cancelar</button>'
+      + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:42px">Salvar Diario</button>'
       + '</div></div>';
   }
 
@@ -256,34 +257,35 @@
       listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Nenhum diario encontrado para esta obra.</div>';
     } else {
       listaHtml = lista.map(function (d) {
-        return '<div style="border:1px solid var(--border);border-radius:7px;background:var(--bg3);padding:.65rem .75rem;margin-bottom:.45rem">'
-          + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start">'
-          + '<div><div style="font-size:.78rem;font-weight:800;color:var(--text)">' + esc(dataInput(d.data_diario)) + ' - ' + esc(labelLista('turno', d.turno)) + '</div>'
-          + '<div style="font-size:.72rem;color:var(--text3);margin-top:.12rem">' + esc(labelLista('status_dia', d.status_dia)) + (d.responsavel_dia_nome ? ' | ' + esc(d.responsavel_dia_nome) : '') + '</div></div>'
-          + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">'
-          + '<button type="button" class="btn bg bsm" data-op-dia-action="editar" data-id="' + esc(d.id) + '">Abrir/Editar</button>'
-          + '<button type="button" class="btn bd bsm" data-op-dia-action="excluir" data-id="' + esc(d.id) + '">Excluir</button></div></div>'
-          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.45rem">'
-          + '<strong>Atividade:</strong> ' + esc(d.atividade_principal || '-') + '<br>'
-          + '<strong>Resumo:</strong> ' + esc(d.resumo_do_dia || '-') + '<br>'
-          + '<span>Intercorrencia: ' + (d.houve_intercorrencia ? 'Sim' : 'Nao') + '</span> | '
-          + '<span>Falta material: ' + (d.houve_falta_material ? 'Sim' : 'Nao') + '</span> | '
-          + '<span>Servico liberado: ' + (d.servico_liberado ? 'Sim' : 'Nao') + '</span>'
-          + '</div></div>';
+        return '<div style="border:1px solid var(--border);border-radius:10px;background:var(--bg3);padding:.85rem .9rem;margin-bottom:.65rem;box-shadow:0 6px 18px rgba(0,0,0,.12)">'
+          + '<div style="display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;flex-wrap:wrap">'
+          + '<div style="min-width:220px;flex:1"><div style="font-size:.95rem;font-weight:900;color:var(--text);line-height:1.25">' + esc(dataInput(d.data_diario)) + ' - ' + esc(labelLista('turno', d.turno)) + '</div>'
+          + '<div style="font-size:.8rem;color:var(--text3);margin-top:.18rem;line-height:1.35">' + esc(labelLista('status_dia', d.status_dia)) + (d.responsavel_dia_nome ? ' | ' + esc(d.responsavel_dia_nome) : '') + '</div></div>'
+          + '<div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end">'
+          + '<button type="button" class="btn bg bsm" data-op-dia-action="editar" data-id="' + esc(d.id) + '" style="min-height:38px">Abrir/Editar</button>'
+          + '<button type="button" class="btn bd bsm" data-op-dia-action="excluir" data-id="' + esc(d.id) + '" style="min-height:38px">Excluir</button></div></div>'
+          + '<div style="font-size:.88rem;color:var(--text2);line-height:1.55;margin-top:.7rem;white-space:normal;overflow-wrap:anywhere">'
+          + '<div style="margin-bottom:.35rem"><strong style="color:var(--text)">Atividade:</strong> ' + esc(d.atividade_principal || '-') + '</div>'
+          + '<div style="margin-bottom:.55rem"><strong style="color:var(--text)">Resumo:</strong> ' + esc(d.resumo_do_dia || '-') + '</div>'
+          + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;font-size:.76rem">'
+          + '<span class="bdg b-muted">Intercorrencia: ' + (d.houve_intercorrencia ? 'Sim' : 'Nao') + '</span>'
+          + '<span class="bdg b-muted">Falta material: ' + (d.houve_falta_material ? 'Sim' : 'Nao') + '</span>'
+          + '<span class="bdg ' + (d.servico_liberado ? 'b-ok' : 'b-danger') + '">Servico liberado: ' + (d.servico_liberado ? 'Sim' : 'Nao') + '</span>'
+          + '</div></div></div>';
       }).join('');
     }
-    return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
-      + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start;margin-bottom:.7rem">'
-      + '<div><div style="font-size:.78rem;color:var(--accent);font-weight:800;text-transform:uppercase">Diario de Obra</div>'
-      + '<div style="font-size:.76rem;color:var(--text3);margin-top:.12rem">Registro oficial consolidado do dia da obra.</div></div>'
-      + '<button type="button" class="btn ba" data-op-dia-action="novo">Novo Diario</button></div>'
-      + '<div style="display:grid;grid-template-columns:180px 220px auto;gap:.55rem;align-items:end;margin-bottom:.65rem">'
+    return '<section id="opDiarioSection" style="margin-top:1.1rem;padding:1rem;border:1px solid rgba(88,166,255,.28);border-radius:10px;background:rgba(88,166,255,.035)">'
+      + '<div style="display:flex;justify-content:space-between;gap:.8rem;align-items:flex-start;margin-bottom:.9rem;flex-wrap:wrap">'
+      + '<div><div style="font-size:1.15rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">Diario de Obra</div>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Registro oficial consolidado do dia da obra.</div></div>'
+      + '<button type="button" class="btn ba" data-op-dia-action="novo" style="min-height:42px;padding:.55rem .9rem">Novo Diario</button></div>'
+      + (state.diarioForm ? diarioFormHtml() : '')
+      + '<div class="op-filter-grid" style="display:grid;grid-template-columns:180px 220px auto;gap:.6rem;align-items:end;margin-bottom:.75rem">'
       + campo('Filtrar por data', '<input id="opDiaFiltroData" type="date" value="' + esc(state.diarioFiltroData || '') + '" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">')
       + campo('Filtrar por status', '<select id="opDiaFiltroStatus" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusSel + '</select>')
       + '<button type="button" class="btn bg" data-op-dia-action="limpar-filtro">Limpar</button></div>'
       + '<div id="opDiarioLista">' + listaHtml + '</div>'
-      + diarioFormHtml()
-      + '</div>';
+      + '</section>';
   }
 
   function getEmpresaId() {
@@ -421,6 +423,44 @@
     return '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">';
   }
 
+  function ajusteResponsivoHtml() {
+    return '<style id="opResponsiveStyles">'
+      + '@media(max-width:720px){'
+      + '#opObraPanel{inset:0!important;padding:0!important;align-items:stretch!important;}'
+      + '#opObraDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
+      + '#opObraBody{padding:.85rem!important;}'
+      + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
+      + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
+      + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
+      + '#opDiarioLista .bdg{font-size:.72rem!important;}'
+      + '}'
+      + '</style>';
+  }
+
+  function ajustarTextareas(root) {
+    (root || document).querySelectorAll('textarea.op-auto-textarea').forEach(function (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.max(84, ta.scrollHeight + 2) + 'px';
+    });
+  }
+
+  function focarPainelObra() {
+    setTimeout(function () {
+      var panel = $('opObraBody') || $('opObraDialog');
+      if (panel) panel.scrollTop = 0;
+      ajustarTextareas($('opObraDialog') || document);
+    }, 40);
+  }
+
+  function focarDiarioForm() {
+    setTimeout(function () {
+      var form = $('opDiarioFormPanel');
+      var body = $('opObraBody');
+      if (form && body) body.scrollTop = Math.max(0, form.offsetTop - 12);
+      ajustarTextareas(form || document);
+    }, 60);
+  }
+
   function renderDetalhe() {
     var el = $('opDetalhe');
     if (!el) return;
@@ -429,20 +469,25 @@
       el.innerHTML = '';
       return;
     }
-    el.innerHTML = '<div class="card" style="margin-top:1rem;border-color:rgba(240,165,0,.28)">'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.85rem">'
-      + '<div><div style="font-size:.75rem;color:var(--accent);font-weight:800;text-transform:uppercase">Detalhe da obra</div>'
-      + '<h3 style="margin:.15rem 0 0;font-size:1.15rem;color:var(--text)">' + esc(o.codigo_obra || '-') + ' - ' + esc(o.titulo || '-') + '</h3>'
-      + '<div style="font-size:.8rem;color:var(--text3);margin-top:.2rem">Proposta ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' / Rev. ' + esc(o.proposta_revisao) : '') + '</div></div>'
-      + '<button class="btn bg" onclick="opFecharDetalhe()">Fechar</button></div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem;margin-bottom:1rem;font-size:.82rem;color:var(--text2)">'
+    el.innerHTML = ajusteResponsivoHtml()
+      + '<div id="opObraPanel" style="position:fixed;inset:0;z-index:880;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opObraDialog" style="width:min(1120px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div style="position:sticky;top:0;z-index:5;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'
+      + '<div><div style="font-size:1.25rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">Detalhe da Obra</div>'
+      + '<h3 style="margin:.25rem 0 0;font-size:1.05rem;color:var(--text);line-height:1.28">' + esc(o.codigo_obra || '-') + ' - ' + esc(o.titulo || '-') + '</h3>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.22rem">Proposta ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' / Rev. ' + esc(o.proposta_revisao) : '') + '</div></div>'
+      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px">Fechar</button></div>'
+      + '<div id="opObraBody" style="overflow:auto;padding:1rem">'
+      + '<section style="border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:1rem;margin-bottom:1rem">'
+      + '<div style="font-size:.9rem;color:var(--text);font-weight:900;text-transform:uppercase;margin-bottom:.8rem">Dados da obra</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.75rem;margin-bottom:1rem;font-size:.86rem;color:var(--text2)">'
       + '<div><strong>Cliente</strong><br>' + esc(o.cliente_nome || '-') + '</div>'
       + '<div><strong>CNPJ</strong><br>' + esc(o.cliente_cnpj || '-') + '</div>'
       + '<div><strong>Cidade/local</strong><br>' + esc([o.cliente_cidade, o.cliente_local].filter(Boolean).join(' / ') || '-') + '</div>'
       + '<div><strong>Valor vendido</strong><br>' + money(o.valor_vendido) + '</div>'
       + '<div><strong>Data aprovacao</strong><br>' + esc(dataInput(o.data_aprovacao) || '-') + '</div>'
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.65rem;margin-bottom:1rem">'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-bottom:1rem">'
       + campo('Status operacional', '<select id="opEdStatus" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusOptions(o.status_operacional) + '</select>')
       + campo('Responsavel operacional', input('opEdResp', o.responsavel_operacional_nome))
       + campo('Centro de custo', input('opEdCentro', o.centro_custo))
@@ -462,17 +507,18 @@
       + '<label><input id="opEdPodeFat" type="checkbox"' + boolChecked(o.pode_faturar) + '> Pode faturar</label>'
       + '<label><input id="opEdTermo" type="checkbox"' + boolChecked(o.termo_entrega_assinado) + '> Termo de entrega assinado</label>'
       + '</div>'
-      + campo('Observacoes', '<textarea id="opEdObs" rows="4" style="padding:.55rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);resize:vertical">' + esc(o.observacoes || '') + '</textarea>')
+      + campo('Observacoes', '<textarea id="opEdObs" class="op-auto-textarea" rows="4" style="padding:.55rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);resize:none;overflow:hidden;min-height:96px;line-height:1.45">' + esc(o.observacoes || '') + '</textarea>')
       + '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
       + '<div style="font-size:.72rem;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:.5rem">Resumo do snapshot da proposta</div>'
       + snapshotResumo(o)
-      + '</div>'
+      + '</div></section>'
       + diarioSectionHtml()
-      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">'
-      + '<button class="btn bg" onclick="opFecharDetalhe()">Cancelar</button>'
-      + '<button class="btn ba" onclick="opSalvarObra()">Salvar Obra</button>'
       + '</div>'
-      + '</div>';
+      + '<div style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
+      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Voltar</button>'
+      + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
+      + '</div></div></div>';
+    setTimeout(function () { ajustarTextareas(el); }, 30);
   }
 
   async function carregarObras() {
@@ -520,9 +566,8 @@
       state.diarios = [];
       state.diarioErro = '';
       renderDetalhe();
+      focarPainelObra();
       await carregarDiariosObra();
-      var el = $('opDetalhe');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
       msg('Erro ao abrir obra: ' + (e.message || e), 'err');
     }
@@ -598,6 +643,7 @@
       avanco_estimado_dia: 0
     };
     renderDetalhe();
+    focarDiarioForm();
   }
 
   async function editarDiario(id) {
@@ -607,6 +653,7 @@
       state.diarioEditId = d.id;
       state.diarioForm = Object.assign({}, d);
       renderDetalhe();
+      focarDiarioForm();
     } catch (e) {
       msg('Erro ao abrir diario: ' + (e.message || e), 'err');
     }
@@ -752,6 +799,12 @@
     else if (action === 'cancelar') cancelarDiario();
     else if (action === 'salvar') salvarDiario(e);
     else if (action === 'limpar-filtro') limparFiltroDiario();
+  }
+
+  function onOperacionalInput(e) {
+    if (e.target && e.target.classList && e.target.classList.contains('op-auto-textarea')) {
+      ajustarTextareas(e.target.parentNode || document);
+    }
   }
 
   async function excluirDiario(id) {
@@ -900,4 +953,5 @@
   window.opLimparActionBar = limparActionBar;
 
   document.addEventListener('click', onDiarioClick, true);
+  document.addEventListener('input', onOperacionalInput, true);
 })(window, document);
