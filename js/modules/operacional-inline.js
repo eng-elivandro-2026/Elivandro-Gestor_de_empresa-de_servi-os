@@ -13,6 +13,7 @@
     busca: '',
     obraAtual: null,
     diarios: [],
+    diariosLoaded: false,
     diarioCarregando: false,
     diarioErro: '',
     diarioFiltroData: '',
@@ -21,6 +22,7 @@
     diarioEditId: '',
     diarioAccordionOpen: '',
     recursos: [],
+    recursosLoaded: false,
     recursosErro: '',
     recursosCarregando: false,
     recursoForm: null,
@@ -28,6 +30,7 @@
     recursoExcluir: null,
     recursosPadraoPicker: false,
     mobilizacaoEquipe: [],
+    mobilizacaoLoaded: false,
     mobilizacaoErro: '',
     mobilizacaoCarregando: false,
     mobilizacaoForm: null,
@@ -394,6 +397,9 @@
   }
 
   function diarioSectionHtml() {
+    if (!accordionAberto('diario')) {
+      return '<div id="opDiarioSection">' + sectionBox('Diario de Obra', 'Registro oficial consolidado do dia da obra.', '', 'diario') + '</div>';
+    }
     var statusSel = '<option value="">Todos</option>' + listaOptions('status_dia', state.diarioFiltroStatus, false);
     var lista = diarioFiltrados();
     var listaHtml = '';
@@ -401,6 +407,8 @@
       listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Carregando diarios...</div>';
     } else if (state.diarioErro) {
       listaHtml = '<div style="color:#ef4444;font-size:.8rem;padding:.6rem 0">' + esc(state.diarioErro) + '</div>';
+    } else if (accordionAberto('diario') && !state.diariosLoaded) {
+      listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Carregando diarios...</div>';
     } else if (!lista.length) {
       listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Nenhum diario encontrado para esta obra.</div>';
     } else {
@@ -720,6 +728,9 @@
   }
 
   function servicosPropostaHtml(o) {
+    if (!accordionAberto('servicos')) {
+      return sectionBox('O QUE ESTÁ CONSIDERADO EM PROPOSTA', 'Leitura dos itens de servico identificados no snapshot da proposta.', '', 'servicos');
+    }
     return itensSnapshotHtml(
       'O QUE ESTÁ CONSIDERADO EM PROPOSTA',
       'Leitura dos itens de servico identificados no snapshot da proposta.',
@@ -732,6 +743,9 @@
   }
 
   function materiaisNecessariosHtml(o) {
+    if (!accordionAberto('materiais')) {
+      return sectionBox('Materiais necessarios', 'Leitura dos itens de material identificados no snapshot da proposta.', '', 'materiais');
+    }
     return itensSnapshotHtml(
       'Materiais necessarios',
       'Leitura dos itens de material identificados no snapshot da proposta.',
@@ -822,9 +836,13 @@
   }
 
   function recursosCampoHtml() {
+    if (!accordionAberto('recursos')) {
+      return '<div id="opRecursosCampoAnchor">' + sectionBox('Recursos de Campo', 'Ferramentas, EPIs, EPCs e recursos previstos para a obra.', '', 'recursos') + '</div>';
+    }
     var lista = state.recursos || [];
     var cards = state.recursosCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando recursos...</div>' : '';
     if (!cards && state.recursosErro) cards = '<div style="color:#ef4444;font-size:.8rem">' + esc(state.recursosErro) + '</div>';
+    if (!cards && accordionAberto('recursos') && !state.recursosLoaded) cards = '<div style="color:var(--text3);font-size:.8rem">Carregando recursos...</div>';
     if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum recurso cadastrado para esta obra.</div>';
     if (!cards) {
       cards = lista.map(function (r) {
@@ -902,9 +920,13 @@
   }
 
   function mobilizacaoEquipeHtml() {
+    if (!accordionAberto('mobilizacao_equipe')) {
+      return '<div id="opMobilizacaoEquipeAnchor">' + sectionBox('Como cada colaborador vai ate a obra', 'Cadastro manual, sem alterar o RH.', '', 'mobilizacao_equipe') + '</div>';
+    }
     var lista = state.mobilizacaoEquipe || [];
     var cards = state.mobilizacaoCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando mobilizacao da equipe...</div>' : '';
     if (!cards && state.mobilizacaoErro) cards = '<div style="color:#ef4444;font-size:.8rem">' + esc(state.mobilizacaoErro) + '</div>';
+    if (!cards && accordionAberto('mobilizacao_equipe') && !state.mobilizacaoLoaded) cards = '<div style="color:var(--text3);font-size:.8rem">Carregando mobilizacao da equipe...</div>';
     if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum colaborador cadastrado na mobilizacao desta obra.</div>';
     if (!cards) {
       cards = lista.map(function (m) {
@@ -926,8 +948,13 @@
   }
 
   function integrantesEquipeHtml() {
+    if (!accordionAberto('integrantes')) {
+      return sectionBox('Integrantes da Equipe', 'Quem esta previsto para participar da obra. Cadastro manual, sem integrar com RH.', '', 'integrantes');
+    }
     var lista = state.mobilizacaoEquipe || [];
     var cards = state.mobilizacaoCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando integrantes...</div>' : '';
+    if (!cards && state.mobilizacaoErro) cards = '<div style="color:#ef4444;font-size:.8rem">' + esc(state.mobilizacaoErro) + '</div>';
+    if (!cards && accordionAberto('integrantes') && !state.mobilizacaoLoaded) cards = '<div style="color:var(--text3);font-size:.8rem">Carregando integrantes...</div>';
     if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum integrante previsto para esta obra.</div>';
     if (!cards) {
       cards = lista.map(function (m) {
@@ -1026,10 +1053,27 @@
       + '</div>';
   }
 
+  function loadingObraHtml() {
+    return ajusteResponsivoHtml()
+      + '<div id="opObraPanel" class="op-panel-overlay" style="position:fixed;inset:0;z-index:880;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opObraDialog" class="op-panel-shell" style="width:min(520px,92vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-body" style="padding:1.2rem;display:flex;flex-direction:column;gap:.45rem;align-items:flex-start">'
+      + '<div style="font-size:1.05rem;color:var(--accent);font-weight:900;text-transform:uppercase">Carregando obra...</div>'
+      + '<div style="font-size:.86rem;color:var(--text3);line-height:1.45">Abrindo o detalhe operacional. As seções internas serão carregadas conforme você expandir.</div>'
+      + '</div></div></div>';
+  }
+
   function operacionalMainStylesHtml() {
     return '<style id="opMainResponsiveStyles">'
       + '#operacional-root,#opShell{max-width:100%;overflow-x:hidden;box-sizing:border-box;}'
       + '#opShell input,#opShell select,#opShell button{max-width:100%;box-sizing:border-box;}'
+      + '#opShell .btn,#opDetalhe .btn{border-radius:7px!important;min-height:40px;padding:.52rem .82rem!important;font-weight:800!important;line-height:1.15!important;border-width:1px!important;box-shadow:none!important;white-space:normal;}'
+      + '#opShell .btn.bsm,#opDetalhe .btn.bsm{min-height:36px!important;padding:.4rem .62rem!important;font-size:.78rem!important;}'
+      + '#opShell .btn.ba,#opDetalhe .btn.ba{background:#e87500!important;border-color:#e87500!important;color:#111827!important;}'
+      + '#opShell .btn.bg,#opDetalhe .btn.bg{background:rgba(148,163,184,.14)!important;border-color:var(--border)!important;color:var(--text)!important;}'
+      + '#opShell .btn.bd,#opDetalhe .btn.bd{background:rgba(239,68,68,.12)!important;border-color:rgba(239,68,68,.42)!important;color:#ef4444!important;}'
+      + '#opShell .btn.b-ok,#opDetalhe .btn.b-ok{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important;}'
+      + '#opShell .btn.b-info,#opDetalhe .btn.b-info{background:rgba(88,166,255,.16)!important;border-color:rgba(88,166,255,.42)!important;color:var(--blue)!important;}'
       + '.op-obra-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem;max-width:100%;overflow:hidden;}'
       + '.op-obra-card{min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;}'
       + '.op-obra-card *{overflow-wrap:anywhere;}'
@@ -1152,12 +1196,23 @@
     state.accordionOpen = {};
     if (!estavaAberto) state.accordionOpen[key] = true;
     renderDetalhe();
+    if (!estavaAberto) carregarSecaoOperacional(key);
     if (offset != null) {
       setTimeout(function () {
         var novoBody = $('opObraBody');
         var novaSec = $('opSec_' + key);
         if (novoBody && novaSec) novoBody.scrollTop = Math.max(0, novaSec.offsetTop - offset);
       }, 0);
+    }
+  }
+
+  function carregarSecaoOperacional(key) {
+    if (key === 'diario' && !state.diariosLoaded && !state.diarioCarregando) {
+      carregarDiariosObra();
+    } else if (key === 'recursos' && !state.recursosLoaded && !state.recursosCarregando) {
+      carregarRecursosObra();
+    } else if ((key === 'mobilizacao_equipe' || key === 'integrantes') && !state.mobilizacaoLoaded && !state.mobilizacaoCarregando) {
+      carregarMobilizacaoObra();
     }
   }
 
@@ -1387,20 +1442,25 @@
 
   async function abrirObra(id) {
     try {
+      var detalhe = $('opDetalhe');
+      if (detalhe) detalhe.innerHTML = loadingObraHtml();
       var obra = await window.sbBuscarObraPorId(id);
       if (!obra) throw new Error('Obra nao encontrada.');
       state.obraAtual = obra;
       state.diarioForm = null;
       state.diarioEditId = '';
       state.diarios = [];
+      state.diariosLoaded = false;
       state.diarioErro = '';
       state.recursos = [];
+      state.recursosLoaded = false;
       state.recursosErro = '';
       state.recursoForm = null;
       state.recursoEditId = '';
       state.recursoExcluir = null;
       state.recursosPadraoPicker = false;
       state.mobilizacaoEquipe = [];
+      state.mobilizacaoLoaded = false;
       state.mobilizacaoErro = '';
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
@@ -1408,8 +1468,9 @@
       state.accordionOpen = {};
       renderDetalhe();
       focarPainelObra();
-      await Promise.all([carregarDiariosObra(), carregarRecursosMobilizacaoObra()]);
     } catch (e) {
+      var erroDetalhe = $('opDetalhe');
+      if (erroDetalhe) erroDetalhe.innerHTML = '';
       msg('Erro ao abrir obra: ' + (e.message || e), 'err');
     }
   }
@@ -1521,6 +1582,7 @@
     renderDetalhe();
     try {
       state.diarios = await window.sbListarDiariosObra(getEmpresaId(), state.obraAtual.id);
+      state.diariosLoaded = true;
     } catch (e) {
       state.diarioErro = e.message || String(e);
     } finally {
@@ -1530,26 +1592,39 @@
   }
 
   async function carregarRecursosMobilizacaoObra() {
+    await Promise.all([carregarRecursosObra(), carregarMobilizacaoObra()]);
+  }
+
+  async function carregarRecursosObra() {
     if (!state.obraAtual) return;
     var empresaId = getEmpresaId();
     state.recursosCarregando = true;
-    state.mobilizacaoCarregando = true;
     state.recursosErro = '';
-    state.mobilizacaoErro = '';
     renderDetalhe();
     try {
       if (typeof window.sbListarRecursosCampoObra === 'function') {
         state.recursos = await window.sbListarRecursosCampoObra(empresaId, state.obraAtual.id);
       }
+      state.recursosLoaded = true;
     } catch (e) {
       state.recursosErro = e.message || String(e);
     } finally {
       state.recursosCarregando = false;
+      renderDetalhe();
     }
+  }
+
+  async function carregarMobilizacaoObra() {
+    if (!state.obraAtual) return;
+    var empresaId = getEmpresaId();
+    state.mobilizacaoCarregando = true;
+    state.mobilizacaoErro = '';
+    renderDetalhe();
     try {
       if (typeof window.sbListarMobilizacaoEquipeObra === 'function') {
         state.mobilizacaoEquipe = await window.sbListarMobilizacaoEquipeObra(empresaId, state.obraAtual.id);
       }
+      state.mobilizacaoLoaded = true;
     } catch (e2) {
       state.mobilizacaoErro = e2.message || String(e2);
     } finally {
