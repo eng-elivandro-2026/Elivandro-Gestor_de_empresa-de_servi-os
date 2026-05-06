@@ -1057,14 +1057,20 @@ function portalRecalcularComercial(origem){
     var analiseAberta=Q('analiseBody')&&Q('analiseBody').style.display!=='none';
     if((origem==='analise-ia'||analiseAberta)&&typeof rAnaliseInt==='function') rAnaliseInt();
   }catch(e){ console.error('[portalRefreshComercial] rAnaliseInt:', e); }
+
+  if(origem==='visao-executiva'){
+    try{ if(typeof carregarCeoDash==='function') carregarCeoDash(); }catch(e){ console.error('[portalRefreshComercial] carregarCeoDash:', e); }
+  }
 }
 
 window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
   opcoes=opcoes||{};
   var origem=opcoes.origem||'comercial';
   var btn=opcoes.btn||null;
-  var nome=origem==='motor-decisao'?'Motor de Decisão':(origem==='analise-ia'?'Análise IA':'Comercial');
-  var erroMsg=origem==='motor-decisao'?'Não foi possível atualizar o Motor de Decisão.':(origem==='analise-ia'?'Não foi possível atualizar a Análise IA.':'Não foi possível atualizar os dados comerciais.');
+  var _nomeMap={'motor-decisao':'Motor de Decisão','analise-ia':'Análise IA','visao-executiva':'Visão Executiva'};
+  var _erroMap={'motor-decisao':'Não foi possível atualizar o Motor de Decisão.','analise-ia':'Não foi possível atualizar a Análise IA.','visao-executiva':'Não foi possível atualizar a Visão Executiva.'};
+  var nome=_nomeMap[origem]||'Comercial';
+  var erroMsg=_erroMap[origem]||'Não foi possível atualizar os dados comerciais.';
   var txtOriginal=btn?btn.textContent:null;
 
   if(btn){ btn.disabled=true; btn.textContent='Atualizando...'; }
@@ -1100,7 +1106,8 @@ window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
     var tsStr=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     if(!window._portalUltimaAtualizacao) window._portalUltimaAtualizacao={};
     window._portalUltimaAtualizacao[origem]=tsStr;
-    var tsElem=Q(origem==='motor-decisao'?'motorDecisaoLastUpdate':'analiseIaLastUpdate');
+    var _tsElemMap={'motor-decisao':'motorDecisaoLastUpdate','analise-ia':'analiseIaLastUpdate','visao-executiva':'ceoDashLastUpdate'};
+    var tsElem=Q(_tsElemMap[origem]||null);
     if(tsElem) tsElem.textContent='Última atualização: '+tsStr;
 
     if(mudou){
