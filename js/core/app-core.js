@@ -910,9 +910,11 @@ function showActionBar(p){
   var info=Q('abInfo');
   if(info) info.textContent='✏️ Editando: '+esc(p.num)+' — '+esc(p.cli)+(p.tit?' | '+esc(p.tit):'');
   bar.classList.add('visible');
+  if(typeof opRenderActionBar==='function') opRenderActionBar(p);
 }
 function hideActionBar(){
   Q('actionBar').classList.remove('visible');
+  if(typeof opLimparActionBar==='function') opLimparActionBar();
 }
 function saveCnt(){ LS('tf_cnt', cnt); }
 function inferNextBase(){
@@ -1824,9 +1826,11 @@ function rProps(){
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
       +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
+      +(typeof opAcoesPropostaHtml==='function'?opAcoesPropostaHtml(p):'')
       +revFooter
       +'</div>'
   }).join('');
+  if(typeof opHidratarAcoesPropostas==='function') opHidratarAcoesPropostas(list);
 }
 function addRevCard(id){ _abrirModalNovaRev(id); }
 

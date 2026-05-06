@@ -35,6 +35,21 @@
       ]
     },
     {
+      id: 'operacional',
+      label: 'Operacional',
+      icon: 'OP',
+      tipo: 'inline',
+      init: function () { go('operacional'); if (typeof rOperacional === 'function') rOperacional(); },
+      nav: [
+        { label: 'Obras', icon: 'OP', action: "go('operacional',this);rOperacional()" },
+        { separator: true, label: 'Status' },
+        { label: 'Aguardando Recebimento', icon: 'AR', action: "go('operacional',this);opSetFiltroStatus('aguardando_recebimento')" },
+        { label: 'Planejamento', icon: 'PL', action: "go('operacional',this);opSetFiltroStatus('planejamento_em_andamento')" },
+        { label: 'Em Execucao', icon: 'EX', action: "go('operacional',this);opSetFiltroStatus('em_execucao')" },
+        { label: 'Entregues', icon: 'OK', action: "go('operacional',this);opSetFiltroStatus('entregue_ao_cliente')" },
+      ]
+    },
+    {
       id: 'historico',
       label: 'Relacionamento',
       icon: '💬',
