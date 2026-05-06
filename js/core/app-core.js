@@ -7,9 +7,10 @@
 var LETTERHEAD_B64 = "";
 var Q=function(i){return document.getElementById(i)};
 var _toastT=null;
-function toast(msg,type){
+function toast(msg,type,persist){
   var t=Q('toast');t.textContent=msg;t.className='show '+(type||'ok');
-  clearTimeout(_toastT);_toastT=setTimeout(function(){t.className='';},2200);
+  clearTimeout(_toastT);
+  if(!persist) _toastT=setTimeout(function(){t.className='';},3000);
 }
 var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 var n2=function(v){return isFinite(+v)?+v:0};
@@ -696,6 +697,7 @@ function saveAll(){
       if(typeof sbMigrarLocal === 'function') sbMigrarLocal();
     }
   }
+  try{ window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: 'comercial-save', modulo: 'comercial' } })); }catch(e){}
 }
 function saveEDB(){LS('tf_edb',eDB)}
 
@@ -1030,6 +1032,112 @@ function atualizarAnalise(){
   }
   rAnaliseInt();
 }
+
+function portalRecalcularComercial(origem){
+  try{ if(typeof rDash==='function') rDash(); }catch(e){ console.error('[portalRefreshComercial] rDash:', e); }
+  try{ if(typeof rProps==='function') rProps(); }catch(e){ console.error('[portalRefreshComercial] rProps:', e); }
+
+  if(origem==='motor-decisao'){
+    var mb=Q('motorDecisaoBody'), mch=Q('motorDecisaoChevron');
+    if(mb&&mb.style.display==='none'){
+      mb.style.display='block';
+      if(mch) mch.textContent='▲ recolher';
+    }
+  }
+  try{ if(typeof runDecisionEngine==='function') runDecisionEngine(); }catch(e){ console.error('[portalRefreshComercial] runDecisionEngine:', e); }
+
+  if(origem==='analise-ia'){
+    var ab=Q('analiseBody'), ach=Q('analiseChevron');
+    if(ab&&ab.style.display==='none'){
+      ab.style.display='block';
+      if(ach) ach.textContent='▲';
+    }
+  }
+  try{
+    var analiseAberta=Q('analiseBody')&&Q('analiseBody').style.display!=='none';
+    if((origem==='analise-ia'||analiseAberta)&&typeof rAnaliseInt==='function') rAnaliseInt();
+  }catch(e){ console.error('[portalRefreshComercial] rAnaliseInt:', e); }
+
+  if(origem==='visao-executiva'){
+    try{ if(typeof carregarCeoDash==='function') carregarCeoDash(); }catch(e){ console.error('[portalRefreshComercial] carregarCeoDash:', e); }
+  }
+}
+
+window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
+  opcoes=opcoes||{};
+  var origem=opcoes.origem||'comercial';
+  var btn=opcoes.btn||null;
+  var _nomeMap={'motor-decisao':'Motor de Decisão','analise-ia':'Análise IA','visao-executiva':'Visão Executiva'};
+  var _erroMap={'motor-decisao':'Não foi possível atualizar o Motor de Decisão.','analise-ia':'Não foi possível atualizar a Análise IA.','visao-executiva':'Não foi possível atualizar a Visão Executiva.'};
+  var nome=_nomeMap[origem]||'Comercial';
+  var erroMsg=_erroMap[origem]||'Não foi possível atualizar os dados comerciais.';
+  var txtOriginal=btn?btn.textContent:null;
+
+  if(btn){ btn.disabled=true; btn.textContent='Atualizando...'; }
+  toast('Atualizando '+nome+'...','ok',true);
+
+  try{
+    if(!window.sbClient) throw new Error('Sem conexão com a nuvem.');
+
+    var antesHash=Array.isArray(props)?props.map(function(p){return (p.id||'')+'|'+(p.fase||'')+'|'+(p.status||'');}).join(','):'';
+
+    if(typeof sbCarregarNuvem==='function'){
+      var novos=await sbCarregarNuvem();
+      if(!Array.isArray(novos)) throw new Error('A nuvem não retornou propostas.');
+      props=novos;
+      try{ localStorage.setItem('tf_props', JSON.stringify(novos)); }catch(e){}
+    }else if(typeof sbRecarregarDaNuvem==='function'){
+      await sbRecarregarDaNuvem();
+      try{
+        var loc=JSON.parse(localStorage.getItem('tf_props')||'[]');
+        if(Array.isArray(loc)) props=loc;
+      }catch(e){}
+    }else{
+      throw new Error('Função de sincronização não encontrada.');
+    }
+
+    var depoisHash=Array.isArray(props)?props.map(function(p){return (p.id||'')+'|'+(p.fase||'')+'|'+(p.status||'');}).join(','):'';
+    var mudou=antesHash!==depoisHash;
+
+    portalRecalcularComercial(origem);
+    window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: origem, modulo: 'comercial' } }));
+
+    var agora=new Date();
+    var tsStr=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(!window._portalUltimaAtualizacao) window._portalUltimaAtualizacao={};
+    window._portalUltimaAtualizacao[origem]=tsStr;
+    var _tsElemMap={'motor-decisao':'motorDecisaoLastUpdate','analise-ia':'analiseIaLastUpdate','visao-executiva':'ceoDashLastUpdate'};
+    var tsElem=Q(_tsElemMap[origem]||null);
+    if(tsElem) tsElem.textContent='Última atualização: '+tsStr;
+
+    if(mudou){
+      toast(nome+' atualizado com sucesso.','ok');
+    }else{
+      toast(nome+' atualizado. Nenhuma alteração nova encontrada.','ok');
+    }
+    return true;
+  }catch(e){
+    console.error('[portalRefreshComercial]', e);
+    toast(erroMsg,'err');
+    portalRecalcularComercial(origem);
+    return false;
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=txtOriginal||'🔄 Atualizar'; }
+  }
+};
+
+window.addEventListener('propostas:loaded', function(e){
+  try{
+    if(e&&e.detail&&Array.isArray(e.detail.props)) props=e.detail.props;
+    portalRecalcularComercial('propostas-loaded');
+  }catch(err){ console.error('[propostas:loaded] recalculo comercial:', err); }
+});
+
+window.addEventListener('portal:data-changed', function(e){
+  try{
+    if(e&&e.detail&&e.detail.origem==='comercial-save') portalRecalcularComercial('comercial-save');
+  }catch(err){ console.error('[portal:data-changed] recalculo comercial:', err); }
+});
 
 function itemAnalise(txt,cor){
   return '<div style="background:var(--bg3);border-left:3px solid '+(cor||'var(--border2)')+';border-radius:0 var(--r2) var(--r2) 0;padding:.45rem .7rem;font-size:.79rem;color:var(--text2);line-height:1.5">'+txt+'</div>';
@@ -1408,6 +1516,26 @@ function rRegistro(){
 
 // DASHBOARD
 
+function abreviarCliente(nome){
+  if(!nome||nome.length<=22) return nome;
+  var r=nome
+    .replace(/\b(COMERCIALIZACAO|COMERCIALIZA[CÇ]AO|INDUSTRIALIZACAO|INDUSTRIA[CÇ]AO|INDUSTRIA|IND[ÚU]STRIA|INDUSTRIAS|COM[ÉE]RCIO|DISTRIBUICAO|DISTRIBUI[CÇ]AO|IMPORTACAO|IMPORTA[CÇ]AO|EXPORTACAO|EXPORTA[CÇ]AO|REPRESENTACOES|REPRESENTA[CÇ][OÕ]ES|PARTICIPACOES|PARTICIPA[CÇ][OÕ]ES|ASSESSORIA|CONSULTORIA|CONSTRUTORA|CONSTRUCOES|CONSTRU[CÇ][OÕ]ES|INCORPORADORA|EMPREENDIMENTOS|INVESTIMENTOS|SOLUCOES|SOLU[CÇ][OÕ]ES|TECNOLOGIA|TRANSPORTES|ALIMENTOS|BEBIDAS)\b/gi,' ')
+    .replace(/\b(LTDA|S\.A|S\/A|SA|EIRELI|ME|EPP|SS|CIA)\b\.?/gi,' ')
+    .replace(/\b(BR|E|DE|DA|DO|DOS|DAS|EM|COM)\b/gi,' ')
+    .replace(/[.,\-\/\\]+$/,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(!r) return nome.substring(0,20)+'…';
+  if(r.length<=22) return r;
+  var ws=r.split(' ').filter(function(w){return w.length>0;});
+  var o=ws[0]||'';
+  for(var i=1;i<ws.length;i++){
+    if((o+' '+ws[i]).length>22) break;
+    o+=' '+ws[i];
+  }
+  return o||r.substring(0,20)+'…';
+}
+
 function rDash(rankTarget, sortBy){
   if(rankTarget==='cli' && sortBy){ window._rCliSort=sortBy; }
   if(rankTarget==='ctt' && sortBy){ window._rCttSort=sortBy; }
@@ -1530,19 +1658,20 @@ function rDash(rankTarget, sortBy){
   if(wCli){
     if(!ranking.length){ wCli.innerHTML='<p class="hint">Sem dados.</p>'; }
     else{
-      wCli.innerHTML='<table class="conv-table"><thead><tr>'
-        +'<th>Cliente</th><th>Cidade</th><th>Prop.</th><th>Fech.</th><th>Conv.</th><th>Aprovado</th>'
+      wCli.innerHTML='<table class="conv-table conv-table-cli"><thead><tr>'
+        +'<th>Cliente</th><th class="col-cidade">Cidade</th><th style="text-align:center">Prop.</th><th style="text-align:center">Fech.</th><th style="text-align:center">Conv.</th><th style="text-align:right">Aprovado</th>'
         +'</tr></thead><tbody>'
         +ranking.slice(0,10).map(function(c){
           var conv=c.conv.toFixed(1);
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
+          var nomeAbrev=abreviarCliente(c.cliente);
           return '<tr>'
-            +'<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+esc(c.cliente)+'">'+esc(c.cliente)+'</td>'
-            +'<td>'+esc(c.cidade)+'</td>'
-            +'<td style="text-align:center">'+c.propostas+'</td>'
-            +'<td style="text-align:center">'+c.fechados+'</td>'
-            +'<td class="'+cls+'" style="text-align:center">'+conv+'%</td>'
-            +'<td style="text-align:right">'+money(c.valor)+'</td>'
+            +'<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cliente)+'">'+esc(nomeAbrev)+'</td>'
+            +'<td class="col-cidade" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cidade)+'">'+esc(c.cidade)+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
+            +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
+            +'<td style="text-align:right;white-space:nowrap">'+money(c.valor)+'</td>'
             +'</tr>';
         }).join('')+'</tbody></table>';
     }
@@ -1595,13 +1724,14 @@ function rDash(rankTarget, sortBy){
           var conv=c.conv.toFixed(1);
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
           var cliList=Object.keys(c.clientes).join(', ');
+          var cttAbrev=c.contato.length>22?c.contato.substring(0,21)+'…':c.contato;
           return '<tr>'
-            +'<td style="font-weight:600" title="'+esc(cliList)+'">'+esc(c.contato)+'</td>'
-            +'<td style="text-align:center;color:var(--text3)" title="'+esc(cliList)+'">'+c.numCli+'</td>'
-            +'<td style="text-align:center">'+c.propostas+'</td>'
-            +'<td style="text-align:center">'+c.fechados+'</td>'
-            +'<td class="'+cls+'" style="text-align:center">'+conv+'%</td>'
-            +'<td style="text-align:right">'+money(c.valor)+'</td>'
+            +'<td style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.contato)+' — '+esc(cliList)+'">'+esc(cttAbrev)+'</td>'
+            +'<td style="text-align:center;color:var(--text3);white-space:nowrap" title="'+esc(cliList)+'">'+c.numCli+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
+            +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
+            +'<td style="text-align:right;white-space:nowrap">'+money(c.valor)+'</td>'
             +'</tr>';
         }).join('')+'</tbody></table>';
     }
@@ -1631,7 +1761,7 @@ function rDash(rankTarget, sortBy){
   if(exec){
     exec.innerHTML=''
       +'<div class="metric-box"><div class="metric-label">Conversão correta do ano</div><div class="metric-val" style="color:var(--purple)">'+(totalAno?((fechAno/totalAno)*100).toFixed(1):'0.0')+'%</div><div class="metric-sub">'+fechAno+' fechamentos de '+totalAno+' propostas</div></div>'
-      +'<div class="metric-box"><div class="metric-label">Ticket médio aprovado</div>'+'<div class="metric-val" style="color:var(--accent)">'+money(fechAno?recAno/fechAno:0)+'</div>'+(antTicket>0&&fechAno>0?'<div class="metric-sub" style="color:'+(recAno/fechAno>=antTicket?'#3fb950':'#f85149')+'">'+(recAno/fechAno>=antTicket?'\u25b2':'\u25bc')+' '+(((recAno/fechAno-antTicket)/antTicket)*100).toFixed(1)+'% vs ano ant.</div>':'<div class="metric-sub">Base nos fechamentos do ano</div>')+'</div>'+'<div class="metric-box"><div class="metric-label">Ticket médio ano anterior</div>'+'<div class="metric-val" style="color:var(--text3)">'+money(antTicket)+'</div>'+'<div class="metric-sub">'+(antTicket>0?'Referência configurada':'Configure em ⛔ Metas')+'</div></div>'
+      +'<div class="metric-box"><div class="metric-label">Ticket médio aprovado</div>'+'<div class="metric-val" style="color:var(--accent);white-space:nowrap">'+money(fechAno?recAno/fechAno:0)+'</div>'+(antTicket>0&&fechAno>0?'<div class="metric-sub" style="color:'+(recAno/fechAno>=antTicket?'#3fb950':'#f85149')+'">'+(recAno/fechAno>=antTicket?'\u25b2':'\u25bc')+' '+(((recAno/fechAno-antTicket)/antTicket)*100).toFixed(1)+'% vs ano ant.</div>':'<div class="metric-sub">Base nos fechamentos do ano</div>')+'</div>'+'<div class="metric-box"><div class="metric-label">Ticket médio ano anterior</div>'+'<div class="metric-val" style="color:var(--text3);white-space:nowrap">'+money(antTicket)+'</div>'+'<div class="metric-sub">'+(antTicket>0?'Referência configurada':'Configure em ⛔ Metas')+'</div></div>'
       +'<div class="metric-box"><div class="metric-label">Previsão de fechamento do ano</div><div class="metric-val" style="color:var(--green)">'+projFech+'</div><div class="metric-sub">Ritmo atual anualizado</div></div>';
   }
 
