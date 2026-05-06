@@ -696,6 +696,7 @@ function saveAll(){
       if(typeof sbMigrarLocal === 'function') sbMigrarLocal();
     }
   }
+  try{ window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: 'comercial-save', modulo: 'comercial' } })); }catch(e){}
 }
 function saveEDB(){LS('tf_edb',eDB)}
 
@@ -1030,6 +1031,84 @@ function atualizarAnalise(){
   }
   rAnaliseInt();
 }
+
+function portalRecalcularComercial(origem){
+  try{ if(typeof rDash==='function') rDash(); }catch(e){ console.error('[portalRefreshComercial] rDash:', e); }
+  try{ if(typeof rProps==='function') rProps(); }catch(e){ console.error('[portalRefreshComercial] rProps:', e); }
+
+  if(origem==='motor-decisao'){
+    var mb=Q('motorDecisaoBody'), mch=Q('motorDecisaoChevron');
+    if(mb&&mb.style.display==='none'){
+      mb.style.display='block';
+      if(mch) mch.textContent='▲ recolher';
+    }
+  }
+  try{ if(typeof runDecisionEngine==='function') runDecisionEngine(); }catch(e){ console.error('[portalRefreshComercial] runDecisionEngine:', e); }
+
+  if(origem==='analise-ia'){
+    var ab=Q('analiseBody'), ach=Q('analiseChevron');
+    if(ab&&ab.style.display==='none'){
+      ab.style.display='block';
+      if(ach) ach.textContent='▲';
+    }
+  }
+  try{
+    var analiseAberta=Q('analiseBody')&&Q('analiseBody').style.display!=='none';
+    if((origem==='analise-ia'||analiseAberta)&&typeof rAnaliseInt==='function') rAnaliseInt();
+  }catch(e){ console.error('[portalRefreshComercial] rAnaliseInt:', e); }
+}
+
+window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
+  opcoes=opcoes||{};
+  var origem=opcoes.origem||'comercial';
+  var nome=origem==='motor-decisao'?'Motor de Decisão':(origem==='analise-ia'?'Análise IA':'Comercial');
+  var erroMsg=origem==='motor-decisao'?'Não foi possível atualizar o Motor de Decisão.':(origem==='analise-ia'?'Não foi possível atualizar a Análise IA.':'Não foi possível atualizar os dados comerciais.');
+
+  try{
+    if(typeof toast==='function') toast('Atualizando '+nome+'...', 'ok');
+    if(!window.sbClient) throw new Error('Sem conexão com a nuvem.');
+    if(typeof sbCarregarNuvem==='function'){
+      var novos=await sbCarregarNuvem();
+      if(!Array.isArray(novos)) throw new Error('A nuvem não retornou propostas.');
+      if(Array.isArray(novos)){
+        props=novos;
+        try{ localStorage.setItem('tf_props', JSON.stringify(novos)); }catch(e){}
+      }
+    }else if(typeof sbRecarregarDaNuvem==='function'){
+      await sbRecarregarDaNuvem();
+      try{
+        var loc=JSON.parse(localStorage.getItem('tf_props')||'[]');
+        if(Array.isArray(loc)) props=loc;
+      }catch(e){}
+    }else{
+      throw new Error('Função de sincronização não encontrada.');
+    }
+
+    portalRecalcularComercial(origem);
+    window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: origem, modulo: 'comercial' } }));
+    if(typeof toast==='function') toast(nome+' atualizado com sucesso.', 'ok');
+    return true;
+  }catch(e){
+    console.error('[portalRefreshComercial]', e);
+    if(typeof toast==='function') toast(erroMsg, 'err');
+    else alert(erroMsg);
+    portalRecalcularComercial(origem);
+    return false;
+  }
+};
+
+window.addEventListener('propostas:loaded', function(e){
+  try{
+    if(e&&e.detail&&Array.isArray(e.detail.props)) props=e.detail.props;
+    portalRecalcularComercial('propostas-loaded');
+  }catch(err){ console.error('[propostas:loaded] recalculo comercial:', err); }
+});
+
+window.addEventListener('portal:data-changed', function(e){
+  try{
+    if(e&&e.detail&&e.detail.origem==='comercial-save') portalRecalcularComercial('comercial-save');
+  }catch(err){ console.error('[portal:data-changed] recalculo comercial:', err); }
+});
 
 function itemAnalise(txt,cor){
   return '<div style="background:var(--bg3);border-left:3px solid '+(cor||'var(--border2)')+';border-radius:0 var(--r2) var(--r2) 0;padding:.45rem .7rem;font-size:.79rem;color:var(--text2);line-height:1.5">'+txt+'</div>';
