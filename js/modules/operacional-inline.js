@@ -230,6 +230,7 @@
       + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.8rem">'
       + '<div style="font-size:.85rem;font-weight:800;color:var(--blue)">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
       + '<button type="button" class="btn bg bsm" data-op-dia-action="cancelar">Cancelar</button></div>'
+      + '<div id="opDiaMsg" style="display:none;margin-bottom:.75rem;border-radius:7px;padding:.55rem .7rem;font-size:.78rem;font-weight:700"></div>'
       + DIARIO_BLOCOS.map(function (bloco) {
         return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
           + '<div style="font-size:.72rem;color:var(--accent);font-weight:800;text-transform:uppercase;margin-bottom:.55rem">' + esc(bloco.titulo) + '</div>'
@@ -632,6 +633,80 @@
     return out;
   }
 
+  function limparErroDiario() {
+    var box = getCampo('opDiaMsg');
+    if (box) {
+      box.style.display = 'none';
+      box.textContent = '';
+    }
+    document.querySelectorAll('[id^="opDia_"]').forEach(function (el) {
+      el.style.borderColor = 'var(--border)';
+      el.style.boxShadow = '';
+    });
+  }
+
+  function mostrarErroDiario(texto, campoId) {
+    console.error('[Operacional]', texto);
+    var box = getCampo('opDiaMsg');
+    if (box) {
+      box.textContent = texto;
+      box.style.display = 'block';
+      box.style.background = 'rgba(239,68,68,.12)';
+      box.style.border = '1px solid rgba(239,68,68,.35)';
+      box.style.color = '#ef4444';
+    }
+    if (typeof window.toast === 'function') window.toast(texto, 'err');
+    else alert(texto);
+    if (campoId) {
+      var el = getCampo(campoId);
+      if (el) {
+        el.style.borderColor = '#ef4444';
+        el.style.boxShadow = '0 0 0 2px rgba(239,68,68,.18)';
+        try { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      }
+    }
+  }
+
+  function mostrarStatusDiario(texto) {
+    var box = getCampo('opDiaMsg');
+    if (box) {
+      box.textContent = texto;
+      box.style.display = 'block';
+      box.style.background = 'rgba(88,166,255,.12)';
+      box.style.border = '1px solid rgba(88,166,255,.3)';
+      box.style.color = 'var(--blue)';
+    }
+    msg(texto, 'ok');
+  }
+
+  function validarDiarioAntesSalvar(dados) {
+    if (!String(dados.data_diario || '').trim()) {
+      mostrarErroDiario('Informe a Data do diário antes de salvar.', 'opDia_data_diario');
+      return false;
+    }
+    if (!String(dados.atividade_principal || '').trim()) {
+      mostrarErroDiario('Preencha a Atividade principal antes de salvar o Diário de Obra.', 'opDia_atividade_principal');
+      return false;
+    }
+    if (!String(dados.resumo_do_dia || '').trim()) {
+      mostrarErroDiario('Preencha o Resumo do dia antes de salvar o Diário de Obra.', 'opDia_resumo_do_dia');
+      return false;
+    }
+    return true;
+  }
+
+  function msgErroSalvarDiario(e) {
+    var raw = (e && (e.message || e.details || e.hint || e.code)) ? String(e.message || e.details || e.hint || e.code) : String(e || '');
+    var low = raw.toLowerCase();
+    if ((e && e.code === '23505') || low.indexOf('ja existe diario') >= 0 || low.indexOf('duplicate') >= 0 || low.indexOf('unique') >= 0) {
+      return 'Já existe um Diário de Obra para esta obra, data e turno.';
+    }
+    if ((e && e.code === '42501') || low.indexOf('permission') >= 0 || low.indexOf('permiss') >= 0 || low.indexOf('row-level security') >= 0 || low.indexOf('rls') >= 0) {
+      return 'Seu perfil não tem permissão para criar ou editar Diário de Obra.';
+    }
+    return 'Não foi possível salvar o Diário de Obra. Verifique os dados e tente novamente.';
+  }
+
   async function salvarDiario(evt) {
     if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
@@ -648,16 +723,19 @@
       return;
     }
     try {
-      msg('Salvando diario...', 'ok');
+      limparErroDiario();
       var dados = coletarDiarioForm();
+      if (!validarDiarioAntesSalvar(dados)) return;
+      mostrarStatusDiario('Salvando diário...');
       if (state.diarioEditId) await window.sbAtualizarDiarioObra(state.diarioEditId, dados);
       else await window.sbCriarDiarioObra(dados);
-      msg('Diario salvo com sucesso.');
+      msg('Diário de Obra salvo com sucesso.');
       state.diarioForm = null;
       state.diarioEditId = '';
       await carregarDiariosObra();
     } catch (e) {
-      msg('Erro ao salvar diario: ' + (e.message || e), 'err');
+      console.error('[Operacional] Erro tecnico ao salvar diario:', e);
+      mostrarErroDiario(msgErroSalvarDiario(e));
     }
   }
 
