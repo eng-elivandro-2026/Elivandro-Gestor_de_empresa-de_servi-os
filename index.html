@@ -770,8 +770,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
       <span class="ct">🧠 Motor de Decisão <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura Atual por Negócios — Decisões!!)</span></span>
-      <div class="br" onclick="event.stopPropagation()">
-        <button class="btn bg bsm" onclick="event.stopPropagation();portalRefreshComercial({origem:'motor-decisao'})">🔄 Atualizar</button>
+      <div class="br" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:.5rem">
+        <span id="motorDecisaoLastUpdate" style="font-size:.68rem;color:var(--text3);white-space:nowrap"></span>
+        <button id="btnRefreshMotor" class="btn bg bsm" onclick="event.stopPropagation();portalRefreshComercial({origem:'motor-decisao',btn:this})">🔄 Atualizar</button>
       </div>
       <span id="motorDecisaoChevron" style="font-size:.8rem;color:var(--text3);margin-left:.4rem">▼ expandir</span>
     </div>
@@ -893,8 +894,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   <div class="card" id="analisePanel" style="margin-bottom:.8rem">
     <div class="ch" style="cursor:pointer" onclick="togAnalise()">
       <span class="ct">🤖 Análise IA <span style="font-size:.7rem;font-weight:400;color:var(--text3);letter-spacing:.01em">(Varredura do Passado — Histórico Geral)</span></span>
-      <div class="br" onclick="event.stopPropagation()">
-        <button class="btn bg bsm" onclick="event.stopPropagation();portalRefreshComercial({origem:'analise-ia'})">🔄 Atualizar</button>
+      <div class="br" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:.5rem">
+        <span id="analiseIaLastUpdate" style="font-size:.68rem;color:var(--text3);white-space:nowrap"></span>
+        <button id="btnRefreshAnalise" class="btn bg bsm" onclick="event.stopPropagation();portalRefreshComercial({origem:'analise-ia',btn:this})">🔄 Atualizar</button>
       </div>
       <span id="analiseChevron" onclick="togAnalise()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
     </div>

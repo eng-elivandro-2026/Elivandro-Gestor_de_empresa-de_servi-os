@@ -7,9 +7,10 @@
 var LETTERHEAD_B64 = "";
 var Q=function(i){return document.getElementById(i)};
 var _toastT=null;
-function toast(msg,type){
+function toast(msg,type,persist){
   var t=Q('toast');t.textContent=msg;t.className='show '+(type||'ok');
-  clearTimeout(_toastT);_toastT=setTimeout(function(){t.className='';},2200);
+  clearTimeout(_toastT);
+  if(!persist) _toastT=setTimeout(function(){t.className='';},3000);
 }
 var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 var n2=function(v){return isFinite(+v)?+v:0};
@@ -1061,19 +1062,24 @@ function portalRecalcularComercial(origem){
 window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
   opcoes=opcoes||{};
   var origem=opcoes.origem||'comercial';
+  var btn=opcoes.btn||null;
   var nome=origem==='motor-decisao'?'Motor de Decisão':(origem==='analise-ia'?'Análise IA':'Comercial');
   var erroMsg=origem==='motor-decisao'?'Não foi possível atualizar o Motor de Decisão.':(origem==='analise-ia'?'Não foi possível atualizar a Análise IA.':'Não foi possível atualizar os dados comerciais.');
+  var txtOriginal=btn?btn.textContent:null;
+
+  if(btn){ btn.disabled=true; btn.textContent='Atualizando...'; }
+  toast('Atualizando '+nome+'...','ok',true);
 
   try{
-    if(typeof toast==='function') toast('Atualizando '+nome+'...', 'ok');
     if(!window.sbClient) throw new Error('Sem conexão com a nuvem.');
+
+    var antesHash=Array.isArray(props)?props.map(function(p){return (p.id||'')+'|'+(p.fase||'')+'|'+(p.status||'');}).join(','):'';
+
     if(typeof sbCarregarNuvem==='function'){
       var novos=await sbCarregarNuvem();
       if(!Array.isArray(novos)) throw new Error('A nuvem não retornou propostas.');
-      if(Array.isArray(novos)){
-        props=novos;
-        try{ localStorage.setItem('tf_props', JSON.stringify(novos)); }catch(e){}
-      }
+      props=novos;
+      try{ localStorage.setItem('tf_props', JSON.stringify(novos)); }catch(e){}
     }else if(typeof sbRecarregarDaNuvem==='function'){
       await sbRecarregarDaNuvem();
       try{
@@ -1084,16 +1090,32 @@ window.portalRefreshComercial = async function portalRefreshComercial(opcoes){
       throw new Error('Função de sincronização não encontrada.');
     }
 
+    var depoisHash=Array.isArray(props)?props.map(function(p){return (p.id||'')+'|'+(p.fase||'')+'|'+(p.status||'');}).join(','):'';
+    var mudou=antesHash!==depoisHash;
+
     portalRecalcularComercial(origem);
     window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: origem, modulo: 'comercial' } }));
-    if(typeof toast==='function') toast(nome+' atualizado com sucesso.', 'ok');
+
+    var agora=new Date();
+    var tsStr=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(!window._portalUltimaAtualizacao) window._portalUltimaAtualizacao={};
+    window._portalUltimaAtualizacao[origem]=tsStr;
+    var tsElem=Q(origem==='motor-decisao'?'motorDecisaoLastUpdate':'analiseIaLastUpdate');
+    if(tsElem) tsElem.textContent='Última atualização: '+tsStr;
+
+    if(mudou){
+      toast(nome+' atualizado com sucesso.','ok');
+    }else{
+      toast(nome+' atualizado. Nenhuma alteração nova encontrada.','ok');
+    }
     return true;
   }catch(e){
     console.error('[portalRefreshComercial]', e);
-    if(typeof toast==='function') toast(erroMsg, 'err');
-    else alert(erroMsg);
+    toast(erroMsg,'err');
     portalRecalcularComercial(origem);
     return false;
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=txtOriginal||'🔄 Atualizar'; }
   }
 };
 
