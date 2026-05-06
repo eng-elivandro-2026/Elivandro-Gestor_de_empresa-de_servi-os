@@ -235,10 +235,7 @@
           + bloco.campos.map(function (def) { return renderDiarioCampo(def, dados); }).join('')
           + '</div></div>';
       }).join('')
-      + '<div style="position:sticky;bottom:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.65rem;display:flex;justify-content:flex-end;gap:.55rem;margin-top:1rem;box-shadow:0 -8px 24px rgba(0,0,0,.18)">'
-      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Cancelar</button>'
-      + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:42px">Salvar Diario</button>'
-      + '</div></div>';
+      + '<div style="height:1rem"></div></div>';
   }
 
   function diarioOverlayHtml() {
@@ -249,8 +246,12 @@
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente do Diario de Obra. Use Voltar para retornar ao detalhe da obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opDiarioBody" style="overflow:auto;padding:1rem">'
+      + '<div id="opDiarioBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
       + diarioFormHtml()
+      + '</div>'
+      + '<div id="opDiarioFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:44px">Salvar Diario</button>'
       + '</div></div></div>';
   }
 
@@ -439,7 +440,9 @@
       + '#opObraBody{padding:.85rem!important;}'
       + '#opDiarioOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opDiarioDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opDiarioBody{padding:.85rem!important;}'
+      + '#opDiarioBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
+      + '#opDiarioFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opDiarioFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
       + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
