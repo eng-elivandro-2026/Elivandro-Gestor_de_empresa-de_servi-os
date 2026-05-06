@@ -32,7 +32,7 @@
     mobilizacaoForm: null,
     mobilizacaoEditId: '',
     mobilizacaoExcluir: null,
-    accordionOpen: { dados: true }
+    accordionOpen: {}
   };
 
   var STATUS_RETROATIVOS = [
@@ -563,6 +563,26 @@
     return it.obs || it.observacoes || it.detalhes || it.det || it.nota || '';
   }
 
+  function itemNumero(it, idx) {
+    var n = it.num || it.n || it.numero || it.item_num || it.itemNumero || it.seq || it.ordem || (idx + 1);
+    return String(n).padStart(3, '0');
+  }
+
+  function itemAreaEquip(it, obra) {
+    var direto = it.area || it.area_local || it.local || it.equipamento || it.equip || it.equipamento_maquina_linha;
+    if (direto) return direto;
+    if (!obra) return '';
+    return [obra.area_local, obra.equipamento_maquina_linha].filter(Boolean).join(' / ');
+  }
+
+  function itemInstalacaoPainel(it, obra) {
+    return it.instalacao || it.inst || it.painel || it.quadro || it.qd || it.local_instalacao || (obra && (obra.cliente_local || obra.titulo)) || '';
+  }
+
+  function itemCategoriaDesc(it) {
+    return it.categoria_descricao || it.desc_categoria || it.categoriaDesc || it.descricao_categoria || it.obs_categoria || '';
+  }
+
   function filtrarItensSnapshot(o, tipoAlvo) {
     return snapshotItens(o).filter(function (it) {
       var tipo = itemTipo(it);
@@ -571,35 +591,51 @@
     });
   }
 
-  function itensSnapshotHtml(titulo, subtitulo, itens, vazio, extra) {
+  function itensSnapshotHtml(titulo, subtitulo, itens, vazio, extra, obra, key) {
     var html = '';
     if (!itens.length) {
       html = '<div style="color:var(--text3);font-size:.82rem">' + esc(vazio) + '</div>';
     } else {
-      html = itens.map(function (it) {
+      html = itens.map(function (it, idx) {
         var desc = itemDescricao(it);
         var qtd = itemQtd(it) || '-';
         var un = itemUn(it) || '';
         var cat = it.categoria || it.cat || it.tipo || it.t || '-';
+        var area = itemAreaEquip(it, obra) || 'Nao informado';
+        var painel = itemInstalacaoPainel(it, obra) || 'Nao informado';
         var obs = itemObs(it);
+        var catDesc = itemCategoriaDesc(it);
         return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
-          + '<div style="font-size:.9rem;font-weight:900;color:var(--text);line-height:1.35">'
-          + esc(qtd) + ' x ' + esc(un || '-') + ' | ' + esc(desc) + ' | ' + esc(moedaTexto(itemCustoUnit(it))) + ' | ' + esc(moedaTexto(itemCustoTotal(it))) + ' | ' + esc(cat)
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.55rem;font-size:.82rem;color:var(--text2);line-height:1.4">'
+          + '<div><strong style="color:var(--text)">Nº Item:</strong><br>' + esc(itemNumero(it, idx)) + '</div>'
+          + '<div><strong style="color:var(--text)">Quantidade:</strong><br>' + esc(qtd) + '</div>'
+          + '<div><strong style="color:var(--text)">Unidade:</strong><br>' + esc(un || 'Nao informado') + '</div>'
+          + '<div><strong style="color:var(--text)">Valor unitario de custo:</strong><br>' + esc(moedaTexto(itemCustoUnit(it))) + '</div>'
+          + '<div><strong style="color:var(--text)">Valor total de custo:</strong><br>' + esc(moedaTexto(itemCustoTotal(it))) + '</div>'
           + '</div>'
-          + '<div style="font-size:.76rem;color:var(--text3);line-height:1.45;margin-top:.35rem">Quantidade x Unidade | Descricao | Custo unitario | Custo total | Categoria</div>'
-          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap">' + esc(obs) + '</div>' : '')
+          + '<div style="font-size:.95rem;font-weight:900;color:var(--text);line-height:1.35;margin-top:.65rem">' + esc(desc) + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem;font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.55rem">'
+          + '<div><strong style="color:var(--text)">Area / Equipamento:</strong><br>' + esc(area) + '</div>'
+          + '<div><strong style="color:var(--text)">Instalacao / Painel:</strong><br>' + esc(painel) + '</div>'
+          + '</div>'
+          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.65rem"><strong style="color:var(--text)">Categoria:</strong> ' + esc(cat || 'Nao informado') + '</div>'
+          + '<div style="font-size:.78rem;color:var(--text3);line-height:1.45;margin-top:.3rem"><strong>Descricao geral da categoria:</strong> ' + esc(catDesc || 'Nao informado') + '</div>'
+          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap"><strong>Detalhes:</strong> ' + esc(obs) + '</div>' : '')
           + '</div>';
       }).join('');
     }
-    return sectionBox(titulo, subtitulo, html + (extra || ''), titulo.toLowerCase().indexOf('serv') >= 0 ? 'servicos' : 'materiais');
+    return sectionBox(titulo, subtitulo, html + (extra || ''), key || (titulo.toLowerCase().indexOf('serv') >= 0 ? 'servicos' : 'materiais'));
   }
 
   function servicosPropostaHtml(o) {
     return itensSnapshotHtml(
-      'Servicos considerados na proposta',
+      'O QUE ESTÁ CONSIDERADO EM PROPOSTA',
       'Leitura dos itens de servico identificados no snapshot da proposta.',
       filtrarItensSnapshot(o, 'servico'),
-      'Nenhum servico identificado no snapshot da proposta.'
+      'Nenhum servico identificado no snapshot da proposta.',
+      '',
+      o,
+      'servicos'
     );
   }
 
@@ -609,7 +645,9 @@
       'Leitura dos itens de material identificados no snapshot da proposta.',
       filtrarItensSnapshot(o, 'material'),
       'Nenhum material identificado no snapshot da proposta.',
-      '<div style="display:flex;justify-content:flex-end;margin-top:.75rem"><button type="button" class="btn bg" disabled title="A tabela obra_materiais sera uma proxima fase">Adicionar material fora da proposta - em breve</button></div>'
+      '<div style="display:flex;justify-content:flex-end;margin-top:.75rem"><button type="button" class="btn bg" disabled title="A tabela obra_materiais sera uma proxima fase">Adicionar material fora da proposta - em breve</button></div>',
+      o,
+      'materiais'
     );
   }
 
@@ -979,17 +1017,30 @@
 
   function accordionAberto(key) {
     if (Object.prototype.hasOwnProperty.call(state.accordionOpen, key)) return !!state.accordionOpen[key];
-    return key === 'dados';
+    return false;
   }
 
   function abrirAccordion(key) {
+    state.accordionOpen = {};
     if (key) state.accordionOpen[key] = true;
   }
 
   function toggleAccordion(key) {
     if (!key) return;
-    state.accordionOpen[key] = !accordionAberto(key);
+    var estavaAberto = accordionAberto(key);
+    var body = $('opObraBody');
+    var sec = $('opSec_' + key);
+    var offset = body && sec ? (sec.offsetTop - body.scrollTop) : null;
+    state.accordionOpen = {};
+    if (!estavaAberto) state.accordionOpen[key] = true;
     renderDetalhe();
+    if (offset != null) {
+      setTimeout(function () {
+        var novoBody = $('opObraBody');
+        var novaSec = $('opSec_' + key);
+        if (novoBody && novaSec) novoBody.scrollTop = Math.max(0, novaSec.offsetTop - offset);
+      }, 0);
+    }
   }
 
   function sectionBox(titulo, subtitulo, html, key) {
@@ -1225,7 +1276,7 @@
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
       state.mobilizacaoExcluir = null;
-      state.accordionOpen = { dados: true };
+      state.accordionOpen = {};
       renderDetalhe();
       focarPainelObra();
       await Promise.all([carregarDiariosObra(), carregarRecursosMobilizacaoObra()]);
