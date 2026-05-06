@@ -31,7 +31,8 @@
     mobilizacaoCarregando: false,
     mobilizacaoForm: null,
     mobilizacaoEditId: '',
-    mobilizacaoExcluir: null
+    mobilizacaoExcluir: null,
+    accordionOpen: { dados: true }
   };
 
   var STATUS_RETROATIVOS = [
@@ -373,10 +374,10 @@
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente do Diario de Obra. Use Voltar para retornar ao detalhe da obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opDiarioBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
+      + '<div id="opDiarioBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + diarioFormHtml()
       + '</div>'
-      + '<div id="opDiarioFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opDiarioFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:44px">Salvar Diario</button>'
       + '</div></div></div>';
@@ -411,17 +412,13 @@
           + '</div></div></div>';
       }).join('');
     }
-    return '<section id="opDiarioSection" style="margin-top:1.1rem;padding:1rem;border:1px solid rgba(88,166,255,.28);border-radius:10px;background:rgba(88,166,255,.035)">'
-      + '<div style="display:flex;justify-content:space-between;gap:.8rem;align-items:flex-start;margin-bottom:.9rem;flex-wrap:wrap">'
-      + '<div><div style="font-size:1.15rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">Diario de Obra</div>'
-      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Registro oficial consolidado do dia da obra.</div></div>'
-      + '<button type="button" class="btn ba" data-op-dia-action="novo" style="min-height:42px;padding:.55rem .9rem">Novo Diario</button></div>'
+    return '<div id="opDiarioSection">' + sectionBox('Diario de Obra', 'Registro oficial consolidado do dia da obra.',
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:.9rem"><button type="button" class="btn ba" data-op-dia-action="novo" style="min-height:42px;padding:.55rem .9rem">Novo Diario</button></div>'
       + '<div class="op-filter-grid" style="display:grid;grid-template-columns:180px 220px auto;gap:.6rem;align-items:end;margin-bottom:.75rem">'
       + campo('Filtrar por data', '<input id="opDiaFiltroData" type="date" value="' + esc(state.diarioFiltroData || '') + '" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">')
       + campo('Filtrar por status', '<select id="opDiaFiltroStatus" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusSel + '</select>')
       + '<button type="button" class="btn bg" data-op-dia-action="limpar-filtro">Limpar</button></div>'
-      + '<div id="opDiarioLista">' + listaHtml + '</div>'
-      + '</section>';
+      + '<div id="opDiarioLista">' + listaHtml + '</div>', 'diario') + '</div>';
   }
 
   function recebimentoSectionHtml(o) {
@@ -441,11 +438,11 @@
       + checkCampo('opRecCondPag', 'Condicao de pagamento conferida?', o.condicao_pagamento_conferida)
       + checkCampo('opRecPropConf', 'Proposta aprovada conferida?', o.proposta_aprovada_conferida)
       + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de recebimento', textarea('opRecObs', o.observacoes_recebimento, 90)) + '</div>');
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de recebimento', textarea('opRecObs', o.observacoes_recebimento, 90)) + '</div>', 'recebimento');
   }
 
   function segurancaSectionHtml(o) {
-    return sectionBox('Seguranca / Liberacao da Obra', 'Requisitos de liberacao antes de mobilizar a equipe.',
+    return sectionBox('Checklist de Planejamento Inicial', 'Requisitos de liberacao antes de mobilizar a equipe.',
       '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.65rem">'
       + checkCampo('opSegInt', 'Integracao obrigatoria?', o.integracao_obrigatoria)
       + checkCampo('opSegDds', 'DDS obrigatorio?', o.dds_obrigatorio)
@@ -459,7 +456,7 @@
       + checkCampo('opSegNr35', 'NR35 obrigatoria?', o.nr35_obrigatoria)
       + checkCampo('opSegPgr', 'PGR/PCMSO obrigatorio?', o.pgr_pcmso_obrigatorio)
       + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de seguranca', textarea('opSegObs', o.observacoes_seguranca_obra, 90)) + '</div>');
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de seguranca', textarea('opSegObs', o.observacoes_seguranca_obra, 90)) + '</div>', 'checklist');
   }
 
   function jornadaSectionHtml(o) {
@@ -473,7 +470,7 @@
       + checkCampo('opJorExtra', 'Permite hora extra?', o.permite_hora_extra)
       + checkCampo('opJorFimSemana', 'Permite trabalho em fim de semana?', o.permite_trabalho_fim_semana)
       + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de horario', textarea('opJorObs', o.observacoes_horario, 90)) + '</div>');
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de horario', textarea('opJorObs', o.observacoes_horario, 90)) + '</div>', 'jornada');
   }
 
   function alimentacaoMobilizacaoSectionHtml(o) {
@@ -500,7 +497,7 @@
       + campo('Ponto encontro equipe', input('opMobPonto', o.ponto_encontro_equipe))
       + campo('Horario encontro equipe', input('opMobHorario', o.horario_encontro_equipe, 'time'))
       + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de mobilizacao', textarea('opMobObs', o.observacoes_mobilizacao_obra, 90)) + '</div>');
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de mobilizacao', textarea('opMobObs', o.observacoes_mobilizacao_obra, 90)) + '</div>', 'mobilizacao_logistica');
   }
 
   function contingenciaSectionHtml(o) {
@@ -511,7 +508,7 @@
       + checkCampo('opContAprovacao', 'Precisa aprovacao para compra emergencial?', o.precisa_aprovacao_compra_emergencial !== false)
       + '</div>'
       + '<div style="margin-top:.75rem">' + campo('Plano de contingencia material', textarea('opContPlano', o.plano_contingencia_material, 90)) + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de contingencia', textarea('opContObs', o.observacoes_contingencia_material, 90)) + '</div>');
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de contingencia', textarea('opContObs', o.observacoes_contingencia_material, 90)) + '</div>', 'contingencia');
   }
 
   function snapshotItens(o) {
@@ -535,15 +532,35 @@
     return it.un || it.und || it.unid || it.unidade || '';
   }
 
-  function itemCusto(it) {
-    return it.cu || it.custo || it.custoUnit || it.custo_unit || it.vc || it.valor_custo || '';
+  function itemCustoUnit(it) {
+    return it.cu || it.custo || it.custoUnit || it.custo_unit || it.vc || it.valor_custo || it.cst || '';
   }
 
-  function itemCustoTexto(it) {
-    var v = itemCusto(it);
+  function itemCustoTotal(it) {
+    var total = it.ct || it.custo_total || it.custoTotal || it.vct || it.total_custo || it.totalCusto || '';
+    if (total !== '') return total;
+    var unit = numeroFlex(itemCustoUnit(it));
+    var qtd = numeroFlex(itemQtd(it) || 0);
+    return isFinite(unit) && isFinite(qtd) && unit && qtd ? unit * qtd : '';
+  }
+
+  function numeroFlex(v) {
+    var s = String(v == null ? '' : v).replace(/[R$\s]/g, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    var n = Number(s);
+    return isFinite(n) ? n : 0;
+  }
+
+  function moedaTexto(v) {
     if (v === '') return '-';
-    var n = Number(v);
+    var s = String(v).replace(/[R$\s]/g, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    var n = Number(s);
     return isFinite(n) ? money(n) : String(v);
+  }
+
+  function itemObs(it) {
+    return it.obs || it.observacoes || it.detalhes || it.det || it.nota || '';
   }
 
   function filtrarItensSnapshot(o, tipoAlvo) {
@@ -560,16 +577,21 @@
       html = '<div style="color:var(--text3);font-size:.82rem">' + esc(vazio) + '</div>';
     } else {
       html = itens.map(function (it) {
+        var desc = itemDescricao(it);
+        var qtd = itemQtd(it) || '-';
+        var un = itemUn(it) || '';
+        var cat = it.categoria || it.cat || it.tipo || it.t || '-';
+        var obs = itemObs(it);
         return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
-          + '<div style="font-size:.9rem;font-weight:900;color:var(--text);line-height:1.3">' + esc(itemDescricao(it)) + '</div>'
-          + '<div style="font-size:.78rem;color:var(--text2);line-height:1.45;margin-top:.4rem">'
-          + 'Qtd: ' + esc(itemQtd(it) || '-') + ' ' + esc(itemUn(it) || '')
-          + ' | Custo: ' + esc(itemCustoTexto(it))
-          + ' | Categoria: ' + esc(it.categoria || it.cat || it.tipo || it.t || '-')
-          + '</div></div>';
+          + '<div style="font-size:.9rem;font-weight:900;color:var(--text);line-height:1.35">'
+          + esc(qtd) + ' x ' + esc(un || '-') + ' | ' + esc(desc) + ' | ' + esc(moedaTexto(itemCustoUnit(it))) + ' | ' + esc(moedaTexto(itemCustoTotal(it))) + ' | ' + esc(cat)
+          + '</div>'
+          + '<div style="font-size:.76rem;color:var(--text3);line-height:1.45;margin-top:.35rem">Quantidade x Unidade | Descricao | Custo unitario | Custo total | Categoria</div>'
+          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap">' + esc(obs) + '</div>' : '')
+          + '</div>';
       }).join('');
     }
-    return sectionBox(titulo, subtitulo, html + (extra || ''));
+    return sectionBox(titulo, subtitulo, html + (extra || ''), titulo.toLowerCase().indexOf('serv') >= 0 ? 'servicos' : 'materiais');
   }
 
   function servicosPropostaHtml(o) {
@@ -615,10 +637,10 @@
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.recursoEditId ? 'Editar Recurso de Campo' : 'Novo Recurso de Campo') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente de Recursos de Campo. Use Voltar para retornar a obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opRecursoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
+      + '<div id="opRecursoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + recursoFormHtml()
       + '</div>'
-      + '<div id="opRecursoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opRecursoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso" style="min-height:44px">Salvar Recurso</button>'
       + '</div></div></div>';
@@ -651,7 +673,7 @@
           var key = g.categoria + '||' + item;
           var disabled = existentes[key];
           return '<label style="display:flex;gap:.45rem;align-items:flex-start;border:1px solid var(--border);border-radius:7px;background:var(--bg3);padding:.5rem .6rem;font-size:.8rem;color:' + (disabled ? 'var(--text3)' : 'var(--text2)') + '">'
-            + '<input type="checkbox" class="op-rec-padrao-check" data-cat="' + esc(g.categoria) + '" data-item="' + esc(item) + '"' + (disabled ? ' disabled' : ' checked') + '>'
+            + '<input type="checkbox" class="op-rec-padrao-check" data-cat="' + esc(g.categoria) + '" data-item="' + esc(item) + '"' + (disabled ? ' disabled' : '') + '>'
             + '<span>' + esc(item) + (disabled ? ' <small style="color:var(--text3)">(ja existe)</small>' : '') + '</span></label>';
         }).join('')
         + '</div></div>';
@@ -662,8 +684,8 @@
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">Escolher Recursos Padrao</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Marque somente os recursos que deseja adicionar nesta obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opRecursosPadraoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">' + grupos + '</div>'
-      + '<div id="opRecursosPadraoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opRecursosPadraoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">' + grupos + '</div>'
+      + '<div id="opRecursosPadraoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="adicionar-recursos-padrao" style="min-height:44px">Adicionar selecionados</button>'
       + '</div></div></div>';
@@ -691,7 +713,7 @@
       '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<button type="button" class="btn bg" data-op-1c-action="escolher-recursos-padrao">Escolher recursos padrao</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="novo-recurso">Novo recurso</button></div>'
-      + '<div>' + cards + '</div>') + '</div>';
+      + '<div>' + cards + '</div>', 'recursos') + '</div>';
   }
 
   function mobilizacaoFormHtml() {
@@ -727,10 +749,10 @@
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.mobilizacaoEditId ? 'Editar Colaborador' : 'Adicionar Colaborador') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Integrantes e deslocamento da obra, sem alterar o RH.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opMobilizacaoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
+      + '<div id="opMobilizacaoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + mobilizacaoFormHtml()
       + '</div>'
-      + '<div id="opMobilizacaoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opMobilizacaoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao" style="min-height:44px">Salvar Colaborador</button>'
       + '</div></div></div>';
@@ -768,13 +790,9 @@
           + '</div>';
       }).join('');
     }
-    return '<div id="opMobilizacaoEquipeAnchor" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
-      + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:.7rem">'
-      + '<div><div style="font-size:.88rem;color:var(--text);font-weight:900;text-transform:uppercase">Como cada colaborador vai ate a obra</div>'
-      + '<div style="font-size:.76rem;color:var(--text3)">Cadastro manual, sem alterar o RH.</div></div>'
-      + '<button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar colaborador</button></div>'
-      + cards
-      + '</div>';
+    return '<div id="opMobilizacaoEquipeAnchor">' + sectionBox('Como cada colaborador vai ate a obra', 'Cadastro manual, sem alterar o RH.',
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:.75rem"><button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar colaborador</button></div>'
+      + cards, 'mobilizacao_equipe') + '</div>';
   }
 
   function integrantesEquipeHtml() {
@@ -795,7 +813,7 @@
       }).join('');
     }
     return sectionBox('Integrantes da Equipe', 'Quem esta previsto para participar da obra. Cadastro manual, sem integrar com RH.',
-      '<div style="display:flex;justify-content:flex-end;margin-bottom:.75rem"><button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar integrante</button></div>' + cards);
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:.75rem"><button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar integrante</button></div>' + cards, 'integrantes');
   }
 
   function operacionalPlanejamentoHtml(o) {
@@ -959,12 +977,30 @@
       + '<input id="' + id + '" type="checkbox"' + boolChecked(val) + '> ' + esc(label) + '</label>';
   }
 
-  function sectionBox(titulo, subtitulo, html) {
-    return '<section style="border:1px solid rgba(88,166,255,.24);border-radius:10px;background:rgba(88,166,255,.035);padding:1rem;margin-bottom:1rem">'
-      + '<div style="display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.85rem">'
-      + '<div><div style="font-size:1rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">' + esc(titulo) + '</div>'
-      + (subtitulo ? '<div style="font-size:.8rem;color:var(--text3);margin-top:.16rem">' + esc(subtitulo) + '</div>' : '')
-      + '</div></div>' + html + '</section>';
+  function accordionAberto(key) {
+    if (Object.prototype.hasOwnProperty.call(state.accordionOpen, key)) return !!state.accordionOpen[key];
+    return key === 'dados';
+  }
+
+  function abrirAccordion(key) {
+    if (key) state.accordionOpen[key] = true;
+  }
+
+  function toggleAccordion(key) {
+    if (!key) return;
+    state.accordionOpen[key] = !accordionAberto(key);
+    renderDetalhe();
+  }
+
+  function sectionBox(titulo, subtitulo, html, key) {
+    key = key || titulo.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    var aberto = accordionAberto(key);
+    return '<section id="opSec_' + esc(key) + '" style="border:1px solid rgba(88,166,255,.24);border-radius:10px;background:rgba(88,166,255,.035);margin-bottom:1rem;overflow:hidden">'
+      + '<button type="button" data-op-accordion="' + esc(key) + '" style="width:100%;border:0;border-bottom:' + (aberto ? '1px solid var(--border)' : '0') + ';background:rgba(88,166,255,.045);padding:.9rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;text-align:left;cursor:pointer;color:inherit">'
+      + '<span><span style="display:block;font-size:1rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">' + esc(titulo) + '</span>'
+      + (subtitulo ? '<span style="display:block;font-size:.8rem;color:var(--text3);margin-top:.16rem;font-weight:500">' + esc(subtitulo) + '</span>' : '')
+      + '</span><span style="font-size:1.15rem;color:var(--blue);font-weight:900;line-height:1">' + (aberto ? '-' : '+') + '</span></button>'
+      + '<div style="display:' + (aberto ? 'block' : 'none') + ';padding:1rem">' + html + '</div></section>';
   }
 
   function ajusteResponsivoHtml() {
@@ -975,25 +1011,25 @@
       + '#opObraBody{padding:.85rem!important;}'
       + '#opDiarioOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opDiarioDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opDiarioBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
-      + '#opDiarioFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opDiarioBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
+      + '#opDiarioFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opDiarioFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '#opRecursoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opRecursoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opRecursoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
-      + '#opRecursoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opRecursoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
+      + '#opRecursoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opRecursoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '#opRecursoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
       + '#opMobilizacaoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opMobilizacaoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opMobilizacaoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
-      + '#opMobilizacaoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opMobilizacaoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
+      + '#opMobilizacaoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opMobilizacaoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '#opMobilizacaoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
       + '#opRecursosPadraoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opRecursosPadraoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opRecursosPadraoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
-      + '#opRecursosPadraoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opRecursosPadraoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
+      + '#opRecursosPadraoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opRecursosPadraoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
@@ -1019,6 +1055,7 @@
   }
 
   function focarDiarioForm() {
+    abrirAccordion('diario');
     setTimeout(function () {
       var form = $('opDiarioFormPanel');
       var body = $('opDiarioBody') || $('opObraBody');
@@ -1028,6 +1065,7 @@
   }
 
   function focarRecursosCampo() {
+    abrirAccordion('recursos');
     setTimeout(function () {
       var anchor = $('opRecursosCampoAnchor');
       var body = $('opObraBody');
@@ -1039,6 +1077,7 @@
   }
 
   function focarRecursoForm() {
+    abrirAccordion('recursos');
     setTimeout(function () {
       var body = $('opRecursoBody') || $('opObraBody');
       if (body) body.scrollTop = 0;
@@ -1047,6 +1086,7 @@
   }
 
   function focarMobilizacaoEquipe() {
+    abrirAccordion('mobilizacao_equipe');
     setTimeout(function () {
       var anchor = $('opMobilizacaoEquipeAnchor');
       var body = $('opObraBody');
@@ -1056,6 +1096,7 @@
   }
 
   function focarMobilizacaoForm() {
+    abrirAccordion('mobilizacao_equipe');
     setTimeout(function () {
       var body = $('opMobilizacaoBody') || $('opObraBody');
       if (body) body.scrollTop = 0;
@@ -1080,8 +1121,7 @@
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.22rem">Proposta ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' / Rev. ' + esc(o.proposta_revisao) : '') + '</div></div>'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px">Fechar</button></div>'
       + '<div id="opObraBody" style="overflow:auto;padding:1rem">'
-      + '<section style="border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:1rem;margin-bottom:1rem">'
-      + '<div style="font-size:.9rem;color:var(--text);font-weight:900;text-transform:uppercase;margin-bottom:.8rem">Dados da obra</div>'
+      + sectionBox('Dados da Obra', '', ''
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.75rem;margin-bottom:1rem;font-size:.86rem;color:var(--text2)">'
       + '<div><strong>Cliente</strong><br>' + esc(o.cliente_nome || '-') + '</div>'
       + '<div><strong>CNPJ</strong><br>' + esc(o.cliente_cnpj || '-') + '</div>'
@@ -1113,7 +1153,7 @@
       + '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
       + '<div style="font-size:.72rem;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:.5rem">Resumo do snapshot da proposta</div>'
       + snapshotResumo(o)
-      + '</div></section>'
+      + '</div>', 'dados')
       + operacionalPlanejamentoHtml(o)
       + diarioSectionHtml()
       + '</div>'
@@ -1185,6 +1225,7 @@
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
       state.mobilizacaoExcluir = null;
+      state.accordionOpen = { dados: true };
       renderDetalhe();
       focarPainelObra();
       await Promise.all([carregarDiariosObra(), carregarRecursosMobilizacaoObra()]);
@@ -1375,6 +1416,7 @@
   function cancelarDiario() {
     state.diarioForm = null;
     state.diarioEditId = '';
+    abrirAccordion('diario');
     renderDetalhe();
   }
 
@@ -1492,6 +1534,7 @@
       msg('Diário de Obra salvo com sucesso.');
       state.diarioForm = null;
       state.diarioEditId = '';
+      abrirAccordion('diario');
       await carregarDiariosObra();
     } catch (e) {
       console.error('[Operacional] Erro tecnico ao salvar diario:', e);
@@ -1771,6 +1814,13 @@
   }
 
   function onFase1cClick(e) {
+    var acc = e.target && e.target.closest ? e.target.closest('[data-op-accordion]') : null;
+    if (acc) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleAccordion(acc.getAttribute('data-op-accordion'));
+      return;
+    }
     var btn = e.target && e.target.closest ? e.target.closest('[data-op-1c-action]') : null;
     if (!btn) return;
     e.preventDefault();
@@ -1824,6 +1874,7 @@
       await window.sbExcluirDiarioObra(id);
       msg('Diario excluido.');
       if (state.diarioEditId === id) cancelarDiario();
+      abrirAccordion('diario');
       await carregarDiariosObra();
     } catch (e) {
       msg('Erro ao excluir diario: ' + (e.message || e), 'err');
@@ -1831,12 +1882,14 @@
   }
 
   function filtrarDiarios() {
+    abrirAccordion('diario');
     state.diarioFiltroData = ($('opDiaFiltroData') || {}).value || '';
     state.diarioFiltroStatus = ($('opDiaFiltroStatus') || {}).value || '';
     renderDetalhe();
   }
 
   function limparFiltroDiario() {
+    abrirAccordion('diario');
     state.diarioFiltroData = '';
     state.diarioFiltroStatus = '';
     renderDetalhe();
