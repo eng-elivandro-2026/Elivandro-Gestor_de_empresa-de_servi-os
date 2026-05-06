@@ -159,8 +159,10 @@
   }
 
   function msg(texto, tipo) {
-    if (typeof window.toast === 'function') window.toast(texto, tipo || 'ok');
+    if (tipo === 'err') console.error('[Operacional]', texto);
     else console.log('[Operacional]', texto);
+    if (typeof window.toast === 'function') window.toast(texto, tipo || 'ok');
+    else alert(texto);
   }
 
   function labelStatus(st) {
@@ -227,7 +229,7 @@
     return '<div style="margin-top:1rem;border:1px solid rgba(88,166,255,.25);border-radius:8px;background:rgba(88,166,255,.04);padding:.8rem">'
       + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.8rem">'
       + '<div style="font-size:.85rem;font-weight:800;color:var(--blue)">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
-      + '<button class="btn bg bsm" onclick="opCancelarDiario()">Cancelar</button></div>'
+      + '<button type="button" class="btn bg bsm" data-op-dia-action="cancelar">Cancelar</button></div>'
       + DIARIO_BLOCOS.map(function (bloco) {
         return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
           + '<div style="font-size:.72rem;color:var(--accent);font-weight:800;text-transform:uppercase;margin-bottom:.55rem">' + esc(bloco.titulo) + '</div>'
@@ -236,8 +238,8 @@
           + '</div></div>';
       }).join('')
       + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">'
-      + '<button class="btn bg" onclick="opCancelarDiario()">Cancelar</button>'
-      + '<button class="btn ba" onclick="opSalvarDiario()">Salvar Diario</button>'
+      + '<button type="button" class="btn bg" data-op-dia-action="cancelar">Cancelar</button>'
+      + '<button type="button" class="btn ba" data-op-dia-action="salvar">Salvar Diario</button>'
       + '</div></div>';
   }
 
@@ -258,8 +260,8 @@
           + '<div><div style="font-size:.78rem;font-weight:800;color:var(--text)">' + esc(dataInput(d.data_diario)) + ' - ' + esc(labelLista('turno', d.turno)) + '</div>'
           + '<div style="font-size:.72rem;color:var(--text3);margin-top:.12rem">' + esc(labelLista('status_dia', d.status_dia)) + (d.responsavel_dia_nome ? ' | ' + esc(d.responsavel_dia_nome) : '') + '</div></div>'
           + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">'
-          + '<button class="btn bg bsm" onclick="opEditarDiario(\'' + esc(d.id) + '\')">Abrir/Editar</button>'
-          + '<button class="btn bd bsm" onclick="opExcluirDiario(\'' + esc(d.id) + '\')">Excluir</button></div></div>'
+          + '<button type="button" class="btn bg bsm" data-op-dia-action="editar" data-id="' + esc(d.id) + '">Abrir/Editar</button>'
+          + '<button type="button" class="btn bd bsm" data-op-dia-action="excluir" data-id="' + esc(d.id) + '">Excluir</button></div></div>'
           + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.45rem">'
           + '<strong>Atividade:</strong> ' + esc(d.atividade_principal || '-') + '<br>'
           + '<strong>Resumo:</strong> ' + esc(d.resumo_do_dia || '-') + '<br>'
@@ -273,11 +275,11 @@
       + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start;margin-bottom:.7rem">'
       + '<div><div style="font-size:.78rem;color:var(--accent);font-weight:800;text-transform:uppercase">Diario de Obra</div>'
       + '<div style="font-size:.76rem;color:var(--text3);margin-top:.12rem">Registro oficial consolidado do dia da obra.</div></div>'
-      + '<button class="btn ba" onclick="opNovoDiario()">Novo Diario</button></div>'
+      + '<button type="button" class="btn ba" data-op-dia-action="novo">Novo Diario</button></div>'
       + '<div style="display:grid;grid-template-columns:180px 220px auto;gap:.55rem;align-items:end;margin-bottom:.65rem">'
       + campo('Filtrar por data', '<input id="opDiaFiltroData" type="date" value="' + esc(state.diarioFiltroData || '') + '" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">')
       + campo('Filtrar por status', '<select id="opDiaFiltroStatus" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusSel + '</select>')
-      + '<button class="btn bg" onclick="opLimparFiltroDiario()">Limpar</button></div>'
+      + '<button type="button" class="btn bg" data-op-dia-action="limpar-filtro">Limpar</button></div>'
       + '<div id="opDiarioLista">' + listaHtml + '</div>'
       + diarioFormHtml()
       + '</div>';
@@ -630,9 +632,23 @@
     return out;
   }
 
-  async function salvarDiario() {
-    if (!state.obraAtual) return;
+  async function salvarDiario(evt) {
+    if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    if (!state.obraAtual) {
+      msg('Abra uma obra antes de salvar o diario.', 'err');
+      return;
+    }
+    if (state.diarioEditId && typeof window.sbAtualizarDiarioObra !== 'function') {
+      msg('Arquivo supabase-obra-diario.js nao carregou: funcao de atualizar indisponivel.', 'err');
+      return;
+    }
+    if (!state.diarioEditId && typeof window.sbCriarDiarioObra !== 'function') {
+      msg('Arquivo supabase-obra-diario.js nao carregou: funcao de criar indisponivel.', 'err');
+      return;
+    }
     try {
+      msg('Salvando diario...', 'ok');
       var dados = coletarDiarioForm();
       if (state.diarioEditId) await window.sbAtualizarDiarioObra(state.diarioEditId, dados);
       else await window.sbCriarDiarioObra(dados);
@@ -643,6 +659,21 @@
     } catch (e) {
       msg('Erro ao salvar diario: ' + (e.message || e), 'err');
     }
+  }
+
+  function onDiarioClick(e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-op-dia-action]') : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var action = btn.getAttribute('data-op-dia-action');
+    var id = btn.getAttribute('data-id') || '';
+    if (action === 'novo') novoDiario();
+    else if (action === 'editar') editarDiario(id);
+    else if (action === 'excluir') excluirDiario(id);
+    else if (action === 'cancelar') cancelarDiario();
+    else if (action === 'salvar') salvarDiario(e);
+    else if (action === 'limpar-filtro') limparFiltroDiario();
   }
 
   async function excluirDiario(id) {
@@ -789,4 +820,6 @@
   window.opAbrirObraComercial = abrirObraComercial;
   window.opRenderActionBar = renderActionBar;
   window.opLimparActionBar = limparActionBar;
+
+  document.addEventListener('click', onDiarioClick, true);
 })(window, document);
