@@ -19,6 +19,7 @@
     diarioFiltroStatus: '',
     diarioForm: null,
     diarioEditId: '',
+    diarioAccordionOpen: '',
     recursos: [],
     recursosErro: '',
     recursosCarregando: false,
@@ -356,14 +357,23 @@
     var dados = state.diarioForm;
     return '<div id="opDiarioFormPanel" style="border:1px solid rgba(88,166,255,.38);border-radius:10px;background:rgba(88,166,255,.06);padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.18)">'
       + '<div id="opDiaMsg" style="display:none;margin-bottom:.75rem;border-radius:7px;padding:.55rem .7rem;font-size:.78rem;font-weight:700"></div>'
-      + DIARIO_BLOCOS.map(function (bloco) {
-        return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
-          + '<div style="font-size:.78rem;color:var(--accent);font-weight:900;text-transform:uppercase;margin-bottom:.65rem">' + esc(bloco.titulo) + '</div>'
-          + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.7rem">'
-          + bloco.campos.map(function (def) { return renderDiarioCampo(def, dados); }).join('')
-          + '</div></div>';
+      + DIARIO_BLOCOS.map(function (bloco, idx) {
+        return diarioBlocoHtml(bloco, idx, dados);
       }).join('')
       + '<div style="height:1rem"></div></div>';
+  }
+
+  function diarioBlocoHtml(bloco, idx, dados) {
+    var key = 'b' + idx;
+    var aberto = state.diarioAccordionOpen === key;
+    return '<section id="opDiaBloco_' + esc(key) + '" style="border:1px solid rgba(88,166,255,.24);border-radius:9px;background:rgba(88,166,255,.035);margin-top:.65rem;overflow:hidden">'
+      + '<button type="button" data-op-dia-block="' + esc(key) + '" style="width:100%;border:0;border-bottom:' + (aberto ? '1px solid var(--border)' : '0') + ';background:rgba(88,166,255,.055);padding:.78rem .85rem;display:flex;justify-content:space-between;gap:.75rem;align-items:center;text-align:left;cursor:pointer;color:inherit">'
+      + '<span style="font-size:.82rem;color:var(--accent);font-weight:900;text-transform:uppercase;line-height:1.25">' + esc(bloco.titulo) + '</span>'
+      + '<span style="font-size:1.1rem;color:var(--blue);font-weight:900;line-height:1">' + (aberto ? '-' : '+') + '</span></button>'
+      + '<div style="display:' + (aberto ? 'block' : 'none') + ';padding:.85rem">'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.7rem">'
+      + bloco.campos.map(function (def) { return renderDiarioCampo(def, dados); }).join('')
+      + '</div></div></section>';
   }
 
   function diarioOverlayHtml() {
@@ -993,26 +1003,48 @@
 
   function shell() {
     return ''
-      + '<div style="max-width:1180px;margin:0 auto;padding:1rem">'
-      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem">'
+      + operacionalMainStylesHtml()
+      + '<div id="opShell" style="max-width:1180px;width:100%;box-sizing:border-box;margin:0 auto;padding:1rem;overflow-x:hidden">'
+      + '<div class="op-main-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem;min-width:0">'
       + '<div><h2 style="margin:0;color:var(--text);font-size:1.35rem">Operacional</h2>'
       + '<div style="color:var(--text3);font-size:.82rem;margin-top:.15rem">Obras criadas a partir de propostas aprovadas.</div></div>'
-      + '<button class="btn bg" onclick="opCarregarObras()">Atualizar</button>'
+      + '<button class="btn bg op-main-refresh" onclick="opCarregarObras()">Atualizar</button>'
       + '</div>'
-      + '<div class="card" style="margin-bottom:1rem">'
-      + '<div style="display:grid;grid-template-columns:1.2fr .9fr .9fr auto;gap:.65rem;align-items:end">'
-      + '<label style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase">Busca'
+      + '<div class="card op-filter-card" style="margin-bottom:1rem;max-width:100%;box-sizing:border-box;overflow:hidden">'
+      + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr auto;gap:.65rem;align-items:end;min-width:0">'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Busca'
       + '<input id="opBusca" placeholder="Codigo, proposta ou titulo" value="' + esc(state.busca) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
-      + '<label style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase">Status'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Status'
       + '<select id="opStatus" onchange="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"><option value="">Todos</option>' + statusOptions(state.status) + '</select></label>'
-      + '<label style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase">Cliente'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Cliente'
       + '<input id="opCliente" placeholder="Filtrar cliente" value="' + esc(state.cliente) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
-      + '<button class="btn bg" onclick="opLimparFiltros()">Limpar</button>'
+      + '<button class="btn bg op-filter-clear" onclick="opLimparFiltros()">Limpar</button>'
       + '</div>'
       + '</div>'
       + '<div id="opLista"></div>'
       + '<div id="opDetalhe"></div>'
       + '</div>';
+  }
+
+  function operacionalMainStylesHtml() {
+    return '<style id="opMainResponsiveStyles">'
+      + '#operacional-root,#opShell{max-width:100%;overflow-x:hidden;box-sizing:border-box;}'
+      + '#opShell input,#opShell select,#opShell button{max-width:100%;box-sizing:border-box;}'
+      + '.op-obra-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem;max-width:100%;overflow:hidden;}'
+      + '.op-obra-card{min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;}'
+      + '.op-obra-card *{overflow-wrap:anywhere;}'
+      + '@media(max-width:720px){'
+      + '#opShell{padding:.75rem!important;width:100%!important;}'
+      + '.op-main-head{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.75rem!important;}'
+      + '.op-main-refresh,.op-filter-clear{width:100%!important;min-height:46px!important;}'
+      + '.op-filter-card{padding:.85rem!important;}'
+      + '.op-main-filters{grid-template-columns:1fr!important;width:100%!important;gap:.7rem!important;}'
+      + '.op-filter-field input,.op-filter-field select{width:100%!important;min-width:0!important;}'
+      + '.op-obra-grid{grid-template-columns:minmax(0,1fr)!important;gap:.75rem!important;}'
+      + '.op-obra-card{width:100%!important;margin:0!important;}'
+      + '.op-obra-card .btn{width:100%!important;min-height:44px!important;}'
+      + '}'
+      + '</style>';
   }
 
   function obrasFiltradas() {
@@ -1045,11 +1077,11 @@
       el.innerHTML = '<div class="card" style="color:var(--text3)">Nenhuma obra encontrada.</div>';
       return;
     }
-    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem">'
+    el.innerHTML = '<div class="op-obra-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem">'
       + list.map(function (o) {
-        return '<div class="card" style="margin:0;display:flex;flex-direction:column;gap:.55rem">'
-          + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start">'
-          + '<div><div style="font-size:.78rem;color:var(--text3);font-weight:700">' + esc(o.codigo_obra || 'Obra sem codigo') + '</div>'
+        return '<div class="card op-obra-card" style="margin:0;display:flex;flex-direction:column;gap:.55rem;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden">'
+          + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;min-width:0;flex-wrap:wrap">'
+          + '<div style="min-width:0;flex:1"><div style="font-size:.78rem;color:var(--text3);font-weight:700">' + esc(o.codigo_obra || 'Obra sem codigo') + '</div>'
           + '<div style="font-size:1rem;color:var(--text);font-weight:800;margin-top:.1rem">' + esc(o.titulo || o.proposta_numero || '-') + '</div></div>'
           + '<span class="bdg b-info">' + esc(labelStatus(o.status_operacional)) + '</span></div>'
           + '<div style="font-size:.82rem;color:var(--text2);line-height:1.45">'
@@ -1058,7 +1090,7 @@
           + 'Valor vendido: <strong style="color:var(--green)">' + money(o.valor_vendido) + '</strong><br>'
           + 'Avanco: ' + esc(o.percentual_avanco || 0) + '%'
           + '</div>'
-          + '<div style="display:flex;justify-content:flex-end;margin-top:auto">'
+          + '<div style="display:flex;justify-content:flex-end;margin-top:auto;min-width:0">'
           + '<button class="btn ba" onclick="opAbrirObra(\'' + esc(o.id) + '\')">Abrir Obra</button>'
           + '</div>'
           + '</div>';
@@ -1188,6 +1220,27 @@
       if (body) body.scrollTop = 0;
       ajustarTextareas(form || document);
     }, 60);
+  }
+
+  function toggleDiarioBloco(key) {
+    if (!state.diarioForm) return;
+    try {
+      state.diarioForm = Object.assign({}, state.diarioForm, coletarDiarioForm());
+    } catch (e) {}
+    var estavaAberto = state.diarioAccordionOpen === key;
+    var body = $('opDiarioBody');
+    var sec = $('opDiaBloco_' + key);
+    var offset = body && sec ? (sec.offsetTop - body.scrollTop) : null;
+    state.diarioAccordionOpen = estavaAberto ? '' : key;
+    renderDetalhe();
+    if (offset != null) {
+      setTimeout(function () {
+        var novoBody = $('opDiarioBody');
+        var novoSec = $('opDiaBloco_' + key);
+        if (novoBody && novoSec) novoBody.scrollTop = Math.max(0, novoSec.offsetTop - offset);
+        ajustarTextareas(novoSec || document);
+      }, 0);
+    }
   }
 
   function focarRecursosCampo() {
@@ -1508,6 +1561,7 @@
   function novoDiario() {
     if (!state.obraAtual) return;
     state.diarioEditId = '';
+    state.diarioAccordionOpen = '';
     state.diarioForm = {
       empresa_id: getEmpresaId(),
       obra_id: state.obraAtual.id,
@@ -1532,6 +1586,7 @@
       var d = await window.sbBuscarDiarioPorId(id);
       if (!d) throw new Error('Diario nao encontrado.');
       state.diarioEditId = d.id;
+      state.diarioAccordionOpen = '';
       state.diarioForm = Object.assign({}, d);
       renderDetalhe();
       focarDiarioForm();
@@ -1543,6 +1598,7 @@
   function cancelarDiario() {
     state.diarioForm = null;
     state.diarioEditId = '';
+    state.diarioAccordionOpen = '';
     abrirAccordion('diario');
     renderDetalhe();
   }
@@ -1576,6 +1632,17 @@
 
   function mostrarErroDiario(texto, campoId) {
     console.error('[Operacional]', texto);
+    if (campoId) {
+      var atual = getCampo(campoId);
+      var blocoKey = blocoDiarioPorCampo(campoId.replace(/^opDia_/, ''));
+      if (blocoKey && state.diarioAccordionOpen !== blocoKey && (!atual || atual.offsetParent === null)) {
+        try { state.diarioForm = Object.assign({}, state.diarioForm || {}, coletarDiarioForm()); } catch (e) {}
+        state.diarioAccordionOpen = blocoKey;
+        renderDetalhe();
+        setTimeout(function () { mostrarErroDiario(texto, campoId); }, 40);
+        return;
+      }
+    }
     var box = getCampo('opDiaMsg');
     if (box) {
       box.textContent = texto;
@@ -1667,6 +1734,15 @@
       console.error('[Operacional] Erro tecnico ao salvar diario:', e);
       mostrarErroDiario(msgErroSalvarDiario(e));
     }
+  }
+
+  function blocoDiarioPorCampo(campo) {
+    for (var i = 0; i < DIARIO_BLOCOS.length; i++) {
+      for (var j = 0; j < DIARIO_BLOCOS[i].campos.length; j++) {
+        if (DIARIO_BLOCOS[i].campos[j][0] === campo) return 'b' + i;
+      }
+    }
+    return '';
   }
 
   function novoRecurso() {
@@ -1975,6 +2051,13 @@
   }
 
   function onDiarioClick(e) {
+    var bloco = e.target && e.target.closest ? e.target.closest('[data-op-dia-block]') : null;
+    if (bloco) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDiarioBloco(bloco.getAttribute('data-op-dia-block'));
+      return;
+    }
     var btn = e.target && e.target.closest ? e.target.closest('[data-op-dia-action]') : null;
     if (!btn) return;
     e.preventDefault();
