@@ -226,11 +226,7 @@
   function diarioFormHtml() {
     if (!state.diarioForm) return '';
     var dados = state.diarioForm;
-    return '<div id="opDiarioFormPanel" style="margin-top:1rem;border:1px solid rgba(88,166,255,.38);border-radius:10px;background:rgba(88,166,255,.06);padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.18)">'
-      + '<div style="position:sticky;top:0;z-index:3;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.7rem .8rem;display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.9rem">'
-      + '<div><div style="font-size:1rem;font-weight:900;color:var(--blue);text-transform:uppercase">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
-      + '<div style="font-size:.74rem;color:var(--text3);margin-top:.15rem">Preencha o registro oficial do dia da obra.</div></div>'
-      + '<button type="button" class="btn bg bsm" data-op-dia-action="cancelar">Voltar</button></div>'
+    return '<div id="opDiarioFormPanel" style="border:1px solid rgba(88,166,255,.38);border-radius:10px;background:rgba(88,166,255,.06);padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.18)">'
       + '<div id="opDiaMsg" style="display:none;margin-bottom:.75rem;border-radius:7px;padding:.55rem .7rem;font-size:.78rem;font-weight:700"></div>'
       + DIARIO_BLOCOS.map(function (bloco) {
         return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
@@ -243,6 +239,19 @@
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Cancelar</button>'
       + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:42px">Salvar Diario</button>'
       + '</div></div>';
+  }
+
+  function diarioOverlayHtml() {
+    if (!state.diarioForm) return '';
+    return '<div id="opDiarioOverlay" style="position:fixed;inset:0;z-index:940;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opDiarioDialog" style="width:min(1060px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+      + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente do Diario de Obra. Use Voltar para retornar ao detalhe da obra.</div></div>'
+      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Voltar</button></div>'
+      + '<div id="opDiarioBody" style="overflow:auto;padding:1rem">'
+      + diarioFormHtml()
+      + '</div></div></div>';
   }
 
   function diarioSectionHtml() {
@@ -279,7 +288,6 @@
       + '<div><div style="font-size:1.15rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">Diario de Obra</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Registro oficial consolidado do dia da obra.</div></div>'
       + '<button type="button" class="btn ba" data-op-dia-action="novo" style="min-height:42px;padding:.55rem .9rem">Novo Diario</button></div>'
-      + (state.diarioForm ? diarioFormHtml() : '')
       + '<div class="op-filter-grid" style="display:grid;grid-template-columns:180px 220px auto;gap:.6rem;align-items:end;margin-bottom:.75rem">'
       + campo('Filtrar por data', '<input id="opDiaFiltroData" type="date" value="' + esc(state.diarioFiltroData || '') + '" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">')
       + campo('Filtrar por status', '<select id="opDiaFiltroStatus" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusSel + '</select>')
@@ -429,6 +437,9 @@
       + '#opObraPanel{inset:0!important;padding:0!important;align-items:stretch!important;}'
       + '#opObraDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
       + '#opObraBody{padding:.85rem!important;}'
+      + '#opDiarioOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
+      + '#opDiarioDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
+      + '#opDiarioBody{padding:.85rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
       + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
@@ -455,8 +466,8 @@
   function focarDiarioForm() {
     setTimeout(function () {
       var form = $('opDiarioFormPanel');
-      var body = $('opObraBody');
-      if (form && body) body.scrollTop = Math.max(0, form.offsetTop - 12);
+      var body = $('opDiarioBody') || $('opObraBody');
+      if (body) body.scrollTop = 0;
       ajustarTextareas(form || document);
     }, 60);
   }
@@ -517,7 +528,8 @@
       + '<div style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Voltar</button>'
       + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
-      + '</div></div></div>';
+      + '</div></div></div>'
+      + diarioOverlayHtml();
     setTimeout(function () { ajustarTextareas(el); }, 30);
   }
 
