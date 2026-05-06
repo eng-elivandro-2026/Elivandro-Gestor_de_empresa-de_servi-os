@@ -1516,6 +1516,26 @@ function rRegistro(){
 
 // DASHBOARD
 
+function abreviarCliente(nome){
+  if(!nome||nome.length<=22) return nome;
+  var r=nome
+    .replace(/\b(COMERCIALIZACAO|COMERCIALIZA[CÇ]AO|INDUSTRIALIZACAO|INDUSTRIA[CÇ]AO|INDUSTRIA|IND[ÚU]STRIA|INDUSTRIAS|COM[ÉE]RCIO|DISTRIBUICAO|DISTRIBUI[CÇ]AO|IMPORTACAO|IMPORTA[CÇ]AO|EXPORTACAO|EXPORTA[CÇ]AO|REPRESENTACOES|REPRESENTA[CÇ][OÕ]ES|PARTICIPACOES|PARTICIPA[CÇ][OÕ]ES|ASSESSORIA|CONSULTORIA|CONSTRUTORA|CONSTRUCOES|CONSTRU[CÇ][OÕ]ES|INCORPORADORA|EMPREENDIMENTOS|INVESTIMENTOS|SOLUCOES|SOLU[CÇ][OÕ]ES|TECNOLOGIA|TRANSPORTES|ALIMENTOS|BEBIDAS)\b/gi,' ')
+    .replace(/\b(LTDA|S\.A|S\/A|SA|EIRELI|ME|EPP|SS|CIA)\b\.?/gi,' ')
+    .replace(/\b(BR|E|DE|DA|DO|DOS|DAS|EM|COM)\b/gi,' ')
+    .replace(/[.,\-\/\\]+$/,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(!r) return nome.substring(0,20)+'…';
+  if(r.length<=22) return r;
+  var ws=r.split(' ').filter(function(w){return w.length>0;});
+  var o=ws[0]||'';
+  for(var i=1;i<ws.length;i++){
+    if((o+' '+ws[i]).length>22) break;
+    o+=' '+ws[i];
+  }
+  return o||r.substring(0,20)+'…';
+}
+
 function rDash(rankTarget, sortBy){
   if(rankTarget==='cli' && sortBy){ window._rCliSort=sortBy; }
   if(rankTarget==='ctt' && sortBy){ window._rCttSort=sortBy; }
@@ -1638,15 +1658,16 @@ function rDash(rankTarget, sortBy){
   if(wCli){
     if(!ranking.length){ wCli.innerHTML='<p class="hint">Sem dados.</p>'; }
     else{
-      wCli.innerHTML='<table class="conv-table"><thead><tr>'
-        +'<th>Cliente</th><th>Cidade</th><th>Prop.</th><th>Fech.</th><th>Conv.</th><th>Aprovado</th>'
+      wCli.innerHTML='<table class="conv-table conv-table-cli"><thead><tr>'
+        +'<th>Cliente</th><th class="col-cidade">Cidade</th><th style="text-align:center">Prop.</th><th style="text-align:center">Fech.</th><th style="text-align:center">Conv.</th><th style="text-align:right">Aprovado</th>'
         +'</tr></thead><tbody>'
         +ranking.slice(0,10).map(function(c){
           var conv=c.conv.toFixed(1);
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
+          var nomeAbrev=abreviarCliente(c.cliente);
           return '<tr>'
-            +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cliente)+'">'+esc(c.cliente)+'</td>'
-            +'<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.cidade)+'</td>'
+            +'<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cliente)+'">'+esc(nomeAbrev)+'</td>'
+            +'<td class="col-cidade" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.cidade)+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
             +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
@@ -1703,8 +1724,9 @@ function rDash(rankTarget, sortBy){
           var conv=c.conv.toFixed(1);
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
           var cliList=Object.keys(c.clientes).join(', ');
+          var cttAbrev=c.contato.length>22?c.contato.substring(0,21)+'…':c.contato;
           return '<tr>'
-            +'<td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(cliList)+'">'+esc(c.contato)+'</td>'
+            +'<td style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.contato)+' — '+esc(cliList)+'">'+esc(cttAbrev)+'</td>'
             +'<td style="text-align:center;color:var(--text3);white-space:nowrap" title="'+esc(cliList)+'">'+c.numCli+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
