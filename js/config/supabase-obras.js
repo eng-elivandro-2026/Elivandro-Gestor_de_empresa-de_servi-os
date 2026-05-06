@@ -297,6 +297,8 @@
       'data_inicio_garantia',
       'data_fim_garantia',
       'status_entrega',
+      'area_local',
+      'equipamento_maquina_linha',
       'percentual_avanco',
       'observacoes',
       'pode_faturar',

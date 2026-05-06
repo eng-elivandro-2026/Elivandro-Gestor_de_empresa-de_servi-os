@@ -11,7 +11,14 @@
     status: '',
     cliente: '',
     busca: '',
-    obraAtual: null
+    obraAtual: null,
+    diarios: [],
+    diarioCarregando: false,
+    diarioErro: '',
+    diarioFiltroData: '',
+    diarioFiltroStatus: '',
+    diarioForm: null,
+    diarioEditId: ''
   };
 
   var STATUS_RETROATIVOS = [
@@ -25,6 +32,116 @@
     'em_pausa_falta_material',
     'em_pausa_aguardando_cliente',
     'em_pausa_aguardando_terceiro'
+  ];
+
+  var DIARIO_LISTAS = {
+    turno: {
+      manha: 'Manha',
+      tarde: 'Tarde',
+      noite: 'Noite',
+      integral: 'Integral'
+    },
+    status_dia: {
+      planejado: 'Planejado',
+      em_andamento: 'Em andamento',
+      concluido: 'Concluido',
+      paralisado: 'Paralisado',
+      cancelado: 'Cancelado'
+    },
+    tipo_alimentacao: {
+      restaurante_cliente: 'Restaurante do cliente',
+      restaurante_externo: 'Restaurante externo',
+      marmitex: 'Marmitex',
+      alimentacao_propria: 'Alimentacao propria',
+      nao_aplicavel: 'Nao aplicavel'
+    },
+    status_pendencia_material: {
+      identificado: 'Identificado',
+      aguardando_aprovacao: 'Aguardando aprovacao',
+      comprando: 'Comprando',
+      aguardando_retirada: 'Aguardando retirada',
+      aguardando_entrega: 'Aguardando entrega',
+      resolvido: 'Resolvido',
+      cancelado: 'Cancelado'
+    },
+    tipo_intercorrencia: {
+      falta_material: 'Falta de material',
+      area_nao_liberada: 'Area nao liberada',
+      apr_nao_liberada: 'APR nao liberada',
+      pt_nao_liberada: 'PT nao liberada',
+      cliente_indisponivel: 'Cliente indisponivel',
+      equipamento_indisponivel: 'Equipamento indisponivel',
+      falta_energia: 'Falta de energia',
+      atraso_terceiro: 'Atraso de terceiro',
+      falta_colaborador: 'Falta de colaborador',
+      saida_antecipada: 'Saida antecipada',
+      problema_tecnico: 'Problema tecnico',
+      mudanca_escopo: 'Mudanca de escopo',
+      outro: 'Outro'
+    }
+  };
+
+  var DIARIO_BLOCOS = [
+    { titulo: 'Bloco 1 - Identificacao', campos: [
+      ['data_diario', 'Data do diario', 'date'], ['turno', 'Turno', 'select:turno'], ['status_dia', 'Status do dia', 'select:status_dia'],
+      ['responsavel_dia_nome', 'Responsavel do dia', 'text'], ['area_local', 'Area / Local', 'text'], ['equipamento_maquina_linha', 'Equipamento / Maquina / Linha', 'text']
+    ]},
+    { titulo: 'Bloco 2 - Horario', campos: [
+      ['hora_inicio_real', 'Hora inicio real', 'time'], ['hora_termino_real', 'Hora termino real', 'time'], ['intervalo_realizado_minutos', 'Intervalo realizado em minutos', 'number'],
+      ['houve_extensao_horario', 'Houve extensao de horario?', 'checkbox'], ['motivo_extensao_horario', 'Motivo da extensao', 'textarea'],
+      ['houve_atraso_inicio', 'Houve atraso no inicio?', 'checkbox'], ['motivo_atraso_inicio', 'Motivo do atraso', 'textarea'],
+      ['houve_saida_antecipada', 'Houve saida antecipada?', 'checkbox'], ['motivo_saida_antecipada', 'Motivo da saida antecipada', 'textarea']
+    ]},
+    { titulo: 'Bloco 3 - Seguranca / Liberacao', campos: [
+      ['dds_realizado', 'DDS realizado?', 'checkbox'], ['apr_obrigatoria', 'APR obrigatoria?', 'checkbox'], ['apr_liberada', 'APR liberada?', 'checkbox'],
+      ['pt_obrigatoria', 'PT obrigatoria?', 'checkbox'], ['pt_liberada', 'PT liberada?', 'checkbox'], ['area_isolada', 'Area isolada?', 'checkbox'],
+      ['bloqueio_etiquetagem_necessario', 'Bloqueio e etiquetagem necessario?', 'checkbox'], ['bloqueio_etiquetagem_realizado', 'Bloqueio e etiquetagem realizado?', 'checkbox'],
+      ['epi_conferido', 'EPI conferido?', 'checkbox'], ['servico_liberado', 'Servico liberado?', 'checkbox'], ['motivo_nao_liberacao', 'Motivo de nao liberacao', 'textarea'],
+      ['observacoes_seguranca', 'Observacoes de seguranca', 'textarea']
+    ]},
+    { titulo: 'Bloco 4 - Equipe', campos: [
+      ['equipe_prevista_resumo', 'Equipe prevista', 'textarea'], ['equipe_presente_resumo', 'Equipe presente', 'textarea'], ['houve_falta', 'Houve falta?', 'checkbox'],
+      ['faltas_resumo', 'Faltas resumo', 'textarea'], ['houve_atraso_equipe', 'Houve atraso da equipe?', 'checkbox'], ['atraso_equipe_resumo', 'Atraso resumo', 'textarea'],
+      ['houve_saida_antecipada_equipe', 'Houve saida antecipada da equipe?', 'checkbox'], ['saida_antecipada_resumo', 'Saida antecipada resumo', 'textarea'],
+      ['observacoes_equipe', 'Observacoes da equipe', 'textarea']
+    ]},
+    { titulo: 'Bloco 5 - Alimentacao / Mobilizacao', campos: [
+      ['tipo_alimentacao', 'Tipo de alimentacao', 'select:tipo_alimentacao'], ['local_alimentacao', 'Local da alimentacao', 'text'], ['observacoes_alimentacao', 'Observacoes de alimentacao', 'textarea'],
+      ['houve_deslocamento', 'Houve deslocamento?', 'checkbox'], ['veiculo_utilizado', 'Veiculo utilizado', 'text'], ['motorista', 'Motorista', 'text'],
+      ['cidade_origem', 'Cidade origem', 'text'], ['cidade_destino', 'Cidade destino', 'text'], ['hotel_utilizado', 'Hotel utilizado', 'text'],
+      ['houve_problema_deslocamento', 'Houve problema de deslocamento?', 'checkbox'], ['descricao_problema_deslocamento', 'Descricao do problema', 'textarea'],
+      ['houve_custo_extra_transporte', 'Houve custo extra de transporte?', 'checkbox'], ['valor_custo_extra_transporte', 'Valor custo extra de transporte', 'number'],
+      ['observacoes_mobilizacao', 'Observacoes de mobilizacao', 'textarea']
+    ]},
+    { titulo: 'Bloco 6 - Ferramentas / EPIs / Recursos', campos: [
+      ['ferramentas_utilizadas', 'Ferramentas utilizadas', 'textarea'], ['epis_utilizados', 'EPIs utilizados', 'textarea'], ['epcs_isolamento_utilizados', 'EPCs / isolamento utilizados', 'textarea'],
+      ['faltou_ferramenta', 'Faltou ferramenta?', 'checkbox'], ['descricao_ferramenta_faltante', 'Descricao da ferramenta faltante', 'textarea'],
+      ['houve_ferramenta_danificada', 'Houve ferramenta danificada?', 'checkbox'], ['descricao_ferramenta_danificada', 'Descricao da ferramenta danificada', 'textarea'],
+      ['houve_compra_emergencial', 'Houve compra emergencial?', 'checkbox'], ['descricao_compra_emergencial', 'Descricao da compra emergencial', 'textarea']
+    ]},
+    { titulo: 'Bloco 7 - Execucao', campos: [
+      ['atividade_principal', 'Atividade principal *', 'text'], ['descricao_execucao', 'Descricao da execucao', 'textarea'], ['local_execucao', 'Local da execucao', 'text'],
+      ['etapa_obra', 'Etapa da obra', 'text'], ['horas_equipe_total', 'Horas equipe total', 'number'], ['avanco_estimado_dia', 'Avanco estimado do dia', 'number']
+    ]},
+    { titulo: 'Bloco 8 - Material faltante', campos: [
+      ['houve_falta_material', 'Houve falta de material?', 'checkbox'], ['descricao_material_faltante', 'Descricao do material faltante', 'textarea'],
+      ['material_faltante_previsto', 'Material estava previsto?', 'checkbox'], ['responsavel_compra_material', 'Responsavel pela compra', 'text'],
+      ['responsavel_retirada_material', 'Responsavel pela retirada', 'text'], ['status_pendencia_material', 'Status da pendencia de material', 'select:status_pendencia_material'],
+      ['impacto_falta_material_prazo', 'Impactou prazo?', 'checkbox'], ['impacto_falta_material_custo', 'Impactou custo?', 'checkbox'],
+      ['acao_tomada_material', 'Acao tomada', 'textarea'], ['observacoes_material', 'Observacoes sobre material', 'textarea']
+    ]},
+    { titulo: 'Bloco 9 - Intercorrencias', campos: [
+      ['houve_intercorrencia', 'Houve intercorrencia?', 'checkbox'], ['tipo_intercorrencia', 'Tipo de intercorrencia', 'select:tipo_intercorrencia'],
+      ['descricao_intercorrencia', 'Descricao da intercorrencia', 'textarea'], ['impacto_prazo', 'Impactou prazo?', 'checkbox'],
+      ['impacto_custo', 'Impactou custo?', 'checkbox'], ['impacto_seguranca', 'Impactou seguranca?', 'checkbox'], ['acao_tomada', 'Acao tomada', 'textarea']
+    ]},
+    { titulo: 'Bloco 10 - Pendencias e proximos passos', campos: [
+      ['pendencias', 'Pendencias', 'textarea'], ['responsavel_pendencia', 'Responsavel pela pendencia', 'text'], ['bloqueia_proxima_atividade', 'Bloqueia proxima atividade?', 'checkbox'],
+      ['proxima_atividade', 'Proxima atividade', 'textarea'], ['objetivo_proximo_dia', 'Objetivo do proximo dia', 'textarea']
+    ]},
+    { titulo: 'Bloco 11 - Fechamento', campos: [
+      ['resumo_do_dia', 'Resumo do dia *', 'textarea'], ['dia_concluido_com_sucesso', 'Dia concluido com sucesso?', 'checkbox'], ['observacoes_finais', 'Observacoes finais', 'textarea']
+    ]}
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -55,6 +172,115 @@
     return lista.map(function (st) {
       return '<option value="' + esc(st) + '"' + (st === valor ? ' selected' : '') + '>' + esc(labelStatus(st)) + '</option>';
     }).join('');
+  }
+
+  function listaOptions(nome, valor, vazio) {
+    var obj = DIARIO_LISTAS[nome] || {};
+    var html = vazio ? '<option value="">Selecione...</option>' : '';
+    Object.keys(obj).forEach(function (k) {
+      html += '<option value="' + esc(k) + '"' + (k === valor ? ' selected' : '') + '>' + esc(obj[k]) + '</option>';
+    });
+    return html;
+  }
+
+  function labelLista(nome, valor) {
+    return (DIARIO_LISTAS[nome] && DIARIO_LISTAS[nome][valor]) || valor || '-';
+  }
+
+  function hojeISO() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function getCampo(id) {
+    return document.getElementById(id);
+  }
+
+  function diarioFiltrados() {
+    return (state.diarios || []).filter(function (d) {
+      if (state.diarioFiltroData && d.data_diario !== state.diarioFiltroData) return false;
+      if (state.diarioFiltroStatus && d.status_dia !== state.diarioFiltroStatus) return false;
+      return true;
+    });
+  }
+
+  function renderDiarioCampo(def, dados) {
+    var k = def[0], label = def[1], tipo = def[2];
+    var id = 'opDia_' + k;
+    var val = dados && dados[k] != null ? dados[k] : '';
+    var base = 'padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);font-family:inherit';
+    if (tipo === 'checkbox') {
+      return '<label style="display:flex;align-items:center;gap:.45rem;font-size:.78rem;color:var(--text2);padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3)">'
+        + '<input id="' + id + '" type="checkbox"' + (val ? ' checked' : '') + '> ' + esc(label) + '</label>';
+    }
+    if (tipo === 'textarea') {
+      return campo(label, '<textarea id="' + id + '" rows="3" style="' + base + ';resize:vertical">' + esc(val || '') + '</textarea>');
+    }
+    if (tipo.indexOf('select:') === 0) {
+      return campo(label, '<select id="' + id + '" style="' + base + '">' + listaOptions(tipo.split(':')[1], val, true) + '</select>');
+    }
+    return campo(label, '<input id="' + id + '" type="' + tipo + '" value="' + esc(val || '') + '" style="' + base + '">');
+  }
+
+  function diarioFormHtml() {
+    if (!state.diarioForm) return '';
+    var dados = state.diarioForm;
+    return '<div style="margin-top:1rem;border:1px solid rgba(88,166,255,.25);border-radius:8px;background:rgba(88,166,255,.04);padding:.8rem">'
+      + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.8rem">'
+      + '<div style="font-size:.85rem;font-weight:800;color:var(--blue)">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
+      + '<button class="btn bg bsm" onclick="opCancelarDiario()">Cancelar</button></div>'
+      + DIARIO_BLOCOS.map(function (bloco) {
+        return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
+          + '<div style="font-size:.72rem;color:var(--accent);font-weight:800;text-transform:uppercase;margin-bottom:.55rem">' + esc(bloco.titulo) + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem">'
+          + bloco.campos.map(function (def) { return renderDiarioCampo(def, dados); }).join('')
+          + '</div></div>';
+      }).join('')
+      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">'
+      + '<button class="btn bg" onclick="opCancelarDiario()">Cancelar</button>'
+      + '<button class="btn ba" onclick="opSalvarDiario()">Salvar Diario</button>'
+      + '</div></div>';
+  }
+
+  function diarioSectionHtml() {
+    var statusSel = '<option value="">Todos</option>' + listaOptions('status_dia', state.diarioFiltroStatus, false);
+    var lista = diarioFiltrados();
+    var listaHtml = '';
+    if (state.diarioCarregando) {
+      listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Carregando diarios...</div>';
+    } else if (state.diarioErro) {
+      listaHtml = '<div style="color:#ef4444;font-size:.8rem;padding:.6rem 0">' + esc(state.diarioErro) + '</div>';
+    } else if (!lista.length) {
+      listaHtml = '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Nenhum diario encontrado para esta obra.</div>';
+    } else {
+      listaHtml = lista.map(function (d) {
+        return '<div style="border:1px solid var(--border);border-radius:7px;background:var(--bg3);padding:.65rem .75rem;margin-bottom:.45rem">'
+          + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start">'
+          + '<div><div style="font-size:.78rem;font-weight:800;color:var(--text)">' + esc(dataInput(d.data_diario)) + ' - ' + esc(labelLista('turno', d.turno)) + '</div>'
+          + '<div style="font-size:.72rem;color:var(--text3);margin-top:.12rem">' + esc(labelLista('status_dia', d.status_dia)) + (d.responsavel_dia_nome ? ' | ' + esc(d.responsavel_dia_nome) : '') + '</div></div>'
+          + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">'
+          + '<button class="btn bg bsm" onclick="opEditarDiario(\'' + esc(d.id) + '\')">Abrir/Editar</button>'
+          + '<button class="btn bd bsm" onclick="opExcluirDiario(\'' + esc(d.id) + '\')">Excluir</button></div></div>'
+          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.45rem">'
+          + '<strong>Atividade:</strong> ' + esc(d.atividade_principal || '-') + '<br>'
+          + '<strong>Resumo:</strong> ' + esc(d.resumo_do_dia || '-') + '<br>'
+          + '<span>Intercorrencia: ' + (d.houve_intercorrencia ? 'Sim' : 'Nao') + '</span> | '
+          + '<span>Falta material: ' + (d.houve_falta_material ? 'Sim' : 'Nao') + '</span> | '
+          + '<span>Servico liberado: ' + (d.servico_liberado ? 'Sim' : 'Nao') + '</span>'
+          + '</div></div>';
+      }).join('');
+    }
+    return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
+      + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start;margin-bottom:.7rem">'
+      + '<div><div style="font-size:.78rem;color:var(--accent);font-weight:800;text-transform:uppercase">Diario de Obra</div>'
+      + '<div style="font-size:.76rem;color:var(--text3);margin-top:.12rem">Registro oficial consolidado do dia da obra.</div></div>'
+      + '<button class="btn ba" onclick="opNovoDiario()">Novo Diario</button></div>'
+      + '<div style="display:grid;grid-template-columns:180px 220px auto;gap:.55rem;align-items:end;margin-bottom:.65rem">'
+      + campo('Filtrar por data', '<input id="opDiaFiltroData" type="date" value="' + esc(state.diarioFiltroData || '') + '" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">')
+      + campo('Filtrar por status', '<select id="opDiaFiltroStatus" onchange="opFiltrarDiarios()" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusSel + '</select>')
+      + '<button class="btn bg" onclick="opLimparFiltroDiario()">Limpar</button></div>'
+      + '<div id="opDiarioLista">' + listaHtml + '</div>'
+      + diarioFormHtml()
+      + '</div>';
   }
 
   function getEmpresaId() {
@@ -217,6 +443,8 @@
       + campo('Status operacional', '<select id="opEdStatus" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusOptions(o.status_operacional) + '</select>')
       + campo('Responsavel operacional', input('opEdResp', o.responsavel_operacional_nome))
       + campo('Centro de custo', input('opEdCentro', o.centro_custo))
+      + campo('Area / Local', input('opEdAreaLocal', o.area_local))
+      + campo('Equipamento / Maquina / Linha', input('opEdEquipLinha', o.equipamento_maquina_linha))
       + campo('Inicio previsto', input('opEdIniPrev', dataInput(o.data_inicio_prevista), 'date'))
       + campo('Termino previsto', input('opEdFimPrev', dataInput(o.data_termino_prevista), 'date'))
       + campo('Inicio real', input('opEdIniReal', dataInput(o.data_inicio_real), 'date'))
@@ -236,6 +464,7 @@
       + '<div style="font-size:.72rem;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:.5rem">Resumo do snapshot da proposta</div>'
       + snapshotResumo(o)
       + '</div>'
+      + diarioSectionHtml()
       + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">'
       + '<button class="btn bg" onclick="opFecharDetalhe()">Cancelar</button>'
       + '<button class="btn ba" onclick="opSalvarObra()">Salvar Obra</button>'
@@ -283,7 +512,12 @@
       var obra = await window.sbBuscarObraPorId(id);
       if (!obra) throw new Error('Obra nao encontrada.');
       state.obraAtual = obra;
+      state.diarioForm = null;
+      state.diarioEditId = '';
+      state.diarios = [];
+      state.diarioErro = '';
       renderDetalhe();
+      await carregarDiariosObra();
       var el = $('opDetalhe');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
@@ -302,6 +536,8 @@
       status_operacional: ($('opEdStatus') || {}).value || 'aguardando_recebimento',
       responsavel_operacional_nome: ($('opEdResp') || {}).value || '',
       centro_custo: ($('opEdCentro') || {}).value || '',
+      area_local: ($('opEdAreaLocal') || {}).value || '',
+      equipamento_maquina_linha: ($('opEdEquipLinha') || {}).value || '',
       data_inicio_prevista: ($('opEdIniPrev') || {}).value || null,
       data_termino_prevista: ($('opEdFimPrev') || {}).value || null,
       data_inicio_real: ($('opEdIniReal') || {}).value || null,
@@ -323,6 +559,114 @@
     } catch (e) {
       msg('Erro ao salvar obra: ' + (e.message || e), 'err');
     }
+  }
+
+  async function carregarDiariosObra() {
+    if (!state.obraAtual || typeof window.sbListarDiariosObra !== 'function') return;
+    state.diarioCarregando = true;
+    state.diarioErro = '';
+    renderDetalhe();
+    try {
+      state.diarios = await window.sbListarDiariosObra(getEmpresaId(), state.obraAtual.id);
+    } catch (e) {
+      state.diarioErro = e.message || String(e);
+    } finally {
+      state.diarioCarregando = false;
+      renderDetalhe();
+    }
+  }
+
+  function novoDiario() {
+    if (!state.obraAtual) return;
+    state.diarioEditId = '';
+    state.diarioForm = {
+      empresa_id: getEmpresaId(),
+      obra_id: state.obraAtual.id,
+      data_diario: hojeISO(),
+      turno: 'integral',
+      status_dia: 'concluido',
+      area_local: state.obraAtual.area_local || '',
+      equipamento_maquina_linha: state.obraAtual.equipamento_maquina_linha || '',
+      servico_liberado: true,
+      dia_concluido_com_sucesso: true,
+      intervalo_realizado_minutos: 0,
+      valor_custo_extra_transporte: 0,
+      horas_equipe_total: 0,
+      avanco_estimado_dia: 0
+    };
+    renderDetalhe();
+  }
+
+  async function editarDiario(id) {
+    try {
+      var d = await window.sbBuscarDiarioPorId(id);
+      if (!d) throw new Error('Diario nao encontrado.');
+      state.diarioEditId = d.id;
+      state.diarioForm = Object.assign({}, d);
+      renderDetalhe();
+    } catch (e) {
+      msg('Erro ao abrir diario: ' + (e.message || e), 'err');
+    }
+  }
+
+  function cancelarDiario() {
+    state.diarioForm = null;
+    state.diarioEditId = '';
+    renderDetalhe();
+  }
+
+  function coletarDiarioForm() {
+    var out = {
+      empresa_id: getEmpresaId(),
+      obra_id: state.obraAtual ? state.obraAtual.id : ''
+    };
+    DIARIO_BLOCOS.forEach(function (bloco) {
+      bloco.campos.forEach(function (def) {
+        var k = def[0], tipo = def[2], el = getCampo('opDia_' + k);
+        if (!el) return;
+        out[k] = tipo === 'checkbox' ? !!el.checked : el.value;
+      });
+    });
+    return out;
+  }
+
+  async function salvarDiario() {
+    if (!state.obraAtual) return;
+    try {
+      var dados = coletarDiarioForm();
+      if (state.diarioEditId) await window.sbAtualizarDiarioObra(state.diarioEditId, dados);
+      else await window.sbCriarDiarioObra(dados);
+      msg('Diario salvo com sucesso.');
+      state.diarioForm = null;
+      state.diarioEditId = '';
+      await carregarDiariosObra();
+    } catch (e) {
+      msg('Erro ao salvar diario: ' + (e.message || e), 'err');
+    }
+  }
+
+  async function excluirDiario(id) {
+    if (!window.confirm('Excluir este diario de obra?')) return;
+    try {
+      await window.sbExcluirDiarioObra(id);
+      msg('Diario excluido.');
+      if (state.diarioEditId === id) cancelarDiario();
+      await carregarDiariosObra();
+    } catch (e) {
+      msg('Erro ao excluir diario: ' + (e.message || e), 'err');
+    }
+  }
+
+  function filtrarDiarios() {
+    state.diarioFiltroData = ($('opDiaFiltroData') || {}).value || '';
+    state.diarioFiltroStatus = ($('opDiaFiltroStatus') || {}).value || '';
+    renderDetalhe();
+  }
+
+  function limparFiltroDiario() {
+    state.diarioFiltroData = '';
+    state.diarioFiltroStatus = '';
+    renderDetalhe();
   }
 
   function opButtonHtml(pid, label, action, kind, disabled) {
@@ -431,6 +775,13 @@
   window.opAbrirObra = abrirObra;
   window.opFecharDetalhe = fecharDetalhe;
   window.opSalvarObra = salvarObra;
+  window.opNovoDiario = novoDiario;
+  window.opEditarDiario = editarDiario;
+  window.opCancelarDiario = cancelarDiario;
+  window.opSalvarDiario = salvarDiario;
+  window.opExcluirDiario = excluirDiario;
+  window.opFiltrarDiarios = filtrarDiarios;
+  window.opLimparFiltroDiario = limparFiltroDiario;
   window.opSetFiltroStatus = setFiltroStatus;
   window.opHidratarAcoesPropostas = hidratarAcoesPropostas;
   window.opAcoesPropostaHtml = acoesPropostaHtml;
