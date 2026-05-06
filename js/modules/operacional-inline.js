@@ -256,7 +256,38 @@
     if (tipo === 'err') console.error('[Operacional]', texto);
     else console.log('[Operacional]', texto);
     if (typeof window.toast === 'function') window.toast(texto, tipo || 'ok');
-    else alert(texto);
+    mostrarMensagemOperacional(texto, tipo);
+    if (typeof window.toast !== 'function' && tipo === 'err') alert(texto);
+  }
+
+  function mostrarMensagemOperacional(texto, tipo) {
+    var box = $('opFloatingMsg');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'opFloatingMsg';
+      box.style.position = 'fixed';
+      box.style.left = '50%';
+      box.style.top = '18px';
+      box.style.transform = 'translateX(-50%)';
+      box.style.zIndex = '3000';
+      box.style.maxWidth = 'min(92vw, 560px)';
+      box.style.borderRadius = '10px';
+      box.style.padding = '.75rem 1rem';
+      box.style.fontSize = '.9rem';
+      box.style.fontWeight = '800';
+      box.style.boxShadow = '0 18px 50px rgba(0,0,0,.35)';
+      document.body.appendChild(box);
+    }
+    box.textContent = texto;
+    box.style.background = tipo === 'err' ? '#fee2e2' : '#dcfce7';
+    box.style.border = tipo === 'err' ? '1px solid #fca5a5' : '1px solid #86efac';
+    box.style.color = tipo === 'err' ? '#991b1b' : '#14532d';
+    box.style.display = 'block';
+    clearTimeout(window.__opFloatingMsgTimer);
+    window.__opFloatingMsgTimer = setTimeout(function () {
+      var atual = $('opFloatingMsg');
+      if (atual) atual.style.display = 'none';
+    }, 3600);
   }
 
   function labelStatus(st) {
@@ -2038,7 +2069,8 @@
       await carregarMobilizacaoObra();
       focarMobilizacaoEquipe();
     } catch (e) {
-      msg('Erro ao salvar mobilizacao: ' + (e.message || e), 'err');
+      console.error('[Operacional] Erro tecnico ao salvar colaborador:', e);
+      msg('Não foi possível salvar o colaborador. Verifique os dados e tente novamente.', 'err');
     }
   }
 

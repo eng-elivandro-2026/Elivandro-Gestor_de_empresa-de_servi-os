@@ -182,7 +182,8 @@
     var out = {};
     if (!parcial || Object.prototype.hasOwnProperty.call(dados, 'empresa_id')) out.empresa_id = dados.empresa_id || empresaAtivaId();
     if (!parcial || Object.prototype.hasOwnProperty.call(dados, 'obra_id')) out.obra_id = dados.obra_id;
-    ['colaborador_id', 'nome_colaborador', 'funcao', 'forma_deslocamento', 'carona_com', 'ponto_encontro', 'veiculo_utilizado', 'motorista', 'observacoes'].forEach(function (k) {
+    if (!parcial || Object.prototype.hasOwnProperty.call(dados, 'colaborador_id')) out.colaborador_id = dados.colaborador_id || null;
+    ['nome_colaborador', 'funcao', 'forma_deslocamento', 'carona_com', 'ponto_encontro', 'veiculo_utilizado', 'motorista', 'observacoes'].forEach(function (k) {
       if (!parcial || Object.prototype.hasOwnProperty.call(dados, k)) out[k] = txt(dados[k]);
     });
     if (!parcial || Object.prototype.hasOwnProperty.call(dados, 'horario_encontro')) out.horario_encontro = timeOrNull(dados.horario_encontro);
