@@ -391,7 +391,7 @@
       + diarioFormHtml()
       + '</div>'
       + '<div id="opDiarioFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
-      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:44px">Cancelar</button>'
       + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:44px">Salvar Diario</button>'
       + '</div></div></div>';
   }
@@ -687,40 +687,9 @@
     } else {
       html = itens.map(function (it, idx) {
         var desc = itemDescricao(it);
-        var qtd = itemQtd(it) || '-';
-        var un = itemUn(it) || '';
-        var tipo = itemTipoLabel(it);
-        var cat = itemCategoriaCodigo(it) || '-';
-        var area = itemAreaEquip(it, obra) || 'Nao informado';
-        var painel = itemInstalacaoPainel(it, obra) || 'Nao informado';
-        var obs = itemObs(it);
-        var catDesc = itemCategoriaDesc(it);
-        var fator = itemFator(it);
-        var terceiro = itemTerceiro(it);
-        var inclusao = itemInclusao(it);
-        var extras = detalhesTecnicosItem(it);
         return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
-          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.55rem;font-size:.82rem;color:var(--text2);line-height:1.4">'
-          + '<div><strong style="color:var(--text)">Nº Item:</strong><br>' + esc(itemNumero(it, idx)) + '</div>'
-          + '<div><strong style="color:var(--text)">Tipo do item:</strong><br>' + esc(tipo) + '</div>'
-          + '<div><strong style="color:var(--text)">Codigo/categoria:</strong><br>' + esc(cat || 'Nao informado') + '</div>'
-          + '<div><strong style="color:var(--text)">Quantidade:</strong><br>' + esc(qtd) + '</div>'
-          + '<div><strong style="color:var(--text)">Unidade:</strong><br>' + esc(un || 'Nao informado') + '</div>'
-          + (fator ? '<div><strong style="color:var(--text)">Fator tecnico:</strong><br>' + esc(fator) + '</div>' : '')
-          + '<div><strong style="color:var(--text)">Valor unitario de custo:</strong><br>' + esc(moedaTexto(itemCustoUnit(it))) + '</div>'
-          + '<div><strong style="color:var(--text)">Valor total de custo:</strong><br>' + esc(moedaTexto(itemCustoTotal(it))) + '</div>'
-          + (terceiro ? '<div><strong style="color:var(--text)">Terceiro:</strong><br>' + esc(terceiro) + '</div>' : '')
-          + (inclusao ? '<div><strong style="color:var(--text)">Inclusao / exclusao:</strong><br>' + esc(inclusao) + '</div>' : '')
-          + '</div>'
-          + '<div style="font-size:.95rem;font-weight:900;color:var(--text);line-height:1.35;margin-top:.65rem">' + esc(desc) + '</div>'
-          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem;font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.55rem">'
-          + '<div><strong style="color:var(--text)">Area / Equipamento:</strong><br>' + esc(area) + '</div>'
-          + '<div><strong style="color:var(--text)">Instalacao / Painel:</strong><br>' + esc(painel) + '</div>'
-          + '</div>'
-          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.65rem"><strong style="color:var(--text)">Categoria:</strong> ' + esc(cat || 'Nao informado') + '</div>'
-          + '<div style="font-size:.78rem;color:var(--text3);line-height:1.45;margin-top:.3rem"><strong>Descricao geral da categoria:</strong> ' + esc(catDesc || 'Nao informado') + '</div>'
-          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap"><strong>Descricao complementar / observacoes:</strong> ' + esc(obs) + '</div>' : '')
-          + (extras ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.5rem"><strong style="color:var(--text)">Detalhes tecnicos adicionais:</strong><br>' + extras + '</div>' : '')
+          + '<div style="font-size:.76rem;color:var(--text3);font-weight:900;text-transform:uppercase;margin-bottom:.35rem">Item ' + esc(itemNumero(it, idx)) + '</div>'
+          + '<div style="font-size:.92rem;font-weight:800;color:var(--text);line-height:1.45;white-space:normal;overflow-wrap:anywhere">' + esc(desc || 'Sem descricao') + '</div>'
           + '</div>';
       }).join('');
     }
@@ -785,7 +754,7 @@
       + recursoFormHtml()
       + '</div>'
       + '<div id="opRecursoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
-      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:44px">Cancelar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso" style="min-height:44px">Salvar Recurso</button>'
       + '</div></div></div>';
   }
@@ -830,7 +799,7 @@
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:42px">Voltar</button></div>'
       + '<div id="opRecursosPadraoBody" class="op-panel-body" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">' + grupos + '</div>'
       + '<div id="opRecursosPadraoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
-      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:44px">Cancelar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="adicionar-recursos-padrao" style="min-height:44px">Adicionar selecionados</button>'
       + '</div></div></div>';
   }
@@ -901,7 +870,7 @@
       + mobilizacaoFormHtml()
       + '</div>'
       + '<div id="opMobilizacaoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
-      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:44px">Cancelar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao" style="min-height:44px">Salvar Colaborador</button>'
       + '</div></div></div>';
   }
@@ -1086,7 +1055,7 @@
       + '.op-filter-field input,.op-filter-field select{width:100%!important;min-width:0!important;}'
       + '.op-obra-grid{grid-template-columns:minmax(0,1fr)!important;gap:.75rem!important;}'
       + '.op-obra-card{width:100%!important;margin:0!important;}'
-      + '.op-obra-card .btn{width:100%!important;min-height:44px!important;}'
+      + '.op-obra-card .btn{width:auto!important;align-self:flex-end!important;min-height:42px!important;padding:.52rem .9rem!important;}'
       + '}'
       + '</style>';
   }
@@ -1393,7 +1362,7 @@
       + diarioSectionHtml()
       + '</div>'
       + '<div id="opObraFooter" class="op-panel-footer" style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
-      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Voltar</button>'
+      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Fechar</button>'
       + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
       + '</div></div></div>'
       + diarioOverlayHtml()
@@ -1442,8 +1411,33 @@
 
   async function abrirObra(id) {
     try {
+      var cached = (state.obras || []).find(function (o) { return o.id === id; });
+      if (cached) {
+        state.obraAtual = cached;
+        state.diarioForm = null;
+        state.diarioEditId = '';
+        state.diarios = [];
+        state.diariosLoaded = false;
+        state.diarioErro = '';
+        state.recursos = [];
+        state.recursosLoaded = false;
+        state.recursosErro = '';
+        state.recursoForm = null;
+        state.recursoEditId = '';
+        state.recursoExcluir = null;
+        state.recursosPadraoPicker = false;
+        state.mobilizacaoEquipe = [];
+        state.mobilizacaoLoaded = false;
+        state.mobilizacaoErro = '';
+        state.mobilizacaoForm = null;
+        state.mobilizacaoEditId = '';
+        state.mobilizacaoExcluir = null;
+        state.accordionOpen = {};
+        renderDetalhe();
+        focarPainelObra();
+      }
       var detalhe = $('opDetalhe');
-      if (detalhe) detalhe.innerHTML = loadingObraHtml();
+      if (detalhe && !cached) detalhe.innerHTML = loadingObraHtml();
       var obra = await window.sbBuscarObraPorId(id);
       if (!obra) throw new Error('Obra nao encontrada.');
       state.obraAtual = obra;
@@ -1567,11 +1561,12 @@
       if (typeof window.sbAtualizarRecebimentoMobilizacaoObra === 'function') {
         state.obraAtual = await window.sbAtualizarRecebimentoMobilizacaoObra(state.obraAtual.id, coletarRecebimentoMobilizacao());
       }
-      msg('Obra atualizada com sucesso.');
+      msg('Obra salva com sucesso.');
       await carregarObras();
       renderDetalhe();
     } catch (e) {
-      msg('Erro ao salvar obra: ' + (e.message || e), 'err');
+      console.error('[Operacional] Erro tecnico ao salvar obra:', e);
+      msg('Não foi possível salvar a obra. Verifique os dados e tente novamente.', 'err');
     }
   }
 
@@ -2033,12 +2028,14 @@
       var dados = coletarMobilizacaoForm();
       if (!String(dados.nome_colaborador || '').trim()) return msg('Informe o nome do colaborador.', 'err');
       dados.observacoes = serializarEquipeObs(dados);
-      if (state.mobilizacaoEditId) await window.sbAtualizarMobilizacaoEquipe(state.mobilizacaoEditId, dados);
+      var editando = !!state.mobilizacaoEditId;
+      if (editando) await window.sbAtualizarMobilizacaoEquipe(state.mobilizacaoEditId, dados);
       else await window.sbCriarMobilizacaoEquipe(dados);
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
-      msg('Mobilizacao da equipe salva.');
-      await carregarRecursosMobilizacaoObra();
+      state.mobilizacaoLoaded = false;
+      msg(editando ? 'Colaborador atualizado com sucesso.' : 'Colaborador adicionado com sucesso.');
+      await carregarMobilizacaoObra();
       focarMobilizacaoEquipe();
     } catch (e) {
       msg('Erro ao salvar mobilizacao: ' + (e.message || e), 'err');
@@ -2058,13 +2055,14 @@
     var id = state.mobilizacaoExcluir.id;
     try {
       await window.sbExcluirMobilizacaoEquipe(id);
-      msg('Mobilizacao excluida.');
+      msg('Colaborador excluido com sucesso.');
       state.mobilizacaoExcluir = null;
       if (state.mobilizacaoEditId === id) {
         state.mobilizacaoForm = null;
         state.mobilizacaoEditId = '';
       }
-      await carregarRecursosMobilizacaoObra();
+      state.mobilizacaoLoaded = false;
+      await carregarMobilizacaoObra();
       focarMobilizacaoEquipe();
     } catch (e) {
       msg('Erro ao excluir mobilizacao: ' + (e.message || e), 'err');
