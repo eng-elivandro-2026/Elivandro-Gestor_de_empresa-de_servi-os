@@ -622,10 +622,22 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
   /* Garantir quebra de linha em textos longos */
   #motorDecisaoBody div[style*="line-height"],
   #motorDecisaoBody span[style*="line-height"] { word-break: break-word; overflow-wrap: break-word }
-  /* ── Ranking de Clientes mobile — ocultar cidade, compactar ── */
-  .conv-table-cli .col-cidade { display: none }
-  .conv-table { font-size: .63rem }
-  .conv-table th, .conv-table td { padding: .26rem .18rem }
+  /* ── Ranking de Clientes mobile — layout fixo, todas as colunas visíveis ── */
+  .conv-table-cli { table-layout: fixed }
+  .conv-table-cli th:nth-child(1),
+  .conv-table-cli td:nth-child(1) { width:29%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .conv-table-cli th:nth-child(2),
+  .conv-table-cli td:nth-child(2) { width:17%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .conv-table-cli th:nth-child(3),
+  .conv-table-cli td:nth-child(3) { width:8%;  text-align:center }
+  .conv-table-cli th:nth-child(4),
+  .conv-table-cli td:nth-child(4) { width:8%;  text-align:center }
+  .conv-table-cli th:nth-child(5),
+  .conv-table-cli td:nth-child(5) { width:10%; text-align:center }
+  .conv-table-cli th:nth-child(6),
+  .conv-table-cli td:nth-child(6) { width:28%; text-align:right; white-space:nowrap }
+  .conv-table { font-size: .62rem }
+  .conv-table th, .conv-table td { padding: .24rem .16rem }
 }
 
 /* Mobile 480px */

@@ -1667,7 +1667,7 @@ function rDash(rankTarget, sortBy){
           var nomeAbrev=abreviarCliente(c.cliente);
           return '<tr>'
             +'<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cliente)+'">'+esc(nomeAbrev)+'</td>'
-            +'<td class="col-cidade" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.cidade)+'</td>'
+            +'<td class="col-cidade" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cidade)+'">'+esc(c.cidade)+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
             +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
             +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
