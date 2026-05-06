@@ -250,10 +250,12 @@
     if (existente) return { obra: existente, criada: false };
 
     var campos = calcularCamposPrevistosObra(proposta);
+    var codigoObra = gerarCodigoObra(proposta);
     var row = Object.assign({
       empresa_id: empresaId,
       proposta_app_id: String(proposta.id),
-      codigo_obra: gerarCodigoObra(proposta),
+      codigo_obra: codigoObra,
+      centro_custo: codigoObra,
       proposta_numero: cleanText(proposta.num),
       proposta_revisao: cleanText(proposta.revAtual),
       cliente_nome: cleanText(proposta.cli || proposta.loc),

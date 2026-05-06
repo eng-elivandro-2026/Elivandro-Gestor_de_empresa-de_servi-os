@@ -1002,6 +1002,10 @@
     return '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">';
   }
 
+  function inputReadonly(id, val) {
+    return '<input id="' + id + '" type="text" value="' + esc(val || '') + '" readonly style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:rgba(148,163,184,.12);color:var(--text3);cursor:not-allowed">';
+  }
+
   function textarea(id, val, minHeight) {
     return '<textarea id="' + id + '" class="op-auto-textarea" rows="3" style="padding:.55rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);resize:none;overflow:hidden;min-height:' + (minHeight || 84) + 'px;line-height:1.45">' + esc(val || '') + '</textarea>';
   }
@@ -1163,6 +1167,7 @@
       el.innerHTML = '';
       return;
     }
+    var centroCustoAuto = o.centro_custo || o.codigo_obra || '';
     el.innerHTML = ajusteResponsivoHtml()
       + '<div id="opObraPanel" style="position:fixed;inset:0;z-index:880;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem">'
       + '<div id="opObraDialog" style="width:min(1120px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">'
@@ -1183,7 +1188,7 @@
       + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-bottom:1rem">'
       + campo('Status operacional', '<select id="opEdStatus" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + statusOptions(o.status_operacional) + '</select>')
       + campo('Responsavel operacional', input('opEdResp', o.responsavel_operacional_nome))
-      + campo('Centro de custo', input('opEdCentro', o.centro_custo))
+      + campo('Centro de custo', inputReadonly('opEdCentro', centroCustoAuto) + '<span style="margin-top:.25rem;color:var(--text3);font-size:.72rem;text-transform:none;font-weight:500">Centro de custo gerado automaticamente a partir do codigo da obra.</span>')
       + campo('Area / Local', input('opEdAreaLocal', o.area_local))
       + campo('Equipamento / Maquina / Linha', input('opEdEquipLinha', o.equipamento_maquina_linha))
       + campo('Inicio previsto', input('opEdIniPrev', dataInput(o.data_inicio_prevista), 'date'))
@@ -1356,7 +1361,7 @@
     var dados = {
       status_operacional: ($('opEdStatus') || {}).value || 'aguardando_recebimento',
       responsavel_operacional_nome: ($('opEdResp') || {}).value || '',
-      centro_custo: ($('opEdCentro') || {}).value || '',
+      centro_custo: state.obraAtual.centro_custo || state.obraAtual.codigo_obra || '',
       area_local: ($('opEdAreaLocal') || {}).value || '',
       equipamento_maquina_linha: ($('opEdEquipLinha') || {}).value || '',
       data_inicio_prevista: ($('opEdIniPrev') || {}).value || null,
