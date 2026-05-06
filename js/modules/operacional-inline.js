@@ -25,11 +25,13 @@
     recursoForm: null,
     recursoEditId: '',
     recursoExcluir: null,
+    recursosPadraoPicker: false,
     mobilizacaoEquipe: [],
     mobilizacaoErro: '',
     mobilizacaoCarregando: false,
     mobilizacaoForm: null,
-    mobilizacaoEditId: ''
+    mobilizacaoEditId: '',
+    mobilizacaoExcluir: null
   };
 
   var STATUS_RETROATIVOS = [
@@ -166,6 +168,7 @@
     tipo_alimentacao_padrao: DIARIO_LISTAS.tipo_alimentacao,
     categoria_recurso: {
       ferramentas_apoio: 'Ferramentas / apoio',
+      servico_paineis: 'Servico em paineis',
       medicao_teste: 'Medicao e teste',
       epis: 'EPIs',
       epcs_sinalizacao: 'EPC / sinalizacao',
@@ -192,8 +195,43 @@
       veiculo_alugado: 'Veiculo alugado',
       van_transporte_contratado: 'Van / transporte contratado',
       nao_aplicavel: 'Nao aplicavel'
+    },
+    tipo_integrante: {
+      mao_obra_propria: 'Mao de obra propria',
+      mei: 'MEI',
+      pj: 'PJ',
+      empresa_contratada: 'Empresa contratada',
+      tecnico_empresa_contratada: 'Tecnico de empresa contratada'
     }
   };
+
+  var RECURSOS_PADRAO_UI = [
+    { categoria: 'ferramentas_apoio', titulo: 'Ferramentas / Apoio', itens: [
+      'Carrinho de ferramentas', 'Bau de ferramentas', 'Armario', 'Mesa de apoio', 'Cadeira / banco',
+      'Lanternas', 'Extensao eletrica', 'Escada', 'Corda / cintas', 'Ventilador', 'Outros'
+    ]},
+    { categoria: 'servico_paineis', titulo: 'Servico em Paineis', itens: [
+      'Impressora de tags', 'Cabos da impressora', 'Etiqueta de componentes', 'Etiqueta de fios',
+      'Luvinha para fios', 'Etiqueta de botoes', 'Suporte de etiqueta de botoes',
+      'Acrilico para suporte de botoes', 'Caixa de terminais'
+    ]},
+    { categoria: 'medicao_teste', titulo: 'Equipamentos de medicao e teste', itens: [
+      'Multimetro', 'Alicate amperimetro', 'Megometro', 'Detector de tensao',
+      'Fasimetro / Sequencimetro', 'Analisador de energia', 'Rastreador de circuitos',
+      'Luximetro', 'Notebook / cabo de programacao', 'Fonte de teste', 'Outros instrumentos'
+    ]},
+    { categoria: 'epis', titulo: 'EPIs', itens: [
+      'Capacete com jugular', 'Safety Cap, se no cliente puder usar', 'Oculos de seguranca',
+      'Protetor auricular', 'Mascara facial para servicos com lixadeira', 'Mascara facial NR10',
+      'Luva comum para uso geral', 'Luva de vaqueta', 'Luva isolante 750 V', 'Luva especial',
+      'Cinto de seguranca com 2 talabartes', 'Botina de seguranca',
+      'Avental de couro, mangotes etc.', 'Outros EPIs'
+    ]},
+    { categoria: 'epcs_sinalizacao', titulo: 'EPC / Sinalizacao / Isolamento', itens: [
+      'Cone', 'Corrente plastica', 'Fita zebrada', 'Placa de sinalizacao', 'Cavalete de isolamento',
+      'LOTO / LOTOTO - Bloqueio e etiquetagem', 'Material para isolamento de area', 'Outros EPCs'
+    ]}
+  ];
 
   function $(id) { return document.getElementById(id); }
 
@@ -250,6 +288,32 @@
 
   function labelObj(nome, valor) {
     return (OP_LISTAS_1C[nome] && OP_LISTAS_1C[nome][valor]) || valor || '-';
+  }
+
+  function parseEquipeMeta(obs) {
+    var meta = { tipo: '', empresa: '', qtd: '', obs: obs || '' };
+    var s = String(obs || '');
+    if (s.indexOf('[Equipe]') !== 0) return meta;
+    meta.obs = '';
+    s.split(/\r?\n/).forEach(function (linha) {
+      var m = linha.match(/^([^:]+):\s*(.*)$/);
+      if (!m) return;
+      var k = m[1].trim().toLowerCase();
+      var v = m[2].trim();
+      if (k === 'tipo') meta.tipo = v;
+      else if (k === 'empresa') meta.empresa = v;
+      else if (k === 'qtd tecnicos') meta.qtd = v;
+      else if (k === 'observacoes') meta.obs = v;
+    });
+    return meta;
+  }
+
+  function serializarEquipeObs(dados) {
+    var tipo = dados.tipo_integrante || '';
+    var empresa = dados.empresa_integrante || '';
+    var qtd = dados.qtd_tecnicos || '';
+    var obs = dados.observacoes || '';
+    return '[Equipe]\nTipo: ' + tipo + '\nEmpresa: ' + empresa + '\nQtd tecnicos: ' + qtd + '\nObservacoes: ' + obs;
   }
 
   function hojeISO() {
@@ -413,7 +477,7 @@
   }
 
   function alimentacaoMobilizacaoSectionHtml(o) {
-    return sectionBox('Mobilizacao / Logistica', 'Alimentacao, deslocamento e preparacao da equipe para a obra.',
+    return sectionBox('Mobilizacao e Logistica', 'Alimentacao, deslocamento e preparacao da equipe para a obra.',
       '<div style="font-size:.82rem;color:var(--text);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">Alimentacao</div>'
       + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-bottom:1rem">'
       + campo('Tipo alimentacao padrao', selectCampo('opAliTipo', OP_LISTAS_1C.tipo_alimentacao_padrao, o.tipo_alimentacao_padrao))
@@ -436,12 +500,11 @@
       + campo('Ponto encontro equipe', input('opMobPonto', o.ponto_encontro_equipe))
       + campo('Horario encontro equipe', input('opMobHorario', o.horario_encontro_equipe, 'time'))
       + '</div>'
-      + '<div style="margin-top:.75rem">' + campo('Observacoes de mobilizacao', textarea('opMobObs', o.observacoes_mobilizacao_obra, 90)) + '</div>'
-      + mobilizacaoEquipeHtml());
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de mobilizacao', textarea('opMobObs', o.observacoes_mobilizacao_obra, 90)) + '</div>');
   }
 
   function contingenciaSectionHtml(o) {
-    return sectionBox('Contingencia de Material', 'Plano para falta de material e compras emergenciais.',
+    return sectionBox('Contingencia de Materiais', 'Plano para falta de material e compras emergenciais.',
       '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem">'
       + campo('Responsavel compra emergencial', input('opContCompra', o.responsavel_compra_emergencial))
       + campo('Responsavel retirada/busca', input('opContRetirada', o.responsavel_retirada_emergencial))
@@ -449,6 +512,83 @@
       + '</div>'
       + '<div style="margin-top:.75rem">' + campo('Plano de contingencia material', textarea('opContPlano', o.plano_contingencia_material, 90)) + '</div>'
       + '<div style="margin-top:.75rem">' + campo('Observacoes de contingencia', textarea('opContObs', o.observacoes_contingencia_material, 90)) + '</div>');
+  }
+
+  function snapshotItens(o) {
+    var snap = o && o.snapshot_proposta_json ? o.snapshot_proposta_json : {};
+    return Array.isArray(snap.bi) ? snap.bi : [];
+  }
+
+  function itemDescricao(it) {
+    return it.des || it.desc || it.d || it.descricao || it.nome || it.item || it.tit || '-';
+  }
+
+  function itemTipo(it) {
+    return String(it.tipo || it.t || it.cat || it.categoria || '').toLowerCase();
+  }
+
+  function itemQtd(it) {
+    return it.qtd || it.qt || it.q || it.quantidade || '';
+  }
+
+  function itemUn(it) {
+    return it.un || it.und || it.unid || it.unidade || '';
+  }
+
+  function itemCusto(it) {
+    return it.cu || it.custo || it.custoUnit || it.custo_unit || it.vc || it.valor_custo || '';
+  }
+
+  function itemCustoTexto(it) {
+    var v = itemCusto(it);
+    if (v === '') return '-';
+    var n = Number(v);
+    return isFinite(n) ? money(n) : String(v);
+  }
+
+  function filtrarItensSnapshot(o, tipoAlvo) {
+    return snapshotItens(o).filter(function (it) {
+      var tipo = itemTipo(it);
+      if (tipoAlvo === 'servico') return tipo.indexOf('serv') >= 0 || tipo.indexOf('mao') >= 0 || tipo.indexOf('instal') >= 0;
+      return tipo.indexOf('mat') >= 0 || tipo.indexOf('material') >= 0;
+    });
+  }
+
+  function itensSnapshotHtml(titulo, subtitulo, itens, vazio, extra) {
+    var html = '';
+    if (!itens.length) {
+      html = '<div style="color:var(--text3);font-size:.82rem">' + esc(vazio) + '</div>';
+    } else {
+      html = itens.map(function (it) {
+        return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
+          + '<div style="font-size:.9rem;font-weight:900;color:var(--text);line-height:1.3">' + esc(itemDescricao(it)) + '</div>'
+          + '<div style="font-size:.78rem;color:var(--text2);line-height:1.45;margin-top:.4rem">'
+          + 'Qtd: ' + esc(itemQtd(it) || '-') + ' ' + esc(itemUn(it) || '')
+          + ' | Custo: ' + esc(itemCustoTexto(it))
+          + ' | Categoria: ' + esc(it.categoria || it.cat || it.tipo || it.t || '-')
+          + '</div></div>';
+      }).join('');
+    }
+    return sectionBox(titulo, subtitulo, html + (extra || ''));
+  }
+
+  function servicosPropostaHtml(o) {
+    return itensSnapshotHtml(
+      'Servicos considerados na proposta',
+      'Leitura dos itens de servico identificados no snapshot da proposta.',
+      filtrarItensSnapshot(o, 'servico'),
+      'Nenhum servico identificado no snapshot da proposta.'
+    );
+  }
+
+  function materiaisNecessariosHtml(o) {
+    return itensSnapshotHtml(
+      'Materiais necessarios',
+      'Leitura dos itens de material identificados no snapshot da proposta.',
+      filtrarItensSnapshot(o, 'material'),
+      'Nenhum material identificado no snapshot da proposta.',
+      '<div style="display:flex;justify-content:flex-end;margin-top:.75rem"><button type="button" class="btn bg" disabled title="A tabela obra_materiais sera uma proxima fase">Adicionar material fora da proposta - em breve</button></div>'
+    );
   }
 
   function recursoFormHtml() {
@@ -497,6 +637,38 @@
       + '</div></div></div>';
   }
 
+  function recursosPadraoOverlayHtml() {
+    if (!state.recursosPadraoPicker) return '';
+    var existentes = {};
+    (state.recursos || []).forEach(function (r) {
+      existentes[(r.categoria || '') + '||' + (r.item || '')] = true;
+    });
+    var grupos = RECURSOS_PADRAO_UI.map(function (g, gi) {
+      return '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem">'
+        + '<div style="font-size:.86rem;color:var(--accent);font-weight:900;text-transform:uppercase;margin-bottom:.55rem">' + esc(g.titulo) + '</div>'
+        + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.45rem">'
+        + g.itens.map(function (item, ii) {
+          var key = g.categoria + '||' + item;
+          var disabled = existentes[key];
+          return '<label style="display:flex;gap:.45rem;align-items:flex-start;border:1px solid var(--border);border-radius:7px;background:var(--bg3);padding:.5rem .6rem;font-size:.8rem;color:' + (disabled ? 'var(--text3)' : 'var(--text2)') + '">'
+            + '<input type="checkbox" class="op-rec-padrao-check" data-cat="' + esc(g.categoria) + '" data-item="' + esc(item) + '"' + (disabled ? ' disabled' : ' checked') + '>'
+            + '<span>' + esc(item) + (disabled ? ' <small style="color:var(--text3)">(ja existe)</small>' : '') + '</span></label>';
+        }).join('')
+        + '</div></div>';
+    }).join('');
+    return '<div id="opRecursosPadraoOverlay" style="position:fixed;inset:0;z-index:946;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opRecursosPadraoDialog" style="width:min(980px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+      + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">Escolher Recursos Padrao</div>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Marque somente os recursos que deseja adicionar nesta obra.</div></div>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:42px">Voltar</button></div>'
+      + '<div id="opRecursosPadraoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">' + grupos + '</div>'
+      + '<div id="opRecursosPadraoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="adicionar-recursos-padrao" style="min-height:44px">Adicionar selecionados</button>'
+      + '</div></div></div>';
+  }
+
   function recursosCampoHtml() {
     var lista = state.recursos || [];
     var cards = state.recursosCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando recursos...</div>' : '';
@@ -517,7 +689,7 @@
     }
     return '<div id="opRecursosCampoAnchor">' + sectionBox('Recursos de Campo', 'Ferramentas, EPIs, EPCs e recursos previstos para a obra.',
       '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">'
-      + '<button type="button" class="btn bg" data-op-1c-action="gerar-recursos">Gerar recursos padrao</button>'
+      + '<button type="button" class="btn bg" data-op-1c-action="escolher-recursos-padrao">Escolher recursos padrao</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="novo-recurso">Novo recurso</button></div>'
       + '<div>' + cards + '</div>') + '</div>';
   }
@@ -525,11 +697,13 @@
   function mobilizacaoFormHtml() {
     if (!state.mobilizacaoForm) return '';
     var m = state.mobilizacaoForm;
-    return '<div style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem;margin:.75rem 0">'
-      + '<div style="font-size:.82rem;color:var(--blue);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">' + (state.mobilizacaoEditId ? 'Editar colaborador na mobilizacao' : 'Adicionar colaborador a mobilizacao') + '</div>'
+    return '<div id="opMobilizacaoFormPanel" style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem">'
       + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem">'
       + campo('Nome colaborador', input('opMobEqNome', m.nome_colaborador))
       + campo('Funcao', input('opMobEqFuncao', m.funcao))
+      + campo('Tipo', selectCampo('opMobEqTipo', OP_LISTAS_1C.tipo_integrante, m.tipo_integrante))
+      + campo('Nome da empresa', input('opMobEqEmpresa', m.empresa_integrante))
+      + campo('Qtd. tecnicos', input('opMobEqQtd', m.qtd_tecnicos, 'number'))
       + campo('Forma deslocamento', selectCampo('opMobEqForma', OP_LISTAS_1C.forma_deslocamento, m.forma_deslocamento))
       + campo('Carona com', input('opMobEqCarona', m.carona_com))
       + campo('Ponto encontro', input('opMobEqPonto', m.ponto_encontro))
@@ -542,10 +716,37 @@
       + checkCampo('opMobEqComp', 'Comprovante obrigatorio?', m.comprovante_obrigatorio)
       + '</div>'
       + '<div style="margin-top:.65rem">' + campo('Observacoes', textarea('opMobEqObs', m.observacoes, 76)) + '</div>'
-      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem;flex-wrap:wrap">'
-      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao">Cancelar</button>'
-      + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao">Salvar colaborador</button>'
-      + '</div></div>';
+      + '<div style="height:1rem"></div></div>';
+  }
+
+  function mobilizacaoOverlayHtml() {
+    if (!state.mobilizacaoForm) return '';
+    return '<div id="opMobilizacaoOverlay" style="position:fixed;inset:0;z-index:944;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opMobilizacaoDialog" style="width:min(900px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+      + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.mobilizacaoEditId ? 'Editar Colaborador' : 'Adicionar Colaborador') + '</div>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Integrantes e deslocamento da obra, sem alterar o RH.</div></div>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:42px">Voltar</button></div>'
+      + '<div id="opMobilizacaoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
+      + mobilizacaoFormHtml()
+      + '</div>'
+      + '<div id="opMobilizacaoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao" style="min-height:44px">Salvar Colaborador</button>'
+      + '</div></div></div>';
+  }
+
+  function confirmarExcluirMobilizacaoHtml() {
+    if (!state.mobilizacaoExcluir) return '';
+    return '<div id="opMobilizacaoConfirmOverlay" style="position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.76);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div style="width:min(440px,94vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden">'
+      + '<div style="padding:1rem;border-bottom:1px solid var(--border)"><div style="font-size:1rem;font-weight:900;color:#ef4444;text-transform:uppercase">Excluir Colaborador</div>'
+      + '<div style="font-size:.86rem;color:var(--text2);line-height:1.45;margin-top:.55rem">Deseja realmente excluir este colaborador da mobilizacao?</div>'
+      + '<div style="font-size:.9rem;color:var(--text);font-weight:800;margin-top:.65rem">' + esc(state.mobilizacaoExcluir.nome || '-') + '</div></div>'
+      + '<div style="padding:.85rem 1rem calc(.85rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.55rem;background:var(--bg2)">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-excluir-mobilizacao" style="min-height:42px">Cancelar</button>'
+      + '<button type="button" class="btn bd" data-op-1c-action="confirmar-excluir-mobilizacao" style="min-height:42px">Excluir</button>'
+      + '</div></div></div>';
   }
 
   function mobilizacaoEquipeHtml() {
@@ -555,6 +756,7 @@
     if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum colaborador cadastrado na mobilizacao desta obra.</div>';
     if (!cards) {
       cards = lista.map(function (m) {
+        var meta = parseEquipeMeta(m.observacoes);
         return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
           + '<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">'
           + '<div><div style="font-size:.9rem;font-weight:900;color:var(--text)">' + esc(m.nome_colaborador) + '</div>'
@@ -562,27 +764,51 @@
           + '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button type="button" class="btn bg bsm" data-op-1c-action="editar-mobilizacao" data-id="' + esc(m.id) + '">Editar</button>'
           + '<button type="button" class="btn bd bsm" data-op-1c-action="excluir-mobilizacao" data-id="' + esc(m.id) + '">Excluir</button></div></div>'
           + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.5rem">Encontro: ' + esc(m.ponto_encontro || '-') + ' ' + esc(m.horario_encontro || '') + (m.precisa_adiantamento ? ' | Adiant.: ' + money(m.valor_adiantamento) : '') + (m.precisa_reembolso ? ' | Reembolso' : '') + '</div>'
-          + (m.observacoes ? '<div style="font-size:.78rem;color:var(--text3);margin-top:.35rem;white-space:pre-wrap">' + esc(m.observacoes) + '</div>' : '')
+          + (meta.obs ? '<div style="font-size:.78rem;color:var(--text3);margin-top:.35rem;white-space:pre-wrap">' + esc(meta.obs) + '</div>' : '')
           + '</div>';
       }).join('');
     }
-    return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
+    return '<div id="opMobilizacaoEquipeAnchor" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
       + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:.7rem">'
       + '<div><div style="font-size:.88rem;color:var(--text);font-weight:900;text-transform:uppercase">Como cada colaborador vai ate a obra</div>'
       + '<div style="font-size:.76rem;color:var(--text3)">Cadastro manual, sem alterar o RH.</div></div>'
       + '<button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar colaborador</button></div>'
-      + mobilizacaoFormHtml()
       + cards
       + '</div>';
+  }
+
+  function integrantesEquipeHtml() {
+    var lista = state.mobilizacaoEquipe || [];
+    var cards = state.mobilizacaoCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando integrantes...</div>' : '';
+    if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum integrante previsto para esta obra.</div>';
+    if (!cards) {
+      cards = lista.map(function (m) {
+        var meta = parseEquipeMeta(m.observacoes);
+        return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
+          + '<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">'
+          + '<div><div style="font-size:.9rem;font-weight:900;color:var(--text)">' + esc(m.nome_colaborador) + '</div>'
+          + '<div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">' + esc(m.funcao || '-') + ' | ' + esc(labelObj('tipo_integrante', meta.tipo) || '-') + '</div></div>'
+          + '<button type="button" class="btn bg bsm" data-op-1c-action="editar-mobilizacao" data-id="' + esc(m.id) + '">Editar</button></div>'
+          + '<div style="font-size:.78rem;color:var(--text3);line-height:1.45;margin-top:.45rem">Empresa: ' + esc(meta.empresa || '-') + ' | Qtd. tecnicos: ' + esc(meta.qtd || '-') + '</div>'
+          + (meta.obs ? '<div style="font-size:.78rem;color:var(--text3);margin-top:.35rem;white-space:pre-wrap">' + esc(meta.obs) + '</div>' : '')
+          + '</div>';
+      }).join('');
+    }
+    return sectionBox('Integrantes da Equipe', 'Quem esta previsto para participar da obra. Cadastro manual, sem integrar com RH.',
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:.75rem"><button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar integrante</button></div>' + cards);
   }
 
   function operacionalPlanejamentoHtml(o) {
     return recebimentoSectionHtml(o)
       + segurancaSectionHtml(o)
+      + integrantesEquipeHtml()
       + jornadaSectionHtml(o)
+      + servicosPropostaHtml(o)
       + alimentacaoMobilizacaoSectionHtml(o)
-      + contingenciaSectionHtml(o)
-      + recursosCampoHtml();
+      + mobilizacaoEquipeHtml()
+      + recursosCampoHtml()
+      + materiaisNecessariosHtml(o)
+      + contingenciaSectionHtml(o);
   }
 
   function getEmpresaId() {
@@ -758,6 +984,17 @@
       + '#opRecursoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opRecursoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '#opRecursoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
+      + '#opMobilizacaoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
+      + '#opMobilizacaoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
+      + '#opMobilizacaoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
+      + '#opMobilizacaoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opMobilizacaoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
+      + '#opMobilizacaoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
+      + '#opRecursosPadraoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
+      + '#opRecursosPadraoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
+      + '#opRecursosPadraoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
+      + '#opRecursosPadraoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opRecursosPadraoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
       + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
@@ -806,6 +1043,23 @@
       var body = $('opRecursoBody') || $('opObraBody');
       if (body) body.scrollTop = 0;
       ajustarTextareas($('opRecursoFormPanel') || document);
+    }, 60);
+  }
+
+  function focarMobilizacaoEquipe() {
+    setTimeout(function () {
+      var anchor = $('opMobilizacaoEquipeAnchor');
+      var body = $('opObraBody');
+      if (anchor && body) body.scrollTop = Math.max(0, anchor.offsetTop - 12);
+      ajustarTextareas(anchor || document);
+    }, 70);
+  }
+
+  function focarMobilizacaoForm() {
+    setTimeout(function () {
+      var body = $('opMobilizacaoBody') || $('opObraBody');
+      if (body) body.scrollTop = 0;
+      ajustarTextareas($('opMobilizacaoFormPanel') || document);
     }, 60);
   }
 
@@ -868,8 +1122,11 @@
       + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
       + '</div></div></div>'
       + diarioOverlayHtml()
+      + mobilizacaoOverlayHtml()
+      + confirmarExcluirMobilizacaoHtml()
       + recursoOverlayHtml()
-      + confirmarExcluirRecursoHtml();
+      + confirmarExcluirRecursoHtml()
+      + recursosPadraoOverlayHtml();
     setTimeout(function () { ajustarTextareas(el); }, 30);
   }
 
@@ -921,10 +1178,13 @@
       state.recursosErro = '';
       state.recursoForm = null;
       state.recursoEditId = '';
+      state.recursoExcluir = null;
+      state.recursosPadraoPicker = false;
       state.mobilizacaoEquipe = [];
       state.mobilizacaoErro = '';
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
+      state.mobilizacaoExcluir = null;
       renderDetalhe();
       focarPainelObra();
       await Promise.all([carregarDiariosObra(), carregarRecursosMobilizacaoObra()]);
@@ -1337,11 +1597,67 @@
     }
   }
 
+  function abrirEscolherRecursosPadrao() {
+    state.recursosPadraoPicker = true;
+    renderDetalhe();
+    setTimeout(function () {
+      var body = $('opRecursosPadraoBody');
+      if (body) body.scrollTop = 0;
+    }, 50);
+  }
+
+  function cancelarEscolherRecursosPadrao() {
+    state.recursosPadraoPicker = false;
+    renderDetalhe();
+    focarRecursosCampo();
+  }
+
+  async function adicionarRecursosPadraoSelecionados() {
+    if (!state.obraAtual) return;
+    var checks = Array.prototype.slice.call(document.querySelectorAll('.op-rec-padrao-check:checked:not(:disabled)'));
+    if (!checks.length) return msg('Selecione pelo menos um recurso padrao.', 'err');
+    var existentes = {};
+    (state.recursos || []).forEach(function (r) { existentes[(r.categoria || '') + '||' + (r.item || '')] = true; });
+    var criados = 0;
+    try {
+      for (var i = 0; i < checks.length; i++) {
+        var cat = checks[i].getAttribute('data-cat') || '';
+        var item = checks[i].getAttribute('data-item') || '';
+        if (!cat || !item || existentes[cat + '||' + item]) continue;
+        try {
+          await window.sbCriarRecursoCampo({
+            empresa_id: getEmpresaId(),
+            obra_id: state.obraAtual.id,
+            categoria: cat,
+            item: item,
+            obrigatorio: false,
+            quantidade_prevista: 1,
+            status: 'previsto'
+          });
+          existentes[cat + '||' + item] = true;
+          criados++;
+        } catch (dup) {
+          if (!(dup && dup.code === '23505')) throw dup;
+          existentes[cat + '||' + item] = true;
+        }
+      }
+      state.recursosPadraoPicker = false;
+      msg(criados ? (criados + ' recurso(s) adicionados.') : 'Nenhum recurso novo para adicionar.');
+      await carregarRecursosMobilizacaoObra();
+      focarRecursosCampo();
+    } catch (e) {
+      msg('Erro ao adicionar recursos padrao: ' + (e.message || e), 'err');
+    }
+  }
+
   function novaMobilizacao() {
     if (!state.obraAtual) return;
     state.mobilizacaoEditId = '';
     state.mobilizacaoForm = {
       nome_colaborador: '',
+      tipo_integrante: 'mao_obra_propria',
+      empresa_integrante: '',
+      qtd_tecnicos: '',
       forma_deslocamento: 'nao_aplicavel',
       ponto_encontro: state.obraAtual.ponto_encontro_equipe || '',
       horario_encontro: state.obraAtual.horario_encontro_equipe || '',
@@ -1349,14 +1665,22 @@
       valor_adiantamento: 0
     };
     renderDetalhe();
+    focarMobilizacaoForm();
   }
 
   function editarMobilizacao(id) {
     var m = (state.mobilizacaoEquipe || []).find(function (it) { return it.id === id; });
     if (!m) return msg('Mobilizacao nao encontrada.', 'err');
+    var meta = parseEquipeMeta(m.observacoes);
     state.mobilizacaoEditId = id;
-    state.mobilizacaoForm = Object.assign({}, m);
+    state.mobilizacaoForm = Object.assign({}, m, {
+      tipo_integrante: meta.tipo || 'mao_obra_propria',
+      empresa_integrante: meta.empresa || '',
+      qtd_tecnicos: meta.qtd || '',
+      observacoes: meta.obs || ''
+    });
     renderDetalhe();
+    focarMobilizacaoForm();
   }
 
   function coletarMobilizacaoForm() {
@@ -1365,6 +1689,9 @@
       obra_id: state.obraAtual ? state.obraAtual.id : '',
       nome_colaborador: ($('opMobEqNome') || {}).value || '',
       funcao: ($('opMobEqFuncao') || {}).value || '',
+      tipo_integrante: ($('opMobEqTipo') || {}).value || '',
+      empresa_integrante: ($('opMobEqEmpresa') || {}).value || '',
+      qtd_tecnicos: ($('opMobEqQtd') || {}).value || '',
       forma_deslocamento: ($('opMobEqForma') || {}).value || '',
       carona_com: ($('opMobEqCarona') || {}).value || '',
       ponto_encontro: ($('opMobEqPonto') || {}).value || '',
@@ -1384,30 +1711,49 @@
     try {
       var dados = coletarMobilizacaoForm();
       if (!String(dados.nome_colaborador || '').trim()) return msg('Informe o nome do colaborador.', 'err');
+      dados.observacoes = serializarEquipeObs(dados);
       if (state.mobilizacaoEditId) await window.sbAtualizarMobilizacaoEquipe(state.mobilizacaoEditId, dados);
       else await window.sbCriarMobilizacaoEquipe(dados);
       state.mobilizacaoForm = null;
       state.mobilizacaoEditId = '';
       msg('Mobilizacao da equipe salva.');
       await carregarRecursosMobilizacaoObra();
+      focarMobilizacaoEquipe();
     } catch (e) {
       msg('Erro ao salvar mobilizacao: ' + (e.message || e), 'err');
     }
   }
 
-  async function excluirMobilizacao(id) {
-    if (!window.confirm('Excluir este colaborador da mobilizacao?')) return;
+  function abrirConfirmarExcluirMobilizacao(id) {
+    var m = (state.mobilizacaoEquipe || []).find(function (it) { return it.id === id; });
+    if (!m) return msg('Mobilizacao nao encontrada.', 'err');
+    state.mobilizacaoExcluir = { id: m.id, nome: m.nome_colaborador || '' };
+    renderDetalhe();
+    focarMobilizacaoEquipe();
+  }
+
+  async function confirmarExcluirMobilizacao() {
+    if (!state.mobilizacaoExcluir || !state.mobilizacaoExcluir.id) return;
+    var id = state.mobilizacaoExcluir.id;
     try {
       await window.sbExcluirMobilizacaoEquipe(id);
       msg('Mobilizacao excluida.');
+      state.mobilizacaoExcluir = null;
       if (state.mobilizacaoEditId === id) {
         state.mobilizacaoForm = null;
         state.mobilizacaoEditId = '';
       }
       await carregarRecursosMobilizacaoObra();
+      focarMobilizacaoEquipe();
     } catch (e) {
       msg('Erro ao excluir mobilizacao: ' + (e.message || e), 'err');
     }
+  }
+
+  function cancelarExcluirMobilizacao() {
+    state.mobilizacaoExcluir = null;
+    renderDetalhe();
+    focarMobilizacaoEquipe();
   }
 
   function cancelarRecurso() {
@@ -1421,6 +1767,7 @@
     state.mobilizacaoForm = null;
     state.mobilizacaoEditId = '';
     renderDetalhe();
+    focarMobilizacaoEquipe();
   }
 
   function onFase1cClick(e) {
@@ -1431,6 +1778,9 @@
     var action = btn.getAttribute('data-op-1c-action');
     var id = btn.getAttribute('data-id') || '';
     if (action === 'gerar-recursos') gerarRecursosPadrao();
+    else if (action === 'escolher-recursos-padrao') abrirEscolherRecursosPadrao();
+    else if (action === 'cancelar-recursos-padrao') cancelarEscolherRecursosPadrao();
+    else if (action === 'adicionar-recursos-padrao') adicionarRecursosPadraoSelecionados();
     else if (action === 'novo-recurso') novoRecurso();
     else if (action === 'editar-recurso') editarRecurso(id);
     else if (action === 'salvar-recurso') salvarRecurso();
@@ -1442,7 +1792,9 @@
     else if (action === 'editar-mobilizacao') editarMobilizacao(id);
     else if (action === 'salvar-mobilizacao') salvarMobilizacao();
     else if (action === 'cancelar-mobilizacao') cancelarMobilizacao();
-    else if (action === 'excluir-mobilizacao') excluirMobilizacao(id);
+    else if (action === 'excluir-mobilizacao') abrirConfirmarExcluirMobilizacao(id);
+    else if (action === 'confirmar-excluir-mobilizacao') confirmarExcluirMobilizacao();
+    else if (action === 'cancelar-excluir-mobilizacao') cancelarExcluirMobilizacao();
   }
 
   function onDiarioClick(e) {
