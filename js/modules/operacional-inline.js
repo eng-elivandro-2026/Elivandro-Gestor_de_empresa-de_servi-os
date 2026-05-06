@@ -368,16 +368,16 @@
 
   function diarioOverlayHtml() {
     if (!state.diarioForm) return '';
-    return '<div id="opDiarioOverlay" style="position:fixed;inset:0;z-index:940;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
-      + '<div id="opDiarioDialog" style="width:min(1060px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
-      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+    return '<div id="opDiarioOverlay" class="op-panel-overlay" style="position:fixed;inset:0;z-index:940;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opDiarioDialog" class="op-panel-shell" style="width:min(1060px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.diarioEditId ? 'Editar Diario de Obra' : 'Novo Diario de Obra') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente do Diario de Obra. Use Voltar para retornar ao detalhe da obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opDiarioBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
+      + '<div id="opDiarioBody" class="op-panel-body" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + diarioFormHtml()
       + '</div>'
-      + '<div id="opDiarioFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opDiarioFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-dia-action="cancelar" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-dia-action="salvar" style="min-height:44px">Salvar Diario</button>'
       + '</div></div></div>';
@@ -524,20 +524,28 @@
     return String(it.tipo || it.t || it.cat || it.categoria || '').toLowerCase();
   }
 
+  function primeiroValor(it, campos) {
+    for (var i = 0; i < campos.length; i++) {
+      var v = it[campos[i]];
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return '';
+  }
+
   function itemQtd(it) {
-    return it.qtd || it.qt || it.q || it.quantidade || '';
+    return primeiroValor(it, ['qtd', 'qt', 'quantidade', 'q', 'fator', 'horas', 'qtdHrs', 'qtd_hrs', 'qtde', 'quant']);
   }
 
   function itemUn(it) {
-    return it.un || it.und || it.unid || it.unidade || '';
+    return primeiroValor(it, ['un', 'unidade', 'und', 'unit', 'unid', 'uni']);
   }
 
   function itemCustoUnit(it) {
-    return it.cu || it.custo || it.custoUnit || it.custo_unit || it.vc || it.valor_custo || it.cst || '';
+    return primeiroValor(it, ['cu', 'custo_unitario', 'custoUnit', 'custo', 'valor_custo_unitario', 'custo_unit', 'cUnit', 'c_unit', 'vc', 'valor_custo', 'cst']);
   }
 
   function itemCustoTotal(it) {
-    var total = it.ct || it.custo_total || it.custoTotal || it.vct || it.total_custo || it.totalCusto || '';
+    var total = primeiroValor(it, ['ct', 'custo_total', 'custoTotal', 'valor_custo_total', 'custoTotalItem', 'total_custo', 'totalCusto', 'vct']);
     if (total !== '') return total;
     var unit = numeroFlex(itemCustoUnit(it));
     var qtd = numeroFlex(itemQtd(it) || 0);
@@ -560,7 +568,7 @@
   }
 
   function itemObs(it) {
-    return it.obs || it.observacoes || it.detalhes || it.det || it.nota || '';
+    return primeiroValor(it, ['descricao_complementar', 'desc_complementar', 'complemento', 'obs', 'observacoes', 'detalhes', 'det', 'nota']);
   }
 
   function itemNumero(it, idx) {
@@ -569,18 +577,81 @@
   }
 
   function itemAreaEquip(it, obra) {
-    var direto = it.area || it.area_local || it.local || it.equipamento || it.equip || it.equipamento_maquina_linha;
+    var direto = primeiroValor(it, ['area', 'area_local', 'local', 'equipamento', 'equip', 'equipamento_maquina_linha', 'maq', 'maquina', 'linha']);
     if (direto) return direto;
     if (!obra) return '';
     return [obra.area_local, obra.equipamento_maquina_linha].filter(Boolean).join(' / ');
   }
 
   function itemInstalacaoPainel(it, obra) {
-    return it.instalacao || it.inst || it.painel || it.quadro || it.qd || it.local_instalacao || (obra && (obra.cliente_local || obra.titulo)) || '';
+    return primeiroValor(it, ['instalacao', 'inst', 'painel', 'quadro', 'qd', 'local_instalacao', 'instalacao_painel']) || (obra && (obra.cliente_local || obra.titulo)) || '';
   }
 
   function itemCategoriaDesc(it) {
-    return it.categoria_descricao || it.desc_categoria || it.categoriaDesc || it.descricao_categoria || it.obs_categoria || '';
+    return primeiroValor(it, ['categoria_descricao', 'desc_categoria', 'categoriaDesc', 'descricao_categoria', 'obs_categoria', 'descricao_geral_categoria', 'categoria_geral']);
+  }
+
+  function itemCategoriaCodigo(it) {
+    return primeiroValor(it, ['cod_categoria', 'codigo_categoria', 'categoria_codigo', 'cat_codigo', 'categoria', 'cat', 'tipo', 't']);
+  }
+
+  function itemTipoLabel(it) {
+    var tipo = itemTipo(it);
+    if (tipo.indexOf('mat') >= 0) return 'Material';
+    if (tipo.indexOf('serv') >= 0 || tipo.indexOf('mao') >= 0 || tipo.indexOf('instal') >= 0) return 'Servico';
+    return 'Nao informado';
+  }
+
+  function itemFator(it) {
+    return primeiroValor(it, ['fator', 'fat', 'multiplicador', 'mult', 'horas', 'qtdHrs', 'qtd_hrs']);
+  }
+
+  function itemTerceiro(it) {
+    return primeiroValor(it, ['terceiro', 'terc', 'fornecedor', 'empresa_terceira', 'terceiro_nome']);
+  }
+
+  function itemInclusao(it) {
+    if (it.incluido === true || it.inc === true) return 'Incluido';
+    if (it.incluido === false || it.inc === false) return 'Excluido';
+    return primeiroValor(it, ['inclusao', 'inclusao_exclusao', 'status_inclusao', 'considerado']);
+  }
+
+  function chaveComercialItem(k) {
+    var s = String(k || '').toLowerCase();
+    return s.indexOf('pv') >= 0 || s.indexOf('markup') >= 0 || s.indexOf('lucro') >= 0
+      || s.indexOf('margem') >= 0 || s.indexOf('comiss') >= 0 || s.indexOf('aliq') >= 0
+      || s.indexOf('preco') >= 0 || s.indexOf('preço') >= 0 || s.indexOf('venda') >= 0
+      || s.indexOf('negoci') >= 0 || s === 'mb' || s === 'nf' || s === 'rs'
+      || s === 'll' || s.indexOf('ll_') >= 0 || s.indexOf('ll%') >= 0 || s.indexOf('fmf') >= 0;
+  }
+
+  function chaveJaExibidaItem(k) {
+    var exibidas = {
+      id: 1, num: 1, n: 1, numero: 1, item_num: 1, itemnumero: 1, seq: 1, ordem: 1,
+      des: 1, desc: 1, d: 1, descricao: 1, nome: 1, item: 1, tit: 1,
+      tipo: 1, t: 1, cat: 1, categoria: 1, cod_categoria: 1, codigo_categoria: 1, categoria_codigo: 1, cat_codigo: 1,
+      qtd: 1, qt: 1, quantidade: 1, q: 1, fator: 1, horas: 1, qtdhrs: 1, qtd_hrs: 1, qtde: 1, quant: 1,
+      un: 1, unidade: 1, und: 1, unit: 1, unid: 1, uni: 1,
+      cu: 1, custo_unitario: 1, custounit: 1, custo: 1, valor_custo_unitario: 1, custo_unit: 1, cunit: 1, c_unit: 1, vc: 1, valor_custo: 1, cst: 1,
+      ct: 1, custo_total: 1, custototal: 1, valor_custo_total: 1, custototalitem: 1, total_custo: 1, totalcusto: 1, vct: 1, total: 1,
+      obs: 1, observacoes: 1, detalhes: 1, det: 1, nota: 1, descricao_complementar: 1, desc_complementar: 1, complemento: 1,
+      area: 1, area_local: 1, local: 1, equipamento: 1, equip: 1, equipamento_maquina_linha: 1, maq: 1, maquina: 1, linha: 1,
+      instalacao: 1, inst: 1, painel: 1, quadro: 1, qd: 1, local_instalacao: 1, instalacao_painel: 1,
+      categoria_descricao: 1, desc_categoria: 1, categoriadesc: 1, descricao_categoria: 1, obs_categoria: 1, descricao_geral_categoria: 1, categoria_geral: 1,
+      terceiro: 1, terc: 1, fornecedor: 1, empresa_terceira: 1, terceiro_nome: 1,
+      incluido: 1, inc: 1, inclusao: 1, inclusao_exclusao: 1, status_inclusao: 1, considerado: 1
+    };
+    return !!exibidas[String(k || '').toLowerCase()];
+  }
+
+  function detalhesTecnicosItem(it) {
+    return Object.keys(it || {}).filter(function (k) {
+      var v = it[k];
+      return !chaveComercialItem(k) && !chaveJaExibidaItem(k)
+        && v !== undefined && v !== null && v !== '' && (typeof v !== 'object');
+    }).map(function (k) {
+      return '<span style="display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.18rem .45rem;margin:.12rem .18rem .12rem 0;background:var(--bg2)"><strong>' + esc(k) + ':</strong> ' + esc(String(it[k])) + '</span>';
+    }).join('');
   }
 
   function filtrarItensSnapshot(o, tipoAlvo) {
@@ -600,18 +671,28 @@
         var desc = itemDescricao(it);
         var qtd = itemQtd(it) || '-';
         var un = itemUn(it) || '';
-        var cat = it.categoria || it.cat || it.tipo || it.t || '-';
+        var tipo = itemTipoLabel(it);
+        var cat = itemCategoriaCodigo(it) || '-';
         var area = itemAreaEquip(it, obra) || 'Nao informado';
         var painel = itemInstalacaoPainel(it, obra) || 'Nao informado';
         var obs = itemObs(it);
         var catDesc = itemCategoriaDesc(it);
+        var fator = itemFator(it);
+        var terceiro = itemTerceiro(it);
+        var inclusao = itemInclusao(it);
+        var extras = detalhesTecnicosItem(it);
         return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
           + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.55rem;font-size:.82rem;color:var(--text2);line-height:1.4">'
           + '<div><strong style="color:var(--text)">Nº Item:</strong><br>' + esc(itemNumero(it, idx)) + '</div>'
+          + '<div><strong style="color:var(--text)">Tipo do item:</strong><br>' + esc(tipo) + '</div>'
+          + '<div><strong style="color:var(--text)">Codigo/categoria:</strong><br>' + esc(cat || 'Nao informado') + '</div>'
           + '<div><strong style="color:var(--text)">Quantidade:</strong><br>' + esc(qtd) + '</div>'
           + '<div><strong style="color:var(--text)">Unidade:</strong><br>' + esc(un || 'Nao informado') + '</div>'
+          + (fator ? '<div><strong style="color:var(--text)">Fator tecnico:</strong><br>' + esc(fator) + '</div>' : '')
           + '<div><strong style="color:var(--text)">Valor unitario de custo:</strong><br>' + esc(moedaTexto(itemCustoUnit(it))) + '</div>'
           + '<div><strong style="color:var(--text)">Valor total de custo:</strong><br>' + esc(moedaTexto(itemCustoTotal(it))) + '</div>'
+          + (terceiro ? '<div><strong style="color:var(--text)">Terceiro:</strong><br>' + esc(terceiro) + '</div>' : '')
+          + (inclusao ? '<div><strong style="color:var(--text)">Inclusao / exclusao:</strong><br>' + esc(inclusao) + '</div>' : '')
           + '</div>'
           + '<div style="font-size:.95rem;font-weight:900;color:var(--text);line-height:1.35;margin-top:.65rem">' + esc(desc) + '</div>'
           + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem;font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.55rem">'
@@ -620,7 +701,8 @@
           + '</div>'
           + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.65rem"><strong style="color:var(--text)">Categoria:</strong> ' + esc(cat || 'Nao informado') + '</div>'
           + '<div style="font-size:.78rem;color:var(--text3);line-height:1.45;margin-top:.3rem"><strong>Descricao geral da categoria:</strong> ' + esc(catDesc || 'Nao informado') + '</div>'
-          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap"><strong>Detalhes:</strong> ' + esc(obs) + '</div>' : '')
+          + (obs ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.45rem;white-space:pre-wrap"><strong>Descricao complementar / observacoes:</strong> ' + esc(obs) + '</div>' : '')
+          + (extras ? '<div style="font-size:.78rem;color:var(--text2);margin-top:.5rem"><strong style="color:var(--text)">Detalhes tecnicos adicionais:</strong><br>' + extras + '</div>' : '')
           + '</div>';
       }).join('');
     }
@@ -669,16 +751,16 @@
 
   function recursoOverlayHtml() {
     if (!state.recursoForm) return '';
-    return '<div id="opRecursoOverlay" style="position:fixed;inset:0;z-index:945;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
-      + '<div id="opRecursoDialog" style="width:min(820px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
-      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+    return '<div id="opRecursoOverlay" class="op-panel-overlay" style="position:fixed;inset:0;z-index:945;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opRecursoDialog" class="op-panel-shell" style="width:min(820px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.recursoEditId ? 'Editar Recurso de Campo' : 'Novo Recurso de Campo') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente de Recursos de Campo. Use Voltar para retornar a obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opRecursoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
+      + '<div id="opRecursoBody" class="op-panel-body" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + recursoFormHtml()
       + '</div>'
-      + '<div id="opRecursoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opRecursoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso" style="min-height:44px">Salvar Recurso</button>'
       + '</div></div></div>';
@@ -716,14 +798,14 @@
         }).join('')
         + '</div></div>';
     }).join('');
-    return '<div id="opRecursosPadraoOverlay" style="position:fixed;inset:0;z-index:946;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
-      + '<div id="opRecursosPadraoDialog" style="width:min(980px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
-      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+    return '<div id="opRecursosPadraoOverlay" class="op-panel-overlay" style="position:fixed;inset:0;z-index:946;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opRecursosPadraoDialog" class="op-panel-shell" style="width:min(980px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">Escolher Recursos Padrao</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Marque somente os recursos que deseja adicionar nesta obra.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opRecursosPadraoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">' + grupos + '</div>'
-      + '<div id="opRecursosPadraoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opRecursosPadraoBody" class="op-panel-body" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">' + grupos + '</div>'
+      + '<div id="opRecursosPadraoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recursos-padrao" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="adicionar-recursos-padrao" style="min-height:44px">Adicionar selecionados</button>'
       + '</div></div></div>';
@@ -781,16 +863,16 @@
 
   function mobilizacaoOverlayHtml() {
     if (!state.mobilizacaoForm) return '';
-    return '<div id="opMobilizacaoOverlay" style="position:fixed;inset:0;z-index:944;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
-      + '<div id="opMobilizacaoDialog" style="width:min(900px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
-      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+    return '<div id="opMobilizacaoOverlay" class="op-panel-overlay" style="position:fixed;inset:0;z-index:944;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opMobilizacaoDialog" class="op-panel-shell" style="width:min(900px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
       + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.mobilizacaoEditId ? 'Editar Colaborador' : 'Adicionar Colaborador') + '</div>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Integrantes e deslocamento da obra, sem alterar o RH.</div></div>'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:42px">Voltar</button></div>'
-      + '<div id="opMobilizacaoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
+      + '<div id="opMobilizacaoBody" class="op-panel-body" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem calc(9rem + env(safe-area-inset-bottom))">'
       + mobilizacaoFormHtml()
       + '</div>'
-      + '<div id="opMobilizacaoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<div id="opMobilizacaoFooter" class="op-panel-footer" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(1.35rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
       + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao" style="min-height:44px">Cancelar / Voltar</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao" style="min-height:44px">Salvar Colaborador</button>'
       + '</div></div></div>';
@@ -1060,32 +1142,21 @@
 
   function ajusteResponsivoHtml() {
     return '<style id="opResponsiveStyles">'
+      + '.op-panel-overlay{box-sizing:border-box;}'
+      + '.op-panel-shell{display:flex!important;flex-direction:column!important;min-height:0;}'
+      + '.op-panel-header{flex:0 0 auto!important;background:var(--bg2);}'
+      + '.op-panel-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;}'
+      + '.op-panel-footer{flex:0 0 auto!important;background:var(--bg2)!important;border-top:1px solid var(--border)!important;box-shadow:0 -12px 30px rgba(0,0,0,.2);z-index:8;}'
+      + '.op-panel-footer .btn{min-height:46px;}'
       + '@media(max-width:720px){'
-      + '#opObraPanel{inset:0!important;padding:0!important;align-items:stretch!important;}'
-      + '#opObraDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opObraBody{padding:.85rem!important;}'
-      + '#opDiarioOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
-      + '#opDiarioDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opDiarioBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
-      + '#opDiarioFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
-      + '#opDiarioFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
-      + '#opRecursoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
-      + '#opRecursoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opRecursoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
-      + '#opRecursoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
-      + '#opRecursoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
+      + '.op-panel-overlay{inset:0!important;padding:0!important;align-items:stretch!important;justify-content:stretch!important;}'
+      + '.op-panel-shell{width:100%!important;height:100vh!important;height:100dvh!important;max-height:100vh!important;max-height:100dvh!important;border-radius:0!important;border:none!important;}'
+      + '.op-panel-header{position:relative!important;top:auto!important;padding:.85rem!important;}'
+      + '.op-panel-body{padding:.85rem .85rem calc(13rem + env(safe-area-inset-bottom))!important;}'
+      + '.op-panel-footer{position:relative!important;padding:.85rem .85rem calc(2.35rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;gap:.55rem!important;}'
+      + '.op-panel-footer .btn{flex:1!important;min-height:52px!important;font-size:.9rem!important;padding:.7rem .55rem!important;}'
       + '#opRecursoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
-      + '#opMobilizacaoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
-      + '#opMobilizacaoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opMobilizacaoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
-      + '#opMobilizacaoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
-      + '#opMobilizacaoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '#opMobilizacaoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
-      + '#opRecursosPadraoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
-      + '#opRecursosPadraoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
-      + '#opRecursosPadraoBody{padding:.85rem .85rem calc(10rem + env(safe-area-inset-bottom))!important;}'
-      + '#opRecursosPadraoFooter{position:relative!important;padding:.75rem .85rem calc(1.5rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
-      + '#opRecursosPadraoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
       + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
@@ -1169,14 +1240,14 @@
     }
     var centroCustoAuto = o.centro_custo || o.codigo_obra || '';
     el.innerHTML = ajusteResponsivoHtml()
-      + '<div id="opObraPanel" style="position:fixed;inset:0;z-index:880;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem">'
-      + '<div id="opObraDialog" style="width:min(1120px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">'
-      + '<div style="position:sticky;top:0;z-index:5;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'
+      + '<div id="opObraPanel" class="op-panel-overlay" style="position:fixed;inset:0;z-index:880;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opObraDialog" class="op-panel-shell" style="width:min(1120px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:5;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'
       + '<div><div style="font-size:1.25rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">Detalhe da Obra</div>'
       + '<h3 style="margin:.25rem 0 0;font-size:1.05rem;color:var(--text);line-height:1.28">' + esc(o.codigo_obra || '-') + ' - ' + esc(o.titulo || '-') + '</h3>'
       + '<div style="font-size:.82rem;color:var(--text3);margin-top:.22rem">Proposta ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' / Rev. ' + esc(o.proposta_revisao) : '') + '</div></div>'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px">Fechar</button></div>'
-      + '<div id="opObraBody" style="overflow:auto;padding:1rem">'
+      + '<div id="opObraBody" class="op-panel-body" style="overflow:auto;padding:1rem">'
       + sectionBox('Dados da Obra', '', ''
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.75rem;margin-bottom:1rem;font-size:.86rem;color:var(--text2)">'
       + '<div><strong>Cliente</strong><br>' + esc(o.cliente_nome || '-') + '</div>'
@@ -1213,7 +1284,7 @@
       + operacionalPlanejamentoHtml(o)
       + diarioSectionHtml()
       + '</div>'
-      + '<div style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
+      + '<div id="opObraFooter" class="op-panel-footer" style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Voltar</button>'
       + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
       + '</div></div></div>'
