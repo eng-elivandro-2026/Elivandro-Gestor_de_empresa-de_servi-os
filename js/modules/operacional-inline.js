@@ -24,6 +24,7 @@
     recursosCarregando: false,
     recursoForm: null,
     recursoEditId: '',
+    recursoExcluir: null,
     mobilizacaoEquipe: [],
     mobilizacaoErro: '',
     mobilizacaoCarregando: false,
@@ -453,8 +454,7 @@
   function recursoFormHtml() {
     if (!state.recursoForm) return '';
     var r = state.recursoForm;
-    return '<div style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem;margin:.75rem 0">'
-      + '<div style="font-size:.82rem;color:var(--blue);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">' + (state.recursoEditId ? 'Editar recurso' : 'Novo recurso') + '</div>'
+    return '<div id="opRecursoFormPanel" style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem">'
       + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem">'
       + campo('Categoria', selectCampo('opRecCat', OP_LISTAS_1C.categoria_recurso, r.categoria))
       + campo('Item', input('opRecItem', r.item))
@@ -464,10 +464,37 @@
       + campo('Status', selectCampo('opRecStatusCampo', OP_LISTAS_1C.status_recurso, r.status || 'previsto'))
       + '</div>'
       + '<div style="margin-top:.65rem">' + campo('Observacoes', textarea('opRecObsCampo', r.observacoes, 76)) + '</div>'
-      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem;flex-wrap:wrap">'
-      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso">Cancelar</button>'
-      + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso">Salvar recurso</button>'
-      + '</div></div>';
+      + '<div style="height:1rem"></div></div>';
+  }
+
+  function recursoOverlayHtml() {
+    if (!state.recursoForm) return '';
+    return '<div id="opRecursoOverlay" style="position:fixed;inset:0;z-index:945;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opRecursoDialog" style="width:min(820px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden;display:flex;flex-direction:column">'
+      + '<div style="position:sticky;top:0;z-index:6;background:var(--bg2);border-bottom:1px solid var(--border);padding:.95rem 1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start">'
+      + '<div><div style="font-size:1.2rem;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.02em">' + (state.recursoEditId ? 'Editar Recurso de Campo' : 'Novo Recurso de Campo') + '</div>'
+      + '<div style="font-size:.82rem;color:var(--text3);margin-top:.18rem">Ambiente de Recursos de Campo. Use Voltar para retornar a obra.</div></div>'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:42px">Voltar</button></div>'
+      + '<div id="opRecursoBody" style="overflow:auto;flex:1;min-height:0;padding:1rem 1rem 6.5rem">'
+      + recursoFormHtml()
+      + '</div>'
+      + '<div id="opRecursoFooter" style="flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.6rem;box-shadow:0 -10px 28px rgba(0,0,0,.22)">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso" style="min-height:44px">Cancelar / Voltar</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso" style="min-height:44px">Salvar Recurso</button>'
+      + '</div></div></div>';
+  }
+
+  function confirmarExcluirRecursoHtml() {
+    if (!state.recursoExcluir) return '';
+    return '<div id="opRecursoConfirmOverlay" style="position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.76);display:flex;align-items:center;justify-content:center;padding:1rem">'
+      + '<div id="opRecursoConfirmDialog" style="width:min(440px,94vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden">'
+      + '<div style="padding:1rem;border-bottom:1px solid var(--border)"><div style="font-size:1rem;font-weight:900;color:#ef4444;text-transform:uppercase">Excluir Recurso de Campo</div>'
+      + '<div style="font-size:.86rem;color:var(--text2);line-height:1.45;margin-top:.55rem">Deseja realmente excluir este recurso de campo?</div>'
+      + '<div style="font-size:.9rem;color:var(--text);font-weight:800;margin-top:.65rem">' + esc(state.recursoExcluir.item || '-') + '</div></div>'
+      + '<div style="padding:.85rem 1rem calc(.85rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.55rem;background:var(--bg2)">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-excluir-recurso" style="min-height:42px">Cancelar</button>'
+      + '<button type="button" class="btn bd" data-op-1c-action="confirmar-excluir-recurso" style="min-height:42px">Excluir</button>'
+      + '</div></div></div>';
   }
 
   function recursosCampoHtml() {
@@ -488,12 +515,11 @@
           + '</div>';
       }).join('');
     }
-    return sectionBox('Recursos de Campo', 'Ferramentas, EPIs, EPCs e recursos previstos para a obra.',
+    return '<div id="opRecursosCampoAnchor">' + sectionBox('Recursos de Campo', 'Ferramentas, EPIs, EPCs e recursos previstos para a obra.',
       '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<button type="button" class="btn bg" data-op-1c-action="gerar-recursos">Gerar recursos padrao</button>'
       + '<button type="button" class="btn ba" data-op-1c-action="novo-recurso">Novo recurso</button></div>'
-      + recursoFormHtml()
-      + '<div>' + cards + '</div>');
+      + '<div>' + cards + '</div>') + '</div>';
   }
 
   function mobilizacaoFormHtml() {
@@ -726,6 +752,12 @@
       + '#opDiarioBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
       + '#opDiarioFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
       + '#opDiarioFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
+      + '#opRecursoOverlay{inset:0!important;padding:0!important;align-items:stretch!important;}'
+      + '#opRecursoDialog{width:100%!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;border:none!important;}'
+      + '#opRecursoBody{padding:.85rem .85rem calc(7.5rem + env(safe-area-inset-bottom))!important;}'
+      + '#opRecursoFooter{position:relative!important;padding:.75rem .85rem calc(.95rem + env(safe-area-inset-bottom))!important;justify-content:stretch!important;}'
+      + '#opRecursoFooter .btn{flex:1!important;min-height:48px!important;font-size:.9rem!important;}'
+      + '#opRecursoConfirmOverlay{inset:0!important;padding:.85rem!important;}'
       + '.op-form-grid,.op-filter-grid{grid-template-columns:1fr!important;}'
       + '#opObraDialog .btn{min-height:42px!important;font-size:.86rem!important;}'
       + '#opDiarioFormPanel{padding:.85rem!important;margin-left:-.15rem!important;margin-right:-.15rem!important;}'
@@ -755,6 +787,25 @@
       var body = $('opDiarioBody') || $('opObraBody');
       if (body) body.scrollTop = 0;
       ajustarTextareas(form || document);
+    }, 60);
+  }
+
+  function focarRecursosCampo() {
+    setTimeout(function () {
+      var anchor = $('opRecursosCampoAnchor');
+      var body = $('opObraBody');
+      if (anchor && body) {
+        body.scrollTop = Math.max(0, anchor.offsetTop - 12);
+      }
+      ajustarTextareas(anchor || document);
+    }, 70);
+  }
+
+  function focarRecursoForm() {
+    setTimeout(function () {
+      var body = $('opRecursoBody') || $('opObraBody');
+      if (body) body.scrollTop = 0;
+      ajustarTextareas($('opRecursoFormPanel') || document);
     }, 60);
   }
 
@@ -816,7 +867,9 @@
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:42px">Voltar</button>'
       + '<button type="button" class="btn ba" onclick="opSalvarObra()" style="min-height:42px">Salvar Obra</button>'
       + '</div></div></div>'
-      + diarioOverlayHtml();
+      + diarioOverlayHtml()
+      + recursoOverlayHtml()
+      + confirmarExcluirRecursoHtml();
     setTimeout(function () { ajustarTextareas(el); }, 30);
   }
 
@@ -1191,6 +1244,7 @@
     state.recursoEditId = '';
     state.recursoForm = { categoria: 'ferramentas_apoio', item: '', obrigatorio: false, quantidade_prevista: 1, status: 'previsto' };
     renderDetalhe();
+    focarRecursoForm();
   }
 
   function editarRecurso(id) {
@@ -1199,6 +1253,7 @@
     state.recursoEditId = id;
     state.recursoForm = Object.assign({}, r);
     renderDetalhe();
+    focarRecursoForm();
   }
 
   function coletarRecursoForm() {
@@ -1226,33 +1281,58 @@
       state.recursoEditId = '';
       msg('Recurso de campo salvo.');
       await carregarRecursosMobilizacaoObra();
+      focarRecursosCampo();
     } catch (e) {
       msg('Erro ao salvar recurso: ' + (e.message || e), 'err');
     }
   }
 
-  async function excluirRecurso(id) {
-    if (!window.confirm('Excluir este recurso de campo?')) return;
+  function abrirConfirmarExcluirRecurso(id) {
+    var r = (state.recursos || []).find(function (it) { return it.id === id; });
+    if (!r) return msg('Recurso nao encontrado.', 'err');
+    state.recursoExcluir = { id: r.id, item: r.item || '' };
+    renderDetalhe();
+    focarRecursosCampo();
+  }
+
+  async function confirmarExcluirRecurso() {
+    if (!state.recursoExcluir || !state.recursoExcluir.id) return;
+    var id = state.recursoExcluir.id;
     try {
       await window.sbExcluirRecursoCampo(id);
       msg('Recurso excluido.');
+      state.recursoExcluir = null;
       if (state.recursoEditId === id) {
         state.recursoForm = null;
         state.recursoEditId = '';
       }
       await carregarRecursosMobilizacaoObra();
+      focarRecursosCampo();
     } catch (e) {
       msg('Erro ao excluir recurso: ' + (e.message || e), 'err');
     }
   }
 
+  function cancelarExcluirRecurso() {
+    state.recursoExcluir = null;
+    renderDetalhe();
+    focarRecursosCampo();
+  }
+
   async function gerarRecursosPadrao() {
     if (!state.obraAtual) return;
     try {
+      state.recursosCarregando = true;
+      renderDetalhe();
+      focarRecursosCampo();
       await window.sbCriarRecursosPadraoObra(getEmpresaId(), state.obraAtual.id);
       msg('Recursos padrao gerados sem duplicar itens existentes.');
       await carregarRecursosMobilizacaoObra();
+      focarRecursosCampo();
     } catch (e) {
+      state.recursosCarregando = false;
+      renderDetalhe();
+      focarRecursosCampo();
       msg('Erro ao gerar recursos padrao: ' + (e.message || e), 'err');
     }
   }
@@ -1334,6 +1414,7 @@
     state.recursoForm = null;
     state.recursoEditId = '';
     renderDetalhe();
+    focarRecursosCampo();
   }
 
   function cancelarMobilizacao() {
@@ -1354,7 +1435,9 @@
     else if (action === 'editar-recurso') editarRecurso(id);
     else if (action === 'salvar-recurso') salvarRecurso();
     else if (action === 'cancelar-recurso') cancelarRecurso();
-    else if (action === 'excluir-recurso') excluirRecurso(id);
+    else if (action === 'excluir-recurso') abrirConfirmarExcluirRecurso(id);
+    else if (action === 'confirmar-excluir-recurso') confirmarExcluirRecurso();
+    else if (action === 'cancelar-excluir-recurso') cancelarExcluirRecurso();
     else if (action === 'nova-mobilizacao') novaMobilizacao();
     else if (action === 'editar-mobilizacao') editarMobilizacao(id);
     else if (action === 'salvar-mobilizacao') salvarMobilizacao();
