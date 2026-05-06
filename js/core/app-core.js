@@ -1645,12 +1645,12 @@ function rDash(rankTarget, sortBy){
           var conv=c.conv.toFixed(1);
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
           return '<tr>'
-            +'<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+esc(c.cliente)+'">'+esc(c.cliente)+'</td>'
-            +'<td>'+esc(c.cidade)+'</td>'
-            +'<td style="text-align:center">'+c.propostas+'</td>'
-            +'<td style="text-align:center">'+c.fechados+'</td>'
-            +'<td class="'+cls+'" style="text-align:center">'+conv+'%</td>'
-            +'<td style="text-align:right">'+money(c.valor)+'</td>'
+            +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.cliente)+'">'+esc(c.cliente)+'</td>'
+            +'<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.cidade)+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
+            +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
+            +'<td style="text-align:right;white-space:nowrap">'+money(c.valor)+'</td>'
             +'</tr>';
         }).join('')+'</tbody></table>';
     }
@@ -1704,12 +1704,12 @@ function rDash(rankTarget, sortBy){
           var cls=c.conv>=50?'conv-good':(c.conv>=25?'conv-mid':'conv-bad');
           var cliList=Object.keys(c.clientes).join(', ');
           return '<tr>'
-            +'<td style="font-weight:600" title="'+esc(cliList)+'">'+esc(c.contato)+'</td>'
-            +'<td style="text-align:center;color:var(--text3)" title="'+esc(cliList)+'">'+c.numCli+'</td>'
-            +'<td style="text-align:center">'+c.propostas+'</td>'
-            +'<td style="text-align:center">'+c.fechados+'</td>'
-            +'<td class="'+cls+'" style="text-align:center">'+conv+'%</td>'
-            +'<td style="text-align:right">'+money(c.valor)+'</td>'
+            +'<td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(cliList)+'">'+esc(c.contato)+'</td>'
+            +'<td style="text-align:center;color:var(--text3);white-space:nowrap" title="'+esc(cliList)+'">'+c.numCli+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.propostas+'</td>'
+            +'<td style="text-align:center;white-space:nowrap">'+c.fechados+'</td>'
+            +'<td class="'+cls+'" style="text-align:center;white-space:nowrap">'+conv+'%</td>'
+            +'<td style="text-align:right;white-space:nowrap">'+money(c.valor)+'</td>'
             +'</tr>';
         }).join('')+'</tbody></table>';
     }
@@ -1739,7 +1739,7 @@ function rDash(rankTarget, sortBy){
   if(exec){
     exec.innerHTML=''
       +'<div class="metric-box"><div class="metric-label">Conversão correta do ano</div><div class="metric-val" style="color:var(--purple)">'+(totalAno?((fechAno/totalAno)*100).toFixed(1):'0.0')+'%</div><div class="metric-sub">'+fechAno+' fechamentos de '+totalAno+' propostas</div></div>'
-      +'<div class="metric-box"><div class="metric-label">Ticket médio aprovado</div>'+'<div class="metric-val" style="color:var(--accent)">'+money(fechAno?recAno/fechAno:0)+'</div>'+(antTicket>0&&fechAno>0?'<div class="metric-sub" style="color:'+(recAno/fechAno>=antTicket?'#3fb950':'#f85149')+'">'+(recAno/fechAno>=antTicket?'\u25b2':'\u25bc')+' '+(((recAno/fechAno-antTicket)/antTicket)*100).toFixed(1)+'% vs ano ant.</div>':'<div class="metric-sub">Base nos fechamentos do ano</div>')+'</div>'+'<div class="metric-box"><div class="metric-label">Ticket médio ano anterior</div>'+'<div class="metric-val" style="color:var(--text3)">'+money(antTicket)+'</div>'+'<div class="metric-sub">'+(antTicket>0?'Referência configurada':'Configure em ⛔ Metas')+'</div></div>'
+      +'<div class="metric-box"><div class="metric-label">Ticket médio aprovado</div>'+'<div class="metric-val" style="color:var(--accent);white-space:nowrap">'+money(fechAno?recAno/fechAno:0)+'</div>'+(antTicket>0&&fechAno>0?'<div class="metric-sub" style="color:'+(recAno/fechAno>=antTicket?'#3fb950':'#f85149')+'">'+(recAno/fechAno>=antTicket?'\u25b2':'\u25bc')+' '+(((recAno/fechAno-antTicket)/antTicket)*100).toFixed(1)+'% vs ano ant.</div>':'<div class="metric-sub">Base nos fechamentos do ano</div>')+'</div>'+'<div class="metric-box"><div class="metric-label">Ticket médio ano anterior</div>'+'<div class="metric-val" style="color:var(--text3);white-space:nowrap">'+money(antTicket)+'</div>'+'<div class="metric-sub">'+(antTicket>0?'Referência configurada':'Configure em ⛔ Metas')+'</div></div>'
       +'<div class="metric-box"><div class="metric-label">Previsão de fechamento do ano</div><div class="metric-val" style="color:var(--green)">'+projFech+'</div><div class="metric-sub">Ritmo atual anualizado</div></div>';
   }
 

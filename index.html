@@ -97,6 +97,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi-l{font-size:.72rem;color:var(--text3);margin-top:.25rem;text-transform:uppercase;letter-spacing:.05em}
 /* Visão Geral — font menor no desktop para valores monetários não quebrarem */
 #visaoGeralBody .kpi-v{font-size:clamp(.70rem,1.2vw,.82rem);word-break:normal;overflow-wrap:break-word}
+/* Visão Executiva KPIs — prevenir quebra de valores */
+#ceoKpis .kpi-v{font-size:clamp(.68rem,1.3vw,.88rem);word-break:normal;overflow-wrap:break-word}
 .ph-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.6rem;margin-bottom:1.1rem}
 .ph{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.7rem;text-align:center;cursor:pointer;transition:all .18s}
 .ph:hover{border-color:var(--blue);transform:translateY(-1px)}
@@ -284,7 +286,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 #deAlertasGrid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem}
 .metric-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem}
 .metric-label{font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.18rem}
-.metric-val{font-size:1.05rem;font-weight:700}
+.metric-val{font-size:clamp(.78rem,1.5vw,.95rem);font-weight:700;word-break:normal;overflow-wrap:break-word}
 .metric-sub{font-size:.68rem;color:var(--text3);margin-top:.15rem}
 
 
@@ -6852,7 +6854,7 @@ function carregarCeoDash(){
           +'<span style="font-size:.65rem;color:'+corFase+'">'+(fase.i?fase.i+' ':'')+fase.n+'</span>'
           +kpi
           +'</div>'
-          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0">'+money(n2(p.val))+'</div>'
+          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;white-space:nowrap">'+money(n2(p.val))+'</div>'
           +'</div>'
           +'</div>';
       }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Nenhum serviço em fase operacional.</p>');
