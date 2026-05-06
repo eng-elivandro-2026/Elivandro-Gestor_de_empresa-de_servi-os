@@ -18,7 +18,17 @@
     diarioFiltroData: '',
     diarioFiltroStatus: '',
     diarioForm: null,
-    diarioEditId: ''
+    diarioEditId: '',
+    recursos: [],
+    recursosErro: '',
+    recursosCarregando: false,
+    recursoForm: null,
+    recursoEditId: '',
+    mobilizacaoEquipe: [],
+    mobilizacaoErro: '',
+    mobilizacaoCarregando: false,
+    mobilizacaoForm: null,
+    mobilizacaoEditId: ''
   };
 
   var STATUS_RETROATIVOS = [
@@ -144,6 +154,46 @@
     ]}
   ];
 
+  var OP_LISTAS_1C = {
+    recebimento_status: {
+      nao_iniciado: 'Nao iniciado',
+      em_analise: 'Em analise',
+      recebido: 'Recebido',
+      pendente_informacao: 'Pendente de informacao',
+      liberado_para_planejamento: 'Liberado para planejamento'
+    },
+    tipo_alimentacao_padrao: DIARIO_LISTAS.tipo_alimentacao,
+    categoria_recurso: {
+      ferramentas_apoio: 'Ferramentas / apoio',
+      medicao_teste: 'Medicao e teste',
+      epis: 'EPIs',
+      epcs_sinalizacao: 'EPC / sinalizacao',
+      outros: 'Outros'
+    },
+    status_recurso: {
+      previsto: 'Previsto',
+      separado: 'Separado',
+      levado_obra: 'Levado para obra',
+      em_uso: 'Em uso',
+      faltando: 'Faltando',
+      danificado: 'Danificado',
+      devolvido: 'Devolvido',
+      nao_aplicavel: 'Nao aplicavel'
+    },
+    forma_deslocamento: {
+      carro_proprio: 'Carro proprio',
+      moto_propria: 'Moto propria',
+      onibus: 'Onibus',
+      uber: 'Uber',
+      taxi: 'Taxi',
+      carona: 'Carona',
+      veiculo_empresa: 'Veiculo da empresa',
+      veiculo_alugado: 'Veiculo alugado',
+      van_transporte_contratado: 'Van / transporte contratado',
+      nao_aplicavel: 'Nao aplicavel'
+    }
+  };
+
   function $(id) { return document.getElementById(id); }
 
   function esc(v) {
@@ -187,6 +237,18 @@
 
   function labelLista(nome, valor) {
     return (DIARIO_LISTAS[nome] && DIARIO_LISTAS[nome][valor]) || valor || '-';
+  }
+
+  function optionsObj(obj, valor, vazio) {
+    var html = vazio ? '<option value="">Selecione...</option>' : '';
+    Object.keys(obj || {}).forEach(function (k) {
+      html += '<option value="' + esc(k) + '"' + (k === valor ? ' selected' : '') + '>' + esc(obj[k]) + '</option>';
+    });
+    return html;
+  }
+
+  function labelObj(nome, valor) {
+    return (OP_LISTAS_1C[nome] && OP_LISTAS_1C[nome][valor]) || valor || '-';
   }
 
   function hojeISO() {
@@ -295,6 +357,206 @@
       + '<button type="button" class="btn bg" data-op-dia-action="limpar-filtro">Limpar</button></div>'
       + '<div id="opDiarioLista">' + listaHtml + '</div>'
       + '</section>';
+  }
+
+  function recebimentoSectionHtml(o) {
+    return sectionBox('Recebimento Operacional', 'Conferencia inicial antes do planejamento da execucao.',
+      '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem">'
+      + campo('Status do recebimento', selectCampo('opRecStatus', OP_LISTAS_1C.recebimento_status, o.recebimento_status || 'nao_iniciado'))
+      + campo('Data recebimento', input('opRecData', dataInput(o.data_recebimento_operacional), 'date'))
+      + campo('Responsavel recebimento', input('opRecResp', o.responsavel_recebimento_nome))
+      + campo('Numero pedido compra', input('opRecPedidoNum', o.numero_pedido_compra))
+      + campo('Area / Local', input('opRecArea', o.area_local))
+      + campo('Equipamento / Maquina / Linha', input('opRecEquip', o.equipamento_maquina_linha))
+      + campo('Endereco de execucao', input('opRecEndereco', o.endereco_execucao))
+      + campo('Cidade de execucao', input('opRecCidade', o.cidade_execucao))
+      + checkCampo('opRecPedido', 'Pedido de compra recebido?', o.pedido_compra_recebido)
+      + checkCampo('opRecEscopo', 'Escopo conferido?', o.escopo_conferido)
+      + checkCampo('opRecPrazo', 'Prazo validado?', o.prazo_validado)
+      + checkCampo('opRecCondPag', 'Condicao de pagamento conferida?', o.condicao_pagamento_conferida)
+      + checkCampo('opRecPropConf', 'Proposta aprovada conferida?', o.proposta_aprovada_conferida)
+      + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de recebimento', textarea('opRecObs', o.observacoes_recebimento, 90)) + '</div>');
+  }
+
+  function segurancaSectionHtml(o) {
+    return sectionBox('Seguranca / Liberacao da Obra', 'Requisitos de liberacao antes de mobilizar a equipe.',
+      '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.65rem">'
+      + checkCampo('opSegInt', 'Integracao obrigatoria?', o.integracao_obrigatoria)
+      + checkCampo('opSegDds', 'DDS obrigatorio?', o.dds_obrigatorio)
+      + checkCampo('opSegApr', 'APR obrigatoria?', o.apr_obrigatoria_obra)
+      + checkCampo('opSegPt', 'PT obrigatoria?', o.pt_obrigatoria_obra)
+      + checkCampo('opSegIso', 'Isolamento de area obrigatorio?', o.isolamento_area_obrigatorio)
+      + checkCampo('opSegBloq', 'Bloqueio e etiquetagem obrigatorio?', o.bloqueio_etiquetagem_obrigatorio)
+      + checkCampo('opSegArt', 'ART obrigatoria?', o.art_obrigatoria)
+      + checkCampo('opSegAso', 'ASO obrigatorio?', o.aso_obrigatorio)
+      + checkCampo('opSegNr10', 'NR10 obrigatoria?', o.nr10_obrigatoria)
+      + checkCampo('opSegNr35', 'NR35 obrigatoria?', o.nr35_obrigatoria)
+      + checkCampo('opSegPgr', 'PGR/PCMSO obrigatorio?', o.pgr_pcmso_obrigatorio)
+      + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de seguranca', textarea('opSegObs', o.observacoes_seguranca_obra, 90)) + '</div>');
+  }
+
+  function jornadaSectionHtml(o) {
+    return sectionBox('Jornada / Horario Previsto', 'Horario base planejado para a execucao em campo.',
+      '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem">'
+      + campo('Horario inicio previsto', input('opJorIni', o.horario_inicio_previsto, 'time'))
+      + campo('Horario termino previsto', input('opJorFim', o.horario_termino_previsto, 'time'))
+      + campo('Intervalo almoco minutos', input('opJorIntervalo', o.intervalo_almoco_previsto_minutos == null ? 60 : o.intervalo_almoco_previsto_minutos, 'number'))
+      + campo('Dias de trabalho previstos', input('opJorDias', o.dias_trabalho_previstos))
+      + checkCampo('opJorCliente', 'Horario definido pelo cliente?', o.horario_definido_pelo_cliente)
+      + checkCampo('opJorExtra', 'Permite hora extra?', o.permite_hora_extra)
+      + checkCampo('opJorFimSemana', 'Permite trabalho em fim de semana?', o.permite_trabalho_fim_semana)
+      + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de horario', textarea('opJorObs', o.observacoes_horario, 90)) + '</div>');
+  }
+
+  function alimentacaoMobilizacaoSectionHtml(o) {
+    return sectionBox('Mobilizacao / Logistica', 'Alimentacao, deslocamento e preparacao da equipe para a obra.',
+      '<div style="font-size:.82rem;color:var(--text);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">Alimentacao</div>'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-bottom:1rem">'
+      + campo('Tipo alimentacao padrao', selectCampo('opAliTipo', OP_LISTAS_1C.tipo_alimentacao_padrao, o.tipo_alimentacao_padrao))
+      + campo('Local alimentacao padrao', input('opAliLocal', o.local_alimentacao_padrao))
+      + '</div>'
+      + campo('Observacoes de alimentacao', textarea('opAliObs', o.observacoes_alimentacao_padrao, 84))
+      + '<div style="font-size:.82rem;color:var(--text);font-weight:900;text-transform:uppercase;margin:.9rem 0 .6rem">Mobilizacao</div>'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem">'
+      + checkCampo('opMobPrecisa', 'Precisa mobilizacao?', o.precisa_mobilizacao)
+      + checkCampo('opMobHotel', 'Precisa hotel?', o.precisa_hotel)
+      + campo('Hotel previsto', input('opMobHotelPrev', o.hotel_previsto))
+      + checkCampo('opMobVeiculo', 'Precisa veiculo?', o.precisa_veiculo)
+      + campo('Veiculo previsto', input('opMobVeiculoPrev', o.veiculo_previsto))
+      + checkCampo('opMobComb', 'Precisa combustivel?', o.precisa_combustivel)
+      + checkCampo('opMobPedagio', 'Precisa pedagio?', o.precisa_pedagio)
+      + checkCampo('opMobEstac', 'Precisa estacionamento?', o.precisa_estacionamento)
+      + checkCampo('opMobAdiant', 'Precisa adiantamento?', o.precisa_adiantamento)
+      + campo('Valor adiantamento previsto', input('opMobValorAdiant', o.valor_adiantamento_previsto || 0, 'number'))
+      + campo('Responsavel mobilizacao', input('opMobResp', o.responsavel_mobilizacao_nome))
+      + campo('Ponto encontro equipe', input('opMobPonto', o.ponto_encontro_equipe))
+      + campo('Horario encontro equipe', input('opMobHorario', o.horario_encontro_equipe, 'time'))
+      + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de mobilizacao', textarea('opMobObs', o.observacoes_mobilizacao_obra, 90)) + '</div>'
+      + mobilizacaoEquipeHtml());
+  }
+
+  function contingenciaSectionHtml(o) {
+    return sectionBox('Contingencia de Material', 'Plano para falta de material e compras emergenciais.',
+      '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem">'
+      + campo('Responsavel compra emergencial', input('opContCompra', o.responsavel_compra_emergencial))
+      + campo('Responsavel retirada/busca', input('opContRetirada', o.responsavel_retirada_emergencial))
+      + checkCampo('opContAprovacao', 'Precisa aprovacao para compra emergencial?', o.precisa_aprovacao_compra_emergencial !== false)
+      + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Plano de contingencia material', textarea('opContPlano', o.plano_contingencia_material, 90)) + '</div>'
+      + '<div style="margin-top:.75rem">' + campo('Observacoes de contingencia', textarea('opContObs', o.observacoes_contingencia_material, 90)) + '</div>');
+  }
+
+  function recursoFormHtml() {
+    if (!state.recursoForm) return '';
+    var r = state.recursoForm;
+    return '<div style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem;margin:.75rem 0">'
+      + '<div style="font-size:.82rem;color:var(--blue);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">' + (state.recursoEditId ? 'Editar recurso' : 'Novo recurso') + '</div>'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem">'
+      + campo('Categoria', selectCampo('opRecCat', OP_LISTAS_1C.categoria_recurso, r.categoria))
+      + campo('Item', input('opRecItem', r.item))
+      + checkCampo('opRecObrig', 'Obrigatorio?', r.obrigatorio)
+      + campo('Quantidade prevista', input('opRecQtd', r.quantidade_prevista || 1, 'number'))
+      + campo('Responsavel', input('opRecRespCampo', r.responsavel))
+      + campo('Status', selectCampo('opRecStatusCampo', OP_LISTAS_1C.status_recurso, r.status || 'previsto'))
+      + '</div>'
+      + '<div style="margin-top:.65rem">' + campo('Observacoes', textarea('opRecObsCampo', r.observacoes, 76)) + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem;flex-wrap:wrap">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-recurso">Cancelar</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="salvar-recurso">Salvar recurso</button>'
+      + '</div></div>';
+  }
+
+  function recursosCampoHtml() {
+    var lista = state.recursos || [];
+    var cards = state.recursosCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando recursos...</div>' : '';
+    if (!cards && state.recursosErro) cards = '<div style="color:#ef4444;font-size:.8rem">' + esc(state.recursosErro) + '</div>';
+    if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum recurso cadastrado para esta obra.</div>';
+    if (!cards) {
+      cards = lista.map(function (r) {
+        return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
+          + '<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">'
+          + '<div><div style="font-size:.9rem;font-weight:900;color:var(--text)">' + esc(r.item) + '</div>'
+          + '<div style="font-size:.76rem;color:var(--text3);margin-top:.14rem">' + esc(labelObj('categoria_recurso', r.categoria)) + ' | ' + esc(labelObj('status_recurso', r.status)) + '</div></div>'
+          + '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button type="button" class="btn bg bsm" data-op-1c-action="editar-recurso" data-id="' + esc(r.id) + '">Editar</button>'
+          + '<button type="button" class="btn bd bsm" data-op-1c-action="excluir-recurso" data-id="' + esc(r.id) + '">Excluir</button></div></div>'
+          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.5rem">Qtd: ' + esc(r.quantidade_prevista || 0) + ' | Obrigatorio: ' + (r.obrigatorio ? 'Sim' : 'Nao') + (r.responsavel ? ' | Resp.: ' + esc(r.responsavel) : '') + '</div>'
+          + (r.observacoes ? '<div style="font-size:.78rem;color:var(--text3);margin-top:.35rem;white-space:pre-wrap">' + esc(r.observacoes) + '</div>' : '')
+          + '</div>';
+      }).join('');
+    }
+    return sectionBox('Recursos de Campo', 'Ferramentas, EPIs, EPCs e recursos previstos para a obra.',
+      '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">'
+      + '<button type="button" class="btn bg" data-op-1c-action="gerar-recursos">Gerar recursos padrao</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="novo-recurso">Novo recurso</button></div>'
+      + recursoFormHtml()
+      + '<div>' + cards + '</div>');
+  }
+
+  function mobilizacaoFormHtml() {
+    if (!state.mobilizacaoForm) return '';
+    var m = state.mobilizacaoForm;
+    return '<div style="border:1px solid rgba(88,166,255,.35);border-radius:9px;background:rgba(88,166,255,.055);padding:.85rem;margin:.75rem 0">'
+      + '<div style="font-size:.82rem;color:var(--blue);font-weight:900;text-transform:uppercase;margin-bottom:.6rem">' + (state.mobilizacaoEditId ? 'Editar colaborador na mobilizacao' : 'Adicionar colaborador a mobilizacao') + '</div>'
+      + '<div class="op-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem">'
+      + campo('Nome colaborador', input('opMobEqNome', m.nome_colaborador))
+      + campo('Funcao', input('opMobEqFuncao', m.funcao))
+      + campo('Forma deslocamento', selectCampo('opMobEqForma', OP_LISTAS_1C.forma_deslocamento, m.forma_deslocamento))
+      + campo('Carona com', input('opMobEqCarona', m.carona_com))
+      + campo('Ponto encontro', input('opMobEqPonto', m.ponto_encontro))
+      + campo('Horario encontro', input('opMobEqHorario', m.horario_encontro, 'time'))
+      + checkCampo('opMobEqAdiant', 'Precisa adiantamento?', m.precisa_adiantamento)
+      + campo('Valor adiantamento', input('opMobEqValor', m.valor_adiantamento || 0, 'number'))
+      + campo('Veiculo utilizado', input('opMobEqVeiculo', m.veiculo_utilizado))
+      + campo('Motorista', input('opMobEqMotorista', m.motorista))
+      + checkCampo('opMobEqReembolso', 'Precisa reembolso?', m.precisa_reembolso)
+      + checkCampo('opMobEqComp', 'Comprovante obrigatorio?', m.comprovante_obrigatorio)
+      + '</div>'
+      + '<div style="margin-top:.65rem">' + campo('Observacoes', textarea('opMobEqObs', m.observacoes, 76)) + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem;flex-wrap:wrap">'
+      + '<button type="button" class="btn bg" data-op-1c-action="cancelar-mobilizacao">Cancelar</button>'
+      + '<button type="button" class="btn ba" data-op-1c-action="salvar-mobilizacao">Salvar colaborador</button>'
+      + '</div></div>';
+  }
+
+  function mobilizacaoEquipeHtml() {
+    var lista = state.mobilizacaoEquipe || [];
+    var cards = state.mobilizacaoCarregando ? '<div style="color:var(--text3);font-size:.8rem">Carregando mobilizacao da equipe...</div>' : '';
+    if (!cards && state.mobilizacaoErro) cards = '<div style="color:#ef4444;font-size:.8rem">' + esc(state.mobilizacaoErro) + '</div>';
+    if (!cards && !lista.length) cards = '<div style="color:var(--text3);font-size:.8rem">Nenhum colaborador cadastrado na mobilizacao desta obra.</div>';
+    if (!cards) {
+      cards = lista.map(function (m) {
+        return '<div style="border:1px solid var(--border);border-radius:9px;background:var(--bg3);padding:.75rem;margin-bottom:.55rem">'
+          + '<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">'
+          + '<div><div style="font-size:.9rem;font-weight:900;color:var(--text)">' + esc(m.nome_colaborador) + '</div>'
+          + '<div style="font-size:.76rem;color:var(--text3);margin-top:.14rem">' + esc(m.funcao || '-') + ' | ' + esc(labelObj('forma_deslocamento', m.forma_deslocamento)) + '</div></div>'
+          + '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button type="button" class="btn bg bsm" data-op-1c-action="editar-mobilizacao" data-id="' + esc(m.id) + '">Editar</button>'
+          + '<button type="button" class="btn bd bsm" data-op-1c-action="excluir-mobilizacao" data-id="' + esc(m.id) + '">Excluir</button></div></div>'
+          + '<div style="font-size:.8rem;color:var(--text2);line-height:1.45;margin-top:.5rem">Encontro: ' + esc(m.ponto_encontro || '-') + ' ' + esc(m.horario_encontro || '') + (m.precisa_adiantamento ? ' | Adiant.: ' + money(m.valor_adiantamento) : '') + (m.precisa_reembolso ? ' | Reembolso' : '') + '</div>'
+          + (m.observacoes ? '<div style="font-size:.78rem;color:var(--text3);margin-top:.35rem;white-space:pre-wrap">' + esc(m.observacoes) + '</div>' : '')
+          + '</div>';
+      }).join('');
+    }
+    return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
+      + '<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:.7rem">'
+      + '<div><div style="font-size:.88rem;color:var(--text);font-weight:900;text-transform:uppercase">Como cada colaborador vai ate a obra</div>'
+      + '<div style="font-size:.76rem;color:var(--text3)">Cadastro manual, sem alterar o RH.</div></div>'
+      + '<button type="button" class="btn ba" data-op-1c-action="nova-mobilizacao">Adicionar colaborador</button></div>'
+      + mobilizacaoFormHtml()
+      + cards
+      + '</div>';
+  }
+
+  function operacionalPlanejamentoHtml(o) {
+    return recebimentoSectionHtml(o)
+      + segurancaSectionHtml(o)
+      + jornadaSectionHtml(o)
+      + alimentacaoMobilizacaoSectionHtml(o)
+      + contingenciaSectionHtml(o)
+      + recursosCampoHtml();
   }
 
   function getEmpresaId() {
@@ -432,6 +694,27 @@
     return '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">';
   }
 
+  function textarea(id, val, minHeight) {
+    return '<textarea id="' + id + '" class="op-auto-textarea" rows="3" style="padding:.55rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);resize:none;overflow:hidden;min-height:' + (minHeight || 84) + 'px;line-height:1.45">' + esc(val || '') + '</textarea>';
+  }
+
+  function selectCampo(id, lista, val) {
+    return '<select id="' + id + '" style="padding:.48rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + optionsObj(lista, val, true) + '</select>';
+  }
+
+  function checkCampo(id, label, val) {
+    return '<label style="display:flex;align-items:center;gap:.45rem;font-size:.78rem;color:var(--text2);padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3)">'
+      + '<input id="' + id + '" type="checkbox"' + boolChecked(val) + '> ' + esc(label) + '</label>';
+  }
+
+  function sectionBox(titulo, subtitulo, html) {
+    return '<section style="border:1px solid rgba(88,166,255,.24);border-radius:10px;background:rgba(88,166,255,.035);padding:1rem;margin-bottom:1rem">'
+      + '<div style="display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.85rem">'
+      + '<div><div style="font-size:1rem;color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.02em">' + esc(titulo) + '</div>'
+      + (subtitulo ? '<div style="font-size:.8rem;color:var(--text3);margin-top:.16rem">' + esc(subtitulo) + '</div>' : '')
+      + '</div></div>' + html + '</section>';
+  }
+
   function ajusteResponsivoHtml() {
     return '<style id="opResponsiveStyles">'
       + '@media(max-width:720px){'
@@ -526,6 +809,7 @@
       + '<div style="font-size:.72rem;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:.5rem">Resumo do snapshot da proposta</div>'
       + snapshotResumo(o)
       + '</div></section>'
+      + operacionalPlanejamentoHtml(o)
       + diarioSectionHtml()
       + '</div>'
       + '<div style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:.75rem 1rem;display:flex;justify-content:flex-end;gap:.6rem">'
@@ -580,9 +864,17 @@
       state.diarioEditId = '';
       state.diarios = [];
       state.diarioErro = '';
+      state.recursos = [];
+      state.recursosErro = '';
+      state.recursoForm = null;
+      state.recursoEditId = '';
+      state.mobilizacaoEquipe = [];
+      state.mobilizacaoErro = '';
+      state.mobilizacaoForm = null;
+      state.mobilizacaoEditId = '';
       renderDetalhe();
       focarPainelObra();
-      await carregarDiariosObra();
+      await Promise.all([carregarDiariosObra(), carregarRecursosMobilizacaoObra()]);
     } catch (e) {
       msg('Erro ao abrir obra: ' + (e.message || e), 'err');
     }
@@ -591,6 +883,67 @@
   function fecharDetalhe() {
     state.obraAtual = null;
     renderDetalhe();
+  }
+
+  function coletarRecebimentoMobilizacao() {
+    return {
+      recebimento_status: ($('opRecStatus') || {}).value || 'nao_iniciado',
+      data_recebimento_operacional: ($('opRecData') || {}).value || null,
+      responsavel_recebimento_nome: ($('opRecResp') || {}).value || '',
+      pedido_compra_recebido: !!(($('opRecPedido') || {}).checked),
+      numero_pedido_compra: ($('opRecPedidoNum') || {}).value || '',
+      escopo_conferido: !!(($('opRecEscopo') || {}).checked),
+      prazo_validado: !!(($('opRecPrazo') || {}).checked),
+      condicao_pagamento_conferida: !!(($('opRecCondPag') || {}).checked),
+      proposta_aprovada_conferida: !!(($('opRecPropConf') || {}).checked),
+      area_local: ($('opRecArea') || {}).value || ($('opEdAreaLocal') || {}).value || '',
+      equipamento_maquina_linha: ($('opRecEquip') || {}).value || ($('opEdEquipLinha') || {}).value || '',
+      endereco_execucao: ($('opRecEndereco') || {}).value || '',
+      cidade_execucao: ($('opRecCidade') || {}).value || '',
+      observacoes_recebimento: ($('opRecObs') || {}).value || '',
+      integracao_obrigatoria: !!(($('opSegInt') || {}).checked),
+      dds_obrigatorio: !!(($('opSegDds') || {}).checked),
+      apr_obrigatoria_obra: !!(($('opSegApr') || {}).checked),
+      pt_obrigatoria_obra: !!(($('opSegPt') || {}).checked),
+      isolamento_area_obrigatorio: !!(($('opSegIso') || {}).checked),
+      bloqueio_etiquetagem_obrigatorio: !!(($('opSegBloq') || {}).checked),
+      art_obrigatoria: !!(($('opSegArt') || {}).checked),
+      aso_obrigatorio: !!(($('opSegAso') || {}).checked),
+      nr10_obrigatoria: !!(($('opSegNr10') || {}).checked),
+      nr35_obrigatoria: !!(($('opSegNr35') || {}).checked),
+      pgr_pcmso_obrigatorio: !!(($('opSegPgr') || {}).checked),
+      observacoes_seguranca_obra: ($('opSegObs') || {}).value || '',
+      horario_inicio_previsto: ($('opJorIni') || {}).value || null,
+      horario_termino_previsto: ($('opJorFim') || {}).value || null,
+      intervalo_almoco_previsto_minutos: ($('opJorIntervalo') || {}).value || 60,
+      dias_trabalho_previstos: ($('opJorDias') || {}).value || '',
+      horario_definido_pelo_cliente: !!(($('opJorCliente') || {}).checked),
+      permite_hora_extra: !!(($('opJorExtra') || {}).checked),
+      permite_trabalho_fim_semana: !!(($('opJorFimSemana') || {}).checked),
+      observacoes_horario: ($('opJorObs') || {}).value || '',
+      tipo_alimentacao_padrao: ($('opAliTipo') || {}).value || '',
+      local_alimentacao_padrao: ($('opAliLocal') || {}).value || '',
+      observacoes_alimentacao_padrao: ($('opAliObs') || {}).value || '',
+      precisa_mobilizacao: !!(($('opMobPrecisa') || {}).checked),
+      precisa_hotel: !!(($('opMobHotel') || {}).checked),
+      hotel_previsto: ($('opMobHotelPrev') || {}).value || '',
+      precisa_veiculo: !!(($('opMobVeiculo') || {}).checked),
+      veiculo_previsto: ($('opMobVeiculoPrev') || {}).value || '',
+      precisa_combustivel: !!(($('opMobComb') || {}).checked),
+      precisa_pedagio: !!(($('opMobPedagio') || {}).checked),
+      precisa_estacionamento: !!(($('opMobEstac') || {}).checked),
+      precisa_adiantamento: !!(($('opMobAdiant') || {}).checked),
+      valor_adiantamento_previsto: ($('opMobValorAdiant') || {}).value || 0,
+      responsavel_mobilizacao_nome: ($('opMobResp') || {}).value || '',
+      ponto_encontro_equipe: ($('opMobPonto') || {}).value || '',
+      horario_encontro_equipe: ($('opMobHorario') || {}).value || null,
+      observacoes_mobilizacao_obra: ($('opMobObs') || {}).value || '',
+      plano_contingencia_material: ($('opContPlano') || {}).value || '',
+      responsavel_compra_emergencial: ($('opContCompra') || {}).value || '',
+      responsavel_retirada_emergencial: ($('opContRetirada') || {}).value || '',
+      precisa_aprovacao_compra_emergencial: !!(($('opContAprovacao') || {}).checked),
+      observacoes_contingencia_material: ($('opContObs') || {}).value || ''
+    };
   }
 
   async function salvarObra() {
@@ -616,6 +969,9 @@
     };
     try {
       state.obraAtual = await window.sbAtualizarObra(state.obraAtual.id, dados);
+      if (typeof window.sbAtualizarRecebimentoMobilizacaoObra === 'function') {
+        state.obraAtual = await window.sbAtualizarRecebimentoMobilizacaoObra(state.obraAtual.id, coletarRecebimentoMobilizacao());
+      }
       msg('Obra atualizada com sucesso.');
       await carregarObras();
       renderDetalhe();
@@ -635,6 +991,35 @@
       state.diarioErro = e.message || String(e);
     } finally {
       state.diarioCarregando = false;
+      renderDetalhe();
+    }
+  }
+
+  async function carregarRecursosMobilizacaoObra() {
+    if (!state.obraAtual) return;
+    var empresaId = getEmpresaId();
+    state.recursosCarregando = true;
+    state.mobilizacaoCarregando = true;
+    state.recursosErro = '';
+    state.mobilizacaoErro = '';
+    renderDetalhe();
+    try {
+      if (typeof window.sbListarRecursosCampoObra === 'function') {
+        state.recursos = await window.sbListarRecursosCampoObra(empresaId, state.obraAtual.id);
+      }
+    } catch (e) {
+      state.recursosErro = e.message || String(e);
+    } finally {
+      state.recursosCarregando = false;
+    }
+    try {
+      if (typeof window.sbListarMobilizacaoEquipeObra === 'function') {
+        state.mobilizacaoEquipe = await window.sbListarMobilizacaoEquipeObra(empresaId, state.obraAtual.id);
+      }
+    } catch (e2) {
+      state.mobilizacaoErro = e2.message || String(e2);
+    } finally {
+      state.mobilizacaoCarregando = false;
       renderDetalhe();
     }
   }
@@ -799,6 +1184,182 @@
       console.error('[Operacional] Erro tecnico ao salvar diario:', e);
       mostrarErroDiario(msgErroSalvarDiario(e));
     }
+  }
+
+  function novoRecurso() {
+    if (!state.obraAtual) return;
+    state.recursoEditId = '';
+    state.recursoForm = { categoria: 'ferramentas_apoio', item: '', obrigatorio: false, quantidade_prevista: 1, status: 'previsto' };
+    renderDetalhe();
+  }
+
+  function editarRecurso(id) {
+    var r = (state.recursos || []).find(function (it) { return it.id === id; });
+    if (!r) return msg('Recurso nao encontrado.', 'err');
+    state.recursoEditId = id;
+    state.recursoForm = Object.assign({}, r);
+    renderDetalhe();
+  }
+
+  function coletarRecursoForm() {
+    return {
+      empresa_id: getEmpresaId(),
+      obra_id: state.obraAtual ? state.obraAtual.id : '',
+      categoria: ($('opRecCat') || {}).value || '',
+      item: ($('opRecItem') || {}).value || '',
+      obrigatorio: !!(($('opRecObrig') || {}).checked),
+      quantidade_prevista: ($('opRecQtd') || {}).value || 1,
+      responsavel: ($('opRecRespCampo') || {}).value || '',
+      status: ($('opRecStatusCampo') || {}).value || 'previsto',
+      observacoes: ($('opRecObsCampo') || {}).value || ''
+    };
+  }
+
+  async function salvarRecurso() {
+    if (!state.obraAtual) return;
+    try {
+      var dados = coletarRecursoForm();
+      if (!String(dados.item || '').trim()) return msg('Informe o item do recurso.', 'err');
+      if (state.recursoEditId) await window.sbAtualizarRecursoCampo(state.recursoEditId, dados);
+      else await window.sbCriarRecursoCampo(dados);
+      state.recursoForm = null;
+      state.recursoEditId = '';
+      msg('Recurso de campo salvo.');
+      await carregarRecursosMobilizacaoObra();
+    } catch (e) {
+      msg('Erro ao salvar recurso: ' + (e.message || e), 'err');
+    }
+  }
+
+  async function excluirRecurso(id) {
+    if (!window.confirm('Excluir este recurso de campo?')) return;
+    try {
+      await window.sbExcluirRecursoCampo(id);
+      msg('Recurso excluido.');
+      if (state.recursoEditId === id) {
+        state.recursoForm = null;
+        state.recursoEditId = '';
+      }
+      await carregarRecursosMobilizacaoObra();
+    } catch (e) {
+      msg('Erro ao excluir recurso: ' + (e.message || e), 'err');
+    }
+  }
+
+  async function gerarRecursosPadrao() {
+    if (!state.obraAtual) return;
+    try {
+      await window.sbCriarRecursosPadraoObra(getEmpresaId(), state.obraAtual.id);
+      msg('Recursos padrao gerados sem duplicar itens existentes.');
+      await carregarRecursosMobilizacaoObra();
+    } catch (e) {
+      msg('Erro ao gerar recursos padrao: ' + (e.message || e), 'err');
+    }
+  }
+
+  function novaMobilizacao() {
+    if (!state.obraAtual) return;
+    state.mobilizacaoEditId = '';
+    state.mobilizacaoForm = {
+      nome_colaborador: '',
+      forma_deslocamento: 'nao_aplicavel',
+      ponto_encontro: state.obraAtual.ponto_encontro_equipe || '',
+      horario_encontro: state.obraAtual.horario_encontro_equipe || '',
+      precisa_adiantamento: false,
+      valor_adiantamento: 0
+    };
+    renderDetalhe();
+  }
+
+  function editarMobilizacao(id) {
+    var m = (state.mobilizacaoEquipe || []).find(function (it) { return it.id === id; });
+    if (!m) return msg('Mobilizacao nao encontrada.', 'err');
+    state.mobilizacaoEditId = id;
+    state.mobilizacaoForm = Object.assign({}, m);
+    renderDetalhe();
+  }
+
+  function coletarMobilizacaoForm() {
+    return {
+      empresa_id: getEmpresaId(),
+      obra_id: state.obraAtual ? state.obraAtual.id : '',
+      nome_colaborador: ($('opMobEqNome') || {}).value || '',
+      funcao: ($('opMobEqFuncao') || {}).value || '',
+      forma_deslocamento: ($('opMobEqForma') || {}).value || '',
+      carona_com: ($('opMobEqCarona') || {}).value || '',
+      ponto_encontro: ($('opMobEqPonto') || {}).value || '',
+      horario_encontro: ($('opMobEqHorario') || {}).value || null,
+      precisa_adiantamento: !!(($('opMobEqAdiant') || {}).checked),
+      valor_adiantamento: ($('opMobEqValor') || {}).value || 0,
+      veiculo_utilizado: ($('opMobEqVeiculo') || {}).value || '',
+      motorista: ($('opMobEqMotorista') || {}).value || '',
+      precisa_reembolso: !!(($('opMobEqReembolso') || {}).checked),
+      comprovante_obrigatorio: !!(($('opMobEqComp') || {}).checked),
+      observacoes: ($('opMobEqObs') || {}).value || ''
+    };
+  }
+
+  async function salvarMobilizacao() {
+    if (!state.obraAtual) return;
+    try {
+      var dados = coletarMobilizacaoForm();
+      if (!String(dados.nome_colaborador || '').trim()) return msg('Informe o nome do colaborador.', 'err');
+      if (state.mobilizacaoEditId) await window.sbAtualizarMobilizacaoEquipe(state.mobilizacaoEditId, dados);
+      else await window.sbCriarMobilizacaoEquipe(dados);
+      state.mobilizacaoForm = null;
+      state.mobilizacaoEditId = '';
+      msg('Mobilizacao da equipe salva.');
+      await carregarRecursosMobilizacaoObra();
+    } catch (e) {
+      msg('Erro ao salvar mobilizacao: ' + (e.message || e), 'err');
+    }
+  }
+
+  async function excluirMobilizacao(id) {
+    if (!window.confirm('Excluir este colaborador da mobilizacao?')) return;
+    try {
+      await window.sbExcluirMobilizacaoEquipe(id);
+      msg('Mobilizacao excluida.');
+      if (state.mobilizacaoEditId === id) {
+        state.mobilizacaoForm = null;
+        state.mobilizacaoEditId = '';
+      }
+      await carregarRecursosMobilizacaoObra();
+    } catch (e) {
+      msg('Erro ao excluir mobilizacao: ' + (e.message || e), 'err');
+    }
+  }
+
+  function cancelarRecurso() {
+    state.recursoForm = null;
+    state.recursoEditId = '';
+    renderDetalhe();
+  }
+
+  function cancelarMobilizacao() {
+    state.mobilizacaoForm = null;
+    state.mobilizacaoEditId = '';
+    renderDetalhe();
+  }
+
+  function onFase1cClick(e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-op-1c-action]') : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var action = btn.getAttribute('data-op-1c-action');
+    var id = btn.getAttribute('data-id') || '';
+    if (action === 'gerar-recursos') gerarRecursosPadrao();
+    else if (action === 'novo-recurso') novoRecurso();
+    else if (action === 'editar-recurso') editarRecurso(id);
+    else if (action === 'salvar-recurso') salvarRecurso();
+    else if (action === 'cancelar-recurso') cancelarRecurso();
+    else if (action === 'excluir-recurso') excluirRecurso(id);
+    else if (action === 'nova-mobilizacao') novaMobilizacao();
+    else if (action === 'editar-mobilizacao') editarMobilizacao(id);
+    else if (action === 'salvar-mobilizacao') salvarMobilizacao();
+    else if (action === 'cancelar-mobilizacao') cancelarMobilizacao();
+    else if (action === 'excluir-mobilizacao') excluirMobilizacao(id);
   }
 
   function onDiarioClick(e) {
@@ -966,7 +1527,9 @@
   window.opAbrirObraComercial = abrirObraComercial;
   window.opRenderActionBar = renderActionBar;
   window.opLimparActionBar = limparActionBar;
+  window.opCarregarRecursosMobilizacaoObra = carregarRecursosMobilizacaoObra;
 
+  document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
   document.addEventListener('input', onOperacionalInput, true);
 })(window, document);
