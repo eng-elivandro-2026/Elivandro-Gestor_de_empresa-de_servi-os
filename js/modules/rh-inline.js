@@ -2016,7 +2016,7 @@ async function abrirModalColab(id) {
       // Fetch company-specific overrides for current empresa
       var empId = await getEmpresaId();
       var { data: rawOv } = await sb.from('colaborador_empresas')
-        .select('email,telefone,funcao,admissao,observacoes,tipo,valor_hora,documento,periculoso,fim_contrato')
+        .select('nome,email,telefone,funcao,admissao,observacoes,tipo,valor_hora,documento,periculoso,fim_contrato')
         .eq('colaborador_id', id).eq('empresa_id', empId).single();
       _colabRawOverride = rawOv || {};
 
@@ -2156,12 +2156,14 @@ async function salvarColab() {
     };
     var { data: existingLink } = await sb.from('colaborador_empresas')
       .select('id').eq('colaborador_id', colabId).eq('empresa_id', empId).maybeSingle();
+    var linkRes;
     if (existingLink) {
-      await sb.from('colaborador_empresas').update(Object.assign({ativo:true}, overridesEmpAtiva))
+      linkRes = await sb.from('colaborador_empresas').update(Object.assign({ativo:true}, overridesEmpAtiva))
         .eq('colaborador_id', colabId).eq('empresa_id', empId);
     } else {
-      await sb.from('colaborador_empresas').insert(Object.assign({colaborador_id:colabId, empresa_id:empId, ativo:true}, overridesEmpAtiva));
+      linkRes = await sb.from('colaborador_empresas').insert(Object.assign({colaborador_id:colabId, empresa_id:empId, ativo:true}, overridesEmpAtiva));
     }
+    if (linkRes && linkRes.error) { toast('Erro ao salvar vínculo da empresa: ' + linkRes.error.message, 'err'); return; }
   }
 
   toast(_colabEditId ? 'Colaborador atualizado!' : 'Colaborador cadastrado!', 'ok');
