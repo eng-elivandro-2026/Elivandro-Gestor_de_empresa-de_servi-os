@@ -9921,9 +9921,18 @@ function renderMenuComercialOrganizado() {
     ['📂', 'Análise por Categoria', "irParaPainel('catAnaliseCard','togCatAnalise')"],
     ['📊', 'KPIs de Ciclos — Média Geral', "irParaPainel('ciclosCard','togCiclosDash')"],
     ['📅', 'Linha do Tempo de Execução', "irParaPainel('execTimelineCard','togExecTimeline')"],
-    ['📅', 'Fechamentos por Mês', "irParaPainel('fechMesCard','togFechMes')"]
+    ['📅', 'Fechamentos por Mês', "irParaPainel('fechMesCard','togFechMes')"],
+    [null, 'Ferramentas', null],
+    ['🔀', 'Pipeline', "go('registro',this);rRegistro()"],
+    ['📈', 'Análise de Proposta', "go('analise',this);rAnalise()"],
+    ['🗂️', 'Banco de Escopos', "go('escopos',this);setTimeout(beInit,80)"],
+    ['📋', 'Templates', "go('templates',this);beLoadDB();stplRenderLista()"],
+    ['📋', 'Versões', "go('changelog',this)"]
   ];
   nav.innerHTML = itens.map(function(item) {
+    if (!item[2]) {
+      return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item[1] + '</div>';
+    }
     return '<button class="nb nav-item" onclick="' + item[2] + ';Router._setNavAtivo(this)">'
       + '<span>' + item[0] + '</span> ' + item[1] + '</button>';
   }).join('');
