@@ -4588,6 +4588,7 @@ async function rejeitarDespesa(id) {
   window.abrirModalColab = abrirModalColab;
   window.abrirColab = abrirModalColab;
   window.fecharModalColab = fecharModalColab;
+  window.salvarColab = salvarColab;
   window.editarColab = editarColab;
   window.desativarColab = desativarColab;
   window.excluirColabAtivo = excluirColabAtivo;
