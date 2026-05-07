@@ -2121,10 +2121,12 @@ async function salvarColab() {
 
   var colabId = _colabEditId;
   var error;
+  var globalOk = true;
 
   if (colabId) {
-    var r = await sb.from('colaboradores').update(dadosGlobal).eq('id', colabId);
+    var r = await sb.from('colaboradores').update(dadosGlobal).eq('id', colabId).select('id').maybeSingle();
     error = r.error;
+    globalOk = !!r.data;
   } else {
     // Novo: incluir campos básicos no insert (overrides aplicados depois)
     var dadosInsert = Object.assign({}, dadosGlobal, {
@@ -2141,18 +2143,21 @@ async function salvarColab() {
 
   // Upsert da empresa ativa com todos os overrides
   if (colabId) {
+    function usarOverride(field) {
+      return _fieldScopes[field] === 'solo' || !globalOk;
+    }
     var overridesEmpAtiva = {
-      nome:        _fieldScopes.nome        === 'solo' ? nome        : null,
-      tipo:        _fieldScopes.tipo        === 'solo' ? tipo        : null,
-      valor_hora:  _fieldScopes.valor_hora  === 'solo' ? valor_hora  : null,
-      email:       _fieldScopes.email       === 'solo' ? email       : null,
-      telefone:    _fieldScopes.telefone    === 'solo' ? telefone    : null,
-      funcao:      _fieldScopes.funcao      === 'solo' ? funcao      : null,
-      admissao:    _fieldScopes.admissao    === 'solo' ? admissao    : null,
-      observacoes: _fieldScopes.observacoes === 'solo' ? observ      : null,
-      documento:   _fieldScopes.documento   === 'solo' ? docVal      : null,
-      periculoso:  _fieldScopes.periculoso  === 'solo' ? periculo    : null,
-      fim_contrato:_fieldScopes.fim_contrato=== 'solo' ? fimContrato : null
+      nome:        usarOverride('nome')        ? nome        : null,
+      tipo:        usarOverride('tipo')        ? tipo        : null,
+      valor_hora:  usarOverride('valor_hora')  ? valor_hora  : null,
+      email:       usarOverride('email')       ? email       : null,
+      telefone:    usarOverride('telefone')    ? telefone    : null,
+      funcao:      usarOverride('funcao')      ? funcao      : null,
+      admissao:    usarOverride('admissao')    ? admissao    : null,
+      observacoes: usarOverride('observacoes') ? observ      : null,
+      documento:   usarOverride('documento')   ? docVal      : null,
+      periculoso:  usarOverride('periculoso')  ? periculo    : null,
+      fim_contrato:usarOverride('fim_contrato')? fimContrato : null
     };
     var { data: existingLink } = await sb.from('colaborador_empresas')
       .select('id').eq('colaborador_id', colabId).eq('empresa_id', empId).maybeSingle();
