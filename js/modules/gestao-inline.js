@@ -226,6 +226,21 @@ function _gestaoSaveLocal(){
   }
 }
 
+function _gestaoMostrarCarregando() {
+  var wrap = document.getElementById('gestao-wrap');
+  if (!wrap) return;
+  var el = document.createElement('div');
+  el.id = 'gestao-aguardando-auth';
+  el.style.cssText = 'padding:2rem 1rem;text-align:center;color:var(--text2,#888);font-size:.9rem;';
+  el.textContent = 'Carregando dados do usuário...';
+  wrap.insertBefore(el, wrap.firstChild);
+}
+
+function _gestaoEsconderCarregando() {
+  var el = document.getElementById('gestao-aguardando-auth');
+  if (el) el.remove();
+}
+
 
 
 function applyDados(parsed) {
@@ -4024,31 +4039,22 @@ function renderVersoes(){
 
 // ===== START =====
 
-// 1. Carregar do localStorage imediatamente — sem esperar auth
-load();
-_gestaoLoaded = true; // seguro salvar a partir daqui
-init();
+// Aguardar auth antes de qualquer load ou render — elimina flash de dados de outro usuário
+_gestaoMostrarCarregando();
 
-// 2. Async: atualizar chave do usuário e sincronizar com nuvem
 (async function(){
-  var prevChave = _gestaoChave;
-  await _initGestaoChave(); // pode demorar ou falhar — não bloqueia saves
-  if(_gestaoChave !== prevChave){
-    // Chave mudou — limpar dados do load pré-auth (pode conter dados de outro usuário)
-    dados = { dias:{}, diaAtivo:'', visitas:[], theme:'dark' };
-    load();
-    init();
-    renderFrases();
-  }
+  await _initGestaoChave(); // identifica o usuário logado
+  try { localStorage.removeItem('tf_planejador'); } catch(e) {} // apaga chave genérica sem user_id
+  load(); // carrega exclusivamente tf_planejador_<user_id>
+  _gestaoLoaded = true;
+  _gestaoEsconderCarregando();
+  init();
+  renderFrases();
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })();
 
-renderFrases();
-
 var _tb=document.getElementById('theme-btn'); if(_tb) _tb.textContent=dados.theme==='light'?'🌙':'☀️';
-
-// Atualizar janelas a cada minuto
 
 setInterval(()=>{renderJanelas();atualizarDataHoje();},60000);
 function _gestaoShowSecAlias(id) {
