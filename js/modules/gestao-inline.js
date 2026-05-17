@@ -231,9 +231,11 @@ function _gestaoMostrarCarregando() {
   if (!wrap) return;
   var el = document.createElement('div');
   el.id = 'gestao-aguardando-auth';
-  el.style.cssText = 'padding:2rem 1rem;text-align:center;color:var(--text2,#888);font-size:.9rem;';
+  // position:absolute + z-index alto bloqueia todos os cliques até auth resolver
+  el.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg,#0d1117);color:var(--text2,#888);font-size:.9rem;';
   el.textContent = 'Carregando dados do usuário...';
-  wrap.insertBefore(el, wrap.firstChild);
+  wrap.style.position = wrap.style.position || 'relative';
+  wrap.appendChild(el);
 }
 
 function _gestaoEsconderCarregando() {
@@ -4039,17 +4041,25 @@ function renderVersoes(){
 
 // ===== START =====
 
-// Aguardar auth antes de qualquer load ou render — elimina flash de dados de outro usuário
+// Overlay bloqueia interação até auth + load concluírem — elimina flash e race condition de save prematuro
 _gestaoMostrarCarregando();
 
 (async function(){
-  await _initGestaoChave(); // identifica o usuário logado
-  try { localStorage.removeItem('tf_planejador'); } catch(e) {} // apaga chave genérica sem user_id
-  load(); // carrega exclusivamente tf_planejador_<user_id>
-  _gestaoLoaded = true;
-  _gestaoEsconderCarregando();
-  init();
-  renderFrases();
+  try {
+    await _initGestaoChave(); // identifica o usuário logado
+    // Só remove chave genérica se auth resolveu para chave por usuário
+    if (_gestaoChave !== 'tf_planejador') {
+      try { localStorage.removeItem('tf_planejador'); } catch(e) {}
+    }
+    load(); // carrega exclusivamente tf_planejador_<user_id>
+  } catch(e) {
+    // falha de auth ou load — prossegue com dados padrão (não apaga chave genérica)
+  } finally {
+    _gestaoLoaded = true;
+    init();             // renderiza com dados corretos antes de liberar interação
+    renderFrases();
+    _gestaoEsconderCarregando(); // libera interação DEPOIS que UI está pronta
+  }
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })();
