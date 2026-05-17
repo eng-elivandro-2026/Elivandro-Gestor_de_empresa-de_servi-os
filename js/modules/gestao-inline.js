@@ -229,18 +229,18 @@ function _gestaoSaveLocal(){
 function _gestaoMostrarCarregando() {
   var wrap = document.getElementById('gestao-wrap');
   if (!wrap) return;
-  var el = document.createElement('div');
-  el.id = 'gestao-aguardando-auth';
-  // position:absolute + z-index alto bloqueia todos os cliques até auth resolver
-  el.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg,#0d1117);color:var(--text2,#888);font-size:.9rem;';
-  el.textContent = 'Carregando dados do usuário...';
-  wrap.style.position = wrap.style.position || 'relative';
-  wrap.appendChild(el);
+  // pointer-events:none impede cliques sem precisar de overlay — não tem risco de ficar preso
+  wrap.dataset.gestaoCarregando = '1';
+  wrap.style.pointerEvents = 'none';
+  wrap.style.opacity = '0.5';
 }
 
 function _gestaoEsconderCarregando() {
-  var el = document.getElementById('gestao-aguardando-auth');
-  if (el) el.remove();
+  var wrap = document.getElementById('gestao-wrap');
+  if (!wrap) return;
+  wrap.style.pointerEvents = '';
+  wrap.style.opacity = '';
+  delete wrap.dataset.gestaoCarregando;
 }
 
 
@@ -4041,7 +4041,7 @@ function renderVersoes(){
 
 // ===== START =====
 
-// Overlay bloqueia interação até auth + load concluírem — elimina flash e race condition de save prematuro
+// Desabilita cliques até auth + load concluírem (pointer-events:none no wrap)
 _gestaoMostrarCarregando();
 
 (async function(){
@@ -4053,16 +4053,19 @@ _gestaoMostrarCarregando();
     }
     load(); // carrega exclusivamente tf_planejador_<user_id>
   } catch(e) {
-    // falha de auth ou load — prossegue com dados padrão (não apaga chave genérica)
-  } finally {
-    _gestaoLoaded = true;
-    init();             // renderiza com dados corretos antes de liberar interação
-    renderFrases();
-    _gestaoEsconderCarregando(); // libera interação DEPOIS que UI está pronta
+    console.warn('[gestao] erro em auth/load:', e);
   }
+  _gestaoLoaded = true;
+  try { init(); } catch(e) { console.warn('[gestao] erro em init:', e); }
+  try { renderFrases(); } catch(e) {}
+  _gestaoEsconderCarregando(); // SEMPRE executa — pointer-events e opacity restaurados
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
-})();
+})().catch(function(e){
+  // Último recurso: garante liberação mesmo em rejeição inesperada do IIFE
+  console.error('[gestao] erro crítico no startup:', e);
+  _gestaoEsconderCarregando();
+});
 
 var _tb=document.getElementById('theme-btn'); if(_tb) _tb.textContent=dados.theme==='light'?'🌙':'☀️';
 
