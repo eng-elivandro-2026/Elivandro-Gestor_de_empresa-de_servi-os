@@ -1188,6 +1188,7 @@ function rCiclos(){
   var totalReceb = totalAdiant + valRecebFinal;
   var emAberto   = Math.max(0, totalNF - totalReceb);
   var adiantPctReal = totalNF>0 ? (totalAdiant/totalNF*100) : 0;
+  var pctPerdidoRS  = totalNF>0 ? (emAberto/totalNF*100) : 0;
   var adiantAcordado = valContrato>0&&adiantPct>0 ? valContrato*adiantPct/100 : 0;
 
   // Ciclos em dias
@@ -1233,7 +1234,7 @@ function rCiclos(){
     +'<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
     +(totalNF>0?_kpiBox('📄','Total NF Emitidas',money(totalNF),'Svc: '+money(totalNFSvc)+' | Mat: '+money(totalNFMat),'var(--accent)'):'')
     +(totalAdiant>0?_kpiBox('💰','Adiantamentos',money(totalAdiant),adiantAcordado>0?'Acordado: '+money(adiantAcordado)+' ('+adiantPct+'%)':'Recebidos: '+_tlAdiantamentos.length,'#3fb950'):'')
-    +(totalNF>0?_kpiBox('⚠️','Em Aberto (Risco Sacado)',money(emAberto),adiantPctReal.toFixed(1)+'% adiantado vs total NF',emAberto<=0?'#3fb950':emAberto>valContrato*0.5?'#f85149':'#f97316'):'')
+    +(totalNF>0?_kpiBox('⚠️','Valor perdido (Risco Sacado)',money(emAberto),pctPerdidoRS.toFixed(2).replace('.',',')+'% da NF',emAberto<=0?'#3fb950':emAberto>valContrato*0.5?'#f85149':'#f97316'):'')
     +(pmrReal!==null?_kpiBox('📅','PMR Real',pmrReal+'d',(prazoPgto?'Acordado: '+prazoPgto:'última NF → recebimento'),pmrReal<=30?'#3fb950':pmrReal<=60?'#d4a017':'#f85149'):'')
     +(cicFinanc!==null?_kpiBox('🔄','Ciclo Financeiro Total',cicFinanc+'d','Início Exec. → Receb. Final',cicFinanc<=60?'#3fb950':cicFinanc<=120?'#d4a017':'#f85149'):'')
     +'</div></div>';
