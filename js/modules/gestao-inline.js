@@ -17,6 +17,7 @@ async function _initGestaoChave() {
     var r = await (window.sbClient || _sb).auth.getUser();
     if (r.data && r.data.user && r.data.user.id) {
       _gestaoChave = 'tf_planejador_' + r.data.user.id;
+      _gestaoChaveFallback = _gestaoChave; // fix: parar escrita na chave genérica compartilhada
     }
   } catch(e) {}
 }
@@ -4033,7 +4034,8 @@ init();
   var prevChave = _gestaoChave;
   await _initGestaoChave(); // pode demorar ou falhar — não bloqueia saves
   if(_gestaoChave !== prevChave){
-    // Chave mudou — recarregar com dados específicos do usuário
+    // Chave mudou — limpar dados do load pré-auth (pode conter dados de outro usuário)
+    dados = { dias:{}, diaAtivo:'', visitas:[], theme:'dark' };
     load();
     init();
     renderFrases();
