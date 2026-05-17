@@ -229,19 +229,40 @@ function _gestaoSaveLocal(){
 function _gestaoMostrarCarregando() {
   var wrap = document.getElementById('gestao-wrap');
   if (!wrap) return;
-  // pointer-events:none impede cliques sem precisar de overlay — não tem risco de ficar preso
-  wrap.dataset.gestaoCarregando = '1';
-  wrap.style.pointerEvents = 'none';
-  wrap.style.opacity = '0.5';
+  var el = document.createElement('div');
+  el.id = 'gestao-aguardando-auth';
+  el.style.cssText = 'padding:1rem;text-align:center;font-size:.8rem;color:var(--text2,#888);';
+  el.textContent = 'Carregando dados do usuário...';
+  wrap.insertBefore(el, wrap.firstChild);
 }
 
 function _gestaoEsconderCarregando() {
-  var wrap = document.getElementById('gestao-wrap');
-  if (!wrap) return;
-  wrap.style.pointerEvents = '';
-  wrap.style.opacity = '';
-  delete wrap.dataset.gestaoCarregando;
+  var el = document.getElementById('gestao-aguardando-auth');
+  if (el) el.remove();
 }
+
+// Handler delegado — dispara mesmo se algum pai tiver pointer-events alterado
+document.addEventListener('click', function(e) {
+  if (!e.target) return;
+  var btn = typeof e.target.closest === 'function'
+    ? e.target.closest('[data-gestao-action="nova-tarefa"]')
+    : null;
+  if (!btn) return;
+  console.debug('[Gestão CEO] Clique em nova tarefa recebido');
+  if (!_gestaoLoaded) {
+    console.warn('[Gestão CEO] Ainda carregando — aguarde');
+    return;
+  }
+  var modal = document.getElementById('m-tarefa');
+  if (!modal) {
+    console.error('[Gestão CEO] Modal m-tarefa não encontrado no DOM');
+    return;
+  }
+  console.debug('[Gestão CEO] Abrindo modal de tarefa');
+  try { abrirModalTarefa(); } catch(err) {
+    console.error('[Gestão CEO] Erro ao abrir modal:', err);
+  }
+});
 
 
 
@@ -4041,7 +4062,7 @@ function renderVersoes(){
 
 // ===== START =====
 
-// Desabilita cliques até auth + load concluírem (pointer-events:none no wrap)
+// Mostra indicador de carregamento até auth + load concluírem
 _gestaoMostrarCarregando();
 
 (async function(){
@@ -4058,7 +4079,7 @@ _gestaoMostrarCarregando();
   _gestaoLoaded = true;
   try { init(); } catch(e) { console.warn('[gestao] erro em init:', e); }
   try { renderFrases(); } catch(e) {}
-  _gestaoEsconderCarregando(); // SEMPRE executa — pointer-events e opacity restaurados
+  _gestaoEsconderCarregando(); // SEMPRE executa
   if(typeof loadNuvem==="function") loadNuvem();
   if(typeof loadNuvemGeral==="function") loadNuvemGeral();
 })().catch(function(e){
