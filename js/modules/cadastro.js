@@ -870,6 +870,8 @@
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
         try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
+        // Re-renderizar após chegada dos dados da nuvem
+        try { renderTabelaContatos(); } catch(e) {}
       });
     }
 
@@ -884,6 +886,8 @@
         });
         try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
         _limparClientes(); // limpa também após retorno do Supabase
+        // Re-renderizar após chegada dos dados da nuvem
+        try { renderTabelaClientes(); } catch(e) {}
       });
     }
     // Wire formulário de propostas (campos sempre no DOM)
@@ -913,8 +917,18 @@
     var elCts = document.getElementById('tabelaContatos');
     if (elCli) elCli.innerHTML = msg;
     if (elCts) elCts.innerHTML = msg;
-    // Recarregar dados da nova empresa (seed + sync nuvem + render)
-    init();
+    // Recarregar dados da nova empresa (seed + sync nuvem).
+    // init() dispara _sbLoad assíncrono que chama render nos callbacks;
+    // chamamos render também aqui de forma síncrona para exibir
+    // imediatamente o que já está no localStorage da nova empresa
+    // (ou "Nenhum cliente cadastrado" se a lista estiver vazia).
+    try {
+      init();
+    } catch(e) {
+      console.error('[Cadastro] erro em init() na troca de empresa:', e);
+    }
+    try { renderTabelaClientes(); } catch(e) {}
+    try { renderTabelaContatos(); } catch(e) {}
   });
 
 })();

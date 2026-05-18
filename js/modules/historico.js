@@ -795,9 +795,21 @@
     var elPainel = document.getElementById('hPainelCeo');
     if (elLista)  elLista.innerHTML  = msg;
     if (elPainel) elPainel.innerHTML = msg;
-    // Re-render lê automaticamente tf_historico_<novo_empresa_id>
-    renderPainelCeo();
-    renderLista();
+
+    // 1ª render síncrona: exibe o que já está no localStorage da nova empresa
+    // (ou "Nenhum registro encontrado" se lista vazia)
+    try { renderPainelCeo(); } catch(e) {}
+    try { renderLista();     } catch(e) {}
+
+    // 2ª render assíncrona: sincroniza da nuvem e atualiza se houver dados novos
+    if (typeof sbCarregarHistorico === 'function') {
+      sbCarregarHistorico().then(function() {
+        try { renderPainelCeo(); } catch(e) {}
+        try { renderLista();     } catch(e) {}
+      }).catch(function(e) {
+        console.error('[Histórico] erro ao sincronizar nuvem na troca de empresa:', e);
+      });
+    }
   });
 
   console.log('%c[Histórico] carregado', 'color:#58a6ff;font-weight:700');
