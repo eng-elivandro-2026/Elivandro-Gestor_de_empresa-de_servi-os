@@ -283,27 +283,67 @@
   // HISTÓRICO DE RELACIONAMENTO
   // ════════════════════════════════════════════════════════
 
+  // Resolve chave de histórico com empresa_id (mesma waterfall dos demais módulos)
+  function _getHistoricoKey() {
+    var eid = null;
+    if (typeof window.getEmpresaAtivaId === 'function') eid = window.getEmpresaAtivaId();
+    if (!eid && typeof window.getEmpresaAtiva === 'function') {
+      var emp = window.getEmpresaAtiva();
+      if (emp && emp.id) eid = emp.id;
+    }
+    if (!eid && window._empresaAtiva && window._empresaAtiva.id) eid = window._empresaAtiva.id;
+    if (!eid) {
+      try {
+        var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+        if (salvo && salvo.id) eid = salvo.id;
+      } catch(e) {}
+    }
+    if (!eid) return null;
+    return 'tf_historico_' + eid;
+  }
+
   window.sbSalvarHistorico = async function (lista) {
     if (!window.sbClient || !lista) return;
+    var chave = _getHistoricoKey();
+    if (!chave) {
+      console.warn('[supabase-sync] sbSalvarHistorico: empresa_id não disponível — save bloqueado.');
+      return;
+    }
     var res = await window.sbClient
       .from('configuracoes')
-      .upsert({ chave: 'tf_historico', valor: lista, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+      .upsert({ chave: chave, valor: lista, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar histórico:', res.error.message);
-    else console.log('%chistórico salvo na nuvem (' + lista.length + ' registros)', 'color:green');
+    else console.log('%chistórico salvo na nuvem [' + chave + '] (' + lista.length + ' registros)', 'color:green');
     return res;
   };
 
   window.sbCarregarHistorico = async function () {
     if (!window.sbClient) return [];
+    var chave = _getHistoricoKey();
+    if (!chave) {
+      console.warn('[supabase-sync] sbCarregarHistorico: empresa_id não disponível — load bloqueado.');
+      return [];
+    }
+    // Avisar sobre chave global antiga se existir
+    var oldHist = localStorage.getItem('tf_historico');
+    if (oldHist) {
+      try {
+        var oldList = JSON.parse(oldHist);
+        if (Array.isArray(oldList) && oldList.length > 0) {
+          console.warn('[supabase-sync] Existem', oldList.length,
+            'registros na chave global tf_historico. Recuperação manual necessária se o histórico da empresa estiver vazio.');
+        }
+      } catch(e) {}
+    }
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
-      .eq('chave', 'tf_historico')
+      .eq('chave', chave)
       .maybeSingle();
-    if (res.error) { console.warn('[supabase-sync] Sem histórico na nuvem ainda.'); return []; }
+    if (res.error) { console.warn('[supabase-sync] Sem histórico na nuvem para', chave); return []; }
     if (res.data && res.data.valor) {
-      try { localStorage.setItem('tf_historico', JSON.stringify(res.data.valor)); } catch(e) {}
-      console.log('%chistórico carregado da nuvem (' + res.data.valor.length + ' registros)', 'color:#58a6ff');
+      try { localStorage.setItem(chave, JSON.stringify(res.data.valor)); } catch(e) {}
+      console.log('%chistórico carregado da nuvem [' + chave + '] (' + res.data.valor.length + ' registros)', 'color:#58a6ff');
       return res.data.valor;
     }
     return [];

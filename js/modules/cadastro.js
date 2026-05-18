@@ -6,23 +6,73 @@
 // ============================================================
 
 (function () {
-  var KEY_CTS = 'tf_contatos';
-  var KEY_CLI = 'tf_clientes';
+  // ── Bases das chaves (nunca usadas diretamente para ler/gravar) ──
+  var KEY_CTS_BASE    = 'tf_contatos';
+  var KEY_CLI_BASE    = 'tf_clientes';
+
+  // ── Resolução de empresa ativa (mesma waterfall dos demais módulos) ──
+  function _getEmpresaId() {
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      var id = window.getEmpresaAtivaId();
+      if (id) return id;
+    }
+    if (typeof window.getEmpresaAtiva === 'function') {
+      var obj = window.getEmpresaAtiva();
+      if (obj && obj.id) return obj.id;
+    }
+    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+    try {
+      var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (salvo && salvo.id) return salvo.id;
+    } catch(e) {}
+    return null;
+  }
+
+  // Retorna chave com empresa_id ou null se empresa não identificada
+  function _keyFor(base) {
+    var eid = _getEmpresaId();
+    if (!eid) return null;
+    return base + '_' + eid;
+  }
 
   // ── Helpers localStorage ──────────────────────────────────
   function ctsLoad() {
-    try { return JSON.parse(localStorage.getItem(KEY_CTS) || '[]'); } catch(e) { return []; }
+    var key = _keyFor(KEY_CTS_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
   }
   function cliLoad() {
-    try { return JSON.parse(localStorage.getItem(KEY_CLI) || '[]'); } catch(e) { return []; }
+    var key = _keyFor(KEY_CLI_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
   }
   function ctsSave(list) {
-    try { localStorage.setItem(KEY_CTS, JSON.stringify(list)); } catch(e) {}
-    _sbSave(KEY_CTS, list);
+    var key = _keyFor(KEY_CTS_BASE);
+    if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de contatos bloqueado.'); return; }
+    // Proteção: nunca gravar lista vazia por cima de lista existente
+    if (!list || list.length === 0) {
+      var atualCts = ctsLoad();
+      if (atualCts.length > 0) {
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCts.length, 'contato(s) existentes. Chave:', key);
+        return;
+      }
+    }
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+    _sbSave(key, list);
   }
   function cliSave(list) {
-    try { localStorage.setItem(KEY_CLI, JSON.stringify(list)); } catch(e) {}
-    _sbSave(KEY_CLI, list);
+    var key = _keyFor(KEY_CLI_BASE);
+    if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de clientes bloqueado.'); return; }
+    // Proteção: nunca gravar lista vazia por cima de lista existente
+    if (!list || list.length === 0) {
+      var atualCli = cliLoad();
+      if (atualCli.length > 0) {
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCli.length, 'cliente(s) existentes. Chave:', key);
+        return;
+      }
+    }
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+    _sbSave(key, list);
   }
 
   // ── Supabase sync ─────────────────────────────────────────
@@ -54,17 +104,29 @@
 
   // ── Seed a partir dos dados existentes ────────────────────
   // Tombstones: nomes explicitamente deletados pelo usuário — seedFromData não recria
-  var KEY_CLI_DEL = 'tf_cli_del';
-  var KEY_CTS_DEL = 'tf_cts_del';
-  function _cliDelLoad() { try { return JSON.parse(localStorage.getItem(KEY_CLI_DEL) || '[]'); } catch(e) { return []; } }
-  function _ctsDelLoad() { try { return JSON.parse(localStorage.getItem(KEY_CTS_DEL) || '[]'); } catch(e) { return []; } }
+  var KEY_CLI_DEL_BASE = 'tf_cli_del';
+  var KEY_CTS_DEL_BASE = 'tf_cts_del';
+  function _cliDelLoad() {
+    var key = _keyFor(KEY_CLI_DEL_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+  }
+  function _ctsDelLoad() {
+    var key = _keyFor(KEY_CTS_DEL_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+  }
   function _cliDelAdd(nome) {
+    var key = _keyFor(KEY_CLI_DEL_BASE);
+    if (!key) return;
     var del = _cliDelLoad(); var n = nome.toLowerCase();
-    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(KEY_CLI_DEL, JSON.stringify(del)); }
+    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(key, JSON.stringify(del)); }
   }
   function _ctsDelAdd(nome) {
+    var key = _keyFor(KEY_CTS_DEL_BASE);
+    if (!key) return;
     var del = _ctsDelLoad(); var n = nome.toLowerCase();
-    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(KEY_CTS_DEL, JSON.stringify(del)); }
+    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(key, JSON.stringify(del)); }
   }
 
   function seedFromData() {
@@ -104,9 +166,12 @@
       if (p.ac2) addCts(p.ac2, cli);
     });
 
-    // Do histórico
+    // Do histórico — usa chave por empresa_id se disponível
     var hist = [];
-    try { hist = JSON.parse(localStorage.getItem('tf_historico') || '[]'); } catch(e) {}
+    var histKey = _keyFor('tf_historico');
+    if (histKey) {
+      try { hist = JSON.parse(localStorage.getItem(histKey) || '[]'); } catch(e) {}
+    }
     hist.forEach(function(h) {
       if (h.contato) addCts(h.contato, h.cliente || '');
       if (h.cliente) addCli(h.cliente, '');
@@ -551,16 +616,19 @@
       try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
       if (window.props) window.props = props;
     }
-    var hist = [];
-    try { hist = JSON.parse(localStorage.getItem('tf_historico') || '[]'); } catch(e) {}
-    var hChanged = false;
-    hist = hist.map(function(h) {
-      var c = Object.assign({}, h);
-      if ((c.contato || '').toLowerCase() === oldL) { c.contato = newNome; hChanged = true; }
-      return c;
-    });
-    if (hChanged) {
-      try { localStorage.setItem('tf_historico', JSON.stringify(hist)); } catch(e) {}
+    var histKey = _keyFor('tf_historico');
+    if (histKey) {
+      var hist = [];
+      try { hist = JSON.parse(localStorage.getItem(histKey) || '[]'); } catch(e) {}
+      var hChanged = false;
+      hist = hist.map(function(h) {
+        var c = Object.assign({}, h);
+        if ((c.contato || '').toLowerCase() === oldL) { c.contato = newNome; hChanged = true; }
+        return c;
+      });
+      if (hChanged) {
+        try { localStorage.setItem(histKey, JSON.stringify(hist)); } catch(e) {}
+      }
     }
   }
 
@@ -748,30 +816,70 @@
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
+    var eid = _getEmpresaId();
+
+    // ── Aviso sobre chaves globais antigas (fonte de recuperação) ──
+    if (eid) {
+      var oldCli = localStorage.getItem('tf_clientes');
+      if (oldCli) {
+        try {
+          var oldCliList = JSON.parse(oldCli);
+          if (Array.isArray(oldCliList) && oldCliList.length > 0) {
+            console.warn('[Cadastro] Existem', oldCliList.length,
+              'clientes na chave global tf_clientes. Recuperação manual necessária se a lista da empresa estiver vazia.');
+          }
+        } catch(e) {}
+      }
+      var oldCts = localStorage.getItem('tf_contatos');
+      if (oldCts) {
+        try {
+          var oldCtsList = JSON.parse(oldCts);
+          if (Array.isArray(oldCtsList) && oldCtsList.length > 0) {
+            console.warn('[Cadastro] Existem', oldCtsList.length,
+              'contatos na chave global tf_contatos. Recuperação manual necessária se a lista da empresa estiver vazia.');
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!eid) {
+      console.warn('[Cadastro] empresa_id não disponível no init — seed e sync bloqueados. Aguardando empresa ativa.');
+      return;
+    }
+
     seedFromData();
     _limparClientes();
-    // Sincronizar da nuvem — adiciona itens novos mas respeita tombstones
-    _sbLoad(KEY_CTS, function(v) {
-      var local = ctsLoad();
-      var del   = _ctsDelLoad();
-      var merged = local.slice();
-      v.forEach(function(x) {
-        if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-        if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+
+    // Sincronizar da nuvem — usa chaves por empresa_id, adiciona novos mas respeita tombstones
+    var keyCts = _keyFor(KEY_CTS_BASE);
+    var keyCli = _keyFor(KEY_CLI_BASE);
+
+    if (keyCts) {
+      _sbLoad(keyCts, function(v) {
+        var local  = ctsLoad();
+        var del    = _ctsDelLoad();
+        var merged = local.slice();
+        v.forEach(function(x) {
+          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
+          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+        });
+        try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
       });
-      try { localStorage.setItem(KEY_CTS, JSON.stringify(merged)); } catch(e) {}
-    });
-    _sbLoad(KEY_CLI, function(v) {
-      var local = cliLoad();
-      var del   = _cliDelLoad();
-      var merged = local.slice();
-      v.forEach(function(x) {
-        if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-        if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+    }
+
+    if (keyCli) {
+      _sbLoad(keyCli, function(v) {
+        var local  = cliLoad();
+        var del    = _cliDelLoad();
+        var merged = local.slice();
+        v.forEach(function(x) {
+          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
+          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+        });
+        try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
+        _limparClientes(); // limpa também após retorno do Supabase
       });
-      try { localStorage.setItem(KEY_CLI, JSON.stringify(merged)); } catch(e) {}
-      _limparClientes(); // limpa também após retorno do Supabase
-    });
+    }
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
 

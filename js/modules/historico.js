@@ -1,10 +1,44 @@
 // Módulo Histórico de Relacionamento — TecFusion
 (function () {
-  var KEY = 'tf_historico';
+  var KEY_BASE = 'tf_historico';
+
+  // ── Resolução de empresa ativa (mesma waterfall dos demais módulos) ──
+  function _getEmpresaId() {
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      var id = window.getEmpresaAtivaId();
+      if (id) return id;
+    }
+    if (typeof window.getEmpresaAtiva === 'function') {
+      var obj = window.getEmpresaAtiva();
+      if (obj && obj.id) return obj.id;
+    }
+    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+    try {
+      var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (salvo && salvo.id) return salvo.id;
+    } catch(e) {}
+    return null;
+  }
+
+  // Retorna chave com empresa_id ou null se empresa não identificada
+  function _getKey() {
+    var eid = _getEmpresaId();
+    if (!eid) return null;
+    return KEY_BASE + '_' + eid;
+  }
 
   function hLS(v) {
-    if (v === undefined) { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { return []; } }
-    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch(e) {}
+    var key = _getKey();
+    if (!key) {
+      // Empresa não identificada: não expõe dados globais de outras empresas
+      if (v === undefined) return [];
+      console.warn('[Histórico] empresa_id não disponível — save bloqueado.');
+      return;
+    }
+    if (v === undefined) {
+      try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+    }
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch(e) {}
   }
 
   function genId() { return 'hst_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
@@ -17,6 +51,19 @@
   }
 
   function saveList(list) {
+    var key = _getKey();
+    if (!key) {
+      console.warn('[Histórico] empresa_id não disponível — save bloqueado.');
+      return;
+    }
+    // Proteção: nunca gravar lista vazia por cima de lista existente
+    if (!list || list.length === 0) {
+      var atual = hLS();
+      if (atual.length > 0) {
+        console.warn('[Histórico] Bloqueado: tentativa de gravar lista vazia por cima de', atual.length, 'registro(s) existentes. Chave:', key);
+        return;
+      }
+    }
     hLS(list);
     if (typeof sbSalvarHistorico === 'function') sbSalvarHistorico(list);
   }
