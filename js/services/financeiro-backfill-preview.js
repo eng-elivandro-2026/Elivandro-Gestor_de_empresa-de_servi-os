@@ -33,10 +33,40 @@
   }
 
   function _empresaId() {
-    if (window.sbFinanceiro && typeof window._empresaAtiva === 'string') {
-      return window._empresaAtiva;
+    var id, fonte;
+
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      id = window.getEmpresaAtivaId();
+      if (id) { fonte = 'window.getEmpresaAtivaId()'; }
     }
-    throw new Error('[Backfill] empresa ativa não encontrada. Verifique window._empresaAtiva.');
+
+    if (!id && typeof window.getEmpresaAtiva === 'function') {
+      var obj = window.getEmpresaAtiva();
+      if (obj && obj.id) { id = obj.id; fonte = 'window.getEmpresaAtiva().id'; }
+    }
+
+    if (!id && window._empresaAtiva && window._empresaAtiva.id) {
+      id = window._empresaAtiva.id;
+      fonte = 'window._empresaAtiva.id';
+    }
+
+    if (!id) {
+      try {
+        var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+        if (salvo && salvo.id) { id = salvo.id; fonte = 'localStorage tf_empresa_ativa'; }
+      } catch (e) { /* JSON inválido — ignora */ }
+    }
+
+    if (!id) {
+      throw new Error(
+        '[Backfill] Empresa ativa não encontrada. ' +
+        'Verifique se você está logado e com uma empresa selecionada no portal. ' +
+        'Fontes tentadas: getEmpresaAtivaId(), getEmpresaAtiva(), window._empresaAtiva, localStorage tf_empresa_ativa.'
+      );
+    }
+
+    console.debug('[Backfill Financeiro] empresa_id encontrado via', fonte, '→', id);
+    return id;
   }
 
   // ── Status que indicam proposta aprovada/fechada ──────────
