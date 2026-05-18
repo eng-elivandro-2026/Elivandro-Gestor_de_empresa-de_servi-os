@@ -46,28 +46,32 @@
     if (!key) return [];
     try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
   }
-  function ctsSave(list) {
+  // opcoes.permitirListaVazia = true → exclusão manual confirmada pelo usuário
+  // sem a opção → save automático/sync, bloqueado se tentar esvaziar lista existente
+  function ctsSave(list, opcoes) {
     var key = _keyFor(KEY_CTS_BASE);
     if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de contatos bloqueado.'); return; }
-    // Proteção: nunca gravar lista vazia por cima de lista existente
-    if (!list || list.length === 0) {
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
       var atualCts = ctsLoad();
       if (atualCts.length > 0) {
-        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCts.length, 'contato(s) existentes. Chave:', key);
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCts.length,
+          'contato(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
         return;
       }
     }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
     _sbSave(key, list);
   }
-  function cliSave(list) {
+  function cliSave(list, opcoes) {
     var key = _keyFor(KEY_CLI_BASE);
     if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de clientes bloqueado.'); return; }
-    // Proteção: nunca gravar lista vazia por cima de lista existente
-    if (!list || list.length === 0) {
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
       var atualCli = cliLoad();
       if (atualCli.length > 0) {
-        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCli.length, 'cliente(s) existentes. Chave:', key);
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCli.length,
+          'cliente(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
         return;
       }
     }
@@ -431,7 +435,8 @@
     var all = cliLoad();
     var item = all.find(function(x) { return x.id === id; });
     if (item) _cliDelAdd(item.nome);
-    cliSave(all.filter(function(x) { return x.id !== id; }));
+    // permitirListaVazia: exclusão manual confirmada — pode resultar em lista vazia
+    cliSave(all.filter(function(x) { return x.id !== id; }), { permitirListaVazia: true });
     renderTabelaClientes();
     if (typeof toast === 'function') toast('Cliente excluído', 'ok');
   };
@@ -538,7 +543,8 @@
     var all = ctsLoad();
     var item = all.find(function(x) { return x.id === id; });
     if (item) _ctsDelAdd(item.nome);
-    ctsSave(all.filter(function(x) { return x.id !== id; }));
+    // permitirListaVazia: exclusão manual confirmada — pode resultar em lista vazia
+    ctsSave(all.filter(function(x) { return x.id !== id; }), { permitirListaVazia: true });
     renderTabelaContatos();
     if (typeof toast === 'function') toast('Contato excluído', 'ok');
   };

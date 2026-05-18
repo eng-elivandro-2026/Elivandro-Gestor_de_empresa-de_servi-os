@@ -50,17 +50,20 @@
     return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
   }
 
-  function saveList(list) {
+  // opcoes.permitirListaVazia = true → exclusão manual confirmada pelo usuário
+  // sem a opção → save automático/sync, bloqueado se tentar esvaziar lista existente
+  function saveList(list, opcoes) {
     var key = _getKey();
     if (!key) {
       console.warn('[Histórico] empresa_id não disponível — save bloqueado.');
       return;
     }
-    // Proteção: nunca gravar lista vazia por cima de lista existente
-    if (!list || list.length === 0) {
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
       var atual = hLS();
       if (atual.length > 0) {
-        console.warn('[Histórico] Bloqueado: tentativa de gravar lista vazia por cima de', atual.length, 'registro(s) existentes. Chave:', key);
+        console.warn('[Histórico] Bloqueado: tentativa de gravar lista vazia por cima de', atual.length,
+          'registro(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
         return;
       }
     }
