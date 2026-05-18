@@ -708,6 +708,29 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 .btn-log-cls{background:none;color:var(--text3)}
 .btn-log-cls:hover{background:var(--border)}
 .culog-dot{width:7px;height:7px;background:#22c55e;border-radius:50%;position:absolute;top:1px;right:1px;pointer-events:none}
+
+/* ── Overlay: troca de empresa ──────────────────────────────────────────── */
+#empresaSwitchOverlay{
+  display:none;position:fixed;inset:0;z-index:9998;
+  background:rgba(0,0,0,.52);
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+#empresaSwitchOverlay.visible{display:flex;animation:eswFade .18s ease}
+.esw-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:1.8rem 2.4rem;
+  display:flex;flex-direction:column;align-items:center;gap:.65rem;
+  min-width:230px;max-width:90vw;
+  box-shadow:0 24px 64px rgba(0,0,0,.45);}
+.esw-spinner{
+  width:32px;height:32px;
+  border:3px solid rgba(240,165,0,.18);border-top-color:#f0a500;
+  border-radius:50%;animation:eswSpin .65s linear infinite;}
+.esw-title{font-weight:700;font-size:.88rem;color:var(--text);letter-spacing:.01em}
+.esw-msg{font-size:.74rem;color:var(--text2);text-align:center;line-height:1.5}
+.esw-name{font-size:.72rem;color:var(--accent);font-weight:600;letter-spacing:.02em;min-height:1em}
+@keyframes eswSpin{to{transform:rotate(360deg)}}
+@keyframes eswFade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 
@@ -716,6 +739,16 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 <div id="loading">
   <div class="loading-logo">FX</div>
   <div class="loading-txt">Carregando plataforma...</div>
+</div>
+
+<!-- Overlay global: exibido ao trocar empresa ativa -->
+<div id="empresaSwitchOverlay" role="status" aria-live="polite" aria-label="Atualizando empresa">
+  <div class="esw-card">
+    <div class="esw-spinner"></div>
+    <div class="esw-title">Atualizando empresa</div>
+    <div class="esw-msg">Carregando dados da empresa selecionada...</div>
+    <div class="esw-name" id="empresaSwitchName"></div>
+  </div>
 </div>
 
 <div class="mobile-overlay" onclick="fecharSidebar()"></div>
