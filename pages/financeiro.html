@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financeiro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--purple:#bc8cff;--orange:#F05A1A;
+  --r:8px;--r2:6px;
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;
+  --red:#dc2626;--orange:#c2410c;
+}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.wrap{max-width:960px;margin:0 auto;padding:1.5rem}
+
+.page-header{margin-bottom:1.5rem}
+.page-title{font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+.page-sub{font-size:.82rem;color:var(--text2)}
+.tag-construcao{display:inline-block;font-size:.65rem;font-weight:700;background:rgba(240,165,0,.12);color:var(--accent);border:1px solid rgba(240,165,0,.3);border-radius:20px;padding:.15rem .55rem;margin-left:.5rem;vertical-align:middle;text-transform:uppercase;letter-spacing:.04em}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem}
+.card-icon{font-size:1.3rem;margin-bottom:.5rem}
+.card-title{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
+.card-text{font-size:.82rem;color:var(--text2);line-height:1.5}
+
+.padrao-lista{list-style:none;margin-top:.5rem}
+.padrao-lista li{font-size:.8rem;color:var(--text2);padding:.25rem 0;border-bottom:1px solid var(--border)}
+.padrao-lista li:last-child{border-bottom:none}
+.padrao-lista li span{color:var(--text3);font-size:.72rem;margin-left:.3rem}
+
+.secao-backfill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.5rem}
+.secao-titulo{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+
+.btn-preview{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:600;padding:.5rem 1.1rem;border-radius:var(--r2);border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;transition:background .2s}
+.btn-preview:hover{background:rgba(88,166,255,.18)}
+.btn-preview:disabled{opacity:.5;cursor:not-allowed}
+
+.resumo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.7rem;margin-top:1rem}
+.resumo-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem .9rem}
+.resumo-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem}
+.resumo-valor{font-size:1.2rem;font-weight:700;color:var(--text)}
+.resumo-sub{font-size:.68rem;color:var(--text2);margin-top:.1rem}
+
+.status-msg{font-size:.8rem;margin-top:.8rem;padding:.5rem .8rem;border-radius:var(--r2);display:none}
+.status-msg.err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);display:block}
+.status-msg.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:var(--green);display:block}
+.status-msg.loading{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);color:var(--blue);display:block}
+
+.aviso-somente-leitura{font-size:.72rem;color:var(--text3);margin-top:.6rem;font-style:italic}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="page-title">💰 Financeiro <span class="tag-construcao">Em estruturação</span></div>
+    <div class="page-sub">Base oficial em estruturação — Fase F1 concluída.</div>
+  </div>
+
+  <!-- Cards informativos -->
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-icon">🗄️</div>
+      <div class="card-title">Base Financeira Oficial</div>
+      <div class="card-text">Tabelas oficiais criadas para contas a receber, notas fiscais, recebimentos, movimentos de caixa e saldos de caixa.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Backfill Preview</div>
+      <div class="card-text">Prévia de migração disponível em modo somente leitura. Simula o que seria criado sem inserir nenhum dado.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <div class="card-title">Próxima etapa</div>
+      <div class="card-text">Validar prévia e depois criar Contas a Receber no módulo Financeiro.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Padrão Financeiro</div>
+      <ul class="padrao-lista">
+        <li>Saldo de Caixa Atual <span>/ Cash Position</span></li>
+        <li>Fluxo de Caixa Previsto <span>/ Cash Flow Forecast</span></li>
+        <li>Fluxo de Caixa Realizado <span>/ Actual Cash Flow</span></li>
+        <li>Caixa Livre <span>/ Free Cash / Available Cash</span></li>
+        <li>Previsto x Realizado <span>/ Forecast vs Actual</span></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Backfill Preview -->
+  <div class="secao-backfill">
+    <div class="secao-titulo">🔍 Prévia de Migração (Somente Leitura)</div>
+
+    <button class="btn-preview" id="btn-preview" onclick="executarPrevia()">
+      ▶ Executar prévia do backfill
+    </button>
+    <div class="aviso-somente-leitura">⚠ Modo somente leitura — nenhum dado será inserido ou alterado.</div>
+
+    <div class="status-msg" id="status-msg"></div>
+
+    <div class="resumo-grid" id="resumo-grid" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+function _getBFP() {
+  if (window.FinanceiroBackfillPreview) return window.FinanceiroBackfillPreview;
+  if (window.parent && window.parent.FinanceiroBackfillPreview) return window.parent.FinanceiroBackfillPreview;
+  return null;
+}
+
+function _setStatus(tipo, msg) {
+  var el = document.getElementById('status-msg');
+  el.className = 'status-msg ' + tipo;
+  el.textContent = msg;
+}
+
+function _money(v) {
+  return 'R$ ' + parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function executarPrevia() {
+  var btn = document.getElementById('btn-preview');
+  var grid = document.getElementById('resumo-grid');
+  var bfp = _getBFP();
+
+  if (!bfp) {
+    _setStatus('err', 'FinanceiroBackfillPreview não encontrado. Recarregue o portal.');
+    return;
+  }
+
+  btn.disabled = true;
+  grid.style.display = 'none';
+  _setStatus('loading', 'Executando prévia... aguarde.');
+
+  try {
+    var resultado = await bfp.executar();
+    var r = resultado.resumo;
+
+    _setStatus('ok', 'Prévia concluída. Modo somente leitura — nenhum dado foi inserido.');
+
+    var itens = [
+      { label: 'Propostas analisadas',      valor: r.total_propostas_analisadas,   sub: '' },
+      { label: 'Contas a receber',           valor: r.contas_receber_a_criar,       sub: 'seriam criadas' },
+      { label: 'Notas fiscais',              valor: r.notas_fiscais_a_criar,        sub: 'seriam criadas' },
+      { label: 'Recebimentos',               valor: r.recebimentos_a_criar,         sub: 'seriam criados' },
+      { label: 'Movimentos de caixa',        valor: r.movimentos_caixa_a_criar,     sub: 'seriam criados' },
+      { label: 'Com inconsistência',         valor: r.propostas_com_inconsistencia, sub: 'propostas' },
+      { label: 'Valor previsto total',       valor: r.valor_total_previsto,         sub: '' },
+      { label: 'Valor faturado total',       valor: r.valor_total_faturado,         sub: '' },
+      { label: 'Valor recebido total',       valor: r.valor_total_recebido,         sub: '' },
+      { label: 'Em aberto total',            valor: r.valor_total_em_aberto,        sub: '' },
+    ];
+
+    grid.innerHTML = itens.map(function(it) {
+      return '<div class="resumo-card">' +
+        '<div class="resumo-label">' + it.label + '</div>' +
+        '<div class="resumo-valor">' + it.valor + '</div>' +
+        (it.sub ? '<div class="resumo-sub">' + it.sub + '</div>' : '') +
+        '</div>';
+    }).join('');
+
+    grid.style.display = 'grid';
+
+  } catch(e) {
+    _setStatus('err', 'Erro: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Herdar tema do portal pai
+(function() {
+  try {
+    if (window.parent && window.parent.document.body.classList.contains('light')) {
+      document.body.classList.add('light');
+    }
+  } catch(e) {}
+})();
+</script>
+
+</body>
+</html>
