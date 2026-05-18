@@ -5,19 +5,48 @@ var _sb = window.sbClient; // usa cliente global
 
 let _saveTimer = null;
 
-// Chave dinâmica por usuário — inicializada em _initGestaoChave()
+// Chave dinâmica por usuário+empresa — inicializada em _initGestaoChave()
 var _gestaoChave = 'tf_planejador';
-var _gestaoChaveFallback = 'tf_planejador';
+var _gestaoChaveFallback = 'tf_planejador'; // chave legada por usuário (somente leitura após migração)
+var _geralChave = 'tf_planejador_geral';    // chave compartilhada por empresa
+
+// Race condition token — incrementado a cada carregamento de nuvem
+var _ceoLoadToken = 0;
 
 // Guard: impede save() antes de load() terminar — evita apagar dados com objeto vazio
 var _gestaoLoaded = false;
+
+// ── Helper: obter empresa ativa via múltiplas fontes ─────────────────────────
+function _gestaoGetEmpresaId() {
+  if (typeof window.getEmpresaAtivaId === 'function') {
+    var _eid = window.getEmpresaAtivaId(); if (_eid) return _eid;
+  }
+  if (typeof window.getEmpresaAtiva === 'function') {
+    var _eobj = window.getEmpresaAtiva(); if (_eobj && _eobj.id) return _eobj.id;
+  }
+  if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+  try {
+    var _eSalvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+    if (_eSalvo && _eSalvo.id) return _eSalvo.id;
+  } catch(e) {}
+  return null;
+}
 
 async function _initGestaoChave() {
   try {
     var r = await (window.sbClient || _sb).auth.getUser();
     if (r.data && r.data.user && r.data.user.id) {
-      _gestaoChave = 'tf_planejador_' + r.data.user.id;
-      _gestaoChaveFallback = _gestaoChave; // fix: parar escrita na chave genérica compartilhada
+      var _userId    = r.data.user.id;
+      var _empresaId = _gestaoGetEmpresaId();
+      if (_empresaId) {
+        _gestaoChave         = 'tf_planejador_' + _empresaId + '_' + _userId;
+        _geralChave          = 'tf_planejador_geral_' + _empresaId;
+        _gestaoChaveFallback = 'tf_planejador_' + _userId; // fallback legado — somente leitura
+      } else {
+        _gestaoChave         = 'tf_planejador_' + _userId;
+        _geralChave          = 'tf_planejador_geral';
+        _gestaoChaveFallback = _gestaoChave;
+      }
     }
   } catch(e) {}
 }
@@ -221,7 +250,9 @@ function _gestaoChooseBest(list){
 
 function _gestaoSaveLocal(){
   try{localStorage.setItem(_gestaoChave,JSON.stringify(dados));}catch(e){}
-  if(_gestaoChave!==_gestaoChaveFallback){
+  // Só escreve no fallback legado quando empresa NÃO está definida
+  // (evita contaminar a chave genérica do usuário com dados de uma empresa específica)
+  if(_gestaoChave !== _gestaoChaveFallback && !_gestaoGetEmpresaId()){
     try{localStorage.setItem(_gestaoChaveFallback,JSON.stringify(dados));}catch(e){}
   }
 }
@@ -338,19 +369,35 @@ function applyDados(parsed) {
 
 function load(){
 
-  // Carregar localStorage como fallback imediato (chave por usuário)
-
-  const stored=_gestaoChooseBest([
-    _gestaoParseStored(localStorage.getItem(_gestaoChave)),
-    _gestaoParseStored(localStorage.getItem(_gestaoChaveFallback))
-  ]);
-
+  // Carregar localStorage como fallback imediato (prioriza chave empresa+usuário, depois legado)
+  var candidatos = [
+    _gestaoParseStored(localStorage.getItem(_gestaoChave))
+  ];
+  // Adiciona fallback legado por usuário se for chave diferente
+  if (_gestaoChave !== _gestaoChaveFallback) {
+    candidatos.push(_gestaoParseStored(localStorage.getItem(_gestaoChaveFallback)));
+  }
+  var stored = _gestaoChooseBest(candidatos);
   if(stored) applyDados(stored);
 
-  // Carregar dados gerais compartilhados
-  const sg=localStorage.getItem('tf_planejador_geral');
-
-  if(sg)try{ var pg=JSON.parse(sg); if(pg&&typeof pg==='object') Object.keys(pg).forEach(function(k){ if(dadosGeral[k]!==undefined){ if(typeof dadosGeral[k]==='object'&&!Array.isArray(dadosGeral[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],pg[k]); } else { dadosGeral[k]=pg[k]; } } }); }catch(e){}
+  // Carregar dados gerais compartilhados — prioriza chave da empresa, depois legado global
+  var sgKeys = [_geralChave];
+  if (_geralChave !== 'tf_planejador_geral') sgKeys.push('tf_planejador_geral');
+  sgKeys.forEach(function(key) {
+    var sg = localStorage.getItem(key);
+    if(sg) try {
+      var pg = JSON.parse(sg);
+      if(pg && typeof pg === 'object') Object.keys(pg).forEach(function(k){
+        if(dadosGeral[k] !== undefined){
+          if(typeof dadosGeral[k] === 'object' && !Array.isArray(dadosGeral[k])){
+            dadosGeral[k] = Object.assign({}, dadosGeral[k], pg[k]);
+          } else {
+            dadosGeral[k] = pg[k];
+          }
+        }
+      });
+    } catch(e) {}
+  });
 
 }
 
@@ -374,9 +421,13 @@ function _saveNav(){
 
 async function loadNuvem(){
 
+  var token = ++_ceoLoadToken;
+
   try {
 
     const cloud = await sbLoadGestao();
+
+    if (token !== _ceoLoadToken) return; // descarta se empresa mudou durante o await
 
     if(cloud){
 
@@ -402,9 +453,9 @@ async function loadNuvem(){
 
 function saveGeral(){
 
-  localStorage.setItem('tf_planejador_geral',JSON.stringify(dadosGeral));
+  localStorage.setItem(_geralChave, JSON.stringify(dadosGeral));
 
-  if(typeof sbSaveGestaoGeral==='function') sbSaveGestaoGeral(dadosGeral);
+  if(typeof sbSaveGestaoGeral==='function') sbSaveGestaoGeral(dadosGeral, _geralChave);
 
 }
 
@@ -412,21 +463,30 @@ function saveGeral(){
 
 async function loadNuvemGeral(){
 
+  var token = ++_ceoLoadToken;
+
   try {
 
     if(typeof sbLoadGestaoGeral==='function'){
 
-      var cloud=await sbLoadGestaoGeral();
+      // Tenta chave da empresa primeiro; faz fallback para chave global legada
+      var cloud = await sbLoadGestaoGeral(_geralChave);
+
+      if (!cloud && _geralChave !== 'tf_planejador_geral') {
+        cloud = await sbLoadGestaoGeral('tf_planejador_geral');
+      }
+
+      if (token !== _ceoLoadToken) return; // descarta se empresa mudou durante o await
 
       if(cloud){
 
         Object.keys(cloud).forEach(function(k){ if(dadosGeral[k]!==undefined){ if(typeof dadosGeral[k]==='object'&&!Array.isArray(dadosGeral[k])){ dadosGeral[k]=Object.assign({},dadosGeral[k],cloud[k]); } else { dadosGeral[k]=cloud[k]; } } });
 
-        localStorage.setItem('tf_planejador_geral',JSON.stringify(dadosGeral));
+        localStorage.setItem(_geralChave, JSON.stringify(dadosGeral));
 
         _aplicarGeralNaUI();
 
-        console.log('%c[gestao] dados gerais carregados da nuvem','color:#F05A1A;font-weight:700');
+        console.log('%c[gestao] dados gerais carregados da nuvem (' + _geralChave + ')','color:#F05A1A;font-weight:700');
 
       }
 
@@ -4060,6 +4120,60 @@ function renderVersoes(){
 
 
 
+// ── Recarregar Gestão CEO ao trocar de empresa ───────────────────────────────
+// Reinicializa chaves, dados e faz nova carga da nuvem para a empresa ativa.
+async function _recarregarGestaoCeo() {
+  _gestaoLoaded = false;
+
+  // Zera dados pessoais para não exibir dados da empresa anterior
+  dados = {
+    dias: {},
+    diaAtivo: '',
+    visitas: [],
+    theme: dados.theme || 'dark' // preserva preferência visual
+  };
+  // Zera dados gerais
+  dadosGeral = {
+    kpi: {env:0,apr:0,val:0,acum:0,dep:0},
+    crescimento: '',
+    proxPasso: '',
+    trim: {fat:2100000,dep:90,meta:4800000},
+    revVelocidade: '',
+    revMudanca: '',
+    checkContr: [],
+    reuniaoSegunda: []
+  };
+
+  // Re-inicializa chaves para a nova empresa
+  await _initGestaoChave();
+
+  // Carrega do localStorage (imediato, sem rede)
+  load();
+
+  _gestaoLoaded = true;
+
+  // Renderiza com dados locais primeiro
+  try { init(); } catch(e) { console.warn('[gestao] erro em init (empresa change):', e); }
+  try { renderFrases(); } catch(e) {}
+  _aplicarGeralNaUI();
+
+  // Depois atualiza com dados da nuvem
+  if (typeof loadNuvem === 'function') loadNuvem();
+  if (typeof loadNuvemGeral === 'function') loadNuvemGeral();
+
+  console.log('%c[CEO] empresa recarregada → ' + (_gestaoGetEmpresaId() || '?'), 'color:#F05A1A;font-weight:700');
+}
+
+// Ouve troca de empresa disparada por multi-empresa.js
+window.addEventListener('empresa:changed', function () {
+  // Executa sempre, independente de o módulo CEO estar visível ou não
+  // Se estiver visível, o usuário vê a atualização imediata
+  // Se não estiver, os dados estarão corretos quando navegar para cá
+  _recarregarGestaoCeo().catch(function(e) {
+    console.warn('[CEO] erro ao recarregar após troca de empresa:', e);
+  });
+});
+
 // ===== START =====
 
 // Mostra indicador de carregamento até auth + load concluírem
@@ -4162,6 +4276,7 @@ window.rGestaoCeo = function() {
   var secParaAbrir = (dados && dados.secAtiva) ? dados.secAtiva : 'dia';
   if(typeof gestaoShowSec === 'function') gestaoShowSec(secParaAbrir);
   if(typeof loadNuvem === 'function') loadNuvem();
+  if(typeof loadNuvemGeral === 'function') loadNuvemGeral();
 };
 
 // Chamado por rDash() sempre que uma proposta muda de status

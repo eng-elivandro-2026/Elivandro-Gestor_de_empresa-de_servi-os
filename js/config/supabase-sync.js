@@ -383,24 +383,26 @@
   // GESTÃO CEO — DADOS GERAIS COMPARTILHADOS
   // ════════════════════════════════════════════════════════
 
-  window.sbSaveGestaoGeral = function (dados) {
+  window.sbSaveGestaoGeral = function (dados, chave) {
+    chave = chave || 'tf_planejador_geral';
     clearTimeout(window._geralSaveTimer);
     window._geralSaveTimer = setTimeout(async function () {
       if (!window.sbClient || !dados) return;
       await window.sbClient.from('configuracoes').upsert({
-        chave: 'tf_planejador_geral',
+        chave: chave,
         valor: dados,
         updated_at: new Date().toISOString()
       }, { onConflict: 'chave' });
     }, 1500);
   };
 
-  window.sbLoadGestaoGeral = async function () {
+  window.sbLoadGestaoGeral = async function (chave) {
+    chave = chave || 'tf_planejador_geral';
     if (!window.sbClient) return null;
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
-      .eq('chave', 'tf_planejador_geral')
+      .eq('chave', chave)
       .maybeSingle();
     if (res.data && res.data.valor) return res.data.valor;
     return null;
