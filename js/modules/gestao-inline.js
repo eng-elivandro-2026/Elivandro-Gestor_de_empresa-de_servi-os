@@ -16,6 +16,12 @@ var _ceoLoadToken = 0;
 // Guard: impede save() antes de load() terminar — evita apagar dados com objeto vazio
 var _gestaoLoaded = false;
 
+// Flag: indica que a última carga da nuvem usou a chave legada (antiga) como fallback.
+// Isso ocorre quando a chave empresa+usuário não existe no Supabase ainda
+// (ex: primeira vez do usuário na Tecfusion após isolamento multiempresa).
+// Quando o usuário salvar normalmente, os dados irão para a chave nova — sem ação extra.
+var _ceoFallbackLegadoUsado = false;
+
 // ── Helper: obter empresa ativa via múltiplas fontes ─────────────────────────
 function _gestaoGetEmpresaId() {
   if (typeof window.getEmpresaAtivaId === 'function') {
@@ -91,6 +97,8 @@ async function sbLoadGestao() {
 
   if (!sb) return null;
 
+  _ceoFallbackLegadoUsado = false;
+
   try {
 
     const res = await sb.from('configuracoes')
@@ -103,7 +111,34 @@ async function sbLoadGestao() {
 
     if (res.data && res.data.valor) return res.data.valor;
 
-  } catch(e) {}
+    // ── Fallback de recuperação pós-isolamento multiempresa ─────────────────
+    // Se a chave empresa+usuário não existe ainda (ex: Tecfusion na primeira sessão
+    // após o isolamento), tenta a chave legada por usuário como leitura segura.
+    // Os dados NÃO são apagados. O próximo save do usuário criará a chave nova.
+    if (_gestaoChave !== _gestaoChaveFallback) {
+      console.warn(
+        '%c[CEO] Chave isolada vazia: ' + _gestaoChave +
+        '\n  Tentando fallback legado: ' + _gestaoChaveFallback,
+        'color:#f0a500;font-weight:700'
+      );
+      const resFb = await sb.from('configuracoes')
+        .select('valor')
+        .eq('chave', _gestaoChaveFallback)
+        .maybeSingle();
+      if (resFb.data && resFb.data.valor) {
+        _ceoFallbackLegadoUsado = true;
+        console.warn(
+          '%c[CEO] RECUPERACAO: dados carregados da chave legada "' + _gestaoChaveFallback + '".\n' +
+          '  Eles serao migrados para "' + _gestaoChave + '" no proximo salvamento normal.',
+          'color:#22d3ee;font-weight:700'
+        );
+        return resFb.data.valor;
+      }
+    }
+
+  } catch(e) {
+    console.warn('[gestao] erro ao carregar dados da nuvem:', e);
+  }
 
   return null;
 
@@ -442,6 +477,20 @@ async function loadNuvem(){
       if(typeof renderFrases==='function') renderFrases();
 
       console.log('%c[gestao] dados carregados da nuvem','color:#F05A1A;font-weight:700');
+
+      // ── Migração automática: fallback legado → chave nova ───────────────
+      // Se sbLoadGestao() usou o fallback legado (dados vieram da chave antiga por usuário)
+      // e a chave nova ainda não existe nesta empresa, salva imediatamente na chave nova.
+      // Isso garante que futuros loads desta empresa encontrem a chave nova.
+      // A chave antiga NÃO é apagada (fica como backup).
+      if (_ceoFallbackLegadoUsado && _gestaoChave !== _gestaoChaveFallback) {
+        console.warn(
+          '%c[CEO] MIGRACAO: copiando dados para chave nova "' + _gestaoChave + '"...',
+          'color:#22d3ee;font-weight:700'
+        );
+        if (typeof sbSaveGestao === 'function') sbSaveGestao(dados);
+        _ceoFallbackLegadoUsado = false;
+      }
 
     }
 
@@ -4277,6 +4326,33 @@ window.rGestaoCeo = function() {
   if(typeof gestaoShowSec === 'function') gestaoShowSec(secParaAbrir);
   if(typeof loadNuvem === 'function') loadNuvem();
   if(typeof loadNuvemGeral === 'function') loadNuvemGeral();
+};
+
+// ── Diagnóstico de recuperação CEO — acessível pelo console ─────────────────
+// Uso: no console do navegador, digitar: ceoDebug()
+// Exibe chaves ativas, estado de fallback e conteúdo resumido dos dados carregados.
+window.ceoDebug = async function() {
+  var sb = window.sbClient || _sb;
+  console.group('%c[CEO DEBUG] Estado atual do módulo Gestao CEO', 'color:#f0a500;font-weight:700;font-size:13px');
+  console.log('Empresa ativa:', window._empresaAtiva ? window._empresaAtiva.nome_curto + ' (' + window._empresaAtiva.id + ')' : 'nenhuma');
+  console.log('_gestaoChave (nova):', _gestaoChave);
+  console.log('_gestaoChaveFallback (legada):', _gestaoChaveFallback);
+  console.log('_geralChave:', _geralChave);
+  console.log('_gestaoLoaded:', _gestaoLoaded);
+  console.log('_ceoFallbackLegadoUsado:', _ceoFallbackLegadoUsado);
+  console.log('dados.dias (count):', Object.keys((dados && dados.dias) || {}).length);
+  console.log('dados._savedAt:', dados && dados._savedAt ? new Date(dados._savedAt).toISOString() : 'nenhum');
+  if (sb) {
+    try {
+      var r1 = await sb.from('configuracoes').select('chave,updated_at').eq('chave', _gestaoChave).maybeSingle();
+      console.log('Supabase — chave nova:', r1.data ? 'EXISTE (updated ' + r1.data.updated_at + ')' : 'NAO EXISTE');
+      if (_gestaoChave !== _gestaoChaveFallback) {
+        var r2 = await sb.from('configuracoes').select('chave,updated_at').eq('chave', _gestaoChaveFallback).maybeSingle();
+        console.log('Supabase — chave legada:', r2.data ? 'EXISTE (updated ' + r2.data.updated_at + ')' : 'NAO EXISTE');
+      }
+    } catch(e) { console.warn('Erro ao consultar Supabase:', e); }
+  }
+  console.groupEnd();
 };
 
 // Chamado por rDash() sempre que uma proposta muda de status
