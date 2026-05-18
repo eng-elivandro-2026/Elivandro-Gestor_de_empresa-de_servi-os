@@ -75,6 +75,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .aviso-somente-leitura{font-size:.72rem;color:var(--text3);margin-top:.6rem;font-style:italic}
 .aviso-escrita{font-size:.72rem;color:var(--accent);margin-top:.6rem;font-weight:600}
 .apply-info{font-size:.82rem;color:var(--text2);margin-bottom:.8rem;padding:.5rem .7rem;background:var(--bg3);border-radius:var(--r2);border-left:3px solid var(--accent)}
+
+/* ── Modal de confirmação ─────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-box{background:var(--bg2);border:1px solid rgba(240,165,0,.5);border-radius:var(--r);padding:1.5rem;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.modal-titulo{font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.modal-linha{display:flex;justify-content:space-between;font-size:.82rem;padding:.3rem 0;border-bottom:1px solid var(--border)}
+.modal-linha:last-of-type{border-bottom:none}
+.modal-linha-label{color:var(--text2)}
+.modal-linha-valor{font-weight:700;color:var(--text)}
+.modal-aviso{margin:1rem 0 .8rem;font-size:.78rem;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:var(--red);border-radius:var(--r2);padding:.55rem .75rem;line-height:1.5}
+.modal-instrucao{font-size:.78rem;color:var(--text2);margin-bottom:.4rem}
+.modal-instrucao strong{color:var(--accent);font-family:monospace;font-size:.82rem;letter-spacing:.03em}
+.modal-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-size:.85rem;padding:.45rem .65rem;outline:none;transition:border-color .15s}
+.modal-input:focus{border-color:var(--accent)}
+.modal-input.ok{border-color:var(--green)}
+.modal-input.err{border-color:var(--red)}
+.modal-acoes{display:flex;gap:.6rem;margin-top:1rem;justify-content:flex-end}
+.modal-btn-cancelar{font-size:.82rem;font-weight:600;padding:.45rem .9rem;border-radius:var(--r2);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer}
+.modal-btn-cancelar:hover{background:var(--bg3)}
+.modal-btn-confirmar{font-size:.82rem;font-weight:700;padding:.45rem 1rem;border-radius:var(--r2);border:1px solid rgba(240,165,0,.5);background:rgba(240,165,0,.12);color:var(--accent);cursor:pointer;transition:background .2s}
+.modal-btn-confirmar:hover:not(:disabled){background:rgba(240,165,0,.22)}
+.modal-btn-confirmar:disabled{opacity:.35;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -135,6 +157,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="resumo-grid" id="resumo-grid" style="display:none"></div>
   </div>
 
+  <!-- Modal de confirmação do backfill -->
+  <div class="modal-overlay" id="modal-confirmacao" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-titulo">⚡ Confirmar aplicação do backfill financeiro</div>
+
+      <div id="modal-corpo-dados"></div>
+
+      <div class="modal-aviso">
+        ⚠ Esta ação grava dados reais nas tabelas financeiras oficiais.<br>
+        Nenhuma proposta será alterada. Os dados antigos não serão apagados.
+      </div>
+
+      <div class="modal-instrucao">
+        Para confirmar, digite exatamente:<br>
+        <strong>APLICAR BACKFILL FINANCEIRO</strong>
+      </div>
+      <input
+        type="text"
+        id="modal-input-confirmacao"
+        class="modal-input"
+        placeholder="Digite a frase de confirmação"
+        autocomplete="off"
+        oninput="modalValidarTexto()"
+      />
+
+      <div class="modal-acoes">
+        <button class="modal-btn-cancelar" onclick="modalCancelar()">Cancelar</button>
+        <button class="modal-btn-confirmar" id="modal-btn-confirmar" disabled onclick="modalConfirmar()">
+          ⚡ Confirmar e aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Aplicar Backfill (aparece após prévia válida) -->
   <div class="secao-apply" id="secao-apply" style="display:none">
     <div class="secao-titulo">⚡ Aplicar Backfill Financeiro</div>
@@ -187,6 +243,92 @@ function _money(v) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// ── Modal de confirmação ──────────────────────────────────────
+
+var FRASE_CONFIRMACAO = 'APLICAR BACKFILL FINANCEIRO';
+var _modalResolve = null;
+
+function _abrirModalConfirmacao(resumo, empNome) {
+  return new Promise(function(resolve) {
+    _modalResolve = resolve;
+
+    // Preencher dados no corpo do modal
+    var linhas = [
+      { label: 'Empresa ativa',        valor: empNome },
+      { label: 'Contas a receber',     valor: (resumo.contas_receber_a_criar || 0) + ' a criar' },
+      { label: 'Notas fiscais',        valor: (resumo.notas_fiscais_a_criar || 0) + ' a criar' },
+      { label: 'Recebimentos',         valor: (resumo.recebimentos_a_criar || 0) + ' a criar' },
+      { label: 'Movimentos de caixa',  valor: (resumo.movimentos_caixa_a_criar || 0) + ' a criar' },
+    ];
+
+    var corpo = document.getElementById('modal-corpo-dados');
+    corpo.innerHTML = linhas.map(function(l) {
+      return '<div class="modal-linha">' +
+        '<span class="modal-linha-label">' + l.label + '</span>' +
+        '<span class="modal-linha-valor">' + l.valor + '</span>' +
+        '</div>';
+    }).join('');
+
+    // Limpar e focar o input
+    var input = document.getElementById('modal-input-confirmacao');
+    input.value = '';
+    input.className = 'modal-input';
+    document.getElementById('modal-btn-confirmar').disabled = true;
+
+    // Exibir modal
+    document.getElementById('modal-confirmacao').style.display = 'flex';
+
+    // Focar o input após render
+    setTimeout(function() { input.focus(); }, 50);
+  });
+}
+
+function modalValidarTexto() {
+  var input = document.getElementById('modal-input-confirmacao');
+  var btn   = document.getElementById('modal-btn-confirmar');
+  var val   = input.value;
+
+  if (val === FRASE_CONFIRMACAO) {
+    input.className = 'modal-input ok';
+    btn.disabled = false;
+  } else if (val.length > 0) {
+    input.className = 'modal-input err';
+    btn.disabled = true;
+  } else {
+    input.className = 'modal-input';
+    btn.disabled = true;
+  }
+}
+
+function modalCancelar() {
+  document.getElementById('modal-confirmacao').style.display = 'none';
+  if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
+}
+
+function modalConfirmar() {
+  var val = document.getElementById('modal-input-confirmacao').value;
+  if (val !== FRASE_CONFIRMACAO) return;
+  document.getElementById('modal-confirmacao').style.display = 'none';
+  if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
+}
+
+// Fechar modal ao clicar no overlay (fora da caixa)
+document.addEventListener('click', function(e) {
+  var overlay = document.getElementById('modal-confirmacao');
+  if (e.target === overlay) modalCancelar();
+});
+
+// Cancelar com Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var overlay = document.getElementById('modal-confirmacao');
+    if (overlay && overlay.style.display !== 'none') modalCancelar();
+  }
+});
+
+// ── Guardar resumo da prévia para o modal ─────────────────────
+var _ultimoResumoPrevia = null;
+
 // ── Executar Prévia ──────────────────────────────────────────
 
 async function executarPrevia() {
@@ -195,6 +337,7 @@ async function executarPrevia() {
   var bfp  = _getBFP();
 
   // Ocultar seção apply ao rodar nova prévia
+  _ultimoResumoPrevia = null;
   document.getElementById('secao-apply').style.display = 'none';
   document.getElementById('apply-resumo-grid').style.display = 'none';
 
@@ -210,6 +353,7 @@ async function executarPrevia() {
   try {
     var resultado = await bfp.executar();
     var r = resultado.resumo;
+    _ultimoResumoPrevia = r;
 
     _setStatus('ok', 'Prévia concluída. Modo somente leitura — nenhum dado foi inserido.');
 
@@ -270,22 +414,22 @@ async function executarApply() {
     return;
   }
 
-  // Identificar empresa ativa para exibir na confirmação
-  var empNome = '';
+  // Identificar empresa ativa
+  var empNome = 'não identificada';
   try {
     var emp = window.parent && typeof window.parent.getEmpresaAtiva === 'function'
       ? window.parent.getEmpresaAtiva() : null;
-    empNome = emp && emp.nome ? emp.nome : 'empresa ativa';
+    if (emp && emp.nome) empNome = emp.nome;
   } catch(e) {}
 
-  var confirmMsg =
-    'Esta ação vai criar registros financeiros oficiais a partir dos dados antigos das propostas.\n\n' +
-    'Empresa: ' + empNome + '\n\n' +
-    'Nenhuma proposta será alterada. Os dados antigos não serão apagados.\n' +
-    'A operação é idempotente: rodar novamente não duplica registros.\n\n' +
-    'Deseja continuar?';
+  // Abrir modal de confirmação com frase obrigatória
+  var resumo = _ultimoResumoPrevia || {};
+  var confirmado = await _abrirModalConfirmacao(resumo, empNome);
 
-  if (!window.confirm(confirmMsg)) return;
+  if (!confirmado) {
+    _setApplyStatus('warn', 'Backfill cancelado. Nenhum dado foi gravado.');
+    return;
+  }
 
   var btn  = document.getElementById('btn-apply');
   var grid = document.getElementById('apply-resumo-grid');
@@ -304,17 +448,17 @@ async function executarApply() {
     );
 
     var itens = [
-      { label: 'Propostas processadas',    valor: rel.propostas_processadas,   sub: '',                  cls: '' },
-      { label: 'Propostas ignoradas',      valor: rel.propostas_ignoradas,     sub: 'sem dados financ.', cls: 'ignorado' },
-      { label: 'Contas criadas',           valor: rel.contas_criadas,          sub: '',                  cls: '' },
-      { label: 'Contas já existiam',       valor: rel.contas_ignoradas,        sub: 'ignoradas',         cls: 'ignorado' },
-      { label: 'NFs criadas',              valor: rel.nfs_criadas,             sub: '',                  cls: '' },
-      { label: 'NFs já existiam',          valor: rel.nfs_ignoradas,           sub: 'ignoradas',         cls: 'ignorado' },
-      { label: 'Recebimentos criados',     valor: rel.recebimentos_criados,    sub: '',                  cls: '' },
-      { label: 'Recebimentos já existiam', valor: rel.recebimentos_ignorados,  sub: 'ignorados',         cls: 'ignorado' },
-      { label: 'Movimentos criados',       valor: rel.movimentos_criados,      sub: '',                  cls: '' },
-      { label: 'Movimentos já existiam',   valor: rel.movimentos_ignorados,    sub: 'ignorados',         cls: 'ignorado' },
-      { label: 'Erros',                    valor: rel.erros ? rel.erros.length : 0, sub: '',             cls: rel.erros && rel.erros.length > 0 ? 'erro' : '' },
+      { label: 'Propostas processadas',    valor: rel.propostas_processadas,        sub: '',                  cls: '' },
+      { label: 'Propostas ignoradas',      valor: rel.propostas_ignoradas,          sub: 'sem dados financ.', cls: 'ignorado' },
+      { label: 'Contas criadas',           valor: rel.contas_criadas,               sub: '',                  cls: '' },
+      { label: 'Contas já existiam',       valor: rel.contas_ignoradas,             sub: 'ignoradas',         cls: 'ignorado' },
+      { label: 'NFs criadas',              valor: rel.nfs_criadas,                  sub: '',                  cls: '' },
+      { label: 'NFs já existiam',          valor: rel.nfs_ignoradas,               sub: 'ignoradas',         cls: 'ignorado' },
+      { label: 'Recebimentos criados',     valor: rel.recebimentos_criados,         sub: '',                  cls: '' },
+      { label: 'Recebimentos já existiam', valor: rel.recebimentos_ignorados,       sub: 'ignorados',         cls: 'ignorado' },
+      { label: 'Movimentos criados',       valor: rel.movimentos_criados,           sub: '',                  cls: '' },
+      { label: 'Movimentos já existiam',   valor: rel.movimentos_ignorados,         sub: 'ignorados',         cls: 'ignorado' },
+      { label: 'Erros',                    valor: rel.erros ? rel.erros.length : 0, sub: '',                  cls: rel.erros && rel.erros.length > 0 ? 'erro' : '' },
     ];
 
     grid.innerHTML = itens.map(function(it) {
@@ -325,15 +469,12 @@ async function executarApply() {
         '</div>';
     }).join('');
 
-    // Mostrar erros detalhados se houver
     if (temErros) {
-      var erroHtml = '<div style="margin-top:.8rem;font-size:.75rem;color:var(--red)">' +
+      grid.innerHTML += '<div style="margin-top:.8rem;font-size:.75rem;color:var(--red)">' +
         '<strong>Erros:</strong><ul style="margin-top:.3rem;padding-left:1rem">' +
         rel.erros.map(function(e) {
           return '<li>' + (e.proposta || '?') + ': ' + (e.erro || '') + '</li>';
-        }).join('') +
-        '</ul></div>';
-      grid.innerHTML += erroHtml;
+        }).join('') + '</ul></div>';
     }
 
     grid.style.display = 'grid';
