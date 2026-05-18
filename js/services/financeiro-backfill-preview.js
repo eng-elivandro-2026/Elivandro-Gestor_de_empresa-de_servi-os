@@ -86,7 +86,7 @@
   async function _carregarPropostas(empresaId) {
     var r = await _client()
       .from('propostas')
-      .select('id, app_id, dados_json, fas, val, created_at, updated_at')
+      .select('app_id, numero_proposta, fase, valor_total, dados_json, created_at, updated_at')
       .eq('empresa_id', empresaId)
       .order('created_at', { ascending: true });
 
@@ -132,8 +132,8 @@
   function _simularProposta(proposta) {
     var dados   = _parseDados(proposta.dados_json);
     var tl      = _parseTl(proposta.dados_json);
-    var fas     = proposta.fas || '';
-    var appId   = proposta.app_id || String(proposta.id);
+    var fas     = proposta.fase || dados.fas || '';
+    var appId   = proposta.app_id || dados.id || '';
 
     var nfs           = _nfs(tl);
     var adiantamentos = _adiantamentos(tl);
