@@ -140,10 +140,12 @@
   }
 
   // ── Recarregar dados ao trocar empresa ───────────────────
-  var _recarregando = false;
+  // Token de race condition: descarta respostas de empresas antigas
+  var _comercialLoadToken = 0;
   async function recarregarDadosEmpresa(empresa) {
-    if (_recarregando) return;
-    _recarregando = true;
+    var empresaId = empresa.id;
+    var token = ++_comercialLoadToken;
+
     try {
       if (!window.sbClient) return;
 
@@ -151,8 +153,11 @@
       var res = await window.sbClient
         .from('propostas')
         .select('dados_json, app_id')
-        .eq('empresa_id', empresa.id)
+        .eq('empresa_id', empresaId)
         .order('updated_at', { ascending: false });
+
+      // Race condition: descarta se empresa trocou enquanto aguardávamos
+      if (token !== _comercialLoadToken) return;
 
       if (res.error) {
         console.warn('[multi-empresa] erro ao carregar propostas:', res.error.message);
@@ -165,6 +170,8 @@
         return p;
       });
 
+      if (token !== _comercialLoadToken) return;
+
       // Atualizar variável global props
       if (typeof props !== 'undefined') props = propsFiltradas;
       try { localStorage.setItem('tf_props', JSON.stringify(propsFiltradas)); } catch (e) {}
@@ -175,8 +182,10 @@
       try { if (typeof rDash === 'function') rDash(); } catch (e) {}
       try { if (typeof rProps === 'function') rProps(); } catch (e) {}
 
-    } finally {
-      _recarregando = false;
+    } catch (e) {
+      if (token === _comercialLoadToken) {
+        console.warn('[multi-empresa] erro ao recarregar propostas:', e);
+      }
     }
   }
 
