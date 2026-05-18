@@ -67,6 +67,8 @@
         { separator: true, label: 'Cadastros' },
         { label: '↳ Empresas',         icon: '🏢', action: "go('historico',this);hShowSec('clientes');Router._setNavAtivo(this)" },
         { label: '↳ Contatos',         icon: '👤', action: "go('historico',this);hShowSec('contatos');Router._setNavAtivo(this)" },
+        { separator: true, label: 'Ferramentas' },
+        { label: '↳ Recuperação',      icon: '🔧', action: "go('historico',this);hShowSec('recuperacao');Router._setNavAtivo(this)" },
       ]
     },
     {

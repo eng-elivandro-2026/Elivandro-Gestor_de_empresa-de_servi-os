@@ -385,13 +385,17 @@
 
   // ── Alternar seções no módulo Relacionamento ─────────────
   window.hShowSec = function(sec) {
-    var secs = ['hSecRegistros', 'hSecClientes', 'hSecContatos'];
+    var secs = ['hSecRegistros', 'hSecClientes', 'hSecContatos', 'hSecRecuperacao'];
     secs.forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.style.display = (id === 'hSec' + sec.charAt(0).toUpperCase() + sec.slice(1)) ? '' : 'none';
     });
-    if (sec === 'clientes') renderTabelaClientes();
-    if (sec === 'contatos') renderTabelaContatos();
+    if (sec === 'clientes')    renderTabelaClientes();
+    if (sec === 'contatos')    renderTabelaContatos();
+    if (sec === 'recuperacao') {
+      // Atualiza info da empresa no cabeçalho da seção de recuperação
+      if (typeof window.rrRenderizarEmpresaInfo === 'function') window.rrRenderizarEmpresaInfo();
+    }
   };
 
   // ── Editar cliente (reaproveita modal, modo edição) ───────
