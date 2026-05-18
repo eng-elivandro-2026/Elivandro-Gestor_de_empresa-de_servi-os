@@ -141,7 +141,9 @@ function _setStatus(tipo, msg) {
 }
 
 function _money(v) {
-  return 'R$ ' + parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var n = typeof v === 'string' ? parseFloat(v.replace(/[^\d.,-]/g, '').replace(',', '.')) : parseFloat(v);
+  if (isNaN(n)) n = 0;
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 async function executarPrevia() {
@@ -165,22 +167,22 @@ async function executarPrevia() {
     _setStatus('ok', 'Prévia concluída. Modo somente leitura — nenhum dado foi inserido.');
 
     var itens = [
-      { label: 'Propostas analisadas',      valor: r.total_propostas_analisadas,   sub: '' },
-      { label: 'Contas a receber',           valor: r.contas_receber_a_criar,       sub: 'seriam criadas' },
-      { label: 'Notas fiscais',              valor: r.notas_fiscais_a_criar,        sub: 'seriam criadas' },
-      { label: 'Recebimentos',               valor: r.recebimentos_a_criar,         sub: 'seriam criados' },
-      { label: 'Movimentos de caixa',        valor: r.movimentos_caixa_a_criar,     sub: 'seriam criados' },
-      { label: 'Com inconsistência',         valor: r.propostas_com_inconsistencia, sub: 'propostas' },
-      { label: 'Valor previsto total',       valor: r.valor_total_previsto,         sub: '' },
-      { label: 'Valor faturado total',       valor: r.valor_total_faturado,         sub: '' },
-      { label: 'Valor recebido total',       valor: r.valor_total_recebido,         sub: '' },
-      { label: 'Em aberto total',            valor: r.valor_total_em_aberto,        sub: '' },
+      { label: 'Propostas analisadas',      valor: r.total_propostas_analisadas,          sub: '',               money: false },
+      { label: 'Contas a receber',           valor: r.contas_receber_a_criar,             sub: 'seriam criadas', money: false },
+      { label: 'Notas fiscais',              valor: r.notas_fiscais_a_criar,              sub: 'seriam criadas', money: false },
+      { label: 'Recebimentos',               valor: r.recebimentos_a_criar,               sub: 'seriam criados', money: false },
+      { label: 'Movimentos de caixa',        valor: r.movimentos_caixa_a_criar,           sub: 'seriam criados', money: false },
+      { label: 'Com inconsistência',         valor: r.propostas_com_inconsistencia,       sub: 'propostas',      money: false },
+      { label: 'Valor previsto total',       valor: r.valor_total_previsto,               sub: '',               money: true  },
+      { label: 'Valor faturado total',       valor: r.valor_total_faturado,               sub: '',               money: true  },
+      { label: 'Valor recebido total',       valor: r.valor_total_recebido,               sub: '',               money: true  },
+      { label: 'Em aberto total',            valor: r.valor_total_em_aberto,              sub: '',               money: true  },
     ];
 
     grid.innerHTML = itens.map(function(it) {
       return '<div class="resumo-card">' +
         '<div class="resumo-label">' + it.label + '</div>' +
-        '<div class="resumo-valor">' + it.valor + '</div>' +
+        '<div class="resumo-valor">' + (it.money ? _money(it.valor) : it.valor) + '</div>' +
         (it.sub ? '<div class="resumo-sub">' + it.sub + '</div>' : '') +
         '</div>';
     }).join('');
