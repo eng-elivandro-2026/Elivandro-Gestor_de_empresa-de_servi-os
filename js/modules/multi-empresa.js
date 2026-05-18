@@ -101,6 +101,15 @@
         }, '*');
       } catch(e) {}
     });
+
+    // Notificar módulos no mesmo contexto (Relacionamento, etc.)
+    // Disparado APÓS window._empresaAtiva já estar atualizado para que
+    // os listeners leiam a empresa correta ao limpar/recarregar.
+    try {
+      window.dispatchEvent(new CustomEvent('empresa:changed', {
+        detail: { empresa: empresa }
+      }));
+    } catch(e) {}
   };
 
   // ── Atualizar header com empresa ativa ───────────────────

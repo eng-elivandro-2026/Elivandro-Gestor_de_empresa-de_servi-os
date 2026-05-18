@@ -903,4 +903,18 @@
   // Re-seed quando propostas forem recarregadas
   window.addEventListener('propostas:loaded', function() { seedFromData(); });
 
+  // ── Trocar empresa: limpar UI imediatamente, depois recarregar ──────────
+  // Garantia: window._empresaAtiva já está atualizado quando este evento dispara,
+  // portanto cliLoad/ctsLoad lerão a chave correta da nova empresa.
+  window.addEventListener('empresa:changed', function() {
+    var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
+            + 'Carregando dados da empresa...</div>';
+    var elCli = document.getElementById('tabelaClientes');
+    var elCts = document.getElementById('tabelaContatos');
+    if (elCli) elCli.innerHTML = msg;
+    if (elCts) elCts.innerHTML = msg;
+    // Recarregar dados da nova empresa (seed + sync nuvem + render)
+    init();
+  });
+
 })();

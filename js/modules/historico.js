@@ -785,5 +785,20 @@
     document.getElementById('m-rel-relatorio').style.display = 'none';
   };
 
+  // ── Trocar empresa: limpar UI imediatamente, depois recarregar ──────────
+  // window._empresaAtiva já está atualizado quando este evento dispara;
+  // hLS() lerá a chave correta da nova empresa.
+  window.addEventListener('empresa:changed', function() {
+    var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
+            + 'Carregando dados da empresa...</div>';
+    var elLista  = document.getElementById('historicoLista');
+    var elPainel = document.getElementById('hPainelCeo');
+    if (elLista)  elLista.innerHTML  = msg;
+    if (elPainel) elPainel.innerHTML = msg;
+    // Re-render lê automaticamente tf_historico_<novo_empresa_id>
+    renderPainelCeo();
+    renderLista();
+  });
+
   console.log('%c[Histórico] carregado', 'color:#58a6ff;font-weight:700');
 })();
