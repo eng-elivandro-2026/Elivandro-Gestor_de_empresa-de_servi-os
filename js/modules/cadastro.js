@@ -6,23 +6,77 @@
 // ============================================================
 
 (function () {
-  var KEY_CTS = 'tf_contatos';
-  var KEY_CLI = 'tf_clientes';
+  // ── Bases das chaves (nunca usadas diretamente para ler/gravar) ──
+  var KEY_CTS_BASE    = 'tf_contatos';
+  var KEY_CLI_BASE    = 'tf_clientes';
+
+  // ── Resolução de empresa ativa (mesma waterfall dos demais módulos) ──
+  function _getEmpresaId() {
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      var id = window.getEmpresaAtivaId();
+      if (id) return id;
+    }
+    if (typeof window.getEmpresaAtiva === 'function') {
+      var obj = window.getEmpresaAtiva();
+      if (obj && obj.id) return obj.id;
+    }
+    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+    try {
+      var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (salvo && salvo.id) return salvo.id;
+    } catch(e) {}
+    return null;
+  }
+
+  // Retorna chave com empresa_id ou null se empresa não identificada
+  function _keyFor(base) {
+    var eid = _getEmpresaId();
+    if (!eid) return null;
+    return base + '_' + eid;
+  }
 
   // ── Helpers localStorage ──────────────────────────────────
   function ctsLoad() {
-    try { return JSON.parse(localStorage.getItem(KEY_CTS) || '[]'); } catch(e) { return []; }
+    var key = _keyFor(KEY_CTS_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
   }
   function cliLoad() {
-    try { return JSON.parse(localStorage.getItem(KEY_CLI) || '[]'); } catch(e) { return []; }
+    var key = _keyFor(KEY_CLI_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
   }
-  function ctsSave(list) {
-    try { localStorage.setItem(KEY_CTS, JSON.stringify(list)); } catch(e) {}
-    _sbSave(KEY_CTS, list);
+  // opcoes.permitirListaVazia = true → exclusão manual confirmada pelo usuário
+  // sem a opção → save automático/sync, bloqueado se tentar esvaziar lista existente
+  function ctsSave(list, opcoes) {
+    var key = _keyFor(KEY_CTS_BASE);
+    if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de contatos bloqueado.'); return; }
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
+      var atualCts = ctsLoad();
+      if (atualCts.length > 0) {
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCts.length,
+          'contato(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
+        return;
+      }
+    }
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+    _sbSave(key, list);
   }
-  function cliSave(list) {
-    try { localStorage.setItem(KEY_CLI, JSON.stringify(list)); } catch(e) {}
-    _sbSave(KEY_CLI, list);
+  function cliSave(list, opcoes) {
+    var key = _keyFor(KEY_CLI_BASE);
+    if (!key) { console.warn('[Cadastro] empresa_id não disponível — save de clientes bloqueado.'); return; }
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
+      var atualCli = cliLoad();
+      if (atualCli.length > 0) {
+        console.warn('[Cadastro] Bloqueado: tentativa de gravar lista vazia por cima de', atualCli.length,
+          'cliente(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
+        return;
+      }
+    }
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
+    _sbSave(key, list);
   }
 
   // ── Supabase sync ─────────────────────────────────────────
@@ -54,17 +108,29 @@
 
   // ── Seed a partir dos dados existentes ────────────────────
   // Tombstones: nomes explicitamente deletados pelo usuário — seedFromData não recria
-  var KEY_CLI_DEL = 'tf_cli_del';
-  var KEY_CTS_DEL = 'tf_cts_del';
-  function _cliDelLoad() { try { return JSON.parse(localStorage.getItem(KEY_CLI_DEL) || '[]'); } catch(e) { return []; } }
-  function _ctsDelLoad() { try { return JSON.parse(localStorage.getItem(KEY_CTS_DEL) || '[]'); } catch(e) { return []; } }
+  var KEY_CLI_DEL_BASE = 'tf_cli_del';
+  var KEY_CTS_DEL_BASE = 'tf_cts_del';
+  function _cliDelLoad() {
+    var key = _keyFor(KEY_CLI_DEL_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+  }
+  function _ctsDelLoad() {
+    var key = _keyFor(KEY_CTS_DEL_BASE);
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+  }
   function _cliDelAdd(nome) {
+    var key = _keyFor(KEY_CLI_DEL_BASE);
+    if (!key) return;
     var del = _cliDelLoad(); var n = nome.toLowerCase();
-    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(KEY_CLI_DEL, JSON.stringify(del)); }
+    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(key, JSON.stringify(del)); }
   }
   function _ctsDelAdd(nome) {
+    var key = _keyFor(KEY_CTS_DEL_BASE);
+    if (!key) return;
     var del = _ctsDelLoad(); var n = nome.toLowerCase();
-    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(KEY_CTS_DEL, JSON.stringify(del)); }
+    if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(key, JSON.stringify(del)); }
   }
 
   function seedFromData() {
@@ -104,9 +170,12 @@
       if (p.ac2) addCts(p.ac2, cli);
     });
 
-    // Do histórico
+    // Do histórico — usa chave por empresa_id se disponível
     var hist = [];
-    try { hist = JSON.parse(localStorage.getItem('tf_historico') || '[]'); } catch(e) {}
+    var histKey = _keyFor('tf_historico');
+    if (histKey) {
+      try { hist = JSON.parse(localStorage.getItem(histKey) || '[]'); } catch(e) {}
+    }
     hist.forEach(function(h) {
       if (h.contato) addCts(h.contato, h.cliente || '');
       if (h.cliente) addCli(h.cliente, '');
@@ -366,7 +435,8 @@
     var all = cliLoad();
     var item = all.find(function(x) { return x.id === id; });
     if (item) _cliDelAdd(item.nome);
-    cliSave(all.filter(function(x) { return x.id !== id; }));
+    // permitirListaVazia: exclusão manual confirmada — pode resultar em lista vazia
+    cliSave(all.filter(function(x) { return x.id !== id; }), { permitirListaVazia: true });
     renderTabelaClientes();
     if (typeof toast === 'function') toast('Cliente excluído', 'ok');
   };
@@ -473,7 +543,8 @@
     var all = ctsLoad();
     var item = all.find(function(x) { return x.id === id; });
     if (item) _ctsDelAdd(item.nome);
-    ctsSave(all.filter(function(x) { return x.id !== id; }));
+    // permitirListaVazia: exclusão manual confirmada — pode resultar em lista vazia
+    ctsSave(all.filter(function(x) { return x.id !== id; }), { permitirListaVazia: true });
     renderTabelaContatos();
     if (typeof toast === 'function') toast('Contato excluído', 'ok');
   };
@@ -551,16 +622,19 @@
       try { localStorage.setItem('tf_props', JSON.stringify(props)); } catch(e) {}
       if (window.props) window.props = props;
     }
-    var hist = [];
-    try { hist = JSON.parse(localStorage.getItem('tf_historico') || '[]'); } catch(e) {}
-    var hChanged = false;
-    hist = hist.map(function(h) {
-      var c = Object.assign({}, h);
-      if ((c.contato || '').toLowerCase() === oldL) { c.contato = newNome; hChanged = true; }
-      return c;
-    });
-    if (hChanged) {
-      try { localStorage.setItem('tf_historico', JSON.stringify(hist)); } catch(e) {}
+    var histKey = _keyFor('tf_historico');
+    if (histKey) {
+      var hist = [];
+      try { hist = JSON.parse(localStorage.getItem(histKey) || '[]'); } catch(e) {}
+      var hChanged = false;
+      hist = hist.map(function(h) {
+        var c = Object.assign({}, h);
+        if ((c.contato || '').toLowerCase() === oldL) { c.contato = newNome; hChanged = true; }
+        return c;
+      });
+      if (hChanged) {
+        try { localStorage.setItem(histKey, JSON.stringify(hist)); } catch(e) {}
+      }
     }
   }
 
@@ -748,30 +822,74 @@
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
+    var eid = _getEmpresaId();
+
+    // ── Aviso sobre chaves globais antigas (fonte de recuperação) ──
+    if (eid) {
+      var oldCli = localStorage.getItem('tf_clientes');
+      if (oldCli) {
+        try {
+          var oldCliList = JSON.parse(oldCli);
+          if (Array.isArray(oldCliList) && oldCliList.length > 0) {
+            console.warn('[Cadastro] Existem', oldCliList.length,
+              'clientes na chave global tf_clientes. Recuperação manual necessária se a lista da empresa estiver vazia.');
+          }
+        } catch(e) {}
+      }
+      var oldCts = localStorage.getItem('tf_contatos');
+      if (oldCts) {
+        try {
+          var oldCtsList = JSON.parse(oldCts);
+          if (Array.isArray(oldCtsList) && oldCtsList.length > 0) {
+            console.warn('[Cadastro] Existem', oldCtsList.length,
+              'contatos na chave global tf_contatos. Recuperação manual necessária se a lista da empresa estiver vazia.');
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!eid) {
+      console.warn('[Cadastro] empresa_id não disponível no init — seed e sync bloqueados. Aguardando empresa ativa.');
+      return;
+    }
+
     seedFromData();
     _limparClientes();
-    // Sincronizar da nuvem — adiciona itens novos mas respeita tombstones
-    _sbLoad(KEY_CTS, function(v) {
-      var local = ctsLoad();
-      var del   = _ctsDelLoad();
-      var merged = local.slice();
-      v.forEach(function(x) {
-        if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-        if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+
+    // Sincronizar da nuvem — usa chaves por empresa_id, adiciona novos mas respeita tombstones
+    var keyCts = _keyFor(KEY_CTS_BASE);
+    var keyCli = _keyFor(KEY_CLI_BASE);
+
+    if (keyCts) {
+      _sbLoad(keyCts, function(v) {
+        var local  = ctsLoad();
+        var del    = _ctsDelLoad();
+        var merged = local.slice();
+        v.forEach(function(x) {
+          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
+          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+        });
+        try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
+        // Re-renderizar após chegada dos dados da nuvem
+        try { renderTabelaContatos(); } catch(e) {}
       });
-      try { localStorage.setItem(KEY_CTS, JSON.stringify(merged)); } catch(e) {}
-    });
-    _sbLoad(KEY_CLI, function(v) {
-      var local = cliLoad();
-      var del   = _cliDelLoad();
-      var merged = local.slice();
-      v.forEach(function(x) {
-        if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-        if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+    }
+
+    if (keyCli) {
+      _sbLoad(keyCli, function(v) {
+        var local  = cliLoad();
+        var del    = _cliDelLoad();
+        var merged = local.slice();
+        v.forEach(function(x) {
+          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
+          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+        });
+        try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
+        _limparClientes(); // limpa também após retorno do Supabase
+        // Re-renderizar após chegada dos dados da nuvem
+        try { renderTabelaClientes(); } catch(e) {}
       });
-      try { localStorage.setItem(KEY_CLI, JSON.stringify(merged)); } catch(e) {}
-      _limparClientes(); // limpa também após retorno do Supabase
-    });
+    }
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
 
@@ -788,5 +906,29 @@
 
   // Re-seed quando propostas forem recarregadas
   window.addEventListener('propostas:loaded', function() { seedFromData(); });
+
+  // ── Trocar empresa: limpar UI imediatamente, depois recarregar ──────────
+  // Garantia: window._empresaAtiva já está atualizado quando este evento dispara,
+  // portanto cliLoad/ctsLoad lerão a chave correta da nova empresa.
+  window.addEventListener('empresa:changed', function() {
+    var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
+            + 'Carregando dados da empresa...</div>';
+    var elCli = document.getElementById('tabelaClientes');
+    var elCts = document.getElementById('tabelaContatos');
+    if (elCli) elCli.innerHTML = msg;
+    if (elCts) elCts.innerHTML = msg;
+    // Recarregar dados da nova empresa (seed + sync nuvem).
+    // init() dispara _sbLoad assíncrono que chama render nos callbacks;
+    // chamamos render também aqui de forma síncrona para exibir
+    // imediatamente o que já está no localStorage da nova empresa
+    // (ou "Nenhum cliente cadastrado" se a lista estiver vazia).
+    try {
+      init();
+    } catch(e) {
+      console.error('[Cadastro] erro em init() na troca de empresa:', e);
+    }
+    try { renderTabelaClientes(); } catch(e) {}
+    try { renderTabelaContatos(); } catch(e) {}
+  });
 
 })();

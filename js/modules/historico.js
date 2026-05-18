@@ -1,10 +1,44 @@
 // Módulo Histórico de Relacionamento — TecFusion
 (function () {
-  var KEY = 'tf_historico';
+  var KEY_BASE = 'tf_historico';
+
+  // ── Resolução de empresa ativa (mesma waterfall dos demais módulos) ──
+  function _getEmpresaId() {
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      var id = window.getEmpresaAtivaId();
+      if (id) return id;
+    }
+    if (typeof window.getEmpresaAtiva === 'function') {
+      var obj = window.getEmpresaAtiva();
+      if (obj && obj.id) return obj.id;
+    }
+    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+    try {
+      var salvo = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (salvo && salvo.id) return salvo.id;
+    } catch(e) {}
+    return null;
+  }
+
+  // Retorna chave com empresa_id ou null se empresa não identificada
+  function _getKey() {
+    var eid = _getEmpresaId();
+    if (!eid) return null;
+    return KEY_BASE + '_' + eid;
+  }
 
   function hLS(v) {
-    if (v === undefined) { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { return []; } }
-    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch(e) {}
+    var key = _getKey();
+    if (!key) {
+      // Empresa não identificada: não expõe dados globais de outras empresas
+      if (v === undefined) return [];
+      console.warn('[Histórico] empresa_id não disponível — save bloqueado.');
+      return;
+    }
+    if (v === undefined) {
+      try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+    }
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch(e) {}
   }
 
   function genId() { return 'hst_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
@@ -16,7 +50,23 @@
     return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
   }
 
-  function saveList(list) {
+  // opcoes.permitirListaVazia = true → exclusão manual confirmada pelo usuário
+  // sem a opção → save automático/sync, bloqueado se tentar esvaziar lista existente
+  function saveList(list, opcoes) {
+    var key = _getKey();
+    if (!key) {
+      console.warn('[Histórico] empresa_id não disponível — save bloqueado.');
+      return;
+    }
+    var permitir = opcoes && opcoes.permitirListaVazia;
+    if (!permitir && (!list || list.length === 0)) {
+      var atual = hLS();
+      if (atual.length > 0) {
+        console.warn('[Histórico] Bloqueado: tentativa de gravar lista vazia por cima de', atual.length,
+          'registro(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
+        return;
+      }
+    }
     hLS(list);
     if (typeof sbSalvarHistorico === 'function') sbSalvarHistorico(list);
   }
@@ -734,6 +784,33 @@
     setTimeout(function(){ win.print(); }, 700);
     document.getElementById('m-rel-relatorio').style.display = 'none';
   };
+
+  // ── Trocar empresa: limpar UI imediatamente, depois recarregar ──────────
+  // window._empresaAtiva já está atualizado quando este evento dispara;
+  // hLS() lerá a chave correta da nova empresa.
+  window.addEventListener('empresa:changed', function() {
+    var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
+            + 'Carregando dados da empresa...</div>';
+    var elLista  = document.getElementById('historicoLista');
+    var elPainel = document.getElementById('hPainelCeo');
+    if (elLista)  elLista.innerHTML  = msg;
+    if (elPainel) elPainel.innerHTML = msg;
+
+    // 1ª render síncrona: exibe o que já está no localStorage da nova empresa
+    // (ou "Nenhum registro encontrado" se lista vazia)
+    try { renderPainelCeo(); } catch(e) {}
+    try { renderLista();     } catch(e) {}
+
+    // 2ª render assíncrona: sincroniza da nuvem e atualiza se houver dados novos
+    if (typeof sbCarregarHistorico === 'function') {
+      sbCarregarHistorico().then(function() {
+        try { renderPainelCeo(); } catch(e) {}
+        try { renderLista();     } catch(e) {}
+      }).catch(function(e) {
+        console.error('[Histórico] erro ao sincronizar nuvem na troca de empresa:', e);
+      });
+    }
+  });
 
   console.log('%c[Histórico] carregado', 'color:#58a6ff;font-weight:700');
 })();
