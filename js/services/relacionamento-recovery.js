@@ -329,9 +329,9 @@
     console.info('[Recovery] MODO SOMENTE LEITURA — nenhum dado será alterado.');
 
     // ── 1. Ler chaves antigas globais (localStorage) ──────────
-    var ls_cli_antigo  = _lsRead('tf_clientes');
-    var ls_cts_antigo  = _lsRead('tf_contatos');
-    var ls_hist_antigo = _lsRead('tf_historico');
+    var ls_cli_antigo  = _lsRead('tf_clientes').map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'localStorage antigo' }); });
+    var ls_cts_antigo  = _lsRead('tf_contatos').map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'localStorage antigo' }); });
+    var ls_hist_antigo = _lsRead('tf_historico').map(function(h) { return Object.assign({}, h, { _fonte: h._fonte || 'localStorage antigo' }); });
     var ls_cli_del     = _lsRead('tf_cli_del');
     var ls_cts_del     = _lsRead('tf_cts_del');
 
@@ -346,9 +346,9 @@
 
     // ── 3. Ler do Supabase — antigo global ────────────────────
     console.info('[Recovery] Consultando Supabase — chaves antigas...');
-    var sb_cli_antigo  = await _sbRead('tf_clientes')  || [];
-    var sb_cts_antigo  = await _sbRead('tf_contatos')  || [];
-    var sb_hist_antigo = await _sbRead('tf_historico') || [];
+    var sb_cli_antigo  = (await _sbRead('tf_clientes')  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
+    var sb_cts_antigo  = (await _sbRead('tf_contatos')  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
+    var sb_hist_antigo = (await _sbRead('tf_historico') || []).map(function(h) { return Object.assign({}, h, { _fonte: h._fonte || 'Supabase antigo' }); });
 
     // ── 4. Ler do Supabase — novo por empresa ─────────────────
     console.info('[Recovery] Consultando Supabase — chaves novas...');
@@ -846,12 +846,13 @@
       html += '</div>';
     }
 
-    // Listas detalhadas colapsáveis
-    html += _renderListaColapsavel('Clientes que serão recuperados',  p.para_recuperar.clientes,  _camposCli,  'rec_cli');
-    html += _renderListaColapsavel('Contatos que serão recuperados',  p.para_recuperar.contatos,  _camposCts,  'rec_cts');
-    html += _renderListaColapsavel('Histórico que será recuperado',   p.para_recuperar.historico, _camposHist, 'rec_hist');
-    html += _renderListaColapsavel('Clientes duplicados (ignorados)', p.duplicados.clientes.map(function(d){return Object.assign({_motivo:d.motivo}, d.item);}), _camposCliDup, 'dup_cli');
-    html += _renderListaColapsavel('Contatos duplicados (ignorados)', p.duplicados.contatos.map(function(d){return Object.assign({_motivo:d.motivo}, d.item);}), _camposCtsDup, 'dup_cts');
+    // ── Listas detalhadas — abertas por padrão para inspeção antes de aplicar ──
+    html += _renderListaDetalhada('🟢 Clientes que serão recuperados',  p.para_recuperar.clientes,  _cardCli,    'rec_cli',  true);
+    html += _renderListaDetalhada('🟢 Contatos que serão recuperados',  p.para_recuperar.contatos,  _cardCts,    'rec_cts',  true);
+    html += _renderListaDetalhada('🟢 Histórico que será recuperado',   p.para_recuperar.historico, _cardHist,   'rec_hist', true);
+    // ── Duplicados — colapsados por padrão (info secundária) ─────────────────
+    html += _renderListaDetalhada('⚪ Clientes duplicados (ignorados)', p.duplicados.clientes.map(function(d){return Object.assign({}, d.item, {_motivo:d.motivo});}), _cardDupCli, 'dup_cli', false);
+    html += _renderListaDetalhada('⚪ Contatos duplicados (ignorados)', p.duplicados.contatos.map(function(d){return Object.assign({}, d.item, {_motivo:d.motivo});}), _cardDupCts, 'dup_cts', false);
 
     html += '<div style="font-size:.7rem;color:var(--text3);margin-top:.5rem;text-align:center">'
       + '✔ MODO PRÉVIA — nenhum dado foi gravado. Clique em "Aplicar Recuperação" para prosseguir.'
@@ -860,39 +861,129 @@
     return html;
   }
 
-  function _camposCli(c) {
-    return _escHtml(c.nome) + (c.cnpj ? ' <span style="color:var(--text3);font-size:.7rem">CNPJ: ' + _escHtml(c.cnpj) + '</span>' : '')
-      + (c.cidade ? ' <span style="color:var(--text3);font-size:.7rem">— ' + _escHtml(c.cidade) + '</span>' : '')
-      + (c._fonte ? ' <span style="color:var(--text3);font-size:.67rem">[' + _escHtml(c._fonte) + ']</span>' : '');
+  // ── Badge de origem colorido ──────────────────────────────
+  function _fonteBadge(fonte) {
+    if (!fonte) return '';
+    var cor = fonte === 'localStorage antigo' ? '#6366f1'
+            : fonte === 'Supabase antigo'      ? '#0ea5e9'
+            : fonte === 'proposta'              ? '#10b981'
+            :                                    '#6b7280';
+    return '<span style="display:inline-block;background:' + cor
+      + ';color:#fff;border-radius:3px;padding:.07rem .32rem;font-size:.62rem;font-weight:600;margin-left:.3rem">'
+      + _escHtml(fonte) + '</span>';
   }
-  function _camposCts(c) {
-    return _escHtml(c.nome)
-      + (c.empresa ? ' <span style="color:var(--text3);font-size:.7rem">/ ' + _escHtml(c.empresa) + '</span>' : '')
-      + (c.email   ? ' <span style="color:var(--text3);font-size:.7rem">— ' + _escHtml(c.email)   + '</span>' : '')
-      + (c._fonte ? ' <span style="color:var(--text3);font-size:.67rem">[' + _escHtml(c._fonte) + ']</span>' : '');
-  }
-  function _camposHist(h) {
-    return _escHtml((h.data || '').slice(0, 10))
-      + ' | ' + _escHtml(h.cliente || '—')
-      + ' | ' + _escHtml(h.resumo  || '').slice(0, 60) + (h.resumo && h.resumo.length > 60 ? '…' : '');
-  }
-  function _camposCliDup(c) { return _camposCli(c) + ' <em style="color:#f59e0b;font-size:.7rem">→ ' + _escHtml(c._motivo || '') + '</em>'; }
-  function _camposCtsDup(c) { return _camposCts(c) + ' <em style="color:#f59e0b;font-size:.7rem">→ ' + _escHtml(c._motivo || '') + '</em>'; }
 
-  function _renderListaColapsavel(titulo, lista, rowFn, domId) {
-    if (!lista.length) return '';
-    var id = 'rrLista_' + domId;
-    var html = '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem">';
-    html += '<div onclick="var el=document.getElementById(\'' + id + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';" '
-      + 'style="cursor:pointer;padding:.5rem .75rem;display:flex;justify-content:space-between;align-items:center">'
-      + '<span style="font-size:.74rem;font-weight:600;color:var(--text2)">' + _escHtml(titulo) + '</span>'
-      + _badge(lista.length, '#6b7280')
+  // ── Card: Cliente ─────────────────────────────────────────
+  function _cardCli(c) {
+    var cnpjOk   = c.cnpj   && _normCnpj(c.cnpj).length >= 11;
+    var cidadeOk = c.cidade && c.cidade.trim();
+    return '<div style="padding:.55rem .75rem;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;margin-bottom:.25rem">'
+      +   '<span style="font-weight:700;font-size:.82rem;color:var(--text)">🏢 ' + _escHtml(c.nome || '—') + '</span>'
+      +   _fonteBadge(c._fonte)
+      + '</div>'
+      + '<div style="font-size:.74rem;color:var(--text2);display:flex;gap:1.25rem;flex-wrap:wrap">'
+      +   '<span>CNPJ: ' + (cnpjOk   ? _escHtml(c.cnpj)   : '<span style="color:#f59e0b">—</span>') + '</span>'
+      +   '<span>Cidade: ' + (cidadeOk ? _escHtml(c.cidade) : '<span style="color:#f59e0b">—</span>') + '</span>'
+      + '</div>'
+      + (!cnpjOk   ? '<div style="font-size:.69rem;color:#f59e0b;margin-top:.18rem">⚠️ Sem CNPJ</div>'   : '')
+      + (!cidadeOk ? '<div style="font-size:.69rem;color:#f59e0b;margin-top:.12rem">⚠️ Sem cidade</div>' : '')
       + '</div>';
-    html += '<div id="' + id + '" style="display:none;padding:0 .75rem .6rem;max-height:260px;overflow-y:auto">';
-    lista.forEach(function (item) {
-      html += '<div style="font-size:.73rem;color:var(--text2);padding:.22rem 0;border-bottom:1px solid var(--border)">'
-        + rowFn(item) + '</div>';
-    });
+  }
+
+  // ── Card: Contato ─────────────────────────────────────────
+  function _cardCts(c) {
+    return '<div style="padding:.55rem .75rem;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;margin-bottom:.25rem">'
+      +   '<span style="font-weight:700;font-size:.82rem;color:var(--text)">👤 ' + _escHtml(c.nome || '—') + '</span>'
+      +   _fonteBadge(c._fonte)
+      + '</div>'
+      + '<div style="font-size:.73rem;color:var(--text2);display:grid;grid-template-columns:1fr 1fr;gap:.18rem .9rem">'
+      +   '<span>Cliente: <strong>' + _escHtml(c.empresa     || '—') + '</strong></span>'
+      +   '<span>E-mail: '          + _escHtml(c.email        || '—') + '</span>'
+      +   '<span>Telefone: '        + _escHtml(c.telefone     || '—') + '</span>'
+      +   '<span>Depto: '           + _escHtml(c.departamento || '—') + '</span>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // ── Card: Histórico ───────────────────────────────────────
+  function _cardHist(h) {
+    var data   = (h.data   || '').slice(0, 16).replace('T', ' ');
+    var resumo = h.resumo  || '';
+    return '<div style="padding:.55rem .75rem;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.3rem;margin-bottom:.22rem">'
+      +   (data    ? '<span style="font-size:.75rem;font-weight:700;color:var(--text)">'   + _escHtml(data)    + '</span>' : '')
+      +   (h.canal ? '<span style="font-size:.7rem;color:var(--text3)">•</span><span style="font-size:.72rem;color:var(--text2)">' + _escHtml(h.canal) + '</span>' : '')
+      +   (h.status? '<span style="font-size:.7rem;color:var(--text3)">•</span><span style="font-size:.7rem;color:var(--text3)">'  + _escHtml(h.status)+ '</span>' : '')
+      +   _fonteBadge(h._fonte)
+      + '</div>'
+      + '<div style="font-size:.73rem;color:var(--text2);display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.2rem">'
+      +   '<span>Cliente: <strong>' + _escHtml(h.cliente || '—')  + '</strong></span>'
+      +   (h.contato     ? '<span>Contato: '     + _escHtml(h.contato)     + '</span>' : '')
+      +   (h.responsavel ? '<span>Resp.: '       + _escHtml(h.responsavel) + '</span>' : '')
+      +   (h.prioridade  ? '<span>Prior.: '      + _escHtml(h.prioridade)  + '</span>' : '')
+      + '</div>'
+      + (resumo ? '<div style="font-size:.72rem;color:var(--text3);overflow:hidden;max-height:3em">'
+        + _escHtml(resumo.slice(0, 180)) + (resumo.length > 180 ? '…' : '') + '</div>' : '')
+      + (h.proxima_acao ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">⚡ ' + _escHtml(h.proxima_acao) + '</div>' : '')
+      + '</div>';
+  }
+
+  // ── Card: Cliente duplicado ───────────────────────────────
+  function _cardDupCli(c) {
+    return '<div style="padding:.45rem .75rem;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;margin-bottom:.18rem">'
+      +   '<span style="font-size:.78rem;font-weight:600;color:var(--text2)">🏢 ' + _escHtml(c.nome || '—') + '</span>'
+      +   _fonteBadge(c._fonte)
+      + '</div>'
+      + '<div style="font-size:.72rem;color:var(--text2);display:flex;gap:.9rem;flex-wrap:wrap">'
+      +   '<span>CNPJ: '   + _escHtml(c.cnpj   || '—') + '</span>'
+      +   '<span>Cidade: ' + _escHtml(c.cidade  || '—') + '</span>'
+      + '</div>'
+      + '<div style="font-size:.69rem;color:#f59e0b;margin-top:.18rem">⚠️ ' + _escHtml(c._motivo || '') + '</div>'
+      + '</div>';
+  }
+
+  // ── Card: Contato duplicado ───────────────────────────────
+  function _cardDupCts(c) {
+    return '<div style="padding:.45rem .75rem;border-bottom:1px solid var(--border)">'
+      + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;margin-bottom:.18rem">'
+      +   '<span style="font-size:.78rem;font-weight:600;color:var(--text2)">👤 ' + _escHtml(c.nome || '—') + '</span>'
+      +   _fonteBadge(c._fonte)
+      + '</div>'
+      + '<div style="font-size:.72rem;color:var(--text2);display:flex;gap:.9rem;flex-wrap:wrap">'
+      +   (c.empresa ? '<span>Cliente: ' + _escHtml(c.empresa) + '</span>' : '')
+      +   (c.email   ? '<span>E-mail: '  + _escHtml(c.email)   + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:.69rem;color:#f59e0b;margin-top:.18rem">⚠️ ' + _escHtml(c._motivo || '') + '</div>'
+      + '</div>';
+  }
+
+  // ── Lista detalhada expansível (expandido = abre por padrão) ─
+  function _renderListaDetalhada(titulo, lista, cardFn, domId, expandido) {
+    if (!lista.length) return '';
+    var id  = 'rrLista_' + domId;
+    var aberto = expandido ? 'block' : 'none';
+    var icone  = expandido ? '▲' : '▼';
+    var corBadge = lista.length > 0 ? (expandido ? '#22c55e' : '#6b7280') : '#6b7280';
+    var html = '<div style="border:1px solid var(--border);border-radius:6px;margin-bottom:.7rem;overflow:hidden">';
+    // Cabeçalho clicável
+    html += '<div '
+      + 'onclick="(function(el,ic){'
+      +   'el.style.display=el.style.display===\'none\'?\'block\':\'none\';'
+      +   'ic.textContent=el.style.display===\'none\'?\'▼\':\'▲\';'
+      + '})(document.getElementById(\'' + id + '\'),this.querySelector(\'.rr-ic\'))" '
+      + 'style="cursor:pointer;padding:.52rem .75rem;display:flex;justify-content:space-between;align-items:center;background:var(--bg3)">'
+      +   '<span style="font-size:.76rem;font-weight:700;color:var(--text2)">' + _escHtml(titulo) + '</span>'
+      +   '<span style="display:flex;align-items:center;gap:.4rem">'
+      +     _badge(lista.length, corBadge)
+      +     '<span class="rr-ic" style="font-size:.68rem;color:var(--text3)">' + icone + '</span>'
+      +   '</span>'
+      + '</div>';
+    // Corpo
+    html += '<div id="' + id + '" style="display:' + aberto + ';max-height:460px;overflow-y:auto;background:var(--bg2)">';
+    lista.forEach(function (item) { html += cardFn(item); });
     html += '</div></div>';
     return html;
   }
