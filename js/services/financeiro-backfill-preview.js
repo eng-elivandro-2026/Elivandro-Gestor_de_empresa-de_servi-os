@@ -342,8 +342,8 @@
       } catch (e) {
         console.warn('[Backfill Financeiro] Erro ao simular proposta:', p.app_id, e);
         return {
-          proposta_app_id: p.app_id || p.id,
-          fas: p.fas,
+          proposta_app_id: p.app_id || dados && dados.id || '',
+          fas: p.fase || '',
           criaria_conta: false,
           contarNFs: 0,
           contarRecebimentos: 0,

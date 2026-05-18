@@ -74,6 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="page-header">
     <div class="page-title">💰 Financeiro <span class="tag-construcao">Em estruturação</span></div>
     <div class="page-sub">Base oficial em estruturação — Fase F1 concluída.</div>
+    <div id="empresa-ativa-label" style="margin-top:.4rem;font-size:.75rem;color:var(--text3)">Empresa ativa: —</div>
   </div>
 
   <!-- Cards informativos -->
@@ -196,11 +197,24 @@ async function executarPrevia() {
   }
 }
 
-// Herdar tema do portal pai
+// Herdar tema e exibir empresa ativa
 (function() {
   try {
     if (window.parent && window.parent.document.body.classList.contains('light')) {
       document.body.classList.add('light');
+    }
+  } catch(e) {}
+
+  try {
+    var emp = null;
+    if (window.parent && typeof window.parent.getEmpresaAtiva === 'function') {
+      emp = window.parent.getEmpresaAtiva();
+    }
+    var label = document.getElementById('empresa-ativa-label');
+    if (label) {
+      label.textContent = emp && emp.nome
+        ? 'Empresa ativa: ' + emp.nome
+        : 'Empresa ativa: não identificada — verifique o login.';
     }
   } catch(e) {}
 })();
