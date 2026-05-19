@@ -39,6 +39,10 @@
     accordionOpen: {}
   };
 
+  // ── Proteção de race condition: troca rápida de empresa ──
+  // Incrementado a cada carregarObras(); respostas de tokens antigos são descartadas.
+  var _opLoadToken = 0;
+
   var STATUS_RETROATIVOS = [
     'andamento',
     'taf',
@@ -1109,7 +1113,7 @@
     var el = $('opLista');
     if (!el) return;
     if (state.carregando) {
-      el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando obras...</div>';
+      el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando dados operacionais da empresa selecionada...</div>';
       return;
     }
     if (state.erro) {
@@ -1406,16 +1410,31 @@
   }
 
   async function carregarObras() {
+    // Captura empresa e token ANTES do await para detectar trocas durante a consulta
+    var empresaId = getEmpresaId();
+    var token = ++_opLoadToken;
+
     state.carregando = true;
     state.erro = '';
     renderLista();
+
     try {
-      state.obras = await window.sbListarObras(getEmpresaId());
+      var obras = await window.sbListarObras(empresaId);
+
+      // Race condition: descarta se empresa ou token mudou enquanto aguardávamos
+      if (token !== _opLoadToken) return;
+      if (getEmpresaId() !== empresaId) return;
+
+      state.obras = obras;
     } catch (e) {
+      if (token !== _opLoadToken) return;
       state.erro = e.message || String(e);
     } finally {
-      state.carregando = false;
-      renderLista();
+      // Só atualiza UI se ainda somos o carregamento mais recente
+      if (token === _opLoadToken) {
+        state.carregando = false;
+        renderLista();
+      }
     }
   }
 
@@ -2335,4 +2354,45 @@
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
   document.addEventListener('input', onOperacionalInput, true);
+
+  // ── Listener: troca de empresa ───────────────────────────
+  // Disparado por multi-empresa.js via CustomEvent('empresa:changed')
+  // Limpa imediatamente o estado operacional e recarrega se o módulo estiver ativo
+  window.addEventListener('empresa:changed', function () {
+    // Limpar estado: obras, detalhe aberto, filtros e subestados
+    state.obras = [];
+    state.obraAtual = null;
+    state.erro = '';
+    state.status = '';
+    state.cliente = '';
+    state.busca = '';
+    state.diarios = [];
+    state.diariosLoaded = false;
+    state.diarioForm = null;
+    state.diarioEditId = '';
+    state.diarioCarregando = false;
+    state.diarioErro = '';
+    state.recursos = [];
+    state.recursosLoaded = false;
+    state.recursosCarregando = false;
+    state.recursosErro = '';
+    state.recursoForm = null;
+    state.recursoEditId = '';
+    state.recursoExcluir = null;
+    state.recursosPadraoPicker = false;
+    state.mobilizacaoEquipe = [];
+    state.mobilizacaoLoaded = false;
+    state.mobilizacaoCarregando = false;
+    state.mobilizacaoErro = '';
+    state.mobilizacaoForm = null;
+    state.mobilizacaoEditId = '';
+    state.mobilizacaoExcluir = null;
+    state.accordionOpen = {};
+
+    // Se o módulo Operacional está ativo, re-renderizar imediatamente
+    if (window.Router && window.Router.getAtivo() === 'operacional') {
+      rOperacional();
+    }
+  });
+
 })(window, document);

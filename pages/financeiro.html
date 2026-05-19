@@ -508,6 +508,31 @@ async function executarApply() {
     }
   } catch(e) {}
 })();
+
+// ── Atualizar label quando empresa trocar no portal pai ──────────────────────
+// O portal envia SET_EMPRESA via postMessage para todos os iframes ao trocar empresa.
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'SET_EMPRESA') {
+    var label = document.getElementById('empresa-ativa-label');
+    if (label) {
+      var nome = e.data.empresaNome || e.data.empresaNomeCurto || '';
+      label.textContent = nome ? 'Empresa ativa: ' + nome : 'Empresa ativa: —';
+    }
+    // Limpar resultado de prévia anterior (era da empresa anterior)
+    var resumoEl = document.getElementById('preview-resumo');
+    if (resumoEl) resumoEl.innerHTML = '';
+    var applyEl = document.getElementById('apply-resumo-grid');
+    if (applyEl) applyEl.style.display = 'none';
+    var statusEl = document.getElementById('preview-status');
+    if (statusEl) statusEl.textContent = '';
+    var applyStatusEl = document.getElementById('apply-status');
+    if (applyStatusEl) applyStatusEl.textContent = '';
+  }
+  if (e.data.type === 'SET_TEMA') {
+    document.body.classList.toggle('light', e.data.tema === 'light');
+  }
+});
 </script>
 
 </body>

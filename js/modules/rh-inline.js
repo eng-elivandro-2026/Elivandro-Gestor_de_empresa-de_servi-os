@@ -4709,13 +4709,46 @@ async function rejeitarDespesa(id) {
     if(typeof gerarAlertas === 'function') gerarAlertas();
   };
 
-  // Atualizar empresa quando trocar no portal
-  window.addEventListener('empresa:change', function(e) {
-    if(e.detail && e.detail.empresaId) {
-      _empresaId = e.detail.empresaId;
-      var label = document.getElementById('rhEmpresaLabel');
-      if(label) label.textContent = e.detail.empresaNomeCurto || '';
-      if(typeof carregarColabs === 'function') carregarColabs();
+  // ── Listener: troca de empresa ───────────────────────────────────────────
+  // Usa o evento correto 'empresa:changed' (CustomEvent disparado por multi-empresa.js).
+  // O antigo 'empresa:change' estava com nome errado e nunca disparava.
+  window.addEventListener('empresa:changed', function() {
+    // Atualizar empresa ativa
+    if (typeof window.getEmpresaAtivaId === 'function') {
+      _empresaId = window.getEmpresaAtivaId();
+    } else if (window._empresaAtiva && window._empresaAtiva.id) {
+      _empresaId = window._empresaAtiva.id;
+    }
+
+    // Atualizar label visual
+    var empLabel = document.getElementById('rhEmpresaLabel');
+    if (empLabel && window._empresaAtiva) {
+      empLabel.textContent = window._empresaAtiva.nome_curto || '';
+    }
+
+    // Limpar estado da empresa anterior
+    _colabAtivo = null;
+    _colabProprio = null;
+    _colabs = [];
+    _propostas = [];
+    _horasColabCache = [];
+    _horasColabDe = null;
+    _horasColabAte = null;
+
+    // Mostrar loading imediato na lista de colaboradores
+    var colabListEl = document.getElementById('colabList');
+    if (colabListEl) {
+      colabListEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
+        + 'Carregando dados de RH e equipes da empresa selecionada...</div>';
+    }
+
+    // Se RH está ativo, recarregar imediatamente; senão, limpeza já é suficiente
+    if (window.Router && window.Router.getAtivo() === 'rh') {
+      // Navegar para aba de colaboradores e recarregar
+      if (typeof rhShowSec === 'function') rhShowSec('colaboradores', null);
+      if (typeof carregarColabs === 'function') carregarColabs();
+      if (typeof carregarPendentes === 'function') carregarPendentes();
+      if (typeof gerarAlertas === 'function') gerarAlertas();
     }
   });
 

@@ -63,6 +63,28 @@
     }
   };
 
+  // ── Overlay global: troca de empresa ────────────────────────────────────
+  // Token global evita que carregamento antigo esconda overlay de troca mais nova.
+  window._empresaSwitchToken = 0;
+
+  window.showEmpresaSwitchLoading = function (empresa) {
+    var token = ++window._empresaSwitchToken;
+    var overlay = document.getElementById('empresaSwitchOverlay');
+    var nameEl  = document.getElementById('empresaSwitchName');
+    if (overlay) overlay.classList.add('visible');
+    if (nameEl)  nameEl.textContent = (empresa && (empresa.nome_curto || empresa.nome)) || '';
+    // Fallback: garante que o overlay some mesmo se nenhum módulo sinalizar término (máx. 4s)
+    setTimeout(function () { window.hideEmpresaSwitchLoading(token); }, 4000);
+    return token;
+  };
+
+  window.hideEmpresaSwitchLoading = function (token) {
+    // Ignora se já há uma troca mais recente em andamento
+    if (token !== undefined && token !== window._empresaSwitchToken) return;
+    var overlay = document.getElementById('empresaSwitchOverlay');
+    if (overlay) overlay.classList.remove('visible');
+  };
+
   // ── Definir empresa ativa ────────────────────────────────
   var _trocandoEmpresa = false;
   window.setEmpresaAtiva = function (empresa) {
@@ -70,6 +92,10 @@
     if (window._empresaAtiva && window._empresaAtiva.id === empresa.id) return;
     _trocandoEmpresa = true;
     window._empresaAtiva = empresa;
+
+    // Mostrar overlay global imediatamente (antes de qualquer carga async)
+    var _switchToken = typeof window.showEmpresaSwitchLoading === 'function'
+      ? window.showEmpresaSwitchLoading(empresa) : 0;
 
     // Salvar no localStorage para restaurar na próxima visita
     try {
@@ -84,8 +110,8 @@
     // Atualizar visual do header
     atualizarHeaderEmpresa(empresa);
 
-    // Recarregar propostas da empresa ativa
-    recarregarDadosEmpresa(empresa);
+    // Recarregar propostas da empresa ativa (passa token para esconder overlay ao concluir)
+    recarregarDadosEmpresa(empresa, _switchToken);
 
     console.log('%c[Empresa] ' + empresa.nome_curto + ' ativa', 'color:#f0a500;font-weight:700');
     setTimeout(function(){ _trocandoEmpresa = false; }, 500);
@@ -140,22 +166,34 @@
   }
 
   // ── Recarregar dados ao trocar empresa ───────────────────
-  var _recarregando = false;
-  async function recarregarDadosEmpresa(empresa) {
-    if (_recarregando) return;
-    _recarregando = true;
+  // Token de race condition: descarta respostas de empresas antigas
+  var _comercialLoadToken = 0;
+  async function recarregarDadosEmpresa(empresa, switchToken) {
+    var empresaId = empresa.id;
+    var token = ++_comercialLoadToken;
+
     try {
-      if (!window.sbClient) return;
+      if (!window.sbClient) {
+        // Sem cliente ainda — esconde overlay via fallback, não travar
+        if (token === _comercialLoadToken && typeof window.hideEmpresaSwitchLoading === 'function') {
+          window.hideEmpresaSwitchLoading(switchToken);
+        }
+        return;
+      }
 
       // Buscar propostas diretamente filtradas por empresa_id no Supabase
       var res = await window.sbClient
         .from('propostas')
         .select('dados_json, app_id')
-        .eq('empresa_id', empresa.id)
+        .eq('empresa_id', empresaId)
         .order('updated_at', { ascending: false });
+
+      // Race condition: descarta se empresa trocou enquanto aguardávamos
+      if (token !== _comercialLoadToken) return;
 
       if (res.error) {
         console.warn('[multi-empresa] erro ao carregar propostas:', res.error.message);
+        if (typeof window.hideEmpresaSwitchLoading === 'function') window.hideEmpresaSwitchLoading(switchToken);
         return;
       }
 
@@ -164,6 +202,8 @@
         if (!p.id && r.app_id) p.id = r.app_id;
         return p;
       });
+
+      if (token !== _comercialLoadToken) return;
 
       // Atualizar variável global props
       if (typeof props !== 'undefined') props = propsFiltradas;
@@ -175,8 +215,16 @@
       try { if (typeof rDash === 'function') rDash(); } catch (e) {}
       try { if (typeof rProps === 'function') rProps(); } catch (e) {}
 
-    } finally {
-      _recarregando = false;
+      // Esconder overlay global: carga Comercial concluída
+      if (typeof window.hideEmpresaSwitchLoading === 'function') {
+        window.hideEmpresaSwitchLoading(switchToken);
+      }
+
+    } catch (e) {
+      if (token === _comercialLoadToken) {
+        console.warn('[multi-empresa] erro ao recarregar propostas:', e);
+        if (typeof window.hideEmpresaSwitchLoading === 'function') window.hideEmpresaSwitchLoading(switchToken);
+      }
     }
   }
 

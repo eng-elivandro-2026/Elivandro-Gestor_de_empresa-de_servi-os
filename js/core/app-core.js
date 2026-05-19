@@ -1139,6 +1139,26 @@ window.addEventListener('portal:data-changed', function(e){
   }catch(err){ console.error('[portal:data-changed] recalculo comercial:', err); }
 });
 
+// ── Troca de empresa: limpeza imediata do Comercial ──────────────────────────
+// recarregarDadosEmpresa() (multi-empresa.js) já buscará as propostas da nova
+// empresa em background. Este listener garante que a tela é limpa imediatamente,
+// sem mostrar dados da empresa anterior durante o carregamento.
+window.addEventListener('empresa:changed', function() {
+  try {
+    // Limpar props para evitar flash de dados antigos
+    if(typeof props !== 'undefined') props = [];
+
+    // Mostrar loading no grid de propostas
+    var pGrid = Q('pG');
+    if(pGrid) pGrid.innerHTML = '<div class="emp" style="grid-column:1/-1">'
+      + '<div class="emp-i">⏳</div>'
+      + '<p>Carregando dados comerciais da empresa selecionada...</p></div>';
+
+    // Re-renderizar dashboard com props vazio (KPIs vão a zero)
+    if(typeof rDash === 'function') rDash();
+  } catch(err) { console.error('[comercial] erro ao limpar troca de empresa:', err); }
+});
+
 function itemAnalise(txt,cor){
   return '<div style="background:var(--bg3);border-left:3px solid '+(cor||'var(--border2)')+';border-radius:0 var(--r2) var(--r2) 0;padding:.45rem .7rem;font-size:.79rem;color:var(--text2);line-height:1.5">'+txt+'</div>';
 }
