@@ -1412,6 +1412,18 @@ body.empresa-tema-fortex{
       <div class="ch"><span class="ct">📝 Resumo</span></div>
       <div class="f"><label>Descrição</label><textarea id="pRes" placeholder="Descreva brevemente o objeto desta proposta…" style="min-height:80px"></textarea></div>
     </div>
+
+    <!-- F2E — Espelho Financeiro Oficial (somente leitura) -->
+    <div id="fin-espelho-card" class="card" style="display:none;border-top:2px solid rgba(88,166,255,.3)">
+      <div class="ch">
+        <span class="ct">💰 Resumo Financeiro Oficial</span>
+        <span style="font-size:.65rem;color:var(--text3);font-style:italic">dados do módulo Financeiro • somente leitura</span>
+      </div>
+      <div id="fin-espelho-corpo">
+        <!-- preenchido por finEspelhoCarregar() em js/modules/financeiro-espelho.js -->
+      </div>
+    </div>
+
     <div class="snav"><div></div><button class="btn bp" onclick="step(2)">Orçamento →</button></div>
   </div>
 
@@ -8902,6 +8914,8 @@ function fmAbrirProposta(id){
   if(typeof editP==='function') editP(id);
   go('nova', null);
   window.scrollTo({top:0, behavior:'smooth'});
+  // F2E — Carregar espelho financeiro (somente leitura, não bloqueia Comercial)
+  if(typeof finEspelhoCarregar==='function') finEspelhoCarregar(p.id);
 }
 
 
@@ -9847,6 +9861,7 @@ function rExecTimeline(){
 <script src="js/modules/rh-inline.js"></script>
 <script src="js/modules/operacional-inline.js"></script>
 <script src="js/config/supabase-financeiro.js"></script>
+<script src="js/modules/financeiro-espelho.js"></script>
 <script src="js/services/financeiro-backfill-preview.js"></script>
 <script src="js/services/financeiro-backfill-apply.js"></script>
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
