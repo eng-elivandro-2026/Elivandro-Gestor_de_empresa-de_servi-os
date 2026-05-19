@@ -367,6 +367,50 @@
   }
 
 
+  /**
+   * Lista TODOS os recebimentos da empresa (F2D — tela de Recebimentos).
+   * Inclui dados da conta a receber vinculada e da NF vinculada à mesma conta.
+   * Se o join falhar, faz fallback sem join.
+   */
+  async function sbListarRecebimentosEmpresa(empresaId) {
+    // Tenta com join em conta_receber
+    var r = await client()
+      .from('financeiro_recebimentos')
+      .select([
+        'id', 'empresa_id', 'conta_receber_id', 'data_recebimento',
+        'valor_recebido', 'status', 'risco_sacado',
+        'valor_perdido_risco_sacado', 'percentual_perdido_risco_sacado',
+        'observacoes', 'created_at',
+        'conta_receber:conta_receber_id(' +
+          'id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo,' +
+          'valor_previsto, valor_recebido, valor_pendente, data_vencimento, status' +
+        ')'
+      ].join(','))
+      .eq('empresa_id', empresaId)
+      .order('data_recebimento', { ascending: false, nullsFirst: false });
+
+    if (r.error) {
+      console.warn('[sbFinanceiro] join conta_receber em recebimentos falhou, fallback:', r.error.message);
+      var r2 = await client()
+        .from('financeiro_recebimentos')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .order('data_recebimento', { ascending: false, nullsFirst: false });
+      if (r2.error) throw r2.error;
+      return r2.data || [];
+    }
+    return r.data || [];
+  }
+
+  /**
+   * Lista NFs vinculadas a uma conta a receber específica (usado no detalhe de recebimento).
+   * Reutiliza sbListarNotasFiscaisConta com alias.
+   */
+  async function sbListarNFsDaConta(empresaId, contaReceberId) {
+    return sbListarNotasFiscaisConta(empresaId, contaReceberId);
+  }
+
+
   // ============================================================
   // MOVIMENTOS DE CAIXA
   // ============================================================
@@ -475,7 +519,9 @@
     criarNotaFiscal:                 sbCriarNotaFiscal,
 
     // Recebimentos
+    listarRecebimentosEmpresa:       sbListarRecebimentosEmpresa,
     listarRecebimentosConta:         sbListarRecebimentosConta,
+    listarNFsDaConta:                sbListarNFsDaConta,
     criarRecebimento:                sbCriarRecebimento,
 
     // Movimentos de caixa
