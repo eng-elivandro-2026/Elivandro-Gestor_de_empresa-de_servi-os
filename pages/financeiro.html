@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Financeiro</title>
 <style>
+/* ── RESET E VARIÁVEIS ──────────────────────────────────────────── */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
@@ -13,6 +14,9 @@
   --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
   --red:#f85149;--purple:#bc8cff;--orange:#F05A1A;
   --r:8px;--r2:6px;
+  /* Tema empresa — sobrescrito via JS (SET_EMPRESA) */
+  --emp-cor:#f0a500;--emp-cor-2:#f0a500;
+  --emp-bg:rgba(240,165,0,.10);--emp-bdr:rgba(240,165,0,.28);
 }
 body.light{
   --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
@@ -21,62 +25,246 @@ body.light{
   --accent:#d97706;--green:#15803d;--blue:#2563eb;
   --red:#dc2626;--orange:#c2410c;
 }
+/* Temas de empresa — espelho do portal pai */
+body.empresa-tema-tecfusion{
+  --emp-cor:#16a34a;--emp-cor-2:#22c55e;
+  --emp-bg:rgba(22,163,74,.10);--emp-bdr:rgba(22,163,74,.32);
+}
+body.empresa-tema-fortex{
+  --emp-cor:#f97316;--emp-cor-2:#fb923c;
+  --emp-bg:rgba(249,115,22,.10);--emp-bdr:rgba(249,115,22,.32);
+}
 html{font-size:16px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-.wrap{max-width:960px;margin:0 auto;padding:1.5rem}
+/* ── TABS ─────────────────────────────────────────────────────── */
+.tab-bar{
+  display:flex;gap:0;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:50;
+}
+.tab-btn{
+  padding:.55rem 1.1rem;font-size:.78rem;font-weight:600;
+  border:none;border-bottom:2px solid transparent;
+  background:transparent;color:var(--text2);cursor:pointer;
+  font-family:inherit;transition:all .15s;white-space:nowrap;
+}
+.tab-btn:hover{color:var(--text);background:var(--bg3)}
+.tab-btn.on{color:var(--emp-cor-2);border-bottom-color:var(--emp-cor);background:var(--emp-bg)}
 
-.page-header{margin-bottom:1.5rem}
-.page-title{font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
-.page-sub{font-size:.82rem;color:var(--text2)}
-.tag-construcao{display:inline-block;font-size:.65rem;font-weight:700;background:rgba(240,165,0,.12);color:var(--accent);border:1px solid rgba(240,165,0,.3);border-radius:20px;padding:.15rem .55rem;margin-left:.5rem;vertical-align:middle;text-transform:uppercase;letter-spacing:.04em}
+/* ── LAYOUT ───────────────────────────────────────────────────── */
+.wrap{max-width:1100px;margin:0 auto;padding:1.25rem}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem}
+/* ── PAGE HEADER ──────────────────────────────────────────────── */
+.page-header{margin-bottom:1.1rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.6rem}
+.page-header-left{}
+.page-title{font-size:1.25rem;font-weight:700;color:var(--text);margin-bottom:.15rem}
+.page-sub{font-size:.78rem;color:var(--text2)}
+.empresa-badge{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.7rem;font-weight:700;padding:.18rem .55rem;
+  border-radius:20px;border:1px solid var(--emp-bdr);
+  background:var(--emp-bg);color:var(--emp-cor-2);
+  margin-top:.3rem;
+}
+.btn-refresh{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.75rem;font-weight:600;padding:.38rem .75rem;
+  border-radius:var(--r2);border:1px solid var(--border);
+  background:var(--bg3);color:var(--text2);cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn-refresh:hover{border-color:var(--emp-cor);color:var(--emp-cor-2)}
+.btn-refresh:disabled{opacity:.5;cursor:not-allowed}
 
+/* ── KPI CARDS ────────────────────────────────────────────────── */
+.kpi-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:.7rem;margin-bottom:1.2rem;
+}
+.kpi-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:.75rem 1rem;
+  border-top:3px solid transparent;transition:border-top-color .3s;
+}
+.kpi-card.destaque{border-top-color:var(--emp-cor)}
+.kpi-card.vencida{border-top-color:var(--red)}
+.kpi-card.recebido{border-top-color:var(--green)}
+.kpi-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
+.kpi-valor{font-size:1.05rem;font-weight:700;color:var(--text);line-height:1.2;word-break:break-word}
+.kpi-valor.verde{color:var(--green)}
+.kpi-valor.vermelho{color:var(--red)}
+.kpi-valor.emp{color:var(--emp-cor-2)}
+.kpi-sub{font-size:.65rem;color:var(--text3);margin-top:.15rem}
+
+/* ── FILTROS ──────────────────────────────────────────────────── */
+.filtros-bar{
+  display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;
+  align-items:center;
+}
+.filtro-input{
+  padding:.38rem .65rem;background:var(--bg3);
+  border:1px solid var(--border);border-radius:var(--r2);
+  color:var(--text);font-size:.78rem;font-family:inherit;
+  transition:border-color .15s;min-width:0;
+}
+.filtro-input:focus{outline:none;border-color:var(--emp-cor)}
+.filtro-input.busca{flex:1;min-width:160px;max-width:280px}
+.filtro-select{cursor:pointer}
+.filtro-label{font-size:.7rem;color:var(--text3);white-space:nowrap}
+.btn-limpar{
+  font-size:.72rem;color:var(--text3);background:none;border:none;
+  cursor:pointer;padding:.2rem .4rem;border-radius:var(--r2);
+}
+.btn-limpar:hover{color:var(--red)}
+.filtro-count{font-size:.72rem;color:var(--text2);margin-left:auto;white-space:nowrap}
+
+/* ── STATUS LOADING / EMPTY / ERROR ──────────────────────────── */
+.estado{
+  text-align:center;padding:3rem 1rem;color:var(--text3);
+  font-size:.85rem;
+}
+.estado-icon{font-size:2rem;margin-bottom:.6rem;opacity:.5;display:block}
+.estado-msg{margin-bottom:.3rem}
+.estado-sub{font-size:.75rem;color:var(--text3);opacity:.7}
+.loading-spinner{
+  width:28px;height:28px;margin:0 auto .8rem;
+  border:3px solid var(--border);border-top-color:var(--emp-cor);
+  border-radius:50%;animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TABELA ───────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+.fin-table{width:100%;border-collapse:collapse;font-size:.76rem}
+.fin-table th{
+  background:var(--bg3);padding:.45rem .7rem;text-align:left;
+  font-size:.65rem;color:var(--text3);font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+  position:sticky;top:0;
+}
+.fin-table td{
+  padding:.5rem .7rem;border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+.fin-table tr:last-child td{border-bottom:none}
+.fin-table tr.row-conta{cursor:pointer;transition:background .12s}
+.fin-table tr.row-conta:hover td{background:var(--emp-bg)}
+.col-cliente{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col-titulo{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+.col-valor{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.col-data{white-space:nowrap;color:var(--text2)}
+.col-status{white-space:nowrap}
+.col-ind{white-space:nowrap;text-align:center}
+
+/* ── BADGES DE STATUS ─────────────────────────────────────────── */
+.bdg{display:inline-flex;align-items:center;padding:.1rem .4rem;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap}
+.bdg-previsto{background:rgba(139,148,158,.12);color:var(--text2)}
+.bdg-a_faturar{background:rgba(88,166,255,.12);color:var(--blue)}
+.bdg-faturado{background:rgba(240,165,0,.12);color:var(--accent)}
+.bdg-parcialmente_recebido{background:rgba(240,90,26,.12);color:var(--orange)}
+.bdg-recebido{background:rgba(63,185,80,.1);color:var(--green)}
+.bdg-vencida{background:rgba(248,81,73,.12);color:var(--red)}
+.bdg-cancelado{background:rgba(110,118,129,.12);color:var(--text3)}
+
+/* ── INDICADOR DE VENCIMENTO ─────────────────────────────────── */
+.ind-vencida{color:var(--red);font-weight:700;font-size:.68rem}
+.ind-hoje{color:var(--orange);font-weight:700;font-size:.68rem}
+.ind-ok{color:var(--green);font-size:.68rem}
+.ind-neutro{color:var(--text3);font-size:.68rem}
+
+/* ── PAINEL DE DETALHE ────────────────────────────────────────── */
+.detalhe-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+}
+.detalhe-overlay.on{display:block}
+.detalhe-panel{
+  position:fixed;top:0;right:-500px;width:min(500px,100vw);height:100vh;
+  background:var(--bg2);border-left:1px solid var(--border);
+  z-index:201;overflow-y:auto;transition:right .25s ease;
+  display:flex;flex-direction:column;
+}
+.detalhe-panel.on{right:0}
+.detalhe-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.9rem 1.1rem;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--bg2);z-index:1;
+  border-top:3px solid var(--emp-cor);
+}
+.detalhe-titulo{font-size:.88rem;font-weight:700;color:var(--text);flex:1;margin-right:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-fechar{
+  background:none;border:none;color:var(--text2);cursor:pointer;
+  font-size:1.1rem;padding:.2rem;line-height:1;flex-shrink:0;
+}
+.btn-fechar:hover{color:var(--red)}
+.detalhe-corpo{padding:1.1rem;flex:1}
+
+.detalhe-secao{margin-bottom:1.2rem}
+.detalhe-secao-titulo{
+  font-size:.65rem;font-weight:700;color:var(--emp-cor-2);
+  text-transform:uppercase;letter-spacing:.05em;
+  margin-bottom:.6rem;padding-bottom:.35rem;border-bottom:1px solid var(--border);
+}
+.detalhe-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;margin-bottom:.8rem}
+.detalhe-item-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.1rem}
+.detalhe-item-valor{font-size:.82rem;color:var(--text);font-weight:500}
+.detalhe-item-valor.verde{color:var(--green)}
+.detalhe-item-valor.vermelho{color:var(--red)}
+.detalhe-item-valor.emp{color:var(--emp-cor-2)}
+
+/* Sub-tabelas no detalhe */
+.sub-table{width:100%;border-collapse:collapse;font-size:.74rem;margin-top:.4rem}
+.sub-table th{background:var(--bg3);padding:.35rem .55rem;text-align:left;font-size:.62rem;color:var(--text3);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.sub-table td{padding:.4rem .55rem;border-bottom:1px solid var(--border);color:var(--text2)}
+.sub-table tr:last-child td{border-bottom:none}
+.sub-vazio{font-size:.75rem;color:var(--text3);font-style:italic;padding:.5rem 0}
+
+/* ── BARRA DE PROGRESSO ───────────────────────────────────────── */
+.barra-wrap{height:5px;background:var(--bg3);border-radius:3px;margin-top:.4rem;overflow:hidden}
+.barra-fill{height:100%;border-radius:3px;background:var(--emp-cor);transition:width .4s ease}
+.barra-fill.verde{background:var(--green)}
+
+/* ── BACKFILL (ferramentas) — estilos preservados ────────────── */
+.secao-backfill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem}
+.secao-apply{background:var(--bg2);border:1px solid rgba(240,165,0,.35);border-radius:var(--r);padding:1.25rem;margin-bottom:1.5rem}
+.secao-titulo{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem}
 .card-icon{font-size:1.3rem;margin-bottom:.5rem}
 .card-title{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
 .card-text{font-size:.82rem;color:var(--text2);line-height:1.5}
-
-.padrao-lista{list-style:none;margin-top:.5rem}
-.padrao-lista li{font-size:.8rem;color:var(--text2);padding:.25rem 0;border-bottom:1px solid var(--border)}
-.padrao-lista li:last-child{border-bottom:none}
-.padrao-lista li span{color:var(--text3);font-size:.72rem;margin-left:.3rem}
-
-.secao-backfill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem}
-.secao-apply{background:var(--bg2);border:1px solid rgba(240,165,0,.35);border-radius:var(--r);padding:1.25rem;margin-bottom:1.5rem}
-.secao-titulo{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
-
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem}
 .btn-preview{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:600;padding:.5rem 1.1rem;border-radius:var(--r2);border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;transition:background .2s}
 .btn-preview:hover{background:rgba(88,166,255,.18)}
 .btn-preview:disabled{opacity:.5;cursor:not-allowed}
-
 .btn-apply{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:700;padding:.55rem 1.2rem;border-radius:var(--r2);border:1px solid rgba(240,165,0,.5);background:rgba(240,165,0,.12);color:var(--accent);cursor:pointer;transition:background .2s}
 .btn-apply:hover{background:rgba(240,165,0,.22)}
 .btn-apply:disabled{opacity:.5;cursor:not-allowed}
-
-.resumo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.7rem;margin-top:1rem}
+.resumo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.7rem;margin-top:1rem}
 .resumo-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem .9rem}
 .resumo-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem}
 .resumo-valor{font-size:1.2rem;font-weight:700;color:var(--text)}
 .resumo-sub{font-size:.68rem;color:var(--text2);margin-top:.1rem}
 .resumo-valor.ignorado{color:var(--text3)}
 .resumo-valor.erro{color:var(--red)}
-
 .status-msg{font-size:.8rem;margin-top:.8rem;padding:.5rem .8rem;border-radius:var(--r2);display:none}
 .status-msg.err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);display:block}
 .status-msg.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:var(--green);display:block}
 .status-msg.loading{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);color:var(--blue);display:block}
 .status-msg.warn{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);color:var(--accent);display:block}
-
 .aviso-somente-leitura{font-size:.72rem;color:var(--text3);margin-top:.6rem;font-style:italic}
 .aviso-escrita{font-size:.72rem;color:var(--accent);margin-top:.6rem;font-weight:600}
 .apply-info{font-size:.82rem;color:var(--text2);margin-bottom:.8rem;padding:.5rem .7rem;background:var(--bg3);border-radius:var(--r2);border-left:3px solid var(--accent)}
+.padrao-lista{list-style:none;margin-top:.5rem}
+.padrao-lista li{font-size:.8rem;color:var(--text2);padding:.25rem 0;border-bottom:1px solid var(--border)}
+.padrao-lista li:last-child{border-bottom:none}
+.padrao-lista li span{color:var(--text3);font-size:.72rem;margin-left:.3rem}
 
-/* ── Modal de confirmação ─────────────────────────────────── */
+/* Modal de confirmação backfill */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
 .modal-box{background:var(--bg2);border:1px solid rgba(240,165,0,.5);border-radius:var(--r);padding:1.5rem;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .modal-titulo{font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
@@ -97,39 +285,170 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .modal-btn-confirmar{font-size:.82rem;font-weight:700;padding:.45rem 1rem;border-radius:var(--r2);border:1px solid rgba(240,165,0,.5);background:rgba(240,165,0,.12);color:var(--accent);cursor:pointer;transition:background .2s}
 .modal-btn-confirmar:hover:not(:disabled){background:rgba(240,165,0,.22)}
 .modal-btn-confirmar:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── RESPONSIVO ───────────────────────────────────────────────── */
+@media(max-width:650px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .detalhe-grid{grid-template-columns:1fr}
+  .filtros-bar{flex-direction:column;align-items:stretch}
+  .filtro-input.busca{max-width:100%}
+  .filtro-count{margin-left:0}
+  /* Ocultar colunas menos importantes no mobile */
+  .th-obra,.td-obra,
+  .th-faturado,.td-faturado,
+  .th-cc,.td-cc{display:none}
+}
 </style>
 </head>
 <body>
 
+<!-- ── TABS ───────────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tab-btn on" id="tab-btn-contas" onclick="showTab('contas')">📋 Contas a Receber</button>
+  <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: CONTAS A RECEBER                                        -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-contas" class="tab-content">
+<div class="wrap">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">💰 Contas a Receber</div>
+      <div class="page-sub">Dados oficiais por empresa — tabela <code>financeiro_contas_receber</code></div>
+      <div id="empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="btn-refresh" onclick="recarregarContas()" title="Recarregar dados">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="kpi-row" id="kpi-row">
+    <!-- preenchido por renderKpis() -->
+    <div class="kpi-card destaque">
+      <div class="kpi-label">Total Previsto</div>
+      <div class="kpi-valor emp" id="kpi-previsto">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Faturado (NF)</div>
+      <div class="kpi-valor" id="kpi-faturado">—</div>
+    </div>
+    <div class="kpi-card recebido">
+      <div class="kpi-label">Recebido</div>
+      <div class="kpi-valor verde" id="kpi-recebido">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pendente</div>
+      <div class="kpi-valor" id="kpi-pendente">—</div>
+    </div>
+    <div class="kpi-card vencida">
+      <div class="kpi-label">Vencidas</div>
+      <div class="kpi-valor vermelho" id="kpi-vencidas">—</div>
+      <div class="kpi-sub" id="kpi-vencidas-sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">A Vencer</div>
+      <div class="kpi-valor emp" id="kpi-avencer">—</div>
+      <div class="kpi-sub" id="kpi-avencer-sub"></div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-bar">
+    <input type="search" class="filtro-input busca" id="filtro-busca"
+      placeholder="Buscar cliente, proposta, obra..." oninput="aplicarFiltros()">
+
+    <select class="filtro-input filtro-select" id="filtro-status" onchange="aplicarFiltros()">
+      <option value="">Todos os status</option>
+      <option value="previsto">Previsto</option>
+      <option value="a_faturar">A Faturar</option>
+      <option value="faturado">Faturado</option>
+      <option value="parcialmente_recebido">Parcial</option>
+      <option value="recebido">Recebido</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+
+    <select class="filtro-input filtro-select" id="filtro-venc" onchange="aplicarFiltros()">
+      <option value="">Todos os vencimentos</option>
+      <option value="vencida">Vencidas</option>
+      <option value="hoje">Vencem hoje</option>
+      <option value="7d">Próx. 7 dias</option>
+      <option value="30d">Próx. 30 dias</option>
+      <option value="sem_venc">Sem data</option>
+    </select>
+
+    <button class="btn-limpar" onclick="limparFiltros()" title="Limpar filtros">✕ Limpar</button>
+    <span class="filtro-count" id="filtro-count"></span>
+  </div>
+
+  <!-- Estado de loading / empty / error -->
+  <div id="estado-contas" class="estado" style="display:none">
+    <div class="loading-spinner" id="spinner" style="display:none"></div>
+    <span class="estado-icon" id="estado-icon"></span>
+    <div class="estado-msg" id="estado-msg"></div>
+    <div class="estado-sub" id="estado-sub"></div>
+  </div>
+
+  <!-- Tabela de contas -->
+  <div class="table-wrap" id="table-wrap" style="display:none">
+    <table class="fin-table" id="fin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Título / Proposta</th>
+          <th class="th-obra">Obra</th>
+          <th class="th-cc">Centro de Custo</th>
+          <th class="col-valor">Previsto</th>
+          <th class="col-valor th-faturado">Faturado</th>
+          <th class="col-valor">Recebido</th>
+          <th class="col-valor">Pendente</th>
+          <th>Status</th>
+          <th>Vencimento</th>
+          <th class="col-ind">Situação</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-body"></tbody>
+    </table>
+  </div>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-contas -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: FERRAMENTAS (backfill — preservado)                     -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-ferramentas" class="tab-content" style="display:none">
 <div class="wrap">
 
   <div class="page-header">
-    <div class="page-title">💰 Financeiro <span class="tag-construcao">Em estruturação</span></div>
-    <div class="page-sub">Base oficial em estruturação — Fase F1 concluída. Fase F2A disponível.</div>
-    <div id="empresa-ativa-label" style="margin-top:.4rem;font-size:.75rem;color:var(--text3)">Empresa ativa: —</div>
+    <div class="page-header-left">
+      <div class="page-title">⚙️ Ferramentas Financeiras</div>
+      <div class="page-sub">Backfill e migração de dados — Fase F1 e F2A.</div>
+    </div>
   </div>
 
   <!-- Cards informativos -->
   <div class="grid">
-
     <div class="card">
       <div class="card-icon">🗄️</div>
       <div class="card-title">Base Financeira Oficial</div>
       <div class="card-text">Tabelas oficiais criadas para contas a receber, notas fiscais, recebimentos, movimentos de caixa e saldos de caixa.</div>
     </div>
-
     <div class="card">
       <div class="card-icon">🔍</div>
       <div class="card-title">Backfill Preview</div>
       <div class="card-text">Prévia de migração disponível em modo somente leitura. Simula o que seria criado sem inserir nenhum dado.</div>
     </div>
-
     <div class="card">
       <div class="card-icon">⚡</div>
       <div class="card-title">Backfill Oficial</div>
-      <div class="card-text">Migração controlada dos dados financeiros das propostas para as tabelas oficiais. Idempotente: pode rodar múltiplas vezes sem duplicar.</div>
+      <div class="card-text">Migração controlada das propostas para as tabelas oficiais. Idempotente: pode rodar múltiplas vezes sem duplicar.</div>
     </div>
-
     <div class="card">
       <div class="card-icon">📊</div>
       <div class="card-title">Padrão Financeiro</div>
@@ -141,75 +460,623 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <li>Previsto x Realizado <span>/ Forecast vs Actual</span></li>
       </ul>
     </div>
-
   </div>
 
   <!-- Backfill Preview -->
   <div class="secao-backfill">
     <div class="secao-titulo">🔍 Prévia de Migração (Somente Leitura)</div>
-
-    <button class="btn-preview" id="btn-preview" onclick="executarPrevia()">
-      ▶ Executar prévia do backfill
-    </button>
+    <button class="btn-preview" id="btn-preview" onclick="executarPrevia()">▶ Executar prévia do backfill</button>
     <div class="aviso-somente-leitura">⚠ Modo somente leitura — nenhum dado será inserido ou alterado.</div>
-
     <div class="status-msg" id="status-msg"></div>
     <div class="resumo-grid" id="resumo-grid" style="display:none"></div>
   </div>
 
-  <!-- Modal de confirmação do backfill -->
+  <!-- Modal de confirmação -->
   <div class="modal-overlay" id="modal-confirmacao" style="display:none" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-titulo">⚡ Confirmar aplicação do backfill financeiro</div>
-
       <div id="modal-corpo-dados"></div>
-
-      <div class="modal-aviso">
-        ⚠ Esta ação grava dados reais nas tabelas financeiras oficiais.<br>
-        Nenhuma proposta será alterada. Os dados antigos não serão apagados.
-      </div>
-
-      <div class="modal-instrucao">
-        Para confirmar, digite exatamente:<br>
-        <strong>APLICAR BACKFILL FINANCEIRO</strong>
-      </div>
-      <input
-        type="text"
-        id="modal-input-confirmacao"
-        class="modal-input"
-        placeholder="Digite a frase de confirmação"
-        autocomplete="off"
-        oninput="modalValidarTexto()"
-      />
-
+      <div class="modal-aviso">⚠ Esta ação grava dados reais nas tabelas financeiras oficiais.<br>Nenhuma proposta será alterada. Os dados antigos não serão apagados.</div>
+      <div class="modal-instrucao">Para confirmar, digite exatamente:<br><strong>APLICAR BACKFILL FINANCEIRO</strong></div>
+      <input type="text" id="modal-input-confirmacao" class="modal-input"
+        placeholder="Digite a frase de confirmação" autocomplete="off" oninput="modalValidarTexto()"/>
       <div class="modal-acoes">
         <button class="modal-btn-cancelar" onclick="modalCancelar()">Cancelar</button>
-        <button class="modal-btn-confirmar" id="modal-btn-confirmar" disabled onclick="modalConfirmar()">
-          ⚡ Confirmar e aplicar
-        </button>
+        <button class="modal-btn-confirmar" id="modal-btn-confirmar" disabled onclick="modalConfirmar()">⚡ Confirmar e aplicar</button>
       </div>
     </div>
   </div>
 
-  <!-- Aplicar Backfill (aparece após prévia válida) -->
+  <!-- Aplicar Backfill -->
   <div class="secao-apply" id="secao-apply" style="display:none">
     <div class="secao-titulo">⚡ Aplicar Backfill Financeiro</div>
-
     <div class="apply-info" id="apply-info"></div>
-
-    <button class="btn-apply" id="btn-apply" onclick="executarApply()">
-      ⚡ Aplicar backfill financeiro
-    </button>
+    <button class="btn-apply" id="btn-apply" onclick="executarApply()">⚡ Aplicar backfill financeiro</button>
     <div class="aviso-escrita">⚠ Esta ação cria registros financeiros. Nenhuma proposta será alterada. Idempotente.</div>
-
     <div class="status-msg" id="apply-status-msg"></div>
     <div class="resumo-grid" id="apply-resumo-grid" style="display:none"></div>
   </div>
 
+</div><!-- /.wrap -->
+</div><!-- /#tab-ferramentas -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- PAINEL DE DETALHE — slide da direita                         -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="detalhe-overlay" id="detalhe-overlay" onclick="fecharDetalhe()"></div>
+
+<div class="detalhe-panel" id="detalhe-panel">
+  <div class="detalhe-hdr">
+    <div class="detalhe-titulo" id="detalhe-titulo">Detalhes da Conta</div>
+    <button class="btn-fechar" onclick="fecharDetalhe()" title="Fechar">✕</button>
+  </div>
+  <div class="detalhe-corpo" id="detalhe-corpo">
+    <!-- preenchido por abrirDetalhe() -->
+  </div>
 </div>
 
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SCRIPTS                                                      -->
+<!-- ════════════════════════════════════════════════════════════ -->
 <script>
-// ── Acessores aos scripts do portal pai ──────────────────────
+'use strict';
+
+// ── Estado global ─────────────────────────────────────────────
+var _empresaAtiva  = null;   // { id, nome, nome_curto }
+var _todasContas   = [];     // contas carregadas do Supabase
+var _carregando    = false;
+var _loadToken     = 0;      // race condition guard
+
+// ── Helpers de acesso ao portal pai ──────────────────────────
+function _sf() {
+  if (window.sbFinanceiro)        return window.sbFinanceiro;
+  if (window.parent && window.parent.sbFinanceiro) return window.parent.sbFinanceiro;
+  return null;
+}
+
+function _empAtiva() {
+  try {
+    if (window.parent && typeof window.parent.getEmpresaAtiva === 'function') {
+      return window.parent.getEmpresaAtiva();
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ── Formatação ────────────────────────────────────────────────
+function _money(v) {
+  var n = typeof v === 'string'
+    ? parseFloat(String(v).replace(/[^\d.,-]/g, '').replace(',', '.'))
+    : parseFloat(v);
+  if (isNaN(n)) n = 0;
+  return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+
+function _dataBR(iso) {
+  if (!iso) return '—';
+  try {
+    var p = iso.split('T')[0].split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  } catch(e) { return iso; }
+}
+
+function _hoje() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ── Status helpers ────────────────────────────────────────────
+var _STATUS_LABEL = {
+  previsto:               'Previsto',
+  a_faturar:              'A Faturar',
+  faturado:               'Faturado',
+  parcialmente_recebido:  'Parcial',
+  recebido:               'Recebido',
+  cancelado:              'Cancelado'
+};
+
+function _statusBadge(st) {
+  var label = _STATUS_LABEL[st] || st || '—';
+  return '<span class="bdg bdg-' + (st || 'previsto') + '">' + label + '</span>';
+}
+
+// ── Situação de vencimento ─────────────────────────────────────
+function _situacaoVenc(conta) {
+  if (conta.status === 'recebido') {
+    return '<span class="ind-ok">✓ Recebido</span>';
+  }
+  if (!conta.data_vencimento) {
+    return '<span class="ind-neutro">—</span>';
+  }
+  var hoje = _hoje();
+  var venc = conta.data_vencimento.slice(0, 10);
+  if (venc < hoje) {
+    var dias = Math.floor((new Date(hoje) - new Date(venc)) / 86400000);
+    return '<span class="ind-vencida">⚠ ' + dias + 'd atraso</span>';
+  }
+  if (venc === hoje) {
+    return '<span class="ind-hoje">⏰ Hoje</span>';
+  }
+  var diasFalta = Math.floor((new Date(venc) - new Date(hoje)) / 86400000);
+  if (diasFalta <= 7) {
+    return '<span class="ind-hoje">📅 ' + diasFalta + 'd</span>';
+  }
+  return '<span class="ind-neutro">📅 ' + diasFalta + 'd</span>';
+}
+
+function _isVencida(conta) {
+  if (conta.status === 'recebido' || conta.status === 'cancelado') return false;
+  if (!conta.data_vencimento) return false;
+  return conta.data_vencimento.slice(0, 10) < _hoje();
+}
+
+function _isAVencer(conta, dias) {
+  if (conta.status === 'recebido' || conta.status === 'cancelado') return false;
+  if (!conta.data_vencimento) return false;
+  var venc = conta.data_vencimento.slice(0, 10);
+  var hoje = _hoje();
+  if (venc < hoje) return false;
+  if (dias === undefined) return true;
+  var diff = Math.floor((new Date(venc) - new Date(hoje)) / 86400000);
+  return diff <= dias;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function showTab(nome) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+  document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('on'); });
+  var tab = document.getElementById('tab-' + nome);
+  var btn = document.getElementById('tab-btn-' + nome);
+  if (tab) tab.style.display = '';
+  if (btn) btn.classList.add('on');
+}
+
+// ── Estados visuais da listagem ───────────────────────────────
+function _mostrarLoading() {
+  var el = document.getElementById('estado-contas');
+  el.style.display = '';
+  document.getElementById('spinner').style.display = '';
+  document.getElementById('estado-icon').textContent = '';
+  document.getElementById('estado-msg').textContent  = 'Carregando contas a receber...';
+  document.getElementById('estado-sub').textContent  = '';
+  document.getElementById('table-wrap').style.display = 'none';
+}
+
+function _mostrarVazio(msg, sub) {
+  var el = document.getElementById('estado-contas');
+  el.style.display = '';
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('estado-icon').textContent = '📭';
+  document.getElementById('estado-msg').textContent  = msg || 'Nenhuma conta a receber encontrada para esta empresa.';
+  document.getElementById('estado-sub').textContent  = sub || '';
+  document.getElementById('table-wrap').style.display = 'none';
+}
+
+function _mostrarErro(msg) {
+  var el = document.getElementById('estado-contas');
+  el.style.display = '';
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('estado-icon').textContent = '⚠️';
+  document.getElementById('estado-msg').textContent  = msg || 'Erro ao carregar dados.';
+  document.getElementById('estado-sub').textContent  = 'Tente novamente ou verifique o console.';
+  document.getElementById('table-wrap').style.display = 'none';
+}
+
+function _mostrarTabela() {
+  document.getElementById('estado-contas').style.display = 'none';
+  document.getElementById('table-wrap').style.display = '';
+}
+
+// ── Carregar contas ───────────────────────────────────────────
+async function carregarContas(empresaId) {
+  var sf = _sf();
+  if (!sf) {
+    _mostrarErro('sbFinanceiro não disponível. Recarregue o portal.');
+    return;
+  }
+  if (!empresaId) {
+    _mostrarVazio('Empresa não identificada. Faça login novamente.');
+    return;
+  }
+
+  _carregando = true;
+  var token = ++_loadToken;
+  fecharDetalhe();
+  _mostrarLoading();
+  document.getElementById('btn-refresh').disabled = true;
+
+  try {
+    var contas = await sf.listarContasReceber(empresaId);
+
+    // Race condition: descarta se empresa mudou durante o await
+    if (token !== _loadToken) return;
+
+    _todasContas = contas || [];
+    _carregando  = false;
+    document.getElementById('btn-refresh').disabled = false;
+
+    renderKpis(_todasContas);
+    aplicarFiltros();
+
+  } catch(e) {
+    if (token !== _loadToken) return;
+    _carregando = false;
+    document.getElementById('btn-refresh').disabled = false;
+    console.error('[Financeiro F2B] erro ao carregar contas:', e);
+    _mostrarErro('Erro ao consultar o banco: ' + (e.message || e));
+  }
+}
+
+function recarregarContas() {
+  if (_carregando) return;
+  if (!_empresaAtiva) {
+    _mostrarVazio('Empresa não identificada.');
+    return;
+  }
+  carregarContas(_empresaAtiva.id);
+}
+
+// ── KPI Cards ─────────────────────────────────────────────────
+function renderKpis(contas) {
+  var totalPrevisto = 0, totalFaturado = 0, totalRecebido = 0, totalPendente = 0;
+  var qtdVencidas = 0, valVencidas = 0, qtdAVencer = 0, valAVencer = 0;
+
+  (contas || []).forEach(function(c) {
+    totalPrevisto  += parseFloat(c.valor_previsto)  || 0;
+    totalFaturado  += parseFloat(c.valor_faturado)  || 0;
+    totalRecebido  += parseFloat(c.valor_recebido)  || 0;
+    totalPendente  += parseFloat(c.valor_pendente)  || 0;
+    if (_isVencida(c))  { qtdVencidas++; valVencidas += parseFloat(c.valor_pendente) || 0; }
+    if (_isAVencer(c))  { qtdAVencer++;  valAVencer  += parseFloat(c.valor_pendente) || 0; }
+  });
+
+  document.getElementById('kpi-previsto').textContent = _money(totalPrevisto);
+  document.getElementById('kpi-faturado').textContent  = _money(totalFaturado);
+  document.getElementById('kpi-recebido').textContent  = _money(totalRecebido);
+  document.getElementById('kpi-pendente').textContent  = _money(totalPendente);
+  document.getElementById('kpi-vencidas').textContent  = _money(valVencidas);
+  document.getElementById('kpi-vencidas-sub').textContent = qtdVencidas + (qtdVencidas === 1 ? ' conta' : ' contas');
+  document.getElementById('kpi-avencer').textContent   = _money(valAVencer);
+  document.getElementById('kpi-avencer-sub').textContent  = qtdAVencer + (qtdAVencer === 1 ? ' conta' : ' contas');
+}
+
+// ── Filtros ───────────────────────────────────────────────────
+function aplicarFiltros() {
+  var busca  = (document.getElementById('filtro-busca').value  || '').toLowerCase().trim();
+  var status = document.getElementById('filtro-status').value;
+  var venc   = document.getElementById('filtro-venc').value;
+  var hoje   = _hoje();
+
+  var filtradas = _todasContas.filter(function(c) {
+    // Busca textual
+    if (busca) {
+      var txt = [c.cliente_nome, c.titulo, c.proposta_app_id, c.obra_id, c.centro_custo]
+        .map(function(v){ return (v||'').toLowerCase(); }).join(' ');
+      if (!txt.includes(busca)) return false;
+    }
+    // Status
+    if (status && c.status !== status) return false;
+    // Vencimento
+    if (venc) {
+      var dv = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
+      if (venc === 'vencida')  { if (!_isVencida(c)) return false; }
+      if (venc === 'hoje')     { if (!dv || dv !== hoje) return false; }
+      if (venc === '7d')       { if (!_isAVencer(c, 7)) return false; }
+      if (venc === '30d')      { if (!_isAVencer(c, 30)) return false; }
+      if (venc === 'sem_venc') { if (dv) return false; }
+    }
+    return true;
+  });
+
+  var countEl = document.getElementById('filtro-count');
+  if (filtradas.length < _todasContas.length) {
+    countEl.textContent = filtradas.length + ' de ' + _todasContas.length + ' contas';
+  } else {
+    countEl.textContent = filtradas.length + (filtradas.length === 1 ? ' conta' : ' contas');
+  }
+
+  renderTabela(filtradas);
+}
+
+function limparFiltros() {
+  document.getElementById('filtro-busca').value = '';
+  document.getElementById('filtro-status').value = '';
+  document.getElementById('filtro-venc').value = '';
+  aplicarFiltros();
+}
+
+// ── Renderizar tabela ─────────────────────────────────────────
+function renderTabela(contas) {
+  if (!contas || contas.length === 0) {
+    var temFiltro = document.getElementById('filtro-busca').value ||
+                   document.getElementById('filtro-status').value ||
+                   document.getElementById('filtro-venc').value;
+    if (temFiltro) {
+      _mostrarVazio('Nenhuma conta encontrada para os filtros aplicados.', 'Tente remover algum filtro.');
+    } else {
+      _mostrarVazio(
+        'Nenhuma conta a receber encontrada para esta empresa.',
+        'Execute o backfill em ⚙️ Ferramentas para migrar os dados das propostas.'
+      );
+    }
+    return;
+  }
+
+  var rows = contas.map(function(c) {
+    var pendente = parseFloat(c.valor_pendente) || 0;
+    var previsto = parseFloat(c.valor_previsto) || 0;
+    var pct = previsto > 0 ? Math.min(100, Math.round((parseFloat(c.valor_recebido)||0) / previsto * 100)) : 0;
+    var pendClass = pendente > 0 && _isVencida(c) ? ' vermelho' : '';
+
+    return '<tr class="row-conta" onclick="abrirDetalhe(\'' + c.id + '\')" title="Ver detalhes">' +
+      '<td class="col-cliente">' + (c.cliente_nome || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td class="col-titulo">' + (c.titulo || c.proposta_app_id || '—') + '</td>' +
+      '<td class="td-obra col-titulo">' + (c.obra_id || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td class="td-cc col-titulo">' + (c.centro_custo || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td class="col-valor">' + _money(c.valor_previsto) + '</td>' +
+      '<td class="col-valor td-faturado">' + _money(c.valor_faturado) + '</td>' +
+      '<td class="col-valor verde">' + _money(c.valor_recebido) + '</td>' +
+      '<td class="col-valor' + pendClass + '">' + _money(pendente) + '</td>' +
+      '<td class="col-status">' + _statusBadge(c.status) + '</td>' +
+      '<td class="col-data">' + _dataBR(c.data_vencimento) + '</td>' +
+      '<td class="col-ind">' + _situacaoVenc(c) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  document.getElementById('tabela-body').innerHTML = rows;
+  _mostrarTabela();
+}
+
+// ── Painel de detalhe ─────────────────────────────────────────
+var _contaDetalhe = null;
+
+async function abrirDetalhe(contaId) {
+  var conta = _todasContas.find(function(c) { return c.id === contaId; });
+  if (!conta) return;
+
+  _contaDetalhe = conta;
+  document.getElementById('detalhe-titulo').textContent = conta.titulo || conta.proposta_app_id || 'Detalhes';
+  document.getElementById('detalhe-corpo').innerHTML = _renderDetalheBasico(conta);
+
+  // Abrir painel imediatamente com dados básicos
+  document.getElementById('detalhe-overlay').classList.add('on');
+  document.getElementById('detalhe-panel').classList.add('on');
+
+  // Carregar NFs e Recebimentos em paralelo
+  var sf = _sf();
+  if (!sf || !_empresaAtiva) return;
+
+  try {
+    var results = await Promise.all([
+      sf.listarNotasFiscaisConta(_empresaAtiva.id, contaId),
+      sf.listarRecebimentosConta(_empresaAtiva.id, contaId)
+    ]);
+
+    // Se o painel foi fechado durante o await, não atualizar
+    if (!document.getElementById('detalhe-panel').classList.contains('on')) return;
+
+    var notas        = results[0] || [];
+    var recebimentos = results[1] || [];
+    document.getElementById('detalhe-corpo').innerHTML =
+      _renderDetalheBasico(conta) +
+      _renderDetalheNFs(notas) +
+      _renderDetalheRecebimentos(recebimentos) +
+      _renderDetalheResumo(conta, notas, recebimentos);
+
+  } catch(e) {
+    console.warn('[Financeiro F2B] erro ao carregar detalhe:', e);
+  }
+}
+
+function fecharDetalhe() {
+  document.getElementById('detalhe-overlay').classList.remove('on');
+  document.getElementById('detalhe-panel').classList.remove('on');
+  _contaDetalhe = null;
+}
+
+function _renderDetalheBasico(c) {
+  var previsto  = parseFloat(c.valor_previsto) || 0;
+  var recebido  = parseFloat(c.valor_recebido) || 0;
+  var pct = previsto > 0 ? Math.min(100, Math.round(recebido / previsto * 100)) : 0;
+  var barraClass = pct >= 100 ? 'verde' : '';
+
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">Dados Principais</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Cliente',         c.cliente_nome       || '—') +
+      _di('Proposta ID',     c.proposta_app_id    || '—') +
+      _di('Obra',            c.obra_id            || '—') +
+      _di('Centro de Custo', c.centro_custo       || '—') +
+      _di('Status',          _statusBadge(c.status)) +
+      _di('Vencimento',      _dataBR(c.data_vencimento)) +
+      _di('Data emissão',    _dataBR(c.data_emissao)) +
+      _di('Origem',          c.origem             || '—') +
+    '</div>' +
+    '<div style="margin-top:.3rem">' +
+      '<div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--text3);margin-bottom:.2rem">' +
+        '<span>Progresso de recebimento</span><span>' + pct + '%</span>' +
+      '</div>' +
+      '<div class="barra-wrap"><div class="barra-fill ' + barraClass + '" style="width:' + pct + '%"></div></div>' +
+    '</div>' +
+    '<div class="detalhe-grid" style="margin-top:.8rem">' +
+      _di('Previsto',  _money(c.valor_previsto),  'emp') +
+      _di('Faturado',  _money(c.valor_faturado)) +
+      _di('Recebido',  _money(c.valor_recebido),  'verde') +
+      _di('Pendente',  _money(c.valor_pendente),  parseFloat(c.valor_pendente) > 0 && _isVencida(c) ? 'vermelho' : '') +
+    '</div>' +
+  '</div>';
+}
+
+function _renderDetalheNFs(notas) {
+  var corpo = '';
+  if (!notas || !notas.length) {
+    corpo = '<div class="sub-vazio">Nenhuma nota fiscal vinculada.</div>';
+  } else {
+    corpo = '<table class="sub-table"><thead><tr><th>Número</th><th>Emissão</th><th>Valor</th><th>Status</th></tr></thead><tbody>' +
+      notas.map(function(nf) {
+        return '<tr>' +
+          '<td>' + (nf.numero_nf || '—') + '</td>' +
+          '<td>' + _dataBR(nf.data_emissao) + '</td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums">' + _money(nf.valor_nf) + '</td>' +
+          '<td>' + _statusBadge(nf.status) + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table>';
+  }
+  return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Notas Fiscais (' + (notas||[]).length + ')</div>' + corpo + '</div>';
+}
+
+function _renderDetalheRecebimentos(recs) {
+  var corpo = '';
+  if (!recs || !recs.length) {
+    corpo = '<div class="sub-vazio">Nenhum recebimento registrado.</div>';
+  } else {
+    corpo = '<table class="sub-table"><thead><tr><th>Data</th><th>Valor Recebido</th><th>Status</th><th>Risco Sacado</th></tr></thead><tbody>' +
+      recs.map(function(r) {
+        return '<tr>' +
+          '<td>' + _dataBR(r.data_recebimento) + '</td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--green)">' + _money(r.valor_recebido) + '</td>' +
+          '<td>' + _statusBadge(r.status) + '</td>' +
+          '<td style="text-align:center">' + (r.risco_sacado ? '⚠ Sim' : '—') + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table>';
+  }
+  return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Recebimentos (' + (recs||[]).length + ')</div>' + corpo + '</div>';
+}
+
+function _renderDetalheResumo(conta, notas, recs) {
+  var sf = _sf();
+  if (!sf) return '';
+  try {
+    var r = sf.calcularResumoFinanceiroConta(conta, notas, recs);
+    return '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">Resumo Calculado</div>' +
+      '<div class="detalhe-grid">' +
+        _di('Total NFs emitidas', _money(r.totalNF)) +
+        _di('Total recebido',     _money(r.totalRecebido), 'verde') +
+        _di('Em aberto (NF)',     _money(r.emAberto),     r.emAberto > 0 ? '' : 'verde') +
+        _di('Saldo pendente',     _money(r.saldoPendente)) +
+        _di('% Recebido',        r.pctRecebido.toFixed(1) + '%') +
+        (r.temRiscoSacado ? _di('Perdido Risco Sacado', _money(r.totalPerdidoRS), 'vermelho') : '') +
+      '</div>' +
+    '</div>';
+  } catch(e) { return ''; }
+}
+
+function _di(label, valor, colorClass) {
+  return '<div>' +
+    '<div class="detalhe-item-label">' + label + '</div>' +
+    '<div class="detalhe-item-valor' + (colorClass ? ' ' + colorClass : '') + '">' + valor + '</div>' +
+  '</div>';
+}
+
+// ── Tema empresa ──────────────────────────────────────────────
+function _aplicarTema(nomeCurto) {
+  document.body.classList.remove('empresa-tema-tecfusion', 'empresa-tema-fortex');
+  var n = (nomeCurto || '').toLowerCase();
+  if (n.includes('tecfusion')) document.body.classList.add('empresa-tema-tecfusion');
+  else if (n.includes('fortex')) document.body.classList.add('empresa-tema-fortex');
+}
+
+// ── Atualizar badge de empresa no header ──────────────────────
+function _atualizarBadge(emp) {
+  var el = document.getElementById('empresa-badge');
+  if (emp && emp.nome_curto) {
+    el.textContent = '🏢 ' + emp.nome_curto;
+    el.style.display = 'inline-flex';
+  } else if (emp && emp.nome) {
+    el.textContent = '🏢 ' + emp.nome;
+    el.style.display = 'inline-flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Troca de empresa (postMessage) ────────────────────────────
+function _onTrocaEmpresa(dados) {
+  // Limpar dados da empresa anterior imediatamente
+  _todasContas = [];
+  _loadToken++;        // invalida qualquer carregamento em curso
+  fecharDetalhe();
+  document.getElementById('tabela-body').innerHTML = '';
+
+  _empresaAtiva = {
+    id:        dados.empresaId,
+    nome:      dados.empresaNome      || '',
+    nome_curto:dados.empresaNomeCurto || ''
+  };
+
+  _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
+  _atualizarBadge(_empresaAtiva);
+
+  // Carregar dados da nova empresa (só se tab ativa for contas)
+  carregarContas(_empresaAtiva.id);
+}
+
+// ── postMessage do portal pai ─────────────────────────────────
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+
+  if (e.data.type === 'SET_EMPRESA') {
+    _onTrocaEmpresa(e.data);
+    // Limpar estados do backfill (empresa anterior)
+    var resumoEl = document.getElementById('resumo-grid');
+    if (resumoEl) resumoEl.style.display = 'none';
+    var applyEl = document.getElementById('apply-resumo-grid');
+    if (applyEl) applyEl.style.display = 'none';
+    var secaoApply = document.getElementById('secao-apply');
+    if (secaoApply) secaoApply.style.display = 'none';
+    var statusMsg = document.getElementById('status-msg');
+    if (statusMsg) statusMsg.className = 'status-msg';
+  }
+
+  if (e.data.type === 'SET_TEMA') {
+    document.body.classList.toggle('light', e.data.tema === 'light');
+  }
+});
+
+// ── Inicialização ─────────────────────────────────────────────
+(function init() {
+  // Sincronizar tema claro/escuro com portal pai
+  try {
+    if (window.parent && window.parent.document.body.classList.contains('light')) {
+      document.body.classList.add('light');
+    }
+  } catch(e) {}
+
+  // Obter empresa ativa já definida no pai
+  try {
+    var emp = _empAtiva();
+    if (emp && emp.id) {
+      _empresaAtiva = emp;
+      _aplicarTema(emp.nome_curto || emp.nome);
+      _atualizarBadge(emp);
+      carregarContas(emp.id);
+    } else {
+      _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+    }
+  } catch(e) {
+    console.warn('[Financeiro F2B] init error:', e);
+    _mostrarVazio('Erro ao identificar empresa ativa.');
+  }
+})();
+
+// Fechar detalhe com Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('detalhe-panel').classList.contains('on')) {
+      fecharDetalhe();
+    }
+    var modal = document.getElementById('modal-confirmacao');
+    if (modal && modal.style.display !== 'none') modalCancelar();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// BACKFILL (preservado — acessos ao portal pai)
+// ══════════════════════════════════════════════════════════════
 
 function _getBFP() {
   if (window.FinanceiroBackfillPreview) return window.FinanceiroBackfillPreview;
@@ -223,8 +1090,6 @@ function _getBFA() {
   return null;
 }
 
-// ── Helpers de UI ────────────────────────────────────────────
-
 function _setStatus(tipo, msg) {
   var el = document.getElementById('status-msg');
   el.className = 'status-msg ' + tipo;
@@ -237,48 +1102,29 @@ function _setApplyStatus(tipo, msg) {
   el.textContent = msg;
 }
 
-function _money(v) {
-  var n = typeof v === 'string' ? parseFloat(v.replace(/[^\d.,-]/g, '').replace(',', '.')) : parseFloat(v);
-  if (isNaN(n)) n = 0;
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-// ── Modal de confirmação ──────────────────────────────────────
-
 var FRASE_CONFIRMACAO = 'APLICAR BACKFILL FINANCEIRO';
 var _modalResolve = null;
 
 function _abrirModalConfirmacao(resumo, empNome) {
   return new Promise(function(resolve) {
     _modalResolve = resolve;
-
-    // Preencher dados no corpo do modal
     var linhas = [
-      { label: 'Empresa ativa',        valor: empNome },
-      { label: 'Contas a receber',     valor: (resumo.contas_receber_a_criar || 0) + ' a criar' },
-      { label: 'Notas fiscais',        valor: (resumo.notas_fiscais_a_criar || 0) + ' a criar' },
-      { label: 'Recebimentos',         valor: (resumo.recebimentos_a_criar || 0) + ' a criar' },
-      { label: 'Movimentos de caixa',  valor: (resumo.movimentos_caixa_a_criar || 0) + ' a criar' },
+      { label:'Empresa ativa',       valor: empNome },
+      { label:'Contas a receber',    valor: (resumo.contas_receber_a_criar||0) + ' a criar' },
+      { label:'Notas fiscais',       valor: (resumo.notas_fiscais_a_criar||0) + ' a criar' },
+      { label:'Recebimentos',        valor: (resumo.recebimentos_a_criar||0) + ' a criar' },
+      { label:'Movimentos de caixa', valor: (resumo.movimentos_caixa_a_criar||0) + ' a criar' },
     ];
-
     var corpo = document.getElementById('modal-corpo-dados');
     corpo.innerHTML = linhas.map(function(l) {
-      return '<div class="modal-linha">' +
-        '<span class="modal-linha-label">' + l.label + '</span>' +
-        '<span class="modal-linha-valor">' + l.valor + '</span>' +
-        '</div>';
+      return '<div class="modal-linha"><span class="modal-linha-label">' + l.label + '</span>' +
+        '<span class="modal-linha-valor">' + l.valor + '</span></div>';
     }).join('');
-
-    // Limpar e focar o input
     var input = document.getElementById('modal-input-confirmacao');
     input.value = '';
     input.className = 'modal-input';
     document.getElementById('modal-btn-confirmar').disabled = true;
-
-    // Exibir modal
     document.getElementById('modal-confirmacao').style.display = 'flex';
-
-    // Focar o input após render
     setTimeout(function() { input.focus(); }, 50);
   });
 }
@@ -287,17 +1133,9 @@ function modalValidarTexto() {
   var input = document.getElementById('modal-input-confirmacao');
   var btn   = document.getElementById('modal-btn-confirmar');
   var val   = input.value;
-
-  if (val === FRASE_CONFIRMACAO) {
-    input.className = 'modal-input ok';
-    btn.disabled = false;
-  } else if (val.length > 0) {
-    input.className = 'modal-input err';
-    btn.disabled = true;
-  } else {
-    input.className = 'modal-input';
-    btn.disabled = true;
-  }
+  if (val === FRASE_CONFIRMACAO) { input.className='modal-input ok'; btn.disabled=false; }
+  else if (val.length>0)         { input.className='modal-input err'; btn.disabled=true; }
+  else                            { input.className='modal-input'; btn.disabled=true; }
 }
 
 function modalCancelar() {
@@ -306,233 +1144,145 @@ function modalCancelar() {
 }
 
 function modalConfirmar() {
-  var val = document.getElementById('modal-input-confirmacao').value;
-  if (val !== FRASE_CONFIRMACAO) return;
+  if (document.getElementById('modal-input-confirmacao').value !== FRASE_CONFIRMACAO) return;
   document.getElementById('modal-confirmacao').style.display = 'none';
   if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
 }
 
-// Fechar modal ao clicar no overlay (fora da caixa)
 document.addEventListener('click', function(e) {
   var overlay = document.getElementById('modal-confirmacao');
   if (e.target === overlay) modalCancelar();
 });
 
-// Cancelar com Escape
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    var overlay = document.getElementById('modal-confirmacao');
-    if (overlay && overlay.style.display !== 'none') modalCancelar();
-  }
-});
-
-// ── Guardar resumo da prévia para o modal ─────────────────────
 var _ultimoResumoPrevia = null;
-
-// ── Executar Prévia ──────────────────────────────────────────
 
 async function executarPrevia() {
   var btn  = document.getElementById('btn-preview');
   var grid = document.getElementById('resumo-grid');
   var bfp  = _getBFP();
 
-  // Ocultar seção apply ao rodar nova prévia
   _ultimoResumoPrevia = null;
   document.getElementById('secao-apply').style.display = 'none';
   document.getElementById('apply-resumo-grid').style.display = 'none';
 
-  if (!bfp) {
-    _setStatus('err', 'FinanceiroBackfillPreview não encontrado. Recarregue o portal.');
-    return;
-  }
+  if (!bfp) { _setStatus('err','FinanceiroBackfillPreview não encontrado. Recarregue o portal.'); return; }
 
   btn.disabled = true;
   grid.style.display = 'none';
-  _setStatus('loading', 'Executando prévia... aguarde.');
+  _setStatus('loading','Executando prévia... aguarde.');
 
   try {
     var resultado = await bfp.executar();
     var r = resultado.resumo;
     _ultimoResumoPrevia = r;
 
-    _setStatus('ok', 'Prévia concluída. Modo somente leitura — nenhum dado foi inserido.');
+    _setStatus('ok','Prévia concluída. Modo somente leitura — nenhum dado foi inserido.');
 
     var itens = [
-      { label: 'Propostas analisadas',  valor: r.total_propostas_analisadas,    sub: '',               money: false },
-      { label: 'Contas a receber',      valor: r.contas_receber_a_criar,        sub: 'seriam criadas', money: false },
-      { label: 'Notas fiscais',         valor: r.notas_fiscais_a_criar,         sub: 'seriam criadas', money: false },
-      { label: 'Recebimentos',          valor: r.recebimentos_a_criar,          sub: 'seriam criados', money: false },
-      { label: 'Movimentos de caixa',   valor: r.movimentos_caixa_a_criar,      sub: 'seriam criados', money: false },
-      { label: 'Com inconsistência',    valor: r.propostas_com_inconsistencia,  sub: 'propostas',      money: false },
-      { label: 'Valor previsto total',  valor: r.valor_total_previsto,          sub: '',               money: true  },
-      { label: 'Valor faturado total',  valor: r.valor_total_faturado,          sub: '',               money: true  },
-      { label: 'Valor recebido total',  valor: r.valor_total_recebido,          sub: '',               money: true  },
-      { label: 'Em aberto total',       valor: r.valor_total_em_aberto,         sub: '',               money: true  },
+      { label:'Propostas analisadas',  valor:r.total_propostas_analisadas,   sub:'',               money:false },
+      { label:'Contas a receber',      valor:r.contas_receber_a_criar,       sub:'seriam criadas', money:false },
+      { label:'Notas fiscais',         valor:r.notas_fiscais_a_criar,        sub:'seriam criadas', money:false },
+      { label:'Recebimentos',          valor:r.recebimentos_a_criar,         sub:'seriam criados', money:false },
+      { label:'Movimentos de caixa',   valor:r.movimentos_caixa_a_criar,     sub:'seriam criados', money:false },
+      { label:'Com inconsistência',    valor:r.propostas_com_inconsistencia, sub:'propostas',      money:false },
+      { label:'Valor previsto total',  valor:r.valor_total_previsto,         sub:'',               money:true  },
+      { label:'Valor faturado total',  valor:r.valor_total_faturado,         sub:'',               money:true  },
+      { label:'Valor recebido total',  valor:r.valor_total_recebido,         sub:'',               money:true  },
+      { label:'Em aberto total',       valor:r.valor_total_em_aberto,        sub:'',               money:true  },
     ];
 
     grid.innerHTML = itens.map(function(it) {
-      return '<div class="resumo-card">' +
-        '<div class="resumo-label">' + it.label + '</div>' +
-        '<div class="resumo-valor">' + (it.money ? _money(it.valor) : it.valor) + '</div>' +
-        (it.sub ? '<div class="resumo-sub">' + it.sub + '</div>' : '') +
-        '</div>';
+      return '<div class="resumo-card"><div class="resumo-label">'+it.label+'</div>' +
+        '<div class="resumo-valor">'+(it.money?_money(it.valor):it.valor)+'</div>' +
+        (it.sub?'<div class="resumo-sub">'+it.sub+'</div>':'') + '</div>';
     }).join('');
     grid.style.display = 'grid';
 
-    // Mostrar botão de aplicação se houver dados a migrar
-    var temDados = (r.contas_receber_a_criar > 0) ||
-                   (r.notas_fiscais_a_criar > 0)  ||
-                   (r.recebimentos_a_criar > 0);
-
+    var temDados = (r.contas_receber_a_criar>0)||(r.notas_fiscais_a_criar>0)||(r.recebimentos_a_criar>0);
     var secaoApply = document.getElementById('secao-apply');
     var applyInfo  = document.getElementById('apply-info');
 
     if (temDados) {
-      applyInfo.textContent =
-        'Prévia identificou: ' + r.contas_receber_a_criar + ' conta(s) a receber, ' +
-        r.notas_fiscais_a_criar + ' NF(s), ' +
-        r.recebimentos_a_criar + ' recebimento(s) e ' +
+      applyInfo.textContent = 'Prévia identificou: ' + r.contas_receber_a_criar + ' conta(s) a receber, ' +
+        r.notas_fiscais_a_criar + ' NF(s), ' + r.recebimentos_a_criar + ' recebimento(s) e ' +
         r.movimentos_caixa_a_criar + ' movimento(s) de caixa a criar para a empresa ativa.';
       secaoApply.style.display = '';
     } else {
       secaoApply.style.display = 'none';
     }
-
   } catch(e) {
-    _setStatus('err', 'Erro: ' + e.message);
+    _setStatus('err','Erro: ' + e.message);
   } finally {
     btn.disabled = false;
   }
 }
 
-// ── Aplicar Backfill ─────────────────────────────────────────
-
 async function executarApply() {
   var bfa = _getBFA();
-  if (!bfa) {
-    _setApplyStatus('err', 'FinanceiroBackfillApply não encontrado. Recarregue o portal.');
-    return;
-  }
+  if (!bfa) { _setApplyStatus('err','FinanceiroBackfillApply não encontrado. Recarregue o portal.'); return; }
 
-  // Identificar empresa ativa
   var empNome = 'não identificada';
   try {
-    var emp = window.parent && typeof window.parent.getEmpresaAtiva === 'function'
-      ? window.parent.getEmpresaAtiva() : null;
+    var emp = _empresaAtiva || _empAtiva();
     if (emp && emp.nome) empNome = emp.nome;
   } catch(e) {}
 
-  // Abrir modal de confirmação com frase obrigatória
   var resumo = _ultimoResumoPrevia || {};
   var confirmado = await _abrirModalConfirmacao(resumo, empNome);
 
-  if (!confirmado) {
-    _setApplyStatus('warn', 'Backfill cancelado. Nenhum dado foi gravado.');
-    return;
-  }
+  if (!confirmado) { _setApplyStatus('warn','Backfill cancelado. Nenhum dado foi gravado.'); return; }
 
   var btn  = document.getElementById('btn-apply');
   var grid = document.getElementById('apply-resumo-grid');
 
   btn.disabled = true;
   grid.style.display = 'none';
-  _setApplyStatus('loading', 'Aplicando backfill... aguarde. Isso pode levar alguns segundos.');
+  _setApplyStatus('loading','Aplicando backfill... aguarde. Isso pode levar alguns segundos.');
 
   try {
     var rel = await bfa.aplicar();
-
     var temErros = rel.erros && rel.erros.length > 0;
-    _setApplyStatus(
-      temErros ? 'warn' : 'ok',
-      'Backfill aplicado. ' + rel.aviso + (temErros ? ' — ' + rel.erros.length + ' erro(s).' : '')
-    );
+    _setApplyStatus(temErros?'warn':'ok',
+      'Backfill aplicado. ' + rel.aviso + (temErros?' — '+rel.erros.length+' erro(s).':''));
 
     var itens = [
-      { label: 'Propostas processadas',    valor: rel.propostas_processadas,        sub: '',                  cls: '' },
-      { label: 'Propostas ignoradas',      valor: rel.propostas_ignoradas,          sub: 'sem dados financ.', cls: 'ignorado' },
-      { label: 'Contas criadas',           valor: rel.contas_criadas,               sub: '',                  cls: '' },
-      { label: 'Contas já existiam',       valor: rel.contas_ignoradas,             sub: 'ignoradas',         cls: 'ignorado' },
-      { label: 'NFs criadas',              valor: rel.nfs_criadas,                  sub: '',                  cls: '' },
-      { label: 'NFs já existiam',          valor: rel.nfs_ignoradas,               sub: 'ignoradas',         cls: 'ignorado' },
-      { label: 'Recebimentos criados',     valor: rel.recebimentos_criados,         sub: '',                  cls: '' },
-      { label: 'Recebimentos já existiam', valor: rel.recebimentos_ignorados,       sub: 'ignorados',         cls: 'ignorado' },
-      { label: 'Movimentos criados',       valor: rel.movimentos_criados,           sub: '',                  cls: '' },
-      { label: 'Movimentos já existiam',   valor: rel.movimentos_ignorados,         sub: 'ignorados',         cls: 'ignorado' },
-      { label: 'Erros',                    valor: rel.erros ? rel.erros.length : 0, sub: '',                  cls: rel.erros && rel.erros.length > 0 ? 'erro' : '' },
+      { label:'Propostas processadas',    valor:rel.propostas_processadas,                  cls:'' },
+      { label:'Propostas ignoradas',      valor:rel.propostas_ignoradas,                    cls:'ignorado' },
+      { label:'Contas criadas',           valor:rel.contas_criadas,                         cls:'' },
+      { label:'Contas já existiam',       valor:rel.contas_ignoradas,                       cls:'ignorado' },
+      { label:'NFs criadas',              valor:rel.nfs_criadas,                            cls:'' },
+      { label:'NFs já existiam',          valor:rel.nfs_ignoradas,                          cls:'ignorado' },
+      { label:'Recebimentos criados',     valor:rel.recebimentos_criados,                   cls:'' },
+      { label:'Recebimentos já existiam', valor:rel.recebimentos_ignorados,                 cls:'ignorado' },
+      { label:'Movimentos criados',       valor:rel.movimentos_criados,                     cls:'' },
+      { label:'Movimentos já existiam',   valor:rel.movimentos_ignorados,                   cls:'ignorado' },
+      { label:'Erros',                    valor:rel.erros?rel.erros.length:0, cls:rel.erros&&rel.erros.length>0?'erro':'' },
     ];
 
     grid.innerHTML = itens.map(function(it) {
-      return '<div class="resumo-card">' +
-        '<div class="resumo-label">' + it.label + '</div>' +
-        '<div class="resumo-valor ' + it.cls + '">' + it.valor + '</div>' +
-        (it.sub ? '<div class="resumo-sub">' + it.sub + '</div>' : '') +
-        '</div>';
+      return '<div class="resumo-card"><div class="resumo-label">'+it.label+'</div>' +
+        '<div class="resumo-valor '+it.cls+'">'+it.valor+'</div></div>';
     }).join('');
 
     if (temErros) {
       grid.innerHTML += '<div style="margin-top:.8rem;font-size:.75rem;color:var(--red)">' +
         '<strong>Erros:</strong><ul style="margin-top:.3rem;padding-left:1rem">' +
-        rel.erros.map(function(e) {
-          return '<li>' + (e.proposta || '?') + ': ' + (e.erro || '') + '</li>';
-        }).join('') + '</ul></div>';
+        rel.erros.map(function(e){ return '<li>'+(e.proposta||'?')+': '+(e.erro||'')+'</li>'; }).join('') +
+        '</ul></div>';
     }
-
     grid.style.display = 'grid';
 
+    // Recarregar contas após backfill bem-sucedido
+    if (!temErros && _empresaAtiva) {
+      setTimeout(function() { carregarContas(_empresaAtiva.id); }, 800);
+    }
+
   } catch(e) {
-    _setApplyStatus('err', 'Erro fatal: ' + e.message);
+    _setApplyStatus('err','Erro fatal: ' + e.message);
   } finally {
     btn.disabled = false;
   }
 }
-
-// ── Inicialização ────────────────────────────────────────────
-
-(function() {
-  try {
-    if (window.parent && window.parent.document.body.classList.contains('light')) {
-      document.body.classList.add('light');
-    }
-  } catch(e) {}
-
-  try {
-    var emp = null;
-    if (window.parent && typeof window.parent.getEmpresaAtiva === 'function') {
-      emp = window.parent.getEmpresaAtiva();
-    }
-    var label = document.getElementById('empresa-ativa-label');
-    if (label) {
-      label.textContent = emp && emp.nome
-        ? 'Empresa ativa: ' + emp.nome
-        : 'Empresa ativa: não identificada — verifique o login.';
-    }
-  } catch(e) {}
-})();
-
-// ── Atualizar label quando empresa trocar no portal pai ──────────────────────
-// O portal envia SET_EMPRESA via postMessage para todos os iframes ao trocar empresa.
-window.addEventListener('message', function(e) {
-  if (!e.data || !e.data.type) return;
-  if (e.data.type === 'SET_EMPRESA') {
-    var label = document.getElementById('empresa-ativa-label');
-    if (label) {
-      var nome = e.data.empresaNome || e.data.empresaNomeCurto || '';
-      label.textContent = nome ? 'Empresa ativa: ' + nome : 'Empresa ativa: —';
-    }
-    // Limpar resultado de prévia anterior (era da empresa anterior)
-    var resumoEl = document.getElementById('preview-resumo');
-    if (resumoEl) resumoEl.innerHTML = '';
-    var applyEl = document.getElementById('apply-resumo-grid');
-    if (applyEl) applyEl.style.display = 'none';
-    var statusEl = document.getElementById('preview-status');
-    if (statusEl) statusEl.textContent = '';
-    var applyStatusEl = document.getElementById('apply-status');
-    if (applyStatusEl) applyStatusEl.textContent = '';
-  }
-  if (e.data.type === 'SET_TEMA') {
-    document.body.classList.toggle('light', e.data.tema === 'light');
-  }
-});
 </script>
 
 </body>
