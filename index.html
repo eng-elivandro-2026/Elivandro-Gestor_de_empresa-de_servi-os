@@ -10421,5 +10421,40 @@ function _vinMsg(msg, tipo) {
   </div>
 </div>
 
+<!-- F2E — Override definitivo de fmAbrirProposta com Espelho Financeiro -->
+<!-- Deve ficar NO FIM do HTML, após app-core.js e financeiro-espelho.js,  -->
+<!-- para garantir que esta versão sempre prevalece sobre a do app-core.js. -->
+<script>
+(function () {
+  'use strict';
+  window.fmAbrirProposta = function (id) {
+    var p = (window.props || []).find(function (x) { return x.id === id; });
+    if (!p) return;
+
+    // Estado interno
+    window._pdId = id;
+
+    // Recalcula totais da proposta (se disponível)
+    if (typeof recalcProposalTotal === 'function') recalcProposalTotal(p);
+
+    // Preenche o formulário de edição e navega para #nova
+    if (typeof editP === 'function') editP(id);
+
+    // Garante que #nova está visível (editP já o faz internamente,
+    // mas chamamos novamente por segurança)
+    if (typeof go === 'function') go('nova', null);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // F2E — Espelho Financeiro Oficial (somente leitura, nunca grava dados)
+    // Vínculo: p.id (Comercial) === proposta_app_id (Financeiro)
+    if (typeof finEspelhoCarregar === 'function') {
+      finEspelhoCarregar(id);
+    }
+  };
+  console.log('%c[F2E] fmAbrirProposta — override pós-app-core com espelho financeiro', 'color:#58a6ff;font-weight:700');
+})();
+</script>
+
 </body>
 </html>
