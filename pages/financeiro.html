@@ -305,6 +305,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <!-- ── TABS ───────────────────────────────────────────────────── -->
 <div class="tab-bar">
   <button class="tab-btn on" id="tab-btn-contas" onclick="showTab('contas')">📋 Contas a Receber</button>
+  <button class="tab-btn" id="tab-btn-nfs" onclick="showTab('nfs')">📄 Notas Fiscais</button>
   <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
 </div>
 
@@ -420,6 +421,117 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: NOTAS FISCAIS — F2C                                     -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-nfs" class="tab-content" style="display:none">
+<div class="wrap">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">📄 Notas Fiscais / Faturamento</div>
+      <div class="page-sub">Dados oficiais por empresa — tabela <code>financeiro_notas_fiscais</code></div>
+      <div id="nf-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="nf-btn-refresh" onclick="recarregarNFs()" title="Recarregar NFs">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="kpi-row" id="nf-kpi-row">
+    <div class="kpi-card destaque">
+      <div class="kpi-label">Total Faturado</div>
+      <div class="kpi-valor emp" id="nf-kpi-total">—</div>
+      <div class="kpi-sub" id="nf-kpi-total-sub"></div>
+    </div>
+    <div class="kpi-card recebido">
+      <div class="kpi-label">Recebidas</div>
+      <div class="kpi-valor verde" id="nf-kpi-recebidas">—</div>
+      <div class="kpi-sub" id="nf-kpi-recebidas-sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Em Aberto</div>
+      <div class="kpi-valor" id="nf-kpi-aberto">—</div>
+      <div class="kpi-sub" id="nf-kpi-aberto-sub"></div>
+    </div>
+    <div class="kpi-card vencida">
+      <div class="kpi-label">Vencidas</div>
+      <div class="kpi-valor vermelho" id="nf-kpi-vencidas">—</div>
+      <div class="kpi-sub" id="nf-kpi-vencidas-sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Parciais</div>
+      <div class="kpi-valor" id="nf-kpi-parciais">—</div>
+      <div class="kpi-sub" id="nf-kpi-parciais-sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Canceladas</div>
+      <div class="kpi-valor" id="nf-kpi-canceladas">—</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-bar">
+    <input type="search" class="filtro-input busca" id="nf-filtro-busca"
+      placeholder="Buscar nº NF, cliente, proposta, obra..." oninput="aplicarFiltrosNF()">
+
+    <select class="filtro-input filtro-select" id="nf-filtro-status" onchange="aplicarFiltrosNF()">
+      <option value="">Todos os status</option>
+      <option value="recebida">Recebida</option>
+      <option value="parcial">Parcial</option>
+      <option value="emitida">Em Aberto</option>
+      <option value="vencida">Vencida</option>
+      <option value="cancelada">Cancelada</option>
+    </select>
+
+    <select class="filtro-input filtro-select" id="nf-filtro-tipo" onchange="aplicarFiltrosNF()">
+      <option value="">Todos os tipos</option>
+      <option value="servico">Serviço</option>
+      <option value="material">Material</option>
+    </select>
+
+    <input type="month" class="filtro-input" id="nf-filtro-mes" onchange="aplicarFiltrosNF()"
+      title="Filtrar por mês de emissão" style="max-width:140px">
+
+    <button class="btn-limpar" onclick="limparFiltrosNF()" title="Limpar filtros">✕ Limpar</button>
+    <span class="filtro-count" id="nf-filtro-count"></span>
+  </div>
+
+  <!-- Estado loading / empty / error -->
+  <div id="nf-estado" class="estado" style="display:none">
+    <div class="loading-spinner" id="nf-spinner" style="display:none"></div>
+    <span class="estado-icon" id="nf-estado-icon"></span>
+    <div class="estado-msg" id="nf-estado-msg"></div>
+    <div class="estado-sub" id="nf-estado-sub"></div>
+  </div>
+
+  <!-- Tabela de NFs -->
+  <div class="table-wrap" id="nf-table-wrap" style="display:none">
+    <table class="fin-table" id="nf-table">
+      <thead>
+        <tr>
+          <th>Nº NF</th>
+          <th>Cliente</th>
+          <th>Proposta / Título</th>
+          <th class="th-obra">Obra</th>
+          <th>Tipo</th>
+          <th class="col-valor">Valor NF</th>
+          <th>Status</th>
+          <th>Emissão</th>
+          <th class="th-venc">Vencimento</th>
+          <th class="col-ind">Situação</th>
+        </tr>
+      </thead>
+      <tbody id="nf-tabela-body"></tbody>
+    </table>
+  </div>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-nfs -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <!-- TAB: FERRAMENTAS (backfill — preservado)                     -->
 <!-- ════════════════════════════════════════════════════════════ -->
 <div id="tab-ferramentas" class="tab-content" style="display:none">
@@ -513,6 +625,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
   <div class="detalhe-corpo" id="detalhe-corpo">
     <!-- preenchido por abrirDetalhe() -->
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- PAINEL DE DETALHE NF — slide da direita                      -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="detalhe-overlay" id="nf-detalhe-overlay" onclick="fecharDetalheNF()"></div>
+
+<div class="detalhe-panel" id="nf-detalhe-panel">
+  <div class="detalhe-hdr">
+    <div class="detalhe-titulo" id="nf-detalhe-titulo">Detalhes da Nota Fiscal</div>
+    <button class="btn-fechar" onclick="fecharDetalheNF()" title="Fechar">✕</button>
+  </div>
+  <div class="detalhe-corpo" id="nf-detalhe-corpo">
+    <!-- preenchido por abrirDetalheNF() -->
   </div>
 </div>
 
@@ -998,9 +1126,16 @@ function _atualizarBadge(emp) {
 function _onTrocaEmpresa(dados) {
   // Limpar dados da empresa anterior imediatamente
   _todasContas = [];
-  _loadToken++;        // invalida qualquer carregamento em curso
+  _loadToken++;
   fecharDetalhe();
   document.getElementById('tabela-body').innerHTML = '';
+
+  // Limpar NFs também
+  _todasNFs = [];
+  _nfLoadToken++;
+  fecharDetalheNF();
+  var nfBody = document.getElementById('nf-tabela-body');
+  if (nfBody) nfBody.innerHTML = '';
 
   _empresaAtiva = {
     id:        dados.empresaId,
@@ -1010,9 +1145,11 @@ function _onTrocaEmpresa(dados) {
 
   _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
   _atualizarBadge(_empresaAtiva);
+  _atualizarBadgeNF(_empresaAtiva);
 
-  // Carregar dados da nova empresa (só se tab ativa for contas)
+  // Recarregar ambas as tabs
   carregarContas(_empresaAtiva.id);
+  carregarNFs(_empresaAtiva.id);
 }
 
 // ── postMessage do portal pai ─────────────────────────────────
@@ -1053,26 +1190,414 @@ window.addEventListener('message', function(e) {
       _empresaAtiva = emp;
       _aplicarTema(emp.nome_curto || emp.nome);
       _atualizarBadge(emp);
+      _atualizarBadgeNF(emp);
       carregarContas(emp.id);
+      carregarNFs(emp.id);
     } else {
       _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+      _nfMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
     }
   } catch(e) {
-    console.warn('[Financeiro F2B] init error:', e);
+    console.warn('[Financeiro F2B/F2C] init error:', e);
     _mostrarVazio('Erro ao identificar empresa ativa.');
+    _nfMostrarVazio('Erro ao identificar empresa ativa.');
   }
 })();
 
-// Fechar detalhe com Escape
+// Fechar painéis de detalhe com Escape
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    if (document.getElementById('nf-detalhe-panel').classList.contains('on')) {
+      fecharDetalheNF(); return;
+    }
     if (document.getElementById('detalhe-panel').classList.contains('on')) {
-      fecharDetalhe();
+      fecharDetalhe(); return;
     }
     var modal = document.getElementById('modal-confirmacao');
     if (modal && modal.style.display !== 'none') modalCancelar();
   }
 });
+
+// ══════════════════════════════════════════════════════════════
+// F2C — NOTAS FISCAIS
+// ══════════════════════════════════════════════════════════════
+
+// Estado NFs
+var _todasNFs     = [];
+var _nfCarregando = false;
+var _nfLoadToken  = 0;
+
+// ── Status visual das NFs (computado em JS) ───────────────────
+// O banco tem: emitida | cancelada
+// A situação real deriva do status da conta vinculada
+function _nfStatusComputado(nf) {
+  if (nf.status === 'cancelada') return 'cancelada';
+  var conta = nf.conta_receber || {};
+  var cst   = conta.status || '';
+  if (cst === 'recebido')                return 'recebida';
+  if (cst === 'parcialmente_recebido')   return 'parcial';
+  // Verifica vencimento pela conta
+  var dv = conta.data_vencimento ? conta.data_vencimento.slice(0, 10) : null;
+  if (dv && dv < _hoje())                return 'vencida';
+  return 'emitida';
+}
+
+var _NF_STATUS_LABEL = {
+  recebida:  'Recebida',
+  parcial:   'Parcial',
+  emitida:   'Em Aberto',
+  vencida:   'Vencida',
+  cancelada: 'Cancelada'
+};
+
+var _NF_STATUS_CLASS = {
+  recebida:  'bdg-recebido',
+  parcial:   'bdg-parcialmente_recebido',
+  emitida:   'bdg-a_faturar',
+  vencida:   'bdg-vencida',
+  cancelada: 'bdg-cancelado'
+};
+
+function _nfBadge(nf) {
+  var st    = _nfStatusComputado(nf);
+  var label = _NF_STATUS_LABEL[st] || st;
+  var cls   = _NF_STATUS_CLASS[st] || 'bdg-previsto';
+  return '<span class="bdg ' + cls + '">' + label + '</span>';
+}
+
+function _nfSituacao(nf) {
+  if (nf.status === 'cancelada') return '<span class="ind-neutro">—</span>';
+  var conta = nf.conta_receber || {};
+  if (conta.status === 'recebido') return '<span class="ind-ok">✓ Recebida</span>';
+  if (conta.status === 'parcialmente_recebido') return '<span class="ind-hoje">⚡ Parcial</span>';
+  var dv = conta.data_vencimento ? conta.data_vencimento.slice(0, 10) : null;
+  if (!dv) return '<span class="ind-neutro">—</span>';
+  var hoje = _hoje();
+  if (dv < hoje) {
+    var dias = Math.floor((new Date(hoje) - new Date(dv)) / 86400000);
+    return '<span class="ind-vencida">⚠ ' + dias + 'd atraso</span>';
+  }
+  if (dv === hoje) return '<span class="ind-hoje">⏰ Hoje</span>';
+  var ff = Math.floor((new Date(dv) - new Date(hoje)) / 86400000);
+  return '<span class="ind-neutro' + (ff <= 7 ? ' ind-hoje' : '') + '">📅 ' + ff + 'd</span>';
+}
+
+// ── Estados visuais NFs ───────────────────────────────────────
+function _nfMostrarLoading() {
+  var el = document.getElementById('nf-estado');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('nf-spinner').style.display = '';
+  document.getElementById('nf-estado-icon').textContent = '';
+  document.getElementById('nf-estado-msg').textContent  = 'Carregando notas fiscais...';
+  document.getElementById('nf-estado-sub').textContent  = '';
+  document.getElementById('nf-table-wrap').style.display = 'none';
+}
+
+function _nfMostrarVazio(msg, sub) {
+  var el = document.getElementById('nf-estado');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('nf-spinner').style.display   = 'none';
+  document.getElementById('nf-estado-icon').textContent = '📭';
+  document.getElementById('nf-estado-msg').textContent  = msg || 'Nenhuma nota fiscal encontrada para esta empresa.';
+  document.getElementById('nf-estado-sub').textContent  = sub || '';
+  document.getElementById('nf-table-wrap').style.display = 'none';
+}
+
+function _nfMostrarErro(msg) {
+  var el = document.getElementById('nf-estado');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('nf-spinner').style.display   = 'none';
+  document.getElementById('nf-estado-icon').textContent = '⚠️';
+  document.getElementById('nf-estado-msg').textContent  = msg || 'Erro ao carregar NFs.';
+  document.getElementById('nf-estado-sub').textContent  = 'Tente novamente ou verifique o console.';
+  document.getElementById('nf-table-wrap').style.display = 'none';
+}
+
+function _nfMostrarTabela() {
+  var el = document.getElementById('nf-estado');
+  if (el) el.style.display = 'none';
+  document.getElementById('nf-table-wrap').style.display = '';
+}
+
+// ── Badge da empresa no header de NFs ────────────────────────
+function _atualizarBadgeNF(emp) {
+  var el = document.getElementById('nf-empresa-badge');
+  if (!el) return;
+  if (emp && (emp.nome_curto || emp.nome)) {
+    el.textContent = '🏢 ' + (emp.nome_curto || emp.nome);
+    el.style.display = 'inline-flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Carregar NFs ──────────────────────────────────────────────
+async function carregarNFs(empresaId) {
+  var sf = _sf();
+  if (!sf || !sf.listarNotasFiscaisEmpresa) {
+    _nfMostrarErro('sbFinanceiro.listarNotasFiscaisEmpresa não disponível. Recarregue o portal.');
+    return;
+  }
+  if (!empresaId) {
+    _nfMostrarVazio('Empresa não identificada.');
+    return;
+  }
+
+  _nfCarregando = true;
+  var token = ++_nfLoadToken;
+  fecharDetalheNF();
+  _nfMostrarLoading();
+  document.getElementById('nf-btn-refresh').disabled = true;
+
+  try {
+    var nfs = await sf.listarNotasFiscaisEmpresa(empresaId);
+
+    if (token !== _nfLoadToken) return; // empresa mudou durante o await
+
+    _todasNFs     = nfs || [];
+    _nfCarregando = false;
+    document.getElementById('nf-btn-refresh').disabled = false;
+
+    _renderKpisNF(_todasNFs);
+    aplicarFiltrosNF();
+
+  } catch(e) {
+    if (token !== _nfLoadToken) return;
+    _nfCarregando = false;
+    document.getElementById('nf-btn-refresh').disabled = false;
+    console.error('[Financeiro F2C] erro ao carregar NFs:', e);
+    _nfMostrarErro('Erro ao consultar o banco: ' + (e.message || e));
+  }
+}
+
+function recarregarNFs() {
+  if (_nfCarregando) return;
+  if (!_empresaAtiva) { _nfMostrarVazio('Empresa não identificada.'); return; }
+  carregarNFs(_empresaAtiva.id);
+}
+
+// ── KPI Cards NFs ─────────────────────────────────────────────
+function _renderKpisNF(nfs) {
+  var totalFaturado = 0, qtdTotal = 0;
+  var totalRecebidas = 0, qtdRecebidas = 0;
+  var totalAberto = 0, qtdAberto = 0;
+  var totalVencidas = 0, qtdVencidas = 0;
+  var totalParciais = 0, qtdParciais = 0;
+  var qtdCanceladas = 0;
+
+  (nfs || []).forEach(function(nf) {
+    var v  = parseFloat(nf.valor_nf) || 0;
+    var st = _nfStatusComputado(nf);
+    if (st !== 'cancelada') { totalFaturado += v; qtdTotal++; }
+    if (st === 'recebida')  { totalRecebidas += v; qtdRecebidas++; }
+    if (st === 'emitida')   { totalAberto += v; qtdAberto++; }
+    if (st === 'vencida')   { totalVencidas += v; qtdVencidas++; }
+    if (st === 'parcial')   { totalParciais += v; qtdParciais++; }
+    if (st === 'cancelada') { qtdCanceladas++; }
+  });
+
+  document.getElementById('nf-kpi-total').textContent       = _money(totalFaturado);
+  document.getElementById('nf-kpi-total-sub').textContent   = qtdTotal + (qtdTotal === 1 ? ' NF' : ' NFs');
+  document.getElementById('nf-kpi-recebidas').textContent   = _money(totalRecebidas);
+  document.getElementById('nf-kpi-recebidas-sub').textContent = qtdRecebidas + (qtdRecebidas === 1 ? ' NF' : ' NFs');
+  document.getElementById('nf-kpi-aberto').textContent      = _money(totalAberto);
+  document.getElementById('nf-kpi-aberto-sub').textContent  = qtdAberto + (qtdAberto === 1 ? ' NF' : ' NFs');
+  document.getElementById('nf-kpi-vencidas').textContent    = _money(totalVencidas);
+  document.getElementById('nf-kpi-vencidas-sub').textContent = qtdVencidas + (qtdVencidas === 1 ? ' NF' : ' NFs');
+  document.getElementById('nf-kpi-parciais').textContent    = _money(totalParciais);
+  document.getElementById('nf-kpi-parciais-sub').textContent = qtdParciais + (qtdParciais === 1 ? ' NF' : ' NFs');
+  document.getElementById('nf-kpi-canceladas').textContent  = qtdCanceladas;
+}
+
+// ── Filtros NFs ───────────────────────────────────────────────
+function aplicarFiltrosNF() {
+  var busca  = (document.getElementById('nf-filtro-busca').value  || '').toLowerCase().trim();
+  var status = document.getElementById('nf-filtro-status').value;
+  var tipo   = document.getElementById('nf-filtro-tipo').value;
+  var mes    = document.getElementById('nf-filtro-mes').value; // YYYY-MM
+
+  var filtradas = _todasNFs.filter(function(nf) {
+    // Busca textual
+    if (busca) {
+      var conta = nf.conta_receber || {};
+      var txt = [nf.numero_nf, nf.proposta_app_id, conta.cliente_nome, conta.titulo, conta.obra_id]
+        .map(function(v){ return (v||'').toLowerCase(); }).join(' ');
+      if (!txt.includes(busca)) return false;
+    }
+    // Status computado
+    if (status) {
+      var st = _nfStatusComputado(nf);
+      if (st !== status) return false;
+    }
+    // Tipo NF
+    if (tipo && nf.tipo_nf !== tipo) return false;
+    // Mês de emissão
+    if (mes) {
+      if (!nf.data_emissao) return false;
+      if (!nf.data_emissao.startsWith(mes)) return false;
+    }
+    return true;
+  });
+
+  var countEl = document.getElementById('nf-filtro-count');
+  if (filtradas.length < _todasNFs.length) {
+    countEl.textContent = filtradas.length + ' de ' + _todasNFs.length + ' NFs';
+  } else {
+    countEl.textContent = filtradas.length + (filtradas.length === 1 ? ' NF' : ' NFs');
+  }
+
+  _renderTabelaNF(filtradas);
+}
+
+function limparFiltrosNF() {
+  document.getElementById('nf-filtro-busca').value  = '';
+  document.getElementById('nf-filtro-status').value = '';
+  document.getElementById('nf-filtro-tipo').value   = '';
+  document.getElementById('nf-filtro-mes').value    = '';
+  aplicarFiltrosNF();
+}
+
+// ── Renderizar tabela NFs ─────────────────────────────────────
+function _renderTabelaNF(nfs) {
+  if (!nfs || nfs.length === 0) {
+    var temFiltro = document.getElementById('nf-filtro-busca').value  ||
+                   document.getElementById('nf-filtro-status').value ||
+                   document.getElementById('nf-filtro-tipo').value   ||
+                   document.getElementById('nf-filtro-mes').value;
+    if (temFiltro) {
+      _nfMostrarVazio('Nenhuma NF encontrada para os filtros aplicados.', 'Tente remover algum filtro.');
+    } else {
+      _nfMostrarVazio(
+        'Nenhuma nota fiscal encontrada para esta empresa.',
+        'Execute o backfill em ⚙️ Ferramentas para migrar os dados financeiros das propostas.'
+      );
+    }
+    return;
+  }
+
+  var rows = nfs.map(function(nf) {
+    var conta  = nf.conta_receber || {};
+    var st     = _nfStatusComputado(nf);
+    var isCan  = st === 'cancelada';
+    var rowCls = isCan ? ' style="opacity:.55"' : '';
+
+    return '<tr class="row-conta" onclick="abrirDetalheNF(\'' + nf.id + '\')" title="Ver detalhes"' + rowCls + '>' +
+      '<td style="font-family:monospace;font-weight:600">' + (nf.numero_nf || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td class="col-cliente">' + (conta.cliente_nome || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td class="col-titulo">' + (conta.titulo || nf.proposta_app_id || '—') + '</td>' +
+      '<td class="td-obra col-titulo">' + (conta.obra_id || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td style="font-size:.7rem;color:var(--text3)">' + (nf.tipo_nf || '—') + '</td>' +
+      '<td class="col-valor' + (isCan ? ' style="text-decoration:line-through;color:var(--text3)"' : '') + '">' + _money(nf.valor_nf) + '</td>' +
+      '<td class="col-status">' + _nfBadge(nf) + '</td>' +
+      '<td class="col-data">' + _dataBR(nf.data_emissao) + '</td>' +
+      '<td class="col-data th-venc">' + _dataBR(conta.data_vencimento) + '</td>' +
+      '<td class="col-ind">' + _nfSituacao(nf) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  document.getElementById('nf-tabela-body').innerHTML = rows;
+  _nfMostrarTabela();
+}
+
+// ── Painel de detalhe NF ──────────────────────────────────────
+async function abrirDetalheNF(nfId) {
+  var nf = _todasNFs.find(function(n) { return n.id === nfId; });
+  if (!nf) return;
+
+  document.getElementById('nf-detalhe-titulo').textContent =
+    'NF ' + (nf.numero_nf || nfId.slice(0,8));
+  document.getElementById('nf-detalhe-corpo').innerHTML = _renderNFBasico(nf);
+
+  document.getElementById('nf-detalhe-overlay').classList.add('on');
+  document.getElementById('nf-detalhe-panel').classList.add('on');
+
+  // Carregar recebimentos da conta vinculada on-demand
+  var sf    = _sf();
+  var conta = nf.conta_receber || {};
+  if (!sf || !conta.id || !_empresaAtiva) return;
+
+  try {
+    var recs = await sf.listarRecebimentosConta(_empresaAtiva.id, conta.id);
+    if (!document.getElementById('nf-detalhe-panel').classList.contains('on')) return;
+    document.getElementById('nf-detalhe-corpo').innerHTML =
+      _renderNFBasico(nf) +
+      _renderNFConta(conta) +
+      _renderNFRecebimentos(recs);
+  } catch(e) {
+    console.warn('[Financeiro F2C] erro ao carregar detalhe NF:', e);
+  }
+}
+
+function fecharDetalheNF() {
+  document.getElementById('nf-detalhe-overlay').classList.remove('on');
+  document.getElementById('nf-detalhe-panel').classList.remove('on');
+}
+
+function _renderNFBasico(nf) {
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">Dados da Nota Fiscal</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Nº da NF',       nf.numero_nf      || '—') +
+      _di('Tipo',           nf.tipo_nf         || '—') +
+      _di('Valor NF',       _money(nf.valor_nf), 'emp') +
+      _di('Data Emissão',   _dataBR(nf.data_emissao)) +
+      _di('Status (banco)', nf.status          || '—') +
+      _di('Situação',       _NF_STATUS_LABEL[_nfStatusComputado(nf)] || '—') +
+    '</div>' +
+    (nf.observacoes
+      ? '<div style="margin-top:.6rem;font-size:.72rem;color:var(--text3)"><strong>Observações:</strong> ' + nf.observacoes + '</div>'
+      : '') +
+  '</div>';
+}
+
+function _renderNFConta(conta) {
+  if (!conta || !conta.id) {
+    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Conta a Receber</div>' +
+      '<div class="sub-vazio">Conta vinculada não encontrada.</div></div>';
+  }
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">Conta a Receber Vinculada</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Cliente',        conta.cliente_nome   || '—') +
+      _di('Proposta',       conta.proposta_app_id|| '—') +
+      _di('Título',         conta.titulo         || '—') +
+      _di('Obra',           conta.obra_id        || '—') +
+      _di('Status Conta',   _statusBadge(conta.status)) +
+      _di('Vencimento',     _dataBR(conta.data_vencimento)) +
+      _di('Previsto',       _money(conta.valor_previsto)) +
+      _di('Recebido',       _money(conta.valor_recebido), 'verde') +
+      _di('Pendente',       _money(conta.valor_pendente)) +
+    '</div>' +
+  '</div>';
+}
+
+function _renderNFRecebimentos(recs) {
+  var corpo = '';
+  if (!recs || !recs.length) {
+    corpo = '<div class="sub-vazio">Nenhum recebimento registrado nesta conta.</div>';
+  } else {
+    var total = recs.reduce(function(s, r) { return s + (parseFloat(r.valor_recebido)||0); }, 0);
+    corpo = '<table class="sub-table"><thead><tr>' +
+      '<th>Data</th><th>Valor Recebido</th><th>Status</th><th>Risco Sacado</th>' +
+      '</tr></thead><tbody>' +
+      recs.map(function(r) {
+        return '<tr>' +
+          '<td>' + _dataBR(r.data_recebimento) + '</td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--green)">' + _money(r.valor_recebido) + '</td>' +
+          '<td>' + _statusBadge(r.status) + '</td>' +
+          '<td style="text-align:center">' + (r.risco_sacado ? '⚠ Sim' : '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>' +
+      '<div style="text-align:right;font-size:.72rem;color:var(--green);margin-top:.3rem;font-weight:700">' +
+        'Total recebido: ' + _money(total) + '</div>';
+  }
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">Recebimentos da Conta (' + (recs||[]).length + ')</div>' +
+    corpo + '</div>';
+}
 
 // ══════════════════════════════════════════════════════════════
 // BACKFILL (preservado — acessos ao portal pai)

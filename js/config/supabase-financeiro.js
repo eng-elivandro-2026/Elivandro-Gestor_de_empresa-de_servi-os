@@ -155,6 +155,38 @@
   }
 
   /**
+   * Lista TODAS as NFs da empresa (F2C — tela de Notas Fiscais).
+   * Inclui dados da conta a receber vinculada via FK (join embutido).
+   * Se o join falhar (FK não configurada), faz fallback sem join.
+   */
+  async function sbListarNotasFiscaisEmpresa(empresaId) {
+    // Tenta com join na conta a receber
+    var r = await client()
+      .from('financeiro_notas_fiscais')
+      .select([
+        'id', 'empresa_id', 'conta_receber_id', 'proposta_app_id',
+        'numero_nf', 'tipo_nf', 'data_emissao', 'valor_nf',
+        'status', 'observacoes', 'created_at',
+        'conta_receber:conta_receber_id(id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo, valor_previsto, valor_recebido, valor_pendente, data_vencimento, status)'
+      ].join(','))
+      .eq('empresa_id', empresaId)
+      .order('data_emissao', { ascending: false, nullsFirst: false });
+
+    if (r.error) {
+      // Fallback sem join — retorna NFs simples
+      console.warn('[sbFinanceiro] join conta_receber falhou, fallback simples:', r.error.message);
+      var r2 = await client()
+        .from('financeiro_notas_fiscais')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .order('data_emissao', { ascending: false, nullsFirst: false });
+      if (r2.error) throw r2.error;
+      return r2.data || [];
+    }
+    return r.data || [];
+  }
+
+  /**
    * Cria uma nova NF vinculada a uma conta a receber.
    */
   async function sbCriarNotaFiscal(dados) {
@@ -438,6 +470,7 @@
     atualizarContaReceber:           sbAtualizarContaReceber,
 
     // Notas fiscais
+    listarNotasFiscaisEmpresa:       sbListarNotasFiscaisEmpresa,
     listarNotasFiscaisConta:         sbListarNotasFiscaisConta,
     criarNotaFiscal:                 sbCriarNotaFiscal,
 
