@@ -10,8 +10,9 @@ var _gestaoChave = 'tf_planejador';
 var _gestaoChaveFallback = 'tf_planejador'; // chave legada por usuário (somente leitura após migração)
 var _geralChave = 'tf_planejador_geral';    // chave compartilhada por empresa
 
-// Race condition token — incrementado a cada carregamento de nuvem
-var _ceoLoadToken = 0;
+// Race condition tokens — SEPARADOS por função para não se invalidarem mutuamente
+var _nuvemLoadToken = 0;  // token exclusivo de loadNuvem()
+var _geralLoadToken = 0;  // token exclusivo de loadNuvemGeral()
 
 // Guard: impede save() antes de load() terminar — evita apagar dados com objeto vazio
 var _gestaoLoaded = false;
@@ -101,9 +102,25 @@ async function sbLoadGestao() {
 
       .maybeSingle();
 
-    if (res.data && res.data.valor) return res.data.valor;
+    if (res.data && res.data.valor) {
+      console.log('%c[gestao] chave encontrada: ' + _gestaoChave, 'color:#F05A1A');
+      return res.data.valor;
+    }
 
-  } catch(e) {}
+    // Fallback: tenta chave legada por usuário (sem empresa) se existir e for diferente
+    if (_gestaoChaveFallback && _gestaoChaveFallback !== _gestaoChave) {
+      console.log('%c[gestao] chave principal vazia — tentando fallback: ' + _gestaoChaveFallback, 'color:#f0a500');
+      const resFb = await sb.from('configuracoes')
+        .select('valor')
+        .eq('chave', _gestaoChaveFallback)
+        .maybeSingle();
+      if (resFb.data && resFb.data.valor) {
+        console.log('%c[gestao] dados encontrados no fallback: ' + _gestaoChaveFallback, 'color:#f0a500;font-weight:700');
+        return resFb.data.valor;
+      }
+    }
+
+  } catch(e) { console.warn('[gestao] erro em sbLoadGestao:', e); }
 
   return null;
 
@@ -421,13 +438,13 @@ function _saveNav(){
 
 async function loadNuvem(){
 
-  var token = ++_ceoLoadToken;
+  var token = ++_nuvemLoadToken;
 
   try {
 
     const cloud = await sbLoadGestao();
 
-    if (token !== _ceoLoadToken) return; // descarta se empresa mudou durante o await
+    if (token !== _nuvemLoadToken) return; // descarta se empresa mudou durante o await
 
     if(cloud){
 
@@ -463,7 +480,7 @@ function saveGeral(){
 
 async function loadNuvemGeral(){
 
-  var token = ++_ceoLoadToken;
+  var token = ++_geralLoadToken;
 
   try {
 
@@ -476,7 +493,7 @@ async function loadNuvemGeral(){
         cloud = await sbLoadGestaoGeral('tf_planejador_geral');
       }
 
-      if (token !== _ceoLoadToken) return; // descarta se empresa mudou durante o await
+      if (token !== _geralLoadToken) return; // descarta se empresa mudou durante o await
 
       if(cloud){
 
@@ -4173,6 +4190,32 @@ window.addEventListener('empresa:changed', function () {
     console.warn('[CEO] erro ao recarregar após troca de empresa:', e);
   });
 });
+
+// ── Debug helper — disponível no console do browser ─────────────────────────
+window.ceoDebug = async function() {
+  var sb = window.sbClient || _sb;
+  var empresaId = _gestaoGetEmpresaId();
+  console.group('%c[CEO Debug]', 'color:#F05A1A;font-weight:700;font-size:14px');
+  console.log('empresaId:', empresaId);
+  console.log('_gestaoChave:', _gestaoChave);
+  console.log('_gestaoChaveFallback:', _gestaoChaveFallback);
+  console.log('_geralChave:', _geralChave);
+  console.log('_gestaoLoaded:', _gestaoLoaded);
+  console.log('_nuvemLoadToken:', _nuvemLoadToken);
+  console.log('_geralLoadToken:', _geralLoadToken);
+  console.log('Dias em memória:', Object.keys(dados.dias||{}).length);
+  if (sb) {
+    try {
+      var r1 = await sb.from('configuracoes').select('chave,updated_at').eq('chave', _gestaoChave).maybeSingle();
+      console.log('Supabase chave principal:', r1.data ? '✅ existe (updated: ' + r1.data.updated_at + ')' : '❌ não encontrada');
+      if (_gestaoChaveFallback !== _gestaoChave) {
+        var r2 = await sb.from('configuracoes').select('chave,updated_at').eq('chave', _gestaoChaveFallback).maybeSingle();
+        console.log('Supabase fallback:', r2.data ? '✅ existe (updated: ' + r2.data.updated_at + ')' : '❌ não encontrada');
+      }
+    } catch(e) { console.warn('Erro ao verificar Supabase:', e); }
+  }
+  console.groupEnd();
+};
 
 // ===== START =====
 
