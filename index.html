@@ -10421,12 +10421,16 @@ function _vinMsg(msg, tipo) {
   </div>
 </div>
 
-<!-- F2E — Override definitivo de fmAbrirProposta com Espelho Financeiro -->
-<!-- Deve ficar NO FIM do HTML, após app-core.js e financeiro-espelho.js,  -->
-<!-- para garantir que esta versão sempre prevalece sobre a do app-core.js. -->
+<!-- F2E — Overrides pós-app-core: Espelho Financeiro + Segurança Multiempresa -->
+<!-- Deve ficar NO FIM do HTML, após app-core.js e financeiro-espelho.js,   -->
+<!-- garantindo que estas versões sempre prevalecem sobre as do app-core.js. -->
 <script>
 (function () {
   'use strict';
+
+  // ══════════════════════════════════════════════════════════════════
+  // 1. Override definitivo de fmAbrirProposta com Espelho Financeiro
+  // ══════════════════════════════════════════════════════════════════
   window.fmAbrirProposta = function (id) {
     var p = (window.props || []).find(function (x) { return x.id === id; });
     if (!p) return;
@@ -10453,6 +10457,54 @@ function _vinMsg(msg, tipo) {
     }
   };
   console.log('%c[F2E] fmAbrirProposta — override pós-app-core com espelho financeiro', 'color:#58a6ff;font-weight:700');
+
+  // ══════════════════════════════════════════════════════════════════
+  // 2. Segurança Multiempresa — limpar proposta aberta ao trocar empresa
+  //
+  // O listener de app-core.js (linha ~1146) já zera props[] e re-renderiza
+  // o dashboard, mas NÃO fecha a seção #nova nem limpa o formulário.
+  // Este listener complementar garante que nenhum dado da empresa anterior
+  // vaze para a tela da empresa recém-selecionada.
+  // ══════════════════════════════════════════════════════════════════
+  window.addEventListener('empresa:changed', function () {
+    try {
+      // Verifica se o formulário de proposta está visível
+      var novaSec = document.getElementById('nova');
+      var novaAberta = novaSec && novaSec.classList.contains('on');
+
+      if (novaAberta) {
+        // Resetar estado interno da proposta em edição
+        // (editId e _pdId são vars globais de app-core.js / index.html)
+        if (typeof editId !== 'undefined')   { window.editId = null; }
+        if (typeof window._pdId !== 'undefined') { window._pdId = null; }
+
+        // Limpar todos os campos do formulário
+        if (typeof resetProposalForm === 'function') resetProposalForm();
+
+        // Esconder a action bar da proposta
+        if (typeof hideActionBar === 'function') hideActionBar();
+
+        // Navegar para o dashboard (área segura da empresa nova)
+        if (typeof go === 'function') go('dashboard', null);
+
+        // Força re-render do dashboard com dados zerados (ficará com
+        // props=[] até recarregarDadosEmpresa concluir em background)
+        if (typeof rDash === 'function') rDash();
+
+        console.log('%c[F2E] Proposta anterior fechada — troca de empresa no Comercial', 'color:#f0a500;font-weight:700');
+      }
+
+      // Limpar espelho financeiro (belt-and-suspenders:
+      // financeiro-espelho.js também registra este listener — manter ambos)
+      if (typeof finEspelhoLimpar === 'function') finEspelhoLimpar();
+
+    } catch (e) {
+      console.warn('[F2E] erro ao limpar proposta na troca de empresa:', e);
+    }
+  });
+
+  console.log('%c[F2E] listener empresa:changed — limpeza multiempresa ativa', 'color:#58a6ff;font-weight:700');
+
 })();
 </script>
 
