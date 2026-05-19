@@ -709,6 +709,56 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 .btn-log-cls:hover{background:var(--border)}
 .culog-dot{width:7px;height:7px;background:#22c55e;border-radius:50%;position:absolute;top:1px;right:1px;pointer-events:none}
 
+/* ── Tema visual por empresa ─────────────────────────────────────────────
+   Variáveis sobrescritas por body.empresa-tema-* ao selecionar empresa.
+   Padrão neutro (amarelo — herda do design base).                       */
+:root{
+  --emp-cor:#f0a500;
+  --emp-cor-2:#f0a500;
+  --emp-bg:rgba(240,165,0,.10);
+  --emp-bdr:rgba(240,165,0,.28);
+}
+body.empresa-tema-tecfusion{
+  --emp-cor:#16a34a;
+  --emp-cor-2:#22c55e;
+  --emp-bg:rgba(22,163,74,.10);
+  --emp-bdr:rgba(22,163,74,.32);
+}
+body.empresa-tema-fortex{
+  --emp-cor:#f97316;
+  --emp-cor-2:#fb923c;
+  --emp-bg:rgba(249,115,22,.10);
+  --emp-bdr:rgba(249,115,22,.32);
+}
+/* Faixa de ambiente — linha discreta abaixo do header */
+#empresa-faixa{
+  height:3px;
+  background:linear-gradient(90deg,var(--emp-cor) 0%,var(--emp-cor-2) 100%);
+  position:sticky;top:52px;z-index:99;
+  transition:background .4s ease;
+  opacity:.9;
+}
+/* Header border bottom acompanha cor da empresa */
+.hdr{border-bottom-color:var(--emp-bdr)!important;transition:border-color .4s ease}
+/* Botão de módulo e item de nav ativos usam cor da empresa */
+.nb.on{
+  background:var(--emp-bg)!important;
+  color:var(--emp-cor-2)!important;
+  border-left-color:var(--emp-cor)!important;
+}
+/* Spinner do overlay usa cor da empresa */
+.esw-spinner{
+  border-color:var(--emp-bdr)!important;
+  border-top-color:var(--emp-cor)!important;
+}
+/* Nome da empresa no overlay usa cor da empresa */
+.esw-name{color:var(--emp-cor)!important}
+/* Seletor de empresa no header */
+#seletor-empresa{
+  border-color:var(--emp-bdr)!important;
+  transition:border-color .4s ease;
+}
+
 /* ── Overlay: troca de empresa ──────────────────────────────────────────── */
 #empresaSwitchOverlay{
   display:none;position:fixed;inset:0;z-index:9998;
@@ -782,6 +832,9 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
     <input type="file" id="iFile" style="display:none" accept=".json" onchange="importP(event)">
   </header>
+
+  <!-- Faixa de ambiente: cor muda com a empresa ativa -->
+  <div id="empresa-faixa" title="Empresa ativa" aria-hidden="true"></div>
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">

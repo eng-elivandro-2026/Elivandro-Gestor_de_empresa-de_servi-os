@@ -85,6 +85,20 @@
     if (overlay) overlay.classList.remove('visible');
   };
 
+  // ── Tema visual por empresa ─────────────────────────────────────────────────
+  window.aplicarTemaEmpresa = function (empresa) {
+    document.body.classList.remove('empresa-tema-tecfusion', 'empresa-tema-fortex');
+    var nome = String((empresa && (empresa.nome_curto || empresa.nome)) || '').toLowerCase();
+    if (nome.includes('tecfusion')) {
+      document.body.classList.add('empresa-tema-tecfusion');
+    } else if (nome.includes('fortex')) {
+      document.body.classList.add('empresa-tema-fortex');
+    }
+    // Atualizar tooltip da faixa de ambiente
+    var faixa = document.getElementById('empresa-faixa');
+    if (faixa) faixa.setAttribute('title', empresa ? (empresa.nome_curto || empresa.nome || '') : '');
+  };
+
   // ── Definir empresa ativa ────────────────────────────────
   var _trocandoEmpresa = false;
   window.setEmpresaAtiva = function (empresa) {
@@ -92,6 +106,9 @@
     if (window._empresaAtiva && window._empresaAtiva.id === empresa.id) return;
     _trocandoEmpresa = true;
     window._empresaAtiva = empresa;
+
+    // Aplicar tema visual imediatamente (antes do overlay)
+    if (typeof window.aplicarTemaEmpresa === 'function') window.aplicarTemaEmpresa(empresa);
 
     // Mostrar overlay global imediatamente (antes de qualquer carga async)
     var _switchToken = typeof window.showEmpresaSwitchLoading === 'function'
