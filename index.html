@@ -1412,6 +1412,18 @@ body.empresa-tema-fortex{
       <div class="ch"><span class="ct">📝 Resumo</span></div>
       <div class="f"><label>Descrição</label><textarea id="pRes" placeholder="Descreva brevemente o objeto desta proposta…" style="min-height:80px"></textarea></div>
     </div>
+
+    <!-- F2E — Espelho Financeiro Oficial (somente leitura) -->
+    <div id="fin-espelho-card" class="card" style="display:none;border-top:2px solid rgba(88,166,255,.3)">
+      <div class="ch">
+        <span class="ct">💰 Resumo Financeiro Oficial</span>
+        <span style="font-size:.65rem;color:var(--text3);font-style:italic">dados do módulo Financeiro • somente leitura</span>
+      </div>
+      <div id="fin-espelho-corpo">
+        <!-- preenchido por finEspelhoCarregar() em js/modules/financeiro-espelho.js -->
+      </div>
+    </div>
+
     <div class="snav"><div></div><button class="btn bp" onclick="step(2)">Orçamento →</button></div>
   </div>
 
@@ -8902,6 +8914,8 @@ function fmAbrirProposta(id){
   if(typeof editP==='function') editP(id);
   go('nova', null);
   window.scrollTo({top:0, behavior:'smooth'});
+  // F2E — Carregar espelho financeiro (somente leitura, não bloqueia Comercial)
+  if(typeof finEspelhoCarregar==='function') finEspelhoCarregar(p.id);
 }
 
 
@@ -9847,6 +9861,7 @@ function rExecTimeline(){
 <script src="js/modules/rh-inline.js"></script>
 <script src="js/modules/operacional-inline.js"></script>
 <script src="js/config/supabase-financeiro.js"></script>
+<script src="js/modules/financeiro-espelho.js"></script>
 <script src="js/services/financeiro-backfill-preview.js"></script>
 <script src="js/services/financeiro-backfill-apply.js"></script>
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
@@ -10405,6 +10420,93 @@ function _vinMsg(msg, tipo) {
     </div>
   </div>
 </div>
+
+<!-- F2E — Overrides pós-app-core: Espelho Financeiro + Segurança Multiempresa -->
+<!-- Deve ficar NO FIM do HTML, após app-core.js e financeiro-espelho.js,   -->
+<!-- garantindo que estas versões sempre prevalecem sobre as do app-core.js. -->
+<script>
+(function () {
+  'use strict';
+
+  // ══════════════════════════════════════════════════════════════════
+  // 1. Override definitivo de fmAbrirProposta com Espelho Financeiro
+  // ══════════════════════════════════════════════════════════════════
+  window.fmAbrirProposta = function (id) {
+    var p = (window.props || []).find(function (x) { return x.id === id; });
+    if (!p) return;
+
+    // Estado interno
+    window._pdId = id;
+
+    // Recalcula totais da proposta (se disponível)
+    if (typeof recalcProposalTotal === 'function') recalcProposalTotal(p);
+
+    // Preenche o formulário de edição e navega para #nova
+    if (typeof editP === 'function') editP(id);
+
+    // Garante que #nova está visível (editP já o faz internamente,
+    // mas chamamos novamente por segurança)
+    if (typeof go === 'function') go('nova', null);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // F2E — Espelho Financeiro Oficial (somente leitura, nunca grava dados)
+    // Vínculo: p.id (Comercial) === proposta_app_id (Financeiro)
+    if (typeof finEspelhoCarregar === 'function') {
+      finEspelhoCarregar(id);
+    }
+  };
+  console.log('%c[F2E] fmAbrirProposta — override pós-app-core com espelho financeiro', 'color:#58a6ff;font-weight:700');
+
+  // ══════════════════════════════════════════════════════════════════
+  // 2. Segurança Multiempresa — limpar proposta aberta ao trocar empresa
+  //
+  // O listener de app-core.js (linha ~1146) já zera props[] e re-renderiza
+  // o dashboard, mas NÃO fecha a seção #nova nem limpa o formulário.
+  // Este listener complementar garante que nenhum dado da empresa anterior
+  // vaze para a tela da empresa recém-selecionada.
+  // ══════════════════════════════════════════════════════════════════
+  window.addEventListener('empresa:changed', function () {
+    try {
+      // Verifica se o formulário de proposta está visível
+      var novaSec = document.getElementById('nova');
+      var novaAberta = novaSec && novaSec.classList.contains('on');
+
+      if (novaAberta) {
+        // Resetar estado interno da proposta em edição
+        // (editId e _pdId são vars globais de app-core.js / index.html)
+        if (typeof editId !== 'undefined')   { window.editId = null; }
+        if (typeof window._pdId !== 'undefined') { window._pdId = null; }
+
+        // Limpar todos os campos do formulário
+        if (typeof resetProposalForm === 'function') resetProposalForm();
+
+        // Esconder a action bar da proposta
+        if (typeof hideActionBar === 'function') hideActionBar();
+
+        // Navegar para o dashboard (área segura da empresa nova)
+        if (typeof go === 'function') go('dashboard', null);
+
+        // Força re-render do dashboard com dados zerados (ficará com
+        // props=[] até recarregarDadosEmpresa concluir em background)
+        if (typeof rDash === 'function') rDash();
+
+        console.log('%c[F2E] Proposta anterior fechada — troca de empresa no Comercial', 'color:#f0a500;font-weight:700');
+      }
+
+      // Limpar espelho financeiro (belt-and-suspenders:
+      // financeiro-espelho.js também registra este listener — manter ambos)
+      if (typeof finEspelhoLimpar === 'function') finEspelhoLimpar();
+
+    } catch (e) {
+      console.warn('[F2E] erro ao limpar proposta na troca de empresa:', e);
+    }
+  });
+
+  console.log('%c[F2E] listener empresa:changed — limpeza multiempresa ativa', 'color:#58a6ff;font-weight:700');
+
+})();
+</script>
 
 </body>
 </html>
