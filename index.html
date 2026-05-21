@@ -2587,6 +2587,11 @@ body.empresa-tema-fortex{
 
       <!-- Botões de ação -->
       <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="nb" onclick="rrDiagnosticoCompleto()"
+          style="background:rgba(245,158,11,.12);color:var(--text);border:1px solid rgba(245,158,11,.5);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700"
+          title="Localiza TODOS os dados antigos — localStorage e Supabase. Somente leitura.">
+          🔬 Diagnóstico CNPJ/Cidade
+        </button>
         <button class="nb" onclick="rrExecutarPrevia()"
           style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">
           🔍 Executar Prévia
@@ -9866,6 +9871,7 @@ function rExecTimeline(){
 <script src="js/services/financeiro-backfill-preview.js"></script>
 <script src="js/services/financeiro-backfill-apply.js"></script>
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
+<script src="js/tools/diagnostico-clientes-cnpj.js?v=1"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
