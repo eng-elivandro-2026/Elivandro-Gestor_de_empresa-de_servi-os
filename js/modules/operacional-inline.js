@@ -1393,6 +1393,9 @@
       + '<div style="font-size:.72rem;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:.5rem">Resumo do snapshot da proposta</div>'
       + snapshotResumo(o)
       + '</div>', 'dados')
+      // F2F — placeholder para o Espelho Financeiro Oficial (preenchido por
+      // financeiro-espelho-operacional.js após renderização do DOM)
+      + '<div id="op-fin-espelho-sec" style="margin-bottom:1rem"></div>'
       + operacionalPlanejamentoHtml(o)
       + diarioSectionHtml()
       + '</div>'
@@ -1407,6 +1410,13 @@
       + confirmarExcluirRecursoHtml()
       + recursosPadraoOverlayHtml();
     setTimeout(function () { ajustarTextareas(el); }, 30);
+
+    // F2F — Disparar carregamento do Espelho Financeiro Oficial (somente leitura).
+    // setTimeout(0) garante que el.innerHTML já foi aplicado ao DOM antes de
+    // tentar localizar #op-fin-espelho-sec e iniciar a consulta async.
+    if (o && typeof window.opFinEspelhoCarregar === 'function') {
+      setTimeout(function () { window.opFinEspelhoCarregar(o); }, 0);
+    }
   }
 
   async function carregarObras() {
