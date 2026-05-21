@@ -829,7 +829,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           <th class="col-valor">Previsto</th>
           <th class="col-valor">Realizado</th>
           <th>Status</th>
-          <th class="col-valor">Saldo Acum.</th>
+          <th class="col-valor" title="Realizado usa valor real; Previsto usa valor esperado">Saldo Proj.</th>
         </tr>
       </thead>
       <tbody id="fluxo-tbody"></tbody>
@@ -2498,6 +2498,113 @@ function _fmtDt(d) {
 }
 function _n(v) { return parseFloat(v) || 0; }
 
+// Acessa sbClient do iframe (via parent se necessário)
+function _sbCli() {
+  if (window.sbClient) return window.sbClient;
+  if (window.parent && window.parent.sbClient) return window.parent.sbClient;
+  return null;
+}
+
+// Melhor data disponível para exibição e filtro
+function _bestDate(m) {
+  return m.data_prevista || m.data_real || m.data_movimento || null;
+}
+
+// Traduz campo origem para texto legível
+function _traduzirOrigem(orig) {
+  var mapa = {
+    'backfill_recebimento':   'Recebimento',
+    'backfill_conta_receber': 'Conta a Receber',
+    'backfill_proposta':      'Proposta',
+    'manual':                 'Manual'
+  };
+  return mapa[orig] || orig || '—';
+}
+
+// Descrição amigável do movimento
+function _descricaoAmigavel(m) {
+  // Prioridade: título enriquecido da conta vinculada
+  if (m._label_conta) return m._label_conta;
+  // Descrição existente, desde que não seja string técnica de backfill
+  var desc = m.descricao || '';
+  if (desc && desc.indexOf('Backfill') !== 0) return desc;
+  // Derivar do natureza/tipo/origem
+  var orig = m.origem || '';
+  if (orig === 'backfill_recebimento')   return 'Recebimento realizado';
+  if (orig === 'backfill_conta_receber') return m.tipo === 'entrada' ? 'Entrada prevista — conta a receber' : 'Saída prevista';
+  if (orig === 'manual')                 return m.tipo === 'entrada' ? 'Lançamento manual — entrada' : 'Lançamento manual — saída';
+  if (m.natureza === 'realizado' || m.status === 'realizado') return m.tipo === 'entrada' ? 'Recebimento realizado' : 'Pagamento realizado';
+  return m.tipo === 'entrada' ? 'Entrada prevista' : 'Saída prevista';
+}
+
+// Enriquece movimentos com dados de conta_receber / recebimento (leitura, sem escrita)
+async function _enriquecerMovimentos(movs, empresaId) {
+  if (!movs || !movs.length) return movs;
+  var sb = _sbCli();
+  if (!sb) return movs;
+
+  var contaIds = [], recebIds = [];
+  movs.forEach(function(m) {
+    var ref = m.referencia_id || '';
+    if (ref.indexOf('previsto:') === 0) contaIds.push(ref.slice(9));
+    else if (ref.indexOf('receb:') === 0) recebIds.push(ref.slice(6));
+  });
+
+  // Batch fetch contas (para movimentos previstos)
+  var contasMap = {};
+  if (contaIds.length > 0) {
+    try {
+      var rc = await sb
+        .from('financeiro_contas_receber')
+        .select('id, titulo, cliente_nome, centro_custo, data_vencimento')
+        .eq('empresa_id', empresaId)
+        .in('id', contaIds);
+      (rc.data || []).forEach(function(c) { contasMap[c.id] = c; });
+    } catch(e) { console.warn('[F3 enrich contas]', e.message); }
+  }
+
+  // Batch fetch recebimentos com join na conta (para movimentos realizados)
+  var recebMap = {};
+  if (recebIds.length > 0) {
+    try {
+      var rr = await sb
+        .from('financeiro_recebimentos')
+        .select('id, data_recebimento, conta_receber:conta_receber_id(id, titulo, cliente_nome, centro_custo, data_vencimento)')
+        .eq('empresa_id', empresaId)
+        .in('id', recebIds);
+      (rr.data || []).forEach(function(r) { recebMap[r.id] = r; });
+    } catch(e) { console.warn('[F3 enrich receb]', e.message); }
+  }
+
+  // Mesclar nos movimentos (apenas sobrescreve campos vazios)
+  return movs.map(function(m) {
+    var ref = m.referencia_id || '';
+    var e   = Object.assign({}, m);
+
+    if (ref.indexOf('previsto:') === 0) {
+      var ct = contasMap[ref.slice(9)];
+      if (ct) {
+        if (!e.cliente_nome) e.cliente_nome = ct.cliente_nome || '';
+        if (!e.centro_custo) e.centro_custo = ct.centro_custo || '';
+        if (!e.data_prevista) e.data_prevista = ct.data_vencimento || null;
+        e._label_conta = ct.titulo || '';
+      }
+    } else if (ref.indexOf('receb:') === 0) {
+      var recb = recebMap[ref.slice(6)];
+      if (recb) {
+        if (!e.data_real) e.data_real = recb.data_recebimento || null;
+        var ct2 = recb.conta_receber;
+        if (ct2) {
+          if (!e.cliente_nome) e.cliente_nome = ct2.cliente_nome || '';
+          if (!e.centro_custo) e.centro_custo = ct2.centro_custo || '';
+          e._label_conta = ct2.titulo || '';
+        }
+      }
+    }
+    return e;
+  });
+}
+
 // ── Preset de período ────────────────────────────────────────
 function fluxoSetPreset(preset) {
   _fluxoFiltros.preset = preset;
@@ -2560,7 +2667,7 @@ function fluxoAtualizarFiltros() {
 // ── Filtro client-side ───────────────────────────────────────
 function filtrarFluxo() {
   var movs = _todosMovimentos.filter(function(m) {
-    var dataRef = m.data_prevista || m.data_real || '';
+    var dataRef = _bestDate(m) || '';
     if (_fluxoFiltros.dataInicio && dataRef < _fluxoFiltros.dataInicio) return false;
     if (_fluxoFiltros.dataFim    && dataRef > _fluxoFiltros.dataFim)    return false;
     if (_fluxoFiltros.centroCusto && m.centro_custo !== _fluxoFiltros.centroCusto) return false;
@@ -2584,7 +2691,9 @@ function renderFluxoCards(movs) {
     : 0;
   var saldoRef = _saldoCaixaAtual ? _fmtDt(_saldoCaixaAtual.data_referencia) : null;
 
+  // Contar a partir do período filtrado
   var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0;
+  // temSaida verifica o dataset completo (não só o período) para decidir o rótulo
   var temSaida = _todosMovimentos.some(function(m) { return m.tipo === 'saida'; });
   movs.forEach(function(m) {
     if (m.tipo === 'entrada') {
@@ -2596,20 +2705,23 @@ function renderFluxoCards(movs) {
     }
   });
 
-  var caixaComprometido = entPrev - entReal;
+  // Caixa Comprometido = entradas previstas ainda não realizadas (no período)
+  var caixaComprometido = Math.max(0, entPrev - entReal);
+  // Caixa Livre = saldo atual + entradas realizadas − saídas realizadas
   var caixaLivre        = saldoAtual + entReal - saiReal;
+  // Saldo Projetado = saldo atual + todas entradas previstas − todas saídas previstas
   var saldoProjetado    = saldoAtual + entPrev - saiPrev;
-  var saidaSub          = temSaida ? 'No período' : 'Contas a pagar: em breve';
+  var saidaSub          = temSaida ? 'No período' : 'Em desenvolvimento';
 
   var cards = [
-    { label: 'Saldo de Caixa Atual', valor: saldoAtual,       cls: 'destaque', sub: saldoRef ? 'Ref: ' + saldoRef : 'Não configurado' },
-    { label: 'Entradas Previstas',   valor: entPrev,           cls: '',         sub: 'No período' },
-    { label: 'Entradas Realizadas',  valor: entReal,           cls: 'recebido', sub: 'No período' },
-    { label: 'Saídas Previstas',    valor: saiPrev,           cls: '',         sub: saidaSub },
-    { label: 'Saídas Realizadas',   valor: saiReal,           cls: '',         sub: saidaSub },
-    { label: 'Caixa Comprometido',   valor: caixaComprometido, cls: caixaComprometido > 0 ? '' : 'recebido', sub: 'Entradas pendentes' },
-    { label: 'Caixa Livre',          valor: caixaLivre,        cls: caixaLivre >= 0 ? 'recebido' : 'vencida', sub: 'Saldo + realizadas − saídas' },
-    { label: 'Saldo Projetado',      valor: saldoProjetado,    cls: saldoProjetado >= 0 ? 'destaque' : 'vencida', sub: 'Se tudo previsto ocorrer' },
+    { label: 'Saldo de Caixa Atual', valor: saldoAtual,       cls: 'destaque', sub: saldoRef ? 'Referência: ' + saldoRef : 'Não configurado — usando R$ 0,00' },
+    { label: 'Entradas Previstas',   valor: entPrev,           cls: '',         sub: 'A receber no período' },
+    { label: 'Entradas Realizadas',  valor: entReal,           cls: 'recebido', sub: 'Recebido no período' },
+    { label: 'Saídas Previstas',     valor: saiPrev,           cls: '',         sub: saidaSub },
+    { label: 'Saídas Realizadas',    valor: saiReal,           cls: '',         sub: saidaSub },
+    { label: 'Caixa Comprometido',   valor: caixaComprometido, cls: caixaComprometido > 0 ? '' : 'recebido', sub: 'Previsto ainda não recebido' },
+    { label: 'Caixa Livre',          valor: caixaLivre,        cls: caixaLivre >= 0 ? 'recebido' : 'vencida', sub: 'Saldo + recebido − pago' },
+    { label: 'Saldo Projetado',      valor: saldoProjetado,    cls: saldoProjetado >= 0 ? 'destaque' : 'vencida', sub: 'Saldo + todas entradas − saídas' },
   ];
 
   row.innerHTML = cards.map(function(c) {
@@ -2643,8 +2755,8 @@ function renderFluxoTabela(movs) {
   wrap.style.display   = '';
 
   var sorted = movs.slice().sort(function(a, b) {
-    var da = a.data_prevista || a.data_real || '';
-    var db = b.data_prevista || b.data_real || '';
+    var da = _bestDate(a) || '';
+    var db = _bestDate(b) || '';
     return da < db ? -1 : da > db ? 1 : 0;
   });
 
@@ -2653,11 +2765,12 @@ function renderFluxoTabela(movs) {
     : 0;
 
   tbody.innerHTML = sorted.map(function(m) {
-    var dataRef = m.data_prevista || m.data_real || '';
+    var dataRef = _bestDate(m);
     var vPrev   = _n(m.valor_previsto);
     var vReal   = _n(m.valor_real);
     var isEnt   = m.tipo === 'entrada';
     var isReal  = m.status === 'realizado';
+    // Saldo projetado: usa valor_real para realizados, valor_previsto para demais
     var delta   = isReal ? vReal : vPrev;
     saldoAcum  += isEnt ? delta : -delta;
 
@@ -2666,18 +2779,20 @@ function renderFluxoTabela(movs) {
       : '<span class="bdg" style="background:rgba(248,81,73,.1);color:var(--red)">↓ Saída</span>';
     var stsBdg  = '<span class="bdg bdg-' + (m.status || 'previsto') + '">' + (m.status || 'previsto') + '</span>';
     var acumCls = saldoAcum >= 0 ? 'verde' : 'vermelho';
+    var cliente = m.cliente_nome || '—';
+    var cc      = m.centro_custo || '—';
 
     return '<tr>' +
-      '<td class="col-data">' + _fmtDt(dataRef) + '</td>' +
-      '<td>' + tipoBdg + '</td>' +
-      '<td class="td-cc col-titulo">' + (m.origem       || '—') + '</td>' +
-      '<td class="col-cliente">'      + (m.cliente_nome || '—') + '</td>' +
-      '<td class="col-titulo">'       + (m.descricao    || m.titulo || '—') + '</td>' +
-      '<td class="td-cc">'            + (m.centro_custo || '—') + '</td>' +
-      '<td class="col-valor">'        + _fmtVal(vPrev) + '</td>' +
+      '<td class="col-data">'  + _fmtDt(dataRef) + '</td>' +
+      '<td>'                   + tipoBdg + '</td>' +
+      '<td class="td-cc col-titulo">' + _traduzirOrigem(m.origem) + '</td>' +
+      '<td class="col-cliente">' + cliente + '</td>' +
+      '<td class="col-titulo">' + _descricaoAmigavel(m) + '</td>' +
+      '<td class="td-cc">'     + cc + '</td>' +
+      '<td class="col-valor">' + _fmtVal(vPrev) + '</td>' +
       '<td class="col-valor' + (isReal ? ' verde' : '') + '">' + (isReal ? _fmtVal(vReal) : '—') + '</td>' +
-      '<td>' + stsBdg + '</td>' +
-      '<td class="col-valor ' + acumCls + '" style="font-weight:700">' + _fmtVal(saldoAcum) + '</td>' +
+      '<td>'                   + stsBdg + '</td>' +
+      '<td class="col-valor ' + acumCls + '" style="font-weight:700" title="Projetado: realizados usam valor real, previstos usam valor previsto">' + _fmtVal(saldoAcum) + '</td>' +
     '</tr>';
   }).join('');
 }
@@ -2709,7 +2824,7 @@ function renderFluxoPVR(movs) {
   }
 
   var avisoSaida = !temSaida
-    ? '<div class="fluxo-aviso" style="margin-bottom:.8rem">⚙️ Contas a pagar ainda não implementadas. As saídas aparecerão aqui quando disponíveis.</div>'
+    ? '<div style="font-size:.72rem;color:var(--text3);margin-bottom:.8rem;font-style:italic">Módulo de contas a pagar em desenvolvimento. Saídas serão exibidas aqui quando disponíveis.</div>'
     : '';
 
   sec.innerHTML =
@@ -2757,7 +2872,12 @@ async function carregarFluxoCaixa(empresaId) {
     if (token !== _fluxoLoadToken) return;
 
     _saldoCaixaAtual = results[0];
-    _todosMovimentos = results[1] || [];
+
+    // Enriquecer com dados de conta/recebimento antes de exibir
+    var movsBrutos = results[1] || [];
+    if (token !== _fluxoLoadToken) return;
+    _todosMovimentos = await _enriquecerMovimentos(movsBrutos, empresaId);
+    if (token !== _fluxoLoadToken) return;
 
     var avisoEl = document.getElementById('fluxo-aviso-saldo');
     if (avisoEl) avisoEl.style.display = _saldoCaixaAtual ? 'none' : '';
@@ -2768,6 +2888,7 @@ async function carregarFluxoCaixa(empresaId) {
       badge.style.display = '';
     }
 
+    // Dropdown de centro de custo — populate APÓS enriquecimento (que pode adicionar cc)
     var ccs = Array.from(new Set(
       _todosMovimentos.map(function(m) { return m.centro_custo || ''; }).filter(Boolean)
     )).sort();
