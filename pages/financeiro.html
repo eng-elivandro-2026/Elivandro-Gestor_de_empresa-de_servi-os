@@ -2681,19 +2681,20 @@ function filtrarFluxo() {
   if (cnt) cnt.textContent = movs.length + ' evento(s)';
 }
 
-// ── Renderizar KPI cards ─────────────────────────────────────
+// ── Renderizar KPI cards (visão CFO) ─────────────────────────
 function renderFluxoCards(movs) {
   var row = document.getElementById('fluxo-kpi-row');
   if (!row) return;
 
-  var saldoAtual = _saldoCaixaAtual
+  // ── Saldo inicial de caixa (financeiro_saldos_caixa) ──────
+  var saldoInicial = _saldoCaixaAtual
     ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
     : 0;
   var saldoRef = _saldoCaixaAtual ? _fmtDt(_saldoCaixaAtual.data_referencia) : null;
 
-  // Contar a partir do período filtrado
+  // ── Agregar movimentos do período filtrado ────────────────
   var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0;
-  // temSaida verifica o dataset completo (não só o período) para decidir o rótulo
+  // temSaida: verifica dataset completo para decidir rótulo de saídas
   var temSaida = _todosMovimentos.some(function(m) { return m.tipo === 'saida'; });
   movs.forEach(function(m) {
     if (m.tipo === 'entrada') {
@@ -2705,31 +2706,100 @@ function renderFluxoCards(movs) {
     }
   });
 
-  // Caixa Comprometido = entradas previstas ainda não realizadas (no período)
-  var caixaComprometido = Math.max(0, entPrev - entReal);
-  // Caixa Livre = saldo atual + entradas realizadas − saídas realizadas
-  var caixaLivre        = saldoAtual + entReal - saiReal;
-  // Saldo Projetado = saldo atual + todas entradas previstas − todas saídas previstas
-  var saldoProjetado    = saldoAtual + entPrev - saiPrev;
-  var saidaSub          = temSaida ? 'No período' : 'Em desenvolvimento';
+  // ── Fórmulas CFO ─────────────────────────────────────────
+  //
+  // Saldo Real: dinheiro efetivamente disponível hoje.
+  //   = Saldo Inicial + Entradas Realizadas − Saídas Realizadas
+  var saldoReal = saldoInicial + entReal - saiReal;
 
+  // Caixa Comprometido: saídas previstas já identificadas (contas a pagar).
+  //   Nesta fase, = saidasPrevistas (normalmente 0 sem módulo a pagar).
+  var caixaComprometido = saiPrev;
+
+  // Caixa Livre: disponibilidade real após compromissos.
+  //   = Saldo Real − Caixa Comprometido
+  var caixaLivre = saldoReal - caixaComprometido;
+
+  // Saldo Projetado: previsão considerando o que ainda está previsto.
+  //   = Saldo Real + Entradas Previstas − Saídas Previstas
+  var saldoProjetado = saldoReal + entPrev - saiPrev;
+
+  // ── Sub-labels contextuais ────────────────────────────────
+  var saldoRealSub = saldoRef
+    ? 'Inicial (' + saldoRef + ') + recebido − pago'
+    : 'Saldo inicial não configurado — usando R$ 0,00';
+
+  var caixaLivreSub = temSaida
+    ? 'Saldo Real − Caixa Comprometido'
+    : 'Parcial — Contas a Pagar em desenvolvimento';
+
+  var caixaComprSub = temSaida
+    ? 'Saídas previstas identificadas'
+    : 'R$ 0,00 — Contas a Pagar em desenvolvimento';
+
+  var saidaSub = temSaida ? 'No período' : 'Em desenvolvimento';
+
+  // ── Cards em ordem executiva ──────────────────────────────
   var cards = [
-    { label: 'Saldo de Caixa Atual', valor: saldoAtual,       cls: 'destaque', sub: saldoRef ? 'Referência: ' + saldoRef : 'Não configurado — usando R$ 0,00' },
-    { label: 'Entradas Previstas',   valor: entPrev,           cls: '',         sub: 'A receber no período' },
-    { label: 'Entradas Realizadas',  valor: entReal,           cls: 'recebido', sub: 'Recebido no período' },
-    { label: 'Saídas Previstas',     valor: saiPrev,           cls: '',         sub: saidaSub },
-    { label: 'Saídas Realizadas',    valor: saiReal,           cls: '',         sub: saidaSub },
-    { label: 'Caixa Comprometido',   valor: caixaComprometido, cls: caixaComprometido > 0 ? '' : 'recebido', sub: 'Previsto ainda não recebido' },
-    { label: 'Caixa Livre',          valor: caixaLivre,        cls: caixaLivre >= 0 ? 'recebido' : 'vencida', sub: 'Saldo + recebido − pago' },
-    { label: 'Saldo Projetado',      valor: saldoProjetado,    cls: saldoProjetado >= 0 ? 'destaque' : 'vencida', sub: 'Saldo + todas entradas − saídas' },
+    {
+      label: 'Saldo Real',
+      valor: saldoReal,
+      cls:   saldoReal >= 0 ? 'destaque' : 'vencida',
+      sub:   saldoRealSub
+    },
+    {
+      label: 'Saldo Projetado',
+      valor: saldoProjetado,
+      cls:   saldoProjetado >= 0 ? 'destaque' : 'vencida',
+      sub:   'Saldo Real + entradas previstas − saídas previstas'
+    },
+    {
+      label: 'Caixa Livre',
+      valor: caixaLivre,
+      cls:   caixaLivre >= 0 ? 'recebido' : 'vencida',
+      sub:   caixaLivreSub
+    },
+    {
+      label: 'Caixa Comprometido',
+      valor: caixaComprometido,
+      cls:   caixaComprometido > 0 ? '' : 'recebido',
+      sub:   caixaComprSub
+    },
+    {
+      label: 'Entradas Previstas',
+      valor: entPrev,
+      cls:   '',
+      sub:   'A receber no período'
+    },
+    {
+      label: 'Entradas Realizadas',
+      valor: entReal,
+      cls:   'recebido',
+      sub:   'Recebido no período'
+    },
+    {
+      label: 'Saídas Previstas',
+      valor: saiPrev,
+      cls:   '',
+      sub:   saidaSub
+    },
+    {
+      label: 'Saídas Realizadas',
+      valor: saiReal,
+      cls:   '',
+      sub:   saidaSub
+    },
   ];
 
   row.innerHTML = cards.map(function(c) {
-    var valCls = c.cls === 'recebido' ? 'verde' : c.cls === 'vencida' ? 'vermelho' : c.cls === 'destaque' ? 'emp' : '';
+    var valCls = c.cls === 'recebido' ? 'verde'
+               : c.cls === 'vencida'  ? 'vermelho'
+               : c.cls === 'destaque' ? 'emp'
+               : '';
     return '<div class="kpi-card ' + c.cls + '">' +
       '<div class="kpi-label">' + c.label + '</div>' +
       '<div class="kpi-valor ' + valCls + '">' + _fmtVal(c.valor) + '</div>' +
-      '<div class="kpi-sub">' + (c.sub || '') + '</div>' +
+      '<div class="kpi-sub">'  + (c.sub || '') + '</div>' +
     '</div>';
   }).join('');
 }
