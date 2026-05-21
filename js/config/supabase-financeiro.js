@@ -502,6 +502,79 @@
 
 
   // ============================================================
+  // CONTAS A PAGAR
+  // ============================================================
+
+  /**
+   * Lista todas as contas a pagar da empresa.
+   * Retorna ordenado por data_vencimento asc, nulls last.
+   */
+  async function sbListarContasPagar(empresaId) {
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('data_vencimento', { ascending: true, nullsFirst: false });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Cria uma nova conta a pagar.
+   * dados: { empresa_id, descricao, valor_previsto, data_vencimento, ... }
+   */
+  async function sbCriarContaPagar(dados) {
+    if (!dados.empresa_id) throw new Error('[Financeiro] empresa_id obrigatório.');
+    if (!dados.descricao)  throw new Error('[Financeiro] descricao obrigatória.');
+
+    var pendente = _num(dados.valor_previsto) - _num(dados.valor_pago || 0);
+    var payload = Object.assign({
+      status: 'em_aberto',
+      valor_previsto: 0,
+      valor_pago: 0,
+      valor_pendente: Math.max(0, pendente),
+      origem: 'manual'
+    }, dados, {
+      // recalcular valor_pendente com base no payload final
+      valor_pendente: Math.max(0, _num(dados.valor_previsto || 0) - _num(dados.valor_pago || 0))
+    });
+
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  /**
+   * Atualiza campos de uma conta a pagar existente.
+   */
+  async function sbAtualizarContaPagar(id, dados) {
+    if (!id) throw new Error('[Financeiro] id obrigatório para atualizar.');
+
+    // Recalcular valor_pendente se valor_previsto ou valor_pago mudou
+    if (dados.valor_previsto !== undefined || dados.valor_pago !== undefined) {
+      // Os valores atuais precisam vir no payload para recalcular
+      dados.valor_pendente = Math.max(0, _num(dados.valor_previsto || 0) - _num(dados.valor_pago || 0));
+    }
+
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+
+  // ============================================================
   // EXPOSIÇÃO PÚBLICA
   // ============================================================
 
@@ -531,6 +604,11 @@
     // Saldos de caixa
     buscarSaldoCaixaAtual:           sbBuscarSaldoCaixaAtual,
     upsertSaldoCaixa:                sbUpsertSaldoCaixa,
+
+    // Contas a pagar
+    listarContasPagar:               sbListarContasPagar,
+    criarContaPagar:                 sbCriarContaPagar,
+    atualizarContaPagar:             sbAtualizarContaPagar,
 
     // Cálculos locais
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
