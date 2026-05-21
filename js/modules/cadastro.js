@@ -163,7 +163,12 @@
     try { allProps = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
     if (!allProps.length) allProps = window.props || [];
 
+    // Isola por empresa: pula propostas de outras empresas.
+    // Propostas legadas sem empresa_id (antes do multiempresa) são mantidas para
+    // compatibilidade retroativa, mas nunca substituem dados da empresa ativa.
+    var _seedEid = _getEmpresaId();
     allProps.forEach(function(p) {
+      if (p.empresa_id && _seedEid && p.empresa_id !== _seedEid) return;
       var cli = (p.loc || p.cli || '').trim();
       if (cli) addCli(cli, p.locCnpj || p.cnpj || '');
       if (p.ac)  addCts(p.ac,  cli);
