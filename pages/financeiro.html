@@ -286,6 +286,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .modal-btn-confirmar:hover:not(:disabled){background:rgba(240,165,0,.22)}
 .modal-btn-confirmar:disabled{opacity:.35;cursor:not-allowed}
 
+/* ── FLUXO DE CAIXA ───────────────────────────────────────────── */
+.btn-preset{
+  font-size:.72rem;font-weight:600;padding:.28rem .65rem;
+  border-radius:var(--r2);border:1px solid var(--border);
+  background:var(--bg3);color:var(--text2);cursor:pointer;
+  transition:all .15s;white-space:nowrap;font-family:inherit;
+}
+.btn-preset:hover{border-color:var(--emp-cor);color:var(--emp-cor-2)}
+.btn-preset.on{border-color:var(--emp-cor);background:var(--emp-bg);color:var(--emp-cor-2)}
+.fluxo-aviso{
+  font-size:.78rem;color:var(--text3);font-style:italic;
+  padding:.55rem .8rem;background:var(--bg2);border-radius:var(--r2);
+  border:1px solid var(--border);margin-bottom:.7rem;
+}
+.fluxo-pvr{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:1rem 1.1rem;margin-top:1.2rem;
+}
+.fluxo-pvr-titulo{
+  font-size:.7rem;font-weight:700;color:var(--emp-cor-2);
+  text-transform:uppercase;letter-spacing:.05em;
+  margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);
+}
+.pvr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+.pvr-item{background:var(--bg3);border-radius:var(--r2);padding:.7rem .9rem}
+.pvr-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;font-weight:700}
+.pvr-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;font-size:.78rem}
+.pvr-row-label{color:var(--text2)}
+.pvr-row-valor{font-weight:600;font-variant-numeric:tabular-nums}
+.pvr-row-valor.verde{color:var(--green)}
+.pvr-row-valor.vermelho{color:var(--red)}
+.pvr-pct{margin-top:.5rem}
+.fluxo-saldo-ref{font-size:.68rem;color:var(--text3);font-style:italic;margin-bottom:.5rem}
+
 /* ── RESPONSIVO ───────────────────────────────────────────────── */
 @media(max-width:650px){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
@@ -307,6 +341,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <button class="tab-btn on" id="tab-btn-contas" onclick="showTab('contas')">📋 Contas a Receber</button>
   <button class="tab-btn" id="tab-btn-nfs" onclick="showTab('nfs')">📄 Notas Fiscais</button>
   <button class="tab-btn" id="tab-btn-rec" onclick="showTab('rec')">💳 Recebimentos</button>
+  <button class="tab-btn" id="tab-btn-fluxo" onclick="showTab('fluxo')">💰 Fluxo de Caixa</button>
   <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
 </div>
 
@@ -722,6 +757,93 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: FLUXO DE CAIXA                                          -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-fluxo" class="tab-content" style="display:none">
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">💰 Fluxo de Caixa</div>
+      <div class="page-sub">Entradas e saídas consolidadas — somente leitura</div>
+      <div id="fluxo-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- Aviso: saldo não configurado -->
+  <div class="fluxo-aviso" id="fluxo-aviso-saldo" style="display:none">
+    ⚠️ Saldo inicial de caixa não configurado. Exibindo R$ 0,00 como base. Configure o saldo em <code>financeiro_saldos_caixa</code>.
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="fluxo-kpi-row">
+    <!-- preenchido por renderFluxoCards() -->
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-bar" id="fluxo-filtros-bar">
+    <button class="btn-preset on" data-preset="mes" onclick="fluxoSetPreset('mes')" title="Mês atual">Mês atual</button>
+    <button class="btn-preset" data-preset="30"  onclick="fluxoSetPreset('30')"  title="Próximos 30 dias">+30d</button>
+    <button class="btn-preset" data-preset="60"  onclick="fluxoSetPreset('60')"  title="Próximos 60 dias">+60d</button>
+    <button class="btn-preset" data-preset="90"  onclick="fluxoSetPreset('90')"  title="Próximos 90 dias">+90d</button>
+    <button class="btn-preset" data-preset="todos" onclick="fluxoSetPreset('todos')" title="Todos os períodos">Todos</button>
+    <span class="filtro-label">De</span>
+    <input type="date" id="fluxo-data-inicio" class="filtro-input" oninput="fluxoAtualizarFiltros()" title="Data início">
+    <span class="filtro-label">Até</span>
+    <input type="date" id="fluxo-data-fim"    class="filtro-input" oninput="fluxoAtualizarFiltros()" title="Data fim">
+    <select id="fluxo-centro-custo" class="filtro-input filtro-select" onchange="fluxoAtualizarFiltros()" title="Centro de custo">
+      <option value="">Todos os centros</option>
+    </select>
+    <select id="fluxo-status" class="filtro-input filtro-select" onchange="fluxoAtualizarFiltros()" title="Status">
+      <option value="">Todos os status</option>
+      <option value="previsto">Previsto</option>
+      <option value="realizado">Realizado</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+    <button class="btn-limpar" onclick="fluxoLimparFiltros()" title="Limpar filtros">✕ Limpar</button>
+    <span class="filtro-count" id="fluxo-count"></span>
+  </div>
+
+  <!-- Estado: loading / vazio / erro -->
+  <div class="estado" id="fluxo-estado" style="display:none">
+    <div class="loading-spinner" id="fluxo-spinner" style="display:none"></div>
+    <span class="estado-icon" id="fluxo-estado-icon"></span>
+    <div class="estado-msg" id="fluxo-estado-msg"></div>
+    <div class="estado-sub" id="fluxo-estado-sub"></div>
+  </div>
+
+  <!-- Tabela de eventos -->
+  <div class="table-wrap" id="fluxo-table-wrap" style="display:none">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th class="th-data">Data</th>
+          <th>Tipo</th>
+          <th class="th-cc">Origem</th>
+          <th>Cliente</th>
+          <th>Descrição</th>
+          <th class="th-cc">Centro Custo</th>
+          <th class="col-valor">Previsto</th>
+          <th class="col-valor">Realizado</th>
+          <th>Status</th>
+          <th class="col-valor">Saldo Acum.</th>
+        </tr>
+      </thead>
+      <tbody id="fluxo-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Previsto × Realizado -->
+  <div id="fluxo-pvr-section"></div>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-fluxo -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <!-- PAINEL DE DETALHE — slide da direita                         -->
 <!-- ════════════════════════════════════════════════════════════ -->
 <div class="detalhe-overlay" id="detalhe-overlay" onclick="fecharDetalhe()"></div>
@@ -780,6 +902,12 @@ var _empresaAtiva  = null;   // { id, nome, nome_curto }
 var _todasContas   = [];     // contas carregadas do Supabase
 var _carregando    = false;
 var _loadToken     = 0;      // race condition guard
+
+// ── Fluxo de Caixa — estado ──────────────────────────────────
+var _todosMovimentos  = [];   // financeiro_movimentos_caixa da empresa ativa
+var _saldoCaixaAtual  = null; // financeiro_saldos_caixa mais recente
+var _fluxoLoadToken   = 0;    // race condition guard
+var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: '', preset: 'mes' };
 
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {
@@ -1268,6 +1396,17 @@ function _onTrocaEmpresa(dados) {
   var recBody = document.getElementById('rec-tabela-body');
   if (recBody) recBody.innerHTML = '';
 
+  // Limpar Fluxo de Caixa imediatamente
+  _todosMovimentos = [];
+  _saldoCaixaAtual = null;
+  _fluxoLoadToken++;
+  var fluxoBody = document.getElementById('fluxo-tbody');
+  if (fluxoBody) fluxoBody.innerHTML = '';
+  var fluxoKpi = document.getElementById('fluxo-kpi-row');
+  if (fluxoKpi) fluxoKpi.innerHTML = '';
+  var fluxoPvr = document.getElementById('fluxo-pvr-section');
+  if (fluxoPvr) fluxoPvr.innerHTML = '';
+
   _empresaAtiva = {
     id:        dados.empresaId,
     nome:      dados.empresaNome      || '',
@@ -1283,6 +1422,8 @@ function _onTrocaEmpresa(dados) {
   carregarContas(_empresaAtiva.id);
   carregarNFs(_empresaAtiva.id);
   carregarRec(_empresaAtiva.id);
+  _fluxoInicializarFiltros();
+  carregarFluxoCaixa(_empresaAtiva.id);
 }
 
 // ── postMessage do portal pai ─────────────────────────────────
@@ -1328,16 +1469,20 @@ window.addEventListener('message', function(e) {
       carregarContas(emp.id);
       carregarNFs(emp.id);
       carregarRec(emp.id);
+      _fluxoInicializarFiltros();
+      carregarFluxoCaixa(emp.id);
     } else {
       _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _nfMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _recMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+      _fluxoMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
     }
   } catch(e) {
-    console.warn('[Financeiro F2B/F2C/F2D] init error:', e);
+    console.warn('[Financeiro F2B/F2C/F2D/F3] init error:', e);
     _mostrarVazio('Erro ao identificar empresa ativa.');
     _nfMostrarVazio('Erro ao identificar empresa ativa.');
     _recMostrarVazio('Erro ao identificar empresa ativa.');
+    _fluxoMostrarErro('Erro ao identificar empresa ativa.');
   }
 })();
 
@@ -2319,6 +2464,382 @@ async function executarApply() {
   } finally {
     btn.disabled = false;
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// F3 — FLUXO DE CAIXA
+// ════════════════════════════════════════════════════════════════
+
+// ── Helpers de data ──────────────────────────────────────────
+function _fluxoHoje() {
+  return new Date().toISOString().slice(0, 10);
+}
+function _fluxoAddDias(iso, dias) {
+  var dt = new Date(iso + 'T00:00:00');
+  dt.setDate(dt.getDate() + dias);
+  return dt.toISOString().slice(0, 10);
+}
+function _fluxoPrimeiroDiaMes(iso) {
+  var dt = new Date(iso + 'T00:00:00');
+  return new Date(dt.getFullYear(), dt.getMonth(), 1).toISOString().slice(0, 10);
+}
+function _fluxoUltimoDiaMes(iso) {
+  var dt = new Date(iso + 'T00:00:00');
+  return new Date(dt.getFullYear(), dt.getMonth() + 1, 0).toISOString().slice(0, 10);
+}
+function _fmtVal(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function _fmtDt(d) {
+  if (!d) return '—';
+  var p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+}
+function _n(v) { return parseFloat(v) || 0; }
+
+// ── Preset de período ────────────────────────────────────────
+function fluxoSetPreset(preset) {
+  _fluxoFiltros.preset = preset;
+  var hoje = _fluxoHoje();
+  if (preset === 'mes') {
+    _fluxoFiltros.dataInicio = _fluxoPrimeiroDiaMes(hoje);
+    _fluxoFiltros.dataFim    = _fluxoUltimoDiaMes(hoje);
+  } else if (preset === '30') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 30);
+  } else if (preset === '60') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 60);
+  } else if (preset === '90') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 90);
+  } else {
+    _fluxoFiltros.dataInicio = '';
+    _fluxoFiltros.dataFim    = '';
+  }
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  if (di) di.value = _fluxoFiltros.dataInicio;
+  if (df) df.value = _fluxoFiltros.dataFim;
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.preset === preset);
+  });
+  filtrarFluxo();
+}
+
+function fluxoLimparFiltros() {
+  _fluxoFiltros = { dataInicio: '', dataFim: '', centroCusto: '', status: '', preset: 'todos' };
+  ['fluxo-data-inicio', 'fluxo-data-fim'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var cc = document.getElementById('fluxo-centro-custo'); if (cc) cc.value = '';
+  var st = document.getElementById('fluxo-status');       if (st) st.value = '';
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.preset === 'todos');
+  });
+  filtrarFluxo();
+}
+
+function fluxoAtualizarFiltros() {
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  var cc = document.getElementById('fluxo-centro-custo');
+  var st = document.getElementById('fluxo-status');
+  if (di) _fluxoFiltros.dataInicio  = di.value;
+  if (df) _fluxoFiltros.dataFim     = df.value;
+  if (cc) _fluxoFiltros.centroCusto = cc.value;
+  if (st) _fluxoFiltros.status      = st.value;
+  _fluxoFiltros.preset = '';
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.remove('on');
+  });
+  filtrarFluxo();
+}
+
+// ── Filtro client-side ───────────────────────────────────────
+function filtrarFluxo() {
+  var movs = _todosMovimentos.filter(function(m) {
+    var dataRef = m.data_prevista || m.data_real || '';
+    if (_fluxoFiltros.dataInicio && dataRef < _fluxoFiltros.dataInicio) return false;
+    if (_fluxoFiltros.dataFim    && dataRef > _fluxoFiltros.dataFim)    return false;
+    if (_fluxoFiltros.centroCusto && m.centro_custo !== _fluxoFiltros.centroCusto) return false;
+    if (_fluxoFiltros.status      && m.status        !== _fluxoFiltros.status)      return false;
+    return true;
+  });
+  renderFluxoCards(movs);
+  renderFluxoTabela(movs);
+  renderFluxoPVR(movs);
+  var cnt = document.getElementById('fluxo-count');
+  if (cnt) cnt.textContent = movs.length + ' evento(s)';
+}
+
+// ── Renderizar KPI cards ─────────────────────────────────────
+function renderFluxoCards(movs) {
+  var row = document.getElementById('fluxo-kpi-row');
+  if (!row) return;
+
+  var saldoAtual = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+  var saldoRef = _saldoCaixaAtual ? _fmtDt(_saldoCaixaAtual.data_referencia) : null;
+
+  var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0;
+  var temSaida = _todosMovimentos.some(function(m) { return m.tipo === 'saida'; });
+  movs.forEach(function(m) {
+    if (m.tipo === 'entrada') {
+      entPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') entReal += _n(m.valor_real);
+    } else if (m.tipo === 'saida') {
+      saiPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') saiReal += _n(m.valor_real);
+    }
+  });
+
+  var caixaComprometido = entPrev - entReal;
+  var caixaLivre        = saldoAtual + entReal - saiReal;
+  var saldoProjetado    = saldoAtual + entPrev - saiPrev;
+  var saidaSub          = temSaida ? 'No período' : 'Contas a pagar: em breve';
+
+  var cards = [
+    { label: 'Saldo de Caixa Atual', valor: saldoAtual,       cls: 'destaque', sub: saldoRef ? 'Ref: ' + saldoRef : 'Não configurado' },
+    { label: 'Entradas Previstas',   valor: entPrev,           cls: '',         sub: 'No período' },
+    { label: 'Entradas Realizadas',  valor: entReal,           cls: 'recebido', sub: 'No período' },
+    { label: 'Saídas Previstas',    valor: saiPrev,           cls: '',         sub: saidaSub },
+    { label: 'Saídas Realizadas',   valor: saiReal,           cls: '',         sub: saidaSub },
+    { label: 'Caixa Comprometido',   valor: caixaComprometido, cls: caixaComprometido > 0 ? '' : 'recebido', sub: 'Entradas pendentes' },
+    { label: 'Caixa Livre',          valor: caixaLivre,        cls: caixaLivre >= 0 ? 'recebido' : 'vencida', sub: 'Saldo + realizadas − saídas' },
+    { label: 'Saldo Projetado',      valor: saldoProjetado,    cls: saldoProjetado >= 0 ? 'destaque' : 'vencida', sub: 'Se tudo previsto ocorrer' },
+  ];
+
+  row.innerHTML = cards.map(function(c) {
+    var valCls = c.cls === 'recebido' ? 'verde' : c.cls === 'vencida' ? 'vermelho' : c.cls === 'destaque' ? 'emp' : '';
+    return '<div class="kpi-card ' + c.cls + '">' +
+      '<div class="kpi-label">' + c.label + '</div>' +
+      '<div class="kpi-valor ' + valCls + '">' + _fmtVal(c.valor) + '</div>' +
+      '<div class="kpi-sub">' + (c.sub || '') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Renderizar tabela de eventos ─────────────────────────────
+function renderFluxoTabela(movs) {
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  var estado = document.getElementById('fluxo-estado');
+  var tbody  = document.getElementById('fluxo-tbody');
+  if (!tbody || !wrap || !estado) return;
+
+  if (!movs.length) {
+    wrap.style.display = 'none';
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '📢';
+    document.getElementById('fluxo-estado-msg').textContent  = 'Nenhum evento de caixa no período selecionado.';
+    document.getElementById('fluxo-estado-sub').textContent  = 'Ajuste os filtros ou clique em Atualizar.';
+    return;
+  }
+
+  estado.style.display = 'none';
+  wrap.style.display   = '';
+
+  var sorted = movs.slice().sort(function(a, b) {
+    var da = a.data_prevista || a.data_real || '';
+    var db = b.data_prevista || b.data_real || '';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
+  var saldoAcum = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+
+  tbody.innerHTML = sorted.map(function(m) {
+    var dataRef = m.data_prevista || m.data_real || '';
+    var vPrev   = _n(m.valor_previsto);
+    var vReal   = _n(m.valor_real);
+    var isEnt   = m.tipo === 'entrada';
+    var isReal  = m.status === 'realizado';
+    var delta   = isReal ? vReal : vPrev;
+    saldoAcum  += isEnt ? delta : -delta;
+
+    var tipoBdg = isEnt
+      ? '<span class="bdg" style="background:rgba(63,185,80,.1);color:var(--green)">↑ Entrada</span>'
+      : '<span class="bdg" style="background:rgba(248,81,73,.1);color:var(--red)">↓ Saída</span>';
+    var stsBdg  = '<span class="bdg bdg-' + (m.status || 'previsto') + '">' + (m.status || 'previsto') + '</span>';
+    var acumCls = saldoAcum >= 0 ? 'verde' : 'vermelho';
+
+    return '<tr>' +
+      '<td class="col-data">' + _fmtDt(dataRef) + '</td>' +
+      '<td>' + tipoBdg + '</td>' +
+      '<td class="td-cc col-titulo">' + (m.origem       || '—') + '</td>' +
+      '<td class="col-cliente">'      + (m.cliente_nome || '—') + '</td>' +
+      '<td class="col-titulo">'       + (m.descricao    || m.titulo || '—') + '</td>' +
+      '<td class="td-cc">'            + (m.centro_custo || '—') + '</td>' +
+      '<td class="col-valor">'        + _fmtVal(vPrev) + '</td>' +
+      '<td class="col-valor' + (isReal ? ' verde' : '') + '">' + (isReal ? _fmtVal(vReal) : '—') + '</td>' +
+      '<td>' + stsBdg + '</td>' +
+      '<td class="col-valor ' + acumCls + '" style="font-weight:700">' + _fmtVal(saldoAcum) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Previsto x Realizado ─────────────────────────────────────
+function renderFluxoPVR(movs) {
+  var sec = document.getElementById('fluxo-pvr-section');
+  if (!sec) return;
+
+  var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0, temSaida = false;
+  movs.forEach(function(m) {
+    if (m.tipo === 'entrada') {
+      entPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') entReal += _n(m.valor_real);
+    } else if (m.tipo === 'saida') {
+      temSaida = true;
+      saiPrev  += _n(m.valor_previsto);
+      if (m.status === 'realizado') saiReal += _n(m.valor_real);
+    }
+  });
+
+  var pctEnt = entPrev > 0 ? Math.min(entReal / entPrev * 100, 100) : 0;
+  var pctSai = saiPrev > 0 ? Math.min(saiReal / saiPrev * 100, 100) : 0;
+
+  function barra(pct, cor) {
+    return '<div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text3);margin-bottom:.2rem">' +
+             '<span>Atingimento</span><span>' + pct.toFixed(1) + '%</span>' +
+           '</div><div class="barra-wrap"><div class="barra-fill" style="width:' + pct.toFixed(1) + '%;background:' + cor + '"></div></div>';
+  }
+
+  var avisoSaida = !temSaida
+    ? '<div class="fluxo-aviso" style="margin-bottom:.8rem">⚙️ Contas a pagar ainda não implementadas. As saídas aparecerão aqui quando disponíveis.</div>'
+    : '';
+
+  sec.innerHTML =
+    '<div class="fluxo-pvr">' +
+      '<div class="fluxo-pvr-titulo">📊 Previsto × Realizado</div>' +
+      avisoSaida +
+      '<div class="pvr-grid">' +
+        '<div class="pvr-item">' +
+          '<div class="pvr-label">📥 Entradas</div>' +
+          '<div class="pvr-row"><span class="pvr-row-label">Previsto</span><span class="pvr-row-valor">' + _fmtVal(entPrev) + '</span></div>' +
+          '<div class="pvr-row"><span class="pvr-row-label">Realizado</span><span class="pvr-row-valor verde">' + _fmtVal(entReal) + '</span></div>' +
+          '<div class="pvr-pct">' + barra(pctEnt, 'var(--green)') + '</div>' +
+        '</div>' +
+        '<div class="pvr-item">' +
+          '<div class="pvr-label">📤 Saídas</div>' +
+          (temSaida
+            ? '<div class="pvr-row"><span class="pvr-row-label">Previsto</span><span class="pvr-row-valor">' + _fmtVal(saiPrev) + '</span></div>' +
+              '<div class="pvr-row"><span class="pvr-row-label">Realizado</span><span class="pvr-row-valor vermelho">' + _fmtVal(saiReal) + '</span></div>' +
+              '<div class="pvr-pct">' + barra(pctSai, 'var(--red)') + '</div>'
+            : '<div style="font-size:.78rem;color:var(--text3);font-style:italic">Sem dados de saída disponíveis.</div>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+// ── Carregar dados do servidor ───────────────────────────────
+async function carregarFluxoCaixa(empresaId) {
+  var sf = _sf();
+  if (!sf || !empresaId) {
+    _fluxoMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
+    return;
+  }
+
+  var token = ++_fluxoLoadToken;
+  _fluxoMostrarLoading();
+  var btnRef = document.getElementById('fluxo-btn-refresh');
+  if (btnRef) btnRef.disabled = true;
+
+  try {
+    var results = await Promise.all([
+      sf.buscarSaldoCaixaAtual(empresaId).catch(function() { return null; }),
+      sf.listarMovimentosCaixa(empresaId).catch(function() { return []; })
+    ]);
+    if (token !== _fluxoLoadToken) return;
+
+    _saldoCaixaAtual = results[0];
+    _todosMovimentos = results[1] || [];
+
+    var avisoEl = document.getElementById('fluxo-aviso-saldo');
+    if (avisoEl) avisoEl.style.display = _saldoCaixaAtual ? 'none' : '';
+
+    var badge = document.getElementById('fluxo-empresa-badge');
+    if (badge && _empresaAtiva) {
+      badge.textContent = '🏢 ' + (_empresaAtiva.nome_curto || _empresaAtiva.nome);
+      badge.style.display = '';
+    }
+
+    var ccs = Array.from(new Set(
+      _todosMovimentos.map(function(m) { return m.centro_custo || ''; }).filter(Boolean)
+    )).sort();
+    var ccSel = document.getElementById('fluxo-centro-custo');
+    if (ccSel) {
+      var cur = ccSel.value;
+      ccSel.innerHTML = '<option value="">Todos os centros</option>' +
+        ccs.map(function(cc) {
+          return '<option value="' + cc + '"' + (cc === cur ? ' selected' : '') + '>' + cc + '</option>';
+        }).join('');
+    }
+
+    filtrarFluxo();
+
+  } catch(e) {
+    if (token !== _fluxoLoadToken) return;
+    console.warn('[F3-fluxo] erro ao carregar:', e);
+    _fluxoMostrarErro('Erro ao carregar fluxo de caixa: ' + e.message);
+  } finally {
+    if (token === _fluxoLoadToken && btnRef) btnRef.disabled = false;
+  }
+}
+
+function recarregarFluxo() {
+  if (_empresaAtiva) carregarFluxoCaixa(_empresaAtiva.id);
+}
+
+function _fluxoMostrarLoading() {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = '';
+    document.getElementById('fluxo-estado-icon').textContent = '';
+    document.getElementById('fluxo-estado-msg').textContent  = 'Carregando fluxo de caixa...';
+    document.getElementById('fluxo-estado-sub').textContent  = '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+function _fluxoMostrarVazio(msg, sub) {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '📢';
+    document.getElementById('fluxo-estado-msg').textContent  = msg || 'Nenhum evento de fluxo de caixa.';
+    document.getElementById('fluxo-estado-sub').textContent  = sub || '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+function _fluxoMostrarErro(msg) {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '⚠️';
+    document.getElementById('fluxo-estado-msg').textContent  = msg || 'Erro ao carregar dados.';
+    document.getElementById('fluxo-estado-sub').textContent  = 'Tente novamente ou verifique o console.';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+
+function _fluxoInicializarFiltros() {
+  var hoje = _fluxoHoje();
+  _fluxoFiltros.dataInicio = _fluxoPrimeiroDiaMes(hoje);
+  _fluxoFiltros.dataFim    = _fluxoUltimoDiaMes(hoje);
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  if (di) di.value = _fluxoFiltros.dataInicio;
+  if (df) df.value = _fluxoFiltros.dataFim;
 }
 </script>
 
