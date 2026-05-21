@@ -2611,6 +2611,50 @@ body.empresa-tema-fortex{
 
       <!-- Área de resultado -->
       <div id="rrResultado"></div>
+
+      <!-- ── Seção Recuperação por CNPJ Oficial ── -->
+      <div style="border-top:1px solid var(--border);margin-top:1.2rem;padding-top:1rem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-size:.92rem;font-weight:800;color:var(--blue)">🏢 Recuperação por CNPJ Oficial</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">
+              Usa os CNPJs oficiais dos PDFs para criar/completar cadastros. Nada é apagado ou sobrescrito automaticamente.
+            </div>
+          </div>
+        </div>
+
+        <!-- Dados oficiais a serem usados -->
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.65rem .9rem;margin-bottom:.8rem;font-size:.72rem;color:var(--text2)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:.35rem">📋 Cadastros oficiais preparados:</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.25rem .8rem">
+            <span>🏢 JDE Jundiaí — CNPJ <strong>02.333.707/0049-90</strong></span>
+            <span>🏢 JDE Salvador — CNPJ <strong>02.333.707/0036-75</strong></span>
+            <span>🏢 JDE Itaporanga d'Ajuda — CNPJ <strong>02.333.707/0065-00</strong></span>
+            <span>🏢 JDE Vitória da Conquista — CNPJ <strong>02.333.707/0066-90</strong></span>
+            <span>🏢 Foods Piumhí — CNPJ <strong>19.731.877/0001-80</strong></span>
+            <span>🏢 FAGO — CNPJ <strong>43.133.454/0001-43</strong></span>
+          </div>
+          <div style="margin-top:.45rem;font-size:.69rem;color:var(--red)">
+            🚩 Marcados como <em>legados suspeitos</em> (não apagados): JDE JDI · JDE Jundiai · JDE Jundiaí · JDE Salvador
+          </div>
+        </div>
+
+        <!-- Botões -->
+        <div style="display:flex;gap:.6rem;margin-bottom:.8rem;flex-wrap:wrap">
+          <button class="nb" onclick="rcnpjExecutarPrevia()"
+            style="background:rgba(34,197,94,.12);color:var(--text);border:1px solid rgba(34,197,94,.5);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700">
+            🔍 Prévia de Cadastros Oficiais
+          </button>
+        </div>
+
+        <div style="font-size:.69rem;color:var(--text3);margin-bottom:.75rem">
+          A aplicação exige <strong>RECUPERAR CLIENTES TECFUSION</strong> e cria backup antes de qualquer gravação.
+          Legados suspeitos serão <em>marcados</em>, não apagados.
+        </div>
+
+        <!-- Resultado -->
+        <div id="rcnpjResultado"></div>
+      </div>
     </div>
 
   </div>
@@ -9872,6 +9916,7 @@ function rExecTimeline(){
 <script src="js/services/financeiro-backfill-apply.js"></script>
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
 <script src="js/tools/diagnostico-clientes-cnpj.js?v=1"></script>
+<script src="js/tools/recuperacao-oficial-cnpj.js?v=1"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
