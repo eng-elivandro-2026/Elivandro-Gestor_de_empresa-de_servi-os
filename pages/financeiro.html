@@ -286,6 +286,58 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .modal-btn-confirmar:hover:not(:disabled){background:rgba(240,165,0,.22)}
 .modal-btn-confirmar:disabled{opacity:.35;cursor:not-allowed}
 
+/* ── CONTAS A PAGAR ───────────────────────────────────────────── */
+.bdg-em_aberto{background:rgba(88,166,255,.12);color:var(--blue)}
+.bdg-vencido{background:rgba(248,81,73,.12);color:var(--red)}
+.bdg-pago{background:rgba(63,185,80,.10);color:var(--green)}
+.bdg-parcial{background:rgba(240,90,26,.12);color:var(--orange)}
+.cp-form-row{display:flex;flex-direction:column;gap:.25rem;margin-bottom:.75rem}
+.cp-form-label{font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.cp-form-input{padding:.38rem .65rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.78rem;font-family:inherit;width:100%;transition:border-color .15s}
+.cp-form-input:focus{outline:none;border-color:var(--emp-cor)}
+.cp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem}
+.cp-form-secao{font-size:.65rem;font-weight:700;color:var(--emp-cor-2);text-transform:uppercase;letter-spacing:.05em;margin:.9rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)}
+.btn-criar-cp{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:700;padding:.5rem 1.1rem;border-radius:var(--r2);border:1px solid var(--emp-bdr);background:var(--emp-bg);color:var(--emp-cor-2);cursor:pointer;transition:all .15s;font-family:inherit}
+.btn-criar-cp:hover:not(:disabled){filter:brightness(1.15)}
+.btn-criar-cp:disabled{opacity:.4;cursor:not-allowed}
+.cp-aviso{font-size:.75rem;color:var(--text3);font-style:italic;padding:.4rem .7rem;background:var(--bg2);border-radius:var(--r2);border:1px solid var(--border);margin-top:.5rem}
+.cp-form-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;margin-top:1.2rem}
+.cp-form-titulo{font-size:.7rem;font-weight:700;color:var(--emp-cor-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+
+/* ── FLUXO DE CAIXA ───────────────────────────────────────────── */
+.btn-preset{
+  font-size:.72rem;font-weight:600;padding:.28rem .65rem;
+  border-radius:var(--r2);border:1px solid var(--border);
+  background:var(--bg3);color:var(--text2);cursor:pointer;
+  transition:all .15s;white-space:nowrap;font-family:inherit;
+}
+.btn-preset:hover{border-color:var(--emp-cor);color:var(--emp-cor-2)}
+.btn-preset.on{border-color:var(--emp-cor);background:var(--emp-bg);color:var(--emp-cor-2)}
+.fluxo-aviso{
+  font-size:.78rem;color:var(--text3);font-style:italic;
+  padding:.55rem .8rem;background:var(--bg2);border-radius:var(--r2);
+  border:1px solid var(--border);margin-bottom:.7rem;
+}
+.fluxo-pvr{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:1rem 1.1rem;margin-top:1.2rem;
+}
+.fluxo-pvr-titulo{
+  font-size:.7rem;font-weight:700;color:var(--emp-cor-2);
+  text-transform:uppercase;letter-spacing:.05em;
+  margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);
+}
+.pvr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+.pvr-item{background:var(--bg3);border-radius:var(--r2);padding:.7rem .9rem}
+.pvr-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;font-weight:700}
+.pvr-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;font-size:.78rem}
+.pvr-row-label{color:var(--text2)}
+.pvr-row-valor{font-weight:600;font-variant-numeric:tabular-nums}
+.pvr-row-valor.verde{color:var(--green)}
+.pvr-row-valor.vermelho{color:var(--red)}
+.pvr-pct{margin-top:.5rem}
+.fluxo-saldo-ref{font-size:.68rem;color:var(--text3);font-style:italic;margin-bottom:.5rem}
+
 /* ── RESPONSIVO ───────────────────────────────────────────────── */
 @media(max-width:650px){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
@@ -307,6 +359,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <button class="tab-btn on" id="tab-btn-contas" onclick="showTab('contas')">📋 Contas a Receber</button>
   <button class="tab-btn" id="tab-btn-nfs" onclick="showTab('nfs')">📄 Notas Fiscais</button>
   <button class="tab-btn" id="tab-btn-rec" onclick="showTab('rec')">💳 Recebimentos</button>
+  <button class="tab-btn" id="tab-btn-fluxo" onclick="showTab('fluxo')">💰 Fluxo de Caixa</button>
+  <button class="tab-btn" id="tab-btn-cp" onclick="showTab('cp')">💳 Contas a Pagar</button>
   <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
 </div>
 
@@ -722,6 +776,279 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: FLUXO DE CAIXA                                          -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-fluxo" class="tab-content" style="display:none">
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">💰 Fluxo de Caixa</div>
+      <div class="page-sub">Entradas e saídas consolidadas — somente leitura</div>
+      <div id="fluxo-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- Aviso: saldo não configurado -->
+  <div class="fluxo-aviso" id="fluxo-aviso-saldo" style="display:none">
+    ⚠️ Saldo inicial de caixa não configurado. Exibindo R$ 0,00 como base. Configure o saldo em <code>financeiro_saldos_caixa</code>.
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="fluxo-kpi-row">
+    <!-- preenchido por renderFluxoCards() -->
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-bar" id="fluxo-filtros-bar">
+    <button class="btn-preset on" data-preset="mes" onclick="fluxoSetPreset('mes')" title="Mês atual">Mês atual</button>
+    <button class="btn-preset" data-preset="30"  onclick="fluxoSetPreset('30')"  title="Próximos 30 dias">+30d</button>
+    <button class="btn-preset" data-preset="60"  onclick="fluxoSetPreset('60')"  title="Próximos 60 dias">+60d</button>
+    <button class="btn-preset" data-preset="90"  onclick="fluxoSetPreset('90')"  title="Próximos 90 dias">+90d</button>
+    <button class="btn-preset" data-preset="todos" onclick="fluxoSetPreset('todos')" title="Todos os períodos">Todos</button>
+    <span class="filtro-label">De</span>
+    <input type="date" id="fluxo-data-inicio" class="filtro-input" oninput="fluxoAtualizarFiltros()" title="Data início">
+    <span class="filtro-label">Até</span>
+    <input type="date" id="fluxo-data-fim"    class="filtro-input" oninput="fluxoAtualizarFiltros()" title="Data fim">
+    <select id="fluxo-centro-custo" class="filtro-input filtro-select" onchange="fluxoAtualizarFiltros()" title="Centro de custo">
+      <option value="">Todos os centros</option>
+    </select>
+    <select id="fluxo-status" class="filtro-input filtro-select" onchange="fluxoAtualizarFiltros()" title="Status">
+      <option value="">Todos os status</option>
+      <option value="previsto">Previsto</option>
+      <option value="realizado">Realizado</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+    <button class="btn-limpar" onclick="fluxoLimparFiltros()" title="Limpar filtros">✕ Limpar</button>
+    <span class="filtro-count" id="fluxo-count"></span>
+  </div>
+
+  <!-- Estado: loading / vazio / erro -->
+  <div class="estado" id="fluxo-estado" style="display:none">
+    <div class="loading-spinner" id="fluxo-spinner" style="display:none"></div>
+    <span class="estado-icon" id="fluxo-estado-icon"></span>
+    <div class="estado-msg" id="fluxo-estado-msg"></div>
+    <div class="estado-sub" id="fluxo-estado-sub"></div>
+  </div>
+
+  <!-- Tabela de eventos -->
+  <div class="table-wrap" id="fluxo-table-wrap" style="display:none">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th class="th-data">Data</th>
+          <th>Tipo</th>
+          <th class="th-cc">Origem</th>
+          <th>Cliente</th>
+          <th>Descrição</th>
+          <th class="th-cc">Centro Custo</th>
+          <th class="col-valor">Previsto</th>
+          <th class="col-valor">Realizado</th>
+          <th>Status</th>
+          <th class="col-valor" title="Realizado usa valor real; Previsto usa valor esperado">Saldo Proj.</th>
+        </tr>
+      </thead>
+      <tbody id="fluxo-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Previsto × Realizado -->
+  <div id="fluxo-pvr-section"></div>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-fluxo -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: CONTAS A PAGAR                                          -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-cp" class="tab-content" style="display:none">
+<div class="wrap">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">💳 Contas a Pagar</div>
+      <div class="page-sub">Obrigações financeiras da empresa — tabela <code>financeiro_contas_pagar</code></div>
+      <div id="cp-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="cp-btn-refresh" onclick="recarregarCp()" title="Recarregar dados">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="cp-kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Em Aberto</div>
+      <div class="kpi-valor" id="cp-kpi-aberto">—</div>
+      <div class="kpi-sub" id="cp-kpi-aberto-sub"></div>
+    </div>
+    <div class="kpi-card vencida">
+      <div class="kpi-label">Vencidas</div>
+      <div class="kpi-valor vermelho" id="cp-kpi-vencido">—</div>
+      <div class="kpi-sub" id="cp-kpi-vencido-sub"></div>
+    </div>
+    <div class="kpi-card recebido">
+      <div class="kpi-label">Pagas</div>
+      <div class="kpi-valor verde" id="cp-kpi-pago">—</div>
+      <div class="kpi-sub" id="cp-kpi-pago-sub"></div>
+    </div>
+    <div class="kpi-card destaque">
+      <div class="kpi-label">A Vencer (30d)</div>
+      <div class="kpi-valor emp" id="cp-kpi-avencer">—</div>
+      <div class="kpi-sub" id="cp-kpi-avencer-sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Caixa Comprometido</div>
+      <div class="kpi-valor" id="cp-kpi-comprometido">—</div>
+      <div class="kpi-sub">Em aberto + vencidas</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-bar">
+    <input type="search" class="filtro-input busca" id="cp-filtro-busca"
+      placeholder="Buscar fornecedor, descrição…" oninput="cpAplicarFiltros()">
+    <select id="cp-filtro-status" class="filtro-input filtro-select" onchange="cpAplicarFiltros()" title="Status">
+      <option value="">Todos os status</option>
+      <option value="previsto">Previsto</option>
+      <option value="em_aberto">Em aberto</option>
+      <option value="vencido">Vencido</option>
+      <option value="parcial">Parcial</option>
+      <option value="pago">Pago</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+    <select id="cp-filtro-categoria" class="filtro-input filtro-select" onchange="cpAplicarFiltros()" title="Categoria">
+      <option value="">Todas as categorias</option>
+      <option value="material">Material</option>
+      <option value="servico">Serviço</option>
+      <option value="pessoal">Pessoal</option>
+      <option value="imposto">Imposto</option>
+      <option value="aluguel">Aluguel</option>
+      <option value="outros">Outros</option>
+    </select>
+    <select id="cp-filtro-cc" class="filtro-input filtro-select" onchange="cpAplicarFiltros()" title="Centro de custo">
+      <option value="">Todos os centros</option>
+    </select>
+    <span class="filtro-label">Venc. de</span>
+    <input type="date" id="cp-filtro-venc-ini" class="filtro-input" oninput="cpAplicarFiltros()">
+    <span class="filtro-label">até</span>
+    <input type="date" id="cp-filtro-venc-fim" class="filtro-input" oninput="cpAplicarFiltros()">
+    <button class="btn-limpar" onclick="cpLimparFiltros()" title="Limpar filtros">✕ Limpar</button>
+    <span class="filtro-count" id="cp-count"></span>
+  </div>
+
+  <!-- Estado: loading / vazio / erro -->
+  <div class="estado" id="cp-estado" style="display:none">
+    <div class="loading-spinner" id="cp-spinner" style="display:none"></div>
+    <span class="estado-icon" id="cp-estado-icon"></span>
+    <div class="estado-msg" id="cp-estado-msg"></div>
+    <div class="estado-sub" id="cp-estado-sub"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="table-wrap" id="cp-table-wrap" style="display:none">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Descrição</th>
+          <th class="th-cc">Categoria</th>
+          <th class="th-cc">Centro Custo</th>
+          <th class="col-valor">Previsto</th>
+          <th class="col-valor">Pago</th>
+          <th class="col-valor">Pendente</th>
+          <th class="col-data">Vencimento</th>
+          <th class="col-status">Status</th>
+        </tr>
+      </thead>
+      <tbody id="cp-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Formulário: Nova Conta a Pagar -->
+  <div class="cp-form-wrap" id="cp-form-wrap">
+    <div class="cp-form-titulo">➕ Nova Conta a Pagar</div>
+    <p class="cp-aviso">Preencha os campos abaixo. <strong>Somente gestores e donos</strong> podem criar contas.</p>
+
+    <div class="cp-form-secao">Identificação</div>
+    <div class="cp-form-grid">
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-novo-fornecedor">Fornecedor</label>
+        <input type="text" id="cp-novo-fornecedor" class="cp-form-input" placeholder="Nome do fornecedor/credor">
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-novo-cnpj">CNPJ (opcional)</label>
+        <input type="text" id="cp-novo-cnpj" class="cp-form-input" placeholder="00.000.000/0000-00">
+      </div>
+    </div>
+    <div class="cp-form-row">
+      <label class="cp-form-label" for="cp-nova-descricao">Descrição *</label>
+      <input type="text" id="cp-nova-descricao" class="cp-form-input" placeholder="Ex: Aluguel sede — Jun/2026">
+    </div>
+
+    <div class="cp-form-secao">Classificação</div>
+    <div class="cp-form-grid">
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-nova-categoria">Categoria</label>
+        <select id="cp-nova-categoria" class="cp-form-input">
+          <option value="">Selecionar…</option>
+          <option value="material">Material</option>
+          <option value="servico">Serviço</option>
+          <option value="pessoal">Pessoal</option>
+          <option value="imposto">Imposto</option>
+          <option value="aluguel">Aluguel</option>
+          <option value="outros">Outros</option>
+        </select>
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-novo-cc">Centro de Custo</label>
+        <input type="text" id="cp-novo-cc" class="cp-form-input" placeholder="Ex: ADM, OBR-001">
+      </div>
+    </div>
+
+    <div class="cp-form-secao">Valores e Datas</div>
+    <div class="cp-form-grid">
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-novo-valor">Valor Previsto *</label>
+        <input type="number" id="cp-novo-valor" class="cp-form-input" placeholder="0,00" min="0" step="0.01">
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-nova-forma">Forma de Pagamento</label>
+        <select id="cp-nova-forma" class="cp-form-input">
+          <option value="">Selecionar…</option>
+          <option value="pix">PIX</option>
+          <option value="transferencia">Transferência</option>
+          <option value="boleto">Boleto</option>
+          <option value="cheque">Cheque</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="cartao">Cartão</option>
+        </select>
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-nova-venc">Data de Vencimento</label>
+        <input type="date" id="cp-nova-venc" class="cp-form-input">
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-nova-obs">Observação</label>
+        <input type="text" id="cp-nova-obs" class="cp-form-input" placeholder="Observação opcional">
+      </div>
+    </div>
+
+    <button class="btn-criar-cp" id="cp-btn-criar" onclick="criarContaPagar()">
+      💾 Salvar Conta a Pagar
+    </button>
+    <div class="status-msg" id="cp-status-msg"></div>
+  </div>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-cp -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <!-- PAINEL DE DETALHE — slide da direita                         -->
 <!-- ════════════════════════════════════════════════════════════ -->
 <div class="detalhe-overlay" id="detalhe-overlay" onclick="fecharDetalhe()"></div>
@@ -770,6 +1097,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<!-- PAINEL DE DETALHE CONTAS A PAGAR — slide da direita          -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="detalhe-overlay" id="cp-detalhe-overlay" onclick="fecharDetalheCp()"></div>
+
+<div class="detalhe-panel" id="cp-detalhe-panel">
+  <div class="detalhe-hdr">
+    <div class="detalhe-titulo" id="cp-detalhe-titulo">Detalhes da Conta a Pagar</div>
+    <button class="btn-fechar" onclick="fecharDetalheCp()" title="Fechar">✕</button>
+  </div>
+  <div class="detalhe-corpo" id="cp-detalhe-corpo">
+    <!-- preenchido por abrirDetalheCp() -->
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <!-- SCRIPTS                                                      -->
 <!-- ════════════════════════════════════════════════════════════ -->
 <script>
@@ -780,6 +1123,17 @@ var _empresaAtiva  = null;   // { id, nome, nome_curto }
 var _todasContas   = [];     // contas carregadas do Supabase
 var _carregando    = false;
 var _loadToken     = 0;      // race condition guard
+
+// ── Fluxo de Caixa — estado ──────────────────────────────────
+var _todosMovimentos  = [];   // financeiro_movimentos_caixa da empresa ativa
+var _saldoCaixaAtual  = null; // financeiro_saldos_caixa mais recente
+var _fluxoLoadToken   = 0;    // race condition guard
+var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: '', preset: 'mes' };
+
+// ── Contas a Pagar — estado ──────────────────────────────────
+var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
+var _cpLoadToken      = 0;    // race condition guard
+var _cpFiltros        = { busca: '', status: '', categoria: '', centroCusto: '', vencInicio: '', vencFim: '' };
 
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {
@@ -1268,6 +1622,26 @@ function _onTrocaEmpresa(dados) {
   var recBody = document.getElementById('rec-tabela-body');
   if (recBody) recBody.innerHTML = '';
 
+  // Limpar Fluxo de Caixa imediatamente
+  _todosMovimentos = [];
+  _saldoCaixaAtual = null;
+  _fluxoLoadToken++;
+  var fluxoBody = document.getElementById('fluxo-tbody');
+  if (fluxoBody) fluxoBody.innerHTML = '';
+  var fluxoKpi = document.getElementById('fluxo-kpi-row');
+  if (fluxoKpi) fluxoKpi.innerHTML = '';
+  var fluxoPvr = document.getElementById('fluxo-pvr-section');
+  if (fluxoPvr) fluxoPvr.innerHTML = '';
+
+  // Limpar Contas a Pagar imediatamente
+  _todasContasPagar = [];
+  _cpLoadToken++;
+  fecharDetalheCp();
+  var cpBody = document.getElementById('cp-tbody');
+  if (cpBody) cpBody.innerHTML = '';
+  var cpWrap = document.getElementById('cp-table-wrap');
+  if (cpWrap) cpWrap.style.display = 'none';
+
   _empresaAtiva = {
     id:        dados.empresaId,
     nome:      dados.empresaNome      || '',
@@ -1283,6 +1657,9 @@ function _onTrocaEmpresa(dados) {
   carregarContas(_empresaAtiva.id);
   carregarNFs(_empresaAtiva.id);
   carregarRec(_empresaAtiva.id);
+  _fluxoInicializarFiltros();
+  carregarFluxoCaixa(_empresaAtiva.id);
+  carregarContasPagar(_empresaAtiva.id);
 }
 
 // ── postMessage do portal pai ─────────────────────────────────
@@ -1328,22 +1705,32 @@ window.addEventListener('message', function(e) {
       carregarContas(emp.id);
       carregarNFs(emp.id);
       carregarRec(emp.id);
+      _fluxoInicializarFiltros();
+      carregarFluxoCaixa(emp.id);
+      carregarContasPagar(emp.id);
     } else {
       _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _nfMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _recMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+      _fluxoMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+      _cpMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
     }
   } catch(e) {
-    console.warn('[Financeiro F2B/F2C/F2D] init error:', e);
+    console.warn('[Financeiro F2B/F2C/F2D/F3/F3B] init error:', e);
     _mostrarVazio('Erro ao identificar empresa ativa.');
     _nfMostrarVazio('Erro ao identificar empresa ativa.');
     _recMostrarVazio('Erro ao identificar empresa ativa.');
+    _fluxoMostrarErro('Erro ao identificar empresa ativa.');
+    _cpMostrarErro('Erro ao identificar empresa ativa.');
   }
 })();
 
 // Fechar painéis de detalhe com Escape
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    if (document.getElementById('cp-detalhe-panel').classList.contains('on')) {
+      fecharDetalheCp(); return;
+    }
     if (document.getElementById('rec-detalhe-panel').classList.contains('on')) {
       fecharDetalheRec(); return;
     }
@@ -2319,6 +2706,1037 @@ async function executarApply() {
   } finally {
     btn.disabled = false;
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// F3 — FLUXO DE CAIXA
+// ════════════════════════════════════════════════════════════════
+
+// ── Helpers de data ──────────────────────────────────────────
+function _fluxoHoje() {
+  return new Date().toISOString().slice(0, 10);
+}
+function _fluxoAddDias(iso, dias) {
+  var dt = new Date(iso + 'T00:00:00');
+  dt.setDate(dt.getDate() + dias);
+  return dt.toISOString().slice(0, 10);
+}
+function _fluxoPrimeiroDiaMes(iso) {
+  var dt = new Date(iso + 'T00:00:00');
+  return new Date(dt.getFullYear(), dt.getMonth(), 1).toISOString().slice(0, 10);
+}
+function _fluxoUltimoDiaMes(iso) {
+  var dt = new Date(iso + 'T00:00:00');
+  return new Date(dt.getFullYear(), dt.getMonth() + 1, 0).toISOString().slice(0, 10);
+}
+function _fmtVal(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function _fmtDt(d) {
+  if (!d) return '—';
+  var p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+}
+function _n(v) { return parseFloat(v) || 0; }
+
+// Acessa sbClient do iframe (via parent se necessário)
+function _sbCli() {
+  if (window.sbClient) return window.sbClient;
+  if (window.parent && window.parent.sbClient) return window.parent.sbClient;
+  return null;
+}
+
+// Melhor data disponível para exibição e filtro
+function _bestDate(m) {
+  return m.data_prevista || m.data_real || m.data_movimento || null;
+}
+
+// Traduz campo origem para texto legível
+function _traduzirOrigem(orig) {
+  var mapa = {
+    'backfill_recebimento':   'Recebimento',
+    'backfill_conta_receber': 'Conta a Receber',
+    'backfill_proposta':      'Proposta',
+    'manual':                 'Manual'
+  };
+  return mapa[orig] || orig || '—';
+}
+
+// Descrição amigável do movimento
+function _descricaoAmigavel(m) {
+  // Prioridade: título enriquecido da conta vinculada
+  if (m._label_conta) return m._label_conta;
+  // Descrição existente, desde que não seja string técnica de backfill
+  var desc = m.descricao || '';
+  if (desc && desc.indexOf('Backfill') !== 0) return desc;
+  // Derivar do natureza/tipo/origem
+  var orig = m.origem || '';
+  if (orig === 'backfill_recebimento')   return 'Recebimento realizado';
+  if (orig === 'backfill_conta_receber') return m.tipo === 'entrada' ? 'Entrada prevista — conta a receber' : 'Saída prevista';
+  if (orig === 'manual')                 return m.tipo === 'entrada' ? 'Lançamento manual — entrada' : 'Lançamento manual — saída';
+  if (m.natureza === 'realizado' || m.status === 'realizado') return m.tipo === 'entrada' ? 'Recebimento realizado' : 'Pagamento realizado';
+  return m.tipo === 'entrada' ? 'Entrada prevista' : 'Saída prevista';
+}
+
+// Enriquece movimentos com dados de conta_receber / recebimento (leitura, sem escrita)
+async function _enriquecerMovimentos(movs, empresaId) {
+  if (!movs || !movs.length) return movs;
+  var sb = _sbCli();
+  if (!sb) return movs;
+
+  var contaIds = [], recebIds = [];
+  movs.forEach(function(m) {
+    var ref = m.referencia_id || '';
+    if (ref.indexOf('previsto:') === 0) contaIds.push(ref.slice(9));
+    else if (ref.indexOf('receb:') === 0) recebIds.push(ref.slice(6));
+  });
+
+  // Batch fetch contas (para movimentos previstos)
+  var contasMap = {};
+  if (contaIds.length > 0) {
+    try {
+      var rc = await sb
+        .from('financeiro_contas_receber')
+        .select('id, titulo, cliente_nome, centro_custo, data_vencimento')
+        .eq('empresa_id', empresaId)
+        .in('id', contaIds);
+      (rc.data || []).forEach(function(c) { contasMap[c.id] = c; });
+    } catch(e) { console.warn('[F3 enrich contas]', e.message); }
+  }
+
+  // Batch fetch recebimentos com join na conta (para movimentos realizados)
+  var recebMap = {};
+  if (recebIds.length > 0) {
+    try {
+      var rr = await sb
+        .from('financeiro_recebimentos')
+        .select('id, data_recebimento, conta_receber:conta_receber_id(id, titulo, cliente_nome, centro_custo, data_vencimento)')
+        .eq('empresa_id', empresaId)
+        .in('id', recebIds);
+      (rr.data || []).forEach(function(r) { recebMap[r.id] = r; });
+    } catch(e) { console.warn('[F3 enrich receb]', e.message); }
+  }
+
+  // Mesclar nos movimentos (apenas sobrescreve campos vazios)
+  return movs.map(function(m) {
+    var ref = m.referencia_id || '';
+    var e   = Object.assign({}, m);
+
+    if (ref.indexOf('previsto:') === 0) {
+      var ct = contasMap[ref.slice(9)];
+      if (ct) {
+        if (!e.cliente_nome) e.cliente_nome = ct.cliente_nome || '';
+        if (!e.centro_custo) e.centro_custo = ct.centro_custo || '';
+        if (!e.data_prevista) e.data_prevista = ct.data_vencimento || null;
+        e._label_conta = ct.titulo || '';
+      }
+    } else if (ref.indexOf('receb:') === 0) {
+      var recb = recebMap[ref.slice(6)];
+      if (recb) {
+        if (!e.data_real) e.data_real = recb.data_recebimento || null;
+        var ct2 = recb.conta_receber;
+        if (ct2) {
+          if (!e.cliente_nome) e.cliente_nome = ct2.cliente_nome || '';
+          if (!e.centro_custo) e.centro_custo = ct2.centro_custo || '';
+          e._label_conta = ct2.titulo || '';
+        }
+      }
+    }
+    return e;
+  });
+}
+
+// ── Preset de período ────────────────────────────────────────
+function fluxoSetPreset(preset) {
+  _fluxoFiltros.preset = preset;
+  var hoje = _fluxoHoje();
+  if (preset === 'mes') {
+    _fluxoFiltros.dataInicio = _fluxoPrimeiroDiaMes(hoje);
+    _fluxoFiltros.dataFim    = _fluxoUltimoDiaMes(hoje);
+  } else if (preset === '30') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 30);
+  } else if (preset === '60') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 60);
+  } else if (preset === '90') {
+    _fluxoFiltros.dataInicio = hoje;
+    _fluxoFiltros.dataFim    = _fluxoAddDias(hoje, 90);
+  } else {
+    _fluxoFiltros.dataInicio = '';
+    _fluxoFiltros.dataFim    = '';
+  }
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  if (di) di.value = _fluxoFiltros.dataInicio;
+  if (df) df.value = _fluxoFiltros.dataFim;
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.preset === preset);
+  });
+  filtrarFluxo();
+}
+
+function fluxoLimparFiltros() {
+  _fluxoFiltros = { dataInicio: '', dataFim: '', centroCusto: '', status: '', preset: 'todos' };
+  ['fluxo-data-inicio', 'fluxo-data-fim'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var cc = document.getElementById('fluxo-centro-custo'); if (cc) cc.value = '';
+  var st = document.getElementById('fluxo-status');       if (st) st.value = '';
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.preset === 'todos');
+  });
+  filtrarFluxo();
+}
+
+function fluxoAtualizarFiltros() {
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  var cc = document.getElementById('fluxo-centro-custo');
+  var st = document.getElementById('fluxo-status');
+  if (di) _fluxoFiltros.dataInicio  = di.value;
+  if (df) _fluxoFiltros.dataFim     = df.value;
+  if (cc) _fluxoFiltros.centroCusto = cc.value;
+  if (st) _fluxoFiltros.status      = st.value;
+  _fluxoFiltros.preset = '';
+  document.querySelectorAll('.btn-preset[data-preset]').forEach(function(b) {
+    b.classList.remove('on');
+  });
+  filtrarFluxo();
+}
+
+// ── Filtro client-side ───────────────────────────────────────
+function filtrarFluxo() {
+  var movs = _todosMovimentos.filter(function(m) {
+    var dataRef = _bestDate(m) || '';
+    if (_fluxoFiltros.dataInicio && dataRef < _fluxoFiltros.dataInicio) return false;
+    if (_fluxoFiltros.dataFim    && dataRef > _fluxoFiltros.dataFim)    return false;
+    if (_fluxoFiltros.centroCusto && m.centro_custo !== _fluxoFiltros.centroCusto) return false;
+    if (_fluxoFiltros.status      && m.status        !== _fluxoFiltros.status)      return false;
+    return true;
+  });
+  renderFluxoCards(movs);
+  renderFluxoTabela(movs);
+  renderFluxoPVR(movs);
+  var cnt = document.getElementById('fluxo-count');
+  if (cnt) cnt.textContent = movs.length + ' evento(s)';
+}
+
+// ── Renderizar KPI cards (visão CFO) ─────────────────────────
+function renderFluxoCards(movs) {
+  var row = document.getElementById('fluxo-kpi-row');
+  if (!row) return;
+
+  // ── Saldo inicial de caixa (financeiro_saldos_caixa) ──────
+  var saldoInicial = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+  var saldoRef = _saldoCaixaAtual ? _fmtDt(_saldoCaixaAtual.data_referencia) : null;
+
+  // ── Agregar movimentos do período filtrado ────────────────
+  var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0;
+  // temSaida: verifica dataset completo para decidir rótulo de saídas
+  var temSaida = _todosMovimentos.some(function(m) { return m.tipo === 'saida'; });
+  movs.forEach(function(m) {
+    if (m.tipo === 'entrada') {
+      entPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') entReal += _n(m.valor_real);
+    } else if (m.tipo === 'saida') {
+      saiPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') saiReal += _n(m.valor_real);
+    }
+  });
+
+  // ── Fórmulas CFO ─────────────────────────────────────────
+  //
+  // Saldo Real: dinheiro efetivamente disponível hoje.
+  //   = Saldo Inicial + Entradas Realizadas − Saídas Realizadas
+  var saldoReal = saldoInicial + entReal - saiReal;
+
+  // Caixa Comprometido: saídas previstas (movimentos) + contas a pagar em aberto/vencidas.
+  //   Fonte primária: _todasContasPagar (tabela financeiro_contas_pagar).
+  //   Complementar:  saiPrev dos movimentos (quando não há contas a pagar cadastradas).
+  var cpComprometido = (_todasContasPagar || []).reduce(function(soma, cp) {
+    var st = cp.status || '';
+    if (st === 'em_aberto' || st === 'previsto' || st === 'vencido' || st === 'parcial') {
+      return soma + _n(cp.valor_pendente);
+    }
+    return soma;
+  }, 0);
+  var temContasPagar = (_todasContasPagar || []).length > 0;
+  // Incluir saídas previstas dos movimentos de caixa que não sejam de contas a pagar
+  // (contas a pagar já estão em cpComprometido; movimentos são complementares)
+  var caixaComprometido = temContasPagar ? cpComprometido : (cpComprometido + saiPrev);
+
+  // Caixa Livre: disponibilidade real após compromissos.
+  //   = Saldo Real − Caixa Comprometido
+  var caixaLivre = saldoReal - caixaComprometido;
+
+  // Saldo Projetado: previsão considerando o que ainda está previsto.
+  //   = Saldo Real + Entradas Previstas − Saídas Previstas
+  var saldoProjetado = saldoReal + entPrev - saiPrev;
+
+  // ── Sub-labels contextuais ────────────────────────────────
+  var saldoRealSub = saldoRef
+    ? 'Inicial (' + saldoRef + ') + recebido − pago'
+    : 'Saldo inicial não configurado — usando R$ 0,00';
+
+  var caixaComprSub = temContasPagar
+    ? 'Contas a pagar em aberto + vencidas'
+    : 'Saídas previstas (sem contas a pagar cadastradas)';
+
+  var caixaLivreSub = 'Saldo Real − Caixa Comprometido';
+
+  var saidaSub = temSaida ? 'No período' : 'Sem saídas no período';
+
+  // ── Cards em ordem executiva ──────────────────────────────
+  var cards = [
+    {
+      label: 'Saldo Real',
+      valor: saldoReal,
+      cls:   saldoReal >= 0 ? 'destaque' : 'vencida',
+      sub:   saldoRealSub
+    },
+    {
+      label: 'Saldo Projetado',
+      valor: saldoProjetado,
+      cls:   saldoProjetado >= 0 ? 'destaque' : 'vencida',
+      sub:   'Saldo Real + entradas previstas − saídas previstas'
+    },
+    {
+      label: 'Caixa Livre',
+      valor: caixaLivre,
+      cls:   caixaLivre >= 0 ? 'recebido' : 'vencida',
+      sub:   caixaLivreSub
+    },
+    {
+      label: 'Caixa Comprometido',
+      valor: caixaComprometido,
+      cls:   caixaComprometido > 0 ? '' : 'recebido',
+      sub:   caixaComprSub
+    },
+    {
+      label: 'Entradas Previstas',
+      valor: entPrev,
+      cls:   '',
+      sub:   'A receber no período'
+    },
+    {
+      label: 'Entradas Realizadas',
+      valor: entReal,
+      cls:   'recebido',
+      sub:   'Recebido no período'
+    },
+    {
+      label: 'Saídas Previstas',
+      valor: saiPrev,
+      cls:   '',
+      sub:   saidaSub
+    },
+    {
+      label: 'Saídas Realizadas',
+      valor: saiReal,
+      cls:   '',
+      sub:   saidaSub
+    },
+  ];
+
+  row.innerHTML = cards.map(function(c) {
+    var valCls = c.cls === 'recebido' ? 'verde'
+               : c.cls === 'vencida'  ? 'vermelho'
+               : c.cls === 'destaque' ? 'emp'
+               : '';
+    return '<div class="kpi-card ' + c.cls + '">' +
+      '<div class="kpi-label">' + c.label + '</div>' +
+      '<div class="kpi-valor ' + valCls + '">' + _fmtVal(c.valor) + '</div>' +
+      '<div class="kpi-sub">'  + (c.sub || '') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Renderizar tabela de eventos ─────────────────────────────
+function renderFluxoTabela(movs) {
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  var estado = document.getElementById('fluxo-estado');
+  var tbody  = document.getElementById('fluxo-tbody');
+  if (!tbody || !wrap || !estado) return;
+
+  if (!movs.length) {
+    wrap.style.display = 'none';
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '📢';
+    document.getElementById('fluxo-estado-msg').textContent  = 'Nenhum evento de caixa no período selecionado.';
+    document.getElementById('fluxo-estado-sub').textContent  = 'Ajuste os filtros ou clique em Atualizar.';
+    return;
+  }
+
+  estado.style.display = 'none';
+  wrap.style.display   = '';
+
+  var sorted = movs.slice().sort(function(a, b) {
+    var da = _bestDate(a) || '';
+    var db = _bestDate(b) || '';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
+  var saldoAcum = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+
+  tbody.innerHTML = sorted.map(function(m) {
+    var dataRef = _bestDate(m);
+    var vPrev   = _n(m.valor_previsto);
+    var vReal   = _n(m.valor_real);
+    var isEnt   = m.tipo === 'entrada';
+    var isReal  = m.status === 'realizado';
+    // Saldo projetado: usa valor_real para realizados, valor_previsto para demais
+    var delta   = isReal ? vReal : vPrev;
+    saldoAcum  += isEnt ? delta : -delta;
+
+    var tipoBdg = isEnt
+      ? '<span class="bdg" style="background:rgba(63,185,80,.1);color:var(--green)">↑ Entrada</span>'
+      : '<span class="bdg" style="background:rgba(248,81,73,.1);color:var(--red)">↓ Saída</span>';
+    var stsBdg  = '<span class="bdg bdg-' + (m.status || 'previsto') + '">' + (m.status || 'previsto') + '</span>';
+    var acumCls = saldoAcum >= 0 ? 'verde' : 'vermelho';
+    var cliente = m.cliente_nome || '—';
+    var cc      = m.centro_custo || '—';
+
+    return '<tr>' +
+      '<td class="col-data">'  + _fmtDt(dataRef) + '</td>' +
+      '<td>'                   + tipoBdg + '</td>' +
+      '<td class="td-cc col-titulo">' + _traduzirOrigem(m.origem) + '</td>' +
+      '<td class="col-cliente">' + cliente + '</td>' +
+      '<td class="col-titulo">' + _descricaoAmigavel(m) + '</td>' +
+      '<td class="td-cc">'     + cc + '</td>' +
+      '<td class="col-valor">' + _fmtVal(vPrev) + '</td>' +
+      '<td class="col-valor' + (isReal ? ' verde' : '') + '">' + (isReal ? _fmtVal(vReal) : '—') + '</td>' +
+      '<td>'                   + stsBdg + '</td>' +
+      '<td class="col-valor ' + acumCls + '" style="font-weight:700" title="Projetado: realizados usam valor real, previstos usam valor previsto">' + _fmtVal(saldoAcum) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Previsto x Realizado ─────────────────────────────────────
+function renderFluxoPVR(movs) {
+  var sec = document.getElementById('fluxo-pvr-section');
+  if (!sec) return;
+
+  var entPrev = 0, entReal = 0, saiPrev = 0, saiReal = 0, temSaida = false;
+  movs.forEach(function(m) {
+    if (m.tipo === 'entrada') {
+      entPrev += _n(m.valor_previsto);
+      if (m.status === 'realizado') entReal += _n(m.valor_real);
+    } else if (m.tipo === 'saida') {
+      temSaida = true;
+      saiPrev  += _n(m.valor_previsto);
+      if (m.status === 'realizado') saiReal += _n(m.valor_real);
+    }
+  });
+
+  var pctEnt = entPrev > 0 ? Math.min(entReal / entPrev * 100, 100) : 0;
+  var pctSai = saiPrev > 0 ? Math.min(saiReal / saiPrev * 100, 100) : 0;
+
+  function barra(pct, cor) {
+    return '<div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text3);margin-bottom:.2rem">' +
+             '<span>Atingimento</span><span>' + pct.toFixed(1) + '%</span>' +
+           '</div><div class="barra-wrap"><div class="barra-fill" style="width:' + pct.toFixed(1) + '%;background:' + cor + '"></div></div>';
+  }
+
+  // Aviso só aparece se não há saídas em movimentos E não há contas a pagar cadastradas
+  var semSaidaAlguma = !temSaida && (!_todasContasPagar || _todasContasPagar.length === 0);
+  var avisoSaida = semSaidaAlguma
+    ? '<div style="font-size:.72rem;color:var(--text3);margin-bottom:.8rem;font-style:italic">Nenhuma saída registrada no período. Use a aba Contas a Pagar para registrar obrigações.</div>'
+    : '';
+
+  sec.innerHTML =
+    '<div class="fluxo-pvr">' +
+      '<div class="fluxo-pvr-titulo">📊 Previsto × Realizado</div>' +
+      avisoSaida +
+      '<div class="pvr-grid">' +
+        '<div class="pvr-item">' +
+          '<div class="pvr-label">📥 Entradas</div>' +
+          '<div class="pvr-row"><span class="pvr-row-label">Previsto</span><span class="pvr-row-valor">' + _fmtVal(entPrev) + '</span></div>' +
+          '<div class="pvr-row"><span class="pvr-row-label">Realizado</span><span class="pvr-row-valor verde">' + _fmtVal(entReal) + '</span></div>' +
+          '<div class="pvr-pct">' + barra(pctEnt, 'var(--green)') + '</div>' +
+        '</div>' +
+        '<div class="pvr-item">' +
+          '<div class="pvr-label">📤 Saídas</div>' +
+          (temSaida
+            ? '<div class="pvr-row"><span class="pvr-row-label">Previsto</span><span class="pvr-row-valor">' + _fmtVal(saiPrev) + '</span></div>' +
+              '<div class="pvr-row"><span class="pvr-row-label">Realizado</span><span class="pvr-row-valor vermelho">' + _fmtVal(saiReal) + '</span></div>' +
+              '<div class="pvr-pct">' + barra(pctSai, 'var(--red)') + '</div>'
+            : '<div style="font-size:.78rem;color:var(--text3);font-style:italic">Sem dados de saída disponíveis.</div>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+// ── Carregar dados do servidor ───────────────────────────────
+async function carregarFluxoCaixa(empresaId) {
+  var sf = _sf();
+  if (!sf || !empresaId) {
+    _fluxoMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
+    return;
+  }
+
+  var token = ++_fluxoLoadToken;
+  _fluxoMostrarLoading();
+  var btnRef = document.getElementById('fluxo-btn-refresh');
+  if (btnRef) btnRef.disabled = true;
+
+  try {
+    var results = await Promise.all([
+      sf.buscarSaldoCaixaAtual(empresaId).catch(function() { return null; }),
+      sf.listarMovimentosCaixa(empresaId).catch(function() { return []; })
+    ]);
+    if (token !== _fluxoLoadToken) return;
+
+    _saldoCaixaAtual = results[0];
+
+    // Enriquecer com dados de conta/recebimento antes de exibir
+    var movsBrutos = results[1] || [];
+    if (token !== _fluxoLoadToken) return;
+    _todosMovimentos = await _enriquecerMovimentos(movsBrutos, empresaId);
+    if (token !== _fluxoLoadToken) return;
+
+    var avisoEl = document.getElementById('fluxo-aviso-saldo');
+    if (avisoEl) avisoEl.style.display = _saldoCaixaAtual ? 'none' : '';
+
+    var badge = document.getElementById('fluxo-empresa-badge');
+    if (badge && _empresaAtiva) {
+      badge.textContent = '🏢 ' + (_empresaAtiva.nome_curto || _empresaAtiva.nome);
+      badge.style.display = '';
+    }
+
+    // Dropdown de centro de custo — populate APÓS enriquecimento (que pode adicionar cc)
+    var ccs = Array.from(new Set(
+      _todosMovimentos.map(function(m) { return m.centro_custo || ''; }).filter(Boolean)
+    )).sort();
+    var ccSel = document.getElementById('fluxo-centro-custo');
+    if (ccSel) {
+      var cur = ccSel.value;
+      ccSel.innerHTML = '<option value="">Todos os centros</option>' +
+        ccs.map(function(cc) {
+          return '<option value="' + cc + '"' + (cc === cur ? ' selected' : '') + '>' + cc + '</option>';
+        }).join('');
+    }
+
+    filtrarFluxo();
+
+  } catch(e) {
+    if (token !== _fluxoLoadToken) return;
+    console.warn('[F3-fluxo] erro ao carregar:', e);
+    _fluxoMostrarErro('Erro ao carregar fluxo de caixa: ' + e.message);
+  } finally {
+    if (token === _fluxoLoadToken && btnRef) btnRef.disabled = false;
+  }
+}
+
+function recarregarFluxo() {
+  if (_empresaAtiva) carregarFluxoCaixa(_empresaAtiva.id);
+}
+
+function _fluxoMostrarLoading() {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = '';
+    document.getElementById('fluxo-estado-icon').textContent = '';
+    document.getElementById('fluxo-estado-msg').textContent  = 'Carregando fluxo de caixa...';
+    document.getElementById('fluxo-estado-sub').textContent  = '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+function _fluxoMostrarVazio(msg, sub) {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '📢';
+    document.getElementById('fluxo-estado-msg').textContent  = msg || 'Nenhum evento de fluxo de caixa.';
+    document.getElementById('fluxo-estado-sub').textContent  = sub || '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+function _fluxoMostrarErro(msg) {
+  var estado = document.getElementById('fluxo-estado');
+  var wrap   = document.getElementById('fluxo-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fluxo-spinner').style.display = 'none';
+    document.getElementById('fluxo-estado-icon').textContent = '⚠️';
+    document.getElementById('fluxo-estado-msg').textContent  = msg || 'Erro ao carregar dados.';
+    document.getElementById('fluxo-estado-sub').textContent  = 'Tente novamente ou verifique o console.';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+
+function _fluxoInicializarFiltros() {
+  var hoje = _fluxoHoje();
+  _fluxoFiltros.dataInicio = _fluxoPrimeiroDiaMes(hoje);
+  _fluxoFiltros.dataFim    = _fluxoUltimoDiaMes(hoje);
+  var di = document.getElementById('fluxo-data-inicio');
+  var df = document.getElementById('fluxo-data-fim');
+  if (di) di.value = _fluxoFiltros.dataInicio;
+  if (df) df.value = _fluxoFiltros.dataFim;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// F3B — CONTAS A PAGAR
+// ══════════════════════════════════════════════════════════════
+
+// ── Mapeamento visual de status ───────────────────────────────
+var _CP_STATUS_LABEL = {
+  previsto:   'Previsto',
+  em_aberto:  'Em aberto',
+  vencido:    'Vencido',
+  parcial:    'Parcial',
+  pago:       'Pago',
+  cancelado:  'Cancelado'
+};
+var _CP_STATUS_BDG = {
+  previsto:   'bdg bdg-previsto',
+  em_aberto:  'bdg bdg-em_aberto',
+  vencido:    'bdg bdg-vencido',
+  parcial:    'bdg bdg-parcial',
+  pago:       'bdg bdg-pago',
+  cancelado:  'bdg bdg-cancelado'
+};
+var _CP_CAT_LABEL = {
+  material:  'Material',
+  servico:   'Serviço',
+  pessoal:   'Pessoal',
+  imposto:   'Imposto',
+  aluguel:   'Aluguel',
+  outros:    'Outros'
+};
+
+// ── Helpers de status de exibição ────────────────────────────
+function _cpStatusLabel(st) { return _CP_STATUS_LABEL[st] || st || '—'; }
+function _cpStatusBdg(st)   { return _CP_STATUS_BDG[st]   || 'bdg bdg-previsto'; }
+function _cpCatLabel(cat)   { return _CP_CAT_LABEL[cat]   || cat || '—'; }
+
+// ── Badge empresa ─────────────────────────────────────────────
+function _cpAtualizarBadge(emp) {
+  var badge = document.getElementById('cp-empresa-badge');
+  if (!badge) return;
+  if (emp && emp.id) {
+    badge.textContent = '🏢 ' + (emp.nome_curto || emp.nome || '');
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Estado loading / vazio / erro ────────────────────────────
+function _cpMostrarLoading() {
+  var el = document.getElementById('cp-estado');
+  var sp = document.getElementById('cp-spinner');
+  var ic = document.getElementById('cp-estado-icon');
+  var mg = document.getElementById('cp-estado-msg');
+  var sb = document.getElementById('cp-estado-sub');
+  var wr = document.getElementById('cp-table-wrap');
+  if (el) el.style.display = '';
+  if (sp) sp.style.display = '';
+  if (ic) ic.textContent = '';
+  if (mg) mg.textContent = 'Carregando contas a pagar…';
+  if (sb) sb.textContent = '';
+  if (wr) wr.style.display = 'none';
+}
+
+function _cpMostrarVazio(msg, sub) {
+  var el = document.getElementById('cp-estado');
+  var sp = document.getElementById('cp-spinner');
+  var ic = document.getElementById('cp-estado-icon');
+  var mg = document.getElementById('cp-estado-msg');
+  var sb = document.getElementById('cp-estado-sub');
+  var wr = document.getElementById('cp-table-wrap');
+  if (el) el.style.display = '';
+  if (sp) sp.style.display = 'none';
+  if (ic) ic.textContent = '📭';
+  if (mg) mg.textContent = msg || 'Nenhuma conta a pagar cadastrada.';
+  if (sb) sb.textContent = sub || 'Use o formulário abaixo para criar a primeira.';
+  if (wr) wr.style.display = 'none';
+}
+
+function _cpMostrarErro(msg) {
+  var el = document.getElementById('cp-estado');
+  var sp = document.getElementById('cp-spinner');
+  var ic = document.getElementById('cp-estado-icon');
+  var mg = document.getElementById('cp-estado-msg');
+  var sb = document.getElementById('cp-estado-sub');
+  var wr = document.getElementById('cp-table-wrap');
+  if (el) el.style.display = '';
+  if (sp) sp.style.display = 'none';
+  if (ic) ic.textContent = '⚠️';
+  if (mg) mg.textContent = msg || 'Erro ao carregar contas a pagar.';
+  if (sb) sb.textContent = 'Verifique o console e tente novamente.';
+  if (wr) wr.style.display = 'none';
+}
+
+function _cpEsconderEstado() {
+  var el = document.getElementById('cp-estado');
+  if (el) el.style.display = 'none';
+}
+
+// ── Carregar contas a pagar da empresa ────────────────────────
+async function carregarContasPagar(empresaId) {
+  var sf = _sf();
+  if (!sf || !empresaId) {
+    _cpMostrarErro('Módulo financeiro não disponível.');
+    return;
+  }
+  var token = ++_cpLoadToken;
+  _cpMostrarLoading();
+  var btnRef = document.getElementById('cp-btn-refresh');
+  if (btnRef) btnRef.disabled = true;
+
+  try {
+    var contas = await sf.listarContasPagar(empresaId);
+    if (token !== _cpLoadToken) return;
+
+    _todasContasPagar = contas || [];
+
+    // Atualizar centro de custo dropdown
+    _cpPopularCentroCusto(_todasContasPagar);
+
+    // KPI cards
+    _cpRenderKpis(_todasContasPagar);
+
+    // Badge empresa
+    if (_empresaAtiva) _cpAtualizarBadge(_empresaAtiva);
+
+    // Filtrar e renderizar
+    cpAplicarFiltros();
+
+    console.log('%c[F3B-cp] ' + _todasContasPagar.length + ' conta(s) a pagar carregada(s)', 'color:#f0a500');
+
+  } catch(err) {
+    if (token !== _cpLoadToken) return;
+    console.warn('[F3B-cp] erro ao carregar:', err);
+    _cpMostrarErro('Erro ao carregar contas a pagar: ' + (err.message || err));
+  } finally {
+    if (token === _cpLoadToken && btnRef) btnRef.disabled = false;
+  }
+}
+
+function recarregarCp() {
+  if (!_empresaAtiva || !_empresaAtiva.id) return;
+  carregarContasPagar(_empresaAtiva.id);
+}
+
+// ── Popular dropdown de Centro de Custo ──────────────────────
+function _cpPopularCentroCusto(contas) {
+  var sel = document.getElementById('cp-filtro-cc');
+  if (!sel) return;
+  var centros = {};
+  contas.forEach(function(c) { if (c.centro_custo) centros[c.centro_custo] = true; });
+  var keys = Object.keys(centros).sort();
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Todos os centros</option>';
+  keys.forEach(function(k) {
+    var opt = document.createElement('option');
+    opt.value = k; opt.textContent = k;
+    sel.appendChild(opt);
+  });
+  if (cur && centros[cur]) sel.value = cur;
+}
+
+// ── Filtrar ────────────────────────────────────────────────────
+function cpAplicarFiltros() {
+  var busca    = (document.getElementById('cp-filtro-busca')    || {}).value || '';
+  var status   = (document.getElementById('cp-filtro-status')   || {}).value || '';
+  var cat      = (document.getElementById('cp-filtro-categoria')|| {}).value || '';
+  var cc       = (document.getElementById('cp-filtro-cc')       || {}).value || '';
+  var vencIni  = (document.getElementById('cp-filtro-venc-ini') || {}).value || '';
+  var vencFim  = (document.getElementById('cp-filtro-venc-fim') || {}).value || '';
+
+  var buscaLow = busca.toLowerCase();
+
+  var filtradas = _todasContasPagar.filter(function(c) {
+    if (buscaLow) {
+      var hay = ((c.fornecedor_nome || '') + ' ' + (c.descricao || '') + ' ' + (c.referencia_id || '')).toLowerCase();
+      if (hay.indexOf(buscaLow) === -1) return false;
+    }
+    if (status   && c.status         !== status)  return false;
+    if (cat      && c.categoria       !== cat)     return false;
+    if (cc       && c.centro_custo    !== cc)      return false;
+    if (vencIni  && c.data_vencimento && c.data_vencimento.slice(0,10) < vencIni) return false;
+    if (vencFim  && c.data_vencimento && c.data_vencimento.slice(0,10) > vencFim) return false;
+    return true;
+  });
+
+  var countEl = document.getElementById('cp-count');
+  if (countEl) {
+    countEl.textContent = filtradas.length < _todasContasPagar.length
+      ? filtradas.length + ' de ' + _todasContasPagar.length + ' contas'
+      : filtradas.length + (filtradas.length === 1 ? ' conta' : ' contas');
+  }
+
+  _cpRenderTabela(filtradas);
+}
+
+function cpLimparFiltros() {
+  var ids = ['cp-filtro-busca','cp-filtro-status','cp-filtro-categoria','cp-filtro-cc','cp-filtro-venc-ini','cp-filtro-venc-fim'];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  cpAplicarFiltros();
+}
+
+// ── KPI Cards ─────────────────────────────────────────────────
+function _cpRenderKpis(contas) {
+  var hoje = _hoje();
+  var d30  = new Date(); d30.setDate(d30.getDate() + 30);
+  var d30s = d30.toISOString().slice(0,10);
+
+  var totalAberto = 0, cntAberto = 0;
+  var totalVencido = 0, cntVencido = 0;
+  var totalPago = 0, cntPago = 0;
+  var totalAvencer = 0, cntAvencer = 0;
+  var totalComprometido = 0;
+
+  contas.forEach(function(c) {
+    var st  = c.status || '';
+    var dv  = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
+    var pend = _n(c.valor_pendente);
+    var prev = _n(c.valor_previsto);
+
+    if (st === 'pago') {
+      totalPago += _n(c.valor_pago); cntPago++;
+    } else if (st === 'vencido' || (st !== 'cancelado' && st !== 'pago' && dv && dv < hoje)) {
+      totalVencido += pend; cntVencido++;
+      totalComprometido += pend;
+    } else if (st === 'em_aberto' || st === 'previsto' || st === 'parcial') {
+      totalAberto += pend; cntAberto++;
+      totalComprometido += pend;
+      // A vencer em 30d
+      if (dv && dv >= hoje && dv <= d30s) {
+        totalAvencer += pend; cntAvencer++;
+      }
+    }
+  });
+
+  function _setKpi(id, val, subId, sub) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = _fmtVal(val);
+    var se = document.getElementById(subId);
+    if (se) se.textContent = sub;
+  }
+
+  _setKpi('cp-kpi-aberto',      totalAberto,      'cp-kpi-aberto-sub',      cntAberto      + (cntAberto      === 1 ? ' conta' : ' contas'));
+  _setKpi('cp-kpi-vencido',     totalVencido,     'cp-kpi-vencido-sub',     cntVencido     + (cntVencido     === 1 ? ' conta' : ' contas'));
+  _setKpi('cp-kpi-pago',        totalPago,        'cp-kpi-pago-sub',        cntPago        + (cntPago        === 1 ? ' conta' : ' contas'));
+  _setKpi('cp-kpi-avencer',     totalAvencer,     'cp-kpi-avencer-sub',     cntAvencer     + (cntAvencer     === 1 ? ' conta' : ' contas'));
+  _setKpi('cp-kpi-comprometido',totalComprometido,'',                       '');
+}
+
+// ── Renderizar tabela ─────────────────────────────────────────
+function _cpRenderTabela(filtradas) {
+  var wrap  = document.getElementById('cp-table-wrap');
+  var tbody = document.getElementById('cp-tbody');
+  if (!tbody || !wrap) return;
+
+  if (!filtradas.length) {
+    wrap.style.display = 'none';
+    _cpMostrarVazio(
+      'Nenhuma conta a pagar no filtro atual.',
+      'Ajuste os filtros ou cadastre uma conta abaixo.'
+    );
+    return;
+  }
+
+  _cpEsconderEstado();
+  wrap.style.display = '';
+
+  var hoje = _hoje();
+
+  tbody.innerHTML = filtradas.map(function(c) {
+    var dv    = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
+    var st    = c.status || 'em_aberto';
+
+    // Checar vencimento automaticamente (sem alterar BD)
+    var stEfetivo = st;
+    if (st !== 'pago' && st !== 'cancelado' && dv && dv < hoje) stEfetivo = 'vencido';
+
+    var dvFmt = dv ? _fmtDt(dv) : '—';
+    var dvCls = '';
+    if (stEfetivo === 'vencido') dvCls = 'style="color:var(--red);font-weight:700"';
+    else if (dv && dv === hoje)  dvCls = 'style="color:var(--orange);font-weight:700"';
+
+    return '<tr class="row-conta" onclick="abrirDetalheCp(\'' + c.id + '\')">' +
+      '<td class="col-cliente">' + _esc(c.fornecedor_nome || '—') + '</td>' +
+      '<td class="col-titulo">'  + _esc(c.descricao      || '—') + '</td>' +
+      '<td class="td-cc">'       + _esc(_cpCatLabel(c.categoria)) + '</td>' +
+      '<td class="td-cc">'       + _esc(c.centro_custo   || '—') + '</td>' +
+      '<td class="col-valor">'   + _fmtVal(_n(c.valor_previsto)) + '</td>' +
+      '<td class="col-valor verde">' + _fmtVal(_n(c.valor_pago)) + '</td>' +
+      '<td class="col-valor">'   + _fmtVal(_n(c.valor_pendente)) + '</td>' +
+      '<td class="col-data" ' + dvCls + '>' + dvFmt + '</td>' +
+      '<td class="col-status"><span class="' + _cpStatusBdg(stEfetivo) + '">' + _cpStatusLabel(stEfetivo) + '</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Detalhe lateral ───────────────────────────────────────────
+function abrirDetalheCp(id) {
+  var c = _todasContasPagar.find(function(x) { return x.id === id; });
+  if (!c) return;
+
+  var hoje = _hoje();
+  var dv   = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
+  var st   = c.status || 'em_aberto';
+  var stEf = (st !== 'pago' && st !== 'cancelado' && dv && dv < hoje) ? 'vencido' : st;
+
+  var tit = document.getElementById('cp-detalhe-titulo');
+  if (tit) tit.textContent = c.descricao || 'Conta a Pagar';
+
+  var corpo = document.getElementById('cp-detalhe-corpo');
+  if (!corpo) return;
+
+  var _row = function(label, valor, cls) {
+    return '<div class="detalhe-item">' +
+      '<div class="detalhe-item-label">' + label + '</div>' +
+      '<div class="detalhe-item-valor' + (cls ? ' ' + cls : '') + '">' + valor + '</div>' +
+    '</div>';
+  };
+
+  corpo.innerHTML =
+    '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">Identificação</div>' +
+      '<div class="detalhe-grid">' +
+        _row('Fornecedor',     _esc(c.fornecedor_nome || '—')) +
+        _row('CNPJ',           _esc(c.fornecedor_cnpj || '—')) +
+        _row('Descrição',      _esc(c.descricao       || '—')) +
+        _row('Categoria',      _esc(_cpCatLabel(c.categoria))) +
+        _row('Centro de Custo',_esc(c.centro_custo    || '—')) +
+        _row('Origem',         _esc(c.origem          || 'manual')) +
+      '</div>' +
+    '</div>' +
+    '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">Financeiro</div>' +
+      '<div class="detalhe-grid">' +
+        _row('Valor Previsto', _fmtVal(_n(c.valor_previsto))) +
+        _row('Valor Pago',     _fmtVal(_n(c.valor_pago)),     'verde') +
+        _row('Valor Pendente', _fmtVal(_n(c.valor_pendente)), _n(c.valor_pendente) > 0 ? 'vermelho' : '') +
+        _row('Forma Pagamento',_esc(c.forma_pagamento  || '—')) +
+      '</div>' +
+    '</div>' +
+    '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">Datas e Status</div>' +
+      '<div class="detalhe-grid">' +
+        _row('Vencimento',     dv ? _fmtDt(dv) : '—', stEf === 'vencido' ? 'vermelho' : '') +
+        _row('Pagamento',      c.data_pagamento ? _fmtDt(c.data_pagamento.slice(0,10)) : '—') +
+        _row('Status',         '<span class="' + _cpStatusBdg(stEf) + '">' + _cpStatusLabel(stEf) + '</span>') +
+        _row('Referência',     _esc(c.referencia_id   || '—')) +
+      '</div>' +
+    '</div>' +
+    (c.observacao ? '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Observação</div><p style="font-size:.82rem;color:var(--text2)">' + _esc(c.observacao) + '</p></div>' : '') +
+    '<div class="detalhe-secao" style="margin-top:1rem">' +
+      '<div style="font-size:.65rem;color:var(--text3)">Criado em ' + (c.created_at ? c.created_at.slice(0,10) : '—') + '</div>' +
+    '</div>';
+
+  document.getElementById('cp-detalhe-overlay').classList.add('on');
+  document.getElementById('cp-detalhe-panel').classList.add('on');
+}
+
+function fecharDetalheCp() {
+  var ov = document.getElementById('cp-detalhe-overlay');
+  var pn = document.getElementById('cp-detalhe-panel');
+  if (ov) ov.classList.remove('on');
+  if (pn) pn.classList.remove('on');
+}
+
+// ── Criar Conta a Pagar ───────────────────────────────────────
+async function criarContaPagar() {
+  var btn = document.getElementById('cp-btn-criar');
+  var msg = document.getElementById('cp-status-msg');
+
+  var descricao = (document.getElementById('cp-nova-descricao') || {}).value || '';
+  var valorStr  = (document.getElementById('cp-novo-valor')     || {}).value || '';
+  if (!descricao.trim()) {
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Descrição é obrigatória.'; }
+    return;
+  }
+  if (!valorStr || parseFloat(valorStr) <= 0) {
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Informe um valor previsto válido.'; }
+    return;
+  }
+  if (!_empresaAtiva || !_empresaAtiva.id) {
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Empresa não identificada.'; }
+    return;
+  }
+
+  var sf = _sf();
+  if (!sf) {
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Módulo financeiro não disponível.'; }
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (msg) { msg.className = 'status-msg loading'; msg.textContent = 'Salvando…'; }
+
+  try {
+    var dados = {
+      empresa_id:       _empresaAtiva.id,
+      descricao:        descricao.trim(),
+      fornecedor_nome:  ((document.getElementById('cp-novo-fornecedor') || {}).value || '').trim() || null,
+      fornecedor_cnpj:  ((document.getElementById('cp-novo-cnpj')       || {}).value || '').trim() || null,
+      categoria:        ((document.getElementById('cp-nova-categoria')   || {}).value || '') || null,
+      centro_custo:     ((document.getElementById('cp-novo-cc')          || {}).value || '').trim() || null,
+      forma_pagamento:  ((document.getElementById('cp-nova-forma')       || {}).value || '') || null,
+      observacao:       ((document.getElementById('cp-nova-obs')         || {}).value || '').trim() || null,
+      valor_previsto:   parseFloat(valorStr),
+      valor_pago:       0,
+      data_vencimento:  ((document.getElementById('cp-nova-venc')        || {}).value || '') || null,
+      status:           'em_aberto',
+      origem:           'manual'
+    };
+
+    await sf.criarContaPagar(dados);
+
+    if (msg) { msg.className = 'status-msg ok'; msg.textContent = '✅ Conta a pagar salva com sucesso!'; }
+
+    // Limpar formulário
+    ['cp-nova-descricao','cp-novo-fornecedor','cp-novo-cnpj','cp-novo-valor',
+     'cp-nova-venc','cp-nova-obs'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['cp-nova-categoria','cp-nova-forma'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    // Recarregar lista + fluxo de caixa (caixaComprometido atualizado)
+    await carregarContasPagar(_empresaAtiva.id);
+    carregarFluxoCaixa(_empresaAtiva.id);
+
+    setTimeout(function() {
+      if (msg) msg.className = 'status-msg';
+    }, 4000);
+
+  } catch(err) {
+    console.warn('[F3B-cp] erro ao criar:', err);
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Erro: ' + (err.message || err); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Helper: escapar HTML ──────────────────────────────────────
+function _esc(str) {
+  if (!str && str !== 0) return '—';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 </script>
 
