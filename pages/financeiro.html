@@ -3144,8 +3144,10 @@ function renderFluxoPVR(movs) {
            '</div><div class="barra-wrap"><div class="barra-fill" style="width:' + pct.toFixed(1) + '%;background:' + cor + '"></div></div>';
   }
 
-  var avisoSaida = !temSaida
-    ? '<div style="font-size:.72rem;color:var(--text3);margin-bottom:.8rem;font-style:italic">Módulo de contas a pagar em desenvolvimento. Saídas serão exibidas aqui quando disponíveis.</div>'
+  // Aviso só aparece se não há saídas em movimentos E não há contas a pagar cadastradas
+  var semSaidaAlguma = !temSaida && (!_todasContasPagar || _todasContasPagar.length === 0);
+  var avisoSaida = semSaidaAlguma
+    ? '<div style="font-size:.72rem;color:var(--text3);margin-bottom:.8rem;font-style:italic">Nenhuma saída registrada no período. Use a aba Contas a Pagar para registrar obrigações.</div>'
     : '';
 
   sec.innerHTML =
