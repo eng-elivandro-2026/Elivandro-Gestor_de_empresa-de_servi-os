@@ -1,25 +1,25 @@
 // ============================================================
-// recuperacao-oficial-cnpj.js
-// Prévia e aplicação controlada de cadastros oficiais por CNPJ
+// recuperacao-oficial-cnpj.js  v2 — Curadoria Manual por CNPJ
 // Branch: portal/relacionamento-recuperar-clientes-cnpj-cidades
 //
-// MODO PRÉVIA  → window.rcnpjExecutarPrevia()
-//   Somente leitura. Compara dados oficiais com clientes atuais.
-//   Classifica: CRIAR | COMPLETAR | JÁ_COMPLETO | LEGADO_SUSPEITO
-//   Nunca grava nada.
+// PRÉVIA   → window.rcnpjExecutarPrevia()
+//   Somente leitura. Exibe cards de curadoria manual por item.
+//   NUNCA aplica nada automaticamente.
 //
-// MODO APLICAÇÃO → window.rcnpjAplicar(preview)
-//   Exige digitação de "RECUPERAR CLIENTES TECFUSION".
-//   Cria backup ANTES de qualquer gravação.
-//   Nunca sobrescreve campo já preenchido.
-//   Nunca apaga nem deduplica.
-//   Marca legados suspeitos com _legado_suspeito: true.
+// APLICAÇÃO → window.rcnpjAplicarSelecionados()
+//   Lê estado do DOM: só aplica itens com checkbox marcado.
+//   Respeita edições manuais nos campos.
+//   Não sobrescreve campo preenchido sem checkbox "Sobrescrever".
+//   Cria backup antes de qualquer gravação.
+//   Confirmação: "APLICAR SELECIONADOS TECFUSION"
+//
+// NUNCA apaga, migra, deduplica ou aplica sem seleção manual.
 // ============================================================
 
 (function (window) {
   'use strict';
 
-  // ── Dados Oficiais (baseados nos PDFs de CNPJ) ───────────────
+  // ── Dados Oficiais (PDFs de CNPJ) ────────────────────────────
   var DADOS_OFICIAIS = [
     {
       _id_oficial:  'jde_jundiai',
@@ -96,624 +96,655 @@
     }
   ];
 
-  // ── Nomes suspeitos de duplicidade legada ─────────────────────
-  // NÃO serão apagados — apenas marcados como _legado_suspeito: true
+  // Padrões de nome de legados suspeitos (não apagar — só marcar)
   var NOMES_LEGADOS_SUSPEITOS = [
-    'jde jdi',
-    'jde jundiai',
-    'jde jundiaí',
-    'jde salvador',
-    'jdi',
-    'piumhi',
-    'piumí',
-    'piumi'
+    'jde jdi','jde jundiai','jde jundiaí','jde salvador','jdi','piumhi','piumí','piumi'
   ];
 
-  // ── Helpers ───────────────────────────────────────────────────
-  function _normCnpj(s) { return String(s || '').replace(/\D/g, ''); }
-  function _norm(s)     { return String(s || '').toLowerCase().trim().replace(/\s+/g, ' '); }
-  function _esc(s)      { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function _id()        { return 'rcnpj_' + Date.now() + '_' + Math.random().toString(36).substr(2,5); }
+  // Campos editáveis com rótulos amigáveis
+  var CAMPOS_EDITAVEIS = [
+    { key: 'nome',         label: 'Nome / Apelido exibido' },
+    { key: 'razao_social', label: 'Razão social' },
+    { key: 'cnpj',         label: 'CNPJ' },
+    { key: 'cidade',       label: 'Cidade' },
+    { key: 'uf',           label: 'UF' },
+    { key: 'endereco',     label: 'Endereço' },
+    { key: 'cep',          label: 'CEP' },
+    { key: 'telefone',     label: 'Telefone' },
+    { key: 'email',        label: 'E-mail' },
+    { key: 'observacao',   label: 'Observação' }
+  ];
 
+  // ── Helpers ──────────────────────────────────────────────────
+  function _normCnpj(s) { return String(s||'').replace(/\D/g,''); }
+  function _norm(s)     { return String(s||'').toLowerCase().trim().replace(/\s+/g,' '); }
+  function _esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _id()        { return 'rcnpj_'+Date.now()+'_'+Math.random().toString(36).substr(2,5); }
   function _normNome(n) {
-    return _norm(n)
-      .replace(/[áàãâ]/g,'a').replace(/[éê]/g,'e').replace(/[íi]/g,'i')
+    return _norm(n).replace(/[áàãâ]/g,'a').replace(/[éê]/g,'e').replace(/[íi]/g,'i')
       .replace(/[óôõ]/g,'o').replace(/[úü]/g,'u').replace(/ç/g,'c')
       .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   }
+  function _v(id) { var e=document.getElementById(id); return e ? e.value : ''; }
+  function _chk(id) { var e=document.getElementById(id); return e ? e.checked : false; }
+  function _setChk(id, v) { var e=document.getElementById(id); if(e) e.checked=!!v; }
+  function _highlight(id, on) {
+    var e=document.getElementById(id);
+    if(e) e.style.borderColor = on ? 'var(--blue)' : '';
+  }
 
-  // Resolução de empresa ativa
+  // ── Empresa ativa ────────────────────────────────────────────
   function _getEmpresaId() {
-    if (typeof window.getEmpresaAtivaId === 'function') { var r = window.getEmpresaAtivaId(); if (r) return r; }
-    if (typeof window.getEmpresaAtiva === 'function') { var o = window.getEmpresaAtiva(); if (o && o.id) return o.id; }
-    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
-    try { var s = JSON.parse(localStorage.getItem('tf_empresa_ativa')||'null'); if (s&&s.id) return s.id; } catch(e) {}
+    if (typeof window.getEmpresaAtivaId==='function'){ var r=window.getEmpresaAtivaId(); if(r) return r; }
+    if (typeof window.getEmpresaAtiva==='function'){ var o=window.getEmpresaAtiva(); if(o&&o.id) return o.id; }
+    if (window._empresaAtiva&&window._empresaAtiva.id) return window._empresaAtiva.id;
+    try{ var s=JSON.parse(localStorage.getItem('tf_empresa_ativa')||'null'); if(s&&s.id) return s.id; }catch(e){}
     return null;
   }
   function _getEmpresaNome() {
-    if (typeof window.getEmpresaAtiva === 'function') { var o = window.getEmpresaAtiva(); if (o && o.nome_curto) return o.nome_curto; }
-    if (window._empresaAtiva && window._empresaAtiva.nome_curto) return window._empresaAtiva.nome_curto;
-    try { var s = JSON.parse(localStorage.getItem('tf_empresa_ativa')||'null'); if (s&&s.nome_curto) return s.nome_curto; } catch(e) {}
+    if (typeof window.getEmpresaAtiva==='function'){ var o=window.getEmpresaAtiva(); if(o&&o.nome_curto) return o.nome_curto; }
+    if (window._empresaAtiva&&window._empresaAtiva.nome_curto) return window._empresaAtiva.nome_curto;
+    try{ var s=JSON.parse(localStorage.getItem('tf_empresa_ativa')||'null'); if(s&&s.nome_curto) return s.nome_curto; }catch(e){}
     return null;
   }
 
-  function _lsReadArr(k) {
-    try { var v = JSON.parse(localStorage.getItem(k)||'[]'); return Array.isArray(v)?v:[]; } catch(e) { return []; }
-  }
-  function _lsWrite(k, v) {
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { console.error('[rcnpj] Falha ao gravar', k, e); }
-  }
-
-  // ── Leitura Supabase ─────────────────────────────────────────
-  async function _sbLer(chave) {
-    if (!window.sbClient) return null;
-    try {
-      var r = await window.sbClient.from('configuracoes').select('valor').eq('chave', chave).maybeSingle();
-      if (r.data && Array.isArray(r.data.valor)) return r.data.valor;
-    } catch(e) { console.warn('[rcnpj] sbLer erro', chave, e); }
+  // ── localStorage / Supabase ──────────────────────────────────
+  function _lsReadArr(k){ try{var v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[];}catch(e){return[];} }
+  function _lsWrite(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.error('[rcnpj] lsWrite falha',k,e);} }
+  async function _sbLer(c){
+    if(!window.sbClient) return null;
+    try{var r=await window.sbClient.from('configuracoes').select('valor').eq('chave',c).maybeSingle();
+    if(r.data&&Array.isArray(r.data.valor)) return r.data.valor;}catch(e){console.warn('[rcnpj] sbLer',c,e);}
     return null;
   }
-  async function _sbGravar(chave, valor) {
-    if (!window.sbClient) return;
-    try {
-      var r = await window.sbClient.from('configuracoes')
-        .upsert({ chave: chave, valor: valor, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
-      if (r.error) console.warn('[rcnpj] sbGravar erro', chave, r.error);
-    } catch(e) { console.warn('[rcnpj] sbGravar exceção', chave, e); }
+  async function _sbGravar(c,v){
+    if(!window.sbClient) return;
+    try{var r=await window.sbClient.from('configuracoes')
+      .upsert({chave:c,valor:v,updated_at:new Date().toISOString()},{onConflict:'chave'});
+      if(r.error) console.warn('[rcnpj] sbGravar erro',c,r.error);}catch(e){console.warn('[rcnpj] sbGravar ex',c,e);}
   }
 
-  // ── Detectar se nome é legado suspeito ────────────────────────
-  function _isLegadoSuspeito(nome) {
-    var n = _normNome(nome);
-    return NOMES_LEGADOS_SUSPEITOS.some(function(p) {
-      var pn = _normNome(p);
-      return n === pn || n.indexOf(pn) >= 0 || pn.indexOf(n) >= 0;
-    });
+  // ── Comparação ───────────────────────────────────────────────
+  function _isLegadoSuspeito(nome){
+    var n=_normNome(nome);
+    return NOMES_LEGADOS_SUSPEITOS.some(function(p){ var pn=_normNome(p);
+      return n===pn||n.indexOf(pn)>=0||pn.indexOf(n)>=0; });
   }
-
-  // ── Encontrar cliente existente por CNPJ ──────────────────────
-  function _buscarPorCnpj(lista, cnpj) {
-    var cnpjN = _normCnpj(cnpj);
-    if (!cnpjN) return null;
-    return lista.find(function(c) { return _normCnpj(c.cnpj||'') === cnpjN; }) || null;
+  function _buscarPorCnpj(lista,cnpj){
+    var n=_normCnpj(cnpj); if(!n) return null;
+    return lista.find(function(c){return _normCnpj(c.cnpj||'')===n;})||null;
   }
-
-  // ── Encontrar cliente existente por nome similar ──────────────
-  function _buscarPorNomeSimilar(lista, nome) {
-    var n = _normNome(nome);
-    var tokens = n.split(' ').filter(function(t){ return t.length >= 3; });
-    return lista.find(function(c) {
-      var cn = _normNome(c.nome || '');
-      // Coincidência exata normalizada
-      if (cn === n) return true;
-      // Contém ou é contido
-      if (cn.indexOf(n) >= 0 || n.indexOf(cn) >= 0) return true;
-      // Pelo menos 2 tokens em comum
-      if (tokens.length >= 2) {
-        var comuns = tokens.filter(function(t){ return cn.indexOf(t) >= 0; });
-        if (comuns.length >= 2) return true;
-      }
+  function _buscarPorNomeSimilar(lista,nome){
+    var n=_normNome(nome);
+    var tokens=n.split(' ').filter(function(t){return t.length>=3;});
+    return lista.find(function(c){
+      var cn=_normNome(c.nome||'');
+      if(cn===n) return true;
+      if(cn.indexOf(n)>=0||n.indexOf(cn)>=0) return true;
+      if(tokens.length>=2){var com=tokens.filter(function(t){return cn.indexOf(t)>=0;});if(com.length>=2)return true;}
       return false;
-    }) || null;
+    })||null;
   }
-
-  // ── Verificar quais campos podem ser completados ──────────────
-  // Retorna { campo: valor_oficial } para campos vazios no registro atual
-  // NUNCA inclui campos já preenchidos
-  function _calcularCamposCompletar(atual, oficial) {
-    var complementos = {};
-    var CAMPOS = ['cnpj','cidade','uf','endereco','cep','telefone','email','razao_social','complemento'];
-    CAMPOS.forEach(function(c) {
-      var vAtual   = String(atual[c]   || '').trim();
-      var vOficial = String(oficial[c] || '').trim();
-      if (!vAtual && vOficial) complementos[c] = vOficial;
+  // Retorna {campo: valorOficial} para campos VAZIOS no atual
+  function _camposVaziosComplementaveis(atual,oficial){
+    var r={};
+    ['cnpj','cidade','uf','endereco','cep','telefone','email','razao_social','complemento'].forEach(function(c){
+      var va=String(atual[c]||'').trim(); var vo=String(oficial[c]||'').trim();
+      if(!va&&vo) r[c]=vo;
     });
-    return complementos;
+    return r;
+  }
+  // Retorna {campo: {atual, novo}} para campos JÁ PREENCHIDOS que diferem
+  function _camposPreenchidosConflito(atual,oficial){
+    var r={};
+    ['cnpj','cidade','uf','endereco','cep','telefone','email','razao_social'].forEach(function(c){
+      var va=String(atual[c]||'').trim(); var vo=String(oficial[c]||'').trim();
+      if(va&&vo&&va!==vo) r[c]={atual:va,novo:vo};
+    });
+    return r;
   }
 
   // ============================================================
-  // PRÉVIA — SOMENTE LEITURA
+  // PRÉVIA — somente leitura, monta estrutura para curadoria
   // ============================================================
-  async function executarPrevia() {
-    var eid   = _getEmpresaId();
-    var enome = _getEmpresaNome() || '(desconhecida)';
+  async function executarPrevia(){
+    var eid=_getEmpresaId(); var enome=_getEmpresaNome()||'(desconhecida)';
+    if(!eid) throw new Error('Empresa ativa não encontrada. Selecione uma empresa antes de continuar.');
 
-    if (!eid) throw new Error('Empresa ativa não encontrada. Selecione uma empresa antes de continuar.');
+    console.info('%c[rcnpj v2] PRÉVIA somente leitura','color:#f59e0b;font-weight:700');
 
-    console.info('%c[rcnpj] PRÉVIA — somente leitura', 'color:#f59e0b;font-weight:700');
+    // Ler clientes atuais
+    var keyCli='tf_clientes_'+eid;
+    var cliLS=_lsReadArr(keyCli);
+    var cliSB=await _sbLer(keyCli)||[];
+    var idxLocal={}; cliLS.forEach(function(c){if(c.id)idxLocal[c.id]=true;});
+    var cliAtual=cliLS.slice();
+    cliSB.forEach(function(c){if(c.id&&!idxLocal[c.id])cliAtual.push(c);});
 
-    // Ler clientes atuais — localStorage tem prioridade; mescla com Supabase se disponível
-    var keyCli  = 'tf_clientes_' + eid;
-    var cliLS   = _lsReadArr(keyCli);
-    var cliSB   = await _sbLer(keyCli) || [];
+    // Clientes globais legados (somente leitura para cruzamento)
+    var cliGlobal=_lsReadArr('tf_clientes');
+    var cliSBG=await _sbLer('tf_clientes')||[];
+    var idxG={}; cliGlobal.forEach(function(c){if(c.id)idxG[c.id]=true;});
+    var cliGlobalAll=cliGlobal.slice();
+    cliSBG.forEach(function(c){if(c.id&&!idxG[c.id])cliGlobalAll.push(c);});
 
-    // Mescla: preservar localStorage como verdade; adicionar do SB só o que não existe localmente
-    var idxLocal = {};
-    cliLS.forEach(function(c) { if (c.id) idxLocal[c.id] = true; });
-    var cliMesclados = cliLS.slice();
-    cliSB.forEach(function(c) { if (c.id && !idxLocal[c.id]) cliMesclados.push(c); });
+    // Classificar cada dado oficial
+    var itens=[];
+    DADOS_OFICIAIS.forEach(function(of){
+      var porCnpj     =_buscarPorCnpj(cliAtual,of.cnpj);
+      var porNome     =!porCnpj?_buscarPorNomeSimilar(cliAtual,of.nome):null;
+      var porCnpjG    =!porCnpj?_buscarPorCnpj(cliGlobalAll,of.cnpj):null;
+      var tipo, existente=null, camposVazios={}, camposConflito={};
 
-    console.info('[rcnpj] Clientes atuais na empresa', enome, ':', cliMesclados.length);
-
-    // Também ler clientes legados globais (somente para cruzar — nunca para gravar)
-    var cliGlobal = _lsReadArr('tf_clientes');
-    var cliSBGlobal = await _sbLer('tf_clientes') || [];
-    var cliGlobalTodos = cliGlobal.slice();
-    var idxLsG = {}; cliGlobal.forEach(function(c){ if(c.id) idxLsG[c.id]=true; });
-    cliSBGlobal.forEach(function(c){ if(c.id && !idxLsG[c.id]) cliGlobalTodos.push(c); });
-
-    // ── Classificar cada dado oficial ─────────────────────────
-    var acoes = [];
-
-    DADOS_OFICIAIS.forEach(function(of) {
-      var porCnpj       = _buscarPorCnpj(cliMesclados, of.cnpj);
-      var porNome       = !porCnpj ? _buscarPorNomeSimilar(cliMesclados, of.nome) : null;
-      var porCnpjGlobal = !porCnpj ? _buscarPorCnpj(cliGlobalTodos, of.cnpj) : null;
-      var porNomeGlobal = (!porCnpj && !porNome) ? _buscarPorNomeSimilar(cliGlobalTodos, of.nome) : null;
-
-      if (porCnpj) {
-        // CNPJ já existe na empresa ativa
-        var compl = _calcularCamposCompletar(porCnpj, of);
-        acoes.push({
-          tipo:         Object.keys(compl).length > 0 ? 'COMPLETAR' : 'JA_COMPLETO',
-          oficial:      of,
-          existente:    porCnpj,
-          complementos: compl,
-          chave_alvo:   keyCli,
-          aviso:        null
-        });
-      } else if (porNome) {
-        // Nome similar sem CNPJ coincidente — possível duplicata
-        var compl2 = _calcularCamposCompletar(porNome, of);
-        acoes.push({
-          tipo:         'POSSIVEL_DUPLICATA',
-          oficial:      of,
-          existente:    porNome,
-          complementos: compl2,
-          chave_alvo:   keyCli,
-          aviso:        'Nome similar encontrado mas CNPJ diferente/ausente. Verifique manualmente antes de aplicar.'
-        });
-      } else if (porCnpjGlobal) {
-        // Está nos legados globais — pode ser recuperado
-        var complG = _calcularCamposCompletar(porCnpjGlobal, of);
-        acoes.push({
-          tipo:         'RECUPERAR_DO_LEGADO',
-          oficial:      of,
-          existente:    porCnpjGlobal,
-          complementos: complG,
-          chave_alvo:   keyCli,
-          aviso:        'Cliente encontrado na chave global legada (tf_clientes). Será copiado para a empresa ativa com campos complementados.'
-        });
+      if(porCnpj){
+        existente=porCnpj;
+        camposVazios=_camposVaziosComplementaveis(porCnpj,of);
+        camposConflito=_camposPreenchidosConflito(porCnpj,of);
+        tipo=Object.keys(camposVazios).length>0?'COMPLETAR':'JA_COMPLETO';
+      } else if(porNome){
+        existente=porNome;
+        camposVazios=_camposVaziosComplementaveis(porNome,of);
+        camposConflito=_camposPreenchidosConflito(porNome,of);
+        tipo='POSSIVEL_DUPLICATA';
+      } else if(porCnpjG){
+        existente=porCnpjG;
+        camposVazios=_camposVaziosComplementaveis(porCnpjG,of);
+        tipo='RECUPERAR_DO_LEGADO';
       } else {
-        // Não existe em nenhuma fonte — criar novo
-        acoes.push({
-          tipo:         'CRIAR',
-          oficial:      of,
-          existente:    null,
-          complementos: null,
-          chave_alvo:   keyCli,
-          aviso:        null
+        tipo='CRIAR';
+      }
+
+      itens.push({
+        tipo:tipo, oficial:of, existente:existente,
+        camposVazios:camposVazios, camposConflito:camposConflito
+      });
+    });
+
+    // Detectar legados suspeitos entre os clientes atuais
+    var legadosSuspeitos=cliAtual.filter(function(c){
+      return _isLegadoSuspeito(c.nome||'')&&!c._legado_suspeito;
+    });
+
+    return {
+      empresa_id:eid, empresa_nome:enome, chave_alvo:keyCli,
+      itens:itens, legados_suspeitos:legadosSuspeitos,
+      timestamp:new Date().toISOString(),
+      aviso:'PRÉVIA SOMENTE LEITURA — nenhum dado foi alterado.'
+    };
+  }
+
+  // ============================================================
+  // RENDERIZAÇÃO — curadoria manual por card
+  // ============================================================
+
+  var _COR={CRIAR:'#22c55e',COMPLETAR:'#3b82f6',JA_COMPLETO:'#6b7280',
+    POSSIVEL_DUPLICATA:'#f59e0b',RECUPERAR_DO_LEGADO:'#8b5cf6',LEGADO:'#ef4444'};
+  var _ICON={CRIAR:'➕',COMPLETAR:'✏️',JA_COMPLETO:'✅',POSSIVEL_DUPLICATA:'⚠️',RECUPERAR_DO_LEGADO:'♻️'};
+  var _LABEL={CRIAR:'Criar novo',COMPLETAR:'Completar existente',JA_COMPLETO:'Já completo',
+    POSSIVEL_DUPLICATA:'Possível duplicata',RECUPERAR_DO_LEGADO:'Recuperar do legado'};
+
+  function _inputStyle(preenchido){
+    return 'width:100%;background:var(--bg2);border:1px solid '+(preenchido?'var(--blue)':'var(--border)')+';color:var(--text);border-radius:4px;padding:.28rem .5rem;font-size:.73rem;box-sizing:border-box';
+  }
+
+  function _cardItem(item, idx){
+    var of=item.oficial; var id=of._id_oficial;
+    var cor=_COR[item.tipo]||'#6b7280';
+    var acaoPadrao=item.tipo==='JA_COMPLETO'?'ignorar'
+      :item.tipo==='POSSIVEL_DUPLICATA'?'revisar'
+      :item.tipo==='RECUPERAR_DO_LEGADO'?'completar'
+      :item.tipo==='COMPLETAR'?'completar':'criar';
+    var selPadrao=item.tipo!=='JA_COMPLETO'&&item.tipo!=='POSSIVEL_DUPLICATA';
+
+    var html='<div id="rcnpj-card-'+id+'" style="border:1px solid '+cor+'44;border-left:3px solid '+cor+';border-radius:8px;padding:0;margin-bottom:.7rem;background:var(--bg2);overflow:hidden">';
+
+    // ── Cabeçalho clicável ─────────────────────────────────────
+    html+='<div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .85rem;background:var(--bg3);cursor:pointer" '
+      +'onclick="(function(){ var b=document.getElementById(\'rcnpj-body-'+id+'\'); b.style.display=b.style.display===\'none\'?\'\':(b.style.display===\'\'?\'none\':\'none\'); })()">'
+      +'<input type="checkbox" id="rcnpj_sel_'+id+'" '+(selPadrao?'checked':'')+' '
+      +'onclick="event.stopPropagation();rcnpjAtualizarContador()" '
+      +'style="width:16px;height:16px;cursor:pointer;accent-color:var(--blue)">'
+      +'<span style="font-size:.82rem;font-weight:700;color:var(--text);flex:1">'+_esc(of.nome)+'</span>'
+      +'<span style="font-size:.66rem;font-weight:700;color:'+cor+';background:'+cor+'1a;border-radius:4px;padding:.07rem .38rem">'
+      +(_ICON[item.tipo]||'')+' '+(_LABEL[item.tipo]||item.tipo)+'</span>'
+      +'<span style="font-size:.7rem;color:var(--text3)">▼</span>'
+      +'</div>';
+
+    // ── Corpo expansível ───────────────────────────────────────
+    html+='<div id="rcnpj-body-'+id+'" style="padding:.7rem .85rem">';
+
+    // Aviso geral
+    html+='<div style="font-size:.68rem;color:var(--text3);margin-bottom:.6rem">'
+      +'⚠️ Este item só será aplicado se o checkbox estiver marcado acima.</div>';
+
+    // Seletor de ação
+    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">'
+      +'<span style="font-size:.72rem;color:var(--text2);font-weight:600">Ação:</span>'
+      +'<select id="rcnpj_acao_'+id+'" onchange="rcnpjAtualizarCard(\''+id+'\')" '
+      +'style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.28rem .5rem;font-size:.73rem">'
+      +'<option value="criar"'+(acaoPadrao==='criar'?' selected':'')+'>➕ Criar novo</option>'
+      +'<option value="completar"'+(acaoPadrao==='completar'?' selected':'')+'>✏️ Completar existente</option>'
+      +'<option value="ignorar"'+(acaoPadrao==='ignorar'?' selected':'')+'>⏭️ Ignorar</option>'
+      +'<option value="legado"'+(acaoPadrao==='legado'?' selected':'')+'>🚩 Marcar como duplicado legado</option>'
+      +'<option value="revisar"'+(acaoPadrao==='revisar'?' selected':'')+'>🔖 Revisar depois</option>'
+      +'</select>'
+      +'</div>';
+
+    // Campos editáveis
+    html+='<div style="margin-bottom:.75rem">'
+      +'<div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Campos editáveis</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .6rem">';
+
+    CAMPOS_EDITAVEIS.forEach(function(campo){
+      var vOficial=String(of[campo.key]||'').trim();
+      var vAtual=item.existente?String(item.existente[campo.key]||'').trim():'';
+      var temConflito=vAtual&&vOficial&&vAtual!==vOficial;
+      var temComplemento=!vAtual&&vOficial;
+      // Nome sempre usa o oficial como valor inicial
+      var valorInicial=campo.key==='nome'?of.nome:vOficial;
+      var colSpan=campo.key==='endereco'||campo.key==='razao_social'||campo.key==='observacao'?'grid-column:1/-1':'';
+
+      html+='<div style="'+colSpan+'">'
+        +'<div style="font-size:.63rem;color:var(--text3);margin-bottom:.08rem">'+_esc(campo.label)
+        +(temComplemento?'<span style="color:#22c55e;margin-left:.25rem">● novo</span>':'')
+        +(temConflito?'<span style="color:#f59e0b;margin-left:.25rem">⚠ conflito</span>':'')
+        +'</div>'
+        +'<input id="rcnpj_f_'+campo.key+'_'+id+'" type="text" value="'+_esc(valorInicial)+'" '
+        +'style="'+_inputStyle(!!valorInicial)+'">';
+
+      // Se campo atual já preenchido E diferente do oficial → opção sobrescrever
+      if(temConflito){
+        html+='<div style="font-size:.62rem;color:#f59e0b;margin-top:.1rem">Atual: <em>'+_esc(vAtual)+'</em></div>'
+          +'<label style="font-size:.62rem;color:var(--text3);display:flex;align-items:center;gap:.25rem;cursor:pointer;margin-top:.05rem">'
+          +'<input type="checkbox" id="rcnpj_sobr_'+campo.key+'_'+id+'" style="accent-color:#f59e0b">'
+          +'Sobrescrever este campo</label>';
+      }
+      html+='</div>';
+    });
+
+    html+='</div></div>';
+
+    // Cadastro atual encontrado
+    if(item.existente){
+      html+='<details style="margin-bottom:.6rem"><summary style="font-size:.69rem;color:var(--text3);cursor:pointer;padding:.2rem 0">📋 Cadastro atual encontrado na empresa</summary>';
+      html+='<div style="background:var(--bg3);border-radius:4px;padding:.4rem .6rem;margin-top:.3rem;font-size:.7rem;color:var(--text2);display:grid;grid-template-columns:1fr 1fr;gap:.15rem .6rem">';
+      var ex=item.existente;
+      [['Nome',ex.nome],['CNPJ',ex.cnpj],['Cidade',ex.cidade],['UF',ex.uf],
+       ['Endereço',ex.endereco],['CEP',ex.cep],['Telefone',ex.telefone],['E-mail',ex.email]]
+        .forEach(function(par){
+          html+='<span style="'+(par[0]==='Endereço'?'grid-column:1/-1':'')+'">'
+            +par[0]+': '+(par[1]?'<strong>'+_esc(par[1])+'</strong>':'<em style="color:var(--text3)">vazio</em>')+'</span>';
         });
-      }
-    });
-
-    // ── Detectar legados suspeitos nos clientes atuais ────────
-    var legadosSuspeitos = cliMesclados.filter(function(c) {
-      return _isLegadoSuspeito(c.nome || '') && !c._legado_suspeito;
-    });
-    // Também nos globais
-    var legadosSuspeitosGlobal = cliGlobalTodos.filter(function(c) {
-      return _isLegadoSuspeito(c.nome || '') && !c._legado_suspeito;
-    });
-
-    var resultado = {
-      empresa_id:              eid,
-      empresa_nome:            enome,
-      chave_alvo:              keyCli,
-      total_atuais:            cliMesclados.length,
-      total_globais:           cliGlobalTodos.length,
-      acoes:                   acoes,
-      legados_suspeitos:       legadosSuspeitos,
-      legados_suspeitos_global:legadosSuspeitosGlobal,
-      resumo: {
-        criar:              acoes.filter(function(a){ return a.tipo==='CRIAR'; }).length,
-        completar:          acoes.filter(function(a){ return a.tipo==='COMPLETAR'; }).length,
-        ja_completo:        acoes.filter(function(a){ return a.tipo==='JA_COMPLETO'; }).length,
-        possivel_duplicata: acoes.filter(function(a){ return a.tipo==='POSSIVEL_DUPLICATA'; }).length,
-        recuperar_legado:   acoes.filter(function(a){ return a.tipo==='RECUPERAR_DO_LEGADO'; }).length,
-        legados_suspeitos:  legadosSuspeitos.length + legadosSuspeitosGlobal.length
-      },
-      aviso: 'MODO PRÉVIA — nenhum dado foi alterado, apagado ou migrado.',
-      timestamp: new Date().toISOString()
-    };
-
-    console.info('[rcnpj] Prévia concluída:', resultado.resumo);
-    return resultado;
-  }
-
-  // ============================================================
-  // APLICAÇÃO CONTROLADA
-  // ============================================================
-  async function aplicar(preview) {
-    if (!preview || !preview.acoes) throw new Error('Prévia inválida. Execute a prévia antes de aplicar.');
-
-    var eid = _getEmpresaId();
-    if (!eid) throw new Error('Empresa ativa não encontrada.');
-    if (eid !== preview.empresa_id) {
-      throw new Error('A empresa ativa mudou desde a prévia. Execute a prévia novamente.');
+      html+='</div></details>';
     }
 
-    // ── Confirmação obrigatória ───────────────────────────────
-    var PALAVRA = 'RECUPERAR CLIENTES TECFUSION';
-    var digitado = window.prompt(
-      'Para confirmar a recuperação de clientes para a empresa "' + preview.empresa_nome + '",\n'
-      + 'digite exatamente:\n\n' + PALAVRA
-    );
-    if (digitado === null) return { cancelado: true, msg: 'Cancelado pelo usuário. Nenhum dado foi gravado.' };
-    if ((digitado || '').trim() !== PALAVRA) return { cancelado: true, msg: 'Texto incorreto. Nenhum dado foi gravado.' };
-
-    var keyCli = 'tf_clientes_' + eid;
-
-    // ── BACKUP obrigatório antes de qualquer gravação ─────────
-    var cliAtual = _lsReadArr(keyCli);
-    var tsBackup = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    var chaveBackup = 'tf_clientes_backup_' + tsBackup + '_' + eid;
-    _lsWrite(chaveBackup, cliAtual);
-    await _sbGravar(chaveBackup, cliAtual);
-    console.info('[rcnpj] Backup criado:', chaveBackup, '(', cliAtual.length, 'registros)');
-
-    // ── Aplicar ações ─────────────────────────────────────────
-    var relatorio = {
-      empresa_id:   eid,
-      empresa_nome: preview.empresa_nome,
-      chave_backup: chaveBackup,
-      criados:      0,
-      completados:  0,
-      ignorados_ja_completo: 0,
-      ignorados_duplicata:   0,
-      recuperados_legado:    0,
-      marcados_legado_suspeito: 0,
-      erros:        [],
-      cancelado:    false
-    };
-
-    // Reler para garantir estado mais recente
-    var lista = _lsReadArr(keyCli);
-
-    // Indexar por id
-    var idxId = {};
-    lista.forEach(function(c, i) { if (c.id) idxId[c.id] = i; });
-
-    preview.acoes.forEach(function(acao) {
-      try {
-        if (acao.tipo === 'JA_COMPLETO') {
-          relatorio.ignorados_ja_completo++;
-          return;
-        }
-        if (acao.tipo === 'POSSIVEL_DUPLICATA') {
-          // Completar campos vazios mesmo na duplicata (sem sobrescrever)
-          if (acao.existente && acao.existente.id && idxId[acao.existente.id] !== undefined) {
-            var idx = idxId[acao.existente.id];
-            var c = lista[idx];
-            var compl = _calcularCamposCompletar(c, acao.oficial);
-            if (Object.keys(compl).length > 0) {
-              Object.assign(c, compl);
-              lista[idx] = c;
-              relatorio.completados++;
-            } else {
-              relatorio.ignorados_duplicata++;
-            }
-          } else {
-            relatorio.ignorados_duplicata++;
-          }
-          return;
-        }
-        if (acao.tipo === 'COMPLETAR') {
-          // Completar campos vazios no registro existente
-          if (acao.existente && acao.existente.id && idxId[acao.existente.id] !== undefined) {
-            var idx2 = idxId[acao.existente.id];
-            var c2 = lista[idx2];
-            Object.assign(c2, acao.complementos);
-            lista[idx2] = c2;
-            relatorio.completados++;
-          }
-          return;
-        }
-        if (acao.tipo === 'CRIAR') {
-          // Criar novo registro com dados oficiais
-          var novo = {
-            id:          _id(),
-            nome:        acao.oficial.nome,
-            razao_social:acao.oficial.razao_social,
-            cnpj:        acao.oficial.cnpj,
-            cidade:      acao.oficial.cidade + (acao.oficial.uf ? ' - ' + acao.oficial.uf : ''),
-            uf:          acao.oficial.uf,
-            endereco:    acao.oficial.endereco,
-            complemento: acao.oficial.complemento || '',
-            cep:         acao.oficial.cep,
-            telefone:    acao.oficial.telefone,
-            email:       acao.oficial.email,
-            criado:      new Date().toISOString(),
-            _recuperado:  true,
-            _fonte:       'cnpj_oficial'
-          };
-          lista.push(novo);
-          relatorio.criados++;
-          return;
-        }
-        if (acao.tipo === 'RECUPERAR_DO_LEGADO') {
-          // Copiar do legado para empresa ativa, completar campos vazios
-          var base = Object.assign({}, acao.existente);
-          // Novo ID para evitar colisão
-          base.id = _id();
-          base._recuperado = true;
-          base._fonte = 'legado_global';
-          // Completar campos vazios com dados oficiais
-          Object.assign(base, acao.complementos);
-          lista.push(base);
-          relatorio.recuperados_legado++;
-          return;
-        }
-      } catch(e) {
-        relatorio.erros.push('Ação ' + acao.tipo + ' para ' + (acao.oficial ? acao.oficial.nome : '?') + ': ' + e.message);
-        console.error('[rcnpj] Erro na ação', acao.tipo, e);
-      }
-    });
-
-    // ── Marcar legados suspeitos (NÃO apagar) ─────────────────
-    var todosLegados = (preview.legados_suspeitos || []).concat(preview.legados_suspeitos_global || []);
-    if (todosLegados.length > 0) {
-      // Marcar na lista atual (se existirem)
-      var nomesSuspeitos = todosLegados.map(function(c){ return c.id; });
-      lista = lista.map(function(c) {
-        if (c.id && nomesSuspeitos.indexOf(c.id) >= 0) {
-          return Object.assign({}, c, {
-            _legado_suspeito: true,
-            _aviso: 'Duplicado legado suspeito — revisar manualmente'
-          });
-        }
-        return c;
+    // Diff: o que vai mudar
+    var camposVaziosKeys=Object.keys(item.camposVazios||{});
+    var camposConflitoKeys=Object.keys(item.camposConflito||{});
+    if(camposVaziosKeys.length||camposConflitoKeys.length){
+      html+='<details open style="margin-bottom:.6rem"><summary style="font-size:.69rem;color:var(--blue);cursor:pointer;padding:.2rem 0">🔄 Campos que serão alterados (se ação = Completar)</summary>';
+      html+='<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:4px;padding:.4rem .6rem;margin-top:.3rem">';
+      camposVaziosKeys.forEach(function(c){
+        html+='<div style="font-size:.69rem;color:var(--text2);padding:.1rem 0">'
+          +'<strong>'+_esc(c)+'</strong>: <em style="color:var(--text3)">vazio</em>'
+          +' → <span style="color:#22c55e;font-weight:600">'+_esc(item.camposVazios[c])+'</span></div>';
       });
-      relatorio.marcados_legado_suspeito = nomesSuspeitos.length;
-    }
-
-    // ── Gravar resultado ──────────────────────────────────────
-    _lsWrite(keyCli, lista);
-    await _sbGravar(keyCli, lista);
-
-    // ── Atualizar UI ──────────────────────────────────────────
-    try { if (typeof window.renderTabelaClientes === 'function') window.renderTabelaClientes(); } catch(e) {}
-
-    console.info('[rcnpj] Aplicação concluída:', relatorio);
-    return relatorio;
-  }
-
-  // ============================================================
-  // RENDERIZAÇÃO HTML
-  // ============================================================
-  function _badge(label, n, cor) {
-    cor = cor || '#6b7280';
-    return '<span style="display:inline-flex;align-items:center;gap:.25rem;background:' + cor + '1a;color:' + cor + ';border:1px solid ' + cor + '55;border-radius:4px;padding:.06rem .38rem;font-size:.68rem;font-weight:700">'
-      + label + ' ' + n + '</span>';
-  }
-
-  var _COR = {
-    CRIAR:              '#22c55e',
-    COMPLETAR:          '#3b82f6',
-    JA_COMPLETO:        '#6b7280',
-    POSSIVEL_DUPLICATA: '#f59e0b',
-    RECUPERAR_DO_LEGADO:'#8b5cf6',
-    LEGADO:             '#ef4444'
-  };
-  var _ICON = {
-    CRIAR:'➕',COMPLETAR:'✏️',JA_COMPLETO:'✅',
-    POSSIVEL_DUPLICATA:'⚠️',RECUPERAR_DO_LEGADO:'♻️'
-  };
-  var _LABEL = {
-    CRIAR:'Criar novo',COMPLETAR:'Completar',JA_COMPLETO:'Já completo',
-    POSSIVEL_DUPLICATA:'Possível duplicata',RECUPERAR_DO_LEGADO:'Recuperar do legado'
-  };
-
-  function _cardAcao(acao) {
-    var cor = _COR[acao.tipo] || '#6b7280';
-    var html = '<div style="border:1px solid ' + cor + '44;border-left:3px solid ' + cor + ';border-radius:6px;padding:.6rem .85rem;margin-bottom:.4rem;background:var(--bg2)">';
-    // Linha 1: tipo + nome oficial
-    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-bottom:.3rem">';
-    html += '<span style="font-size:.68rem;font-weight:700;color:' + cor + ';background:' + cor + '1a;border-radius:4px;padding:.06rem .38rem">'
-      + (_ICON[acao.tipo]||'') + ' ' + (_LABEL[acao.tipo]||acao.tipo) + '</span>';
-    html += '<span style="font-size:.8rem;font-weight:700;color:var(--text)">' + _esc(acao.oficial.nome) + '</span>';
-    html += '</div>';
-    // Dados oficiais
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.12rem .8rem;font-size:.71rem;color:var(--text2);margin-bottom:.3rem">';
-    if (acao.oficial.cnpj)        html += '<span>CNPJ: <strong>' + _esc(acao.oficial.cnpj) + '</strong></span>';
-    if (acao.oficial.cidade)      html += '<span>📍 ' + _esc(acao.oficial.cidade) + (acao.oficial.uf ? ' - ' + _esc(acao.oficial.uf) : '') + '</span>';
-    if (acao.oficial.razao_social) html += '<span style="grid-column:1/-1">Razão social: ' + _esc(acao.oficial.razao_social) + '</span>';
-    if (acao.oficial.telefone)    html += '<span>📞 ' + _esc(acao.oficial.telefone) + '</span>';
-    if (acao.oficial.email)       html += '<span>📧 ' + _esc(acao.oficial.email) + '</span>';
-    if (acao.oficial.endereco)    html += '<span style="grid-column:1/-1">📌 ' + _esc(acao.oficial.endereco) + '</span>';
-    html += '</div>';
-    // Existente (se houver)
-    if (acao.existente) {
-      html += '<div style="font-size:.68rem;color:var(--text3);background:var(--bg3);border-radius:4px;padding:.25rem .45rem;margin-bottom:.3rem">';
-      html += '↳ Cadastro atual: <strong>' + _esc(acao.existente.nome||'?') + '</strong>'
-        + (acao.existente.cnpj ? ' · CNPJ: ' + _esc(acao.existente.cnpj) : ' · <em>sem CNPJ</em>')
-        + (acao.existente.cidade ? ' · ' + _esc(acao.existente.cidade) : '');
-      html += '</div>';
-    }
-    // Campos a completar
-    if (acao.complementos && Object.keys(acao.complementos).length) {
-      html += '<div style="font-size:.68rem;color:var(--blue);margin-bottom:.2rem">Campos que serão preenchidos (somente os vazios):</div>';
-      html += '<div style="font-size:.69rem;color:var(--text2);display:flex;flex-wrap:wrap;gap:.3rem">';
-      Object.keys(acao.complementos).forEach(function(k) {
-        html += '<span style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:3px;padding:.05rem .28rem">'
-          + _esc(k) + ': <strong>' + _esc(acao.complementos[k]) + '</strong></span>';
+      camposConflitoKeys.forEach(function(c){
+        var cf=item.camposConflito[c];
+        html+='<div style="font-size:.69rem;color:var(--text2);padding:.1rem 0">'
+          +'<strong>'+_esc(c)+'</strong>: <em>'+_esc(cf.atual)+'</em>'
+          +' → <span style="color:#f59e0b;font-weight:600">'+_esc(cf.novo)+'</span>'
+          +' <em style="color:var(--text3)">(somente com Sobrescrever)</em></div>';
       });
-      html += '</div>';
+      html+='</div></details>';
     }
-    // Aviso
-    if (acao.aviso) {
-      html += '<div style="font-size:.68rem;color:#f59e0b;margin-top:.2rem">⚠️ ' + _esc(acao.aviso) + '</div>';
-    }
-    html += '</div>';
+
+    // Botão "Confirmar decisão deste card"
+    html+='<div style="display:flex;align-items:center;gap:.5rem;padding-top:.4rem;border-top:1px dashed var(--border)">'
+      +'<button class="nb" onclick="rcnpjConfirmarCard(\''+id+'\')" '
+      +'style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:.3rem .75rem;font-size:.72rem;font-weight:600;color:var(--text)">'
+      +'💾 Confirmar decisão deste cadastro</button>'
+      +'<span id="rcnpj_status_'+id+'" style="font-size:.68rem;color:var(--text3)"></span>'
+      +'</div>';
+
+    html+='</div></div>';
     return html;
   }
 
-  function _renderizarPrevia(preview, elId) {
-    var el = document.getElementById(elId);
-    if (!el) return;
-    var r = preview.resumo;
-    var html = '';
+  function _cardLegado(cli, idx){
+    var sid='leg_'+idx+'_'+(cli.id||'').replace(/[^a-z0-9]/gi,'').slice(-6);
+    return '<div id="rcnpj-card-'+sid+'" style="border:1px solid rgba(239,68,68,.3);border-left:3px solid #ef4444;border-radius:8px;padding:.55rem .85rem;margin-bottom:.45rem;background:var(--bg2)">'
+      +'<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'
+      +'<input type="checkbox" id="rcnpj_sel_'+sid+'" onclick="rcnpjAtualizarContador()" style="accent-color:#ef4444;width:15px;height:15px">'
+      +'<span style="font-size:.78rem;font-weight:700;color:var(--text);flex:1">🚩 '+_esc(cli.nome||'?')+'</span>'
+      +'<span style="font-size:.64rem;color:#ef4444">Duplicado legado suspeito</span>'
+      +'</div>'
+      +'<div style="font-size:.7rem;color:var(--text2);margin-top:.25rem;margin-left:1.4rem">'
+      +(cli.cnpj?'CNPJ: '+_esc(cli.cnpj)+' · ':'<em>Sem CNPJ</em> · ')
+      +(cli.cidade?_esc(cli.cidade):'<em>Sem cidade</em>')
+      +'</div>'
+      +'<div style="font-size:.66rem;color:var(--text3);margin-top:.2rem;margin-left:1.4rem">'
+      +'Se marcado: recebe flag <code>_legado_suspeito: true</code> + aviso. <strong>Não será apagado.</strong>'
+      +'</div>'
+      +'<input type="hidden" id="rcnpj_legado_id_'+sid+'" value="'+_esc(cli.id||'')+'">'
+      +'</div>';
+  }
 
-    // Aviso somente leitura
-    html += '<div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:.5rem .8rem;margin-bottom:.7rem;font-size:.73rem;color:var(--text2)">'
-      + '✅ Prévia somente leitura — nenhum dado foi alterado. Revise abaixo e clique em <strong>Aplicar</strong> para confirmar.'
-      + '</div>';
+  function _renderizarCuradoria(preview, elId){
+    var el=document.getElementById(elId);
+    if(!el) return;
+    var html='';
+
+    // Aviso principal
+    html+='<div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:.5rem .85rem;margin-bottom:.75rem;font-size:.73rem;color:var(--text2)">'
+      +'✅ <strong>Curadoria manual</strong> — nenhum item é aplicado automaticamente. '
+      +'Selecione, edite e confirme cada cadastro individualmente antes de aplicar.'
+      +'</div>';
 
     // Empresa
-    html += '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;margin-bottom:.7rem">'
-      + '<div style="font-size:.7rem;color:var(--text3);margin-bottom:.15rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Empresa alvo</div>'
-      + '<div style="font-weight:700;color:var(--text)">' + _esc(preview.empresa_nome) + '</div>'
-      + '<code style="font-size:.65rem;color:var(--text3)">' + _esc(preview.chave_alvo) + '</code>'
-      + '</div>';
+    html+='<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.5rem .85rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem">'
+      +'<div style="flex:1"><div style="font-size:.7rem;color:var(--text3);font-weight:600">Empresa alvo</div>'
+      +'<div style="font-weight:700;color:var(--text)">'+_esc(preview.empresa_nome)+'</div>'
+      +'<code style="font-size:.64rem;color:var(--text3)">'+_esc(preview.chave_alvo)+'</code></div>'
+      +'</div>';
 
-    // Resumo
-    html += '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem">';
-    html += _badge('➕ Criar', r.criar, _COR.CRIAR);
-    html += _badge('✏️ Completar', r.completar, _COR.COMPLETAR);
-    html += _badge('✅ Já completo', r.ja_completo, _COR.JA_COMPLETO);
-    html += _badge('⚠️ Duplicata', r.possivel_duplicata, _COR.POSSIVEL_DUPLICATA);
-    html += _badge('♻️ Recuperar legado', r.recuperar_legado, _COR.RECUPERAR_DO_LEGADO);
-    if (r.legados_suspeitos > 0) html += _badge('🚩 Legados suspeitos', r.legados_suspeitos, _COR.LEGADO);
-    html += '</div>';
+    // Contador de selecionados (atualizado via JS)
+    html+='<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.4rem .75rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem;font-size:.74rem;color:var(--text2)">'
+      +'<span>Selecionados para aplicar: <strong id="rcnpj_contador">...</strong></span>'
+      +'<span style="margin-left:auto;font-size:.68rem;color:var(--text3)">Marque ou desmarque os checkboxes abaixo</span>'
+      +'</div>';
+
+    // Cadastros oficiais
+    html+='<div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:.45rem">'
+      +'📋 Cadastros oficiais por CNPJ ('+preview.itens.length+')</div>';
+    preview.itens.forEach(function(item,i){ html+=_cardItem(item,i); });
 
     // Legados suspeitos
-    var todosLeg = (preview.legados_suspeitos||[]).concat(preview.legados_suspeitos_global||[]);
-    if (todosLeg.length > 0) {
-      html += '<div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:.6rem .85rem;margin-bottom:.7rem">';
-      html += '<div style="font-size:.71rem;font-weight:700;color:#ef4444;margin-bottom:.3rem">🚩 Cadastros suspeitos de duplicidade legada — serão MARCADOS, não apagados</div>';
-      todosLeg.forEach(function(c) {
-        html += '<div style="font-size:.72rem;color:var(--text2);padding:.15rem 0">'
-          + '• <strong>' + _esc(c.nome||'?') + '</strong>'
-          + (c.cnpj ? ' · CNPJ: ' + _esc(c.cnpj) : ' · <em>sem CNPJ</em>')
-          + ' → receberá flag <code>_legado_suspeito: true</code> + aviso visual'
-          + '</div>';
-      });
-      html += '</div>';
+    if(preview.legados_suspeitos&&preview.legados_suspeitos.length){
+      html+='<div style="font-size:.75rem;font-weight:700;color:#ef4444;margin-top:.85rem;margin-bottom:.45rem">'
+        +'🚩 Cadastros suspeitos de duplicidade ('+preview.legados_suspeitos.length+') — selecione os que deseja marcar</div>'
+        +'<div style="font-size:.69rem;color:var(--text3);margin-bottom:.5rem">'
+        +'Marcar apenas adiciona um aviso visual. Nenhum será apagado.</div>';
+      preview.legados_suspeitos.forEach(function(c,i){ html+=_cardLegado(c,i); });
     }
 
-    // Ações por tipo
-    var ordemTipos = ['CRIAR','RECUPERAR_DO_LEGADO','COMPLETAR','POSSIVEL_DUPLICATA','JA_COMPLETO'];
-    ordemTipos.forEach(function(tipo) {
-      var lista = preview.acoes.filter(function(a){ return a.tipo === tipo; });
-      if (!lista.length) return;
-      html += '<details open style="margin-bottom:.6rem"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:' + (_COR[tipo]||'var(--text2)') + ';padding:.3rem 0">'
-        + (_ICON[tipo]||'') + ' ' + (_LABEL[tipo]||tipo) + ' — ' + lista.length + ' cliente(s)</summary><div style="margin-top:.5rem">';
-      lista.forEach(function(a){ html += _cardAcao(a); });
-      html += '</div></details>';
+    // Botão aplicar selecionados
+    html+='<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:.8rem .9rem;margin-top:.85rem">'
+      +'<div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.35rem">🚀 Aplicar somente selecionados</div>'
+      +'<div style="font-size:.7rem;color:var(--text2);margin-bottom:.55rem">'
+      +'Será criado backup automático antes de qualquer gravação.<br>'
+      +'Confirmação obrigatória: <strong>APLICAR SELECIONADOS TECFUSION</strong>'
+      +'</div>'
+      +'<button class="nb" onclick="rcnpjAplicarSelecionados()" '
+      +'style="background:var(--blue);color:#fff;border-radius:6px;padding:.42rem 1.1rem;font-size:.78rem;font-weight:700">'
+      +'✅ Aplicar somente selecionados</button>'
+      +'</div>';
+
+    el.innerHTML=html;
+
+    // Atualizar contador inicial
+    setTimeout(function(){ rcnpjAtualizarContador(); },50);
+  }
+
+  // ============================================================
+  // APLICAÇÃO — lê seleções e edições do DOM
+  // ============================================================
+  async function aplicarSelecionados(preview){
+    var eid=_getEmpresaId();
+    if(!eid) throw new Error('Empresa ativa não encontrada.');
+    if(eid!==preview.empresa_id) throw new Error('A empresa ativa mudou desde a prévia. Execute a prévia novamente.');
+
+    var PALAVRA='APLICAR SELECIONADOS TECFUSION';
+    var digitado=window.prompt(
+      'Para confirmar a aplicação dos itens selecionados para "'+preview.empresa_nome+'":\n\nDigite exatamente:\n\n'+PALAVRA
+    );
+    if(digitado===null) return {cancelado:true,msg:'Cancelado pelo usuário.'};
+    if((digitado||'').trim()!==PALAVRA) return {cancelado:true,msg:'Texto incorreto. Nenhum dado foi gravado.'};
+
+    var keyCli='tf_clientes_'+eid;
+    var lista=_lsReadArr(keyCli);
+
+    // ── BACKUP antes de qualquer alteração ─────────────────────
+    var ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    var chvBkp='tf_clientes_backup_'+ts+'_'+eid;
+    _lsWrite(chvBkp,lista);
+    await _sbGravar(chvBkp,lista);
+    console.info('[rcnpj v2] Backup criado:',chvBkp,'(',lista.length,'registros)');
+
+    // Índice por id
+    var idxId={}; lista.forEach(function(c,i){if(c.id) idxId[c.id]=i;});
+
+    var rel={
+      empresa_id:eid, empresa_nome:preview.empresa_nome, chave_backup:chvBkp,
+      criados:0, completados:0, ignorados:0, marcados_legado:0,
+      erros:[], cancelado:false, itens_aplicados:[]
+    };
+
+    // ── Processar itens oficiais selecionados ──────────────────
+    preview.itens.forEach(function(item){
+      var id=item.oficial._id_oficial;
+      var selecionado=_chk('rcnpj_sel_'+id);
+      if(!selecionado){ rel.ignorados++; return; }
+
+      var acao=_v('rcnpj_acao_'+id)||'ignorar';
+      if(acao==='ignorar'||acao==='revisar'){ rel.ignorados++; return; }
+
+      try{
+        // Coletar campos editados pelo usuário
+        var campos={};
+        CAMPOS_EDITAVEIS.forEach(function(c){
+          var v=_v('rcnpj_f_'+c.key+'_'+id);
+          if(v.trim()) campos[c.key]=v.trim();
+        });
+
+        if(acao==='criar'){
+          var novo={
+            id:_id(),
+            nome:campos.nome||item.oficial.nome,
+            razao_social:campos.razao_social||item.oficial.razao_social||'',
+            cnpj:campos.cnpj||item.oficial.cnpj||'',
+            cidade:campos.cidade||item.oficial.cidade||'',
+            uf:campos.uf||item.oficial.uf||'',
+            endereco:campos.endereco||item.oficial.endereco||'',
+            complemento:campos.complemento||item.oficial.complemento||'',
+            cep:campos.cep||item.oficial.cep||'',
+            telefone:campos.telefone||item.oficial.telefone||'',
+            email:campos.email||item.oficial.email||'',
+            observacao:campos.observacao||'',
+            criado:new Date().toISOString(),
+            _recuperado:true,
+            _fonte:'cnpj_oficial'
+          };
+          lista.push(novo);
+          rel.criados++;
+          rel.itens_aplicados.push({acao:'CRIADO',nome:novo.nome});
+        }
+        else if(acao==='completar'){
+          var existeId=item.existente&&item.existente.id;
+          if(existeId&&idxId[existeId]!==undefined){
+            var idx2=idxId[existeId];
+            var cAtual=Object.assign({},lista[idx2]);
+            // Campos vazios: preencher com valor do input
+            Object.keys(item.camposVazios||{}).forEach(function(c){
+              var inputVal=campos[c]||item.camposVazios[c];
+              if(inputVal&&!String(cAtual[c]||'').trim()) cAtual[c]=inputVal;
+            });
+            // Campos em conflito: sobrescrever só se checkbox marcado
+            Object.keys(item.camposConflito||{}).forEach(function(c){
+              if(_chk('rcnpj_sobr_'+c+'_'+id)){
+                var inputVal=campos[c]||item.camposConflito[c].novo;
+                if(inputVal) cAtual[c]=inputVal;
+              }
+            });
+            lista[idx2]=cAtual;
+            rel.completados++;
+            rel.itens_aplicados.push({acao:'COMPLETADO',nome:cAtual.nome||'?'});
+          }
+        }
+        else if(acao==='legado'){
+          // Marcar como legado suspeito sem apagar
+          if(item.existente&&item.existente.id&&idxId[item.existente.id]!==undefined){
+            var idx3=idxId[item.existente.id];
+            lista[idx3]=Object.assign({},lista[idx3],{
+              _legado_suspeito:true,
+              _aviso:'Duplicado legado suspeito — revisar manualmente'
+            });
+            rel.marcados_legado++;
+            rel.itens_aplicados.push({acao:'MARCADO_LEGADO',nome:(lista[idx3].nome||'?')});
+          }
+        }
+      }catch(e){
+        rel.erros.push('Item '+id+': '+e.message);
+        console.error('[rcnpj v2] Erro item',id,e);
+      }
     });
 
-    // Botão aplicar
-    var temAcoes = r.criar + r.completar + r.recuperar_legado + r.possivel_duplicata > 0 || todosLeg.length > 0;
-    if (temAcoes) {
-      html += '<div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:.7rem .9rem;margin-top:.7rem">'
-        + '<div style="font-size:.73rem;color:var(--text2);margin-bottom:.5rem">'
-        + 'Para aplicar, você precisará digitar <strong>RECUPERAR CLIENTES TECFUSION</strong>.<br>'
-        + 'Um <strong>backup automático</strong> será criado antes de qualquer alteração.'
-        + '</div>'
-        + '<button class="nb" id="rcnpjBtnAplicar" onclick="rcnpjAplicarUI()"'
-        + ' style="background:var(--blue);color:#fff;border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700">'
-        + '✅ Aplicar Recuperação Oficial</button>'
-        + '</div>';
+    // ── Processar legados suspeitos selecionados ───────────────
+    if(preview.legados_suspeitos&&preview.legados_suspeitos.length){
+      preview.legados_suspeitos.forEach(function(cli,i){
+        var sid='leg_'+i+'_'+(cli.id||'').replace(/[^a-z0-9]/gi,'').slice(-6);
+        if(!_chk('rcnpj_sel_'+sid)) return;
+        var cliId=_v('rcnpj_legado_id_'+sid)||cli.id;
+        if(cliId&&idxId[cliId]!==undefined){
+          lista[idxId[cliId]]=Object.assign({},lista[idxId[cliId]],{
+            _legado_suspeito:true,
+            _aviso:'Duplicado legado suspeito — revisar manualmente'
+          });
+          rel.marcados_legado++;
+          rel.itens_aplicados.push({acao:'LEGADO_MARCADO',nome:(lista[idxId[cliId]].nome||'?')});
+        }
+      });
     }
 
-    html += '<div style="font-size:.66rem;color:var(--text3);text-align:center;margin-top:.5rem">'
-      + 'Prévia gerada em ' + new Date(preview.timestamp).toLocaleString('pt-BR') + ' — nenhum dado foi alterado.'
-      + '</div>';
+    // ── Gravar ────────────────────────────────────────────────
+    _lsWrite(keyCli,lista);
+    await _sbGravar(keyCli,lista);
+    try{if(typeof window.renderTabelaClientes==='function') window.renderTabelaClientes();}catch(e){}
 
-    el.innerHTML = html;
+    console.info('[rcnpj v2] Aplicação concluída:',rel);
+    return rel;
   }
 
-  function _renderizarRelatorio(relatorio, elId) {
-    var el = document.getElementById(elId);
-    if (!el) return;
-    var html = '';
-
-    if (relatorio.cancelado) {
-      html = '<div style="padding:1rem;background:rgba(107,114,128,.08);border:1px solid var(--border);border-radius:6px;font-size:.78rem;color:var(--text2)">'
-        + '🚫 ' + _esc(relatorio.msg || 'Cancelado.') + '</div>';
-      el.innerHTML = html;
+  // ── Renderizar relatório de aplicação ────────────────────────
+  function _renderizarRelatorio(rel, elId){
+    var el=document.getElementById(elId);
+    if(!el) return;
+    if(rel.cancelado){
+      el.innerHTML='<div style="padding:1rem;background:rgba(107,114,128,.08);border:1px solid var(--border);border-radius:6px;font-size:.78rem;color:var(--text2)">🚫 '+_esc(rel.msg||'Cancelado.')+'</div>';
       return;
     }
-
-    html += '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:6px;padding:.85rem;margin-bottom:.75rem">'
-      + '<div style="font-weight:700;color:#22c55e;font-size:.9rem;margin-bottom:.5rem">✅ Recuperação concluída — ' + _esc(relatorio.empresa_nome) + '</div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:.4rem">';
-    html += _badge('➕ Criados', relatorio.criados, _COR.CRIAR);
-    html += _badge('✏️ Completados', relatorio.completados, _COR.COMPLETAR);
-    html += _badge('⏭️ Já completos', relatorio.ignorados_ja_completo, _COR.JA_COMPLETO);
-    html += _badge('♻️ Recuperados do legado', relatorio.recuperados_legado, _COR.RECUPERAR_DO_LEGADO);
-    html += _badge('🚩 Legados marcados', relatorio.marcados_legado_suspeito, _COR.LEGADO);
-    html += '</div></div>';
-
-    html += '<div style="font-size:.73rem;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.6rem .85rem;margin-bottom:.6rem">'
-      + '💾 Backup criado antes da aplicação:<br><code style="font-size:.7rem">' + _esc(relatorio.chave_backup) + '</code>'
-      + '</div>';
-
-    if (relatorio.erros && relatorio.erros.length) {
-      html += '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:.7rem .85rem;margin-bottom:.6rem">'
-        + '<div style="font-size:.74rem;font-weight:600;color:#ef4444;margin-bottom:.3rem">Erros encontrados</div>';
-      relatorio.erros.forEach(function(e){ html += '<div style="font-size:.72rem;color:var(--text2)">• ' + _esc(e) + '</div>'; });
-      html += '</div>';
+    var html='<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:6px;padding:.85rem;margin-bottom:.75rem">'
+      +'<div style="font-weight:700;color:#22c55e;font-size:.9rem;margin-bottom:.55rem">✅ Aplicado com sucesso — '+_esc(rel.empresa_nome)+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.45rem">'
+      +_bv('➕ Criados',rel.criados,'#22c55e')
+      +_bv('✏️ Completados',rel.completados,'#3b82f6')
+      +_bv('🚩 Marcados legado',rel.marcados_legado,'#ef4444')
+      +_bv('⏭️ Ignorados',rel.ignorados,'#6b7280')
+      +'</div>';
+    if(rel.itens_aplicados.length){
+      html+='<div style="font-size:.7rem;color:var(--text2)">';
+      rel.itens_aplicados.forEach(function(a){
+        html+='<div>'+_esc(a.acao)+': <strong>'+_esc(a.nome)+'</strong></div>';
+      });
+      html+='</div>';
     }
-
-    html += '<div style="font-size:.7rem;color:var(--text3);text-align:center">'
-      + 'Nenhum dado foi apagado. Legados suspeitos foram apenas marcados (não removidos).'
-      + '</div>';
-
-    el.innerHTML = html;
+    html+='</div>';
+    html+='<div style="font-size:.72rem;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:.5rem .75rem;margin-bottom:.6rem">'
+      +'💾 Backup: <code style="font-size:.68rem">'+_esc(rel.chave_backup)+'</code></div>';
+    if(rel.erros&&rel.erros.length){
+      html+='<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.6rem .75rem;margin-bottom:.6rem">'
+        +'<div style="font-size:.72rem;font-weight:600;color:#ef4444;margin-bottom:.25rem">Erros</div>';
+      rel.erros.forEach(function(e){ html+='<div style="font-size:.7rem;color:var(--text2)">• '+_esc(e)+'</div>'; });
+      html+='</div>';
+    }
+    html+='<div style="font-size:.68rem;color:var(--text3);text-align:center">Nenhum dado foi apagado. Legados suspeitos foram apenas marcados.</div>';
+    el.innerHTML=html;
   }
 
-  // ── Funções UI públicas ──────────────────────────────────────
-  window.rcnpjExecutarPrevia = async function () {
-    var el = document.getElementById('rcnpjResultado');
-    if (!el) { console.warn('[rcnpj] #rcnpjResultado não encontrado'); return; }
-    el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.8rem">'
-      + '🔍 Comparando dados oficiais com cadastros atuais...<br>'
-      + '<span style="font-size:.7rem">Somente leitura — nada será alterado</span></div>';
+  function _bv(label,n,cor){ return '<span style="background:'+cor+'1a;color:'+cor+';border:1px solid '+cor+'55;border-radius:4px;padding:.07rem .38rem;font-size:.68rem;font-weight:700">'+label+' '+n+'</span>'; }
 
-    window._rcnpjPrevia = null;
-    try {
-      var preview = await executarPrevia();
-      window._rcnpjPrevia = preview;
-      _renderizarPrevia(preview, 'rcnpjResultado');
-    } catch(e) {
-      console.error('[rcnpj] Erro na prévia:', e);
-      if (el) el.innerHTML = '<div style="padding:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.77rem">'
-        + '❌ Erro: ' + _esc(e.message) + '</div>';
+  // ============================================================
+  // FUNÇÕES GLOBAIS DE UI
+  // ============================================================
+
+  // Atualiza contador de itens selecionados
+  window.rcnpjAtualizarContador = function(){
+    var total=0; var selecionados=0;
+    document.querySelectorAll('[id^="rcnpj_sel_"]').forEach(function(el){
+      total++; if(el.checked) selecionados++;
+    });
+    var el=document.getElementById('rcnpj_contador');
+    if(el) el.textContent=selecionados+' de '+total;
+  };
+
+  // Atualiza visual do card quando ação muda
+  window.rcnpjAtualizarCard = function(id){
+    var acao=_v('rcnpj_acao_'+id);
+    var selEl=document.getElementById('rcnpj_sel_'+id);
+    if(selEl){
+      // Desmarcar automaticamente se ação for ignorar/revisar
+      if(acao==='ignorar') selEl.checked=false;
+      if(acao==='criar'||acao==='completar'||acao==='legado') selEl.checked=true;
+    }
+    rcnpjAtualizarContador();
+  };
+
+  // Confirmar decisão individual (visual apenas — não grava nada)
+  window.rcnpjConfirmarCard = function(id){
+    var acao=_v('rcnpj_acao_'+id)||'ignorar';
+    var sel=_chk('rcnpj_sel_'+id);
+    var statusEl=document.getElementById('rcnpj_status_'+id);
+    var cardEl=document.getElementById('rcnpj-card-'+id);
+    var labelAcao={criar:'Criar',completar:'Completar',ignorar:'Ignorar',legado:'Marcar legado',revisar:'Revisar depois'};
+    if(statusEl){
+      statusEl.style.color='#22c55e';
+      statusEl.textContent='✔ Decisão: '+(sel?labelAcao[acao]||acao:'Não aplicar')+' (confirme pelo botão geral abaixo)';
+    }
+    if(cardEl) cardEl.style.opacity='.8';
+    // Colapsar card após confirmação
+    var body=document.getElementById('rcnpj-body-'+id);
+    if(body) body.style.display='none';
+  };
+
+  // Executar prévia
+  window.rcnpjExecutarPrevia = async function(){
+    var el=document.getElementById('rcnpjResultado');
+    if(!el){console.warn('[rcnpj] #rcnpjResultado não encontrado');return;}
+    el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.8rem">'
+      +'🔍 Analisando cadastros oficiais vs clientes atuais...<br>'
+      +'<span style="font-size:.7rem">Somente leitura — nada será alterado</span></div>';
+    window._rcnpjPrevia=null;
+    try{
+      var preview=await executarPrevia();
+      window._rcnpjPrevia=preview;
+      _renderizarCuradoria(preview,'rcnpjResultado');
+    }catch(e){
+      console.error('[rcnpj] Erro prévia:',e);
+      el.innerHTML='<div style="padding:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.77rem">❌ Erro: '+_esc(e.message)+'</div>';
     }
   };
 
-  window.rcnpjAplicarUI = async function () {
-    if (!window._rcnpjPrevia) { alert('Execute a prévia antes de aplicar.'); return; }
-    var el = document.getElementById('rcnpjResultado');
-    try {
-      var rel = await aplicar(window._rcnpjPrevia);
-      if (!rel.cancelado) window._rcnpjPrevia = null;
-      _renderizarRelatorio(rel, 'rcnpjResultado');
-    } catch(e) {
-      console.error('[rcnpj] Erro na aplicação:', e);
-      if (el) {
-        var prev = el.innerHTML;
-        el.innerHTML = '<div style="padding:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.77rem;margin-bottom:.75rem">'
-          + '❌ Erro ao aplicar: ' + _esc(e.message) + '</div>' + prev;
+  // Aplicar selecionados
+  window.rcnpjAplicarSelecionados = async function(){
+    if(!window._rcnpjPrevia){alert('Execute a prévia antes de aplicar.');return;}
+    var el=document.getElementById('rcnpjResultado');
+    try{
+      var rel=await aplicarSelecionados(window._rcnpjPrevia);
+      if(!rel.cancelado) window._rcnpjPrevia=null;
+      _renderizarRelatorio(rel,'rcnpjResultado');
+    }catch(e){
+      console.error('[rcnpj] Erro aplicação:',e);
+      if(el){
+        var prev=el.innerHTML;
+        el.innerHTML='<div style="padding:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.77rem;margin-bottom:.75rem">❌ '+_esc(e.message)+'</div>'+prev;
       }
     }
   };
 
-  // Expor também para console
-  window.RcnpjPreview = { executar: executarPrevia };
-  window.RcnpjApply   = { aplicar: aplicar };
+  // Expor para console
+  window.RcnpjPreview={executar:executarPrevia};
+  window.RcnpjApply={aplicar:aplicarSelecionados};
 
-  console.info('%c[rcnpj] carregado — window.rcnpjExecutarPrevia()', 'color:#22c55e;font-weight:700');
+  console.info('%c[rcnpj v2] curadoria manual carregada — window.rcnpjExecutarPrevia()','color:#22c55e;font-weight:700');
 
 }(window));
