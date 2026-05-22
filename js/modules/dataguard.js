@@ -145,14 +145,13 @@
   window.dgAntesDeSalvar = function (key, novaLista, motivo, opcoes) {
     opcoes = opcoes || {};
 
-    // Detectar motivos automáticos durante bloqueio ativo (possível violação de segurança)
-    if (window._dgBloqueioAtivo && motivo
-        && DG_MOTIVOS_BLOQUEADOS_AUTO.some(function(m) { return motivo.indexOf(m) >= 0; })) {
-      console.error('[DataGuard] ⚠️ VIOLAÇÃO: escrita automática bloqueada pelo DataGuard. '
-        + 'Motivo: "' + motivo + '" | Chave: "' + key + '".');
-      _audit({ tipo: 'VIOLACAO_AUTO_BLOQUEIO', key: key, motivo: motivo });
-      return { ok: false, bloqueado: true, backupKey: null,
-        msg: 'DataGuard bloqueou escrita automática. Motivo: ' + motivo };
+    // Auditar motivos automáticos (apenas log — não bloqueia)
+    // Bloqueio por motivo foi removido: era agressivo demais e impedia seed legítimo.
+    // A proteção real é o check de redução percentual (_avaliarReducao) abaixo.
+    if (motivo && DG_MOTIVOS_BLOQUEADOS_AUTO.some(function(m) { return motivo.indexOf(m) >= 0; })) {
+      console.info('[DataGuard] Escrita com motivo automático detectada: "' + motivo
+        + '" | Chave: "' + key + '" — auditada mas não bloqueada por motivo.');
+      _audit({ tipo: 'ESCRITA_AUTO', key: key, motivo: motivo });
     }
 
     if (!_isProtected(key)) {

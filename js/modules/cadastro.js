@@ -907,12 +907,9 @@
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
-        if (!window._dgBloqueioAtivo) {
-          // DataGuard desbloqueado: gravar merge nuvem→local
-          try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
-        } else {
-          console.info('[Cadastro] sync Supabase CTS bloqueado por DataGuard — apenas renderizando sem gravar.');
-        }
+        // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
+        // DataGuard protege redução destrutiva; merge que só cresce é seguro
+        try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
         // Re-renderizar após chegada dos dados da nuvem
         try { renderTabelaContatos(); } catch(e) {}
       });
@@ -927,13 +924,9 @@
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
-        // _limkarClientes() REMOVIDA — nunca automática após sync
-        if (!window._dgBloqueioAtivo) {
-          // DataGuard desbloqueado: gravar merge nuvem→local
-          try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
-        } else {
-          console.info('[Cadastro] sync Supabase CLI bloqueado por DataGuard — apenas renderizando sem gravar.');
-        }
+        // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
+        // _limkarClientes() REMOVIDA do callback — nunca automática
+        try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
         // Re-renderizar após chegada dos dados da nuvem
         try { renderTabelaClientes(); } catch(e) {}
       });
@@ -954,11 +947,12 @@
   }
   waitAndInit();
 
-  // Re-seed quando propostas forem recarregadas — bloqueado se DataGuard ativo
-  // (propostas:loaded dispara em TODA troca de empresa; seed = write → proibido durante troca)
+  // Re-seed quando propostas forem recarregadas
+  // propostas:loaded dispara em TODA troca de empresa (via recarregarDadosEmpresa)
+  // Gate por flag _cadEmpresaTrocando: seed bloqueado durante troca, permitido na carga inicial
   window.addEventListener('propostas:loaded', function() {
-    if (window._dgBloqueioAtivo) {
-      console.info('[Cadastro] seedFromData bloqueado por DataGuard (propostas:loaded durante troca de empresa).');
+    if (window._cadEmpresaTrocando) {
+      console.info('[Cadastro] seedFromData ignorado durante troca de empresa (propostas:loaded).');
       return;
     }
     seedFromData();
@@ -969,6 +963,10 @@
   // _limparClientes e sync Supabase automáticos durante troca de empresa.
   // Regra absoluta: trocar empresa não altera dados de clientes/contatos.
   window.addEventListener('empresa:changed', function() {
+    // Flag: inibe seedFromData no propostas:loaded que dispara durante a troca
+    window._cadEmpresaTrocando = true;
+    setTimeout(function() { window._cadEmpresaTrocando = false; }, 3500);
+
     var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
             + 'Carregando dados da empresa...</div>';
     var elCli = document.getElementById('tabelaClientes');
