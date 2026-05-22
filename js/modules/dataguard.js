@@ -116,12 +116,44 @@
     return { nivel: 'ok', msg: msg };
   }
 
+  // ── Allowlist de motivos permitidos para gravação ─────────
+  // Escritas com motivo NÃO listado aqui são registradas como SUSPEITAS no log.
+  // Motivos automáticos (init/load/empresa:changed/seed) devem ser BLOQUEADOS
+  // antes de chegar aqui (em cadastro.js). Esta lista é apenas para auditoria.
+  var DG_MOTIVOS_PERMITIDOS = [
+    'cliSave(excluir-manual)',    // exclusão manual confirmada
+    'salvarNovoCliente',          // modal "Novo Cliente"
+    'salvarNovoContato',          // modal "Novo Contato"
+    'editarCliente',              // modal "Editar Cliente"
+    'editarContato',              // modal "Editar Contato"
+    'rrAplicarOficiais-backup',   // backup antes de aplicar oficiais
+    'rrAplicarOficiais',          // aplicar cadastros oficiais (confirmado)
+    'rrAplicarSelecionados',      // aplicar recuperação manual (confirmado)
+    'aplicarLimpezaClientesManual' // limpeza manual explícita
+  ];
+
+  // Motivos automáticos que NUNCA devem chegar aqui (detectados como violação)
+  var DG_MOTIVOS_BLOQUEADOS_AUTO = [
+    'cliSave(auto)', 'ctsSave(auto)', 'init', 'seedFromData',
+    '_limkarClientes_auto', 'sync_auto', 'empresa:changed'
+  ];
+
   // ── dgAntesDeSalvar ───────────────────────────────────────
   // Retorna { ok: bool, bloqueado: bool, backupKey: string|null, msg: string|null }
   // Chamado por cadastro.js (cliSave e ctsSave) ANTES de gravar.
   // Não grava nada — apenas valida e faz backup.
   window.dgAntesDeSalvar = function (key, novaLista, motivo, opcoes) {
     opcoes = opcoes || {};
+
+    // Detectar motivos automáticos durante bloqueio ativo (possível violação de segurança)
+    if (window._dgBloqueioAtivo && motivo
+        && DG_MOTIVOS_BLOQUEADOS_AUTO.some(function(m) { return motivo.indexOf(m) >= 0; })) {
+      console.error('[DataGuard] ⚠️ VIOLAÇÃO: escrita automática bloqueada pelo DataGuard. '
+        + 'Motivo: "' + motivo + '" | Chave: "' + key + '".');
+      _audit({ tipo: 'VIOLACAO_AUTO_BLOQUEIO', key: key, motivo: motivo });
+      return { ok: false, bloqueado: true, backupKey: null,
+        msg: 'DataGuard bloqueou escrita automática. Motivo: ' + motivo };
+    }
 
     if (!_isProtected(key)) {
       return { ok: true, bloqueado: false, backupKey: null };
