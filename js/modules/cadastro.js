@@ -391,7 +391,7 @@
       if (el) el.style.display = (id === 'hSec' + sec.charAt(0).toUpperCase() + sec.slice(1)) ? '' : 'none';
     });
     if (sec === 'clientes')    renderTabelaClientes();
-    if (sec === 'contatos')    renderTabelaContatos();
+    if (sec === 'contatos')    (window.renderTabelaContatos || renderTabelaContatos)();
     if (sec === 'recuperacao') {
       // Atualiza info da empresa no cabeçalho da seção de recuperação
       if (typeof window.rrRenderizarEmpresaInfo === 'function') window.rrRenderizarEmpresaInfo();
@@ -549,7 +549,7 @@
     if (item) _ctsDelAdd(item.nome);
     // permitirListaVazia: exclusão manual confirmada — pode resultar em lista vazia
     ctsSave(all.filter(function(x) { return x.id !== id; }), { permitirListaVazia: true });
-    renderTabelaContatos();
+    (window.renderTabelaContatos || renderTabelaContatos)();
     if (typeof toast === 'function') toast('Contato excluído', 'ok');
   };
 
@@ -583,11 +583,11 @@
       ctsSave(list);
       if (oldNome && oldNome !== nome) { _ctsDelAdd(oldNome); _atualizarNomeContatoNasPropostas(oldNome, nome); }
       window._fecharModalContato();
-      renderTabelaContatos();
+      (window.renderTabelaContatos || renderTabelaContatos)();
       if (typeof toast === 'function') toast('✅ Contato atualizado: ' + nome, 'ok');
     } else {
       _origSalvarCts();
-      renderTabelaContatos();
+      (window.renderTabelaContatos || renderTabelaContatos)();
     }
   };
 
@@ -875,7 +875,7 @@
         });
         try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
         // Re-renderizar após chegada dos dados da nuvem
-        try { renderTabelaContatos(); } catch(e) {}
+        try { (window.renderTabelaContatos || renderTabelaContatos)(); } catch(e) {}
       });
     }
 
@@ -932,7 +932,7 @@
       console.error('[Cadastro] erro em init() na troca de empresa:', e);
     }
     try { renderTabelaClientes(); } catch(e) {}
-    try { renderTabelaContatos(); } catch(e) {}
+    try { (window.renderTabelaContatos || renderTabelaContatos)(); } catch(e) {}
   });
 
 })();
