@@ -39,6 +39,9 @@
   // que o diagnóstico está OK.
   window._dgBloqueioAtivo = true;
 
+  // true = diagnóstico foi executado nesta sessão (requisito para desbloquear)
+  window._dgDiagnosticoExecutado = false;
+
   // ── Helpers de leitura/escrita ─────────────────────────────
   function _lsRead(key) {
     try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
@@ -381,6 +384,7 @@
 
     try {
       var rel = await window.dgDiagnostico();
+      window._dgDiagnosticoExecutado = true; // marcar diagnóstico executado nesta sessão
       var r   = rel.resumo;
       var html = '';
 

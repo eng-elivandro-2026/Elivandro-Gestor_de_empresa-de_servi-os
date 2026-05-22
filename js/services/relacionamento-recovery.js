@@ -1651,6 +1651,81 @@
   // ── ID helper para cadastros oficiais ─────────────────────
   function _cidO(i, campo) { return 'rrO_' + i + '_' + campo; }
 
+  // ── DataGuard helpers visuais para seção oficial ──────────
+  function _avisoElOf() { return document.getElementById('rr-dg-aviso'); }
+
+  // Mostra aviso de bloqueio DataGuard com botões de diagnóstico e desbloqueio
+  function _mostrarAvisoDataGuard() {
+    var el = _avisoElOf();
+    if (!el) return;
+    el.innerHTML = '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);'
+      + 'border-radius:7px;padding:.7rem .9rem;margin-bottom:.5rem">'
+      + '<div style="font-weight:700;color:#ef4444;font-size:.83rem;margin-bottom:.35rem">'
+      + '🛡️ DataGuard bloqueou a aplicação</div>'
+      + '<div style="font-size:.77rem;color:var(--text2);margin-bottom:.5rem">'
+      + 'O DataGuard está ativo para proteger seus clientes e contatos.<br>'
+      + 'Execute o Diagnóstico DataGuard e depois clique em Desbloquear para continuar.'
+      + '</div>'
+      + '<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
+      + '<button class="nb" onclick="window.rrDgDiagnosticoOficial()" '
+      + 'style="background:var(--bg3);color:var(--text);border:1px solid var(--border);'
+      + 'border-radius:5px;padding:.32rem .7rem;font-size:.76rem;font-weight:600">'
+      + '🔍 Executar Diagnóstico DataGuard</button>'
+      + '<button class="nb" onclick="window.rrDgDesbloquearOficial()" '
+      + 'style="background:#22c55e;color:#fff;border-radius:5px;padding:.32rem .7rem;'
+      + 'font-size:.76rem;font-weight:600">'
+      + '🔓 Desbloquear DataGuard</button>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // Executa diagnóstico DataGuard e atualiza aviso local
+  window.rrDgDiagnosticoOficial = async function () {
+    var el = _avisoElOf();
+    if (el) el.innerHTML = '<div style="font-size:.76rem;color:var(--text3);padding:.4rem 0">'
+      + '🔍 Executando diagnóstico DataGuard…</div>';
+    // Dispara diagnóstico padrão (escreve resultado no banner #dg-resultado)
+    if (typeof window.dgDiagnosticoUI === 'function') await window.dgDiagnosticoUI();
+    window._dgDiagnosticoExecutado = true;
+    var bloqueado = window._dgBloqueioAtivo;
+    if (el) {
+      el.innerHTML = '<div style="background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.3);'
+        + 'border-radius:7px;padding:.6rem .9rem;margin-bottom:.5rem">'
+        + '<div style="font-weight:700;color:var(--blue);font-size:.8rem;margin-bottom:.3rem">'
+        + '🔍 Diagnóstico executado</div>'
+        + '<div style="font-size:.75rem;color:var(--text2);margin-bottom:.4rem">'
+        + (bloqueado
+            ? 'DataGuard ainda ativo. Veja o resultado acima (faixa DataGuard). '
+            + 'Quando estiver pronto, clique em Desbloquear.'
+            : '✅ DataGuard livre — pode clicar em "Aplicar cadastros selecionados".')
+        + '</div>'
+        + (bloqueado
+            ? '<button class="nb" onclick="window.rrDgDesbloquearOficial()" '
+            + 'style="background:#22c55e;color:#fff;border-radius:5px;padding:.32rem .7rem;'
+            + 'font-size:.76rem;font-weight:600">🔓 Desbloquear DataGuard</button>'
+            : '')
+        + '</div>';
+    }
+  };
+
+  // Desbloqueia DataGuard — exige que diagnóstico tenha sido executado
+  window.rrDgDesbloquearOficial = function () {
+    var el = _avisoElOf();
+    if (!window._dgDiagnosticoExecutado) {
+      if (el) el.innerHTML = '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);'
+        + 'border-radius:7px;padding:.6rem .9rem;margin-bottom:.5rem;font-size:.77rem;color:#f59e0b">'
+        + '⚠️ <strong>Execute o Diagnóstico DataGuard primeiro</strong> antes de desbloquear.<br>'
+        + 'Clique em "🔍 Executar Diagnóstico DataGuard" acima.'
+        + '</div>';
+      return;
+    }
+    if (typeof window.dgDesbloquear === 'function') window.dgDesbloquear();
+    if (el) el.innerHTML = '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);'
+      + 'border-radius:7px;padding:.6rem .9rem;margin-bottom:.5rem;font-size:.77rem;color:#22c55e">'
+      + '🔓 <strong>DataGuard desbloqueado.</strong> Clique em "Aplicar cadastros selecionados" para continuar.'
+      + '</div>';
+  };
+
   // ── Determinar ação sugerida (apenas por CNPJ) ────────────
   // Retorna { acao: 'criar'|'completar', existente: obj|null }
   // Regra: somente CNPJ determina ação. Sem correspondência por nome para evitar
@@ -1791,16 +1866,30 @@
       html += _cardOficial(cad, i, existentes);
     });
 
-    // Botão aplicar
-    html += '<div style="margin-top:.85rem;padding-top:.65rem;border-top:1px solid var(--border);'
-          + 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">'
-          + '<div style="font-size:.72rem;color:var(--text3)">'
+    // ── Footer: área de aviso DataGuard + botões de ação ────
+    html += '<div style="margin-top:.85rem;padding-top:.65rem;border-top:1px solid var(--border)">';
+
+    // Área de aviso DataGuard (bloqueio / diagnóstico / desbloqueio)
+    html += '<div id="rr-dg-aviso"></div>';
+
+    // Instrução de confirmação
+    html += '<div style="font-size:.72rem;color:var(--text3);margin-bottom:.55rem">'
           + '⚠️ Confirmação: digite <strong>APLICAR CADASTROS OFICIAIS TECFUSION</strong>.'
           + '<br>Backup automático criado antes de gravar. Nenhum dado existente será apagado.'
-          + '</div>'
+          + '</div>';
+
+    // Botões: diagnóstico + desbloquear + aplicar
+    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">'
+          + '<button class="nb" onclick="window.rrDgDiagnosticoOficial()" '
+          + 'style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;'
+          + 'padding:.38rem .7rem;font-size:.76rem;font-weight:600">🔍 Executar Diagnóstico DataGuard</button>'
+          + '<button class="nb" onclick="window.rrDgDesbloquearOficial()" '
+          + 'style="background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.4);border-radius:5px;'
+          + 'padding:.38rem .7rem;font-size:.76rem;font-weight:600">🔓 Desbloquear DataGuard</button>'
           + '<button id="rr-btn-o" class="nb" onclick="window.rrAplicarOficiais()" '
           + 'style="background:var(--blue);color:#fff;border-radius:6px;padding:.45rem 1.1rem;'
-          + 'font-size:.78rem;font-weight:700;white-space:nowrap">✅ Aplicar selecionados</button>'
+          + 'font-size:.78rem;font-weight:700;white-space:nowrap;margin-left:auto">✅ Aplicar selecionados</button>'
+          + '</div>'
           + '</div>';
 
     html += '<script>setTimeout(function(){if(typeof window._rrContOficiais==="function")window._rrContOficiais();},80);<\/script>';
@@ -1878,18 +1967,36 @@
 
   // ── Aplicar cadastros oficiais selecionados ───────────────
   window.rrAplicarOficiais = async function () {
-    // DataGuard
-    if (typeof window.dgCheckBloqueio === 'function' && window.dgCheckBloqueio('Aplicar Cadastros Oficiais')) return;
+    var elAviso  = _avisoElOf();
+    var elResult = document.getElementById('rrResultadoOficial');
+
+    // DataGuard — verifica sem alert; mostra aviso visual na tela
+    if (window._dgBloqueioAtivo) {
+      _mostrarAvisoDataGuard();
+      return;
+    }
+    // Limpar avisos anteriores
+    if (elAviso) elAviso.innerHTML = '';
 
     // Validar empresa Tecfusion
     var eid   = _getEmpresaId();
     var enome = _getEmpresaNome();
-    if (!eid) { alert('Empresa ativa não encontrada.'); return; }
+    function _avisoErr(msg) {
+      if (elAviso) elAviso.innerHTML = '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);'
+        + 'border-radius:7px;padding:.6rem .9rem;font-size:.78rem;color:#ef4444;margin-bottom:.5rem">'
+        + '❌ ' + msg + '</div>';
+    }
+    if (!eid) { _avisoErr('Empresa ativa não encontrada. Selecione uma empresa no topo.'); return; }
     var isTecfusion = enome.toLowerCase().includes('tecfusion');
     if (!isTecfusion) {
-      alert('⚠️ Empresa ativa: ' + enome + '\n\nEstes cadastros pertencem à Tecfusion.\nSelecione a empresa Tecfusion antes de aplicar.');
+      _avisoErr('Empresa ativa: <strong>' + _escHtml(enome) + '</strong>.<br>'
+        + 'Estes cadastros pertencem à Tecfusion. Selecione a empresa Tecfusion antes de aplicar.');
       return;
     }
+
+    // Ler base atual para validação
+    var keyCli   = _keyFor('tf_clientes');
+    var cliAtual = (function(){ try { var v = JSON.parse(localStorage.getItem(keyCli)||'[]'); return Array.isArray(v)?v:[]; } catch(e){ return []; } }());
 
     // Coletar selecionados
     var parAplicar = [];
@@ -1919,11 +2026,34 @@
     });
 
     if (!parAplicar.length) {
-      alert('Nenhum cadastro selecionado.\nMarque ao menos um com ação "Criar novo" ou "Completar existente".');
+      _avisoErr('Nenhum cadastro selecionado. Marque ao menos um com ação "Criar novo" ou "Completar existente".');
       return;
     }
 
-    // Resumo
+    // Validar "Completar existente" — CNPJ deve existir na base atual
+    var errosValidacao = [];
+    parAplicar.forEach(function (cad) {
+      if (cad.acao === 'completar') {
+        var cnr = _normCnpj(cad.cnpj || '');
+        if (!cnr) {
+          errosValidacao.push('"' + cad.nome + '": sem CNPJ para localizar cadastro existente. Corrija o CNPJ ou mude a ação para "Criar novo".');
+          return;
+        }
+        var existe = cliAtual.some(function (e) { return _normCnpj(e.cnpj || '') === cnr; });
+        if (!existe) {
+          errosValidacao.push('"' + cad.nome + '" (CNPJ ' + cad.cnpj + '): nenhum cadastro encontrado com este CNPJ. Altere a ação para "Criar novo" ou revise o CNPJ.');
+        }
+      }
+    });
+    if (errosValidacao.length) {
+      if (elAviso) elAviso.innerHTML = '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);'
+        + 'border-radius:7px;padding:.65rem .9rem;font-size:.78rem;color:#f59e0b;margin-bottom:.5rem">'
+        + '<div style="font-weight:700;margin-bottom:.3rem">⚠️ Corrija antes de aplicar:</div>'
+        + errosValidacao.map(function(e){ return '• ' + e; }).join('<br>') + '</div>';
+      return;
+    }
+
+    // Resumo e confirmação
     var resumo = parAplicar.length + ' cadastro(s):\n';
     parAplicar.forEach(function (c) { resumo += '  • ' + c.nome + ' [' + c.acao + ']\n'; });
 
@@ -1934,17 +2064,15 @@
     );
     if (digitado === null) return;
     if ((digitado||'').trim() !== PALAVRA) {
-      alert('Texto incorreto. Cancelado. Nenhum dado foi gravado.');
+      _avisoErr('Texto de confirmação incorreto. Cancelado. Nenhum dado foi gravado.');
       return;
     }
 
-    var keyCli = _keyFor('tf_clientes');
     var erros  = [];
-    var relatorio = { empresa: enome, criados: 0, completados: 0, ignorados: 0, erros: [] };
+    var relatorio = { empresa: enome, criados: 0, completados: 0, ignorados: 0, erros: [], naoAlterado: [] };
 
     try {
-      var cliAtual = (function(){ try { var v = JSON.parse(localStorage.getItem(keyCli)||'[]'); return Array.isArray(v)?v:[]; } catch(e){ return []; } }());
-
+      // cliAtual já foi lida para validação — reutilizar
       // DataGuard backup antes de qualquer escrita
       if (typeof window.dgAntesDeSalvar === 'function') {
         window.dgAntesDeSalvar(keyCli, cliAtual, 'rrAplicarOficiais-backup');
@@ -1977,6 +2105,7 @@
             console.info('[Oficiais] Completado:', ex.nome);
           } else {
             console.info('[Oficiais] Nenhum campo vazio para completar em:', ex.nome);
+            relatorio.naoAlterado.push(cad.nome + ' (todos os campos já estavam preenchidos)');
             relatorio.ignorados++;
           }
         } else {
@@ -2025,28 +2154,61 @@
 
     relatorio.erros = erros;
 
-    // Atualizar tabela de clientes
+    // Atualizar tabela de clientes (recarregar lista na tela Empresas)
     try { if (typeof window.renderTabelaClientes === 'function') window.renderTabelaClientes(); } catch (e) {}
 
-    // Mostrar resultado
-    var elR = document.getElementById('rrResultadoOficial');
-    if (elR) {
-      var ok = relatorio.criados > 0 || relatorio.completados > 0;
-      elR.innerHTML = (ok
+    var ok = relatorio.criados > 0 || relatorio.completados > 0;
+
+    // Limpar aviso DataGuard após sucesso
+    if (ok && elAviso) elAviso.innerHTML = '';
+
+    // Montar mensagem de resultado
+    var linhasNaoAlt = (relatorio.naoAlterado||[]).length
+      ? '<div style="font-size:.73rem;color:#f59e0b;margin-top:.35rem">'
+        + '⚠️ Sem alteração (campos já preenchidos): '
+        + relatorio.naoAlterado.map(_escHtml).join(', ')
+        + '</div>'
+      : '';
+
+    var linhasErros = erros.length
+      ? '<div style="color:#ef4444;font-size:.73rem;margin-top:.35rem">'
+        + '❌ Erros: ' + erros.map(_escHtml).join('<br>') + '</div>'
+      : '';
+
+    var botaoEmpresas = ok
+      ? '<div style="margin-top:.6rem">'
+        + '<button class="nb" onclick="if(typeof window.hShowSec===\'function\')window.hShowSec(\'clientes\')" '
+        + 'style="background:var(--blue);color:#fff;border-radius:5px;padding:.32rem .75rem;font-size:.76rem;font-weight:600">'
+        + '→ Ver lista de Empresas/Clientes</button></div>'
+      : '';
+
+    // Exibir resultado
+    if (elResult) {
+      elResult.innerHTML = (ok
         ? '<div style="background:rgba(34,197,94,.09);border:1px solid rgba(34,197,94,.35);'
         : '<div style="background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.35);')
         + 'border-radius:6px;padding:.85rem;margin-bottom:.5rem">'
-        + '<div style="font-weight:700;color:' + (ok?'#22c55e':'#f59e0b') + ';font-size:.9rem;margin-bottom:.4rem">'
-        + (ok ? '✅ Cadastros aplicados — ' : '⚠️ Nenhuma alteração — ') + _escHtml(enome) + '</div>'
-        + '<div style="font-size:.77rem;color:var(--text2);display:flex;gap:.75rem;flex-wrap:wrap">'
+        + '<div style="font-weight:700;color:' + (ok?'#22c55e':'#f59e0b') + ';font-size:.92rem;margin-bottom:.4rem">'
+        + (ok ? '✅ Cadastros aplicados com sucesso — ' : '⚠️ Nenhuma alteração — ') + _escHtml(enome) + '</div>'
+        + '<div style="font-size:.78rem;color:var(--text2);display:flex;gap:.75rem;flex-wrap:wrap">'
         + '<span>✨ Criados: <strong>' + relatorio.criados + '</strong></span>'
         + '<span>🔗 Completados: <strong>' + relatorio.completados + '</strong></span>'
-        + '<span>⏭ Ignorados: <strong>' + relatorio.ignorados + '</strong></span>'
+        + '<span>⏭ Ignorados/sem alteração: <strong>' + relatorio.ignorados + '</strong></span>'
         + '</div>'
-        + (erros.length ? '<div style="color:#ef4444;font-size:.73rem;margin-top:.3rem">' + erros.map(_escHtml).join('<br>') + '</div>' : '')
-        + '<div style="font-size:.7rem;color:var(--text3);margin-top:.4rem">Backup criado antes da gravação. Nenhum dado foi apagado.</div>'
+        + linhasNaoAlt
+        + linhasErros
+        + '<div style="font-size:.7rem;color:var(--text3);margin-top:.4rem">🛡️ Backup criado antes da gravação. Nenhum dado foi apagado.</div>'
+        + botaoEmpresas
         + '</div>';
     }
+
+    // Navegar para lista de clientes automaticamente em caso de sucesso
+    if (ok) {
+      setTimeout(function () {
+        try { if (typeof window.hShowSec === 'function') window.hShowSec('clientes'); } catch (e) {}
+      }, 2500);
+    }
+
     console.info('[Oficiais] Aplicação concluída:', relatorio);
   };
 
