@@ -2631,6 +2631,21 @@ body.empresa-tema-fortex{
 
       <!-- Área de resultado -->
       <div id="rrResultado"></div>
+
+      <!-- ── Cadastros Oficiais por CNPJ ── -->
+      <div style="margin-top:1.25rem;padding-top:1rem;border-top:2px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.65rem;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--blue)">🏢 Cadastros Oficiais por CNPJ</div>
+            <div style="font-size:.73rem;color:var(--text3);margin-top:.15rem">6 empresas pré-preenchidas com dados dos comprovantes CNPJ — selecione e confirme</div>
+          </div>
+          <button class="nb" onclick="rrExecutarPreviaOficial()"
+            style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">
+            🏢 Prévia de Cadastros Oficiais
+          </button>
+        </div>
+        <div id="rrResultadoOficial"></div>
+      </div>
     </div>
 
   </div>
