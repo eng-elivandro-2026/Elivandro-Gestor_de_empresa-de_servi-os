@@ -9886,6 +9886,7 @@ function rExecTimeline(){
 <div id="toast"></div>
 
 <!-- SCRIPTS EXTERNOS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config/supabase.js"></script>
@@ -9917,6 +9918,7 @@ function rExecTimeline(){
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
 <script src="js/tools/diagnostico-clientes-cnpj.js?v=1"></script>
 <script src="js/tools/recuperacao-oficial-cnpj.js?v=1"></script>
+<script src="js/tools/contatos-excel.js?v=1"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>
@@ -10429,6 +10431,55 @@ function _vinMsg(msg, tipo) {
 
 <!-- ══ MODAIS GLOBAIS: NOVO CONTATO / NOVO CLIENTE ══ -->
 <!-- Ficam fora de qualquer section/wrap para não serem afetados por display:none do pai -->
+<!-- ── Modal Edição em Massa de Contatos ── -->
+<div id="m-bulk-contatos" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;background:rgba(0,0,0,.7)">
+  <div style="background:#1e2535;border:1px solid #334155;border-radius:10px;width:min(580px,97vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #334155">
+      <div>
+        <div style="font-size:.88rem;font-weight:700;color:#e2e8f0">✏️ Edição em Massa de Contatos</div>
+        <div id="bkContador" style="font-size:.72rem;color:#94a3b8;margin-top:.15rem"></div>
+      </div>
+      <button onclick="ctxFecharBulkEdit()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem;padding:.2rem .4rem">✕</button>
+    </div>
+    <div style="padding:1rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:.75rem">
+      <!-- Aviso -->
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:.5rem .75rem;font-size:.73rem;color:#94a3b8">
+        ⚠️ <strong>Nome, e-mail e telefone</strong> não são editáveis em massa — use edição individual.<br>
+        Campos em branco <strong>não serão alterados</strong>. Marque "Sobrescrever" para substituir campos já preenchidos.
+      </div>
+      <!-- Campos editáveis em massa -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+        <div style="grid-column:1/-1">
+          <label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Empresa vinculada (deixe vazio para não alterar)</label>
+          <input id="bkEmpresa" type="text" placeholder="Ex: JDE Jundiaí" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem">
+        </div>
+        <div>
+          <label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Departamento / Função</label>
+          <input id="bkDept" type="text" placeholder="Ex: Compras, Engenharia" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem">
+        </div>
+        <div>
+          <label style="font-size:.62rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em">Observação</label>
+          <input id="bkObs" type="text" placeholder="Ex: Prioridade alta" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem">
+        </div>
+      </div>
+      <!-- Opção de sobrescrever -->
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:#94a3b8;cursor:pointer">
+        <input type="checkbox" id="bkSobrescrever" style="cursor:pointer">
+        Sobrescrever campos já preenchidos
+      </label>
+      <!-- Área de prévia -->
+      <div>
+        <button onclick="ctxPreviewBulkEdit()" class="nb" style="font-size:.75rem;background:rgba(14,165,233,.1);color:#60a5fa;border:1px solid rgba(14,165,233,.3);border-radius:6px;padding:.32rem .75rem">🔍 Ver prévia das alterações</button>
+      </div>
+      <div id="bkPrevia" style="max-height:260px;overflow-y:auto;font-size:.75rem"></div>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;padding:.75rem 1rem;border-top:1px solid #334155">
+      <button onclick="ctxFecharBulkEdit()" style="padding:.38rem 1rem;background:#1e2535;border:1px solid #334155;color:#94a3b8;border-radius:6px;cursor:pointer;font-size:.82rem">Cancelar</button>
+      <button onclick="ctxAplicarBulkEdit()" style="padding:.38rem 1rem;background:#f05a1a;border:none;color:#000;border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:700">Aplicar Selecionados</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="m-novo-contato" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;background:rgba(0,0,0,.7)">
   <div style="background:#1e2535;border:1px solid #334155;border-radius:10px;width:min(480px,97vw);padding:0">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #334155;border-radius:10px 10px 0 0;background:#1e2535">
