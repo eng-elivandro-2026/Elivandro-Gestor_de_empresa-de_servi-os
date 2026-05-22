@@ -723,7 +723,8 @@
     try {
       var preview = await RelacionamentoRecoveryPreview.executar();
       window._rrPreview = preview;
-      if (el) el.innerHTML = _renderPrevia(preview);
+      // [CURADORIA] Renderiza em modo curadoria manual — sem aplicação automática
+      if (el) el.innerHTML = _renderCuradoria(preview);
       _setBtnAplicar(preview.resumo.clientes_recuperaveis > 0
         || preview.resumo.contatos_recuperaveis > 0
         || preview.resumo.historico_recuperavel > 0);
@@ -735,29 +736,18 @@
     }
   };
 
-  // Aplica recuperação com confirmação e renderiza resultado
+  // [CURADORIA] Aplica somente os itens selecionados pelo utilizador
+  // Redireciona para rrAplicarSelecionados() — sem aplicação em massa automática.
   window.rrAplicarComConfirmacao = async function () {
     if (!window._rrPreview) {
       alert('Execute a prévia antes de aplicar a recuperação.');
       return;
     }
-    var el = document.getElementById('rrResultado');
-
-    try {
-      var relatorio = await RelacionamentoRecoveryApply.aplicar(window._rrPreview);
-      if (!relatorio.cancelado) {
-        window._rrPreview = null; // invalida prévia após aplicação com sucesso
-        _setBtnAplicar(false);
-      }
-      if (el) el.innerHTML = _renderRelatorio(relatorio);
-    } catch (e) {
-      if (el) {
-        var extra = el.innerHTML;
-        el.innerHTML =
-          '<div style="padding:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.77rem;margin-bottom:.75rem">'
-          + '❌ Erro ao aplicar: ' + _escHtml(e.message) + '</div>' + extra;
-      }
-      console.error('[Recovery UI] Erro na aplicação:', e);
+    // [CURADORIA] Verificar DataGuard
+    if (typeof window.dgCheckBloqueio === 'function' && window.dgCheckBloqueio('Aplicar Recuperação')) return;
+    // Delegar para o fluxo de curadoria manual
+    if (typeof window.rrAplicarSelecionados === 'function') {
+      return window.rrAplicarSelecionados();
     }
   };
 
@@ -1026,8 +1016,547 @@
     return html;
   }
 
+  // ============================================================
+  // CURADORIA MANUAL — renderização e aplicação seletiva
+  // Nada aplica automaticamente. Cada item tem checkbox + edição.
+  // ============================================================
+
+  // ── CSS injetado uma vez ────────────────────────────────────
+  (function () {
+    if (document.getElementById('rr-curadoria-style')) return;
+    var s = document.createElement('style');
+    s.id = 'rr-curadoria-style';
+    s.textContent =
+      '.rr-inp{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);'
+      + 'border-radius:4px;padding:.28rem .45rem;font-size:.74rem;font-family:inherit;box-sizing:border-box}'
+      + '.rr-inp:focus{outline:none;border-color:var(--blue)}'
+      + '.rr-lbl{font-size:.65rem;color:var(--text3);margin-bottom:.18rem;display:block}'
+      + '.rr-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);'
+      + 'border-radius:4px;padding:.22rem .38rem;font-size:.72rem;font-family:inherit;cursor:pointer}'
+      + '.rr-card{border:1px solid var(--border);border-radius:6px;margin-bottom:.45rem;overflow:hidden}'
+      + '.rr-card-hdr{display:flex;align-items:center;gap:.55rem;padding:.42rem .65rem;background:var(--bg3);flex-wrap:wrap}'
+      + '.rr-card-body{padding:.55rem .65rem;background:var(--bg2)}'
+      + '.rr-grid2{display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem}'
+      + '.rr-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.35rem .75rem}'
+      + '.rr-warn{font-size:.7rem;color:#f59e0b;margin-top:.3rem}'
+      + '.rr-badge-fonte{display:inline-block;border-radius:3px;padding:.06rem .3rem;font-size:.62rem;font-weight:600;color:#fff}'
+      + '.rr-dup-item{padding:.4rem .65rem;border-bottom:1px solid var(--border);font-size:.76rem;color:var(--text2)}';
+    document.head.appendChild(s);
+  }());
+
+  // ── Helpers de ID ───────────────────────────────────────────
+  function _cidC(i, campo) { return 'rrC_' + i + '_' + campo; }
+  function _cidT(j, campo) { return 'rrT_' + j + '_' + campo; }
+
+  // ── Cores de fonte ──────────────────────────────────────────
+  function _corFonte(f) {
+    if (!f) return '#6b7280';
+    f = String(f).toLowerCase();
+    if (f.includes('supabase')) return '#0ea5e9';
+    if (f.includes('localStorage antigo') || f.includes('local')) return '#6366f1';
+    if (f.includes('proposta')) return '#10b981';
+    if (f.includes('hist')) return '#f59e0b';
+    return '#6b7280';
+  }
+  function _badgeFonte(f) {
+    if (!f) return '';
+    return '<span class="rr-badge-fonte" style="background:' + _corFonte(f) + '">' + _escHtml(f) + '</span>';
+  }
+
+  // ── Render: campo de input ──────────────────────────────────
+  function _inp(id, valor, placeholder) {
+    return '<input type="text" id="' + id + '" class="rr-inp" value="' + _escHtml(valor || '') + '"'
+         + (placeholder ? ' placeholder="' + _escHtml(placeholder) + '"' : '') + '>';
+  }
+
+  // ── Toggle visibilidade do body do card ─────────────────────
+  window._rrToggleCard = function (tipo, idx) {
+    var id = tipo === 'cli' ? _cidC(idx, 'body') : _cidT(idx, 'body');
+    var acao = (document.getElementById(tipo === 'cli' ? _cidC(idx, 'acao') : _cidT(idx, 'acao')) || {}).value || 'criar';
+    var el = document.getElementById(id);
+    if (!el) return;
+    var ocultar = (acao === 'ignorar' || acao === 'revisar' || acao === 'legado');
+    el.style.display = ocultar ? 'none' : '';
+    window._rrAtualizarContadores();
+  };
+
+  // ── Atualizar contadores ────────────────────────────────────
+  window._rrAtualizarContadores = function () {
+    if (!window._rrPreview) return;
+    var cli  = window._rrPreview.para_recuperar.clientes;
+    var cts  = window._rrPreview.para_recuperar.contatos;
+    var nCli = cli.length, nCts = cts.length;
+    var sCli = 0, sCts = 0, ign = 0, rev = 0, leg = 0;
+    for (var i = 0; i < nCli; i++) {
+      var chk = document.getElementById(_cidC(i, 'sel'));
+      if (!chk || !chk.checked) continue;
+      var acao = (document.getElementById(_cidC(i, 'acao')) || {}).value || 'criar';
+      if (acao === 'ignorar') { ign++; continue; }
+      if (acao === 'revisar') { rev++; continue; }
+      if (acao === 'legado')  { leg++; continue; }
+      sCli++;
+    }
+    for (var j = 0; j < nCts; j++) {
+      var chkT = document.getElementById(_cidT(j, 'sel'));
+      if (!chkT || !chkT.checked) continue;
+      var acaoT = (document.getElementById(_cidT(j, 'acao')) || {}).value || 'criar';
+      if (acaoT === 'ignorar' || acaoT === 'revisar') continue;
+      sCts++;
+    }
+    var total = sCli + sCts;
+    var el = document.getElementById('rr-cont');
+    if (!el) return;
+    el.innerHTML =
+      '<span style="margin-right:.6rem">🔍 ' + nCli + ' clientes · ' + nCts + ' contatos encontrados</span>'
+      + '<span style="color:#22c55e;font-weight:700;margin-right:.5rem">✅ ' + total + ' selecionados para aplicar</span>'
+      + (ign  ? '<span style="color:#6b7280;margin-right:.5rem">⏭ ' + ign + ' ignorados</span>' : '')
+      + (rev  ? '<span style="color:#f59e0b;margin-right:.5rem">⏳ ' + rev + ' revisar</span>' : '')
+      + (leg  ? '<span style="color:#ef4444;margin-right:.5rem">🚩 ' + leg + ' legado</span>' : '');
+    // Atualizar texto do botão
+    var btn = document.getElementById('rr-btn-sel');
+    if (btn) btn.textContent = total > 0 ? ('✅ Aplicar ' + total + ' selecionados') : '✅ Aplicar selecionados';
+  };
+
+  // ── Card de cliente (curadoria) ────────────────────────────
+  function _cardCuradoriaCli(c, i, existentes) {
+    // Verificar se já existe na empresa ativa
+    var cn = _normCnpj(c.cnpj || '');
+    var jáExiste = existentes.find(function (e) {
+      if (cn && _normCnpj(e.cnpj || '') === cn) return true;
+      if (_norm(e.nome) === _norm(c.nome)) return true;
+      return false;
+    });
+
+    var selId  = _cidC(i, 'sel');
+    var acaoId = _cidC(i, 'acao');
+    var bodyId = _cidC(i, 'body');
+
+    var html = '<div class="rr-card">';
+
+    // Cabeçalho do card
+    html += '<div class="rr-card-hdr">'
+          + '<input type="checkbox" id="' + selId + '" checked '
+          + 'onchange="window._rrAtualizarContadores()" style="width:15px;height:15px;cursor:pointer;flex-shrink:0">'
+          + '<label for="' + selId + '" style="font-weight:700;font-size:.8rem;cursor:pointer;flex:1">'
+          + '🏢 ' + _escHtml(c.nome || '—') + '</label>'
+          + _badgeFonte(c._fonte)
+          + (jáExiste ? '<span style="font-size:.67rem;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);border-radius:3px;padding:.05rem .3rem;color:#f59e0b">⚠️ já existe</span>' : '')
+          + '<select id="' + acaoId + '" class="rr-sel"'
+          + ' onchange="window._rrToggleCard(\'cli\',' + i + ')" style="margin-left:auto">'
+          + '<option value="criar">Criar novo</option>'
+          + '<option value="completar">Completar existente</option>'
+          + '<option value="ignorar">Ignorar</option>'
+          + '<option value="revisar">Revisar depois</option>'
+          + '<option value="legado">Legado suspeito</option>'
+          + '</select>'
+          + '</div>';
+
+    // Corpo editável
+    html += '<div id="' + bodyId + '" class="rr-card-body">';
+
+    // Se já existe: mostrar comparação
+    if (jáExiste) {
+      html += '<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:4px;padding:.4rem .55rem;margin-bottom:.45rem;font-size:.72rem;color:var(--text2)">'
+            + '⚠️ Já existe na empresa ativa: <strong>' + _escHtml(jáExiste.nome) + '</strong>'
+            + (jáExiste.cnpj  ? ' | CNPJ: ' + _escHtml(jáExiste.cnpj)  : ' | CNPJ: —')
+            + (jáExiste.cidade? ' | Cidade: ' + _escHtml(jáExiste.cidade): ' | Cidade: —')
+            + '<br><span style="color:#f59e0b">Ação "Criar novo" adicionará este como entrada separada. '
+            + 'Use "Completar existente" para preencher campos vazios do registro acima.</span>'
+            + '</div>';
+    }
+
+    // Campos editáveis
+    html += '<div class="rr-grid2" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Nome / Razão Social *</label>' + _inp(_cidC(i,'nome'), c.nome) + '</div>'
+          + '<div><label class="rr-lbl">CNPJ</label>' + _inp(_cidC(i,'cnpj'), c.cnpj) + '</div>'
+          + '</div>'
+          + '<div class="rr-grid3" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Cidade</label>' + _inp(_cidC(i,'cidade'), c.cidade) + '</div>'
+          + '<div><label class="rr-lbl">UF</label><input type="text" id="' + _cidC(i,'uf') + '" class="rr-inp" value="' + _escHtml(c.uf||'') + '" maxlength="2"></div>'
+          + '<div><label class="rr-lbl">CEP</label>' + _inp(_cidC(i,'cep'), c.cep||'', '00000-000') + '</div>'
+          + '</div>'
+          + '<div class="rr-grid2" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Telefone</label>' + _inp(_cidC(i,'tel'), c.telefone||'') + '</div>'
+          + '<div><label class="rr-lbl">E-mail</label>' + _inp(_cidC(i,'email'), c.email||'') + '</div>'
+          + '</div>'
+          + '<div><label class="rr-lbl">Endereço</label>' + _inp(_cidC(i,'end'), c.endereco||'') + '</div>'
+          + '<div style="margin-top:.35rem"><label class="rr-lbl">Observação</label>' + _inp(_cidC(i,'obs'), '') + '</div>';
+
+    // Origem detalhada
+    html += '<div style="font-size:.67rem;color:var(--text3);margin-top:.4rem">Origem: ' + _badgeFonte(c._fonte)
+          + (c.criado ? ' · criado: ' + String(c.criado).slice(0,10) : '') + '</div>';
+
+    html += '</div>'; // fim body
+    html += '</div>'; // fim card
+    return html;
+  }
+
+  // ── Card de contato (curadoria) ────────────────────────────
+  function _cardCuradoriaCts(c, j, existentes_cts, existentes_cli) {
+    // Verificar se empresa vinculada existe
+    var empresaOk = false;
+    var empresa   = (c.empresa || '').trim();
+    if (empresa && existentes_cli) {
+      empresaOk = existentes_cli.some(function (e) {
+        return _norm(e.nome) === _norm(empresa);
+      });
+    }
+
+    var selId  = _cidT(j, 'sel');
+    var acaoId = _cidT(j, 'acao');
+    var bodyId = _cidT(j, 'body');
+
+    var html = '<div class="rr-card">';
+
+    // Cabeçalho
+    html += '<div class="rr-card-hdr">'
+          + '<input type="checkbox" id="' + selId + '" ' + (empresaOk ? 'checked' : '') + ' '
+          + 'onchange="window._rrAtualizarContadores()" style="width:15px;height:15px;cursor:pointer;flex-shrink:0">'
+          + '<label for="' + selId + '" style="font-weight:700;font-size:.8rem;cursor:pointer;flex:1">'
+          + '👤 ' + _escHtml(c.nome || '—') + '</label>'
+          + _badgeFonte(c._fonte)
+          + (!empresaOk ? '<span style="font-size:.67rem;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:3px;padding:.05rem .3rem;color:#ef4444">⚠️ empresa não encontrada</span>' : '')
+          + '<select id="' + acaoId + '" class="rr-sel"'
+          + ' onchange="window._rrToggleCard(\'cts\',' + j + ')" style="margin-left:auto">'
+          + '<option value="criar">Criar novo</option>'
+          + '<option value="completar">Completar existente</option>'
+          + '<option value="ignorar">Ignorar</option>'
+          + '<option value="revisar">Revisar depois</option>'
+          + '</select>'
+          + '</div>';
+
+    // Aviso empresa não encontrada
+    if (!empresaOk) {
+      html += '<div style="background:rgba(239,68,68,.06);border-bottom:1px solid var(--border);padding:.35rem .65rem;font-size:.71rem;color:#ef4444">'
+            + '⚠️ Empresa "' + _escHtml(empresa || '(vazia)') + '" não encontrada na empresa ativa. '
+            + 'Complete ou corrija o campo abaixo antes de aplicar. Contato desmarcado por padrão.'
+            + '</div>';
+    }
+
+    // Corpo editável
+    html += '<div id="' + bodyId + '" class="rr-card-body">';
+    html += '<div class="rr-grid2" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Nome *</label>' + _inp(_cidT(j,'nome'), c.nome) + '</div>'
+          + '<div><label class="rr-lbl">Empresa vinculada *</label>' + _inp(_cidT(j,'empresa'), c.empresa, 'Razão social da empresa...') + '</div>'
+          + '</div>'
+          + '<div class="rr-grid2" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Departamento / Função</label>' + _inp(_cidT(j,'dept'), c.departamento) + '</div>'
+          + '<div><label class="rr-lbl">E-mail</label>' + _inp(_cidT(j,'email'), c.email) + '</div>'
+          + '</div>'
+          + '<div class="rr-grid2" style="margin-bottom:.35rem">'
+          + '<div><label class="rr-lbl">Telefone</label>' + _inp(_cidT(j,'tel'), c.telefone) + '</div>'
+          + '<div><label class="rr-lbl">Observação</label>' + _inp(_cidT(j,'obs'), '') + '</div>'
+          + '</div>';
+    html += '<div style="font-size:.67rem;color:var(--text3);margin-top:.3rem">Origem: ' + _badgeFonte(c._fonte)
+          + (c.criado ? ' · criado: ' + String(c.criado).slice(0,10) : '') + '</div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  // ── _renderCuradoria: substituição de _renderPrevia ─────────
+  function _renderCuradoria(p) {
+    var r = p.resumo;
+    var html = '';
+
+    // ── Banner modo curadoria ───────────────────────────────
+    html += '<div style="background:rgba(14,165,233,.09);border:1px solid rgba(14,165,233,.3);border-radius:6px;'
+          + 'padding:.55rem .8rem;margin-bottom:.75rem;font-size:.78rem;color:var(--text2)">'
+          + '✋ <strong>Modo curadoria manual</strong> — nada será aplicado sem seleção explícita. '
+          + 'Marque os itens desejados, edite os campos e clique em <strong>Aplicar selecionados</strong>.'
+          + '</div>';
+
+    // ── Empresa ─────────────────────────────────────────────
+    html += '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;'
+          + 'padding:.55rem .8rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem">'
+          + '<span style="background:var(--blue);color:#fff;border-radius:4px;padding:.15rem .45rem;font-size:.7rem;font-weight:700">'
+          + _escHtml(r.empresa_nome) + '</span>'
+          + '<span style="font-size:.74rem;color:var(--text2)">ID: ' + _escHtml(r.empresa_id) + '</span>'
+          + '</div>';
+
+    // ── Contadores ao vivo ──────────────────────────────────
+    html += '<div id="rr-cont" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;'
+          + 'padding:.45rem .8rem;margin-bottom:.75rem;font-size:.74rem;display:flex;flex-wrap:wrap;gap:.3rem .6rem">'
+          + '🔍 ' + r.existentes_cli + ' clientes existentes · '
+          + p.para_recuperar.clientes.length + ' recuperáveis · '
+          + p.para_recuperar.contatos.length + ' contatos recuperáveis · '
+          + p.duplicados.clientes.length + ' duplicados ignorados'
+          + '</div>';
+
+    // ── Clientes recuperáveis ───────────────────────────────
+    if (p.para_recuperar.clientes.length) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">'
+            + '🏢 Clientes recuperáveis (' + p.para_recuperar.clientes.length + ')'
+            + '<span style="font-size:.68rem;font-weight:400;color:var(--text3);margin-left:.5rem">'
+            + '— marque para aplicar, edite conforme necessário</span></div>';
+      p.para_recuperar.clientes.forEach(function (c, i) {
+        html += _cardCuradoriaCli(c, i, p.existentes.clientes);
+      });
+    } else {
+      html += '<div style="font-size:.77rem;color:var(--text3);padding:.5rem 0">Nenhum cliente novo recuperável.</div>';
+    }
+
+    // ── Contatos recuperáveis ───────────────────────────────
+    if (p.para_recuperar.contatos.length) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:var(--text);margin:.75rem 0 .4rem">'
+            + '👤 Contatos recuperáveis (' + p.para_recuperar.contatos.length + ')'
+            + '<span style="font-size:.68rem;font-weight:400;color:var(--text3);margin-left:.5rem">'
+            + '— contatos sem empresa vinculada ficam desmarcados</span></div>';
+      p.para_recuperar.contatos.forEach(function (c, j) {
+        html += _cardCuradoriaCts(c, j, p.existentes.contatos, p.existentes.clientes);
+      });
+    }
+
+    // ── Duplicados (leitura, marcados como tal) ─────────────
+    if (p.duplicados.clientes.length) {
+      html += '<div style="font-size:.77rem;font-weight:700;color:var(--text3);margin:.75rem 0 .3rem">'
+            + '⚪ Clientes duplicados — não serão aplicados automaticamente (' + p.duplicados.clientes.length + ')</div>';
+      html += '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:.5rem">';
+      p.duplicados.clientes.forEach(function (d) {
+        html += '<div class="rr-dup-item">'
+              + '🏢 <strong>' + _escHtml((d.item||d).nome||'—') + '</strong>'
+              + _badgeFonte((d.item||d)._fonte)
+              + ' <span style="color:#f59e0b;font-size:.68rem">· ' + _escHtml(d.motivo||'duplicado') + '</span>'
+              + '</div>';
+      });
+      html += '</div>';
+    }
+    if (p.duplicados.contatos.length) {
+      html += '<div style="font-size:.77rem;font-weight:700;color:var(--text3);margin:.5rem 0 .3rem">'
+            + '⚪ Contatos duplicados — não serão aplicados automaticamente (' + p.duplicados.contatos.length + ')</div>';
+      html += '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:.5rem">';
+      p.duplicados.contatos.forEach(function (d) {
+        html += '<div class="rr-dup-item">'
+              + '👤 <strong>' + _escHtml((d.item||d).nome||'—') + '</strong>'
+              + _badgeFonte((d.item||d)._fonte)
+              + ' <span style="color:#f59e0b;font-size:.68rem">· ' + _escHtml(d.motivo||'duplicado') + '</span>'
+              + '</div>';
+      });
+      html += '</div>';
+    }
+
+    // ── Botão aplicar selecionados ──────────────────────────
+    html += '<div style="margin-top:.85rem;padding-top:.65rem;border-top:1px solid var(--border);'
+          + 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">'
+          + '<div style="font-size:.72rem;color:var(--text3)">'
+          + '⚠️ A aplicação exige confirmação digitando <strong>APLICAR SELECIONADOS RELACIONAMENTO</strong>.'
+          + '<br>Backup automático será criado antes de qualquer gravação.'
+          + '</div>'
+          + '<button id="rr-btn-sel" class="nb" onclick="window.rrAplicarSelecionados()" '
+          + 'style="background:var(--blue);color:#fff;border-radius:6px;padding:.45rem 1.1rem;'
+          + 'font-size:.78rem;font-weight:700;white-space:nowrap">'
+          + '✅ Aplicar selecionados'
+          + '</button></div>';
+
+    html += '<div style="font-size:.69rem;color:var(--text3);text-align:center;margin-top:.4rem">'
+          + '✔ MODO CURADORIA — nada foi gravado ainda.'
+          + '</div>';
+
+    // Inicializar contadores após render (DOM atualizado)
+    html += '<script>setTimeout(function(){if(typeof window._rrAtualizarContadores==="function")window._rrAtualizarContadores();},80);<\/script>';
+
+    return html;
+  }
+
+  // ── rrAplicarSelecionados: aplicação curada ─────────────────
+  window.rrAplicarSelecionados = async function () {
+    if (!window._rrPreview) {
+      alert('Execute a prévia antes de aplicar a recuperação.');
+      return;
+    }
+
+    // DataGuard
+    if (typeof window.dgCheckBloqueio === 'function' && window.dgCheckBloqueio('Aplicar Selecionados')) return;
+
+    // Validar empresa
+    var eid    = window._rrPreview.empresa_id;
+    var eidNow = _getEmpresaId();
+    if (!eid || eid !== eidNow) {
+      alert('Empresa ativa mudou desde a prévia!\n\nPrévia era para: ' + window._rrPreview.empresa_nome
+            + '\nEmpresa atual:  ' + _getEmpresaNome() + '\n\nExecute a prévia novamente.');
+      return;
+    }
+
+    // ── Coletar clientes selecionados ─────────────────────────
+    var cliParaAplicar = [];
+    (window._rrPreview.para_recuperar.clientes || []).forEach(function (c, i) {
+      var chk  = document.getElementById(_cidC(i, 'sel'));
+      if (!chk || !chk.checked) return;
+      var acao = (document.getElementById(_cidC(i, 'acao')) || {}).value || 'criar';
+      if (acao === 'ignorar' || acao === 'revisar' || acao === 'legado') return;
+      var nome = ((document.getElementById(_cidC(i,'nome')) || {}).value || c.nome || '').trim();
+      if (!nome) return;
+      cliParaAplicar.push({
+        acao: acao,
+        nome:   nome,
+        cnpj:   ((document.getElementById(_cidC(i,'cnpj'))   || {}).value || c.cnpj   || '').trim(),
+        cidade: ((document.getElementById(_cidC(i,'cidade')) || {}).value || c.cidade || '').trim(),
+        uf:     ((document.getElementById(_cidC(i,'uf'))     || {}).value || c.uf     || '').trim(),
+        cep:    ((document.getElementById(_cidC(i,'cep'))    || {}).value || '').trim(),
+        telefone: ((document.getElementById(_cidC(i,'tel'))  || {}).value || c.telefone || '').trim(),
+        email:  ((document.getElementById(_cidC(i,'email'))  || {}).value || c.email   || '').trim(),
+        endereco: ((document.getElementById(_cidC(i,'end'))  || {}).value || '').trim(),
+        obs:    ((document.getElementById(_cidC(i,'obs'))    || {}).value || '').trim(),
+        _fonte: c._fonte || '',
+        _recuperado: true
+      });
+    });
+
+    // ── Coletar contatos selecionados ─────────────────────────
+    var ctsParaAplicar = [];
+    (window._rrPreview.para_recuperar.contatos || []).forEach(function (c, j) {
+      var chk = document.getElementById(_cidT(j, 'sel'));
+      if (!chk || !chk.checked) return;
+      var acao = (document.getElementById(_cidT(j, 'acao')) || {}).value || 'criar';
+      if (acao === 'ignorar' || acao === 'revisar') return;
+      var nome    = ((document.getElementById(_cidT(j,'nome'))    || {}).value || c.nome    || '').trim();
+      var empresa = ((document.getElementById(_cidT(j,'empresa')) || {}).value || c.empresa || '').trim();
+      if (!nome) return;
+      if (!empresa) {
+        console.warn('[Recovery Curadoria] Contato "' + nome + '" sem empresa vinculada — ignorado.');
+        return;
+      }
+      ctsParaAplicar.push({
+        acao: acao,
+        nome:         nome,
+        empresa:      empresa,
+        departamento: ((document.getElementById(_cidT(j,'dept'))  || {}).value || c.departamento || '').trim(),
+        email:        ((document.getElementById(_cidT(j,'email')) || {}).value || c.email        || '').trim(),
+        telefone:     ((document.getElementById(_cidT(j,'tel'))   || {}).value || c.telefone     || '').trim(),
+        obs:          ((document.getElementById(_cidT(j,'obs'))   || {}).value || '').trim(),
+        _fonte: c._fonte || '',
+        _recuperado: true
+      });
+    });
+
+    if (!cliParaAplicar.length && !ctsParaAplicar.length) {
+      alert('Nenhum item selecionado para aplicar.\n\nMarque ao menos um cliente ou contato com a ação "Criar novo" ou "Completar existente".');
+      return;
+    }
+
+    // ── Resumo para confirmação ───────────────────────────────
+    var resumo = '';
+    if (cliParaAplicar.length) {
+      resumo += cliParaAplicar.length + ' cliente(s):\n';
+      cliParaAplicar.forEach(function (c) { resumo += '  • ' + c.nome + ' [' + c.acao + ']\n'; });
+    }
+    if (ctsParaAplicar.length) {
+      resumo += ctsParaAplicar.length + ' contato(s):\n';
+      ctsParaAplicar.forEach(function (c) { resumo += '  • ' + c.nome + ' (' + (c.empresa||'sem empresa') + ')\n'; });
+    }
+
+    var PALAVRA = 'APLICAR SELECIONADOS RELACIONAMENTO';
+    var digitado = window.prompt(
+      'Confirme a recuperação curada para a empresa "' + window._rrPreview.empresa_nome + '".\n\n'
+      + resumo + '\nDigite exatamente:\n\n' + PALAVRA
+    );
+    if (digitado === null) { return; }
+    if ((digitado || '').trim() !== PALAVRA) {
+      alert('Texto incorreto. Cancelado. Nenhum dado foi alterado.');
+      return;
+    }
+
+    // ── Aplicar clientes ──────────────────────────────────────
+    var keyCli  = _keyFor('tf_clientes');
+    var keyCts  = _keyFor('tf_contatos');
+    var erros   = [];
+    var relatorio = {
+      empresa_id: eid, empresa_nome: window._rrPreview.empresa_nome,
+      clientes_aplicados: 0, contatos_aplicados: 0, erros: []
+    };
+
+    try {
+      var cliAtual = _lsRead(keyCli);
+      // DataGuard backup (adição não bloqueia)
+      if (typeof window.dgAntesDeSalvar === 'function') {
+        window.dgAntesDeSalvar(keyCli, cliAtual, 'rrAplicarSelecionados-pre-cli');
+      }
+      var candidatosCli = cliParaAplicar.map(function (c) {
+        return { id: _id('rrs_c'), nome: c.nome, cnpj: c.cnpj, cidade: c.cidade,
+          uf: c.uf, cep: c.cep, telefone: c.telefone, email: c.email,
+          endereco: c.endereco, obs: c.obs, criado: new Date().toISOString(),
+          _recuperado: true, _fonte: c._fonte };
+      });
+      var dedupCli = _dedupCli(cliAtual, candidatosCli);
+      if (dedupCli.para_adicionar.length) {
+        var cliResult = cliAtual.concat(dedupCli.para_adicionar);
+        _lsWrite(keyCli, cliResult);
+        await _sbWrite(keyCli, cliResult);
+        relatorio.clientes_aplicados = dedupCli.para_adicionar.length;
+        console.info('[Recovery Curadoria] Clientes aplicados:', dedupCli.para_adicionar.length);
+      }
+      if (dedupCli.duplicados.length) {
+        console.warn('[Recovery Curadoria] Clientes ignorados (dedup segurança):', dedupCli.duplicados.length);
+      }
+    } catch (e) {
+      erros.push('Clientes: ' + e.message);
+      console.error('[Recovery Curadoria] Erro ao aplicar clientes:', e);
+    }
+
+    // ── Aplicar contatos ──────────────────────────────────────
+    try {
+      var ctsAtual = _lsRead(keyCts);
+      if (typeof window.dgAntesDeSalvar === 'function') {
+        window.dgAntesDeSalvar(keyCts, ctsAtual, 'rrAplicarSelecionados-pre-cts');
+      }
+      var candidatosCts = ctsParaAplicar.map(function (c) {
+        return { id: _id('rrs_t'), nome: c.nome, empresa: c.empresa,
+          departamento: c.departamento, email: c.email, telefone: c.telefone,
+          obs: c.obs, criado: new Date().toISOString(), _recuperado: true, _fonte: c._fonte };
+      });
+      var dedupCts = _dedupCts(ctsAtual, candidatosCts);
+      if (dedupCts.para_adicionar.length) {
+        var ctsResult = ctsAtual.concat(dedupCts.para_adicionar);
+        _lsWrite(keyCts, ctsResult);
+        await _sbWrite(keyCts, ctsResult);
+        relatorio.contatos_aplicados = dedupCts.para_adicionar.length;
+        console.info('[Recovery Curadoria] Contatos aplicados:', dedupCts.para_adicionar.length);
+      }
+    } catch (e) {
+      erros.push('Contatos: ' + e.message);
+      console.error('[Recovery Curadoria] Erro ao aplicar contatos:', e);
+    }
+
+    relatorio.erros = erros;
+
+    // ── Atualizar UI ──────────────────────────────────────────
+    try { if (typeof window.renderTabelaClientes === 'function') window.renderTabelaClientes(); } catch (e) {}
+    try { if (typeof window.renderTabelaContatos === 'function') window.renderTabelaContatos(); } catch (e) {}
+
+    // ── Mostrar resultado ─────────────────────────────────────
+    var elR = document.getElementById('rrResultado');
+    if (elR) elR.innerHTML = _renderRelatorioSelecionados(relatorio);
+    window._rrPreview = null;
+    _setBtnAplicar(false);
+    console.info('[Recovery Curadoria] Aplicação concluída:', relatorio);
+  };
+
+  // ── Render relatório curadoria ─────────────────────────────
+  function _renderRelatorioSelecionados(rel) {
+    var total = rel.clientes_aplicados + rel.contatos_aplicados;
+    var ok = total > 0 || (!rel.erros || !rel.erros.length);
+    var html = '<div style="background:rgba(' + (ok?'34,197,94':'245,158,11') + ',.08);'
+             + 'border:1px solid rgba(' + (ok?'34,197,94':'245,158,11') + ',.3);'
+             + 'border-radius:6px;padding:.85rem;margin-bottom:.75rem">'
+             + '<div style="font-weight:700;color:' + (ok?'#22c55e':'#f59e0b') + ';font-size:.9rem;margin-bottom:.5rem">'
+             + (ok?'✅':'⚠️') + ' Curadoria aplicada — ' + _escHtml(rel.empresa_nome) + '</div>';
+    html += '<div style="font-size:.77rem;color:var(--text2);display:flex;gap:.75rem;flex-wrap:wrap">'
+          + '<span>Clientes aplicados: <strong>' + rel.clientes_aplicados + '</strong></span>'
+          + '<span>Contatos aplicados: <strong>' + rel.contatos_aplicados + '</strong></span>'
+          + '</div>';
+    if (rel.erros && rel.erros.length) {
+      html += '<div style="margin-top:.45rem;font-size:.73rem;color:#ef4444">';
+      rel.erros.forEach(function (e) { html += '<div>❌ ' + _escHtml(e) + '</div>'; });
+      html += '</div>';
+    }
+    html += '<div style="font-size:.7rem;color:var(--text3);margin-top:.45rem">'
+          + 'Backup automático criado antes da gravação. Verifique Empresas e Contatos no menu Relacionamento.'
+          + '</div></div>';
+    return html;
+  }
+
   console.info('[RelacionamentoRecovery] Carregado. '
     + 'Prévia: window.RelacionamentoRecoveryPreview.executar() | '
-    + 'Aplicar: window.RelacionamentoRecoveryApply.aplicar(preview)');
+    + 'Curadoria: window.rrAplicarSelecionados() | '
+    + 'Aplicar: window.RelacionamentoRecoveryApply.aplicar(preview) [legado]');
 
 }(window));
