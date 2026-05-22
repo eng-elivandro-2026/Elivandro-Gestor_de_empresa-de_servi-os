@@ -575,6 +575,150 @@
 
 
   // ============================================================
+  // F4A — DRE GERENCIAL: QUERIES COM FILTRO DE PERÍODO
+  // Funções novas — não alteram nenhuma função existente.
+  // ============================================================
+
+  /**
+   * Lista contas a receber da empresa filtradas por data_vencimento.
+   * Retorna apenas os campos necessários para o cálculo da DRE.
+   */
+  async function sbListarContasReceberPeriodo(empresaId, dataInicio, dataFim) {
+    if (!empresaId) throw new Error('[Financeiro F4A] empresa_id obrigatório.');
+    var query = client()
+      .from('financeiro_contas_receber')
+      .select('valor_previsto, valor_faturado, valor_recebido, valor_pendente, status, data_vencimento')
+      .eq('empresa_id', empresaId);
+    if (dataInicio) query = query.gte('data_vencimento', dataInicio);
+    if (dataFim)    query = query.lte('data_vencimento', dataFim);
+    var r = await query;
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Lista recebimentos da empresa filtrados por data_recebimento.
+   * Retorna apenas os campos necessários para o cálculo da DRE.
+   */
+  async function sbListarRecebimentosPeriodo(empresaId, dataInicio, dataFim) {
+    if (!empresaId) throw new Error('[Financeiro F4A] empresa_id obrigatório.');
+    var query = client()
+      .from('financeiro_recebimentos')
+      .select('valor_recebido, status, data_recebimento')
+      .eq('empresa_id', empresaId);
+    if (dataInicio) query = query.gte('data_recebimento', dataInicio);
+    if (dataFim)    query = query.lte('data_recebimento', dataFim);
+    var r = await query;
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Lista TODAS as contas a pagar da empresa (sem filtro de data no banco).
+   * O filtro de período é aplicado em JS por calcularDREGerencial():
+   *   — contas pagas  → usa data_pagamento (ou data_vencimento como fallback)
+   *   — contas abertas → usa data_vencimento
+   * Isso evita query com OR em colunas diferentes.
+   */
+  async function sbListarContasPagarPeriodo(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F4A] empresa_id obrigatório.');
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .select('valor_previsto, valor_pago, valor_pendente, status, data_vencimento, data_pagamento, categoria')
+      .eq('empresa_id', empresaId);
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Calcula o DRE Gerencial a partir das listas carregadas.
+   * Aplica filtro de período em JS conforme regra de cada tabela.
+   *
+   * Fórmulas:
+   *   Receita Bruta      = SUM(contas.valor_previsto)          onde data_vencimento no período
+   *   Recebido           = SUM(recebimentos.valor_recebido)    onde data_recebimento no período e status ≠ estornado
+   *   A Receber          = SUM(contas.valor_pendente)          onde data_vencimento no período e status ≠ recebido/cancelado
+   *   Contas Pagas       = SUM(cp.valor_pago)                  onde status pago/parcial e data_pagamento (ou data_vencimento) no período
+   *   Contas a Pagar     = SUM(cp.valor_pendente)              onde status ≠ pago/cancelado e data_vencimento no período
+   *   Caixa Livre        = Recebido − Contas a Pagar
+   *   Resultado Gerencial= Recebido − Contas Pagas
+   *   Margem Gerencial   = Resultado / Receita Bruta × 100  (null se Receita = 0)
+   */
+  function calcularDREGerencial(contas, recebimentos, contasPagar, dataInicio, dataFim) {
+    // Helper: valor numérico seguro
+    function n(v) { return parseFloat(v) || 0; }
+
+    // Helper: data ISO (YYYY-MM-DD) está dentro do período?
+    // Se não há período definido, inclui tudo.
+    function noPeriodo(data) {
+      if (!data) return false; // sem data = exclui do período filtrado
+      var d = String(data).slice(0, 10);
+      if (dataInicio && d < dataInicio) return false;
+      if (dataFim    && d > dataFim)    return false;
+      return true;
+    }
+
+    // Receita Bruta: contas a receber com data_vencimento no período
+    var receitaBruta = 0;
+    (contas || []).forEach(function(c) {
+      if (noPeriodo(c.data_vencimento)) receitaBruta += n(c.valor_previsto);
+    });
+
+    // A Receber: contas pendentes (excl. recebido/cancelado) com data_vencimento no período
+    var aReceber = 0;
+    (contas || []).forEach(function(c) {
+      var st = (c.status || '').toLowerCase();
+      if (st === 'recebido' || st === 'cancelado') return;
+      if (noPeriodo(c.data_vencimento)) aReceber += n(c.valor_pendente);
+    });
+
+    // Recebido: recebimentos confirmados com data_recebimento no período
+    var recebido = 0;
+    (recebimentos || []).forEach(function(r) {
+      if ((r.status || '') === 'estornado') return;
+      if (noPeriodo(r.data_recebimento)) recebido += n(r.valor_recebido);
+    });
+
+    // Contas Pagas: valor_pago de contas pagas/parciais no período
+    // Usa data_pagamento quando disponível; fallback para data_vencimento
+    var contasPagas = 0;
+    (contasPagar || []).forEach(function(cp) {
+      var st = (cp.status || '').toLowerCase();
+      if (st === 'cancelado') return;
+      if (st !== 'pago' && st !== 'parcial') return;
+      var dataRef = cp.data_pagamento || cp.data_vencimento;
+      if (noPeriodo(dataRef)) contasPagas += n(cp.valor_pago);
+    });
+
+    // Contas a Pagar: valor_pendente de contas abertas com data_vencimento no período
+    var contasAPagarTotal = 0;
+    (contasPagar || []).forEach(function(cp) {
+      var st = (cp.status || '').toLowerCase();
+      if (st === 'pago' || st === 'cancelado') return;
+      if (noPeriodo(cp.data_vencimento)) contasAPagarTotal += n(cp.valor_pendente);
+    });
+
+    // Derivados
+    var caixaLivre         = recebido - contasAPagarTotal;
+    var resultadoGerencial = recebido - contasPagas;
+    var margemGerencial    = receitaBruta > 0
+      ? (resultadoGerencial / receitaBruta * 100)
+      : null;
+
+    return {
+      receitaBruta:       receitaBruta,
+      recebido:           recebido,
+      aReceber:           aReceber,
+      contasPagas:        contasPagas,
+      contasAPagar:       contasAPagarTotal,
+      caixaLivre:         caixaLivre,
+      resultadoGerencial: resultadoGerencial,
+      margemGerencial:    margemGerencial
+    };
+  }
+
+
+  // ============================================================
   // EXPOSIÇÃO PÚBLICA
   // ============================================================
 
@@ -612,7 +756,13 @@
 
     // Cálculos locais
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
-    calcularCardsFinanceirosBasicos: calcularCardsFinanceirosBasicos
+    calcularCardsFinanceirosBasicos: calcularCardsFinanceirosBasicos,
+
+    // F4A — DRE Gerencial (novas funções — não alteram as anteriores)
+    listarContasReceberPeriodo:      sbListarContasReceberPeriodo,
+    listarRecebimentosPeriodo:       sbListarRecebimentosPeriodo,
+    listarContasPagarPeriodo:        sbListarContasPagarPeriodo,
+    calcularDREGerencial:            calcularDREGerencial
   };
 
 }(window));
