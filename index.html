@@ -2415,6 +2415,30 @@ body.empresa-tema-fortex{
       <button class="nb" onclick="hAbrirRelatorio()" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">📄 Relatório</button>
     </div>
 
+    <!-- ── DataGuard Status Banner ────────────────────────── -->
+    <div id="dg-bloqueio-banner"
+      style="background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.38);border-radius:6px;
+             padding:.5rem .75rem;margin-bottom:.75rem;font-size:.74rem;display:flex;
+             align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+      <div style="color:var(--text2);flex:1">
+        🛡️ <strong>DataGuard ativo:</strong> Aplicar Recuperação está bloqueada até diagnóstico.
+        Clique em <strong>Diagnóstico</strong> para ver o estado da base de clientes e contatos.
+      </div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0">
+        <button class="nb" onclick="dgDiagnosticoUI()"
+          style="background:var(--blue);color:#fff;border-radius:5px;padding:.28rem .65rem;font-size:.72rem;font-weight:600;white-space:nowrap">
+          🔍 Diagnóstico
+        </button>
+        <button class="nb"
+          onclick="if(!confirm('Desbloquear DataGuard sem diagnóstico?\nCertifique-se de que a base de clientes está completa.'))return;window.dgDesbloquear()"
+          style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:5px;padding:.28rem .65rem;font-size:.72rem;font-weight:600;white-space:nowrap">
+          🔓 Desbloquear
+        </button>
+      </div>
+    </div>
+    <!-- Área de resultado do diagnóstico -->
+    <div id="dg-resultado" style="margin-bottom:.5rem"></div>
+
     <!-- Painel Executivo CEO -->
     <div id="hSecRegistros">
     <div id="hPainelCeo" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.85rem"></div>
@@ -2591,7 +2615,8 @@ body.empresa-tema-fortex{
           style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">
           🔍 Executar Prévia
         </button>
-        <button class="nb" id="rrBtnAplicar" onclick="rrAplicarComConfirmacao()" disabled
+        <button class="nb" id="rrBtnAplicar"
+          onclick="if(typeof window.dgCheckBloqueio==='function'&&window.dgCheckBloqueio('Aplicar Recuperação'))return;rrAplicarComConfirmacao()" disabled
           style="background:var(--blue);color:#fff;border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700;opacity:.45;cursor:not-allowed"
           onmouseenter="if(!this.disabled)this.style.opacity='1'" onmouseleave="if(!this.disabled)this.style.opacity='.9'">
           ✅ Aplicar Recuperação
@@ -9857,6 +9882,7 @@ function rExecTimeline(){
 <script src="js/modules/ui-panels.js"></script>
 <script src="js/modules/historico.js?v=5"></script>
 <script src="js/modules/gestao-inline.js?v=11"></script>
+<script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=11"></script>
 <script src="js/modules/rh-inline.js"></script>
 <script src="js/modules/operacional-inline.js"></script>

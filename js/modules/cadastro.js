@@ -60,6 +60,11 @@
         return;
       }
     }
+    // [DataGuard] Backup + validação antes de gravar contatos
+    if (typeof window.dgAntesDeSalvar === 'function') {
+      var _dgCts = window.dgAntesDeSalvar(key, list, 'ctsSave');
+      if (!_dgCts.ok) return; // bloqueado pelo DataGuard
+    }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
     _sbSave(key, list);
   }
@@ -74,6 +79,11 @@
           'cliente(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
         return;
       }
+    }
+    // [DataGuard] Backup + validação antes de gravar clientes
+    if (typeof window.dgAntesDeSalvar === 'function') {
+      var _dgCli = window.dgAntesDeSalvar(key, list, 'cliSave(' + (opcoes && opcoes.permitirListaVazia ? 'excluir-manual' : 'auto') + ')');
+      if (!_dgCli.ok) return; // bloqueado pelo DataGuard
     }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
     _sbSave(key, list);
@@ -811,6 +821,12 @@
         seenCnpj[cn] = x;
       }
     });
+    // [DataGuard] Log de clientes que serão removidos por CNPJ duplicado
+    if (toRemove.length > 0) {
+      var removidos = list.filter(function(x) { return toRemove.indexOf(x.id) >= 0; });
+      console.warn('[Cadastro] _limparClientes: ' + toRemove.length + ' cliente(s) com CNPJ duplicado serão mesclados:',
+        removidos.map(function(x) { return x.nome + ' (CNPJ: ' + x.cnpj + ')'; }));
+    }
     if (toRemove.length) list = list.filter(function(x) { return toRemove.indexOf(x.id) < 0; });
 
     // 3. Remover registros com nome vazio
@@ -819,6 +835,7 @@
     if (list.length !== before) changed = true;
 
     if (changed) {
+      // [DataGuard] cliSave integra DataGuard — vai bloquear se redução for suspeita
       cliSave(list);
       console.log('[Cadastro] clientes após limpeza:', list.length);
     }
@@ -900,10 +917,12 @@
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
 
-  // Aguarda window.props estar disponível antes de fazer seed
+  // [FIX] Aguarda window.props E empresa_id antes de fazer seed/sync
+  // Máximo ~6s (30 × 200ms). Após isso executa de qualquer forma.
   var _tries = 0;
   function waitAndInit() {
-    if (window.props || _tries++ > 30) { init(); return; }
+    var eid = _getEmpresaId();
+    if ((window.props !== undefined && eid) || _tries++ > 30) { init(); return; }
     setTimeout(waitAndInit, 200);
   }
   waitAndInit();
