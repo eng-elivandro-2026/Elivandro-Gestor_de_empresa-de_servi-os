@@ -140,18 +140,45 @@ async function getEmpresaId() {
     } catch(e) {}
   }
 
-  // fallback só em último caso
+  // [SEC] Fallback hardcoded removido por segurança multiempresa.
+  // Se empresa_id não pôde ser resolvido após todas as tentativas,
+  // retornar null para que os callers bloqueiem a operação.
   if (!_empresaId) {
-    var { data } = await sb
-      .from('empresas')
-      .select('id')
-      .eq('nome_curto','Tecfusion')
-      .single();
-
-    if (data && !_empresaId) _empresaId = data.id;
+    console.error('[RH] empresa_id não pôde ser resolvido. Módulo bloqueado para proteger isolamento multiempresa.');
+    _mostrarErroEmpresaNaoIdentificada();
   }
 
   return _empresaId;
+}
+
+// ── Erro de empresa não identificada (segurança multiempresa) ──────────────
+function _mostrarErroEmpresaNaoIdentificada() {
+  var msg = '<div style="display:flex;align-items:center;justify-content:center;padding:3rem 1.5rem;'
+    + 'background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:8px;'
+    + 'margin:1.5rem;text-align:center;flex-direction:column;gap:.75rem">'
+    + '<div style="font-size:2rem">⚠️</div>'
+    + '<div style="font-weight:700;color:#ef4444;font-size:.95rem">Empresa não identificada</div>'
+    + '<div style="color:var(--text2,#aaa);font-size:.82rem;max-width:340px;line-height:1.5">'
+    + 'Não foi possível identificar a empresa ativa. Recarregue a página ou selecione uma empresa no menu principal.'
+    + '</div>'
+    + '<button onclick="location.reload()" '
+    + 'style="margin-top:.5rem;padding:.45rem 1.2rem;background:#ef4444;color:#fff;border:none;'
+    + 'border-radius:6px;font-size:.82rem;cursor:pointer;font-weight:600">🔄 Recarregar página</button>'
+    + '</div>';
+  // Exibir no container principal do RH (tenta vários seletores)
+  var alvos = ['rhConteudo', 'rhMain', 'rhContainer', 'rh-content'];
+  var exibido = false;
+  for (var i = 0; i < alvos.length; i++) {
+    var el = document.getElementById(alvos[i]);
+    if (el) { el.innerHTML = msg; exibido = true; break; }
+  }
+  if (!exibido) {
+    // fallback: exibir no body como toast permanente
+    var div = document.createElement('div');
+    div.innerHTML = msg;
+    div.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;';
+    document.body.insertBefore(div, document.body.firstChild);
+  }
 }
 
 // ══ COLABORADORES ════════════════════════════════════════════

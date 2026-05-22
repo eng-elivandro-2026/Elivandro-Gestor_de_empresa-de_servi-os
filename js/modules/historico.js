@@ -645,7 +645,7 @@
 
     if (!ordem.length) gruposHtml = '<p class="vazio">Nenhum registro encontrado para os filtros selecionados.</p>';
 
-    var empresa  = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : 'Tecfusion';
+    var empresa  = (window.getEmpresaAtiva && window.getEmpresaAtiva()) ? window.getEmpresaAtiva().nome : '(empresa não identificada)'; // [SEC] fallback hardcoded removido
     var agrupLabel = {cliente:'Cliente',contato:'Contato',negocio:'Negócio',canal:'Canal',responsavel:'Responsável',none:'Cronológico'};
     var periodoLabel = filtDe&&filtAte ? fmtD(filtDe)+' a '+fmtD(filtAte) : filtDe ? 'A partir de '+fmtD(filtDe) : filtAte ? 'Até '+fmtD(filtAte) : 'Todo o período';
     var propSel  = filtPropId && propIdx[filtPropId] ? propIdx[filtPropId].num||'' : '';

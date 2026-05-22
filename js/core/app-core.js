@@ -625,11 +625,9 @@ function loadAll(){
     saveEscTpls(seed);
   }
 
-  props=LS('tf_props')||[
-    {id:'i1',num:'210.26',cli:'JDE',loc:'JDE Salvador',csvc:'Salvador - BA',cnpj:'',cid:'',ac:'',dep:'',mail:'',tel:'',tit:'Retrofitting Raumak 8',val:258000,dat:'13/01/2026',dat2:'',fas:'aprovado',res:'',ts:[],esc:[],bi:[]},
-    {id:'i2',num:'200.26',cli:'JDE',loc:'JDE Jundiaí',csvc:'Jundiaí - SP',cnpj:'',cid:'',ac:'',dep:'',mail:'',tel:'',tit:'Projeto Elétrico Raumak 8',val:20000,dat:'06/01/2026',dat2:'',fas:'finalizado',res:'',ts:[],esc:[],bi:[]},
-    {id:'i3',num:'190.25',cli:'JDE',loc:'JDE JDI',csvc:'Jundiaí - SP',cnpj:'',cid:'',ac:'',dep:'',mail:'',tel:'',tit:'Reforma Eletrônica Fabrima',val:442626.82,dat:'13/10/2025',dat2:'',fas:'andamento',res:'',ts:[],esc:[],bi:[]}
-  ];
+  // [SEC] Seeds hardcoded removidos — propostas sem empresa_id não devem aparecer para nenhuma empresa.
+  // Se tf_props estiver vazio, usar lista vazia. Dados reais vêm do Supabase por empresa_id.
+  props=LS('tf_props')||[];
   // Normalizar esc[] de todos formatos anteriores ao carregar
   props=props.map(function(p){
     if(!Array.isArray(p.esc))p.esc=[];
