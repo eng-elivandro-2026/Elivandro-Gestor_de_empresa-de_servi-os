@@ -314,6 +314,51 @@
     return window._perfilUsuario;
   };
 
+  // ── Helper: aguardar empresa ativa (Promise) ──────────────────────────────
+  // Uso: var empresa = await window.waitEmpresaAtiva();
+  // Retorna a empresa ativa ou null se timeout expirar.
+  // Verifica 3 fontes: window._empresaAtiva, getEmpresaAtivaId(), localStorage.
+  window.waitEmpresaAtiva = function (timeoutMs) {
+    timeoutMs = (typeof timeoutMs === 'number') ? timeoutMs : 5000;
+    return new Promise(function (resolve) {
+
+      // Fonte 1: empresa já está disponível agora?
+      if (window._empresaAtiva && window._empresaAtiva.id) {
+        resolve(window._empresaAtiva);
+        return;
+      }
+      if (typeof window.getEmpresaAtivaId === 'function') {
+        var id = window.getEmpresaAtivaId();
+        if (id && window._empresaAtiva) { resolve(window._empresaAtiva); return; }
+      }
+
+      // Fonte 2: localStorage (empresa escolhida em sessão anterior)
+      try {
+        var saved = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+        if (saved && saved.id) { resolve(saved); return; }
+      } catch (e) {}
+
+      // Fonte 3: aguardar evento empresa:changed (max timeoutMs)
+      var timer;
+      var listener = function () {
+        clearTimeout(timer);
+        window.removeEventListener('empresa:changed', listener);
+        resolve(window._empresaAtiva || null);
+      };
+      window.addEventListener('empresa:changed', listener);
+      timer = setTimeout(function () {
+        window.removeEventListener('empresa:changed', listener);
+        // Última tentativa: localStorage antes de desistir
+        try {
+          var saved2 = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+          if (saved2 && saved2.id) { resolve(saved2); return; }
+        } catch (e) {}
+        console.warn('[multi-empresa] waitEmpresaAtiva: timeout após ' + timeoutMs + 'ms — empresa não disponível.');
+        resolve(null);
+      }, timeoutMs);
+    });
+  };
+
   console.log('%c[multi-empresa] carregado', 'color:#f0a500;font-weight:700');
 
 })();

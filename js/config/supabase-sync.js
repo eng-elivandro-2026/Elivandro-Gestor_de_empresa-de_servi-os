@@ -19,14 +19,28 @@
     }
   }
 
-  // ── Converter proposta para linha do Supabase ─────────────
-  function propToRow(p) {
+  // ── Resolver empresa_id de forma segura (sem fallback hardcoded) ──────────
+  function _resolverEmpresaId() {
     var empId = (typeof getEmpresaAtivaId === 'function')
       ? getEmpresaAtivaId()
       : (window._empresaAtiva ? window._empresaAtiva.id : null);
+    if (!empId && window._empresaAtiva && window._empresaAtiva.id) empId = window._empresaAtiva.id;
+    // Fallback: localStorage — empresa escolhida em sessão anterior
+    if (!empId) {
+      try {
+        var _ls = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+        if (_ls && _ls.id) empId = _ls.id;
+      } catch (e) {}
+    }
+    return empId || null;
+  }
+
+  // ── Converter proposta para linha do Supabase ─────────────
+  function propToRow(p) {
+    var empId = _resolverEmpresaId();
 
     if (!empId) {
-      console.error('[supabase-sync] propToRow chamado sem empresa ativa. Operação bloqueada.');
+      console.warn('[supabase-sync] propToRow: empresa ativa não disponível ainda. Operação adiada.');
       return null;
     }
 
@@ -48,11 +62,9 @@
   // ════════════════════════════════════════════════════════
 
   window.sbMigrarLocal = async function () {
-    var empId = (typeof getEmpresaAtivaId === 'function')
-      ? getEmpresaAtivaId()
-      : (window._empresaAtiva ? window._empresaAtiva.id : null);
+    var empId = _resolverEmpresaId();
     if (!empId) {
-      console.error('[supabase-sync] sbMigrarLocal bloqueado: nenhuma empresa ativa.');
+      console.warn('[supabase-sync] sbMigrarLocal: empresa ativa não disponível ainda. Aguarde setEmpresaAtiva().');
       return { total: 0, erros: 0 };
     }
 
@@ -114,12 +126,10 @@
 
   window.sbCarregarNuvem = async function (empresaId) {
     if (!window.sbClient) return;
-    var empId = empresaId
-      || (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
-      || (window._empresaAtiva ? window._empresaAtiva.id : null);
+    var empId = empresaId || _resolverEmpresaId();
 
     if (!empId) {
-      console.error('[supabase-sync] sbCarregarNuvem bloqueado: nenhuma empresa ativa. Forneça empresaId ou aguarde setEmpresaAtiva().');
+      console.warn('[supabase-sync] sbCarregarNuvem: empresa ativa não disponível ainda. Aguardando setEmpresaAtiva().');
       return [];
     }
 

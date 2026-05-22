@@ -900,10 +900,13 @@
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
 
-  // Aguarda window.props estar disponível antes de fazer seed
+  // Aguarda window.props E empresa_id estarem disponíveis antes de fazer seed.
+  // Máximo ~6s (30 tentativas × 200ms). Após isso executa de qualquer forma
+  // para não bloquear indefinidamente (init() lida com empresa null).
   var _tries = 0;
   function waitAndInit() {
-    if (window.props || _tries++ > 30) { init(); return; }
+    var eid = _getEmpresaId(); // verifica window._empresaAtiva + localStorage
+    if ((window.props !== undefined && eid) || _tries++ > 30) { init(); return; }
     setTimeout(waitAndInit, 200);
   }
   waitAndInit();

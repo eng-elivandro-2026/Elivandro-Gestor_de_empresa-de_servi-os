@@ -170,10 +170,12 @@ async function getEmpresaId() {
     } catch(e) {}
   }
 
-  // [SEC] Sem fallback hardcoded. Só bloqueia se empresa realmente não existe.
+  // [SEC] Sem fallback hardcoded. Retorna null se empresa não disponível.
+  // O erro visual NUNCA é exibido aqui: o getter só retorna null.
+  // _mostrarErroEmpresaNaoIdentificada() é chamado apenas por rRH() quando
+  // o usuário está ATIVAMENTE na seção RH e empresa não pode ser resolvida.
   if (!_empresaId) {
-    console.error('[RH] empresa_id não pôde ser resolvido. Módulo bloqueado para proteger isolamento multiempresa.');
-    _mostrarErroEmpresaNaoIdentificada();
+    console.warn('[RH] empresa_id não pôde ser resolvido — retornando null. Módulos aguardarão empresa:changed.');
   }
 
   return _empresaId;
@@ -4646,9 +4648,14 @@ async function rejeitarDespesa(id) {
     }
   } catch(e) {}
 
-  // Carregar colaboradores
-  await carregarColabs();
-  await gerarAlertas();
+  // [FIX] carregarColabs() e gerarAlertas() REMOVIDOS do auto-init.
+  // Motivo: este script carrega junto com a página, ANTES de multi-empresa.js
+  // terminar o carregamento async da empresa ativa. Chamar carregarColabs aqui
+  // fazia getEmpresaId() falhar e injetar o erro de "Empresa não identificada"
+  // no document.body, tornando-o visível em TODOS os módulos (Comercial, etc).
+  // Solução: carregarColabs() e gerarAlertas() são chamados por rRH(),
+  // que só é invocado DEPOIS que o usuário navega para a seção RH —
+  // momento em que a empresa ativa já foi resolvida pelo multi-empresa.js.
 })();
   // Expor funções globais necessárias para onclick handlers
   window.rhShowSec = rhShowSec;
@@ -4777,10 +4784,37 @@ async function rejeitarDespesa(id) {
   window.aprovarDespesa = aprovarDespesa;
   window.rejeitarDespesa = rejeitarDespesa;
 
-  // Init quando módulo RH for ativado
+  // Init quando módulo RH for ativado (chamado pelo Router ao navegar para RH)
+  // Neste ponto, multi-empresa.js já terminou e empresa está disponível.
   window.rRH = function() {
-    // Sincronizar empresa ativa
-    if(typeof getEmpresaAtivaId === 'function') _empresaId = getEmpresaAtivaId();
+    // Resolver empresa ativa — mesmas 3 fontes, sem fallback hardcoded
+    if (!_empresaId) {
+      if (typeof window.getEmpresaAtivaId === 'function') _empresaId = window.getEmpresaAtivaId();
+    }
+    if (!_empresaId && window._empresaAtiva && window._empresaAtiva.id) {
+      _empresaId = window._empresaAtiva.id;
+    }
+    if (!_empresaId) {
+      try {
+        var _ls = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+        if (_ls && _ls.id) _empresaId = _ls.id;
+      } catch(e) {}
+    }
+
+    // Atualizar label visual da empresa
+    var empLabel = document.getElementById('rhEmpresaLabel');
+    if (empLabel) {
+      var _ea = window._empresaAtiva;
+      if (_ea && _ea.nome_curto) empLabel.textContent = _ea.nome_curto;
+    }
+
+    // Só mostrar erro visual se empresa genuinamente não existe neste ponto
+    if (!_empresaId) {
+      console.error('[RH] rRH() chamado mas empresa_id não pôde ser resolvido.');
+      _mostrarErroEmpresaNaoIdentificada();
+      return;
+    }
+
     // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
     if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
