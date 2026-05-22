@@ -60,6 +60,11 @@
         return;
       }
     }
+    // [DataGuard] Backup + validação antes de gravar contatos
+    if (typeof window.dgAntesDeSalvar === 'function') {
+      var _dgCts = window.dgAntesDeSalvar(key, list, 'ctsSave');
+      if (!_dgCts.ok) return; // bloqueado pelo DataGuard
+    }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
     _sbSave(key, list);
   }
@@ -74,6 +79,11 @@
           'cliente(s) existentes. Use { permitirListaVazia: true } para exclusão manual. Chave:', key);
         return;
       }
+    }
+    // [DataGuard] Backup + validação antes de gravar clientes
+    if (typeof window.dgAntesDeSalvar === 'function') {
+      var _dgCli = window.dgAntesDeSalvar(key, list, 'cliSave(' + (opcoes && opcoes.permitirListaVazia ? 'excluir-manual' : 'auto') + ')');
+      if (!_dgCli.ok) return; // bloqueado pelo DataGuard
     }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
     _sbSave(key, list);
@@ -93,7 +103,8 @@
     window.sbClient.from('configuracoes').select('valor').eq('chave', chave).maybeSingle()
       .then(function(r) {
         if (r.data && Array.isArray(r.data.valor) && r.data.valor.length) {
-          try { localStorage.setItem(chave, JSON.stringify(r.data.valor)); } catch(e) {}
+          // [SEGURANÇA] Write prematuro removido — o setter é responsável pelo merge + write
+          // (com proteção DataGuard aplicada no setter)
           if (setter) setter(r.data.valor);
         }
       });
@@ -811,6 +822,12 @@
         seenCnpj[cn] = x;
       }
     });
+    // [DataGuard] Log de clientes que serão removidos por CNPJ duplicado
+    if (toRemove.length > 0) {
+      var removidos = list.filter(function(x) { return toRemove.indexOf(x.id) >= 0; });
+      console.warn('[Cadastro] _limparClientes: ' + toRemove.length + ' cliente(s) com CNPJ duplicado serão mesclados:',
+        removidos.map(function(x) { return x.nome + ' (CNPJ: ' + x.cnpj + ')'; }));
+    }
     if (toRemove.length) list = list.filter(function(x) { return toRemove.indexOf(x.id) < 0; });
 
     // 3. Remover registros com nome vazio
@@ -818,11 +835,25 @@
     list = list.filter(function(x) { return (x.nome || '').trim().length > 0; });
     if (list.length !== before) changed = true;
 
+    // [SEGURANÇA] _limparClientes() é READ-ONLY por padrão.
+    // NÃO grava automaticamente. Retorna a lista limpa para quem chama.
+    // Para salvar explicitamente, chamar window.aplicarLimpezaClientesManual().
     if (changed) {
-      cliSave(list);
-      console.log('[Cadastro] clientes após limpeza:', list.length);
+      console.info('[Cadastro] _limparClientes: lista alterada (' + list.length + ' clientes após limpeza). '
+        + 'Não gravado automaticamente — use aplicarLimpezaClientesManual() para confirmar.');
     }
+    return list;
   }
+
+  // Exposta para uso manual futuro (prévia + confirmação explícita do usuário)
+  window.aplicarLimpezaClientesManual = function () {
+    var lista = _limparClientes();
+    if (!lista) return;
+    // [DataGuard] cliSave integra DataGuard — bloqueia se redução suspeita
+    cliSave(lista);
+    console.log('[Cadastro] limpeza manual aplicada:', lista.length, 'clientes.');
+    renderTabelaClientes();
+  };
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
@@ -857,10 +888,13 @@
       return;
     }
 
+    // seedFromData: somente carga inicial (page load), nunca em troca de empresa
+    // DataGuard ativo bloqueia writes em cliSave/ctsSave internamente
     seedFromData();
-    _limparClientes();
+    // _limparClientes() REMOVIDA do init — nunca automática
 
     // Sincronizar da nuvem — usa chaves por empresa_id, adiciona novos mas respeita tombstones
+    // [SEGURANÇA] DataGuard protege writes: se _dgBloqueioAtivo, sync apenas renderiza (sem gravar)
     var keyCts = _keyFor(KEY_CTS_BASE);
     var keyCli = _keyFor(KEY_CLI_BASE);
 
@@ -873,6 +907,8 @@
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
+        // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
+        // DataGuard protege redução destrutiva; merge que só cresce é seguro
         try { localStorage.setItem(keyCts, JSON.stringify(merged)); } catch(e) {}
         // Re-renderizar após chegada dos dados da nuvem
         try { renderTabelaContatos(); } catch(e) {}
@@ -888,8 +924,9 @@
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
+        // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
+        // _limkarClientes() REMOVIDA do callback — nunca automática
         try { localStorage.setItem(keyCli, JSON.stringify(merged)); } catch(e) {}
-        _limparClientes(); // limpa também após retorno do Supabase
         // Re-renderizar após chegada dos dados da nuvem
         try { renderTabelaClientes(); } catch(e) {}
       });
@@ -900,39 +937,48 @@
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
 
-  // Aguarda window.props estar disponível antes de fazer seed
+  // [FIX] Aguarda window.props E empresa_id antes de fazer seed/sync
+  // Máximo ~6s (30 × 200ms). Após isso executa de qualquer forma.
   var _tries = 0;
   function waitAndInit() {
-    if (window.props || _tries++ > 30) { init(); return; }
+    var eid = _getEmpresaId();
+    if ((window.props !== undefined && eid) || _tries++ > 30) { init(); return; }
     setTimeout(waitAndInit, 200);
   }
   waitAndInit();
 
   // Re-seed quando propostas forem recarregadas
-  window.addEventListener('propostas:loaded', function() { seedFromData(); });
+  // propostas:loaded dispara em TODA troca de empresa (via recarregarDadosEmpresa)
+  // Gate por flag _cadEmpresaTrocando: seed bloqueado durante troca, permitido na carga inicial
+  window.addEventListener('propostas:loaded', function() {
+    if (window._cadEmpresaTrocando) {
+      console.info('[Cadastro] seedFromData ignorado durante troca de empresa (propostas:loaded).');
+      return;
+    }
+    seedFromData();
+  });
 
-  // ── Trocar empresa: limpar UI imediatamente, depois recarregar ──────────
-  // Garantia: window._empresaAtiva já está atualizado quando este evento dispara,
-  // portanto cliLoad/ctsLoad lerão a chave correta da nova empresa.
+  // ── Trocar empresa: limpar UI e SOMENTE renderizar — SEM ESCRITA ────────
+  // [SEGURANÇA] empresa:changed NÃO chama init() — evita seed, dedup,
+  // _limparClientes e sync Supabase automáticos durante troca de empresa.
+  // Regra absoluta: trocar empresa não altera dados de clientes/contatos.
   window.addEventListener('empresa:changed', function() {
+    // Flag: inibe seedFromData no propostas:loaded que dispara durante a troca
+    window._cadEmpresaTrocando = true;
+    setTimeout(function() { window._cadEmpresaTrocando = false; }, 3500);
+
     var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
             + 'Carregando dados da empresa...</div>';
     var elCli = document.getElementById('tabelaClientes');
     var elCts = document.getElementById('tabelaContatos');
     if (elCli) elCli.innerHTML = msg;
     if (elCts) elCts.innerHTML = msg;
-    // Recarregar dados da nova empresa (seed + sync nuvem).
-    // init() dispara _sbLoad assíncrono que chama render nos callbacks;
-    // chamamos render também aqui de forma síncrona para exibir
-    // imediatamente o que já está no localStorage da nova empresa
-    // (ou "Nenhum cliente cadastrado" se a lista estiver vazia).
-    try {
-      init();
-    } catch(e) {
-      console.error('[Cadastro] erro em init() na troca de empresa:', e);
-    }
-    try { renderTabelaClientes(); } catch(e) {}
-    try { renderTabelaContatos(); } catch(e) {}
+    // Apenas renderizar com o que já está no localStorage da nova empresa
+    // cliLoad/ctsLoad usam _getEmpresaId() que já lê window._empresaAtiva atualizado
+    setTimeout(function() {
+      try { renderTabelaClientes(); } catch(e) {}
+      try { renderTabelaContatos(); } catch(e) {}
+    }, 150);
   });
 
 })();
