@@ -1651,29 +1651,20 @@
   // ── ID helper para cadastros oficiais ─────────────────────
   function _cidO(i, campo) { return 'rrO_' + i + '_' + campo; }
 
-  // ── Determinar ação sugerida ──────────────────────────────
-  // Retorna { acao: 'criar'|'completar'|'duplicado', existente: obj|null }
+  // ── Determinar ação sugerida (apenas por CNPJ) ────────────
+  // Retorna { acao: 'criar'|'completar', existente: obj|null }
+  // Regra: somente CNPJ determina ação. Sem correspondência por nome para evitar
+  // falsos positivos (JDE JDI ≠ JDE Jundiaí, etc.).
   function _acaoSugerida(cadastro, existentes) {
     var cnr = _normCnpj(cadastro.cnpj || '');
 
-    // 1. CNPJ idêntico → completar existente
+    // CNPJ idêntico → completar existente
     var porCnpj = cnr
       ? existentes.find(function (e) { return _normCnpj(e.cnpj || '') === cnr; })
       : null;
     if (porCnpj) return { acao: 'completar', existente: porCnpj };
 
-    // 2. Nome muito parecido (sem CNPJ no existente) → possível duplicado
-    var nNome = _norm(cadastro.nome);
-    var porNome = existentes.find(function (e) {
-      if (_normCnpj(e.cnpj || '') && _normCnpj(e.cnpj || '') !== cnr) return false;
-      var eNome = _norm(e.nome);
-      // Verifica se um nome contém o outro (ex: "JDE Jundiaí" ↔ "JDE Jundiai")
-      return eNome.includes(nNome) || nNome.includes(eNome)
-          || _levenshteinSim(eNome, nNome) > 0.75;
-    });
-    if (porNome) return { acao: 'duplicado', existente: porNome };
-
-    // 3. Nenhuma correspondência → criar novo
+    // Sem correspondência → criar novo
     return { acao: 'criar', existente: null };
   }
 
@@ -1698,40 +1689,32 @@
 
   // ── Render: card de cadastro oficial ─────────────────────
   function _cardOficial(cad, i, existentes) {
-    var sug      = _acaoSugerida(cad, existentes);
-    var acao     = sug.acao;    // 'criar' | 'completar' | 'duplicado'
-    var exist    = sug.existente;
-    var seguro   = (acao === 'criar' || acao === 'completar'); // para "selecionar todos os seguros"
-    var checked  = seguro ? 'checked' : '';
+    var sug    = _acaoSugerida(cad, existentes);
+    var acao   = sug.acao;    // 'criar' | 'completar'
+    var exist  = sug.existente;
 
     // Cor do badge de ação sugerida
-    var acaoCor  = acao === 'criar'    ? '#22c55e'
-                 : acao === 'completar'? '#0ea5e9'
-                 :                      '#f59e0b';
-    var acaoTxt  = acao === 'criar'    ? '✨ Criar novo'
-                 : acao === 'completar'? '🔗 Completar existente'
-                 :                      '⚠️ Possível duplicado';
+    var acaoCor = acao === 'completar' ? '#0ea5e9' : '#22c55e';
+    var acaoTxt = acao === 'completar' ? '🔗 Completar existente' : '✨ Criar novo';
 
     var selId  = _cidO(i, 'sel');
     var acaoId = _cidO(i, 'acao');
     var bodyId = _cidO(i, 'body');
 
-    var html = '<div class="rr-card" data-seguro="' + (seguro?'1':'0') + '">';
+    var html = '<div class="rr-card" data-seguro="1">';
 
     // Cabeçalho
     html += '<div class="rr-card-hdr">'
-          + '<input type="checkbox" id="' + selId + '" ' + checked + ' '
+          + '<input type="checkbox" id="' + selId + '" checked '
           + 'onchange="window._rrContOficiais()" style="width:15px;height:15px;cursor:pointer;flex-shrink:0">'
           + '<label for="' + selId + '" style="font-weight:700;font-size:.82rem;cursor:pointer;flex:1">'
           + '🏢 ' + _escHtml(cad.nome) + '</label>'
           + '<span style="background:' + acaoCor + ';color:#fff;border-radius:3px;padding:.05rem .35rem;font-size:.67rem;font-weight:700">' + acaoTxt + '</span>'
           + '<span class="rr-badge-fonte" style="background:#6b7280">' + _escHtml(cad._fonte) + '</span>'
           + '<select id="' + acaoId + '" class="rr-sel" onchange="window._rrContOficiais()" style="margin-left:auto">'
-          + '<option value="criar"'       + (acao==='criar'    ?' selected':'') + '>Criar novo</option>'
-          + '<option value="completar"'   + (acao==='completar'?' selected':'') + '>Completar existente</option>'
-          + '<option value="duplicado"'   + (acao==='duplicado'?' selected':'') + '>Possível duplicado — revisar</option>'
+          + '<option value="criar"'     + (acao==='criar'    ?' selected':'') + '>Criar novo</option>'
+          + '<option value="completar"' + (acao==='completar'?' selected':'') + '>Completar existente</option>'
           + '<option value="ignorar">Ignorar</option>'
-          + '<option value="legado">Legado suspeito</option>'
           + '</select>'
           + '</div>';
 
@@ -1741,29 +1724,21 @@
       var corBd = acao === 'completar' ? 'rgba(14,165,233,.3)'  : 'rgba(245,158,11,.3)';
       html += '<div style="background:' + corBg + ';border-bottom:1px solid ' + corBd + ';'
             + 'padding:.38rem .65rem;font-size:.72rem;color:var(--text2)">'
-            + (acao === 'completar'
-                ? '🔗 CNPJ já cadastrado como: <strong>' + _escHtml(exist.nome) + '</strong>'
-                  + (exist.cidade ? ' · ' + _escHtml(exist.cidade) : '')
-                  + ' — campos vazios serão preenchidos com dados oficiais.'
-                : '⚠️ Nome parecido encontrado: <strong>' + _escHtml(exist.nome) + '</strong>'
-                  + (exist.cnpj ? ' (CNPJ: ' + _escHtml(exist.cnpj) + ')' : ' (sem CNPJ)')
-                  + ' — verifique se é o mesmo cliente antes de criar.')
+            + '🔗 CNPJ já cadastrado como: <strong>' + _escHtml(exist.nome) + '</strong>'
+            + (exist.cidade ? ' · ' + _escHtml(exist.cidade) : '')
+            + ' — campos vazios serão preenchidos com dados oficiais.'
             + '</div>';
     }
 
     // Corpo editável
     html += '<div id="' + bodyId + '" class="rr-card-body">';
 
-    // Razão Social (read-only, informativa)
-    html += '<div style="background:rgba(14,165,233,.06);border:1px solid rgba(14,165,233,.2);'
-          + 'border-radius:4px;padding:.3rem .5rem;margin-bottom:.4rem;font-size:.71rem;color:var(--text2)">'
-          + '📋 Razão Social: <strong>' + _escHtml(cad.razao_social) + '</strong></div>';
-
     // Grid de campos editáveis
     html += '<div class="rr-grid2" style="margin-bottom:.35rem">'
           + '<div><label class="rr-lbl">Nome de exibição *</label>' + _inp(_cidO(i,'nome'), cad.nome) + '</div>'
           + '<div><label class="rr-lbl">CNPJ</label>' + _inp(_cidO(i,'cnpj'), cad.cnpj) + '</div>'
           + '</div>'
+          + '<div style="margin-bottom:.35rem"><label class="rr-lbl">Razão Social</label>' + _inp(_cidO(i,'razao'), cad.razao_social) + '</div>'
           + '<div class="rr-grid3" style="margin-bottom:.35rem">'
           + '<div><label class="rr-lbl">Cidade</label>' + _inp(_cidO(i,'cidade'), cad.cidade) + '</div>'
           + '<div><label class="rr-lbl">UF</label><input type="text" id="' + _cidO(i,'uf') + '" class="rr-inp" value="' + _escHtml(cad.uf) + '" maxlength="2"></div>'
@@ -1779,9 +1754,9 @@
 
     // Se "completar": mostrar campos a preencher vs existente
     if (exist) {
-      var campos = ['cnpj','cidade','uf','cep','endereco','telefone','email'];
-      var aCompletar = campos.filter(function(c) { return !exist[c] && cad[c.replace('endereco','end')]; });
-      if (aCompletar.length && acao === 'completar') {
+      var campos = ['razao_social','cnpj','cidade','uf','cep','endereco','telefone','email','obs'];
+      var aCompletar = campos.filter(function(c) { return !exist[c] && cad[c]; });
+      if (aCompletar.length) {
         html += '<div style="font-size:.7rem;color:#0ea5e9;margin-top:.3rem">'
               + '🔗 Campos que serão preenchidos (vazios no atual): '
               + aCompletar.join(', ') + '</div>';
@@ -1820,8 +1795,8 @@
     html += '<div style="margin-top:.85rem;padding-top:.65rem;border-top:1px solid var(--border);'
           + 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">'
           + '<div style="font-size:.72rem;color:var(--text3)">'
-          + '⚠️ Confirmação: digite <strong>APLICAR SELECIONADOS TECFUSION</strong>.'
-          + '<br>Backup automático criado antes de gravar. Nenhum dado será apagado.'
+          + '⚠️ Confirmação: digite <strong>APLICAR CADASTROS OFICIAIS TECFUSION</strong>.'
+          + '<br>Backup automático criado antes de gravar. Nenhum dado existente será apagado.'
           + '</div>'
           + '<button id="rr-btn-o" class="nb" onclick="window.rrAplicarOficiais()" '
           + 'style="background:var(--blue);color:#fff;border-radius:6px;padding:.45rem 1.1rem;'
@@ -1867,13 +1842,12 @@
   // ── Contador ao vivo (oficiais) ───────────────────────────
   window._rrContOficiais = function () {
     var total = _CADASTROS_OFICIAIS.length;
-    var sel = 0, criar = 0, completar = 0, ign = 0, rev = 0;
+    var sel = 0, criar = 0, completar = 0, ign = 0;
     for (var i = 0; i < total; i++) {
       var chk = document.getElementById(_cidO(i,'sel'));
       if (!chk || !chk.checked) continue;
       var acao = (document.getElementById(_cidO(i,'acao'))||{}).value||'criar';
-      if (acao === 'ignorar' || acao === 'legado') { ign++; continue; }
-      if (acao === 'duplicado') { rev++; continue; }
+      if (acao === 'ignorar') { ign++; continue; }
       sel++;
       if (acao === 'completar') completar++;
       else criar++;
@@ -1882,24 +1856,22 @@
     if (!el) return;
     el.innerHTML =
       '<strong>' + sel + '</strong> de ' + total + ' selecionados'
-      + (criar     ? ' · <span style="color:#22c55e">✨ ' + criar + ' criar</span>'     : '')
+      + (criar     ? ' · <span style="color:#22c55e">✨ ' + criar + ' criar</span>'         : '')
       + (completar ? ' · <span style="color:#0ea5e9">🔗 ' + completar + ' completar</span>' : '')
-      + (rev       ? ' · <span style="color:#f59e0b">⚠️ ' + rev + ' revisar</span>'    : '')
-      + (ign       ? ' · <span style="color:#6b7280">⏭ ' + ign + ' ignorados</span>'    : '');
+      + (ign       ? ' · <span style="color:#6b7280">⏭ ' + ign + ' ignorados</span>'        : '');
     var btn = document.getElementById('rr-btn-o');
     if (btn) btn.textContent = sel > 0 ? ('✅ Aplicar ' + sel + ' selecionados') : '✅ Aplicar selecionados';
   };
 
   // ── Selecionar todos os seguros ───────────────────────────
-  // Marca: criar + completar. Desmarca: duplicado, ignorar, legado.
+  // Marca todos exceto os que o usuário mudou para "ignorar".
   window.rrSelecionarTodosSeguros = function () {
     var total = _CADASTROS_OFICIAIS.length;
     for (var i = 0; i < total; i++) {
       var chk  = document.getElementById(_cidO(i,'sel'));
       var acao = (document.getElementById(_cidO(i,'acao'))||{}).value||'criar';
       if (!chk) continue;
-      var seguro = (acao === 'criar' || acao === 'completar');
-      chk.checked = seguro;
+      chk.checked = (acao !== 'ignorar');
     }
     window._rrContOficiais();
   };
@@ -1925,13 +1897,13 @@
       var chk  = document.getElementById(_cidO(i,'sel'));
       if (!chk || !chk.checked) return;
       var acao = (document.getElementById(_cidO(i,'acao'))||{}).value||'criar';
-      if (acao === 'ignorar' || acao === 'legado' || acao === 'duplicado') return;
+      if (acao === 'ignorar') return;
       var nome = ((document.getElementById(_cidO(i,'nome'))||{}).value||cad.nome||'').trim();
       if (!nome) return;
       parAplicar.push({
         acao:        acao,
         nome:        nome,
-        razao_social: cad.razao_social,
+        razao_social: ((document.getElementById(_cidO(i,'razao'))||{}).value||cad.razao_social||'').trim(),
         cnpj:        ((document.getElementById(_cidO(i,'cnpj'))  ||{}).value||cad.cnpj||'').trim(),
         cidade:      ((document.getElementById(_cidO(i,'cidade'))||{}).value||cad.cidade||'').trim(),
         uf:          ((document.getElementById(_cidO(i,'uf'))    ||{}).value||cad.uf||'').trim(),
@@ -1955,7 +1927,7 @@
     var resumo = parAplicar.length + ' cadastro(s):\n';
     parAplicar.forEach(function (c) { resumo += '  • ' + c.nome + ' [' + c.acao + ']\n'; });
 
-    var PALAVRA = 'APLICAR SELECIONADOS TECFUSION';
+    var PALAVRA = 'APLICAR CADASTROS OFICIAIS TECFUSION';
     var digitado = window.prompt(
       'Confirme aplicação de cadastros oficiais para "' + enome + '".\n\n'
       + resumo + '\nDigite exatamente:\n\n' + PALAVRA
@@ -1991,7 +1963,7 @@
         if (cad.acao === 'completar' && idxExist >= 0) {
           // Completar: preencher somente campos vazios no existente
           var ex = Object.assign({}, cliResultado[idxExist]);
-          var campos = ['cnpj','cidade','uf','cep','endereco','complemento','telefone','email','obs'];
+          var campos = ['razao_social','cnpj','cidade','uf','cep','endereco','complemento','telefone','email','obs'];
           var completouAlgo = false;
           campos.forEach(function (campo) {
             var valorCad = cad[campo] || '';

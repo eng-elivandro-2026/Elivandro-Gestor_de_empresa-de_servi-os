@@ -2592,60 +2592,36 @@ body.empresa-tema-fortex{
 
     <!-- ── Seção Recuperação de Dados Antigos ── -->
     <div id="hSecRecuperacao" style="display:none">
-      <!-- Cabeçalho -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
-        <div>
-          <div style="font-size:1rem;font-weight:800;color:var(--blue)">🔧 Recuperação de Dados Antigos</div>
-          <div style="font-size:.73rem;color:var(--text3);margin-top:.15rem">Recupera clientes, contatos e histórico das chaves globais anteriores à R1</div>
-        </div>
+
+      <!-- DOM legado mantido oculto para compatibilidade com JS existente -->
+      <div id="rrEmpresaInfo" style="display:none"></div>
+      <div id="rrResultado"   style="display:none"></div>
+      <button id="rrBtnAplicar" style="display:none" disabled></button>
+
+      <!-- ── Aviso: recuperação geral bloqueada temporariamente ── -->
+      <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:.65rem 1rem;margin-bottom:1.1rem;font-size:.78rem;color:var(--text2)">
+        🚫 <strong>Recuperação geral bloqueada temporariamente.</strong>
+        Use <strong>Cadastros Oficiais por CNPJ</strong> abaixo para recuperar os clientes revisados com dados dos comprovantes oficiais.
       </div>
 
-      <!-- Info da empresa ativa -->
-      <div id="rrEmpresaInfo" style="margin-bottom:.7rem"></div>
-
-      <!-- Aviso multiempresa fixo -->
-      <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:.55rem .8rem;margin-bottom:.85rem;font-size:.74rem;color:var(--text2)">
-        ⚠️ <strong>Atenção multiempresa:</strong> os dados antigos (<code>tf_clientes</code>, <code>tf_contatos</code>, <code>tf_historico</code>) não possuem <code>empresa_id</code>.
-        A recuperação os atribui <strong>exclusivamente à empresa ativa</strong>. Confirme que os dados pertencem a esta empresa antes de aplicar.
-      </div>
-
-      <!-- Botões de ação -->
-      <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap">
-        <button class="nb" onclick="rrExecutarPrevia()"
-          style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">
-          🔍 Executar Prévia
-        </button>
-        <button class="nb" id="rrBtnAplicar"
-          onclick="if(typeof window.dgCheckBloqueio==='function'&&window.dgCheckBloqueio('Aplicar Recuperação'))return;rrAplicarComConfirmacao()" disabled
-          style="background:var(--blue);color:#fff;border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:700;opacity:.45;cursor:not-allowed"
-          onmouseenter="if(!this.disabled)this.style.opacity='1'" onmouseleave="if(!this.disabled)this.style.opacity='.9'">
-          ✅ Aplicar Recuperação
-        </button>
-      </div>
-
-      <!-- Aviso sobre confirmação -->
-      <div style="font-size:.7rem;color:var(--text3);margin-bottom:.85rem">
-        A aplicação exige que você digite <strong>RECUPERAR RELACIONAMENTO</strong> para confirmar.
-        Execute sempre a prévia antes de aplicar.
-      </div>
-
-      <!-- Área de resultado -->
-      <div id="rrResultado"></div>
-
-      <!-- ── Cadastros Oficiais por CNPJ ── -->
-      <div style="margin-top:1.25rem;padding-top:1rem;border-top:2px solid var(--border)">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.65rem;flex-wrap:wrap;gap:.5rem">
+      <!-- ── Cadastros Oficiais por CNPJ — seção principal ── -->
+      <div style="background:rgba(14,165,233,.04);border:2px solid rgba(14,165,233,.3);border-radius:10px;padding:1rem 1.1rem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
           <div>
-            <div style="font-size:.95rem;font-weight:800;color:var(--blue)">🏢 Cadastros Oficiais por CNPJ</div>
-            <div style="font-size:.73rem;color:var(--text3);margin-top:.15rem">6 empresas pré-preenchidas com dados dos comprovantes CNPJ — selecione e confirme</div>
+            <div style="font-size:1rem;font-weight:800;color:var(--blue)">🏢 Cadastros Oficiais por CNPJ</div>
+            <div style="font-size:.73rem;color:var(--text3);margin-top:.2rem">
+              6 empresas pré-preenchidas com dados dos comprovantes CNPJ.<br>
+              Selecione, edite se necessário e confirme com palavra-chave.
+            </div>
           </div>
           <button class="nb" onclick="rrExecutarPreviaOficial()"
-            style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.42rem 1rem;font-size:.78rem;font-weight:600">
-            🏢 Prévia de Cadastros Oficiais
+            style="background:var(--blue);color:#fff;border-radius:7px;padding:.5rem 1.2rem;font-size:.82rem;font-weight:700;white-space:nowrap">
+            🏢 Carregar cadastros oficiais
           </button>
         </div>
         <div id="rrResultadoOficial"></div>
       </div>
+
     </div>
 
   </div>
