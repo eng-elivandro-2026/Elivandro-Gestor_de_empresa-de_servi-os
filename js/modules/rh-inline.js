@@ -124,11 +124,13 @@ async function getEmpresaId() {
   } catch(e) {}
 
   // espera curta para o parent / SET_EMPRESA estabilizar
+  // Verifica 3 fontes em cada tentativa: função getter, objeto direto e localStorage
   for (var i = 0; i < 10; i++) {
     await new Promise(function(r){ setTimeout(r, 100); });
 
     if (_empresaId) return _empresaId;
 
+    // Fonte 1: função getter do parent
     try {
       if (window.parent && window.parent.getEmpresaAtivaId) {
         var delayedEmpId = window.parent.getEmpresaAtivaId();
@@ -138,11 +140,37 @@ async function getEmpresaId() {
         }
       }
     } catch(e) {}
+
+    // Fonte 2: objeto _empresaAtiva do parent (acesso direto mesmo sem getter)
+    try {
+      if (window.parent && window.parent._empresaAtiva && window.parent._empresaAtiva.id) {
+        _empresaId = window.parent._empresaAtiva.id;
+        return _empresaId;
+      }
+    } catch(e) {}
+
+    // Fonte 3: localStorage — mesma origem, disponível diretamente no iframe
+    try {
+      var _lsEmp = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (_lsEmp && _lsEmp.id) {
+        _empresaId = _lsEmp.id;
+        return _empresaId;
+      }
+    } catch(e) {}
   }
 
-  // [SEC] Fallback hardcoded removido por segurança multiempresa.
-  // Se empresa_id não pôde ser resolvido após todas as tentativas,
-  // retornar null para que os callers bloqueiem a operação.
+  // [SEC] Última tentativa via localStorage antes de bloquear (para sessões com empresa já escolhida)
+  if (!_empresaId) {
+    try {
+      var _lsEmpFinal = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (_lsEmpFinal && _lsEmpFinal.id) {
+        _empresaId = _lsEmpFinal.id;
+        console.info('[RH] empresa_id resolvido via localStorage (última tentativa):', _empresaId);
+      }
+    } catch(e) {}
+  }
+
+  // [SEC] Sem fallback hardcoded. Só bloqueia se empresa realmente não existe.
   if (!_empresaId) {
     console.error('[RH] empresa_id não pôde ser resolvido. Módulo bloqueado para proteger isolamento multiempresa.');
     _mostrarErroEmpresaNaoIdentificada();
@@ -4574,17 +4602,41 @@ async function rejeitarDespesa(id) {
     document.body.classList.toggle('light', tema === 'light');
   } catch(e) {}
 
-  // Pegar empresa ativa do parent
+  // Pegar empresa ativa do parent — 3 fontes em ordem de prioridade
+  var empLabel = document.getElementById('rhEmpresaLabel');
+
+  // Fonte 1: função getter window.parent.getEmpresaAtiva()
   try {
     if (window.parent && window.parent.getEmpresaAtiva) {
       var emp = window.parent.getEmpresaAtiva();
-      if (emp) {
+      if (emp && emp.id) {
         _empresaId = emp.id;
-        var empLabel = document.getElementById('rhEmpresaLabel');
-        if (empLabel) empLabel.textContent = emp.nome_curto;
+        if (empLabel) empLabel.textContent = emp.nome_curto || '';
       }
     }
   } catch(e) {}
+
+  // Fonte 2: objeto direto window.parent._empresaAtiva
+  if (!_empresaId) {
+    try {
+      if (window.parent && window.parent._empresaAtiva && window.parent._empresaAtiva.id) {
+        _empresaId = window.parent._empresaAtiva.id;
+        if (empLabel) empLabel.textContent = window.parent._empresaAtiva.nome_curto || '';
+      }
+    } catch(e) {}
+  }
+
+  // Fonte 3: localStorage — empresa selecionada em sessão anterior (mesmo domínio)
+  if (!_empresaId) {
+    try {
+      var _initLsEmp = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (_initLsEmp && _initLsEmp.id) {
+        _empresaId = _initLsEmp.id;
+        if (empLabel) empLabel.textContent = _initLsEmp.nome_curto || '';
+        console.info('[RH] empresa_id resolvido via localStorage no init:', _empresaId);
+      }
+    } catch(e) {}
+  }
 
   // Detectar master admin
   try {
