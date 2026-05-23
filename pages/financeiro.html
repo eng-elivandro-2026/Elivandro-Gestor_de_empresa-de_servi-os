@@ -362,6 +362,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <button class="tab-btn" id="tab-btn-fluxo" onclick="showTab('fluxo')">💰 Fluxo de Caixa</button>
   <button class="tab-btn" id="tab-btn-cp" onclick="showTab('cp')">💳 Contas a Pagar</button>
   <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
+  <button class="tab-btn" id="tab-btn-dre" onclick="showTab('dre')">📊 DRE Gerencial</button>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════ -->
@@ -1113,6 +1114,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: DRE GERENCIAL — F4A                                      -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-dre" class="tab-content" style="display:none">
+<div class="wrap">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">📊 DRE Gerencial</div>
+      <div class="page-sub">Resultado gerencial consolidado — somente leitura</div>
+      <div id="dre-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="dre-btn-refresh" onclick="recarregarDRE()" title="Recarregar DRE">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- Filtros de período -->
+  <div class="filtros-bar" id="dre-filtros-bar">
+    <button class="btn-preset on" data-dre-preset="mes"    onclick="dreSetPreset('mes')">Mês atual</button>
+    <button class="btn-preset"    data-dre-preset="tri"    onclick="dreSetPreset('tri')">Trimestre</button>
+    <button class="btn-preset"    data-dre-preset="sem"    onclick="dreSetPreset('sem')">Semestre</button>
+    <button class="btn-preset"    data-dre-preset="ano"    onclick="dreSetPreset('ano')">Ano</button>
+    <button class="btn-preset"    data-dre-preset="custom" onclick="dreSetPreset('custom')">Personalizado</button>
+    <span class="filtro-label">De</span>
+    <input type="date" id="dre-data-inicio" class="filtro-input" oninput="dreAtualizarFiltros()" style="max-width:140px">
+    <span class="filtro-label">Até</span>
+    <input type="date" id="dre-data-fim"    class="filtro-input" oninput="dreAtualizarFiltros()" style="max-width:140px">
+    <span class="filtro-count" id="dre-periodo-label"></span>
+  </div>
+
+  <!-- Estado loading / vazio / erro -->
+  <div class="estado" id="dre-estado" style="display:none">
+    <div class="loading-spinner" id="dre-spinner" style="display:none"></div>
+    <span class="estado-icon" id="dre-estado-icon"></span>
+    <div class="estado-msg"   id="dre-estado-msg"></div>
+    <div class="estado-sub"   id="dre-estado-sub"></div>
+  </div>
+
+  <!-- KPI Cards DRE -->
+  <div class="kpi-row" id="dre-kpi-row" style="display:none;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+    <!-- preenchido por _renderDRECards() -->
+  </div>
+
+  <!-- Aviso somente leitura -->
+  <p id="dre-aviso-leitura" style="display:none;font-size:.72rem;color:var(--text3);margin-top:.5rem;font-style:italic">
+    ⚠️ Visão somente leitura. Os valores refletem os dados registrados nas tabelas oficiais do período selecionado.
+    Receita Bruta e A Receber usam <code>data_vencimento</code>; Recebido usa <code>data_recebimento</code>;
+    Contas Pagas/A Pagar usam <code>data_pagamento</code> ou <code>data_vencimento</code>.
+  </p>
+
+</div><!-- /.wrap -->
+</div><!-- /#tab-dre -->
+
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <!-- SCRIPTS                                                      -->
 <!-- ════════════════════════════════════════════════════════════ -->
 <script>
@@ -1134,6 +1191,11 @@ var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: 
 var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
 var _cpLoadToken      = 0;    // race condition guard
 var _cpFiltros        = { busca: '', status: '', categoria: '', centroCusto: '', vencInicio: '', vencFim: '' };
+
+// ── DRE Gerencial — estado (F4A) ─────────────────────────────
+var _dreLoadToken   = 0;      // race condition guard próprio da DRE
+var _dreCarregando  = false;
+var _drePeriodo     = { dataInicio: '', dataFim: '', preset: 'mes' };
 
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {
@@ -1642,6 +1704,13 @@ function _onTrocaEmpresa(dados) {
   var cpWrap = document.getElementById('cp-table-wrap');
   if (cpWrap) cpWrap.style.display = 'none';
 
+  // Limpar DRE Gerencial imediatamente (F4A)
+  _dreLoadToken++;
+  var dreRow = document.getElementById('dre-kpi-row');
+  var dreAv  = document.getElementById('dre-aviso-leitura');
+  if (dreRow) { dreRow.innerHTML = ''; dreRow.style.display = 'none'; }
+  if (dreAv)  dreAv.style.display = 'none';
+
   _empresaAtiva = {
     id:        dados.empresaId,
     nome:      dados.empresaNome      || '',
@@ -1660,6 +1729,9 @@ function _onTrocaEmpresa(dados) {
   _fluxoInicializarFiltros();
   carregarFluxoCaixa(_empresaAtiva.id);
   carregarContasPagar(_empresaAtiva.id);
+  // F4A — DRE: recarregar preservando o preset atual
+  _dreInicializarPeriodo();
+  carregarDRE(_empresaAtiva.id);
 }
 
 // ── postMessage do portal pai ─────────────────────────────────
@@ -1708,6 +1780,9 @@ window.addEventListener('message', function(e) {
       _fluxoInicializarFiltros();
       carregarFluxoCaixa(emp.id);
       carregarContasPagar(emp.id);
+      // F4A — DRE Gerencial
+      _dreInicializarPeriodo();
+      carregarDRE(emp.id);
     } else {
       _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _nfMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
@@ -3737,6 +3812,357 @@ function _esc(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// F4A — DRE GERENCIAL
+// Funções isoladas — não interferem em F2B, F2C, F2D, F3 ou F3B.
+// ══════════════════════════════════════════════════════════════
+
+// ── Helpers de data para DRE ─────────────────────────────────
+function _dreHoje() { return new Date().toISOString().slice(0, 10); }
+
+function _dreUltimoDiaMes(ano, mes) {
+  return new Date(parseInt(ano, 10), parseInt(mes, 10), 0)
+    .toISOString().slice(0, 10);
+}
+
+// ── Inicializar período com preset padrão (mês atual) ────────
+function _dreInicializarPeriodo() {
+  var hoje = _dreHoje();
+  var ano  = hoje.slice(0, 4);
+  var mes  = hoje.slice(5, 7);
+  _drePeriodo.dataInicio = ano + '-' + mes + '-01';
+  _drePeriodo.dataFim    = _dreUltimoDiaMes(ano, mes);
+  _drePeriodo.preset     = 'mes';
+  var di = document.getElementById('dre-data-inicio');
+  var df = document.getElementById('dre-data-fim');
+  if (di) di.value = _drePeriodo.dataInicio;
+  if (df) df.value = _drePeriodo.dataFim;
+  _dreAtualizarPresetBtns('mes');
+  _dreAtualizarPeriodoLabel();
+}
+
+// ── Definir preset de período ────────────────────────────────
+function dreSetPreset(preset) {
+  var hoje = _dreHoje();
+  var ano  = hoje.slice(0, 4);
+  var mesN = parseInt(hoje.slice(5, 7), 10);
+
+  if (preset === 'mes') {
+    var mesStr = String(mesN).padStart(2, '0');
+    _drePeriodo.dataInicio = ano + '-' + mesStr + '-01';
+    _drePeriodo.dataFim    = _dreUltimoDiaMes(ano, mesStr);
+
+  } else if (preset === 'tri') {
+    // Trimestre atual
+    var q     = Math.floor((mesN - 1) / 3);
+    var qIni  = q * 3 + 1;
+    var qFim  = qIni + 2;
+    _drePeriodo.dataInicio = ano + '-' + String(qIni).padStart(2, '0') + '-01';
+    _drePeriodo.dataFim    = _dreUltimoDiaMes(ano, String(qFim).padStart(2, '0'));
+
+  } else if (preset === 'sem') {
+    // Semestre atual
+    if (mesN <= 6) {
+      _drePeriodo.dataInicio = ano + '-01-01';
+      _drePeriodo.dataFim    = ano + '-06-30';
+    } else {
+      _drePeriodo.dataInicio = ano + '-07-01';
+      _drePeriodo.dataFim    = ano + '-12-31';
+    }
+
+  } else if (preset === 'ano') {
+    _drePeriodo.dataInicio = ano + '-01-01';
+    _drePeriodo.dataFim    = ano + '-12-31';
+
+  } else if (preset === 'custom') {
+    // Não altera datas — deixa o usuário editar os inputs
+    _drePeriodo.preset = 'custom';
+    _dreAtualizarPresetBtns('custom');
+    _dreAtualizarPeriodoLabel();
+    return; // não dispara recarga automática
+  }
+
+  _drePeriodo.preset = preset;
+  var di = document.getElementById('dre-data-inicio');
+  var df = document.getElementById('dre-data-fim');
+  if (di) di.value = _drePeriodo.dataInicio;
+  if (df) df.value = _drePeriodo.dataFim;
+
+  _dreAtualizarPresetBtns(preset);
+  _dreAtualizarPeriodoLabel();
+  if (_empresaAtiva && _empresaAtiva.id) carregarDRE(_empresaAtiva.id);
+}
+
+// ── Atualizar filtros pelo input manual de data ───────────────
+function dreAtualizarFiltros() {
+  var di = document.getElementById('dre-data-inicio');
+  var df = document.getElementById('dre-data-fim');
+  if (di) _drePeriodo.dataInicio = di.value;
+  if (df) _drePeriodo.dataFim    = df.value;
+  _drePeriodo.preset = 'custom';
+  _dreAtualizarPresetBtns('custom');
+  _dreAtualizarPeriodoLabel();
+  if (_empresaAtiva && _empresaAtiva.id) carregarDRE(_empresaAtiva.id);
+}
+
+// ── Helpers visuais de período ────────────────────────────────
+function _dreAtualizarPresetBtns(preset) {
+  document.querySelectorAll('[data-dre-preset]').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.drePreset === preset);
+  });
+}
+
+function _dreAtualizarPeriodoLabel() {
+  var el = document.getElementById('dre-periodo-label');
+  if (!el) return;
+  var ini = _drePeriodo.dataInicio;
+  var fim = _drePeriodo.dataFim;
+  if (ini && fim) {
+    var p = function(iso) {
+      var parts = iso.split('-');
+      return parts[2] + '/' + parts[1] + '/' + parts[0];
+    };
+    el.textContent = p(ini) + ' – ' + p(fim);
+  } else if (ini) {
+    el.textContent = 'A partir de ' + ini;
+  } else {
+    el.textContent = 'Todos os períodos';
+  }
+}
+
+// ── Estados visuais da DRE ────────────────────────────────────
+function _dreMostrarLoading() {
+  var el = document.getElementById('dre-estado');
+  if (el) {
+    el.style.display = '';
+    document.getElementById('dre-spinner').style.display   = '';
+    document.getElementById('dre-estado-icon').textContent = '';
+    document.getElementById('dre-estado-msg').textContent  = 'Carregando DRE Gerencial...';
+    document.getElementById('dre-estado-sub').textContent  = '';
+  }
+  var row = document.getElementById('dre-kpi-row');
+  if (row) row.style.display = 'none';
+  var av = document.getElementById('dre-aviso-leitura');
+  if (av) av.style.display = 'none';
+}
+
+function _dreMostrarVazio(msg, sub) {
+  var el = document.getElementById('dre-estado');
+  if (el) {
+    el.style.display = '';
+    document.getElementById('dre-spinner').style.display   = 'none';
+    document.getElementById('dre-estado-icon').textContent = '📊';
+    document.getElementById('dre-estado-msg').textContent  = msg || 'Nenhum dado encontrado para o período selecionado.';
+    document.getElementById('dre-estado-sub').textContent  = sub || 'Ajuste o período ou verifique se há dados nas tabelas financeiras.';
+  }
+  var row = document.getElementById('dre-kpi-row');
+  if (row) row.style.display = 'none';
+}
+
+function _dreMostrarErro(msg) {
+  var el = document.getElementById('dre-estado');
+  if (el) {
+    el.style.display = '';
+    document.getElementById('dre-spinner').style.display   = 'none';
+    document.getElementById('dre-estado-icon').textContent = '⚠️';
+    document.getElementById('dre-estado-msg').textContent  = msg || 'Erro ao carregar DRE.';
+    document.getElementById('dre-estado-sub').textContent  = 'Tente novamente ou verifique o console.';
+  }
+  var row = document.getElementById('dre-kpi-row');
+  if (row) row.style.display = 'none';
+}
+
+function _dreMostrarCards() {
+  var el = document.getElementById('dre-estado');
+  if (el) el.style.display = 'none';
+  var row = document.getElementById('dre-kpi-row');
+  if (row) row.style.display = '';
+  var av = document.getElementById('dre-aviso-leitura');
+  if (av) av.style.display = '';
+}
+
+// ── Renderizar cards da DRE ───────────────────────────────────
+function _renderDRECards(r) {
+  var row = document.getElementById('dre-kpi-row');
+  if (!row) return;
+
+  // Determinar cor do resultado e caixa livre
+  var resultCls = r.resultadoGerencial >= 0 ? 'recebido' : 'vencida';
+  var caixaCls  = r.caixaLivre         >= 0 ? 'recebido' : 'vencida';
+
+  // Margem formatada
+  var margemStr = r.margemGerencial !== null
+    ? r.margemGerencial.toFixed(1) + '%'
+    : '—';
+  var margemCls = r.margemGerencial === null
+    ? ''
+    : r.margemGerencial >= 0 ? 'recebido' : 'vencida';
+
+  var cards = [
+    {
+      label: 'Receita Bruta',
+      valor: _money(r.receitaBruta),
+      cls:   'destaque',
+      valCls:'emp',
+      sub:   'Previsto no período (data_vencimento)'
+    },
+    {
+      label: 'Recebido',
+      valor: _money(r.recebido),
+      cls:   'recebido',
+      valCls:'verde',
+      sub:   'Entrada real confirmada'
+    },
+    {
+      label: 'A Receber',
+      valor: _money(r.aReceber),
+      cls:   '',
+      valCls:'',
+      sub:   'Pendente (excl. recebido/cancelado)'
+    },
+    {
+      label: 'Contas Pagas',
+      valor: _money(r.contasPagas),
+      cls:   '',
+      valCls:'vermelho',
+      sub:   'Saídas realizadas no período'
+    },
+    {
+      label: 'Contas a Pagar',
+      valor: _money(r.contasAPagar),
+      cls:   r.contasAPagar > 0 ? '' : 'recebido',
+      valCls: r.contasAPagar > 0 ? '' : 'verde',
+      sub:   'Obrigações em aberto no período'
+    },
+    {
+      label: 'Caixa Livre',
+      valor: _money(r.caixaLivre),
+      cls:   caixaCls,
+      valCls: r.caixaLivre >= 0 ? 'verde' : 'vermelho',
+      sub:   'Recebido − Contas a Pagar'
+    },
+    {
+      label: 'Resultado Gerencial',
+      valor: _money(r.resultadoGerencial),
+      cls:   resultCls,
+      valCls: r.resultadoGerencial >= 0 ? 'verde' : 'vermelho',
+      sub:   'Recebido − Contas Pagas'
+    },
+    {
+      label: 'Margem Gerencial',
+      valor: margemStr,
+      cls:   margemCls,
+      valCls: r.margemGerencial === null ? '' : r.margemGerencial >= 0 ? 'verde' : 'vermelho',
+      sub:   'Resultado / Receita Bruta × 100'
+    }
+  ];
+
+  row.innerHTML = cards.map(function(c) {
+    return '<div class="kpi-card ' + c.cls + '">' +
+      '<div class="kpi-label">' + c.label + '</div>' +
+      '<div class="kpi-valor ' + c.valCls + '">' + c.valor + '</div>' +
+      '<div class="kpi-sub">'  + c.sub   + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Carregar DRE ──────────────────────────────────────────────
+async function carregarDRE(empresaId) {
+  var sf = _sf();
+  if (!sf || !empresaId) {
+    _dreMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
+    return;
+  }
+  if (!sf.listarContasReceberPeriodo || !sf.listarRecebimentosPeriodo ||
+      !sf.listarContasPagarPeriodo   || !sf.calcularDREGerencial) {
+    _dreMostrarErro('Módulo DRE não disponível. Recarregue o portal.');
+    return;
+  }
+
+  _dreCarregando = true;
+  var token = ++_dreLoadToken;
+  _dreMostrarLoading();
+  var btn = document.getElementById('dre-btn-refresh');
+  if (btn) btn.disabled = true;
+
+  try {
+    var ini = _drePeriodo.dataInicio;
+    var fim = _drePeriodo.dataFim;
+
+    // Três queries em paralelo — todas filtradas por empresa_id
+    var results = await Promise.all([
+      sf.listarContasReceberPeriodo(empresaId, ini, fim),  // filtro: data_vencimento
+      sf.listarRecebimentosPeriodo(empresaId, ini, fim),   // filtro: data_recebimento
+      sf.listarContasPagarPeriodo(empresaId)               // filtro de período em JS
+    ]);
+
+    // Race condition: descarta se empresa trocou durante o await
+    if (token !== _dreLoadToken) return;
+
+    var contas        = results[0] || [];
+    var recebimentos  = results[1] || [];
+    var contasPagar   = results[2] || [];
+
+    // Calcular DRE localmente — somente leitura, sem alterar dados
+    var resultado = sf.calcularDREGerencial(contas, recebimentos, contasPagar, ini, fim);
+
+    _dreCarregando = false;
+    if (btn) btn.disabled = false;
+
+    // Verificar se há algum dado no período
+    var temDados = resultado.receitaBruta > 0 ||
+                   resultado.recebido     > 0 ||
+                   resultado.contasPagas  > 0 ||
+                   resultado.contasAPagar > 0;
+
+    if (!temDados) {
+      _dreMostrarVazio(
+        'Nenhum dado financeiro encontrado para o período.',
+        'Verifique se há registros nas tabelas financeiro_contas_receber, ' +
+        'financeiro_recebimentos ou financeiro_contas_pagar para ' +
+        (_empresaAtiva ? (_empresaAtiva.nome_curto || _empresaAtiva.nome) : 'esta empresa') +
+        ' no período selecionado.'
+      );
+      return;
+    }
+
+    _renderDRECards(resultado);
+    _dreMostrarCards();
+
+    // Atualizar badge da empresa
+    var badge = document.getElementById('dre-empresa-badge');
+    if (badge && _empresaAtiva) {
+      badge.textContent = '🏢 ' + (_empresaAtiva.nome_curto || _empresaAtiva.nome || '');
+      badge.style.display = '';
+    }
+
+    console.log('%c[DRE F4A] ' + (_empresaAtiva ? (_empresaAtiva.nome_curto || _empresaAtiva.nome) : '?') +
+      ' | ' + ini + ' → ' + fim +
+      ' | Receita: ' + resultado.receitaBruta.toFixed(2) +
+      ' | Recebido: ' + resultado.recebido.toFixed(2) +
+      ' | Resultado: ' + resultado.resultadoGerencial.toFixed(2),
+      'color:#58a6ff;font-weight:700');
+
+  } catch(e) {
+    if (token !== _dreLoadToken) return;
+    _dreCarregando = false;
+    if (btn) btn.disabled = false;
+    console.warn('[DRE F4A] erro ao carregar:', e);
+    _dreMostrarErro('Erro ao carregar DRE Gerencial: ' + (e.message || e));
+  }
+}
+
+// ── Recarregar DRE ────────────────────────────────────────────
+function recarregarDRE() {
+  if (_dreCarregando) return;
+  if (!_empresaAtiva) {
+    _dreMostrarVazio('Empresa não identificada.');
+    return;
+  }
+  carregarDRE(_empresaAtiva.id);
 }
 </script>
 
