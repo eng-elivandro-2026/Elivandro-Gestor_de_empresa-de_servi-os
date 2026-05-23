@@ -21,6 +21,10 @@
 --   - empresas: dono apenas (operação destrutiva irreversível)
 --   - apontamentos_historico: gestor+ via apontamentos JOIN (tabela de auditoria)
 --
+-- IDEMPOTÊNCIA:
+--   DROP POLICY IF EXISTS antes de cada CREATE garante que
+--   re-execuções não falham com "policy already exists".
+--
 -- EXECUÇÃO:
 --   Rodar no SQL Editor do Supabase.
 --   Não requer deploy de frontend.
@@ -35,6 +39,7 @@ BEGIN;
 -- Isolamento via usuario_empresas (sem empresa_id direto)
 -- Perfil mínimo: dono/admin (dados de autenticação — alto risco)
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "usuarios: dono/admin deletam" ON usuarios;
 CREATE POLICY "usuarios: dono/admin deletam"
   ON usuarios FOR DELETE
   USING (
@@ -50,6 +55,7 @@ CREATE POLICY "usuarios: dono/admin deletam"
 -- empresas
 -- Perfil mínimo: dono apenas (operação irreversível)
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "empresas: dono deleta" ON empresas;
 CREATE POLICY "empresas: dono deleta"
   ON empresas FOR DELETE
   USING (
@@ -61,6 +67,7 @@ CREATE POLICY "empresas: dono deleta"
 -- usuario_empresas
 -- Perfil mínimo: dono/admin
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "usuario_empresas: dono/admin deletam" ON usuario_empresas;
 CREATE POLICY "usuario_empresas: dono/admin deletam"
   ON usuario_empresas FOR DELETE
   USING (
@@ -74,6 +81,7 @@ CREATE POLICY "usuario_empresas: dono/admin deletam"
 --         ou chaves globais da whitelist
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "configuracoes: deletar gestor+" ON configuracoes;
 CREATE POLICY "configuracoes: deletar gestor+"
   ON configuracoes FOR DELETE
   USING (
@@ -90,6 +98,7 @@ CREATE POLICY "configuracoes: deletar gestor+"
 -- Isolamento via colaborador_empresas (sem empresa_id direto)
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "colaboradores: gestor+ deleta" ON colaboradores;
 CREATE POLICY "colaboradores: gestor+ deleta"
   ON colaboradores FOR DELETE
   USING (
@@ -104,6 +113,7 @@ CREATE POLICY "colaboradores: gestor+ deleta"
 -- boletins
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "boletins: gestor+ deleta" ON boletins;
 CREATE POLICY "boletins: gestor+ deleta"
   ON boletins FOR DELETE
   USING (
@@ -116,6 +126,7 @@ CREATE POLICY "boletins: gestor+ deleta"
 -- Isolamento via colaborador_empresas
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "rh_documentos: gestor+ deleta" ON rh_documentos;
 CREATE POLICY "rh_documentos: gestor+ deleta"
   ON rh_documentos FOR DELETE
   USING (
@@ -131,6 +142,7 @@ CREATE POLICY "rh_documentos: gestor+ deleta"
 -- Isolamento via colaborador_empresas
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "rh_saude: gestor+ deleta" ON rh_saude;
 CREATE POLICY "rh_saude: gestor+ deleta"
   ON rh_saude FOR DELETE
   USING (
@@ -146,6 +158,7 @@ CREATE POLICY "rh_saude: gestor+ deleta"
 -- Isolamento via colaborador_empresas
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "rh_epis: gestor+ deleta" ON rh_epis;
 CREATE POLICY "rh_epis: gestor+ deleta"
   ON rh_epis FOR DELETE
   USING (
@@ -160,6 +173,7 @@ CREATE POLICY "rh_epis: gestor+ deleta"
 -- rh_despesas
 -- Perfil mínimo: gestor+
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "rh_despesas: gestor+ deleta" ON rh_despesas;
 CREATE POLICY "rh_despesas: gestor+ deleta"
   ON rh_despesas FOR DELETE
   USING (
@@ -172,6 +186,7 @@ CREATE POLICY "rh_despesas: gestor+ deleta"
 -- Tabela de auditoria — isolamento via apontamentos JOIN
 -- Perfil mínimo: gestor+ (tabela sensível)
 -- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "apontamentos_historico: gestor+ deleta" ON apontamentos_historico;
 CREATE POLICY "apontamentos_historico: gestor+ deleta"
   ON apontamentos_historico FOR DELETE
   USING (
@@ -188,7 +203,7 @@ COMMIT;
 -- VERIFICAÇÕES PÓS-MIGRATION (executar separadamente)
 -- ============================================================
 
--- 1. Confirmar 11 novas policies DELETE:
+-- 1. Confirmar 11 policies DELETE:
 -- SELECT tablename, policyname, cmd
 -- FROM pg_policies
 -- WHERE cmd = 'DELETE'
@@ -215,15 +230,15 @@ COMMIT;
 -- ROLLBACK COMPLETO
 -- ============================================================
 -- BEGIN;
--- DROP POLICY IF EXISTS "usuarios: dono/admin deletam"         ON usuarios;
--- DROP POLICY IF EXISTS "empresas: dono deleta"                ON empresas;
--- DROP POLICY IF EXISTS "usuario_empresas: dono/admin deletam" ON usuario_empresas;
--- DROP POLICY IF EXISTS "configuracoes: deletar gestor+"       ON configuracoes;
--- DROP POLICY IF EXISTS "colaboradores: gestor+ deleta"        ON colaboradores;
--- DROP POLICY IF EXISTS "boletins: gestor+ deleta"             ON boletins;
--- DROP POLICY IF EXISTS "rh_documentos: gestor+ deleta"        ON rh_documentos;
--- DROP POLICY IF EXISTS "rh_saude: gestor+ deleta"             ON rh_saude;
--- DROP POLICY IF EXISTS "rh_epis: gestor+ deleta"              ON rh_epis;
--- DROP POLICY IF EXISTS "rh_despesas: gestor+ deleta"          ON rh_despesas;
+-- DROP POLICY IF EXISTS "usuarios: dono/admin deletam"           ON usuarios;
+-- DROP POLICY IF EXISTS "empresas: dono deleta"                  ON empresas;
+-- DROP POLICY IF EXISTS "usuario_empresas: dono/admin deletam"   ON usuario_empresas;
+-- DROP POLICY IF EXISTS "configuracoes: deletar gestor+"         ON configuracoes;
+-- DROP POLICY IF EXISTS "colaboradores: gestor+ deleta"          ON colaboradores;
+-- DROP POLICY IF EXISTS "boletins: gestor+ deleta"               ON boletins;
+-- DROP POLICY IF EXISTS "rh_documentos: gestor+ deleta"          ON rh_documentos;
+-- DROP POLICY IF EXISTS "rh_saude: gestor+ deleta"               ON rh_saude;
+-- DROP POLICY IF EXISTS "rh_epis: gestor+ deleta"                ON rh_epis;
+-- DROP POLICY IF EXISTS "rh_despesas: gestor+ deleta"            ON rh_despesas;
 -- DROP POLICY IF EXISTS "apontamentos_historico: gestor+ deleta" ON apontamentos_historico;
 -- COMMIT;
