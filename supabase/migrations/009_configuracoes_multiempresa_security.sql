@@ -110,7 +110,7 @@ CREATE POLICY "configuracoes: leitura empresa"
   ON configuracoes FOR SELECT
   USING (
     empresa_id IS NOT NULL
-    AND empresa_id = ANY(auth_empresa_ids())
+    AND empresa_id IN (SELECT auth_empresa_ids())
   );
 
 -- Leitura de chaves globais: SOMENTE whitelist explícita
@@ -140,7 +140,7 @@ CREATE POLICY "configuracoes: escrita gestor+"
       (
         chave NOT IN ('tf_schema_version', 'tf_app_config')
         AND empresa_id IS NOT NULL
-        AND empresa_id = ANY(auth_empresa_ids())
+        AND empresa_id IN (SELECT auth_empresa_ids())
       )
     )
   );
@@ -161,7 +161,7 @@ CREATE POLICY "configuracoes: atualizar gestor+"
       (
         chave NOT IN ('tf_schema_version', 'tf_app_config')
         AND empresa_id IS NOT NULL
-        AND empresa_id = ANY(auth_empresa_ids())
+        AND empresa_id IN (SELECT auth_empresa_ids())
       )
     )
   );
