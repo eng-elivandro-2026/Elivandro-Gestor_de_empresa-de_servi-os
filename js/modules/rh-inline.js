@@ -464,7 +464,7 @@ async function gerarAlertas() {
   if (emailAlerts.length) {
     var agora = new Date();
     var periodo = agora.toISOString().slice(0,10) + (agora.getHours() < 12 ? '-M' : '-T');
-    var ultimoEnvio = localStorage.getItem('rh_alert_email_date');
+    var ultimoEnvio = localStorage.getItem('rh_alert_email_date' + (_empresaId ? '_' + _empresaId : ''));
     if (ultimoEnvio !== periodo) {
       var emails = getEmailsAlerta();
       var linhas = emailAlerts.map(function(a, i) {
@@ -491,7 +491,7 @@ async function gerarAlertas() {
             })
           });
         }));
-        localStorage.setItem('rh_alert_email_date', periodo);
+        localStorage.setItem('rh_alert_email_date' + (_empresaId ? '_' + _empresaId : ''), periodo);
       } catch(e) { console.warn('Email de alerta não enviado:', e); }
     }
   }
@@ -499,7 +499,8 @@ async function gerarAlertas() {
 
 // ══ CONFIGURAÇÃO DE E-MAILS DE ALERTA ════════════════════════
 function getEmailsAlerta() {
-  try { return JSON.parse(localStorage.getItem('rh_alert_emails') || '[]'); } catch(e) { return []; }
+  var sk = _empresaId ? 'rh_alert_emails_' + _empresaId : null;
+  try { return JSON.parse(localStorage.getItem(sk || 'rh_alert_emails') || localStorage.getItem('rh_alert_emails') || '[]'); } catch(e) { return []; }
 }
 
 function _syncEmailsNuvem(emails) {
@@ -538,7 +539,7 @@ function adicionarEmailAlerta() {
   var emails = getEmailsAlerta();
   if (emails.includes(email)) { toast('E-mail já cadastrado.', 'err'); return; }
   emails.push(email);
-  localStorage.setItem('rh_alert_emails', JSON.stringify(emails));
+  localStorage.setItem(_empresaId ? 'rh_alert_emails_' + _empresaId : 'rh_alert_emails', JSON.stringify(emails));
   _syncEmailsNuvem(emails);
   inp.value = '';
   renderEmailAlertaList();
@@ -547,7 +548,7 @@ function adicionarEmailAlerta() {
 function removerEmailAlerta(idx) {
   var emails = getEmailsAlerta();
   emails.splice(idx, 1);
-  localStorage.setItem('rh_alert_emails', JSON.stringify(emails));
+  localStorage.setItem(_empresaId ? 'rh_alert_emails_' + _empresaId : 'rh_alert_emails', JSON.stringify(emails));
   _syncEmailsNuvem(emails);
   renderEmailAlertaList();
 }
@@ -586,7 +587,7 @@ async function testarEnvioEmails() {
   }));
   if (btn) { btn.disabled = false; btn.textContent = '📧 Enviar Teste'; }
   // Limpa trava diária para o próximo alerta real também ser enviado
-  localStorage.removeItem('rh_alert_email_date');
+  localStorage.removeItem(_empresaId ? 'rh_alert_email_date_' + _empresaId : 'rh_alert_email_date');
   if (fail === 0) {
     toast('✅ Teste enviado para ' + ok + ' e-mail(s)! Verifique a caixa de entrada.', 'ok');
   } else {
