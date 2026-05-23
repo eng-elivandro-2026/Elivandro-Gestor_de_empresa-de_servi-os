@@ -10160,6 +10160,11 @@ function fecharMemorial(){
 // ══ GESTÃO DE USUÁRIOS ════════════════════════════════════════
 
 function abrirGerenciarUsuarios() {
+  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
+    alert('Acesso negado. Apenas dono e admin podem gerenciar usuários.');
+    return;
+  }
   var m = document.getElementById('modalUsuarios');
   if (!m) return;
   var empresaOpts = (window._empresasUsuario || []).map(function(e){
@@ -10224,6 +10229,11 @@ function _gerarSenhaTemp() {
 }
 
 async function convidarUsuario() {
+  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
+    alert('Acesso negado. Apenas dono e admin podem convidar usuários.');
+    return;
+  }
   var nome    = (document.getElementById('invNome')   ||{}).value||'';
   var email   = (document.getElementById('invEmail')  ||{}).value||'';
   var perfil  = (document.getElementById('invPerfil') ||{}).value||'gestor';
@@ -10300,6 +10310,11 @@ async function _popularDropdownUsuarios() {
 }
 
 async function vincularUsuarioExistente() {
+  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
+    alert('Acesso negado. Apenas dono e admin podem vincular usuários.');
+    return;
+  }
   var usuarioId = (document.getElementById('vinUsuario')||{}).value||'';
   var empId     = (document.getElementById('vinEmpresa')||{}).value||'';
   var res       = document.getElementById('vinResultado');

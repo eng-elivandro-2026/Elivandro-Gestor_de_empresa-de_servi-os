@@ -76,6 +76,7 @@
       label: 'Gestão CEO',
       icon: '🎯',
       tipo: 'inline',
+      perfisPermitidos: ['dono', 'admin', 'gestor'],
       init: function () { go('gestao'); if (typeof rGestaoCeo === 'function') rGestaoCeo(); },
       nav: [
         { separator: true, label: 'Gestão Executiva' },
@@ -112,6 +113,7 @@
       icon: '💰',
       tipo: 'iframe',
       src: 'pages/financeiro.html',
+      perfisPermitidos: ['dono', 'admin', 'gestor'],
       badge: 'Em breve',
       nav: []
     },
@@ -133,6 +135,16 @@
     ir: function (id) {
       var mod = this._getMod(id);
       if (!mod) return console.warn('[Router] Módulo não encontrado:', id);
+
+      // Guard de perfil — bloqueia módulos restritos (protege também contra console bypass)
+      if (mod.perfisPermitidos) {
+        var _p = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+        if (_p && mod.perfisPermitidos.indexOf(_p) < 0) {
+          console.warn('[Router] Acesso bloqueado ao módulo "' + id + '" — perfil:', _p);
+          alert('Acesso restrito. Seu perfil (' + _p + ') não tem permissão para o módulo "' + mod.label + '".');
+          return;
+        }
+      }
 
       // Desativa módulo anterior
       if (_moduloAtivo && _moduloAtivo !== id) {
