@@ -7099,10 +7099,13 @@ function beLoadDB(){
 function beSaveDB(){
   LS('tf_bancoEscopos', _beEscopos);
   // Sync com Supabase
+  var _beEid = (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
+            || (window._empresaAtiva && window._empresaAtiva.id) || null;
+  if(!_beEid){ console.warn('[beSaveDB] empresa_id não disponível — sync bloqueado.'); return; }
   if(window.sbClient && _beEscopos && _beEscopos.length){
     window.sbClient.from('configuracoes').upsert({
-      chave:'tf_etpl', valor:_beEscopos, updated_at:new Date().toISOString()
-    },{onConflict:'chave'}).then(function(r){
+      chave:'tf_etpl', valor:_beEscopos, empresa_id:_beEid, updated_at:new Date().toISOString()
+    },{onConflict:'chave,empresa_id'}).then(function(r){
       if(r.error) console.error('[beSaveDB]',r.error.message);
       else console.log('%c[beSaveDB] '+_beEscopos.length+' escopos sincronizados','color:green;font-weight:700');
     });

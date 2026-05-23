@@ -62,6 +62,9 @@ function sbSaveGestao(dados) {
 
     if (!sb) return;
 
+    var eid = _gestaoGetEmpresaId();
+    if (!eid) { console.warn('[gestao-sync] sbSaveGestao: empresa_id não disponível — bloqueado.'); return; }
+
     try {
 
       await sb.from('configuracoes').upsert({
@@ -70,9 +73,11 @@ function sbSaveGestao(dados) {
 
         valor: dados,
 
+        empresa_id: eid,
+
         updated_at: new Date().toISOString()
 
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
 
     } catch(e) {
 
@@ -3629,15 +3634,20 @@ function importarBackup(){
 
       try{
 
+        var _eidRestore = _gestaoGetEmpresaId();
+        if (!_eidRestore) { console.warn('[gestao-sync] restore: empresa_id não disponível — sync nuvem bloqueado.'); throw new Error('empresa_id não disponível'); }
+
         await _sb.from('configuracoes').upsert({
 
           chave:_gestaoChave,
 
           valor:dados,
 
+          empresa_id:_eidRestore,
+
           updated_at:new Date().toISOString()
 
-        },{onConflict:'chave'});
+        },{onConflict:'chave,empresa_id'});
 
         const st=document.getElementById('backup-status');
 
