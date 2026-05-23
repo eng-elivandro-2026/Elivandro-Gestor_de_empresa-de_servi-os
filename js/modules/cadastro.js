@@ -92,22 +92,28 @@
   // ── Supabase sync ─────────────────────────────────────────
   function _sbSave(chave, valor) {
     if (!window.sbClient) return;
+    var eid = _getEmpresaId();
+    var payload = { chave: chave, valor: valor, updated_at: new Date().toISOString() };
+    if (eid) payload.empresa_id = eid;
     window.sbClient.from('configuracoes').upsert(
-      { chave: chave, valor: valor, updated_at: new Date().toISOString() },
-      { onConflict: 'chave' }
+      payload,
+      { onConflict: 'chave,empresa_id' }
     ).then(function(r) { if (r.error) console.warn('[cadastro] save error', r.error); });
   }
 
   function _sbLoad(chave, setter) {
     if (!window.sbClient) return;
-    window.sbClient.from('configuracoes').select('valor').eq('chave', chave).maybeSingle()
-      .then(function(r) {
-        if (r.data && Array.isArray(r.data.valor) && r.data.valor.length) {
-          // [SEGURANÇA] Write prematuro removido — o setter é responsável pelo merge + write
-          // (com proteção DataGuard aplicada no setter)
-          if (setter) setter(r.data.valor);
-        }
-      });
+    var eid = _getEmpresaId();
+    var q = window.sbClient.from('configuracoes').select('valor').eq('chave', chave);
+    if (eid) q = q.eq('empresa_id', eid);
+    else q = q.is('empresa_id', null);
+    q.maybeSingle().then(function(r) {
+      if (r.data && Array.isArray(r.data.valor) && r.data.valor.length) {
+        // [SEGURANÇA] Write prematuro removido — o setter é responsável pelo merge + write
+        // (com proteção DataGuard aplicada no setter)
+        if (setter) setter(r.data.valor);
+      }
+    });
   }
 
   // ── ID gerador ────────────────────────────────────────────

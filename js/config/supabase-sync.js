@@ -19,6 +19,19 @@
     }
   }
 
+  function _getEmpId() {
+    if (typeof getEmpresaAtivaId === 'function') {
+      var id = getEmpresaAtivaId();
+      if (id) return id;
+    }
+    if (window._empresaAtiva && window._empresaAtiva.id) return window._empresaAtiva.id;
+    try {
+      var s = JSON.parse(localStorage.getItem('tf_empresa_ativa') || 'null');
+      if (s && s.id) return s.id;
+    } catch (e) {}
+    return null;
+  }
+
   // ── Converter proposta para linha do Supabase ─────────────
   function propToRow(p) {
     var empId = (typeof getEmpresaAtivaId === 'function')
@@ -225,9 +238,11 @@
 
   window.sbSalvarMeta = async function (meta) {
     if (!window.sbClient || !meta) return;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbSalvarMeta: empresa_id não disponível — bloqueado.'); return; }
     var res = await window.sbClient
       .from('configuracoes')
-      .upsert({ chave: 'tf_meta', valor: meta, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+      .upsert({ chave: 'tf_meta', valor: meta, empresa_id: eid, updated_at: new Date().toISOString() }, { onConflict: 'chave,empresa_id' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar meta:', res.error.message);
     else console.log('%cmeta salva na nuvem', 'color:green');
     return res;
@@ -235,10 +250,13 @@
 
   window.sbCarregarMeta = async function () {
     if (!window.sbClient) return null;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbCarregarMeta: empresa_id não disponível.'); return null; }
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'tf_meta')
+      .eq('empresa_id', eid)
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem metas na nuvem ainda.'); return null; }
     if (res.data && res.data.valor) {
@@ -255,9 +273,11 @@
 
   window.sbSalvarSvcTemplates = async function (tpls) {
     if (!window.sbClient || !tpls) return;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbSalvarSvcTemplates: empresa_id não disponível — bloqueado.'); return; }
     var res = await window.sbClient
       .from('configuracoes')
-      .upsert({ chave: 'tf_svc_templates', valor: tpls, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+      .upsert({ chave: 'tf_svc_templates', valor: tpls, empresa_id: eid, updated_at: new Date().toISOString() }, { onConflict: 'chave,empresa_id' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar templates de serviço:', res.error.message);
     else console.log('%ctemplates de serviço salvos na nuvem (' + tpls.length + ')', 'color:green;font-weight:700');
     return res;
@@ -265,10 +285,13 @@
 
   window.sbCarregarSvcTemplates = async function () {
     if (!window.sbClient) return [];
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbCarregarSvcTemplates: empresa_id não disponível.'); return []; }
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'tf_svc_templates')
+      .eq('empresa_id', eid)
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Erro ao carregar templates de serviço:', res.error.message); return []; }
     if (res.data && res.data.valor && res.data.valor.length) {
@@ -309,9 +332,12 @@
       console.warn('[supabase-sync] sbSalvarHistorico: empresa_id não disponível — save bloqueado.');
       return;
     }
+    var eid = _getEmpId();
+    var payload = { chave: chave, valor: lista, updated_at: new Date().toISOString() };
+    if (eid) payload.empresa_id = eid;
     var res = await window.sbClient
       .from('configuracoes')
-      .upsert({ chave: chave, valor: lista, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+      .upsert(payload, { onConflict: 'chave,empresa_id' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar histórico:', res.error.message);
     else console.log('%chistórico salvo na nuvem [' + chave + '] (' + lista.length + ' registros)', 'color:green');
     return res;
@@ -335,11 +361,13 @@
         }
       } catch(e) {}
     }
-    var res = await window.sbClient
+    var eid = _getEmpId();
+    var q = window.sbClient
       .from('configuracoes')
       .select('valor')
-      .eq('chave', chave)
-      .maybeSingle();
+      .eq('chave', chave);
+    if (eid) q = q.eq('empresa_id', eid);
+    var res = await q.maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem histórico na nuvem para', chave); return []; }
     if (res.data && res.data.valor) {
       try { localStorage.setItem(chave, JSON.stringify(res.data.valor)); } catch(e) {}
@@ -355,9 +383,11 @@
 
   window.sbSalvarEmailsAlerta = async function (emails) {
     if (!window.sbClient) return;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbSalvarEmailsAlerta: empresa_id não disponível — bloqueado.'); return; }
     var res = await window.sbClient
       .from('configuracoes')
-      .upsert({ chave: 'rh_alert_emails', valor: emails, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+      .upsert({ chave: 'rh_alert_emails', valor: emails, empresa_id: eid, updated_at: new Date().toISOString() }, { onConflict: 'chave,empresa_id' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar e-mails de alerta:', res.error.message);
     else console.log('%ce-mails de alerta salvos na nuvem (' + emails.length + ')', 'color:green;font-weight:700');
     return res;
@@ -365,10 +395,13 @@
 
   window.sbCarregarEmailsAlerta = async function () {
     if (!window.sbClient) return null;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbCarregarEmailsAlerta: empresa_id não disponível.'); return null; }
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
       .eq('chave', 'rh_alert_emails')
+      .eq('empresa_id', eid)
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem e-mails de alerta na nuvem.'); return null; }
     if (res.data && res.data.valor && res.data.valor.length) {
@@ -388,21 +421,27 @@
     clearTimeout(window._geralSaveTimer);
     window._geralSaveTimer = setTimeout(async function () {
       if (!window.sbClient || !dados) return;
+      var eid = _getEmpId();
+      if (!eid) { console.warn('[supabase-sync] sbSaveGestaoGeral: empresa_id não disponível — bloqueado.'); return; }
       await window.sbClient.from('configuracoes').upsert({
         chave: chave,
         valor: dados,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     }, 1500);
   };
 
   window.sbLoadGestaoGeral = async function (chave) {
     chave = chave || 'tf_planejador_geral';
     if (!window.sbClient) return null;
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbLoadGestaoGeral: empresa_id não disponível.'); return null; }
     var res = await window.sbClient
       .from('configuracoes')
       .select('valor')
       .eq('chave', chave)
+      .eq('empresa_id', eid)
       .maybeSingle();
     if (res.data && res.data.valor) return res.data.valor;
     return null;
@@ -422,24 +461,27 @@
 
   window.sbSalvarBackup = async function (backup) {
     if (!window.sbClient || !backup) return;
-    // Salvar backup completo
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbSalvarBackup: empresa_id não disponível — bloqueado.'); return; }
+
     var res = await window.sbClient
       .from('configuracoes')
       .upsert({
         chave: 'tf_backup',
         valor: backup,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     if (res.error) console.error('[supabase-sync] Erro ao salvar backup:', res.error.message);
     else console.log('%cbackup salvo na nuvem', 'color:green');
 
-    // Salvar também templates e escopos separadamente para carregar mais fácil
     if (backup.templates && backup.templates.length) {
       await window.sbClient.from('configuracoes').upsert({
         chave: 'tf_tpls',
         valor: backup.templates,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     }
     var escoposParaSalvar = backup.escopos;
     if (!escoposParaSalvar || !escoposParaSalvar.length) {
@@ -449,17 +491,18 @@
       await window.sbClient.from('configuracoes').upsert({
         chave: 'tf_etpl',
         valor: escoposParaSalvar,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     }
     if (backup.config) {
       await window.sbClient.from('configuracoes').upsert({
         chave: 'tf_config',
         valor: backup.config,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     }
-    // Templates de Serviço
     var svcTpls = backup.svcTemplates;
     if (!svcTpls || !svcTpls.length) {
       try { svcTpls = JSON.parse(localStorage.getItem('tf_svc_templates') || '[]'); } catch(e) {}
@@ -468,25 +511,26 @@
       await window.sbClient.from('configuracoes').upsert({
         chave: 'tf_svc_templates',
         valor: svcTpls,
+        empresa_id: eid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'chave' });
+      }, { onConflict: 'chave,empresa_id' });
     }
     return res;
   };
 
   window.sbCarregarBackup = async function () {
     if (!window.sbClient) return null;
-    // Carregar templates
-    var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').maybeSingle();
+    var eid = _getEmpId();
+    if (!eid) { console.warn('[supabase-sync] sbCarregarBackup: empresa_id não disponível.'); return null; }
+
+    var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').eq('empresa_id', eid).maybeSingle();
     if (rTpl.data && rTpl.data.valor) {
       try { localStorage.setItem('tf_tpls', JSON.stringify(rTpl.data.valor)); } catch(e) {}
       console.log('%ctemplates carregados da nuvem', 'color:#58a6ff');
     }
-    // Carregar escopos
-    var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').maybeSingle();
+    var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').eq('empresa_id', eid).maybeSingle();
     if (rEsc.data && rEsc.data.valor) {
       try {
-        // Normaliza campo: registros antigos usam 'titulo' como grupo, novos usam 'grupo'
         var escoposNorm = (rEsc.data.valor || []).map(function(e) {
           if (!e.grupo && e.titulo) e.grupo = e.titulo;
           return e;
@@ -496,14 +540,12 @@
       } catch(e) {}
       console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
     }
-    // Carregar config
-    var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').maybeSingle();
+    var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').eq('empresa_id', eid).maybeSingle();
     if (rCfg.data && rCfg.data.valor) {
       try { localStorage.setItem('tf_prc', JSON.stringify(rCfg.data.valor)); } catch(e) {}
       console.log('%cconfig carregada da nuvem', 'color:#58a6ff');
     }
-    // Carregar templates de serviço
-    var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').maybeSingle();
+    var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').eq('empresa_id', eid).maybeSingle();
     if (rSvc.data && rSvc.data.valor && rSvc.data.valor.length) {
       try { localStorage.setItem('tf_svc_templates', JSON.stringify(rSvc.data.valor)); } catch(e) {}
       console.log('%ctemplates de serviço carregados da nuvem (' + rSvc.data.valor.length + ')', 'color:#58a6ff');

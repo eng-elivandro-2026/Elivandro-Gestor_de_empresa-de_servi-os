@@ -89,14 +89,18 @@
   }
 
   // ── Leitura Supabase (Promise<Array|null>) ────────────────
-  async function _sbRead(chave) {
+  // empresaId: UUID da empresa (filtra por empresa_id = empresaId)
+  //            null  → filtra por empresa_id IS NULL (chaves legado/global)
+  async function _sbRead(chave, empresaId) {
     if (!window.sbClient) return null;
     try {
-      var r = await window.sbClient
+      var q = window.sbClient
         .from('configuracoes')
         .select('valor')
-        .eq('chave', chave)
-        .maybeSingle();
+        .eq('chave', chave);
+      if (empresaId) q = q.eq('empresa_id', empresaId);
+      else q = q.is('empresa_id', null);
+      var r = await q.maybeSingle();
       if (r.data && Array.isArray(r.data.valor)) return r.data.valor;
     } catch (e) {
       console.warn('[Recovery] sbRead erro para "' + chave + '":', e);
@@ -105,15 +109,15 @@
   }
 
   // ── Escrita Supabase ──────────────────────────────────────
-  async function _sbWrite(chave, valor) {
+  // empresaId: UUID da empresa — obrigatório para chaves sensíveis
+  async function _sbWrite(chave, valor, empresaId) {
     if (!window.sbClient) return;
     try {
+      var payload = { chave: chave, valor: valor, updated_at: new Date().toISOString() };
+      if (empresaId) payload.empresa_id = empresaId;
       var r = await window.sbClient
         .from('configuracoes')
-        .upsert(
-          { chave: chave, valor: valor, updated_at: new Date().toISOString() },
-          { onConflict: 'chave' }
-        );
+        .upsert(payload, { onConflict: 'chave,empresa_id' });
       if (r.error) console.warn('[Recovery] sbWrite erro para "' + chave + '":', r.error);
     } catch (e) {
       console.warn('[Recovery] sbWrite exceção para "' + chave + '":', e);
@@ -344,17 +348,19 @@
     var ls_cts_novo  = keyCts  ? _lsRead(keyCts)  : [];
     var ls_hist_novo = keyHist ? _lsRead(keyHist) : [];
 
-    // ── 3. Ler do Supabase — antigo global ────────────────────
-    console.info('[Recovery] Consultando Supabase — chaves antigas...');
-    var sb_cli_antigo  = (await _sbRead('tf_clientes')  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
-    var sb_cts_antigo  = (await _sbRead('tf_contatos')  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
-    var sb_hist_antigo = (await _sbRead('tf_historico') || []).map(function(h) { return Object.assign({}, h, { _fonte: h._fonte || 'Supabase antigo' }); });
+    // ── 3. Ler do Supabase — antigo global (empresa_id = null) ───
+    // Após a migration, estas leituras retornarão vazio (orphaned keys bloqueadas por RLS).
+    // Mantidas para compatibilidade com DataGuard e relatório de fontes.
+    console.info('[Recovery] Consultando Supabase — chaves antigas (legado global)...');
+    var sb_cli_antigo  = (await _sbRead('tf_clientes', null)  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
+    var sb_cts_antigo  = (await _sbRead('tf_contatos', null)  || []).map(function(c) { return Object.assign({}, c, { _fonte: c._fonte || 'Supabase antigo' }); });
+    var sb_hist_antigo = (await _sbRead('tf_historico', null) || []).map(function(h) { return Object.assign({}, h, { _fonte: h._fonte || 'Supabase antigo' }); });
 
     // ── 4. Ler do Supabase — novo por empresa ─────────────────
     console.info('[Recovery] Consultando Supabase — chaves novas...');
-    var sb_cli_novo  = keyCli  ? (await _sbRead(keyCli)  || []) : [];
-    var sb_cts_novo  = keyCts  ? (await _sbRead(keyCts)  || []) : [];
-    var sb_hist_novo = keyHist ? (await _sbRead(keyHist) || []) : [];
+    var sb_cli_novo  = keyCli  ? (await _sbRead(keyCli, eid)  || []) : [];
+    var sb_cts_novo  = keyCts  ? (await _sbRead(keyCts, eid)  || []) : [];
+    var sb_hist_novo = keyHist ? (await _sbRead(keyHist, eid) || []) : [];
 
     // ── 5. Montar "existentes" (o que já tem na empresa) ──────
     var existentes_cli  = _mesclarComSb(ls_cli_novo,  sb_cli_novo);
@@ -598,7 +604,7 @@
         });
         var cliMesclado = cliAtual.concat(novosCli);
         _lsWrite(keyCli, cliMesclado);
-        await _sbWrite(keyCli, cliMesclado);
+        await _sbWrite(keyCli, cliMesclado, eid);
         relatorio.clientes_recuperados = novosCli.length;
         console.info('[Recovery] Clientes recuperados:', novosCli.length);
       }
@@ -628,7 +634,7 @@
         });
         var ctsMesclado = ctsAtual.concat(novosCts);
         _lsWrite(keyCts, ctsMesclado);
-        await _sbWrite(keyCts, ctsMesclado);
+        await _sbWrite(keyCts, ctsMesclado, eid);
         relatorio.contatos_recuperados = novosCts.length;
         console.info('[Recovery] Contatos recuperados:', novosCts.length);
       }
@@ -649,7 +655,7 @@
         });
         var histMesclado = histAtual.concat(novosHist);
         _lsWrite(keyHist, histMesclado);
-        await _sbWrite(keyHist, histMesclado);
+        await _sbWrite(keyHist, histMesclado, eid);
         relatorio.historico_recuperado = novosHist.length;
         console.info('[Recovery] Histórico recuperado:', novosHist.length);
       }
@@ -1480,7 +1486,7 @@
       if (dedupCli.para_adicionar.length) {
         var cliResult = cliAtual.concat(dedupCli.para_adicionar);
         _lsWrite(keyCli, cliResult);
-        await _sbWrite(keyCli, cliResult);
+        await _sbWrite(keyCli, cliResult, eid);
         relatorio.clientes_aplicados = dedupCli.para_adicionar.length;
         console.info('[Recovery Curadoria] Clientes aplicados:', dedupCli.para_adicionar.length);
       }
@@ -1507,7 +1513,7 @@
       if (dedupCts.para_adicionar.length) {
         var ctsResult = ctsAtual.concat(dedupCts.para_adicionar);
         _lsWrite(keyCts, ctsResult);
-        await _sbWrite(keyCts, ctsResult);
+        await _sbWrite(keyCts, ctsResult, eid);
         relatorio.contatos_aplicados = dedupCts.para_adicionar.length;
         console.info('[Recovery Curadoria] Contatos aplicados:', dedupCts.para_adicionar.length);
       }
@@ -2144,7 +2150,7 @@
       // Gravar somente se houve alteração
       if (relatorio.criados > 0 || relatorio.completados > 0) {
         _lsWrite(keyCli, cliResultado);
-        await _sbWrite(keyCli, cliResultado);
+        await _sbWrite(keyCli, cliResultado, eid);
       }
 
     } catch (e) {
