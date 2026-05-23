@@ -1,44 +1,46 @@
 -- ============================================================
 -- 014_financeiro_rls_select_propostas_cleanup.sql
--- Sprint 5 — Financeiro RLS SELECT + Propostas UPDATE/DELETE cleanup
+-- Sprint 5 — Financeiro RLS SELECT + Propostas cleanup completo
 --             (Auditoria A2)
 --
+-- ESTADO REAL DO BANCO (verificado em 2026-05-23):
+--   Propostas tem 16 policies ativas:
+--   DELETE (5): 4 legadas (user_id, sem perfil) + propostas_por_empresa: deletar
+--   UPDATE (5): 4 legadas (user_id, sem perfil) + propostas_por_empresa: atualizar
+--   SELECT (5): 4 legadas (user_id) + propostas_por_empresa: ver
+--   INSERT (1): propostas: inserir na empresa (correto — migration 011)
+--
+--   As policies "propostas: atualizar na empresa" e
+--   "propostas: deletar gestor+" de 001 NÃO existem no banco.
+--
 -- CONTEXTO:
---   Duas classes de gap identificadas na auditoria A2:
---
 --   GAP 1 — Financeiro SELECT sem perfil (6 tabelas):
---     As policies SELECT de todas as tabelas financeiro_* usavam
---     apenas empresa_id IN (SELECT auth_empresa_ids()), sem check
---     de perfil. Um colaborador/prestador autenticado conseguia
---     ler dados financeiros diretamente via API REST do Supabase,
---     bypassando o guard de frontend (H-005) adicionado na Sprint 4.
+--     SELECT policies de financeiro_* usam apenas empresa_id sem
+--     check de perfil → colaborador/prestador lê dados financeiros
+--     diretamente via API REST, bypassando o guard de frontend.
 --
---   GAP 2 — Propostas UPDATE/DELETE com policy permissiva legada:
---     A migration 012 criou "propostas_por_empresa: atualizar" e
---     "propostas_por_empresa: deletar" sem check de perfil ao
---     separar a policy ALL legada em SELECT+UPDATE+DELETE.
---     Como policies PERMISSIVE são OR'd, essas policies mais
---     abertas sobrepunham as corretas de 001:
---       "propostas: atualizar na empresa" (tem NOT IN colaborador)
---       "propostas: deletar gestor+"     (tem IN dono/gestor/admin)
---     Resultado: colaborador/prestador conseguia ATUALIZAR e
---     DELETAR propostas.
+--   GAP 2 — Propostas UPDATE/DELETE permissivos (legados + 012):
+--     9 policies UPDATE/DELETE sem check de perfil adequado
+--     coexistem, permitindo que colaborador/prestador atualize
+--     e delete propostas via API direta. Como policies PERMISSIVE
+--     são OR'd, qualquer uma permissiva anula as restritivas.
 --
 -- AÇÃO:
---   1. Substituir as 6 policies SELECT de financeiro_* adicionando
---      auth_perfil() NOT IN ('colaborador', 'prestador').
---   2. Dropar "propostas_por_empresa: atualizar" — coberta
---      corretamente por "propostas: atualizar na empresa" (001).
---   3. Dropar "propostas_por_empresa: deletar" — coberta
---      corretamente por "propostas: deletar gestor+" (001).
+--   Bloco 1–6: Financeiro SELECT — adicionar perfil check.
+--   Bloco 7:   Propostas SELECT — dropar 4 legadas (user_id).
+--              Mantém "propostas_por_empresa: ver" (correta).
+--   Bloco 8:   Propostas UPDATE — dropar todas 5 policies,
+--              criar 1 correta com check de perfil.
+--   Bloco 9:   Propostas DELETE — dropar todas 5 policies,
+--              criar 1 correta restrita a gestor+.
 --
 -- IDEMPOTÊNCIA:
 --   DROP POLICY IF EXISTS antes de cada CREATE POLICY.
 --
 -- NÃO ALTERA:
---   - Lógica de negócio ou cálculos financeiros (DRE, fluxo).
---   - Policies de SELECT de propostas (colaboradores podem ler).
---   - Policies de INSERT/UPDATE/DELETE já corretas.
+--   - Lógica de negócio, DRE ou cálculos financeiros.
+--   - "propostas_por_empresa: ver" (SELECT correto — mantido).
+--   - "propostas: inserir na empresa" (INSERT correto — mantido).
 --   - Configurações, DataGuard, RH ou Relacionamento.
 --
 -- EXECUÇÃO:
@@ -50,8 +52,12 @@
 
 BEGIN;
 
+-- ════════════════════════════════════════════════════════════
+-- PARTE A — FINANCEIRO SELECT: adicionar perfil check
+-- ════════════════════════════════════════════════════════════
+
 -- ────────────────────────────────────────────────────────────
--- BLOCO 1: financeiro_contas_receber — SELECT com perfil
+-- BLOCO 1: financeiro_contas_receber
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "fcr: ver da empresa" ON financeiro_contas_receber;
 CREATE POLICY "fcr: ver da empresa"
@@ -62,7 +68,7 @@ CREATE POLICY "fcr: ver da empresa"
   );
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 2: financeiro_notas_fiscais — SELECT com perfil
+-- BLOCO 2: financeiro_notas_fiscais
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "fnf: ver da empresa" ON financeiro_notas_fiscais;
 CREATE POLICY "fnf: ver da empresa"
@@ -73,7 +79,7 @@ CREATE POLICY "fnf: ver da empresa"
   );
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 3: financeiro_recebimentos — SELECT com perfil
+-- BLOCO 3: financeiro_recebimentos
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "frec: ver da empresa" ON financeiro_recebimentos;
 CREATE POLICY "frec: ver da empresa"
@@ -84,7 +90,7 @@ CREATE POLICY "frec: ver da empresa"
   );
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 4: financeiro_movimentos_caixa — SELECT com perfil
+-- BLOCO 4: financeiro_movimentos_caixa
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "fmc: ver da empresa" ON financeiro_movimentos_caixa;
 CREATE POLICY "fmc: ver da empresa"
@@ -95,7 +101,7 @@ CREATE POLICY "fmc: ver da empresa"
   );
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 5: financeiro_saldos_caixa — SELECT com perfil
+-- BLOCO 5: financeiro_saldos_caixa
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "fsc: ver da empresa" ON financeiro_saldos_caixa;
 CREATE POLICY "fsc: ver da empresa"
@@ -106,7 +112,7 @@ CREATE POLICY "fsc: ver da empresa"
   );
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 6: financeiro_contas_pagar — SELECT com perfil
+-- BLOCO 6: financeiro_contas_pagar
 -- ────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "fcp: ver da empresa" ON financeiro_contas_pagar;
 CREATE POLICY "fcp: ver da empresa"
@@ -116,30 +122,71 @@ CREATE POLICY "fcp: ver da empresa"
     AND auth_perfil() NOT IN ('colaborador', 'prestador')
   );
 
--- ────────────────────────────────────────────────────────────
--- BLOCO 7: propostas — remover UPDATE legada sem perfil
---   "propostas_por_empresa: atualizar" (migration 012) sobrepunha
---   "propostas: atualizar na empresa" (migration 001) que já tem
---   o check correto. Dropar a permissiva — a correta permanece.
--- ────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "propostas_por_empresa: atualizar" ON propostas;
+
+-- ════════════════════════════════════════════════════════════
+-- PARTE B — PROPOSTAS: cleanup completo baseado no estado real
+-- ════════════════════════════════════════════════════════════
 
 -- ────────────────────────────────────────────────────────────
--- BLOCO 8: propostas — remover DELETE legada sem perfil
---   "propostas_por_empresa: deletar" (migration 012) sobrepunha
---   "propostas: deletar gestor+" (migration 001) que já restringe
---   a dono/gestor/admin. Dropar a permissiva — a correta permanece.
+-- BLOCO 7: Propostas SELECT — dropar 4 legadas (user_id)
+--   "propostas_por_empresa: ver" (012) é mantida — está correta.
 -- ────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "propostas_por_empresa: deletar" ON propostas;
+DROP POLICY IF EXISTS "Master vê todas propostas"              ON propostas;
+DROP POLICY IF EXISTS "Mestre vê tudo"                         ON propostas;
+DROP POLICY IF EXISTS "Usuários veem suas próprias propostas"  ON propostas;
+DROP POLICY IF EXISTS "Ver próprias propostas"                 ON propostas;
+
+-- ────────────────────────────────────────────────────────────
+-- BLOCO 8: Propostas UPDATE — dropar TODAS as 5 policies,
+--   criar 1 correta: gestor+ da empresa.
+--   (4 legadas user_id + propostas_por_empresa: atualizar de 012)
+-- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Atualizar próprias propostas"           ON propostas;
+DROP POLICY IF EXISTS "Master edita propostas"                 ON propostas;
+DROP POLICY IF EXISTS "Mestre atualiza tudo"                   ON propostas;
+DROP POLICY IF EXISTS "Usuários atualizam suas propostas"      ON propostas;
+DROP POLICY IF EXISTS "propostas_por_empresa: atualizar"       ON propostas;
+DROP POLICY IF EXISTS "propostas: atualizar na empresa"        ON propostas;
+
+CREATE POLICY "propostas: atualizar na empresa"
+  ON propostas FOR UPDATE
+  USING (
+    empresa_id IN (SELECT auth_empresa_ids())
+    AND auth_perfil() NOT IN ('colaborador', 'prestador')
+  )
+  WITH CHECK (
+    empresa_id IN (SELECT auth_empresa_ids())
+    AND auth_perfil() NOT IN ('colaborador', 'prestador')
+  );
+
+-- ────────────────────────────────────────────────────────────
+-- BLOCO 9: Propostas DELETE — dropar TODAS as 5 policies,
+--   criar 1 correta: restrita a dono/gestor/admin.
+--   (4 legadas user_id + propostas_por_empresa: deletar de 012)
+-- ────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Deletar próprias propostas"             ON propostas;
+DROP POLICY IF EXISTS "Master deleta propostas"                ON propostas;
+DROP POLICY IF EXISTS "Mestre deleta tudo"                     ON propostas;
+DROP POLICY IF EXISTS "Usuários deletam suas propostas"        ON propostas;
+DROP POLICY IF EXISTS "propostas_por_empresa: deletar"         ON propostas;
+DROP POLICY IF EXISTS "propostas: deletar gestor+"             ON propostas;
+
+CREATE POLICY "propostas: deletar gestor+"
+  ON propostas FOR DELETE
+  USING (
+    empresa_id IN (SELECT auth_empresa_ids())
+    AND auth_perfil() IN ('dono', 'gestor', 'admin')
+  );
 
 COMMIT;
+
 
 -- ============================================================
 -- VERIFICAÇÕES PÓS-MIGRATION (executar separadamente)
 -- ============================================================
 
--- 1. Confirmar 6 policies SELECT de financeiro com perfil:
--- SELECT tablename, policyname, cmd, qual
+-- 1. Financeiro SELECT com perfil (esperado: 6 linhas):
+-- SELECT tablename, policyname, cmd
 -- FROM pg_policies
 -- WHERE cmd = 'SELECT'
 --   AND tablename IN (
@@ -148,67 +195,71 @@ COMMIT;
 --     'financeiro_saldos_caixa','financeiro_contas_pagar'
 --   )
 -- ORDER BY tablename;
--- Esperado: 6 linhas, cada qual contendo NOT IN ('colaborador','prestador').
 
--- 2. Confirmar que as policies UPDATE/DELETE permissivas sumiram:
+-- 2. Propostas — estado limpo final (esperado: 4 linhas):
 -- SELECT policyname, cmd FROM pg_policies
 -- WHERE tablename = 'propostas'
 -- ORDER BY cmd, policyname;
--- Esperado: NÃO aparecer "propostas_por_empresa: atualizar"
---           NÃO aparecer "propostas_por_empresa: deletar"
+--
+-- Esperado exato:
+--   propostas: deletar gestor+          | DELETE
+--   propostas: inserir na empresa       | INSERT
+--   propostas_por_empresa: ver          | SELECT
+--   propostas: atualizar na empresa     | UPDATE
 
--- 3. Confirmar que as policies corretas de propostas permaneceram:
--- SELECT policyname, cmd FROM pg_policies
+-- 3. Confirmar ausência das legadas:
+-- SELECT policyname FROM pg_policies
 -- WHERE tablename = 'propostas'
 --   AND policyname IN (
---     'propostas: atualizar na empresa',
---     'propostas: deletar gestor+'
+--     'Deletar próprias propostas','Master deleta propostas',
+--     'Mestre deleta tudo','Usuários deletam suas propostas',
+--     'Atualizar próprias propostas','Master edita propostas',
+--     'Mestre atualiza tudo','Usuários atualizam suas propostas',
+--     'propostas_por_empresa: atualizar','propostas_por_empresa: deletar',
+--     'Master vê todas propostas','Mestre vê tudo',
+--     'Usuários veem suas próprias propostas','Ver próprias propostas'
 --   );
--- Esperado: 2 linhas (UPDATE e DELETE).
+-- Esperado: 0 linhas.
+
 
 -- ============================================================
 -- ROLLBACK COMPLETO
 -- ============================================================
 -- BEGIN;
 --
--- -- Reverter SELECT financeiro (remover check de perfil)
+-- -- Reverter financeiro SELECT (remover check de perfil)
 -- DROP POLICY IF EXISTS "fcr: ver da empresa"  ON financeiro_contas_receber;
 -- CREATE POLICY "fcr: ver da empresa" ON financeiro_contas_receber FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
---
 -- DROP POLICY IF EXISTS "fnf: ver da empresa"  ON financeiro_notas_fiscais;
 -- CREATE POLICY "fnf: ver da empresa" ON financeiro_notas_fiscais FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
---
 -- DROP POLICY IF EXISTS "frec: ver da empresa" ON financeiro_recebimentos;
 -- CREATE POLICY "frec: ver da empresa" ON financeiro_recebimentos FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
---
 -- DROP POLICY IF EXISTS "fmc: ver da empresa"  ON financeiro_movimentos_caixa;
 -- CREATE POLICY "fmc: ver da empresa" ON financeiro_movimentos_caixa FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
---
 -- DROP POLICY IF EXISTS "fsc: ver da empresa"  ON financeiro_saldos_caixa;
 -- CREATE POLICY "fsc: ver da empresa" ON financeiro_saldos_caixa FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
---
 -- DROP POLICY IF EXISTS "fcp: ver da empresa"  ON financeiro_contas_pagar;
 -- CREATE POLICY "fcp: ver da empresa" ON financeiro_contas_pagar FOR SELECT
 --   USING (empresa_id IN (SELECT auth_empresa_ids()));
 --
--- -- Recriar policies propostas removidas
+-- -- Recriar propostas UPDATE/DELETE legadas (estado pré-014)
+-- DROP POLICY IF EXISTS "propostas: atualizar na empresa" ON propostas;
+-- DROP POLICY IF EXISTS "propostas: deletar gestor+"      ON propostas;
 -- CREATE POLICY "propostas_por_empresa: atualizar" ON propostas FOR UPDATE
 --   USING (empresa_id IN (
 --     SELECT ue.empresa_id FROM usuario_empresas ue
 --     JOIN usuarios u ON u.id = ue.usuario_id
 --     WHERE u.auth_id = auth.uid() AND ue.ativo = true
 --   ));
---
 -- CREATE POLICY "propostas_por_empresa: deletar" ON propostas FOR DELETE
 --   USING (empresa_id IN (
 --     SELECT ue.empresa_id FROM usuario_empresas ue
 --     JOIN usuarios u ON u.id = ue.usuario_id
 --     WHERE u.auth_id = auth.uid() AND ue.ativo = true
 --   ));
---
 -- COMMIT;
