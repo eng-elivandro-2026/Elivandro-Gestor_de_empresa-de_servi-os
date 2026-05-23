@@ -1,2 +1,7 @@
 node_modules/
 package-lock.json
+
+# Credenciais Supabase — NUNCA commitar o arquivo real
+.env.supabase
+.env
+.env.local
