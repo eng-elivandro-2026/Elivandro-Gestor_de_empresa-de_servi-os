@@ -338,7 +338,8 @@ async function gerarAlertas() {
   var { data: saude } = await sb
     .from('rh_saude')
     .select('tipo, data_vencimento, data_emissao, observacoes, colaboradores(nome)')
-    .not('data_vencimento', 'is', null);
+    .not('data_vencimento', 'is', null)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId);
 
   (saude || []).forEach(function(s) {
     var dias = diasAteVencer(s.data_vencimento);
@@ -361,7 +362,8 @@ async function gerarAlertas() {
   var { data: epis } = await sb
     .from('rh_epis')
     .select('item, descricao, data_entrega, data_substituicao, observacoes, colaboradores(nome)')
-    .not('data_substituicao', 'is', null);
+    .not('data_substituicao', 'is', null)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId);
 
   (epis || []).forEach(function(e) {
     var dias = diasAteVencer(e.data_substituicao);
@@ -384,7 +386,8 @@ async function gerarAlertas() {
   var { data: docs } = await sb
     .from('rh_documentos')
     .select('descricao, tipo, data_documento, data_vencimento, observacoes, colaboradores(nome)')
-    .not('data_vencimento', 'is', null);
+    .not('data_vencimento', 'is', null)
+    .or('empresa_id.is.null,empresa_id.eq.' + empId);
 
   (docs || []).forEach(function(d) {
     var dias = diasAteVencer(d.data_vencimento);
@@ -2753,17 +2756,27 @@ async function excluirIntegracao(id) {
 
 // ══ PENDENTES ════════════════════════════════════════════════
 async function carregarPendentes() {
+  var empId = await getEmpresaId();
+  var card  = document.getElementById('pendCard');
+  var badge = document.getElementById('pendBadge');
+
+  var { data: vinculos } = await sb
+    .from('colaborador_empresas')
+    .select('colaborador_id')
+    .eq('empresa_id', empId);
+  var ids = (vinculos || []).map(function(v) { return v.colaborador_id; });
+  if (!ids.length) { if (card) card.style.display = 'none'; return; }
+
   var { data } = await sb
     .from('colaboradores')
     .select('*')
+    .in('id', ids)
     .eq('ativo', false)
     .ilike('observacoes', '%__PENDENTE__%')
     .order('nome');
 
   var lista = data || [];
-  var card = document.getElementById('pendCard');
-  var badge = document.getElementById('pendBadge');
-  if (!lista.length) { card.style.display = 'none'; return; }
+  if (!lista.length) { if (card) card.style.display = 'none'; return; }
   card.style.display = '';
   badge.textContent = lista.length + ' pendente' + (lista.length > 1 ? 's' : '');
   renderPendentes(lista);
