@@ -658,9 +658,10 @@
       return true;
     }
 
-    // Receita Bruta: contas a receber com data_vencimento no período
+    // Receita Bruta: contas a receber com data_vencimento no período (excl. cancelado)
     var receitaBruta = 0;
     (contas || []).forEach(function(c) {
+      if ((c.status || '').toLowerCase() === 'cancelado') return;
       if (noPeriodo(c.data_vencimento)) receitaBruta += n(c.valor_previsto);
     });
 
