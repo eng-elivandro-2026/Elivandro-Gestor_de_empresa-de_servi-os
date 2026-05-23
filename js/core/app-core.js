@@ -201,6 +201,41 @@ window._renderSbProps = function() {
 var fmtNumBr=function(v){ return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:4}).format(n2(v)); };
 var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}else{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
+// ── LSE: localStorage empresa-scopado ────────────────────────────────────────
+// Prefixo automático: key + '_' + empresa_id ativo.
+// Leitura: prefere chave scopada; cai em global para compatibilidade com dados antigos.
+// Escrita: sempre na chave scopada; remove global para forçar migração progressiva.
+var LS_EMPRESA_KEYS = [
+  'tf_tpls','tf_etpl','tf_prc','tf_meta','tf_cats_excluidas',
+  'tf_bancoEscopos','tf_cnt','tf_edb','tf_defp_custom','tf_svc_templates',
+  'rh_alert_emails','rh_alert_email_date'
+];
+function _lseEid() {
+  return (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
+      || (window._empresaAtiva && window._empresaAtiva.id) || null;
+}
+var LSE = function(k, v) {
+  var eid = _lseEid();
+  var sk  = eid ? (k + '_' + eid) : null;
+  if (v !== undefined) {
+    if (sk) { LS(sk, v); try { localStorage.removeItem(k); } catch(e) {} }
+    else { console.warn('[LSE] escrita sem empresa_id para "' + k + '" — bloqueado'); }
+  } else {
+    var sv = sk ? LS(sk) : null;
+    return sv !== null ? sv : LS(k);
+  }
+};
+function _lseFlushGlobais() {
+  LS_EMPRESA_KEYS.forEach(function(k){ try { localStorage.removeItem(k); } catch(e) {} });
+}
+window.addEventListener('empresa:changed', function() {
+  _lseFlushGlobais();
+  if (typeof window.sbCarregarBackup === 'function') {
+    setTimeout(function(){ window.sbCarregarBackup(); }, 150);
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 function applyTheme(t){
   document.body.classList.toggle('light',t==='light');
   // Propagar tema para o iframe do gestão
@@ -384,13 +419,13 @@ var DEFP={
 };
 
 function getTpls(){
-  var t=LS('tf_tpls');
-  if(!t){saveTpls(JSON.parse(JSON.stringify(DEFT)));t=LS('tf_tpls');}
+  var t=LSE('tf_tpls');
+  if(!t){saveTpls(JSON.parse(JSON.stringify(DEFT)));t=LSE('tf_tpls');}
   return t||[];
 }
-function saveTpls(t){LS('tf_tpls',t)}
+function saveTpls(t){LSE('tf_tpls',t)}
 function getPrc(){
-  var base=LS('tf_prc')||JSON.parse(JSON.stringify(DEFP));
+  var base=LSE('tf_prc')||JSON.parse(JSON.stringify(DEFP));
   var custom=getDefpCustom();
   if(custom){
     if(!base.s) base.s={};
@@ -456,7 +491,7 @@ function abrirBackupModal(){
   m.style.display='flex';
   // Contagens
   var nProps=(window.props||[]).length;
-  var nTpls=(LS('tf_tpls')||[]).length;
+  var nTpls=(LSE('tf_tpls')||[]).length;
   if(Q('bkNumPropostas')) Q('bkNumPropostas').textContent=nProps;
   if(Q('bkNumTemplates')) Q('bkNumTemplates').textContent=nTpls;
   // Status nuvem
@@ -599,15 +634,15 @@ function loadAll(){
   // Restaurar alíquotas salvas no arquivo (se existir)
   if(window.__DEFP_ALIQ__){
     DEFP.aliq=window.__DEFP_ALIQ__;
-    if(!LS('tf_prc')) LS('tf_prc', DEFP);
-    else { var cfg=LS('tf_prc'); cfg.aliq=window.__DEFP_ALIQ__; LS('tf_prc',cfg); }
+    if(!LSE('tf_prc')) LSE('tf_prc', DEFP);
+    else { var cfg=LSE('tf_prc'); cfg.aliq=window.__DEFP_ALIQ__; LSE('tf_prc',cfg); }
   }
   // Mesclar novas categorias do DEFP no tf_prc salvo
   // Respeita exclusões do usuário via tf_cats_excluidas
   (function(){
-    var _cfg=LS('tf_prc');
-    if(!_cfg){ LS('tf_prc', JSON.parse(JSON.stringify(DEFP))); return; }
-    var _excl=LS('tf_cats_excluidas')||{s:{},m:{}};
+    var _cfg=LSE('tf_prc');
+    if(!_cfg){ LSE('tf_prc', JSON.parse(JSON.stringify(DEFP))); return; }
+    var _excl=LSE('tf_cats_excluidas')||{s:{},m:{}};
     var _changed=false;
     if(!_cfg.s) _cfg.s={};
     if(!_cfg.m) _cfg.m={};
@@ -617,10 +652,10 @@ function loadAll(){
     Object.keys(DEFP.m).forEach(function(k){
       if(!_cfg.m[k]&&!_excl.m[k]){ _cfg.m[k]=JSON.parse(JSON.stringify(DEFP.m[k])); _changed=true; }
     });
-    if(_changed) LS('tf_prc',_cfg);
+    if(_changed) LSE('tf_prc',_cfg);
   })();
   // Migrate default texts into escTpl bank if empty
-  if(!LS('tf_etpl')||!LS('tf_etpl').length){
+  if(!LSE('tf_etpl')||!LSE('tf_etpl').length){
     var seed=DEFT.map(function(t){return {id:t.id,titulo:t.titulo,desc:t.conteudo||'',conteudo:t.conteudo||'',subs:[]};});
     saveEscTpls(seed);
   }
@@ -674,7 +709,7 @@ function loadAll(){
     if(_stgMig>0){ try{LS('tf_props',props);}catch(e){} }
   }
   // Forçar base em 290 se o salvo for maior que 290 ou não existir
-  var cntSalvo=parseInt(LS('tf_cnt'),10);
+  var cntSalvo=parseInt(LSE('tf_cnt'),10);
   if(isFinite(cntSalvo)&&cntSalvo>0&&cntSalvo<=290){
     cnt=cntSalvo;
   } else {
@@ -682,7 +717,7 @@ function loadAll(){
   }
   if(props.some(function(p){return String((p&&p.num)||'').trim()===nN();})) cnt+=10;
   saveCnt();
-  eDB=LS('tf_edb')||{titulos:[],subtitulos:[]};
+  eDB=LSE('tf_edb')||{titulos:[],subtitulos:[]};
 }
 function saveAll(){
   LS('tf_props',props);
@@ -699,7 +734,7 @@ function saveAll(){
   }
   try{ window.dispatchEvent(new CustomEvent('portal:data-changed', { detail: { origem: 'comercial-save', modulo: 'comercial' } })); }catch(e){}
 }
-function saveEDB(){LS('tf_edb',eDB)}
+function saveEDB(){LSE('tf_edb',eDB)}
 
 // REVISÕES
 function addRev(){
@@ -918,7 +953,7 @@ function hideActionBar(){
   Q('actionBar').classList.remove('visible');
   if(typeof opLimparActionBar==='function') opLimparActionBar();
 }
-function saveCnt(){ LS('tf_cnt', cnt); }
+function saveCnt(){ LSE('tf_cnt', cnt); }
 function inferNextBase(){
   var anoAtual=String(ANO||'').replace(/\D/g,'').slice(-2);
   var maxBase=0;
@@ -2802,8 +2837,8 @@ function rTplEd(){
 }
 
 // ESCOPOS
-function getEscTpls(){return LS('tf_etpl')||[]}
-function saveEscTpls(t){LS('tf_etpl',t)}
+function getEscTpls(){return LSE('tf_etpl')||[]}
+function saveEscTpls(t){LSE('tf_etpl',t)}
 function addSec(){
   escSecs.push({id:uid(),num:'',titulo:'Nova Seção',desc:'',subs:[]});
   var el=Q('escList');
@@ -6822,11 +6857,10 @@ function dTpl(id){if(!confirm('Excluir?'))return;saveTpls(getTpls().filter(funct
 var _stplId = null;
 
 function getStpls(){
-  // Tenta localStorage; se vazio e Supabase disponível, a carga já foi feita no init
-  return LS('tf_svc_templates') || [];
+  return LSE('tf_svc_templates') || [];
 }
 function saveStpls(t){
-  LS('tf_svc_templates', t); // salva local imediatamente
+  LSE('tf_svc_templates', t);
   if(typeof window.sbSalvarSvcTemplates === 'function') window.sbSalvarSvcTemplates(t); // sync nuvem
 }
 
@@ -7094,10 +7128,10 @@ var _beEscopos = [];
 var _beEditId  = null;
 
 function beLoadDB(){
-  _beEscopos = LS('tf_bancoEscopos') || [];
+  _beEscopos = LSE('tf_bancoEscopos') || [];
 }
 function beSaveDB(){
-  LS('tf_bancoEscopos', _beEscopos);
+  LSE('tf_bancoEscopos', _beEscopos);
   // Sync com Supabase
   var _beEid = (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
             || (window._empresaAtiva && window._empresaAtiva.id) || null;
@@ -9622,8 +9656,8 @@ function exportJSON(){
     exportadoEm: new Date().toISOString(),
     dispositivo: navigator.userAgent.substring(0,80),
     propostas: props,
-    templates: (function(){ try{return JSON.parse(localStorage.getItem('tf_tpls')||'[]')}catch(e){return[]} })(),
-    escopos:   (function(){ try{return JSON.parse(localStorage.getItem('tf_etpl')||'[]')}catch(e){return[]} })(),
+    templates: getTpls(),
+    escopos:   getEscTpls(),
     config:    cfg
   };
   // Salvar backup na nuvem automaticamente
@@ -9684,27 +9718,23 @@ function importJSON(input){
       }
       // Mesclar templates
       if(bk.templates&&bk.templates.length){
-        try{
-          var locTpls=JSON.parse(localStorage.getItem('tf_tpls')||'[]');
-          bk.templates.forEach(function(t){
-            if(!locTpls.find(function(x){return x.id===t.id})) locTpls.push(t);
-          });
-          localStorage.setItem('tf_tpls', JSON.stringify(locTpls));
-        }catch(e){}
+        var locTpls=getTpls();
+        bk.templates.forEach(function(t){
+          if(!locTpls.find(function(x){return x.id===t.id})) locTpls.push(t);
+        });
+        saveTpls(locTpls);
       }
       // Mesclar escopos
       if(bk.escopos&&bk.escopos.length){
-        try{
-          var locEsc=JSON.parse(localStorage.getItem('tf_etpl')||'[]');
-          bk.escopos.forEach(function(s){
-            if(!locEsc.find(function(x){return x.id===s.id})) locEsc.push(s);
-          });
-          localStorage.setItem('tf_etpl', JSON.stringify(locEsc));
-        }catch(e){}
+        var locEsc=getEscTpls();
+        bk.escopos.forEach(function(s){
+          if(!locEsc.find(function(x){return x.id===s.id})) locEsc.push(s);
+        });
+        saveEscTpls(locEsc);
       }
       // Config (só importa se não tiver local)
-      if(bk.config&&!localStorage.getItem('tf_prc')){
-        LS('tf_prc', bk.config);
+      if(bk.config&&!LSE('tf_prc')){
+        LSE('tf_prc', bk.config);
       }
       input.value='';
       rDash();
@@ -9721,7 +9751,7 @@ function importJSON(input){
 // PAINEL DE METAS
 // ══════════════════════════════════════════════
 function getMeta(){
-  try{ return JSON.parse(localStorage.getItem('tf_meta')||'null'); }catch(e){ return null; }
+  return LSE('tf_meta');
 }
 function salvarMeta(){
   var meta={
@@ -9734,7 +9764,7 @@ function salvarMeta(){
     antRec:    parseFloat(Q('mAntRec').value)||0,
     antTicket: (function(){var v=Q('mAntTicket');return v&&v.value!==''?parseFloat(v.value)||0:75000;})()
   };
-  localStorage.setItem('tf_meta', JSON.stringify(meta));
+  LSE('tf_meta', meta);
   Q('metaModal').style.display='none';
   rMeta();
   toast('✔ Metas salvas!','ok');
@@ -10490,10 +10520,10 @@ function salvarCategoria(){
   if(_catEditKey && cod!==codOriginal){
     if(tipo==='s') delete cfg.s[codOriginal]; else delete cfg.m[codOriginal];
     // Registrar código antigo como excluído para o merge não recriar
-    var _excl2=LS('tf_cats_excluidas')||{s:{},m:{}};
+    var _excl2=LSE('tf_cats_excluidas')||{s:{},m:{}};
     if(!_excl2.s)_excl2.s={}; if(!_excl2.m)_excl2.m={};
     if(tipo==='s')_excl2.s[codOriginal]=true; else _excl2.m[codOriginal]=true;
-    LS('tf_cats_excluidas',_excl2);
+    LSE('tf_cats_excluidas',_excl2);
     // Renomear cat nos itens do orçamento
     budg.forEach(function(it){
       if(it.cat===codOriginal&&it.t===tipo) it.cat=cod;
@@ -10516,12 +10546,12 @@ function salvarCategoria(){
   if(salvarPadrao){
     salvarComoDefp(cod, tipo, obj);
     // Also write directly to tf_prc global so new proposals see it immediately
-    var globalCfg=LS('tf_prc')||JSON.parse(JSON.stringify(DEFP));
+    var globalCfg=LSE('tf_prc')||JSON.parse(JSON.stringify(DEFP));
     if(!globalCfg.s) globalCfg.s={};
     if(!globalCfg.m) globalCfg.m={};
     if(tipo==='s') globalCfg.s[cod]=JSON.parse(JSON.stringify(obj));
     else globalCfg.m[cod]=JSON.parse(JSON.stringify(obj));
-    LS('tf_prc', globalCfg);
+    LSE('tf_prc', globalCfg);
   }
   Q('catModal').style.display='none';
   rMargens();
@@ -10577,10 +10607,10 @@ function delCategoria(k,tipo){
   if(tipo==='s') delete cfg.s[k]; else delete cfg.m[k];
   savePrcAtual(cfg);
   // Registrar exclusão para o merge não recriar
-  var _excl=LS('tf_cats_excluidas')||{s:{},m:{}};
+  var _excl=LSE('tf_cats_excluidas')||{s:{},m:{}};
   if(!_excl.s)_excl.s={}; if(!_excl.m)_excl.m={};
   if(tipo==='s')_excl.s[k]=true; else _excl.m[k]=true;
-  LS('tf_cats_excluidas',_excl);
+  LSE('tf_cats_excluidas',_excl);
   removerDeDefp(k, tipo);
   rMargens();
   toast('🗑 Categoria '+k+' excluída.','ok');
@@ -10607,9 +10637,9 @@ function desfazerSimulacao(){
 // DEFP CUSTOMIZADO — padrões editáveis pelo usuário
 // ══════════════════════════════════════════════
 function getDefpCustom(){
-  try{ return JSON.parse(localStorage.getItem('tf_defp_custom')||'null'); }catch(e){ return null; }
+  return LSE('tf_defp_custom');
 }
-function saveDefpCustom(d){ localStorage.setItem('tf_defp_custom', JSON.stringify(d)); }
+function saveDefpCustom(d){ LSE('tf_defp_custom', d); }
 
 // Retorna o DEFP mesclado: hardcoded + customizações do usuário
 function getDefpMerged(){
@@ -10673,19 +10703,19 @@ function getPrcAtual(){
 // Salva cfg de categorias na proposta em edição
 // FIX V345 #3: salva aliq na proposta (p.aliq); NÃO grava aliq da proposta no global tf_prc
 function savePrcAtual(cfg){
-  if(!editId){ LS('tf_prc',cfg); return; }
+  if(!editId){ LSE('tf_prc',cfg); return; }
   var idx=props.findIndex(function(x){return x.id===editId;});
-  if(idx<0){ LS('tf_prc',cfg); return; }
+  if(idx<0){ LSE('tf_prc',cfg); return; }
   if(!props[idx].prc) props[idx].prc={};
   props[idx].prc.s=JSON.parse(JSON.stringify(cfg.s));
   props[idx].prc.m=JSON.parse(JSON.stringify(cfg.m));
   // FIX V345 #3: salvar aliq na proposta, não no global
   props[idx].aliq=JSON.parse(JSON.stringify(cfg.aliq));
   // Salva s/m no global tf_prc (categorias), mas preserva aliq global intacta
-  var globalCfg=LS('tf_prc')||JSON.parse(JSON.stringify(DEFP));
+  var globalCfg=LSE('tf_prc')||JSON.parse(JSON.stringify(DEFP));
   globalCfg.s=JSON.parse(JSON.stringify(cfg.s));
   globalCfg.m=JSON.parse(JSON.stringify(cfg.m));
-  LS('tf_prc',globalCfg);
+  LSE('tf_prc',globalCfg);
   saveAll();
 }
 
@@ -11551,11 +11581,11 @@ function exportarCategoriasXLSX(){
   toast('Categorias exportadas!','ok');
 }
 function forcarMergeCats(){
-  var _cfg=LS('tf_prc');
+  var _cfg=LSE('tf_prc');
   if(!_cfg) _cfg=JSON.parse(JSON.stringify(DEFP));
   if(!_cfg.s) _cfg.s={};
   if(!_cfg.m) _cfg.m={};
-  var _excl=LS('tf_cats_excluidas')||{s:{},m:{}};
+  var _excl=LSE('tf_cats_excluidas')||{s:{},m:{}};
   var added=[];
   Object.keys(DEFP.s).forEach(function(k){
     if(!_cfg.s[k]&&!_excl.s[k]){ _cfg.s[k]=JSON.parse(JSON.stringify(DEFP.s[k])); added.push(k); }
@@ -11563,7 +11593,7 @@ function forcarMergeCats(){
   Object.keys(DEFP.m).forEach(function(k){
     if(!_cfg.m[k]&&!_excl.m[k]){ _cfg.m[k]=JSON.parse(JSON.stringify(DEFP.m[k])); added.push(k); }
   });
-  LS('tf_prc',_cfg);
+  LSE('tf_prc',_cfg);
   if(editId){
     var _pi=props.findIndex(function(x){return x.id===editId;});
     if(_pi>=0&&props[_pi].prc){

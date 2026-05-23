@@ -260,7 +260,7 @@
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem metas na nuvem ainda.'); return null; }
     if (res.data && res.data.valor) {
-      LS('tf_meta', res.data.valor);
+      try { localStorage.setItem('tf_meta_' + eid, JSON.stringify(res.data.valor)); } catch(e) {}
       console.log('%cmeta carregada da nuvem', 'color:#58a6ff');
       return res.data.valor;
     }
@@ -295,7 +295,7 @@
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Erro ao carregar templates de serviço:', res.error.message); return []; }
     if (res.data && res.data.valor && res.data.valor.length) {
-      try { localStorage.setItem('tf_svc_templates', JSON.stringify(res.data.valor)); } catch(e) {}
+      try { localStorage.setItem('tf_svc_templates_' + eid, JSON.stringify(res.data.valor)); } catch(e) {}
       console.log('%ctemplates de serviço carregados da nuvem (' + res.data.valor.length + ')', 'color:#58a6ff;font-weight:700');
       return res.data.valor;
     }
@@ -405,7 +405,7 @@
       .maybeSingle();
     if (res.error) { console.warn('[supabase-sync] Sem e-mails de alerta na nuvem.'); return null; }
     if (res.data && res.data.valor && res.data.valor.length) {
-      try { localStorage.setItem('rh_alert_emails', JSON.stringify(res.data.valor)); } catch(e) {}
+      try { localStorage.setItem('rh_alert_emails_' + eid, JSON.stringify(res.data.valor)); } catch(e) {}
       console.log('%ce-mails de alerta carregados da nuvem (' + res.data.valor.length + ')', 'color:#58a6ff;font-weight:700');
       return res.data.valor;
     }
@@ -485,7 +485,7 @@
     }
     var escoposParaSalvar = backup.escopos;
     if (!escoposParaSalvar || !escoposParaSalvar.length) {
-      try { escoposParaSalvar = JSON.parse(localStorage.getItem('tf_bancoEscopos') || '[]'); } catch(e) {}
+      try { escoposParaSalvar = JSON.parse(localStorage.getItem('tf_bancoEscopos_' + eid) || localStorage.getItem('tf_bancoEscopos') || '[]'); } catch(e) {}
     }
     if (escoposParaSalvar && escoposParaSalvar.length) {
       await window.sbClient.from('configuracoes').upsert({
@@ -505,7 +505,7 @@
     }
     var svcTpls = backup.svcTemplates;
     if (!svcTpls || !svcTpls.length) {
-      try { svcTpls = JSON.parse(localStorage.getItem('tf_svc_templates') || '[]'); } catch(e) {}
+      try { svcTpls = JSON.parse(localStorage.getItem('tf_svc_templates_' + eid) || localStorage.getItem('tf_svc_templates') || '[]'); } catch(e) {}
     }
     if (svcTpls && svcTpls.length) {
       await window.sbClient.from('configuracoes').upsert({
@@ -525,7 +525,7 @@
 
     var rTpl = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_tpls').eq('empresa_id', eid).maybeSingle();
     if (rTpl.data && rTpl.data.valor) {
-      try { localStorage.setItem('tf_tpls', JSON.stringify(rTpl.data.valor)); } catch(e) {}
+      try { localStorage.setItem('tf_tpls_' + eid, JSON.stringify(rTpl.data.valor)); } catch(e) {}
       console.log('%ctemplates carregados da nuvem', 'color:#58a6ff');
     }
     var rEsc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_etpl').eq('empresa_id', eid).maybeSingle();
@@ -535,19 +535,19 @@
           if (!e.grupo && e.titulo) e.grupo = e.titulo;
           return e;
         });
-        localStorage.setItem('tf_etpl', JSON.stringify(escoposNorm));
-        localStorage.setItem('tf_bancoEscopos', JSON.stringify(escoposNorm));
+        localStorage.setItem('tf_etpl_' + eid, JSON.stringify(escoposNorm));
+        localStorage.setItem('tf_bancoEscopos_' + eid, JSON.stringify(escoposNorm));
       } catch(e) {}
       console.log('%cescopos carregados da nuvem', 'color:#58a6ff');
     }
     var rCfg = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_config').eq('empresa_id', eid).maybeSingle();
     if (rCfg.data && rCfg.data.valor) {
-      try { localStorage.setItem('tf_prc', JSON.stringify(rCfg.data.valor)); } catch(e) {}
+      try { localStorage.setItem('tf_prc_' + eid, JSON.stringify(rCfg.data.valor)); } catch(e) {}
       console.log('%cconfig carregada da nuvem', 'color:#58a6ff');
     }
     var rSvc = await window.sbClient.from('configuracoes').select('valor').eq('chave','tf_svc_templates').eq('empresa_id', eid).maybeSingle();
     if (rSvc.data && rSvc.data.valor && rSvc.data.valor.length) {
-      try { localStorage.setItem('tf_svc_templates', JSON.stringify(rSvc.data.valor)); } catch(e) {}
+      try { localStorage.setItem('tf_svc_templates_' + eid, JSON.stringify(rSvc.data.valor)); } catch(e) {}
       console.log('%ctemplates de serviço carregados da nuvem (' + rSvc.data.valor.length + ')', 'color:#58a6ff');
     }
     return true;
