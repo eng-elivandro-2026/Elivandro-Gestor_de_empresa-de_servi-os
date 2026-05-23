@@ -1175,6 +1175,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <script>
 'use strict';
 
+// ── H-005: Guard de acesso — bloquear colaborador/prestador ──
+// Executado imediatamente, antes de qualquer estado ou DOM.
+// Cobre: URL direta, iframe embed sem router, console bypass.
+(function() {
+  function _perfilPermitido() {
+    try {
+      if (window.parent === window) return false; // acesso direto sem portal pai
+      if (typeof window.parent.getPerfilUsuario !== 'function') return false;
+      var p = window.parent.getPerfilUsuario();
+      return p && ['dono', 'admin', 'gestor'].indexOf(p) >= 0;
+    } catch(e) { return false; }
+  }
+  if (!_perfilPermitido()) {
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;' +
+      'min-height:100vh;font-family:system-ui;background:#0d1117;color:#e6edf3">' +
+      '<div style="text-align:center;padding:2rem">' +
+      '<div style="font-size:2.5rem;margin-bottom:.8rem">🔒</div>' +
+      '<div style="font-size:1rem;font-weight:700;margin-bottom:.5rem">Acesso Restrito</div>' +
+      '<div style="font-size:.82rem;color:#8b949e">O módulo Financeiro requer perfil gestor, admin ou dono.' +
+      '<br>Solicite acesso ao administrador do sistema.</div>' +
+      '</div></div>';
+    throw new Error('[Financeiro] Acesso bloqueado — perfil insuficiente.');
+  }
+})();
+
 // ── Estado global ─────────────────────────────────────────────
 var _empresaAtiva  = null;   // { id, nome, nome_curto }
 var _todasContas   = [];     // contas carregadas do Supabase
@@ -2656,6 +2682,16 @@ document.addEventListener('click', function(e) {
 var _ultimoResumoPrevia = null;
 
 async function executarPrevia() {
+  // H-006: backfill preview restrito a gestor+
+  try {
+    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario() : null;
+    if (!_p || ['dono', 'admin', 'gestor'].indexOf(_p) < 0) {
+      alert('Acesso negado. Apenas gestor, admin ou dono podem executar o backfill.');
+      return;
+    }
+  } catch(e) { return; }
+
   var btn  = document.getElementById('btn-preview');
   var grid = document.getElementById('resumo-grid');
   var bfp  = _getBFP();
@@ -2717,6 +2753,16 @@ async function executarPrevia() {
 }
 
 async function executarApply() {
+  // H-006: backfill apply restrito a dono/admin (operação de escrita irreversível)
+  try {
+    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario() : null;
+    if (!_p || ['dono', 'admin'].indexOf(_p) < 0) {
+      alert('Acesso negado. Apenas admin ou dono podem aplicar o backfill financeiro.');
+      return;
+    }
+  } catch(e) { return; }
+
   var bfa = _getBFA();
   if (!bfa) { _setApplyStatus('err','FinanceiroBackfillApply não encontrado. Recarregue o portal.'); return; }
 
@@ -3731,6 +3777,16 @@ function fecharDetalheCp() {
 
 // ── Criar Conta a Pagar ───────────────────────────────────────
 async function criarContaPagar() {
+  // H-006: guard de perfil para operação de escrita
+  try {
+    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario() : null;
+    if (!_p || ['dono', 'admin', 'gestor'].indexOf(_p) < 0) {
+      alert('Acesso negado. Apenas gestor, admin ou dono podem criar contas a pagar.');
+      return;
+    }
+  } catch(e) { return; }
+
   var btn = document.getElementById('cp-btn-criar');
   var msg = document.getElementById('cp-status-msg');
 
