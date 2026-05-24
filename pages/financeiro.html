@@ -318,10 +318,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cp-form-readonly{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem .9rem;margin:.5rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.45rem}
 .cp-form-readonly-item .nf-kpi-mini-label{font-size:.6rem}
 .cp-form-readonly-item .nf-kpi-mini-valor{font-size:.78rem}
-.col-acoes-nf{width:86px;text-align:center;white-space:nowrap}
-.btn-edit-venc{font-size:.68rem;padding:.2rem .48rem;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
-.btn-edit-venc:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
-.btn-edit-venc:disabled{opacity:.35;cursor:not-allowed}
+.col-acoes-nf{width:80px;text-align:center;white-space:nowrap}
+.btn-edit-nf{font-size:.68rem;padding:.2rem .52rem;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn-edit-nf:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn-edit-nf:disabled{opacity:.35;cursor:not-allowed}
+.modal-box-lg{max-width:680px;max-height:90vh;overflow-y:auto}
+.medit-secao{margin:.55rem 0}
+.medit-label{font-size:.74rem;color:var(--text2);font-weight:600;margin-bottom:.22rem;margin-top:.5rem}
+.medit-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:.45rem 0}
+.medit-ro{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.4rem .65rem;font-size:.72rem;display:flex;flex-wrap:wrap;gap:.35rem 1rem}
+.medit-ro-item{display:flex;flex-direction:column;min-width:110px}
+.medit-ro-label{font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.medit-ro-val{font-size:.76rem;font-weight:700;word-break:break-word}
 
 /* ── FLUXO DE CAIXA ───────────────────────────────────────────── */
 .btn-preset{
@@ -882,20 +890,114 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 
   <!-- Modal: Editar Vencimento de NF / Conta a Receber -->
-  <div class="modal-overlay" id="modal-vencimento" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <div class="modal-titulo">✏️ Editar Vencimento da NF</div>
-      <div id="modal-venc-info"></div>
-      <div id="modal-venc-alerta"></div>
-      <div style="margin:.8rem 0 .25rem;font-size:.78rem;color:var(--text2);font-weight:600">Nova data de vencimento</div>
-      <input type="date" id="modal-venc-data" class="modal-input" />
-      <div style="font-size:.7rem;color:var(--text3);margin-top:.35rem">
-        Deixe em branco para limpar o vencimento da Conta a Receber vinculada.
+  <!-- Modal: Editar NF completa (Fase C) -->
+  <div class="modal-overlay" id="modal-editar-nf" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-titulo">✏️ Editar Lançamento de NF</div>
+
+      <!-- IDs somente leitura -->
+      <div class="medit-ro" id="medit-ids" style="margin-bottom:.6rem"></div>
+
+      <!-- Alerta de bloqueio (recebimento vinculado) -->
+      <div id="medit-bloqueio"></div>
+
+      <!-- Alerta NF cancelada -->
+      <div id="medit-alerta-cancelada"></div>
+
+      <!-- Proposta vinculada -->
+      <div class="medit-secao">
+        <div class="medit-label">Proposta vinculada *</div>
+        <select id="medit-proposta" class="modal-input" onchange="meditOnProposta()"></select>
+        <div id="medit-motivo-row" style="display:none;margin-top:.45rem">
+          <div class="medit-label" style="color:var(--accent)">Motivo da troca de proposta *</div>
+          <input type="text" id="medit-motivo" class="modal-input" placeholder="Obrigatório ao trocar a proposta vinculada">
+        </div>
       </div>
-      <div class="status-msg" id="modal-venc-status" style="margin-top:.6rem"></div>
+
+      <!-- KPIs da proposta (somente leitura) -->
+      <div id="medit-kpis" class="nf-kpi-mini" style="margin:.4rem 0 .6rem"></div>
+
+      <!-- % e valor (bidirecional) -->
+      <div class="medit-grid-2">
+        <div>
+          <div class="medit-label">% Faturamento</div>
+          <input type="number" id="medit-pct" class="modal-input" min="0" max="999" step="0.01"
+            oninput="meditCalcPctParaValor()" placeholder="0,00">
+        </div>
+        <div>
+          <div class="medit-label">Valor da NF (R$) *</div>
+          <input type="number" id="medit-valor" class="modal-input" min="0" step="0.01"
+            oninput="meditCalcValorParaPct()" placeholder="0,00">
+        </div>
+      </div>
+      <div id="medit-alerta-excedente"></div>
+
+      <!-- Dados da NF -->
+      <div class="medit-grid-2">
+        <div>
+          <div class="medit-label">Nº da NF</div>
+          <input type="text" id="medit-numero" class="modal-input" placeholder="Ex: 000123">
+        </div>
+        <div>
+          <div class="medit-label">Tipo</div>
+          <select id="medit-tipo" class="modal-input">
+            <option value="servico">Serviço</option>
+            <option value="material">Material</option>
+            <option value="misto">Misto</option>
+          </select>
+        </div>
+      </div>
+      <div class="medit-grid-2">
+        <div>
+          <div class="medit-label">Data de Emissão *</div>
+          <input type="date" id="medit-emissao" class="modal-input">
+        </div>
+        <div>
+          <div class="medit-label">Status da NF</div>
+          <select id="medit-status-nf" class="modal-input">
+            <option value="emitida">Emitida</option>
+            <option value="cancelada">Cancelada</option>
+            <option value="substituida">Substituída</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Dados da Conta a Receber -->
+      <div class="medit-grid-2">
+        <div>
+          <div class="medit-label">Data de Vencimento</div>
+          <input type="date" id="medit-vencimento" class="modal-input">
+        </div>
+        <div>
+          <div class="medit-label">Status da Conta a Receber</div>
+          <select id="medit-status-conta" class="modal-input">
+            <option value="a_faturar">A Faturar</option>
+            <option value="faturado">Faturado</option>
+            <option value="vencido">Vencido</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Observações -->
+      <div class="medit-secao">
+        <div class="medit-label">Observações (texto livre)</div>
+        <input type="text" id="medit-obs" class="modal-input"
+          placeholder="Texto da observação — metadata JSON da Fase C é preservado automaticamente">
+      </div>
+
+      <!-- Justificativa condicional -->
+      <div id="medit-justificativa-row" style="display:none">
+        <div class="medit-label" style="color:var(--accent)">Justificativa *</div>
+        <input type="text" id="medit-justificativa" class="modal-input"
+          placeholder="Obrigatório: informe o motivo">
+      </div>
+
+      <!-- Status e ações -->
+      <div class="status-msg" id="medit-status" style="margin-top:.65rem"></div>
       <div class="modal-acoes">
-        <button class="modal-btn-cancelar" onclick="fecharModalVencimento()">Cancelar</button>
-        <button class="modal-btn-confirmar" id="modal-venc-btn-salvar" onclick="salvarVencimentoNF()">💾 Salvar Vencimento</button>
+        <button class="modal-btn-cancelar" onclick="fecharModalEditarNF()">Cancelar</button>
+        <button class="modal-btn-confirmar" id="medit-btn-salvar" onclick="salvarEditarNF()">💾 Salvar Edição</button>
       </div>
     </div>
   </div>
@@ -2262,10 +2364,10 @@ function _renderTabelaNF(nfs) {
       '<td class="col-data th-venc">' + _dataBR(conta.data_vencimento) + '</td>' +
       '<td class="col-ind">' + _nfSituacao(nf) + '</td>' +
       '<td class="col-acoes-nf" onclick="event.stopPropagation()">' +
-        '<button class="btn-edit-venc" ' +
-          'onclick="editarVencimentoNF(\'' + nf.id + '\')" ' +
-          'title="Editar data de vencimento desta NF"' +
-          (nf.conta_receber_id ? '' : ' disabled') + '>✏️ Venc.</button>' +
+        '<button class="btn-edit-nf" ' +
+          'onclick="editarNFCompleta(\'' + nf.id + '\')" ' +
+          'title="Editar este lançamento de NF"' +
+          (nf.conta_receber_id ? '' : ' disabled') + '>✏️ Editar</button>' +
       '</td>' +
       '</tr>';
   }).join('');
@@ -4769,129 +4871,409 @@ window.addEventListener('message', function(e) {
 console.log('%c[Financeiro FaseC] Nova NF vinculada carregada', 'color:#f0a500;font-weight:700');
 
 // ══════════════════════════════════════════════════════════════
-// EDITAR VENCIMENTO — NF / Conta a Receber vinculada
-// Atualiza financeiro_contas_receber.data_vencimento pelo
-// conta_receber_id da NF. Nunca altera empresa_id, proposta_app_id,
-// prop.tl.nfs[] ou qualquer dado do Comercial.
+// EDITAR NF COMPLETA — modal único ✏️ Editar
+// Atualiza financeiro_notas_fiscais e financeiro_contas_receber.
+// Nunca apaga, nunca recria, nunca altera empresa_id/conta_receber_id,
+// nunca escreve em prop.tl.nfs[], nunca toca no Comercial.
 // ══════════════════════════════════════════════════════════════
 
-var _vencNFAtual = null; // NF sendo editada no modal de vencimento
+var _meditNFAtual          = null;  // NF em edição
+var _meditPropostaOrigId   = null;  // proposta_app_id original da NF
+var _meditPropostaAtual    = null;  // objeto proposta atualmente selecionado
+var _meditPropostasCache   = {};    // id → proposta
+var _meditTemRecebimento   = false; // bloqueia troca de proposta e alteração de valor
 
-function editarVencimentoNF(nfId) {
-  var nf = (_todasNFs || []).find(function(n) { return n.id === nfId; });
-  if (!nf) {
-    alert('NF não encontrada. Recarregue a lista e tente novamente.');
-    return;
-  }
-  if (!nf.conta_receber_id) {
-    alert('❌ Esta NF não possui Conta a Receber vinculada. Não é possível editar o vencimento.');
-    return;
-  }
-
-  _vencNFAtual = nf;
-  var conta = nf.conta_receber || {};
-
-  // Montar linhas de informação
-  document.getElementById('modal-venc-info').innerHTML =
-    '<div class="modal-linha"><span class="modal-linha-label">NF</span>' +
-      '<span class="modal-linha-valor">' + (nf.numero_nf || '<em style="color:var(--text3)">sem número</em>') + '</span></div>' +
-    '<div class="modal-linha"><span class="modal-linha-label">Cliente</span>' +
-      '<span class="modal-linha-valor">' + (conta.cliente_nome || '—') + '</span></div>' +
-    '<div class="modal-linha"><span class="modal-linha-label">Proposta</span>' +
-      '<span class="modal-linha-valor">' + (conta.proposta_app_id || nf.proposta_app_id || '—') + '</span></div>' +
-    '<div class="modal-linha"><span class="modal-linha-label">Valor NF</span>' +
-      '<span class="modal-linha-valor" style="color:var(--green)">' + _money(nf.valor_nf) + '</span></div>' +
-    '<div class="modal-linha"><span class="modal-linha-label">Vencimento atual</span>' +
-      '<span class="modal-linha-valor">' +
-        (conta.data_vencimento ? _dataBR(conta.data_vencimento) : '<em style="color:var(--text3)">não informado</em>') +
-      '</span></div>';
-
-  // Alerta se conta já recebida ou cancelada
-  var alertaEl = document.getElementById('modal-venc-alerta');
-  if (conta.status === 'recebido' || conta.status === 'cancelado') {
-    alertaEl.innerHTML = '<div class="modal-aviso">⚠ Conta com status <strong>' +
-      conta.status + '</strong>. A alteração é permitida, mas revise se faz sentido neste estado.</div>';
-  } else {
-    alertaEl.innerHTML = '';
-  }
-
-  // Pré-preencher data atual (formato YYYY-MM-DD compatível com input[type=date])
-  document.getElementById('modal-venc-data').value = conta.data_vencimento || '';
-
-  // Limpar status e habilitar botão
-  _vencStatus('', '');
-  document.getElementById('modal-venc-btn-salvar').disabled = false;
-  document.getElementById('modal-vencimento').style.display = 'flex';
-}
-
-function fecharModalVencimento() {
-  document.getElementById('modal-vencimento').style.display = 'none';
-  _vencNFAtual = null;
-}
-
-async function salvarVencimentoNF() {
-  var nf = _vencNFAtual;
-  if (!nf) return;
-
-  var sf = _sf();
-  if (!sf || !sf.atualizarContaReceber) {
-    _vencStatus('err', '❌ Módulo Financeiro não disponível. Recarregue o portal.');
-    return;
-  }
-  if (!nf.conta_receber_id) {
-    _vencStatus('err', '❌ NF sem Conta a Receber vinculada. Não é possível salvar.');
-    return;
-  }
-
-  var novaData = (document.getElementById('modal-venc-data').value || '').trim();
-  var conta    = nf.conta_receber || {};
-
-  // Bloquear se não há mudança real
-  if (novaData === (conta.data_vencimento || '')) {
-    _vencStatus('err', 'ℹ️ A data informada é igual à atual. Nada a salvar.');
-    return;
-  }
-
-  // Bloquear limpar quando já estava vazio
-  if (!novaData && !conta.data_vencimento) {
-    _vencStatus('err', 'ℹ️ Vencimento já está vazio. Informe uma data ou cancele.');
-    return;
-  }
-
-  var btn = document.getElementById('modal-venc-btn-salvar');
-  btn.disabled = true;
-  _vencStatus('loading', '⏳ Salvando…');
-
-  try {
-    // Atualiza apenas data_vencimento — nunca altera empresa_id ou proposta_app_id
-    await sf.atualizarContaReceber(nf.conta_receber_id, {
-      data_vencimento: novaData || null
-    });
-
-    _vencStatus('ok', '✅ Vencimento atualizado com sucesso!');
-
-    setTimeout(function() {
-      fecharModalVencimento();
-      recarregarNFs();
-      // Recarregar Contas a Receber se a aba estiver visível
-      var tabContas = document.getElementById('tab-contas');
-      if (tabContas && tabContas.style.display !== 'none') {
-        recarregarContas();
-      }
-    }, 1200);
-
-  } catch(e) {
-    console.error('[EditarVenc] erro ao salvar vencimento:', e);
-    _vencStatus('err', '❌ Erro ao salvar: ' + (e.message || String(e)));
-    btn.disabled = false;
-  }
-}
-
-function _vencStatus(cls, msg) {
-  var el = document.getElementById('modal-venc-status');
+// ── Helpers ───────────────────────────────────────────────────
+function _meditStatus(cls, msg) {
+  var el = document.getElementById('medit-status');
   if (!el) return;
   el.className = 'status-msg' + (cls ? (' ' + cls) : '');
   el.textContent = msg;
+}
+
+function _meditParseObs(raw) {
+  if (!raw) return { texto: '', fase_c: {} };
+  try {
+    var o = JSON.parse(raw);
+    if (o && typeof o === 'object') return { texto: o.texto || '', fase_c: o.fase_c || {} };
+  } catch(e) {}
+  return { texto: raw, fase_c: {} }; // legado: texto simples
+}
+
+function _meditCarregarPropostas(propIdAtual) {
+  var sel = document.getElementById('medit-proposta');
+  if (!sel) return;
+  var todas = [];
+  try { todas = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+
+  _meditPropostasCache = {};
+  var faturavel = todas.filter(function(p) {
+    return p && p.id && p.fas && _NF_FASES_FATURAVEL.indexOf(p.fas) >= 0 && p.val > 0;
+  }).sort(function(a, b) { return (a.num || '').localeCompare(b.num || ''); });
+
+  // Garante que a proposta atual está na lista mesmo que fora dos status faturáveis
+  var temAtual = faturavel.some(function(p) { return p.id === propIdAtual; });
+  if (!temAtual && propIdAtual) {
+    var pOrig = todas.find(function(p) { return p.id === propIdAtual; });
+    if (pOrig) faturavel.unshift(pOrig);
+  }
+
+  faturavel.forEach(function(p) { _meditPropostasCache[p.id] = p; });
+
+  sel.innerHTML = '<option value="">-- Selecione --</option>';
+  faturavel.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = (p.num || '—') + ' — ' + _esc(p.cli || '—') +
+      (p.tit ? ' | ' + _esc(String(p.tit).slice(0, 40)) : '') + '  [' + _nfMoney(p.val) + ']';
+    sel.appendChild(opt);
+  });
+  sel.value = propIdAtual || '';
+}
+
+function _meditKpisAtualizar() {
+  var p    = _meditPropostaAtual;
+  var nf   = _meditNFAtual;
+  var kpis = document.getElementById('medit-kpis');
+  if (!kpis || !p) { if (kpis) kpis.innerHTML = ''; return; }
+
+  var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+  var valorNFAtual = parseFloat((document.getElementById('medit-valor') || {}).value) || 0;
+
+  // jaFaturado = NFs da proposta excluindo esta NF e excluindo canceladas
+  var jaFaturado = (_todasNFs || []).filter(function(n) {
+    return n.proposta_app_id === p.id && n.status !== 'cancelada' && n.id !== (nf && nf.id);
+  }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
+
+  var saldo       = Math.max(0, p.val - jaFaturado);
+  var totalComEsta = jaFaturado + valorNFAtual;
+  var excede      = totalComEsta > p.val * 1.001;
+
+  kpis.innerHTML =
+    _nfKpiCard('Valor Vendido',    _nfMoney(p.val)) +
+    _nfKpiCard('Já Faturado',      _nfMoney(jaFaturado)) +
+    _nfKpiCard('Saldo a Faturar',  _nfMoney(saldo)) +
+    _nfKpiCard('RS Considerado',   pctRS > 0 ? (pctRS * 100).toFixed(2) + '%' : '—') +
+    _nfKpiCard('R$ RS',            pctRS > 0 ? _nfMoney(valorNFAtual * pctRS) : '—') +
+    _nfKpiCard('Cliente',          _esc(p.cli || '—'));
+
+  // Alerta excedente
+  var alertaEl = document.getElementById('medit-alerta-excedente');
+  var justRow  = document.getElementById('medit-justificativa-row');
+  if (alertaEl) {
+    if (excede) {
+      alertaEl.innerHTML = '<div class="nf-alerta error">⚠️ Valor ultrapassa o saldo a faturar. Justificativa obrigatória.</div>';
+      if (justRow) justRow.style.display = '';
+    } else if (valorNFAtual > saldo && saldo > 0) {
+      alertaEl.innerHTML = '<div class="nf-alerta warn">⚠️ Valor ultrapassa o saldo disponível (' + _nfMoney(saldo) + ').</div>';
+      if (justRow) justRow.style.display = '';
+    } else {
+      alertaEl.innerHTML = '';
+      if (jaFaturado < p.val - 0.005 && valorNFAtual > 0 && !excede) {
+        if (justRow) justRow.style.display = 'none';
+      }
+    }
+  }
+}
+
+// ── Abrir modal ───────────────────────────────────────────────
+async function editarNFCompleta(nfId) {
+  var nf = (_todasNFs || []).find(function(n) { return n.id === nfId; });
+  if (!nf) { alert('NF não encontrada. Recarregue a lista.'); return; }
+  if (!nf.conta_receber_id) {
+    alert('❌ Esta NF não possui Conta a Receber vinculada.');
+    return;
+  }
+
+  _meditNFAtual        = nf;
+  _meditPropostaOrigId = nf.proposta_app_id || null;
+  _meditTemRecebimento = false;
+
+  var conta  = nf.conta_receber || {};
+  var obsObj = _meditParseObs(nf.observacoes);
+
+  // IDs somente leitura
+  document.getElementById('medit-ids').innerHTML =
+    '<div class="medit-ro-item"><div class="medit-ro-label">ID NF</div><div class="medit-ro-val" style="font-size:.63rem;color:var(--text3)">' + nf.id + '</div></div>' +
+    '<div class="medit-ro-item"><div class="medit-ro-label">ID Conta</div><div class="medit-ro-val" style="font-size:.63rem;color:var(--text3)">' + nf.conta_receber_id + '</div></div>';
+
+  // Limpar alertas e motivo
+  ['medit-bloqueio','medit-alerta-cancelada','medit-alerta-excedente'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  var motiRow = document.getElementById('medit-motivo-row');
+  if (motiRow) motiRow.style.display = 'none';
+  var justRow = document.getElementById('medit-justificativa-row');
+  if (justRow) justRow.style.display = 'none';
+  _meditStatus('', '');
+
+  // Carregar propostas
+  _meditCarregarPropostas(nf.proposta_app_id || '');
+  _meditPropostaAtual = _meditPropostasCache[nf.proposta_app_id] || null;
+
+  // Preencher campos
+  var vEl = document.getElementById('medit-valor');   if (vEl)  vEl.value  = nf.valor_nf || '';
+  var pEl = document.getElementById('medit-pct');
+  if (pEl && _meditPropostaAtual && _meditPropostaAtual.val) {
+    pEl.value = parseFloat(((parseFloat(nf.valor_nf) / _meditPropostaAtual.val) * 100).toFixed(4));
+  } else if (pEl) {
+    var fa = obsObj.fase_c && obsObj.fase_c.percentual_faturamento;
+    pEl.value = fa != null ? fa : '';
+  }
+  var nEl = document.getElementById('medit-numero');  if (nEl)  nEl.value  = nf.numero_nf   || '';
+  var tEl = document.getElementById('medit-tipo');    if (tEl)  tEl.value  = nf.tipo_nf     || 'servico';
+  var eEl = document.getElementById('medit-emissao'); if (eEl)  eEl.value  = nf.data_emissao || '';
+  var sEl = document.getElementById('medit-status-nf'); if (sEl) sEl.value = nf.status      || 'emitida';
+  var vcEl= document.getElementById('medit-vencimento'); if (vcEl) vcEl.value = conta.data_vencimento || '';
+  var scEl= document.getElementById('medit-status-conta');
+  if (scEl) scEl.value = (conta.status === 'recebido' || conta.status === 'parcialmente_recebido')
+    ? conta.status : (conta.status || 'a_faturar');
+  var oEl = document.getElementById('medit-obs');     if (oEl)  oEl.value  = obsObj.texto || '';
+
+  // Alerta NF cancelada
+  if (nf.status === 'cancelada') {
+    var aEl = document.getElementById('medit-alerta-cancelada');
+    if (aEl) aEl.innerHTML = '<div class="modal-aviso" style="margin:.4rem 0">⚠ Esta NF está cancelada. Você pode corrigir e reativar alterando o status para "Emitida".</div>';
+  }
+
+  // Verificar recebimentos (async — determina se bloqueia proposta/valor)
+  _meditKpisAtualizar();
+  document.getElementById('medit-btn-salvar').disabled = false;
+  document.getElementById('modal-editar-nf').style.display = 'flex';
+
+  // Async: checar recebimentos para determinar bloqueio
+  try {
+    var sf = _sf();
+    if (sf && sf.listarRecebimentosConta && _empresaAtiva && nf.conta_receber_id) {
+      var recs = await sf.listarRecebimentosConta(_empresaAtiva.id, nf.conta_receber_id);
+      _meditTemRecebimento = (recs && recs.length > 0);
+      if (_meditTemRecebimento) {
+        var bEl = document.getElementById('medit-bloqueio');
+        if (bEl) bEl.innerHTML =
+          '<div class="modal-aviso" style="margin:.4rem 0">🔒 Esta conta possui <strong>' + recs.length +
+          ' recebimento(s) vinculado(s)</strong>. Alteração de <strong>proposta</strong> e de <strong>valor</strong> estão bloqueadas.</div>';
+        var propSel = document.getElementById('medit-proposta');
+        if (propSel) propSel.disabled = true;
+        if (vEl)  vEl.disabled  = true;
+        if (pEl)  pEl.disabled  = true;
+      }
+    }
+    // Também bloquear se conta está recebida/baixada
+    if (!_meditTemRecebimento && (conta.status === 'recebido' || conta.status === 'parcialmente_recebido')) {
+      _meditTemRecebimento = true;
+      var bEl2 = document.getElementById('medit-bloqueio');
+      if (bEl2) bEl2.innerHTML =
+        '<div class="modal-aviso" style="margin:.4rem 0">🔒 Conta com status <strong>' + conta.status +
+        '</strong>. Alteração de <strong>proposta</strong> e de <strong>valor</strong> estão bloqueadas.</div>';
+      var propSel2 = document.getElementById('medit-proposta');
+      if (propSel2) propSel2.disabled = true;
+      if (vEl) vEl.disabled = true;
+      if (pEl) pEl.disabled = true;
+    }
+  } catch(e) {
+    console.warn('[EditarNF] Não foi possível checar recebimentos:', e);
+  }
+}
+
+// ── Fechar modal ──────────────────────────────────────────────
+function fecharModalEditarNF() {
+  document.getElementById('modal-editar-nf').style.display = 'none';
+  // Reabilitar campos que podem ter sido desabilitados
+  ['medit-proposta','medit-valor','medit-pct'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.disabled = false;
+  });
+  _meditNFAtual = _meditPropostaAtual = null;
+  _meditPropostaOrigId = null;
+  _meditTemRecebimento = false;
+}
+
+// ── Ao trocar proposta no modal ────────────────────────────────
+function meditOnProposta() {
+  var propId = (document.getElementById('medit-proposta') || {}).value || '';
+  _meditPropostaAtual = _meditPropostasCache[propId] || null;
+
+  var motiRow = document.getElementById('medit-motivo-row');
+  if (motiRow) motiRow.style.display = (propId && propId !== _meditPropostaOrigId) ? '' : 'none';
+
+  // Recalcular % com base no novo valor vendido
+  if (_meditPropostaAtual) {
+    var vEl = document.getElementById('medit-valor');
+    var pEl = document.getElementById('medit-pct');
+    if (vEl && pEl && _meditPropostaAtual.val) {
+      var val = parseFloat(vEl.value) || 0;
+      if (val > 0) pEl.value = parseFloat(((val / _meditPropostaAtual.val) * 100).toFixed(4));
+    }
+  }
+  _meditKpisAtualizar();
+}
+
+// ── Calculadora bidirecional ──────────────────────────────────
+function meditCalcPctParaValor() {
+  var p = _meditPropostaAtual;
+  if (!p || !p.val) return;
+  var pct   = parseFloat((document.getElementById('medit-pct') || {}).value) || 0;
+  var valor = p.val * (pct / 100);
+  var el    = document.getElementById('medit-valor');
+  if (el) el.value = parseFloat(valor.toFixed(2));
+  _meditKpisAtualizar();
+}
+
+function meditCalcValorParaPct() {
+  var p = _meditPropostaAtual;
+  if (!p || !p.val) return;
+  var valor = parseFloat((document.getElementById('medit-valor') || {}).value) || 0;
+  var pct   = (valor / p.val) * 100;
+  var el    = document.getElementById('medit-pct');
+  if (el) el.value = parseFloat(pct.toFixed(4));
+  _meditKpisAtualizar();
+}
+
+// ── Salvar edição ─────────────────────────────────────────────
+async function salvarEditarNF() {
+  var nf = _meditNFAtual;
+  if (!nf) return;
+
+  var sf = _sf();
+  if (!sf || !sf.atualizarNotaFiscal || !sf.atualizarContaReceber) {
+    _meditStatus('err', '❌ Módulo Financeiro não disponível. Recarregue o portal.');
+    return;
+  }
+  if (!nf.conta_receber_id) {
+    _meditStatus('err', '❌ NF sem Conta a Receber vinculada.');
+    return;
+  }
+
+  var conta = nf.conta_receber || {};
+  var p     = _meditPropostaAtual;
+  var empId = _empresaAtiva && _empresaAtiva.id;
+  if (!empId) { _meditStatus('err', '❌ Empresa não identificada.'); return; }
+
+  // Ler campos
+  var novoValor    = parseFloat((document.getElementById('medit-valor')     || {}).value) || 0;
+  var novoPct      = parseFloat((document.getElementById('medit-pct')       || {}).value) || 0;
+  var novoNumero   = ((document.getElementById('medit-numero')   || {}).value || '').trim();
+  var novoTipo     = (document.getElementById('medit-tipo')      || {}).value || 'servico';
+  var novaEmissao  = (document.getElementById('medit-emissao')   || {}).value || '';
+  var novoStatusNF = (document.getElementById('medit-status-nf') || {}).value || 'emitida';
+  var novoVenc     = (document.getElementById('medit-vencimento')|| {}).value || '';
+  var novoStConta  = (document.getElementById('medit-status-conta') || {}).value || 'a_faturar';
+  var novoObs      = ((document.getElementById('medit-obs')      || {}).value || '').trim();
+  var novoMotivo   = ((document.getElementById('medit-motivo')   || {}).value || '').trim();
+  var novaJust     = ((document.getElementById('medit-justificativa') || {}).value || '').trim();
+  var novaPropId   = (document.getElementById('medit-proposta')  || {}).value || '';
+
+  // Validações
+  if (novoValor <= 0) { _meditStatus('err', '❌ Valor da NF deve ser maior que zero.'); return; }
+  if (!novaEmissao)   { _meditStatus('err', '❌ Data de emissão é obrigatória.'); return; }
+  if (!novaPropId)    { _meditStatus('err', '❌ Selecione uma proposta vinculada.'); return; }
+
+  if (!p) { _meditStatus('err', '❌ Proposta não encontrada no cache. Feche e reabra o modal.'); return; }
+  if (!p.val || p.val <= 0) { _meditStatus('err', '❌ Proposta selecionada não tem valor vendido.'); return; }
+
+  // Troca de proposta exige motivo
+  var trocouProposta = (novaPropId !== _meditPropostaOrigId);
+  if (trocouProposta && !novoMotivo) {
+    _meditStatus('err', '❌ Informe o motivo da troca de proposta.'); return;
+  }
+  if (_meditTemRecebimento && trocouProposta) {
+    _meditStatus('err', '❌ Troca de proposta bloqueada: esta conta já possui recebimentos.'); return;
+  }
+  if (_meditTemRecebimento && Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
+    _meditStatus('err', '❌ Alteração de valor bloqueada: esta conta já possui recebimentos.'); return;
+  }
+
+  // Justificativa se excede saldo
+  var jaFaturado = (_todasNFs || []).filter(function(n) {
+    return n.proposta_app_id === novaPropId && n.status !== 'cancelada' && n.id !== nf.id;
+  }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
+  var totalComEsta = jaFaturado + novoValor;
+  var excede = totalComEsta > p.val * 1.001;
+  var saldo100 = (jaFaturado >= p.val - 0.005);
+  if ((excede || saldo100) && !novaJust) {
+    _meditStatus('err', '❌ Justificativa obrigatória quando valor excede ou completa 100% do saldo.'); return;
+  }
+
+  // Bloquear duplo clique
+  var btn = document.getElementById('medit-btn-salvar');
+  btn.disabled = true;
+  _meditStatus('loading', '⏳ Salvando edição…');
+
+  try {
+    var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+
+    // Montar observacoes: preservar fase_c existente, atualizar campos, append historico
+    var obsObj = _meditParseObs(nf.observacoes);
+    obsObj.texto  = novoObs;
+    obsObj.fase_c = Object.assign(obsObj.fase_c || {}, {
+      percentual_faturamento:    parseFloat(novoPct.toFixed(4)),
+      valor_vendido_proposta:    p.val,
+      percentual_rs_considerado: parseFloat((pctRS * 100).toFixed(4)),
+      valor_rs_considerado:      parseFloat((novoValor * pctRS).toFixed(2)),
+      justificativa_excedente:   (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || '')
+    });
+
+    // Registrar histórico de correções se houver mudanças relevantes
+    if (trocouProposta || Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
+      var hist = obsObj.fase_c.historico_correcoes;
+      if (!Array.isArray(hist)) hist = [];
+      var entrada = { tipo: 'edicao_manual', data_hora: new Date().toISOString() };
+      if (trocouProposta) {
+        entrada.proposta_anterior = _meditPropostaOrigId;
+        entrada.proposta_nova     = novaPropId;
+        entrada.motivo            = novoMotivo;
+      }
+      if (Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
+        entrada.valor_anterior = parseFloat(nf.valor_nf) || 0;
+        entrada.valor_novo     = novoValor;
+      }
+      hist.push(entrada);
+      obsObj.fase_c.historico_correcoes = hist;
+    }
+    var obsFinal = JSON.stringify(obsObj);
+
+    // Regenerar título da conta
+    var labelNF     = novoNumero ? ('NF ' + novoNumero) : 'NF s/n';
+    var tituloConta = (p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(novoValor);
+
+    // Atualizar NF
+    var nfPayload = {
+      numero_nf:       novoNumero || null,
+      tipo_nf:         novoTipo,
+      data_emissao:    novaEmissao,
+      valor_nf:        novoValor,
+      status:          novoStatusNF,
+      observacoes:     obsFinal
+    };
+    if (trocouProposta) nfPayload.proposta_app_id = novaPropId;
+    await sf.atualizarNotaFiscal(nf.id, nfPayload);
+
+    // Atualizar Conta a Receber
+    var contaPayload = {
+      titulo:          tituloConta,
+      valor_previsto:  novoValor,
+      data_vencimento: novoVenc || null,
+      status:          novoStConta,
+      observacoes:     obsFinal
+    };
+    if (trocouProposta) {
+      contaPayload.proposta_app_id = novaPropId;
+      contaPayload.cliente_nome    = p.cli || '';
+    }
+    await sf.atualizarContaReceber(nf.conta_receber_id, contaPayload);
+
+    _meditStatus('ok', '✅ NF atualizada com sucesso! Recarregando…');
+    setTimeout(function() {
+      fecharModalEditarNF();
+      recarregarNFs();
+      var tabContas = document.getElementById('tab-contas');
+      if (tabContas && tabContas.style.display !== 'none') recarregarContas();
+    }, 1300);
+
+  } catch(e) {
+    console.error('[EditarNF] erro:', e);
+    _meditStatus('err', '❌ Erro ao salvar: ' + (e.message || String(e)));
+    btn.disabled = false;
+  }
 }
 </script>
 

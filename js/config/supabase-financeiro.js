@@ -208,6 +208,31 @@
     return r.data;
   }
 
+  /**
+   * Atualiza campos de uma nota fiscal existente.
+   * id: uuid da NF
+   * dados: campos a atualizar (nunca altera empresa_id nem conta_receber_id)
+   */
+  async function sbAtualizarNotaFiscal(id, dados) {
+    if (!id) throw new Error('[Financeiro] id obrigatório para atualizar NF.');
+
+    // Garantia: nunca permite alterar empresa_id ou conta_receber_id por esta função
+    var payload = Object.assign({}, dados);
+    delete payload.empresa_id;
+    delete payload.conta_receber_id;
+    delete payload.id;
+
+    var r = await client()
+      .from('financeiro_notas_fiscais')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // RECEBIMENTOS
@@ -735,6 +760,7 @@
     listarNotasFiscaisEmpresa:       sbListarNotasFiscaisEmpresa,
     listarNotasFiscaisConta:         sbListarNotasFiscaisConta,
     criarNotaFiscal:                 sbCriarNotaFiscal,
+    atualizarNotaFiscal:             sbAtualizarNotaFiscal,
 
     // Recebimentos
     listarRecebimentosEmpresa:       sbListarRecebimentosEmpresa,
