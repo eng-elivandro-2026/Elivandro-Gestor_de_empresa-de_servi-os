@@ -393,15 +393,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .th-faturado,.td-faturado,
   .th-cc,.td-cc{display:none}
 }
-/* ── Tabela NFs: colunas ampliadas ──────────────────────────────
-   Escopado em #nf-table para não afetar Contas a Receber,
-   Movimentações e Despesas que também usam .col-cliente/.col-titulo */
-#nf-table{min-width:1360px}
-#nf-table td:first-child{min-width:90px;font-family:monospace;font-weight:600}
-#nf-table .col-cliente{max-width:340px;min-width:240px;white-space:normal;overflow:visible;text-overflow:clip}
-#nf-table .col-titulo{max-width:none;min-width:380px;white-space:normal;overflow:visible;text-overflow:clip}
-#nf-table .td-obra{min-width:120px;white-space:normal;overflow:visible;text-overflow:clip}
-#nf-table .col-acoes-nf{min-width:110px;width:110px}
+/* ── Tabela NFs: proporcional, sem scroll horizontal ────────────
+   table-layout:fixed distribui colunas por percentual — sem min-width.
+   Escopo #nf-table — não afeta CR, Movimentações, Despesas. */
+#nf-table{width:100%;table-layout:fixed}
+#nf-table th:nth-child(1){width:5%}   /* Nº NF       */
+#nf-table th:nth-child(2){width:16%}  /* Cliente      */
+#nf-table th:nth-child(3){width:22%}  /* Prop./Título */
+#nf-table th:nth-child(4){width:5%}   /* Obra         */
+#nf-table th:nth-child(5){width:6%}   /* Tipo         */
+#nf-table th:nth-child(6){width:9%}   /* Valor NF     */
+#nf-table th:nth-child(7){width:8%}   /* Status       */
+#nf-table th:nth-child(8){width:7%}   /* Emissão      */
+#nf-table th:nth-child(9){width:7%}   /* Vencimento   */
+#nf-table th:nth-child(10){width:8%}  /* Situação     */
+#nf-table th:nth-child(11){width:7%}  /* Ações        */
+/* Texto longo: quebra de linha, sem overflow lateral */
+#nf-table .col-cliente{white-space:normal;overflow:hidden;overflow-wrap:break-word;max-width:none;text-overflow:clip}
+#nf-table .col-titulo{white-space:normal;overflow:hidden;overflow-wrap:break-word;max-width:none;text-overflow:clip;color:var(--text2)}
+#nf-table .td-obra{white-space:normal;overflow:hidden;overflow-wrap:break-word}
+/* Colunas compactas: elide se necessário */
+#nf-table .col-data{overflow:hidden;text-overflow:ellipsis}
+#nf-table .col-valor{overflow:hidden;text-overflow:ellipsis}
+#nf-table .col-acoes-nf{overflow:visible}
 </style>
 </head>
 <body>
