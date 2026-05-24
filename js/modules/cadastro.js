@@ -735,6 +735,10 @@
   window.cliGetAll      = cliLoad;
   window.ctsSeedFromData = seedFromData;
 
+  // Expostos para relacionamento-duplicados.js (merge controlado, 1 item por vez)
+  window.cliSaveDirect = function(list) { cliSave(list, { permitirListaVazia: true }); };
+  window.ctsSaveDirect = function(list) { ctsSave(list, { permitirListaVazia: true }); };
+
   // ── Wiring do formulário de Propostas ─────────────────────
   function wirePropForm() {
     var g = function(id) { return document.getElementById(id); };
