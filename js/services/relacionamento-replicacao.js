@@ -581,8 +581,9 @@
     if (btn) btn.style.display = 'none';
   }
 
-  // ── Wrappers: injetar 🔁 após cada render ───────────────────
-  // Aguarda renderTabelaClientes/Contatos estarem disponíveis
+  // ── Wrappers: injetar 🔁 após renders externos ──────────────
+  // Cobre chamadas externas a window.renderTabelaClientes/Contatos
+  // (ex: relacionamento-edicao-empresa.js após salvar)
   function _wrapRenderFunctions() {
     var origCli = window.renderTabelaClientes;
     var origCts = window.renderTabelaContatos;
@@ -601,18 +602,46 @@
     }
   }
 
+  // ── MutationObserver: cobre renders internos do cadastro.js ─
+  // Os renders internos (hShowSec, _sbLoad, empresa:changed) chamam
+  // referências locais do IIFE — não passam pelo wrapper acima.
+  // O observer detecta qualquer mudança no DOM das tabelas.
+  var _obs = null;
+
+  function _iniciarObserver() {
+    if (_obs) return;
+    _obs = new MutationObserver(function (mutations) {
+      if (!window._podeReplicar) return;
+      mutations.forEach(function (m) {
+        var tid = m.target.id;
+        if (tid === 'tabelaClientes') _injetarBotoesReplica('cliente');
+        else if (tid === 'tabelaContatos') _injetarBotoesReplica('contato');
+      });
+    });
+
+    function _attach() {
+      var ok = false;
+      var tCli = document.getElementById('tabelaClientes');
+      var tCts = document.getElementById('tabelaContatos');
+      // childList: true — fires when innerHTML is replaced (covers all internal renders)
+      // subtree: false — button appends to <td> do NOT re-trigger the observer
+      if (tCli) { _obs.observe(tCli, { childList: true }); ok = true; }
+      if (tCts) { _obs.observe(tCts, { childList: true }); ok = true; }
+      if (!ok) setTimeout(_attach, 600);
+    }
+    _attach();
+  }
+
   // ── Inicialização ────────────────────────────────────────────
-  // Verifica auth e, se autorizado:
-  //   - wrapa as funções de render
-  //   - injeta botões nas tabelas já renderizadas (se visíveis)
   _checkAuth(function (ok) {
     if (!ok) return;
     _wrapRenderFunctions();
-    // Tentativa de injeção tardia (tabelas já podem estar renderizadas)
+    _iniciarObserver();
+    // Injeção imediata caso as tabelas já estejam renderizadas
     setTimeout(function () {
       _injetarBotoesReplica('cliente');
       _injetarBotoesReplica('contato');
-    }, 1500);
+    }, 800);
   });
 
 })();
