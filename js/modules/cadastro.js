@@ -720,9 +720,15 @@
       + '<th style="padding:.4rem .6rem;width:80px"></th>'
       + '</tr></thead><tbody>'
       + list.map(function(x) {
+          var statusBadge = x.ativo === false
+            ? '<span style="font-size:.65rem;color:#f87171;margin-left:.4rem;font-weight:600">[inativo]</span>'
+            : '';
+          var vinculoBadge = x.empresa_cliente_id
+            ? '<span style="font-size:.68rem;color:#22c55e;margin-left:.25rem" title="Empresa vinculada">🔗</span>'
+            : '';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + '</td>'
-            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + '</td>'
+            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + statusBadge + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + vinculoBadge + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text3);font-size:.75rem">' + esc(x.departamento) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.email) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.telefone) + '</td>'
