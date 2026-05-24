@@ -679,15 +679,21 @@
       + '<th style="padding:.4rem .6rem;width:80px"></th>'
       + '</tr></thead><tbody>'
       + list.map(function(x) {
+          // Fallback: apelido → nome → fantasia → razaoSocial → placeholder
+          var nomeEfetivo = x.apelido || x.nome || x.fantasia || x.razaoSocial || '';
+          var semNomeBadge = !nomeEfetivo
+            ? '<span style="font-size:.65rem;color:#f59e0b;margin-left:.35rem;font-weight:600" title="id: ' + esc(x.id) + '">[sem nome]</span>'
+            : '';
+          if (!nomeEfetivo) nomeEfetivo = 'Empresa sem nome';
           var nomePrimario = x.apelido
             ? '<div style="font-weight:700;line-height:1.3">' + esc(x.apelido) + '</div>'
-              + '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">' + esc(x.nome) + '</div>'
-            : '<span style="font-weight:600">' + esc(x.nome) + '</span>';
+              + (x.nome ? '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">' + esc(x.nome) + '</div>' : '')
+            : '<span style="font-weight:600' + (!x.nome ? ';color:#f59e0b;font-style:italic' : '') + '">' + esc(nomeEfetivo) + '</span>';
           var statusBadge = x.ativo === false
             ? '<span style="font-size:.65rem;color:#f87171;margin-left:.4rem;font-weight:600">[inativa]</span>'
             : '';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            + '<td style="padding:.45rem .6rem;color:var(--text)">' + nomePrimario + statusBadge + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text)">' + nomePrimario + semNomeBadge + statusBadge + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cnpj) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cidade) + '</td>'
             + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
@@ -720,6 +726,14 @@
       + '<th style="padding:.4rem .6rem;width:80px"></th>'
       + '</tr></thead><tbody>'
       + list.map(function(x) {
+          // Fallback: nome → email → telefone → placeholder
+          var nomeCtaEfetivo = x.nome || x.email || x.telefone || 'Contato sem nome';
+          var semNomeBadge = !x.nome
+            ? '<span style="font-size:.65rem;color:#f59e0b;margin-left:.35rem;font-weight:600" title="id: ' + esc(x.id) + '">[sem nome]</span>'
+            : '';
+          var nomeCtaHtml = x.nome
+            ? esc(x.nome)
+            : '<span style="font-style:italic;color:#f59e0b">' + esc(nomeCtaEfetivo) + '</span>';
           var statusBadge = x.ativo === false
             ? '<span style="font-size:.65rem;color:#f87171;margin-left:.4rem;font-weight:600">[inativo]</span>'
             : '';
@@ -727,7 +741,7 @@
             ? '<span style="font-size:.68rem;color:#22c55e;margin-left:.25rem" title="Empresa vinculada">🔗</span>'
             : '';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + statusBadge + '</td>'
+            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + nomeCtaHtml + semNomeBadge + statusBadge + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + vinculoBadge + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text3);font-size:.75rem">' + esc(x.departamento) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.email) + '</td>'
@@ -953,7 +967,7 @@
         var del    = _ctsDelLoad();
         var merged = local.slice();
         v.forEach(function(x) {
-          if (!x.id || !(x.nome || '').trim()) return; // ignora itens sem id ou nome
+          if (!x.id) return; // descarta apenas se não houver id (sem conteúdo útil)
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
@@ -971,7 +985,7 @@
         var del    = _cliDelLoad();
         var merged = local.slice();
         v.forEach(function(x) {
-          if (!x.id || !(x.nome || '').trim()) return; // ignora itens sem id ou nome
+          if (!x.id) return; // descarta apenas se não houver id (sem conteúdo útil)
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
