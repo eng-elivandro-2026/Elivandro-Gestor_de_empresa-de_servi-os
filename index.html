@@ -1300,7 +1300,7 @@ body.empresa-tema-fortex{
 
     <div class="card" id="cardTimeline">
       <div class="ch" style="cursor:pointer" onclick="togTimeline()">
-        <span class="ct">📅 Linha do Tempo Comercial &amp; Financeira</span>
+        <span class="ct">📅 Linha do Tempo — Comercial, Operacional &amp; Financeiro</span>
         <span id="timelineChevron" style="font-size:.8rem;color:var(--text3)">▼ expandir</span>
       </div>
       <div id="timelineBody" style="display:none">
@@ -1325,6 +1325,15 @@ body.empresa-tema-fortex{
               </select>
             </div>
           </div>
+          <div class="g ga" style="margin-top:.5rem">
+            <div class="f"><label>Prazo de Pagamento Acordado</label><input type="text" id="tlPrazoPgto" placeholder="Ex: 30 dias após NF" oninput="rCiclos()"></div>
+            <div class="f"><label>% Adiantamento Acordado</label>
+              <div style="display:flex;align-items:center;gap:.4rem">
+                <input type="number" id="tlAdiantPct" min="0" max="100" step="1" placeholder="0" style="width:80px;padding:.35rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.85rem;text-align:right" oninput="rCiclos()">
+                <span style="font-size:.82rem;color:var(--text2)">%</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- BLOCO EXECUÇÃO -->
@@ -1337,32 +1346,32 @@ body.empresa-tema-fortex{
           </div>
         </div>
 
-        <!-- BLOCO FINANCEIRO: NFs -->
-        <div style="margin-bottom:.9rem;border-top:1px solid var(--border);padding-top:.7rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">🟡 Notas Fiscais Emitidas</div>
-            <button class="btn bg bxs" onclick="tlAddNF()">+ NF</button>
-          </div>
-          <div id="tlNFList"></div>
-        </div>
-
-        <!-- BLOCO FINANCEIRO: Adiantamentos -->
-        <div style="margin-bottom:.9rem;border-top:1px solid var(--border);padding-top:.7rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">💰 Adiantamentos Recebidos</div>
-            <button class="btn bg bxs" onclick="tlAddAdiant()">+ Adiantamento</button>
-          </div>
-          <div style="font-size:.75rem;color:var(--text3);margin-bottom:.4rem">% acordado em contrato: <input type="number" id="tlAdiantPct" min="0" max="100" step="1" placeholder="0" style="width:60px;padding:.2rem .4rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:.78rem;text-align:right" oninput="rCiclos()">%</div>
-          <div id="tlAdiantList"></div>
-        </div>
-
-        <!-- BLOCO FINANCEIRO: Recebimento Final -->
+        <!-- BLOCO FINANCEIRO: Somente Leitura -->
         <div style="border-top:1px solid var(--border);padding-top:.7rem;margin-bottom:.9rem">
-          <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">🏁 Recebimento Final</div>
-          <div class="g ga">
-            <div class="f"><label>Data de Recebimento Final</label><input type="date" id="tlDtRecebFinal" oninput="rCiclos()"></div>
-            <div class="f"><label>Valor Recebimento Final (R$)</label><input type="number" id="tlValRecebFinal" min="0" step="0.01" placeholder="0,00" oninput="rCiclos()"></div>
-            <div class="f"><label>Prazo de Pagamento Acordado</label><input type="text" id="tlPrazoPgto" placeholder="Ex: 30 dias após NF" oninput="rCiclos()"></div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.55rem">💼 Financeiro — Somente Leitura</div>
+
+          <!-- Aviso informativo -->
+          <div style="display:flex;align-items:flex-start;gap:.55rem;padding:.55rem .7rem;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:6px;margin-bottom:.65rem">
+            <span style="font-size:1rem;flex-shrink:0;margin-top:.05rem">ℹ️</span>
+            <div style="font-size:.74rem;color:var(--text2);line-height:1.5">
+              Notas fiscais, adiantamentos e recebimentos devem ser <strong>lançados e controlados no módulo Financeiro</strong>.<br>
+              <span style="color:var(--text3)">Os dados desta proposta ficam disponíveis como resumo somente leitura abaixo.</span>
+            </div>
+          </div>
+
+          <!-- Botões de navegação -->
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.65rem">
+            <button class="btn bg bxs" onclick="Router.ir('financeiro')" style="font-size:.77rem">💰 Abrir Módulo Financeiro</button>
+            <button class="btn bg bxs" onclick="step(4)" style="font-size:.77rem">📊 Ver Resumo Nesta Proposta</button>
+          </div>
+
+          <!-- Elementos ocultos para compatibilidade — não remover -->
+          <!-- rTlNFList(), rTlAdiantList() e rCiclos() ainda precisam desses IDs no DOM -->
+          <div style="display:none" aria-hidden="true">
+            <div id="tlNFList"></div>
+            <div id="tlAdiantList"></div>
+            <input type="date"   id="tlDtRecebFinal"  oninput="rCiclos()">
+            <input type="number" id="tlValRecebFinal" oninput="rCiclos()">
           </div>
         </div>
 
