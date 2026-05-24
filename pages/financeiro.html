@@ -326,10 +326,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .medit-secao{margin:.55rem 0}
 .medit-label{font-size:.74rem;color:var(--text2);font-weight:600;margin-bottom:.22rem;margin-top:.5rem}
 .medit-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:.45rem 0}
+.medit-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin:.45rem 0}
 .medit-ro{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.4rem .65rem;font-size:.72rem;display:flex;flex-wrap:wrap;gap:.35rem 1rem}
 .medit-ro-item{display:flex;flex-direction:column;min-width:110px}
 .medit-ro-label{font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 .medit-ro-val{font-size:.76rem;font-weight:700;word-break:break-word}
+.medit-secao-titulo{font-size:.71rem;font-weight:700;color:var(--text2);padding:.28rem 0 .22rem;border-bottom:1px solid var(--border);margin:.65rem 0 .35rem;letter-spacing:.02em;text-transform:uppercase}
+.medit-aliq-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.32rem;margin:.3rem 0}
+.medit-aliq-item{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:.28rem .45rem}
+.medit-aliq-lbl{font-size:.58rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.medit-aliq-val{font-size:.79rem;font-weight:700;color:var(--text1);margin-top:.08rem}
+.medit-comparativo{margin:.28rem 0;padding:.32rem .52rem;border-radius:5px;font-size:.74rem;line-height:1.4}
+.medit-comparativo.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:var(--green)}
+.medit-comparativo.warn{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.28);color:var(--accent)}
+.medit-comparativo.err{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.28);color:var(--red)}
+.medit-comparativo.info{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.medit-venc-modo-txt{font-size:.66rem;color:var(--text3);font-style:italic;margin-top:.18rem;min-height:.85rem}
 
 /* ── FLUXO DE CAIXA ───────────────────────────────────────────── */
 .btn-preset{
@@ -4769,6 +4781,29 @@ var _meditPropostaOrigId   = null;  // proposta_app_id original da NF
 var _meditPropostaAtual    = null;  // objeto proposta atualmente selecionado
 var _meditPropostasCache   = {};    // id → proposta
 var _meditTemRecebimento   = false; // bloqueia troca de proposta e alteração de valor
+var _meditVencModo         = 'manual'; // 'dias' | 'manual'
+
+// ── Helpers BRL / PCT ─────────────────────────────────────────
+function formatBRL(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function parseBRL(s) {
+  if (s == null || s === '') return 0;
+  var str = String(s).trim().replace(/R\$\s*/g, '').replace(/\s/g, '');
+  // "1.234,56" → BRL: ponto = milhar, vírgula = decimal
+  if (str.indexOf('.') !== -1 && str.indexOf(',') !== -1) {
+    str = str.replace(/\./g, '').replace(',', '.');
+  } else if (str.indexOf(',') !== -1) {
+    str = str.replace(',', '.');
+  }
+  return parseFloat(str) || 0;
+}
+function formatPct(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
+}
+function parsePct(s) {
+  return parseFloat(String(s || '').replace('%', '').replace(',', '.').trim()) || 0;
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function _meditStatus(cls, msg) {
@@ -4825,7 +4860,7 @@ function _meditKpisAtualizar() {
   if (!kpis || !p) { if (kpis) kpis.innerHTML = ''; return; }
 
   var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
-  var valorNFAtual = parseFloat((document.getElementById('medit-valor') || {}).value) || 0;
+  var valorNFAtual = parseBRL((document.getElementById('medit-valor') || {}).value);
 
   // jaFaturado = NFs da proposta excluindo esta NF e excluindo canceladas
   var jaFaturado = (_todasNFs || []).filter(function(n) {
@@ -4861,6 +4896,175 @@ function _meditKpisAtualizar() {
       }
     }
   }
+  _meditAtualizarAlertasFinanceiros();
+  _meditAtualizarComparativo();
+}
+
+// ── Formatação do input valor ─────────────────────────────────
+function meditFormatarValor() {
+  var el = document.getElementById('medit-valor');
+  if (!el) return;
+  var v = parseBRL(el.value);
+  el.value = v > 0 ? formatBRL(v) : '';
+}
+function meditFocarValor() {
+  var el = document.getElementById('medit-valor');
+  if (!el) return;
+  var v = parseBRL(el.value);
+  el.value = v > 0 ? v.toFixed(2).replace('.', ',') : '';
+  el.select();
+}
+
+// ── Vencimento por dias ───────────────────────────────────────
+function meditCalcVencPorDias() {
+  _meditVencModo = 'dias';
+  var emissaoEl = document.getElementById('medit-emissao');
+  var diasEl    = document.getElementById('medit-dias-venc');
+  var vencEl    = document.getElementById('medit-vencimento');
+  var modoEl    = document.getElementById('medit-venc-modo-label');
+  var emissao   = emissaoEl ? emissaoEl.value : '';
+  var dias      = parseInt((diasEl || {}).value) || 0;
+  if (!emissao) {
+    if (modoEl) modoEl.textContent = '⚠️ Informe a data de emissão para calcular o vencimento.';
+    return;
+  }
+  if (dias < 0) {
+    if (modoEl) modoEl.textContent = '⚠️ Dias não pode ser negativo.';
+    return;
+  }
+  var dt = new Date(emissao + 'T12:00:00');
+  dt.setDate(dt.getDate() + dias);
+  if (vencEl) vencEl.value = dt.toISOString().slice(0, 10);
+  if (modoEl) modoEl.textContent = '📅 Vencimento calculado por prazo (' + dias + ' dia(s))';
+  _meditAtualizarAlertasFinanceiros();
+}
+function meditOnDiasVenc() {
+  var diasEl = document.getElementById('medit-dias-venc');
+  var dias   = parseInt((diasEl || {}).value) || 0;
+  if (dias > 0) {
+    meditCalcVencPorDias();
+  } else {
+    _meditVencModo = 'manual';
+    var modoEl = document.getElementById('medit-venc-modo-label');
+    if (modoEl) modoEl.textContent = '';
+  }
+}
+function meditOnEmissao() {
+  if (_meditVencModo === 'dias') {
+    var diasEl = document.getElementById('medit-dias-venc');
+    if (parseInt((diasEl || {}).value) > 0) meditCalcVencPorDias();
+  }
+  _meditAtualizarAlertasFinanceiros();
+}
+function meditOnVencimento() {
+  _meditVencModo = 'manual';
+  var modoEl = document.getElementById('medit-venc-modo-label');
+  if (modoEl) modoEl.textContent = '✏️ Vencimento informado manualmente';
+  _meditAtualizarAlertasFinanceiros();
+}
+
+// ── Alíquotas consideradas (leitura da proposta) ──────────────
+var _DEFP_ALIQ = { nfS: 0.15, nfM: 0.15, rS: 0.051, comS: 0.05, comM: 0.05, neg: 0.05 };
+function _meditAliqDaProposta(p) {
+  var a = (p && p.aliq) ? p.aliq : {};
+  return {
+    nfS:  a.nfS  != null ? a.nfS  : _DEFP_ALIQ.nfS,
+    nfM:  a.nfM  != null ? a.nfM  : _DEFP_ALIQ.nfM,
+    rS:   a.rS   != null ? a.rS   : _DEFP_ALIQ.rS,
+    comS: a.comS != null ? a.comS : _DEFP_ALIQ.comS,
+    comM: a.comM != null ? a.comM : _DEFP_ALIQ.comM,
+    neg:  a.neg  != null ? a.neg  : _DEFP_ALIQ.neg
+  };
+}
+function _meditAtualizarAliquotasConsideradas() {
+  var el = document.getElementById('medit-aliq-consideradas');
+  if (!el) return;
+  var p = _meditPropostaAtual;
+  if (!p) { el.innerHTML = '<div style="font-size:.73rem;color:var(--text3)">— Selecione uma proposta para ver as alíquotas —</div>'; return; }
+  var a = _meditAliqDaProposta(p);
+  function _pa(v) { return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + '%'; }
+  el.innerHTML =
+    '<div class="medit-aliq-grid">' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">NF Serviços</div><div class="medit-aliq-val">' + _pa(a.nfS)  + '</div></div>' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">NF Materiais</div><div class="medit-aliq-val">' + _pa(a.nfM)  + '</div></div>' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Risco Sacado</div><div class="medit-aliq-val">' + _pa(a.rS)   + '</div></div>' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Comiss. Serv.</div><div class="medit-aliq-val">' + _pa(a.comS) + '</div></div>' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Comiss. Mat.</div><div class="medit-aliq-val">' + _pa(a.comM) + '</div></div>' +
+    '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Negociação</div><div class="medit-aliq-val">' + _pa(a.neg)  + '</div></div>' +
+    '</div>';
+}
+
+// ── Comparativo previsto × real ───────────────────────────────
+function _meditAtualizarComparativo() {
+  var el = document.getElementById('medit-comparativo-panel');
+  if (!el) return;
+  var p = _meditPropostaAtual;
+  if (!p) { el.innerHTML = ''; return; }
+  var prev = _meditAliqDaProposta(p);
+  var valorNF = parseBRL((document.getElementById('medit-valor') || {}).value);
+  var nfReal  = parsePct((document.getElementById('medit-nf-real-pct')   || {}).value) / 100;
+  var rsReal  = parsePct((document.getElementById('medit-rs-real-pct')   || {}).value) / 100;
+  var comReal = parsePct((document.getElementById('medit-com-real-pct')  || {}).value) / 100;
+  var descReal= parsePct((document.getElementById('medit-desc-real-pct') || {}).value) / 100;
+  var linhas = [];
+  function _linha(real, prevVal, label) {
+    if (real <= 0) return;
+    var dif = real - prevVal;
+    var difR = valorNF * dif;
+    if (dif > 0.0005) {
+      linhas.push('<div class="medit-comparativo warn">⚠️ ' + label + ' real (' + formatPct(real * 100) +
+        ') acima do previsto (' + formatPct(prevVal * 100) + '). Impacto estimado: ' + formatBRL(difR) + '.</div>');
+    } else {
+      linhas.push('<div class="medit-comparativo ok">✅ ' + label + ' dentro do previsto.</div>');
+    }
+  }
+  _linha(rsReal,  prev.rS,   'Risco Sacado');
+  _linha(nfReal,  prev.nfS,  'Alíquota NF');
+  _linha(comReal, prev.comS, 'Comissão');
+  if (descReal > 0) {
+    linhas.push('<div class="medit-comparativo info">ℹ️ Desconto financeiro: ' + formatPct(descReal * 100) + ' = ' + formatBRL(valorNF * descReal) + '.</div>');
+  }
+  el.innerHTML = linhas.length ? linhas.join('') : '';
+}
+
+// ── Alertas financeiros ───────────────────────────────────────
+function _meditAtualizarAlertasFinanceiros() {
+  var el = document.getElementById('medit-alertas-financeiros');
+  if (!el) return;
+  var nf   = _meditNFAtual;
+  var p    = _meditPropostaAtual;
+  var hoje = new Date().toISOString().slice(0, 10);
+  var vencEl    = document.getElementById('medit-vencimento');
+  var emissaoEl = document.getElementById('medit-emissao');
+  var statusNFEl= document.getElementById('medit-status-nf');
+  var venc    = vencEl    ? vencEl.value    : '';
+  var emissao = emissaoEl ? emissaoEl.value : '';
+  var statusNF= statusNFEl? statusNFEl.value: '';
+  var itens = [];
+  function _al(cls, txt) { itens.push('<div class="medit-comparativo ' + cls + '">' + txt + '</div>'); }
+
+  if (!p) _al('err', '❌ Nenhuma proposta vinculada à NF.');
+  if (!nf || !nf.conta_receber_id) _al('err', '❌ Conta a Receber não vinculada.');
+  if (statusNF === 'cancelada') _al('warn', '⚠️ NF com status Cancelada.');
+  if (_meditTemRecebimento) _al('info', 'ℹ️ Conta com recebimento(s): alteração de proposta e valor bloqueada.');
+  if (!venc) {
+    _al('warn', '⚠️ Sem data de vencimento definida.');
+  } else {
+    if (emissao && venc < emissao) {
+      _al('err', '❌ Vencimento (' + venc + ') anterior à emissão (' + emissao + ').');
+    } else if (venc < hoje) {
+      _al('err', '🔴 NF vencida em ' + venc + '.');
+    } else {
+      var dtV = new Date(venc + 'T12:00:00');
+      var dtH = new Date(hoje + 'T12:00:00');
+      var diasFalt = Math.round((dtV - dtH) / 86400000);
+      if (diasFalt <= 7) _al('warn', '⚠️ Vencimento em ' + diasFalt + ' dia(s) (' + venc + ').');
+    }
+  }
+
+  el.innerHTML = itens.length
+    ? itens.join('')
+    : '<div class="medit-comparativo ok" style="font-size:.73rem">✅ Sem alertas financeiros pendentes.</div>';
 }
 
 // ── Abrir modal ───────────────────────────────────────────────
@@ -4902,7 +5106,8 @@ async function editarNFCompleta(nfId) {
   _meditPropostaAtual = _meditPropostasCache[nf.proposta_app_id] || null;
 
   // Preencher campos
-  var vEl = document.getElementById('medit-valor');   if (vEl)  vEl.value  = nf.valor_nf || '';
+  var vEl = document.getElementById('medit-valor');
+  if (vEl) vEl.value = nf.valor_nf ? formatBRL(nf.valor_nf) : '';
   var pEl = document.getElementById('medit-pct');
   if (pEl && _meditPropostaAtual && _meditPropostaAtual.val) {
     pEl.value = parseFloat(((parseFloat(nf.valor_nf) / _meditPropostaAtual.val) * 100).toFixed(4));
@@ -4914,11 +5119,38 @@ async function editarNFCompleta(nfId) {
   var tEl = document.getElementById('medit-tipo');    if (tEl)  tEl.value  = nf.tipo_nf     || 'servico';
   var eEl = document.getElementById('medit-emissao'); if (eEl)  eEl.value  = nf.data_emissao || '';
   var sEl = document.getElementById('medit-status-nf'); if (sEl) sEl.value = nf.status      || 'emitida';
-  var vcEl= document.getElementById('medit-vencimento'); if (vcEl) vcEl.value = conta.data_vencimento || '';
+
+  // Vencimento — restaurar modo salvo
+  var vencModoSalvo = (obsObj.fase_c && obsObj.fase_c.vencimento_modo) || 'manual';
+  var diasSalvos    = (obsObj.fase_c && obsObj.fase_c.prazo_vencimento_dias) || 0;
+  _meditVencModo = vencModoSalvo;
+  var dEl   = document.getElementById('medit-dias-venc');
+  var vcEl  = document.getElementById('medit-vencimento');
+  var modoEl= document.getElementById('medit-venc-modo-label');
+  if (dEl)   dEl.value   = diasSalvos || '';
+  if (vcEl)  vcEl.value  = conta.data_vencimento || '';
+  if (modoEl) modoEl.textContent = vencModoSalvo === 'dias'
+    ? '📅 Vencimento calculado por prazo (' + diasSalvos + ' dia(s))'
+    : (conta.data_vencimento ? '✏️ Vencimento informado manualmente' : '');
+
   var scEl= document.getElementById('medit-status-conta');
   if (scEl) scEl.value = (conta.status === 'recebido' || conta.status === 'parcialmente_recebido')
     ? conta.status : (conta.status || 'a_faturar');
   var oEl = document.getElementById('medit-obs');     if (oEl)  oEl.value  = obsObj.texto || '';
+
+  // Alíquotas reais (restaurar do JSON salvo)
+  var ar = (obsObj.fase_c && obsObj.fase_c.aliquotas_reais) || {};
+  var arFields = { 'medit-nf-real-pct': 'nf_real_pct', 'medit-rs-real-pct': 'risco_sacado_real_pct',
+                   'medit-com-real-pct': 'comissao_real_pct', 'medit-desc-real-pct': 'desconto_financeiro_real_pct' };
+  Object.keys(arFields).forEach(function(id) {
+    var arEl = document.getElementById(id);
+    if (arEl) arEl.value = ar[arFields[id]] != null ? ar[arFields[id]] : '';
+  });
+  var arObsEl = document.getElementById('medit-aliq-real-obs');
+  if (arObsEl) arObsEl.value = ar.observacao || '';
+
+  // Atualizar painéis dinâmicos
+  _meditAtualizarAliquotasConsideradas();
 
   // Alerta NF cancelada
   if (nf.status === 'cancelada') {
@@ -4969,12 +5201,19 @@ async function editarNFCompleta(nfId) {
 function fecharModalEditarNF() {
   document.getElementById('modal-editar-nf').style.display = 'none';
   // Reabilitar campos que podem ter sido desabilitados
-  ['medit-proposta','medit-valor','medit-pct'].forEach(function(id) {
+  ['medit-proposta','medit-valor','medit-pct','medit-nf-real-pct','medit-rs-real-pct','medit-com-real-pct','medit-desc-real-pct','medit-dias-venc','medit-vencimento'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.disabled = false;
   });
   _meditNFAtual = _meditPropostaAtual = null;
   _meditPropostaOrigId = null;
   _meditTemRecebimento = false;
+  _meditVencModo = 'manual';
+  // Limpar painéis dinâmicos
+  ['medit-aliq-consideradas','medit-comparativo-panel','medit-alertas-financeiros'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  var modoEl = document.getElementById('medit-venc-modo-label');
+  if (modoEl) modoEl.textContent = '';
 }
 
 // ── Ao trocar proposta no modal ────────────────────────────────
@@ -4990,10 +5229,11 @@ function meditOnProposta() {
     var vEl = document.getElementById('medit-valor');
     var pEl = document.getElementById('medit-pct');
     if (vEl && pEl && _meditPropostaAtual.val) {
-      var val = parseFloat(vEl.value) || 0;
+      var val = parseBRL(vEl.value);
       if (val > 0) pEl.value = parseFloat(((val / _meditPropostaAtual.val) * 100).toFixed(4));
     }
   }
+  _meditAtualizarAliquotasConsideradas();
   _meditKpisAtualizar();
 }
 
@@ -5004,14 +5244,14 @@ function meditCalcPctParaValor() {
   var pct   = parseFloat((document.getElementById('medit-pct') || {}).value) || 0;
   var valor = p.val * (pct / 100);
   var el    = document.getElementById('medit-valor');
-  if (el) el.value = parseFloat(valor.toFixed(2));
+  if (el) el.value = formatBRL(parseFloat(valor.toFixed(2)));
   _meditKpisAtualizar();
 }
 
 function meditCalcValorParaPct() {
   var p = _meditPropostaAtual;
   if (!p || !p.val) return;
-  var valor = parseFloat((document.getElementById('medit-valor') || {}).value) || 0;
+  var valor = parseBRL((document.getElementById('medit-valor') || {}).value);
   var pct   = (valor / p.val) * 100;
   var el    = document.getElementById('medit-pct');
   if (el) el.value = parseFloat(pct.toFixed(4));
@@ -5039,7 +5279,7 @@ async function salvarEditarNF() {
   if (!empId) { _meditStatus('err', '❌ Empresa não identificada.'); return; }
 
   // Ler campos
-  var novoValor    = parseFloat((document.getElementById('medit-valor')     || {}).value) || 0;
+  var novoValor    = parseBRL((document.getElementById('medit-valor')     || {}).value);
   var novoPct      = parseFloat((document.getElementById('medit-pct')       || {}).value) || 0;
   var novoNumero   = ((document.getElementById('medit-numero')   || {}).value || '').trim();
   var novoTipo     = (document.getElementById('medit-tipo')      || {}).value || 'servico';
@@ -5051,6 +5291,13 @@ async function salvarEditarNF() {
   var novoMotivo   = ((document.getElementById('medit-motivo')   || {}).value || '').trim();
   var novaJust     = ((document.getElementById('medit-justificativa') || {}).value || '').trim();
   var novaPropId   = (document.getElementById('medit-proposta')  || {}).value || '';
+  var novoDias     = parseInt((document.getElementById('medit-dias-venc')  || {}).value) || 0;
+  // Alíquotas reais
+  var arNF   = parsePct((document.getElementById('medit-nf-real-pct')   || {}).value);
+  var arRS   = parsePct((document.getElementById('medit-rs-real-pct')   || {}).value);
+  var arCom  = parsePct((document.getElementById('medit-com-real-pct')  || {}).value);
+  var arDesc = parsePct((document.getElementById('medit-desc-real-pct') || {}).value);
+  var arObs  = ((document.getElementById('medit-aliq-real-obs') || {}).value || '').trim();
 
   // Validações
   if (novoValor <= 0) { _meditStatus('err', '❌ Valor da NF deve ser maior que zero.'); return; }
@@ -5094,12 +5341,22 @@ async function salvarEditarNF() {
     // Montar observacoes: preservar fase_c existente, atualizar campos, append historico
     var obsObj = _meditParseObs(nf.observacoes);
     obsObj.texto  = novoObs;
+    // Alíquotas reais (apenas campos preenchidos)
+    var aliqReaisPayload = Object.assign(obsObj.fase_c.aliquotas_reais || {}, {});
+    if (arNF   > 0) aliqReaisPayload.nf_real_pct               = parseFloat(arNF.toFixed(4));
+    if (arRS   > 0) aliqReaisPayload.risco_sacado_real_pct      = parseFloat(arRS.toFixed(4));
+    if (arCom  > 0) aliqReaisPayload.comissao_real_pct          = parseFloat(arCom.toFixed(4));
+    if (arDesc > 0) aliqReaisPayload.desconto_financeiro_real_pct = parseFloat(arDesc.toFixed(4));
+    if (arObs)      aliqReaisPayload.observacao                 = arObs;
     obsObj.fase_c = Object.assign(obsObj.fase_c || {}, {
       percentual_faturamento:    parseFloat(novoPct.toFixed(4)),
       valor_vendido_proposta:    p.val,
       percentual_rs_considerado: parseFloat((pctRS * 100).toFixed(4)),
       valor_rs_considerado:      parseFloat((novoValor * pctRS).toFixed(2)),
-      justificativa_excedente:   (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || '')
+      justificativa_excedente:   (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || ''),
+      vencimento_modo:           _meditVencModo,
+      prazo_vencimento_dias:     novoDias > 0 ? novoDias : (obsObj.fase_c.prazo_vencimento_dias || null),
+      aliquotas_reais:           Object.keys(aliqReaisPayload).length ? aliqReaisPayload : (obsObj.fase_c.aliquotas_reais || null)
     });
 
     // Registrar histórico de correções se houver mudanças relevantes
@@ -5167,12 +5424,20 @@ async function salvarEditarNF() {
 }
 
 // ── Registro explícito no window ─────────────────────────────
-window.editarNFCompleta      = editarNFCompleta;
-window.fecharModalEditarNF   = fecharModalEditarNF;
-window.salvarEditarNF        = salvarEditarNF;
-window.meditOnProposta       = meditOnProposta;
-window.meditCalcPctParaValor = meditCalcPctParaValor;
-window.meditCalcValorParaPct = meditCalcValorParaPct;
+window.editarNFCompleta              = editarNFCompleta;
+window.fecharModalEditarNF           = fecharModalEditarNF;
+window.salvarEditarNF                = salvarEditarNF;
+window.meditOnProposta               = meditOnProposta;
+window.meditCalcPctParaValor         = meditCalcPctParaValor;
+window.meditCalcValorParaPct         = meditCalcValorParaPct;
+window.meditFormatarValor            = meditFormatarValor;
+window.meditFocarValor               = meditFocarValor;
+window.meditOnEmissao                = meditOnEmissao;
+window.meditOnVencimento             = meditOnVencimento;
+window.meditOnDiasVenc               = meditOnDiasVenc;
+window.meditCalcVencPorDias          = meditCalcVencPorDias;
+window._meditAtualizarComparativo        = _meditAtualizarComparativo;
+window._meditAtualizarAlertasFinanceiros = _meditAtualizarAlertasFinanceiros;
 
 // ── Event delegation para botão ✏️ Editar ────────────────────
 // Listener em fase de captura (true) para interceptar antes de qualquer
@@ -5200,7 +5465,7 @@ document.addEventListener('click', function(e) {
 console.log('[Editar NF] módulo carregado e funções registradas');
 </script>
 
-<!-- Modal: Editar NF completa (Fase C) — fora de qualquer tab-content para não ser ocultado por showTab() -->
+<!-- Modal: Editar NF completa (Fase C.1) — fora de qualquer tab-content para não ser ocultado por showTab() -->
 <div class="modal-overlay" id="modal-editar-nf" style="display:none;position:fixed;z-index:9000" role="dialog" aria-modal="true">
   <div class="modal-box modal-box-lg">
     <div class="modal-titulo">✏️ Editar Lançamento de NF</div>
@@ -5208,10 +5473,8 @@ console.log('[Editar NF] módulo carregado e funções registradas');
     <!-- IDs somente leitura -->
     <div class="medit-ro" id="medit-ids" style="margin-bottom:.6rem"></div>
 
-    <!-- Alerta de bloqueio (recebimento vinculado) -->
+    <!-- Alertas de bloqueio / cancelamento -->
     <div id="medit-bloqueio"></div>
-
-    <!-- Alerta NF cancelada -->
     <div id="medit-alerta-cancelada"></div>
 
     <!-- Proposta vinculada -->
@@ -5236,8 +5499,11 @@ console.log('[Editar NF] módulo carregado e funções registradas');
       </div>
       <div>
         <div class="medit-label">Valor da NF (R$) *</div>
-        <input type="number" id="medit-valor" class="modal-input" min="0" step="0.01"
-          oninput="window.meditCalcValorParaPct()" placeholder="0,00">
+        <input type="text" id="medit-valor" class="modal-input"
+          oninput="window.meditCalcValorParaPct()"
+          onblur="window.meditFormatarValor()"
+          onfocus="window.meditFocarValor()"
+          placeholder="R$ 0,00" inputmode="decimal">
       </div>
     </div>
     <div id="medit-alerta-excedente"></div>
@@ -5260,11 +5526,11 @@ console.log('[Editar NF] módulo carregado e funções registradas');
     <div class="medit-grid-2">
       <div>
         <div class="medit-label">Data de Emissão *</div>
-        <input type="date" id="medit-emissao" class="modal-input">
+        <input type="date" id="medit-emissao" class="modal-input" onchange="window.meditOnEmissao()">
       </div>
       <div>
         <div class="medit-label">Status da NF</div>
-        <select id="medit-status-nf" class="modal-input">
+        <select id="medit-status-nf" class="modal-input" onchange="window._meditAtualizarAlertasFinanceiros && window._meditAtualizarAlertasFinanceiros()">
           <option value="emitida">Emitida</option>
           <option value="cancelada">Cancelada</option>
           <option value="substituida">Substituída</option>
@@ -5272,14 +5538,20 @@ console.log('[Editar NF] módulo carregado e funções registradas');
       </div>
     </div>
 
-    <!-- Dados da Conta a Receber -->
-    <div class="medit-grid-2">
+    <!-- Conta a Receber: vencimento + dias + status -->
+    <div class="medit-secao-titulo">📅 Conta a Receber</div>
+    <div class="medit-grid-3">
       <div>
-        <div class="medit-label">Data de Vencimento</div>
-        <input type="date" id="medit-vencimento" class="modal-input">
+        <div class="medit-label">Dias para vencimento</div>
+        <input type="number" id="medit-dias-venc" class="modal-input" min="0" step="1"
+          placeholder="Ex: 30" oninput="window.meditOnDiasVenc()">
       </div>
       <div>
-        <div class="medit-label">Status da Conta a Receber</div>
+        <div class="medit-label">Data de Vencimento</div>
+        <input type="date" id="medit-vencimento" class="modal-input" oninput="window.meditOnVencimento()" onchange="window.meditOnVencimento()">
+      </div>
+      <div>
+        <div class="medit-label">Status da Conta</div>
         <select id="medit-status-conta" class="modal-input">
           <option value="a_faturar">A Faturar</option>
           <option value="faturado">Faturado</option>
@@ -5288,12 +5560,57 @@ console.log('[Editar NF] módulo carregado e funções registradas');
         </select>
       </div>
     </div>
+    <div class="medit-venc-modo-txt" id="medit-venc-modo-label"></div>
+
+    <!-- Seção: Alíquotas consideradas na proposta -->
+    <div class="medit-secao-titulo">📊 Alíquotas consideradas na proposta</div>
+    <div id="medit-aliq-consideradas">
+      <div style="font-size:.73rem;color:var(--text3)">— Selecione uma proposta para ver as alíquotas —</div>
+    </div>
+
+    <!-- Seção: Alíquotas reais financeiras -->
+    <div class="medit-secao-titulo">💰 Alíquotas reais financeiras</div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">% NF real</div>
+        <input type="number" id="medit-nf-real-pct" class="modal-input" min="0" max="100" step="0.01"
+          placeholder="Ex: 15,5" oninput="window._meditAtualizarComparativo && window._meditAtualizarComparativo()">
+      </div>
+      <div>
+        <div class="medit-label">% Risco Sacado real</div>
+        <input type="number" id="medit-rs-real-pct" class="modal-input" min="0" max="100" step="0.01"
+          placeholder="Ex: 5,1" oninput="window._meditAtualizarComparativo && window._meditAtualizarComparativo()">
+      </div>
+    </div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">% Comissão real</div>
+        <input type="number" id="medit-com-real-pct" class="modal-input" min="0" max="100" step="0.01"
+          placeholder="Ex: 5,0" oninput="window._meditAtualizarComparativo && window._meditAtualizarComparativo()">
+      </div>
+      <div>
+        <div class="medit-label">% Desconto financeiro real</div>
+        <input type="number" id="medit-desc-real-pct" class="modal-input" min="0" max="100" step="0.01"
+          placeholder="Ex: 2,0" oninput="window._meditAtualizarComparativo && window._meditAtualizarComparativo()">
+      </div>
+    </div>
+    <div class="medit-secao">
+      <div class="medit-label">Observação das alíquotas reais</div>
+      <input type="text" id="medit-aliq-real-obs" class="modal-input" placeholder="Ex: desconto por pagamento antecipado">
+    </div>
+
+    <!-- Comparativo previsto × real -->
+    <div id="medit-comparativo-panel"></div>
+
+    <!-- Alertas financeiros -->
+    <div class="medit-secao-titulo">🚨 Alertas financeiros</div>
+    <div id="medit-alertas-financeiros"></div>
 
     <!-- Observações -->
     <div class="medit-secao">
       <div class="medit-label">Observações (texto livre)</div>
       <input type="text" id="medit-obs" class="modal-input"
-        placeholder="Texto da observação — metadata JSON da Fase C é preservado automaticamente">
+        placeholder="Texto da observação — metadata JSON preservado automaticamente">
     </div>
 
     <!-- Justificativa condicional -->
