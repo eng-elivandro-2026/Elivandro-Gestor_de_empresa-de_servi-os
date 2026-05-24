@@ -2573,7 +2573,10 @@ body.empresa-tema-fortex{
           <div style="font-size:1rem;font-weight:800;color:var(--blue)">🏢 Empresas Cadastradas</div>
           <div style="font-size:.73rem;color:var(--text3);margin-top:.15rem">Todas as empresas usadas no portal</div>
         </div>
-        <button class="nb" onclick="abrirModalNovoCliente('',function(){renderTabelaClientes()})" style="background:var(--blue);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">+ Nova Empresa</button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="nb" onclick="abrirModalDuplicados('cliente')" style="background:var(--text3);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">🔍 Verificar Duplicados</button>
+          <button class="nb" onclick="abrirModalNovoCliente('',function(){renderTabelaClientes()})" style="background:var(--blue);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">+ Nova Empresa</button>
+        </div>
       </div>
       <div id="tabelaClientes"></div>
     </div>
@@ -2585,7 +2588,10 @@ body.empresa-tema-fortex{
           <div style="font-size:1rem;font-weight:800;color:var(--blue)">👤 Contatos de Clientes</div>
           <div style="font-size:.73rem;color:var(--text3);margin-top:.15rem">Contatos usados nas propostas e no relacionamento</div>
         </div>
-        <button class="nb" onclick="abrirModalNovoContato('',function(){renderTabelaContatos()})" style="background:var(--blue);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">+ Novo Contato</button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="nb" onclick="abrirModalDuplicados('contato')" style="background:var(--text3);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">🔍 Verificar Duplicados</button>
+          <button class="nb" onclick="abrirModalNovoContato('',function(){renderTabelaContatos()})" style="background:var(--blue);color:#fff;border-radius:6px;padding:.38rem .9rem;font-size:.75rem;font-weight:700">+ Novo Contato</button>
+        </div>
       </div>
       <div id="tabelaContatos"></div>
     </div>
@@ -9883,6 +9889,7 @@ function rExecTimeline(){
 <script src="js/services/financeiro-backfill-preview.js"></script>
 <script src="js/services/financeiro-backfill-apply.js"></script>
 <script src="js/services/relacionamento-recovery.js?v=1"></script>
+<script src="js/services/relacionamento-duplicados.js?v=1"></script>
 
 <!-- SCRIPTS INLINE DO MÓDULO COMERCIAL -->
 <script>

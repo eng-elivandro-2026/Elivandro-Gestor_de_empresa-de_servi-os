@@ -129,7 +129,11 @@
     'rrAplicarOficiais-backup',   // backup antes de aplicar oficiais
     'rrAplicarOficiais',          // aplicar cadastros oficiais (confirmado)
     'rrAplicarSelecionados',      // aplicar recuperação manual (confirmado)
-    'aplicarLimpezaClientesManual' // limpeza manual explícita
+    'aplicarLimpezaClientesManual', // limpeza manual explícita
+    'dedup:merge-cliente',          // fusão de duplicado cliente (1 item, confirmado)
+    'dedup:merge-contato',          // fusão de duplicado contato (1 item, confirmado)
+    'dedup:descartar-cliente',      // descarte de duplicado cliente (1 item, confirmado)
+    'dedup:descartar-contato'       // descarte de duplicado contato (1 item, confirmado)
   ];
 
   // Motivos automáticos que NUNCA devem chegar aqui (detectados como violação)
