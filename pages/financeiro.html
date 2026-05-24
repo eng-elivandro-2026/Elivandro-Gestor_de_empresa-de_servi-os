@@ -393,6 +393,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .th-faturado,.td-faturado,
   .th-cc,.td-cc{display:none}
 }
+/* ── Tabela NFs: colunas ampliadas ──────────────────────────────
+   Escopado em #nf-table para não afetar Contas a Receber,
+   Movimentações e Despesas que também usam .col-cliente/.col-titulo */
+#nf-table{min-width:1360px}
+#nf-table td:first-child{min-width:90px;font-family:monospace;font-weight:600}
+#nf-table .col-cliente{max-width:340px;min-width:240px;white-space:normal;overflow:visible;text-overflow:clip}
+#nf-table .col-titulo{max-width:none;min-width:380px;white-space:normal;overflow:visible;text-overflow:clip}
+#nf-table .td-obra{min-width:120px;white-space:normal;overflow:visible;text-overflow:clip}
+#nf-table .col-acoes-nf{min-width:110px;width:110px}
 </style>
 </head>
 <body>
