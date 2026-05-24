@@ -889,119 +889,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 
-  <!-- Modal: Editar Vencimento de NF / Conta a Receber -->
-  <!-- Modal: Editar NF completa (Fase C) -->
-  <div class="modal-overlay" id="modal-editar-nf" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal-box modal-box-lg">
-      <div class="modal-titulo">✏️ Editar Lançamento de NF</div>
-
-      <!-- IDs somente leitura -->
-      <div class="medit-ro" id="medit-ids" style="margin-bottom:.6rem"></div>
-
-      <!-- Alerta de bloqueio (recebimento vinculado) -->
-      <div id="medit-bloqueio"></div>
-
-      <!-- Alerta NF cancelada -->
-      <div id="medit-alerta-cancelada"></div>
-
-      <!-- Proposta vinculada -->
-      <div class="medit-secao">
-        <div class="medit-label">Proposta vinculada *</div>
-        <select id="medit-proposta" class="modal-input" onchange="window.meditOnProposta()"></select>
-        <div id="medit-motivo-row" style="display:none;margin-top:.45rem">
-          <div class="medit-label" style="color:var(--accent)">Motivo da troca de proposta *</div>
-          <input type="text" id="medit-motivo" class="modal-input" placeholder="Obrigatório ao trocar a proposta vinculada">
-        </div>
-      </div>
-
-      <!-- KPIs da proposta (somente leitura) -->
-      <div id="medit-kpis" class="nf-kpi-mini" style="margin:.4rem 0 .6rem"></div>
-
-      <!-- % e valor (bidirecional) -->
-      <div class="medit-grid-2">
-        <div>
-          <div class="medit-label">% Faturamento</div>
-          <input type="number" id="medit-pct" class="modal-input" min="0" max="999" step="0.01"
-            oninput="window.meditCalcPctParaValor()" placeholder="0,00">
-        </div>
-        <div>
-          <div class="medit-label">Valor da NF (R$) *</div>
-          <input type="number" id="medit-valor" class="modal-input" min="0" step="0.01"
-            oninput="window.meditCalcValorParaPct()" placeholder="0,00">
-        </div>
-      </div>
-      <div id="medit-alerta-excedente"></div>
-
-      <!-- Dados da NF -->
-      <div class="medit-grid-2">
-        <div>
-          <div class="medit-label">Nº da NF</div>
-          <input type="text" id="medit-numero" class="modal-input" placeholder="Ex: 000123">
-        </div>
-        <div>
-          <div class="medit-label">Tipo</div>
-          <select id="medit-tipo" class="modal-input">
-            <option value="servico">Serviço</option>
-            <option value="material">Material</option>
-            <option value="misto">Misto</option>
-          </select>
-        </div>
-      </div>
-      <div class="medit-grid-2">
-        <div>
-          <div class="medit-label">Data de Emissão *</div>
-          <input type="date" id="medit-emissao" class="modal-input">
-        </div>
-        <div>
-          <div class="medit-label">Status da NF</div>
-          <select id="medit-status-nf" class="modal-input">
-            <option value="emitida">Emitida</option>
-            <option value="cancelada">Cancelada</option>
-            <option value="substituida">Substituída</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Dados da Conta a Receber -->
-      <div class="medit-grid-2">
-        <div>
-          <div class="medit-label">Data de Vencimento</div>
-          <input type="date" id="medit-vencimento" class="modal-input">
-        </div>
-        <div>
-          <div class="medit-label">Status da Conta a Receber</div>
-          <select id="medit-status-conta" class="modal-input">
-            <option value="a_faturar">A Faturar</option>
-            <option value="faturado">Faturado</option>
-            <option value="vencido">Vencido</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Observações -->
-      <div class="medit-secao">
-        <div class="medit-label">Observações (texto livre)</div>
-        <input type="text" id="medit-obs" class="modal-input"
-          placeholder="Texto da observação — metadata JSON da Fase C é preservado automaticamente">
-      </div>
-
-      <!-- Justificativa condicional -->
-      <div id="medit-justificativa-row" style="display:none">
-        <div class="medit-label" style="color:var(--accent)">Justificativa *</div>
-        <input type="text" id="medit-justificativa" class="modal-input"
-          placeholder="Obrigatório: informe o motivo">
-      </div>
-
-      <!-- Status e ações -->
-      <div class="status-msg" id="medit-status" style="margin-top:.65rem"></div>
-      <div class="modal-acoes">
-        <button class="modal-btn-cancelar" onclick="window.fecharModalEditarNF()">Cancelar</button>
-        <button class="modal-btn-confirmar" id="medit-btn-salvar" onclick="window.salvarEditarNF()">💾 Salvar Edição</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Aplicar Backfill -->
   <div class="secao-apply" id="secao-apply" style="display:none">
     <div class="secao-titulo">⚡ Aplicar Backfill Financeiro</div>
@@ -4978,7 +4865,10 @@ function _meditKpisAtualizar() {
 
 // ── Abrir modal ───────────────────────────────────────────────
 async function editarNFCompleta(nfId) {
+  console.log('[Editar NF] editarNFCompleta entrou', nfId);
+  console.log('[Editar NF] modal', document.getElementById('modal-editar-nf'));
   var nf = (_todasNFs || []).find(function(n) { return n.id === nfId; });
+  console.log('[Editar NF] nf encontrada', nf);
   if (!nf) { alert('NF não encontrada. Recarregue a lista.'); return; }
   if (!nf.conta_receber_id) {
     alert('❌ Esta NF não possui Conta a Receber vinculada.');
@@ -5309,6 +5199,118 @@ document.addEventListener('click', function(e) {
 
 console.log('[Editar NF] módulo carregado e funções registradas');
 </script>
+
+<!-- Modal: Editar NF completa (Fase C) — fora de qualquer tab-content para não ser ocultado por showTab() -->
+<div class="modal-overlay" id="modal-editar-nf" style="display:none;position:fixed;z-index:9000" role="dialog" aria-modal="true">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-titulo">✏️ Editar Lançamento de NF</div>
+
+    <!-- IDs somente leitura -->
+    <div class="medit-ro" id="medit-ids" style="margin-bottom:.6rem"></div>
+
+    <!-- Alerta de bloqueio (recebimento vinculado) -->
+    <div id="medit-bloqueio"></div>
+
+    <!-- Alerta NF cancelada -->
+    <div id="medit-alerta-cancelada"></div>
+
+    <!-- Proposta vinculada -->
+    <div class="medit-secao">
+      <div class="medit-label">Proposta vinculada *</div>
+      <select id="medit-proposta" class="modal-input" onchange="window.meditOnProposta()"></select>
+      <div id="medit-motivo-row" style="display:none;margin-top:.45rem">
+        <div class="medit-label" style="color:var(--accent)">Motivo da troca de proposta *</div>
+        <input type="text" id="medit-motivo" class="modal-input" placeholder="Obrigatório ao trocar a proposta vinculada">
+      </div>
+    </div>
+
+    <!-- KPIs da proposta (somente leitura) -->
+    <div id="medit-kpis" class="nf-kpi-mini" style="margin:.4rem 0 .6rem"></div>
+
+    <!-- % e valor (bidirecional) -->
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">% Faturamento</div>
+        <input type="number" id="medit-pct" class="modal-input" min="0" max="999" step="0.01"
+          oninput="window.meditCalcPctParaValor()" placeholder="0,00">
+      </div>
+      <div>
+        <div class="medit-label">Valor da NF (R$) *</div>
+        <input type="number" id="medit-valor" class="modal-input" min="0" step="0.01"
+          oninput="window.meditCalcValorParaPct()" placeholder="0,00">
+      </div>
+    </div>
+    <div id="medit-alerta-excedente"></div>
+
+    <!-- Dados da NF -->
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Nº da NF</div>
+        <input type="text" id="medit-numero" class="modal-input" placeholder="Ex: 000123">
+      </div>
+      <div>
+        <div class="medit-label">Tipo</div>
+        <select id="medit-tipo" class="modal-input">
+          <option value="servico">Serviço</option>
+          <option value="material">Material</option>
+          <option value="misto">Misto</option>
+        </select>
+      </div>
+    </div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Data de Emissão *</div>
+        <input type="date" id="medit-emissao" class="modal-input">
+      </div>
+      <div>
+        <div class="medit-label">Status da NF</div>
+        <select id="medit-status-nf" class="modal-input">
+          <option value="emitida">Emitida</option>
+          <option value="cancelada">Cancelada</option>
+          <option value="substituida">Substituída</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Dados da Conta a Receber -->
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Data de Vencimento</div>
+        <input type="date" id="medit-vencimento" class="modal-input">
+      </div>
+      <div>
+        <div class="medit-label">Status da Conta a Receber</div>
+        <select id="medit-status-conta" class="modal-input">
+          <option value="a_faturar">A Faturar</option>
+          <option value="faturado">Faturado</option>
+          <option value="vencido">Vencido</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Observações -->
+    <div class="medit-secao">
+      <div class="medit-label">Observações (texto livre)</div>
+      <input type="text" id="medit-obs" class="modal-input"
+        placeholder="Texto da observação — metadata JSON da Fase C é preservado automaticamente">
+    </div>
+
+    <!-- Justificativa condicional -->
+    <div id="medit-justificativa-row" style="display:none">
+      <div class="medit-label" style="color:var(--accent)">Justificativa *</div>
+      <input type="text" id="medit-justificativa" class="modal-input"
+        placeholder="Obrigatório: informe o motivo">
+    </div>
+
+    <!-- Status e ações -->
+    <div class="status-msg" id="medit-status" style="margin-top:.65rem"></div>
+    <div class="modal-acoes">
+      <button class="modal-btn-cancelar" onclick="window.fecharModalEditarNF()">Cancelar</button>
+      <button class="modal-btn-confirmar" id="medit-btn-salvar" onclick="window.salvarEditarNF()">💾 Salvar Edição</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
