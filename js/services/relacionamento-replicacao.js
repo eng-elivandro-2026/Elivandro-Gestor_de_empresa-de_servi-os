@@ -81,9 +81,52 @@
     return (window._empresasUsuario || []).filter(function (e) { return e.id !== atualId; });
   };
 
+  // ── Carregar dados do destino do Supabase e mesclar no localStorage ─
+  // Para cada empresa destino, busca tf_clientes_<eid> ou tf_contatos_<eid>
+  // na tabela configuracoes. Mescla pelo ID: itens do Supabase que não estão
+  // no localStorage são adicionados (fresh data). Registra falhas em failedEids.
+  function _carregarDadosDestinos(tipo, destinos, cb) {
+    if (!window.sbClient || !destinos.length) { cb([]); return; }
+    var pending   = destinos.length;
+    var failedEids = [];
+
+    destinos.forEach(function (emp) {
+      var chave = (tipo === 'cliente' ? 'tf_clientes_' : 'tf_contatos_') + emp.id;
+      window.sbClient
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', chave)
+        .eq('empresa_id', emp.id)
+        .maybeSingle()
+        .then(function (r) {
+          if (r.error || !r.data) {
+            failedEids.push(emp.id);
+          } else {
+            // Mescla: Supabase é fonte primária; preserva novos itens só do localStorage
+            var sbList  = Array.isArray(r.data.valor) ? r.data.valor : [];
+            var lsRaw   = localStorage.getItem(chave);
+            var lsList  = [];
+            try { lsList = JSON.parse(lsRaw || '[]'); } catch (e) {}
+            // Índice pelos IDs do Supabase para dedup eficiente
+            var sbIds = {};
+            sbList.forEach(function (x) { if (x.id) sbIds[x.id] = true; });
+            // Adiciona itens locais que Supabase não tem (adicionados off-line)
+            lsList.forEach(function (x) { if (x.id && !sbIds[x.id]) sbList.push(x); });
+            try { localStorage.setItem(chave, JSON.stringify(sbList)); } catch (e) {}
+          }
+          pending--;
+          if (pending === 0) cb(failedEids);
+        })
+        .catch(function () {
+          failedEids.push(emp.id);
+          pending--;
+          if (pending === 0) cb(failedEids);
+        });
+    });
+  }
+
   // ── API pública: verificar duplicado no destino ─────────────
-  // Nota: verifica apenas localStorage local. Se o destino nunca foi
-  // visitado nesta sessão, o dedup é best-effort (dados Supabase não carregados).
+  // Após _carregarDadosDestinos, o localStorage já contém dados do Supabase.
   window.verificarDuplicadoNoDestino = function (tipo, item, destEid) {
     var destList = _loadParaEmpresa(tipo, destEid);
     if (tipo === 'cliente') {
@@ -272,8 +315,21 @@
     document.body.appendChild(tmp.firstElementChild);
   }
 
+  // ── Estado de carregamento no modal ─────────────────────────
+  function _renderModalLoading() {
+    var destEl = document.getElementById('m-replika-destinos');
+    if (destEl) {
+      destEl.innerHTML = '<div style="text-align:center;padding:1.5rem;font-size:.82rem;color:#94a3b8">'
+        + '⏳ Verificando duplicados no Supabase…</div>';
+    }
+    var btn = document.getElementById('m-replika-btn-confirmar');
+    if (btn) btn.disabled = true;
+  }
+
   // ── Renderizar conteúdo do modal ────────────────────────────
-  function _renderModal() {
+  // failedEids: array de empresa_ids onde Supabase falhou (verificação parcial)
+  function _renderModal(failedEids) {
+    failedEids = failedEids || [];
     var tipo    = _rst.tipo;
     var item    = _rst.item;
     var destinos = window.listarEmpresasDestino();
@@ -317,6 +373,15 @@
         destEl.innerHTML = destinos.map(function (emp) {
           var dedup = window.verificarDuplicadoNoDestino(tipo, item, emp.id);
           var label = emp.nome_curto || emp.nome;
+          var parcial = failedEids.indexOf(emp.id) >= 0;
+
+          // Aviso verificação parcial (Supabase falhou para este destino)
+          var parcialHtml = parcial
+            ? '<div style="background:#1c1917;border:1px solid #78350f;border-radius:4px;'
+              + 'padding:.3rem .6rem;font-size:.7rem;color:#fbbf24;margin-top:.35rem">'
+              + '⚠️ Verificação parcial — Supabase indisponível para este destino. '
+              + 'Duplicados verificados apenas no cache local.</div>'
+            : '';
 
           // Aviso de duplicado
           var dedupHtml = '';
@@ -358,6 +423,7 @@
               ? '<span style="font-size:.7rem;color:#94a3b8"> — ' + esc(emp.nome) + '</span>'
               : '')
             + '</label>'
+            + parcialHtml
             + dedupHtml
             + empresaDestinoHtml
             + '</div>';
@@ -382,7 +448,7 @@
     var res = document.getElementById('m-replika-resultado');
     if (res) { res.style.display = 'none'; res.innerHTML = ''; }
     var btn = document.getElementById('m-replika-btn-confirmar');
-    if (btn) btn.style.display = '';
+    if (btn) { btn.style.display = ''; btn.disabled = false; }
   }
 
   // ── Injetar botões 🔁 nas tabelas já renderizadas ───────────
@@ -426,10 +492,18 @@
       _rst.item   = item;
 
       _ensureModal();
-      _renderModal();
 
+      // Mostra modal com estado de carregamento imediatamente
       var m = document.getElementById('m-replika');
       if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
+      _renderModal([]);      // renderização inicial sem failedEids
+      _renderModalLoading(); // sobrepõe a seção de destinos com spinner
+
+      // Busca dados Supabase de todos os destinos, depois re-renderiza com failedEids
+      var destinos = window.listarEmpresasDestino();
+      _carregarDadosDestinos(tipo, destinos, function (failedEids) {
+        _renderModal(failedEids);
+      });
     });
   };
 
