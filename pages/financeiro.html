@@ -203,6 +203,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 }
 .btn-fechar:hover{color:var(--red)}
 .detalhe-corpo{padding:1.1rem;flex:1}
+.nf-detalhe-acoes{display:flex;gap:.45rem;padding:.5rem 1.1rem;border-bottom:1px solid var(--border);background:var(--bg3)}
+.btn-acao-detalhe{flex:1;padding:.35rem .5rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:.73rem;font-weight:600;transition:border-color .15s,color .15s;white-space:nowrap}
+.btn-acao-detalhe:hover{border-color:var(--accent);color:var(--accent)}
+.btn-acao-detalhe.primary{border-color:var(--emp-cor);color:var(--emp-cor)}
 
 .detalhe-secao{margin-bottom:1.2rem}
 .detalhe-secao-titulo{
@@ -1214,6 +1218,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="detalhe-titulo" id="nf-detalhe-titulo">Detalhes da Nota Fiscal</div>
     <button class="btn-fechar" onclick="fecharDetalheNF()" title="Fechar">✕</button>
   </div>
+  <div class="nf-detalhe-acoes" id="nf-detalhe-acoes" style="display:none">
+    <button class="btn-acao-detalhe primary" onclick="window.editarNFCompleta && window.editarNFCompleta(window._nfDetalheAtualId)">✏️ Editar NF</button>
+    <button class="btn-acao-detalhe" onclick="window._nfDetalheAtualizar && window._nfDetalheAtualizar()">🔄 Atualizar</button>
+    <button class="btn-acao-detalhe" onclick="fecharDetalheNF()">✕ Fechar</button>
+  </div>
   <div class="detalhe-corpo" id="nf-detalhe-corpo">
     <!-- preenchido por abrirDetalheNF() -->
   </div>
@@ -1990,7 +1999,9 @@ document.addEventListener('keydown', function(e) {
 // ══════════════════════════════════════════════════════════════
 
 // Estado NFs
-var _todasNFs     = [];
+var _todasNFs          = [];
+var _nfDetalheAtualId  = null; // ID da NF atualmente no painel lateral
+window._nfDetalheAtualId = _nfDetalheAtualId; // sincronizado em abrirDetalheNF
 var _nfCarregando = false;
 var _nfLoadToken  = 0;
 
@@ -2276,29 +2287,69 @@ function _renderTabelaNF(nfs) {
 }
 
 // ── Painel de detalhe NF ──────────────────────────────────────
+// ── Painel NF: helper proposta e atualizar ────────────────────
+function _nfGetProposta(propId) {
+  if (!propId) return null;
+  try {
+    var todas = JSON.parse(localStorage.getItem('tf_props') || '[]');
+    return todas.find(function(p) { return p && p.id === propId; }) || null;
+  } catch(e) { return null; }
+}
+
+function _nfDetalheAtualizar() {
+  if (_nfDetalheAtualId) abrirDetalheNF(_nfDetalheAtualId);
+}
+
+// ── Abrir painel NF ───────────────────────────────────────────
 async function abrirDetalheNF(nfId) {
   var nf = _todasNFs.find(function(n) { return n.id === nfId; });
   if (!nf) return;
 
+  _nfDetalheAtualId        = nfId;
+  window._nfDetalheAtualId = nfId;
+
+  var obsObj   = _meditParseObs(nf.observacoes);
+  var proposta = _nfGetProposta(nf.proposta_app_id);
+  var conta    = nf.conta_receber || {};
+
   document.getElementById('nf-detalhe-titulo').textContent =
     'NF ' + (nf.numero_nf || nfId.slice(0,8));
-  document.getElementById('nf-detalhe-corpo').innerHTML = _renderNFBasico(nf);
+
+  var acoes = document.getElementById('nf-detalhe-acoes');
+  if (acoes) acoes.style.display = '';
+
+  // Renderização imediata — sem recebimentos ainda
+  document.getElementById('nf-detalhe-corpo').innerHTML =
+    _renderNFBasico(nf, obsObj) +
+    _renderNFProposta(nf, proposta) +
+    _renderNFConta(conta, obsObj) +
+    '<div class="detalhe-secao"><div class="detalhe-secao-titulo">💰 Recebimentos</div>' +
+    '<div class="sub-vazio">Carregando…</div></div>' +
+    _renderNFAliquotasConsideradas(proposta) +
+    _renderNFAliquotasReais(obsObj) +
+    _renderNFComparativo(nf, proposta, obsObj) +
+    _renderNFAlertas(nf, proposta, conta, [], obsObj) +
+    _renderNFHistorico(obsObj);
 
   document.getElementById('nf-detalhe-overlay').classList.add('on');
   document.getElementById('nf-detalhe-panel').classList.add('on');
 
-  // Carregar recebimentos da conta vinculada on-demand
-  var sf    = _sf();
-  var conta = nf.conta_receber || {};
+  // Carregar recebimentos on-demand e re-renderizar
+  var sf = _sf();
   if (!sf || !conta.id || !_empresaAtiva) return;
-
   try {
     var recs = await sf.listarRecebimentosConta(_empresaAtiva.id, conta.id);
     if (!document.getElementById('nf-detalhe-panel').classList.contains('on')) return;
     document.getElementById('nf-detalhe-corpo').innerHTML =
-      _renderNFBasico(nf) +
-      _renderNFConta(conta) +
-      _renderNFRecebimentos(recs);
+      _renderNFBasico(nf, obsObj) +
+      _renderNFProposta(nf, proposta) +
+      _renderNFConta(conta, obsObj) +
+      _renderNFRecebimentos(recs, nf) +
+      _renderNFAliquotasConsideradas(proposta) +
+      _renderNFAliquotasReais(obsObj) +
+      _renderNFComparativo(nf, proposta, obsObj) +
+      _renderNFAlertas(nf, proposta, conta, recs, obsObj) +
+      _renderNFHistorico(obsObj);
   } catch(e) {
     console.warn('[Financeiro F2C] erro ao carregar detalhe NF:', e);
   }
@@ -2307,69 +2358,303 @@ async function abrirDetalheNF(nfId) {
 function fecharDetalheNF() {
   document.getElementById('nf-detalhe-overlay').classList.remove('on');
   document.getElementById('nf-detalhe-panel').classList.remove('on');
+  var acoes = document.getElementById('nf-detalhe-acoes');
+  if (acoes) acoes.style.display = 'none';
 }
 
-function _renderNFBasico(nf) {
+// ── Bloco 1: Dados da NF ─────────────────────────────────────
+function _nfTipoLabel(t) {
+  return t === 'material' ? 'Material' : t === 'misto' ? 'Misto' : t === 'servico' ? 'Serviço' : (t || '—');
+}
+
+function _renderNFBasico(nf, obsObj) {
+  var obs = obsObj || _meditParseObs(nf.observacoes);
+  var st  = _nfStatusComputado(nf);
   return '<div class="detalhe-secao">' +
-    '<div class="detalhe-secao-titulo">Dados da Nota Fiscal</div>' +
+    '<div class="detalhe-secao-titulo">📄 Nota Fiscal</div>' +
     '<div class="detalhe-grid">' +
-      _di('Nº da NF',       nf.numero_nf      || '—') +
-      _di('Tipo',           nf.tipo_nf         || '—') +
-      _di('Valor NF',       _money(nf.valor_nf), 'emp') +
-      _di('Data Emissão',   _dataBR(nf.data_emissao)) +
-      _di('Status (banco)', nf.status          || '—') +
-      _di('Situação',       _NF_STATUS_LABEL[_nfStatusComputado(nf)] || '—') +
+      _di('Nº da NF',     nf.numero_nf || '—') +
+      _di('Tipo',         _nfTipoLabel(nf.tipo_nf)) +
+      _di('Data Emissão', _dataBR(nf.data_emissao)) +
+      _di('Valor NF',     formatBRL(nf.valor_nf), 'emp') +
+      _di('Status NF',    nf.status || '—') +
+      _di('Situação',     '<span class="bdg ' + (_NF_STATUS_CLASS[st] || '') + '">' + (_NF_STATUS_LABEL[st] || st) + '</span>') +
     '</div>' +
-    (nf.observacoes
-      ? '<div style="margin-top:.6rem;font-size:.72rem;color:var(--text3)"><strong>Observações:</strong> ' + nf.observacoes + '</div>'
+    (obs.texto
+      ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.45rem;padding:.38rem .5rem;background:var(--bg3);border-radius:4px;border-left:2px solid var(--border)">' +
+        '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.15rem">Observações</div>' +
+        _esc(obs.texto) + '</div>'
       : '') +
   '</div>';
 }
 
-function _renderNFConta(conta) {
-  if (!conta || !conta.id) {
-    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Conta a Receber</div>' +
-      '<div class="sub-vazio">Conta vinculada não encontrada.</div></div>';
+// ── Bloco 2: Proposta vinculada ───────────────────────────────
+function _renderNFProposta(nf, proposta) {
+  if (!proposta) {
+    return '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">🏢 Proposta Vinculada</div>' +
+      (nf.proposta_app_id
+        ? '<div class="nf-alerta warn">⚠️ Proposta não encontrada no cache local.</div>'
+        : '<div class="nf-alerta error">❌ Nenhuma proposta vinculada.</div>') +
+    '</div>';
   }
+  var jaFaturado = (_todasNFs || []).filter(function(n) {
+    return n.proposta_app_id === proposta.id && n.status !== 'cancelada' && n.id !== nf.id;
+  }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
+  var valorNF    = parseFloat(nf.valor_nf) || 0;
+  var totalComEsta = jaFaturado + valorNF;
+  var saldo      = Math.max(0, proposta.val - jaFaturado);
+  var pctNF      = proposta.val > 0 ? valorNF / proposta.val * 100 : 0;
+  var pctTotal   = proposta.val > 0 ? totalComEsta / proposta.val * 100 : 0;
   return '<div class="detalhe-secao">' +
-    '<div class="detalhe-secao-titulo">Conta a Receber Vinculada</div>' +
+    '<div class="detalhe-secao-titulo">🏢 Proposta Vinculada</div>' +
     '<div class="detalhe-grid">' +
-      _di('Cliente',        conta.cliente_nome   || '—') +
-      _di('Proposta',       conta.proposta_app_id|| '—') +
-      _di('Título',         conta.titulo         || '—') +
-      _di('Obra',           conta.obra_id        || '—') +
-      _di('Status Conta',   _statusBadge(conta.status)) +
-      _di('Vencimento',     _dataBR(conta.data_vencimento)) +
-      _di('Previsto',       _money(conta.valor_previsto)) +
-      _di('Recebido',       _money(conta.valor_recebido), 'verde') +
-      _di('Pendente',       _money(conta.valor_pendente)) +
+      _di('Nº Proposta',     proposta.num || '—') +
+      _di('Cliente',         _esc(proposta.cli || '—')) +
+      _di('Valor Vendido',   formatBRL(proposta.val), 'emp') +
+      _di('Fase',            proposta.fas || '—') +
+      _di('% desta NF',      formatPct(pctNF)) +
+      _di('Já Faturado',     formatBRL(jaFaturado)) +
+      _di('Saldo a Faturar', formatBRL(saldo), pctTotal > 100 ? 'red' : '') +
+      _di('% Total Fat.',    formatPct(pctTotal), pctTotal > 100 ? 'red' : '') +
     '</div>' +
+    (proposta.tit
+      ? '<div style="font-size:.71rem;color:var(--text3);margin-top:.25rem">📋 ' + _esc(String(proposta.tit).slice(0,80)) + '</div>'
+      : '') +
+    (pctTotal > 100
+      ? '<div class="nf-alerta error" style="margin:.4rem 0 0">⚠️ Total faturado (' + formatPct(pctTotal) + ') excede 100% da proposta.</div>'
+      : '') +
   '</div>';
 }
 
-function _renderNFRecebimentos(recs) {
+// ── Bloco 3: Conta a Receber ──────────────────────────────────
+function _renderNFConta(conta, obsObj) {
+  if (!conta || !conta.id) {
+    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">💳 Conta a Receber</div>' +
+      '<div class="sub-vazio">Conta vinculada não encontrada.</div></div>';
+  }
+  var hoje = _hoje();
+  var dv   = conta.data_vencimento ? conta.data_vencimento.slice(0,10) : null;
+  var diasInfo = '—';
+  if (dv) {
+    if (conta.status === 'recebido') {
+      diasInfo = '<span class="bdg bdg-recebido">✓ Recebida</span>';
+    } else {
+      var dtV = new Date(dv + 'T12:00:00');
+      var dtH = new Date(hoje + 'T12:00:00');
+      var diff = Math.round((dtV - dtH) / 86400000);
+      if (diff < 0) {
+        diasInfo = '<span class="bdg bdg-vencida">⚠ ' + Math.abs(diff) + 'd atraso</span>';
+      } else if (diff <= 7) {
+        diasInfo = '<span class="bdg bdg-faturado">⚡ ' + diff + 'd restantes</span>';
+      } else {
+        diasInfo = '<span class="bdg bdg-a_faturar">📅 ' + diff + 'd restantes</span>';
+      }
+    }
+  }
+  var fc = (obsObj && obsObj.fase_c) || {};
+  var modoLabel = fc.vencimento_modo === 'dias' && fc.prazo_vencimento_dias
+    ? 'Por prazo (' + fc.prazo_vencimento_dias + 'd)' : (dv ? 'Manual' : '—');
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">💳 Conta a Receber</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Cliente',     _esc(conta.cliente_nome || '—')) +
+      _di('Status',      _statusBadge(conta.status)) +
+      _di('Vencimento',  dv ? _dataBR(dv) : '—') +
+      _di('Prazo',       diasInfo) +
+      _di('Previsto',    formatBRL(conta.valor_previsto), 'emp') +
+      _di('Recebido',    formatBRL(conta.valor_recebido), 'verde') +
+      _di('Pendente',    formatBRL(conta.valor_pendente)) +
+      _di('Modo Venc.',  modoLabel) +
+    '</div>' +
+    '<div style="font-size:.59rem;color:var(--text3);margin-top:.25rem">ID Conta: ' + conta.id + '</div>' +
+  '</div>';
+}
+
+// ── Bloco 4: Recebimentos ────────────────────────────────────
+function _renderNFRecebimentos(recs, nf) {
   var corpo = '';
   if (!recs || !recs.length) {
     corpo = '<div class="sub-vazio">Nenhum recebimento registrado nesta conta.</div>';
   } else {
     var total = recs.reduce(function(s, r) { return s + (parseFloat(r.valor_recebido)||0); }, 0);
     corpo = '<table class="sub-table"><thead><tr>' +
-      '<th>Data</th><th>Valor Recebido</th><th>Status</th><th>Risco Sacado</th>' +
+      '<th>Data</th><th style="text-align:right">Recebido</th><th>Status</th><th>RS</th>' +
       '</tr></thead><tbody>' +
       recs.map(function(r) {
+        var rsInfo = '—';
+        if (r.risco_sacado) {
+          var rsVal = parseFloat(r.valor_risco_sacado || 0);
+          var nfVal = parseFloat((nf && nf.valor_nf) || 0);
+          var rsPct = nfVal > 0 ? rsVal / nfVal * 100 : 0;
+          rsInfo = '<span title="' + formatBRL(rsVal) + '  (' + formatPct(rsPct) + ')" style="color:var(--accent)">⚠ ' + formatBRL(rsVal) + '</span>';
+        }
         return '<tr>' +
           '<td>' + _dataBR(r.data_recebimento) + '</td>' +
-          '<td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--green)">' + _money(r.valor_recebido) + '</td>' +
+          '<td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--green)">' + formatBRL(r.valor_recebido) + '</td>' +
           '<td>' + _statusBadge(r.status) + '</td>' +
-          '<td style="text-align:center">' + (r.risco_sacado ? '⚠ Sim' : '—') + '</td>' +
+          '<td style="font-size:.7rem">' + rsInfo + '</td>' +
           '</tr>';
       }).join('') + '</tbody></table>' +
       '<div style="text-align:right;font-size:.72rem;color:var(--green);margin-top:.3rem;font-weight:700">' +
-        'Total recebido: ' + _money(total) + '</div>';
+        'Total recebido: ' + formatBRL(total) + '</div>';
   }
   return '<div class="detalhe-secao">' +
-    '<div class="detalhe-secao-titulo">Recebimentos da Conta (' + (recs||[]).length + ')</div>' +
+    '<div class="detalhe-secao-titulo">💰 Recebimentos (' + (recs||[]).length + ')</div>' +
     corpo + '</div>';
+}
+
+// ── Bloco 5: Alíquotas consideradas ──────────────────────────
+function _renderNFAliquotasConsideradas(proposta) {
+  if (!proposta) {
+    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">📊 Alíquotas Consideradas</div>' +
+      '<div class="sub-vazio">Proposta não disponível.</div></div>';
+  }
+  var a = _meditAliqDaProposta(proposta);
+  function _pa(v) { return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + '%'; }
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">📊 Alíquotas Consideradas (Proposta)</div>' +
+    '<div class="medit-aliq-grid">' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">NF Serv.</div><div class="medit-aliq-val">' + _pa(a.nfS)  + '</div></div>' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">NF Mat.</div><div class="medit-aliq-val">'  + _pa(a.nfM)  + '</div></div>' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Risco Sac.</div><div class="medit-aliq-val">' + _pa(a.rS) + '</div></div>' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Com. Serv.</div><div class="medit-aliq-val">' + _pa(a.comS) + '</div></div>' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Com. Mat.</div><div class="medit-aliq-val">'  + _pa(a.comM) + '</div></div>' +
+      '<div class="medit-aliq-item"><div class="medit-aliq-lbl">Negoc.</div><div class="medit-aliq-val">'     + _pa(a.neg)  + '</div></div>' +
+    '</div></div>';
+}
+
+// ── Bloco 6: Alíquotas reais ──────────────────────────────────
+function _renderNFAliquotasReais(obsObj) {
+  var ar = obsObj && obsObj.fase_c && obsObj.fase_c.aliquotas_reais;
+  if (!ar || !Object.keys(ar).length) {
+    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">💰 Alíquotas Reais Financeiras</div>' +
+      '<div class="sub-vazio">Não informado.</div></div>';
+  }
+  function _arItem(lbl, val) {
+    if (val == null) return '';
+    return '<div class="medit-aliq-item"><div class="medit-aliq-lbl">' + lbl + '</div>' +
+      '<div class="medit-aliq-val" style="color:var(--accent)">' + formatPct(val) + '</div></div>';
+  }
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">💰 Alíquotas Reais Financeiras</div>' +
+    '<div class="medit-aliq-grid">' +
+      _arItem('NF Real',       ar.nf_real_pct) +
+      _arItem('RS Real',       ar.risco_sacado_real_pct) +
+      _arItem('Comissão Real', ar.comissao_real_pct) +
+      _arItem('Desc. Fin.',    ar.desconto_financeiro_real_pct) +
+    '</div>' +
+    (ar.observacao
+      ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.4rem">📝 ' + _esc(ar.observacao) + '</div>'
+      : '') +
+  '</div>';
+}
+
+// ── Bloco 7: Comparativo previsto × real ──────────────────────
+function _renderNFComparativo(nf, proposta, obsObj) {
+  var ar = obsObj && obsObj.fase_c && obsObj.fase_c.aliquotas_reais;
+  if (!ar || !proposta) return '';
+  var prev    = _meditAliqDaProposta(proposta);
+  var valorNF = parseFloat(nf.valor_nf) || 0;
+  var linhas  = [];
+  function _comp(real, prevVal, label) {
+    if (real == null) return;
+    var realF = real / 100;
+    var dif   = realF - prevVal;
+    var difR  = valorNF * dif;
+    var cls   = dif > 0.0005 ? 'warn' : 'ok';
+    var sinal = dif > 0.0005 ? '+' : (dif < -0.0005 ? '' : '±');
+    linhas.push('<div class="nf-alerta ' + cls + '" style="margin:.2rem 0">' +
+      '<strong>' + label + '</strong>: prev. ' + formatPct(prevVal * 100) +
+      ' × real ' + formatPct(real) + ' | dif: ' + sinal + formatPct(dif * 100) +
+      ' ≈ ' + formatBRL(difR) + '</div>');
+  }
+  _comp(ar.nf_real_pct,                prev.nfS,  'NF Serv.');
+  _comp(ar.risco_sacado_real_pct,       prev.rS,   'Risco Sacado');
+  _comp(ar.comissao_real_pct,           prev.comS, 'Comissão');
+  if (ar.desconto_financeiro_real_pct) {
+    linhas.push('<div class="nf-alerta" style="margin:.2rem 0;background:var(--bg3);border:1px solid var(--border);color:var(--text2)">ℹ️ Desconto financeiro: ' +
+      formatPct(ar.desconto_financeiro_real_pct) + ' = ' + formatBRL(valorNF * ar.desconto_financeiro_real_pct / 100) + '</div>');
+  }
+  if (!linhas.length) return '';
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">⚖️ Comparativo Previsto × Real</div>' +
+    linhas.join('') + '</div>';
+}
+
+// ── Bloco 8: Alertas financeiros ──────────────────────────────
+function _renderNFAlertas(nf, proposta, conta, recs, obsObj) {
+  var hoje = _hoje();
+  var dv   = conta && conta.data_vencimento ? conta.data_vencimento.slice(0,10) : null;
+  var em   = nf.data_emissao ? nf.data_emissao.slice(0,10) : null;
+  var ar   = obsObj && obsObj.fase_c && obsObj.fase_c.aliquotas_reais;
+  var prev = proposta ? _meditAliqDaProposta(proposta) : null;
+  var itens = [];
+  function _al(cls, txt) { itens.push('<div class="nf-alerta ' + cls + '" style="margin:.2rem 0">' + txt + '</div>'); }
+
+  if (!proposta)            _al('error', '❌ Proposta não encontrada no cache local.');
+  if (!conta || !conta.id) _al('error', '❌ Conta a Receber não vinculada.');
+  if (nf.status === 'cancelada') _al('warn', '⚠️ NF com status Cancelada.');
+  if (conta && (conta.status === 'recebido' || conta.status === 'parcialmente_recebido')) {
+    _al('info', 'ℹ️ Conta ' + (conta.status === 'recebido' ? 'recebida' : 'parcialmente recebida') + ': alterações bloqueadas.');
+  }
+  if (!dv) {
+    _al('warn', '⚠️ Sem data de vencimento definida.');
+  } else if (em && dv < em) {
+    _al('error', '❌ Vencimento (' + _dataBR(dv) + ') anterior à emissão (' + _dataBR(em) + ').');
+  } else if (dv < hoje) {
+    var dtV = new Date(dv + 'T12:00:00');
+    var dtH = new Date(hoje + 'T12:00:00');
+    _al('error', '🔴 NF vencida há ' + Math.round((dtH - dtV) / 86400000) + ' dia(s) (' + _dataBR(dv) + ').');
+  } else {
+    var dtV2 = new Date(dv + 'T12:00:00');
+    var dtH2 = new Date(hoje + 'T12:00:00');
+    var diasF = Math.round((dtV2 - dtH2) / 86400000);
+    if (diasF <= 7) _al('warn', '⚠️ Vencimento em ' + diasF + ' dia(s) (' + _dataBR(dv) + ').');
+  }
+  if (proposta) {
+    var jaFat = (_todasNFs || []).filter(function(n) {
+      return n.proposta_app_id === proposta.id && n.status !== 'cancelada';
+    }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
+    if (jaFat > proposta.val * 1.001) {
+      _al('warn', '⚠️ Total faturado (' + formatBRL(jaFat) + ') acima de 100% da proposta.');
+    }
+  }
+  if (ar && prev) {
+    if (ar.risco_sacado_real_pct != null && ar.risco_sacado_real_pct > prev.rS * 100 + 0.05) {
+      _al('warn', '⚠️ RS real (' + formatPct(ar.risco_sacado_real_pct) + ') acima do previsto (' + formatPct(prev.rS * 100) + ').');
+    }
+    if (ar.nf_real_pct != null && ar.nf_real_pct > prev.nfS * 100 + 0.05) {
+      _al('warn', '⚠️ Alíquota NF real (' + formatPct(ar.nf_real_pct) + ') acima da prevista (' + formatPct(prev.nfS * 100) + ').');
+    }
+  }
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">🚨 Alertas Financeiros</div>' +
+    (itens.length
+      ? itens.join('')
+      : '<div class="nf-alerta ok" style="margin:0">✅ Sem alertas financeiros pendentes.</div>') +
+  '</div>';
+}
+
+// ── Bloco 9: Histórico de correções ──────────────────────────
+function _renderNFHistorico(obsObj) {
+  var hist = obsObj && obsObj.fase_c && obsObj.fase_c.historico_correcoes;
+  if (!hist || !Array.isArray(hist) || !hist.length) {
+    return '<div class="detalhe-secao"><div class="detalhe-secao-titulo">📋 Histórico de Correções</div>' +
+      '<div class="sub-vazio">Nenhuma correção registrada.</div></div>';
+  }
+  var rows = hist.slice().reverse().map(function(h) {
+    var dh = h.data_hora ? new Date(h.data_hora).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' }) : '—';
+    var linhas = ['<strong>' + dh + '</strong> · ' + _esc(h.tipo || '—')];
+    if (h.motivo)            linhas.push('Motivo: ' + _esc(h.motivo));
+    if (h.proposta_anterior) linhas.push('Proposta: ' + h.proposta_anterior.slice(0,8) + '… → ' + (h.proposta_nova||'').slice(0,8) + '…');
+    if (h.valor_anterior != null) linhas.push('Valor: ' + formatBRL(h.valor_anterior) + ' → ' + formatBRL(h.valor_novo));
+    return '<div style="border-left:2px solid var(--border);padding:.28rem .55rem;margin:.28rem 0;font-size:.71rem;color:var(--text2)">' +
+      linhas.join('<br>') + '</div>';
+  });
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">📋 Histórico de Correções (' + hist.length + ')</div>' +
+    rows.join('') + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5438,6 +5723,7 @@ window.meditOnDiasVenc               = meditOnDiasVenc;
 window.meditCalcVencPorDias          = meditCalcVencPorDias;
 window._meditAtualizarComparativo        = _meditAtualizarComparativo;
 window._meditAtualizarAlertasFinanceiros = _meditAtualizarAlertasFinanceiros;
+window._nfDetalheAtualizar               = _nfDetalheAtualizar;
 
 // ── Event delegation para botão ✏️ Editar ────────────────────
 // Listener em fase de captura (true) para interceptar antes de qualquer
