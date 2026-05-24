@@ -673,14 +673,21 @@
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
       + '<thead><tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Nome / Razão Social</th>'
+      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Empresa</th>'
       + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">CNPJ</th>'
       + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Cidade</th>'
       + '<th style="padding:.4rem .6rem;width:80px"></th>'
       + '</tr></thead><tbody>'
       + list.map(function(x) {
+          var nomePrimario = x.apelido
+            ? '<div style="font-weight:700;line-height:1.3">' + esc(x.apelido) + '</div>'
+              + '<div style="font-size:.7rem;color:var(--text3);margin-top:.1rem">' + esc(x.nome) + '</div>'
+            : '<span style="font-weight:600">' + esc(x.nome) + '</span>';
+          var statusBadge = x.ativo === false
+            ? '<span style="font-size:.65rem;color:#f87171;margin-left:.4rem;font-weight:600">[inativa]</span>'
+            : '';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + esc(x.nome) + '</td>'
+            + '<td style="padding:.45rem .6rem;color:var(--text)">' + nomePrimario + statusBadge + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cnpj) + '</td>'
             + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.cidade) + '</td>'
             + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
@@ -738,6 +745,32 @@
   // Expostos para relacionamento-duplicados.js (merge controlado, 1 item por vez)
   window.cliSaveDirect = function(list) { cliSave(list, { permitirListaVazia: true }); };
   window.ctsSaveDirect = function(list) { ctsSave(list, { permitirListaVazia: true }); };
+
+  // Expostos para relacionamento-edicao-empresa.js
+  window.cliRenomear = function(oldNome, newNome) {
+    if (!oldNome || !newNome || oldNome === newNome) return;
+    _cliDelAdd(oldNome);
+    _atualizarNomeClienteNasPropostas(oldNome, newNome);
+  };
+  window.ctsAtualizarEmpresaRef = function(oldEmpresa, newEmpresa) {
+    if (!oldEmpresa || !newEmpresa || oldEmpresa === newEmpresa) return;
+    var norm = oldEmpresa.toLowerCase().trim();
+    var list = ctsLoad();
+    var changed = false;
+    list = list.map(function(c) {
+      if ((c.empresa || '').toLowerCase().trim() === norm) {
+        changed = true;
+        return Object.assign({}, c, { empresa: newEmpresa });
+      }
+      return c;
+    });
+    if (changed) ctsSave(list);
+  };
+  window.ctsRenomear = function(oldNome, newNome) {
+    if (!oldNome || !newNome || oldNome === newNome) return;
+    _ctsDelAdd(oldNome);
+    _atualizarNomeContatoNasPropostas(oldNome, newNome);
+  };
 
   // ── Wiring do formulário de Propostas ─────────────────────
   function wirePropForm() {
