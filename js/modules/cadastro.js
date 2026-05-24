@@ -663,7 +663,7 @@
   function renderTabelaClientes() {
     var el = document.getElementById('tabelaClientes');
     if (!el) return;
-    var list = cliLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    var list = cliLoad().sort(function(a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
     window._cliEditData = {};
     list.forEach(function(x) { window._cliEditData[x.id] = x; });
     if (!list.length) {
@@ -702,7 +702,7 @@
   function renderTabelaContatos() {
     var el = document.getElementById('tabelaContatos');
     if (!el) return;
-    var list = ctsLoad().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    var list = ctsLoad().sort(function(a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
     window._ctsEditData = {};
     list.forEach(function(x) { window._ctsEditData[x.id] = x; });
     if (!list.length) {
@@ -953,6 +953,7 @@
         var del    = _ctsDelLoad();
         var merged = local.slice();
         v.forEach(function(x) {
+          if (!x.id || !(x.nome || '').trim()) return; // ignora itens sem id ou nome
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
@@ -970,6 +971,7 @@
         var del    = _cliDelLoad();
         var merged = local.slice();
         v.forEach(function(x) {
+          if (!x.id || !(x.nome || '').trim()) return; // ignora itens sem id ou nome
           if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
           if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
         });
