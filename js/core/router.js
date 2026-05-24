@@ -98,6 +98,7 @@
       label: 'RH / Equipes',
       icon: '👷',
       tipo: 'inline',
+      perfisPermitidos: ['dono', 'admin', 'gestor'],
       init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
       nav: [
         { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',null)" },
@@ -136,12 +137,12 @@
       var mod = this._getMod(id);
       if (!mod) return console.warn('[Router] Módulo não encontrado:', id);
 
-      // Guard de perfil — bloqueia módulos restritos (protege também contra console bypass)
+      // Guard de perfil — fail-closed: bloqueia se perfil não carregou ou não autorizado
       if (mod.perfisPermitidos) {
         var _p = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-        if (_p && mod.perfisPermitidos.indexOf(_p) < 0) {
+        if (!_p || mod.perfisPermitidos.indexOf(_p) < 0) {
           console.warn('[Router] Acesso bloqueado ao módulo "' + id + '" — perfil:', _p);
-          alert('Acesso restrito. Seu perfil (' + _p + ') não tem permissão para o módulo "' + mod.label + '".');
+          if (_p) alert('Acesso restrito. Seu perfil (' + _p + ') não tem permissão para o módulo "' + mod.label + '".');
           return;
         }
       }
