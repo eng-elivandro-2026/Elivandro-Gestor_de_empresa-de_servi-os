@@ -2363,10 +2363,10 @@ function _renderTabelaNF(nfs) {
       '<td class="col-data">' + _dataBR(nf.data_emissao) + '</td>' +
       '<td class="col-data th-venc">' + _dataBR(conta.data_vencimento) + '</td>' +
       '<td class="col-ind">' + _nfSituacao(nf) + '</td>' +
-      '<td class="col-acoes-nf" onclick="event.stopPropagation()">' +
-        '<button class="btn-edit-nf" ' +
-          'onclick="event.stopPropagation(); window.editarNFCompleta(\'' + nf.id + '\')" ' +
-          'title="Editar este lançamento de NF"' +
+      '<td class="col-acoes-nf">' +
+        '<button type="button" class="btn-edit-nf"' +
+          ' data-editar-nf-id="' + nf.id + '"' +
+          ' title="Editar este lançamento de NF"' +
           (nf.conta_receber_id ? '' : ' disabled') + '>✏️ Editar</button>' +
       '</td>' +
       '</tr>';
@@ -5276,14 +5276,38 @@ async function salvarEditarNF() {
   }
 }
 
-// Registro explícito no window — garante acessibilidade a partir de onclick
-// atributos em DOM dinâmico e do console do iframe
+// ── Registro explícito no window ─────────────────────────────
 window.editarNFCompleta      = editarNFCompleta;
 window.fecharModalEditarNF   = fecharModalEditarNF;
 window.salvarEditarNF        = salvarEditarNF;
 window.meditOnProposta       = meditOnProposta;
 window.meditCalcPctParaValor = meditCalcPctParaValor;
 window.meditCalcValorParaPct = meditCalcValorParaPct;
+
+// ── Event delegation para botão ✏️ Editar ────────────────────
+// Listener em fase de captura (true) para interceptar antes de qualquer
+// handler de linha da tabela. Substitui onclick inline — robusto em
+// DOM dinâmico dentro de iframe com 'use strict'.
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-editar-nf-id]');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  var nfId = btn.getAttribute('data-editar-nf-id');
+  console.log('[Editar NF] clique detectado', nfId);
+
+  if (typeof window.editarNFCompleta !== 'function') {
+    console.error('[Editar NF] window.editarNFCompleta não está disponível');
+    alert('Erro: função Editar NF não carregada. Atualize a página e tente novamente.');
+    return;
+  }
+
+  window.editarNFCompleta(nfId);
+}, true); // captura — dispara antes do handler de linha da tabela
+
+console.log('[Editar NF] módulo carregado e funções registradas');
 </script>
 
 </body>
