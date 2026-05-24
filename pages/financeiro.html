@@ -318,6 +318,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cp-form-readonly{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem .9rem;margin:.5rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.45rem}
 .cp-form-readonly-item .nf-kpi-mini-label{font-size:.6rem}
 .cp-form-readonly-item .nf-kpi-mini-valor{font-size:.78rem}
+.col-acoes-nf{width:86px;text-align:center;white-space:nowrap}
+.btn-edit-venc{font-size:.68rem;padding:.2rem .48rem;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn-edit-venc:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn-edit-venc:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── FLUXO DE CAIXA ───────────────────────────────────────────── */
 .btn-preset{
@@ -691,6 +695,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           <th>Emissão</th>
           <th class="th-venc">Vencimento</th>
           <th class="col-ind">Situação</th>
+          <th class="col-acoes-nf">Ações</th>
         </tr>
       </thead>
       <tbody id="nf-tabela-body"></tbody>
@@ -872,6 +877,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="modal-acoes">
         <button class="modal-btn-cancelar" onclick="modalCancelar()">Cancelar</button>
         <button class="modal-btn-confirmar" id="modal-btn-confirmar" disabled onclick="modalConfirmar()">⚡ Confirmar e aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Vencimento de NF / Conta a Receber -->
+  <div class="modal-overlay" id="modal-vencimento" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-titulo">✏️ Editar Vencimento da NF</div>
+      <div id="modal-venc-info"></div>
+      <div id="modal-venc-alerta"></div>
+      <div style="margin:.8rem 0 .25rem;font-size:.78rem;color:var(--text2);font-weight:600">Nova data de vencimento</div>
+      <input type="date" id="modal-venc-data" class="modal-input" />
+      <div style="font-size:.7rem;color:var(--text3);margin-top:.35rem">
+        Deixe em branco para limpar o vencimento da Conta a Receber vinculada.
+      </div>
+      <div class="status-msg" id="modal-venc-status" style="margin-top:.6rem"></div>
+      <div class="modal-acoes">
+        <button class="modal-btn-cancelar" onclick="fecharModalVencimento()">Cancelar</button>
+        <button class="modal-btn-confirmar" id="modal-venc-btn-salvar" onclick="salvarVencimentoNF()">💾 Salvar Vencimento</button>
       </div>
     </div>
   </div>
@@ -2237,6 +2261,12 @@ function _renderTabelaNF(nfs) {
       '<td class="col-data">' + _dataBR(nf.data_emissao) + '</td>' +
       '<td class="col-data th-venc">' + _dataBR(conta.data_vencimento) + '</td>' +
       '<td class="col-ind">' + _nfSituacao(nf) + '</td>' +
+      '<td class="col-acoes-nf" onclick="event.stopPropagation()">' +
+        '<button class="btn-edit-venc" ' +
+          'onclick="editarVencimentoNF(\'' + nf.id + '\')" ' +
+          'title="Editar data de vencimento desta NF"' +
+          (nf.conta_receber_id ? '' : ' disabled') + '>✏️ Venc.</button>' +
+      '</td>' +
       '</tr>';
   }).join('');
 
@@ -4737,6 +4767,132 @@ window.addEventListener('message', function(e) {
 });
 
 console.log('%c[Financeiro FaseC] Nova NF vinculada carregada', 'color:#f0a500;font-weight:700');
+
+// ══════════════════════════════════════════════════════════════
+// EDITAR VENCIMENTO — NF / Conta a Receber vinculada
+// Atualiza financeiro_contas_receber.data_vencimento pelo
+// conta_receber_id da NF. Nunca altera empresa_id, proposta_app_id,
+// prop.tl.nfs[] ou qualquer dado do Comercial.
+// ══════════════════════════════════════════════════════════════
+
+var _vencNFAtual = null; // NF sendo editada no modal de vencimento
+
+function editarVencimentoNF(nfId) {
+  var nf = (_todasNFs || []).find(function(n) { return n.id === nfId; });
+  if (!nf) {
+    alert('NF não encontrada. Recarregue a lista e tente novamente.');
+    return;
+  }
+  if (!nf.conta_receber_id) {
+    alert('❌ Esta NF não possui Conta a Receber vinculada. Não é possível editar o vencimento.');
+    return;
+  }
+
+  _vencNFAtual = nf;
+  var conta = nf.conta_receber || {};
+
+  // Montar linhas de informação
+  document.getElementById('modal-venc-info').innerHTML =
+    '<div class="modal-linha"><span class="modal-linha-label">NF</span>' +
+      '<span class="modal-linha-valor">' + (nf.numero_nf || '<em style="color:var(--text3)">sem número</em>') + '</span></div>' +
+    '<div class="modal-linha"><span class="modal-linha-label">Cliente</span>' +
+      '<span class="modal-linha-valor">' + (conta.cliente_nome || '—') + '</span></div>' +
+    '<div class="modal-linha"><span class="modal-linha-label">Proposta</span>' +
+      '<span class="modal-linha-valor">' + (conta.proposta_app_id || nf.proposta_app_id || '—') + '</span></div>' +
+    '<div class="modal-linha"><span class="modal-linha-label">Valor NF</span>' +
+      '<span class="modal-linha-valor" style="color:var(--green)">' + _money(nf.valor_nf) + '</span></div>' +
+    '<div class="modal-linha"><span class="modal-linha-label">Vencimento atual</span>' +
+      '<span class="modal-linha-valor">' +
+        (conta.data_vencimento ? _dataBR(conta.data_vencimento) : '<em style="color:var(--text3)">não informado</em>') +
+      '</span></div>';
+
+  // Alerta se conta já recebida ou cancelada
+  var alertaEl = document.getElementById('modal-venc-alerta');
+  if (conta.status === 'recebido' || conta.status === 'cancelado') {
+    alertaEl.innerHTML = '<div class="modal-aviso">⚠ Conta com status <strong>' +
+      conta.status + '</strong>. A alteração é permitida, mas revise se faz sentido neste estado.</div>';
+  } else {
+    alertaEl.innerHTML = '';
+  }
+
+  // Pré-preencher data atual (formato YYYY-MM-DD compatível com input[type=date])
+  document.getElementById('modal-venc-data').value = conta.data_vencimento || '';
+
+  // Limpar status e habilitar botão
+  _vencStatus('', '');
+  document.getElementById('modal-venc-btn-salvar').disabled = false;
+  document.getElementById('modal-vencimento').style.display = 'flex';
+}
+
+function fecharModalVencimento() {
+  document.getElementById('modal-vencimento').style.display = 'none';
+  _vencNFAtual = null;
+}
+
+async function salvarVencimentoNF() {
+  var nf = _vencNFAtual;
+  if (!nf) return;
+
+  var sf = _sf();
+  if (!sf || !sf.atualizarContaReceber) {
+    _vencStatus('err', '❌ Módulo Financeiro não disponível. Recarregue o portal.');
+    return;
+  }
+  if (!nf.conta_receber_id) {
+    _vencStatus('err', '❌ NF sem Conta a Receber vinculada. Não é possível salvar.');
+    return;
+  }
+
+  var novaData = (document.getElementById('modal-venc-data').value || '').trim();
+  var conta    = nf.conta_receber || {};
+
+  // Bloquear se não há mudança real
+  if (novaData === (conta.data_vencimento || '')) {
+    _vencStatus('err', 'ℹ️ A data informada é igual à atual. Nada a salvar.');
+    return;
+  }
+
+  // Bloquear limpar quando já estava vazio
+  if (!novaData && !conta.data_vencimento) {
+    _vencStatus('err', 'ℹ️ Vencimento já está vazio. Informe uma data ou cancele.');
+    return;
+  }
+
+  var btn = document.getElementById('modal-venc-btn-salvar');
+  btn.disabled = true;
+  _vencStatus('loading', '⏳ Salvando…');
+
+  try {
+    // Atualiza apenas data_vencimento — nunca altera empresa_id ou proposta_app_id
+    await sf.atualizarContaReceber(nf.conta_receber_id, {
+      data_vencimento: novaData || null
+    });
+
+    _vencStatus('ok', '✅ Vencimento atualizado com sucesso!');
+
+    setTimeout(function() {
+      fecharModalVencimento();
+      recarregarNFs();
+      // Recarregar Contas a Receber se a aba estiver visível
+      var tabContas = document.getElementById('tab-contas');
+      if (tabContas && tabContas.style.display !== 'none') {
+        recarregarContas();
+      }
+    }, 1200);
+
+  } catch(e) {
+    console.error('[EditarVenc] erro ao salvar vencimento:', e);
+    _vencStatus('err', '❌ Erro ao salvar: ' + (e.message || String(e)));
+    btn.disabled = false;
+  }
+}
+
+function _vencStatus(cls, msg) {
+  var el = document.getElementById('modal-venc-status');
+  if (!el) return;
+  el.className = 'status-msg' + (cls ? (' ' + cls) : '');
+  el.textContent = msg;
+}
 </script>
 
 </body>
