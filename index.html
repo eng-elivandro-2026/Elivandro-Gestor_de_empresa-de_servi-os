@@ -781,6 +781,22 @@ body.empresa-tema-fortex{
 .esw-name{font-size:.72rem;color:var(--accent);font-weight:600;letter-spacing:.02em;min-height:1em}
 @keyframes eswSpin{to{transform:rotate(360deg)}}
 @keyframes eswFade{from{opacity:0}to{opacity:1}}
+
+/* ── UX: barra superior do editor de proposta congelada ao rolar ── */
+:root{--proposta-ab-h:0px}
+#actionBar{position:sticky;top:0;z-index:100}
+
+/* ── UX: barra de fases sticky logo abaixo da barra superior ── */
+.wz{
+  position:sticky;
+  top:var(--proposta-ab-h);
+  z-index:99;
+  background:var(--bg);
+  padding-top:4px;
+  padding-bottom:4px;
+  box-shadow:0 3px 8px rgba(0,0,0,.22);
+  margin-bottom:.85rem;
+}
 </style>
 </head>
 
@@ -10113,14 +10129,30 @@ function renderMenuComercialOrganizado() {
     return '<button class="nb nav-item" onclick="' + item[2] + ';Router._setNavAtivo(this)">'
       + '<span>' + item[0] + '</span> ' + item[1] + '</button>';
   }).join('');
-  var primeiro = nav.querySelector('.nav-item');
-  if (primeiro) primeiro.classList.add('on');
+  // Marcar "Propostas" como item ativo por padrão (não o primeiro item)
+  var _btnPropostas = null;
+  nav.querySelectorAll('.nav-item').forEach(function(b) {
+    if (!_btnPropostas && b.textContent.indexOf('Propostas') >= 0) _btnPropostas = b;
+  });
+  var _itemAtivo = _btnPropostas || nav.querySelector('.nav-item');
+  if (_itemAtivo) _itemAtivo.classList.add('on');
 }
 
 window.addEventListener('router:change', function(e) {
   var tc = document.getElementById('tools-comercial');
   if (tc) tc.style.display = e.detail.modulo === 'comercial' ? '' : 'none';
-  if (e.detail.modulo === 'comercial') setTimeout(renderMenuComercialOrganizado, 0);
+  if (e.detail.modulo === 'comercial') {
+    setTimeout(renderMenuComercialOrganizado, 0);
+    // Abrir Propostas por padrão (somente se não há edição ativa)
+    if (!window.editId) {
+      setTimeout(function() {
+        if (typeof go === 'function') go('dashboard', null);
+        setTimeout(function() {
+          if (typeof irParaPainel === 'function') irParaPainel('propostasCard', 'togPropostas');
+        }, 40);
+      }, 20);
+    }
+  }
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -10550,6 +10582,64 @@ function _vinMsg(msg, tipo) {
   console.log('%c[F2E] listener empresa:changed — limpeza multiempresa ativa', 'color:#58a6ff;font-weight:700');
 
 })();
+</script>
+
+<script>
+// ── UX Proposta: Fase 1, Linha do Tempo e barra fixa ──────────
+(function() {
+
+  // Expande Linha do Tempo Comercial (só se fechada) + scroll área ao topo
+  window._uxFase1 = function() {
+    var b  = document.getElementById('timelineBody');
+    var ch = document.getElementById('timelineChevron');
+    if (b && b.style.display !== 'block') {
+      b.style.display = 'block';
+      if (ch) ch.textContent = '▲ recolher';
+      try { if (typeof rTlNFList     === 'function') rTlNFList();     } catch(e) {}
+      try { if (typeof rTlAdiantList === 'function') rTlAdiantList(); } catch(e) {}
+      try { if (typeof rCiclos       === 'function') rCiclos();       } catch(e) {}
+    }
+    var ai = document.getElementById('area-inline');
+    if (ai) ai.scrollTop = 0;
+  };
+
+  // Wrapper público: garante Fase 1 + expand timeline + scroll topo
+  window.abrirEditorPropostaNaFaseDados = function() {
+    if (typeof step === 'function') step(1);
+    window._uxFase1();
+  };
+
+  // Wrapper público: navega Comercial direto para Propostas
+  window.abrirComercialPropostasPadrao = function() {
+    if (typeof go === 'function') go('dashboard', null);
+    setTimeout(function() {
+      if (typeof irParaPainel === 'function') irParaPainel('propostasCard', 'togPropostas');
+    }, 40);
+  };
+
+  // Sincroniza --proposta-ab-h com a altura real da action bar
+  function _syncAbH() {
+    var ab = document.getElementById('actionBar');
+    var h  = (ab && ab.classList.contains('visible')) ? (ab.offsetHeight + 'px') : '0px';
+    document.documentElement.style.setProperty('--proposta-ab-h', h);
+  }
+
+  // Patcha showActionBar / hideActionBar para atualizar a variável CSS
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      if (typeof showActionBar === 'function' && !window._uxAbHPatched) {
+        var _os = showActionBar;
+        var _oh = hideActionBar;
+        window.showActionBar = function(p) { _os(p); setTimeout(_syncAbH, 10); };
+        window.hideActionBar = function()  { _oh();  _syncAbH(); };
+        window._uxAbHPatched = true;
+      }
+    }, 600);
+  });
+
+  console.log('%c[UX] _uxFase1 / abrirEditorPropostaNaFaseDados / abrirComercialPropostasPadrao registrados', 'color:#f0a500;font-weight:700');
+
+}());
 </script>
 
 </body>
