@@ -370,9 +370,27 @@
     var ctsLocal = _lsRead(keyCts);
 
     // DataGuard antes de qualquer escrita
+    // Verifica retorno — se bloqueado, mostra erro e aborta
     if (typeof window.dgAntesDeSalvar === 'function') {
-      window.dgAntesDeSalvar(keyCli, cliLocal, 'sync_supabase');
-      window.dgAntesDeSalvar(keyCts, ctsLocal, 'sync_supabase');
+      var dgCli = window.dgAntesDeSalvar(keyCli, cliLocal, 'sync_supabase');
+      var dgCts = window.dgAntesDeSalvar(keyCts, ctsLocal, 'sync_supabase');
+      if ((dgCli && dgCli.bloqueado) || (dgCts && dgCts.bloqueado)) {
+        var msgDg = (dgCli && dgCli.bloqueado ? dgCli.msg : '') || (dgCts && dgCts.msg) || 'DataGuard bloqueou a operação.';
+        _renderPanel('<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);'
+          + 'border-radius:8px;padding:.8rem 1rem;font-size:.82rem">'
+          + '<div style="font-weight:700;color:#ef4444;margin-bottom:.4rem">🛡️ DataGuard bloqueou a sincronização</div>'
+          + '<div style="font-size:.77rem;color:var(--text2,#94a3b8);margin-bottom:.6rem">'
+          + _esc(msgDg) + '</div>'
+          + '<div style="font-size:.72rem;color:var(--text3,#6b7280)">'
+          + 'Execute o Diagnóstico DataGuard, desbloqueie se seguro, e tente novamente.<br>'
+          + 'Nenhum dado foi alterado.</div>'
+          + '<div style="margin-top:.6rem">'
+          + '<button class="nb" onclick="if(typeof window.dgDiagnosticoUI===\'function\')window.dgDiagnosticoUI()" '
+          + 'style="background:var(--bg3,#151929);color:var(--text,#e2e8f0);border:1px solid var(--border,#2e3650);'
+          + 'border-radius:5px;padding:.32rem .75rem;font-size:.74rem;font-weight:600">🔍 Diagnóstico DataGuard</button>'
+          + '</div></div>');
+        return;
+      }
     }
 
     _renderPanel('<div style="text-align:center;padding:1.8rem 0;color:var(--text3,#6b7280);font-size:.82rem">'
