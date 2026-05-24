@@ -401,16 +401,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 #nf-table th{overflow:hidden}
 #nf-table td{padding:.38rem .45rem}
 #nf-table th:nth-child(1){width:5%}   /* Nº NF    */
-#nf-table th:nth-child(2){width:16%}  /* Cliente  */
-#nf-table th:nth-child(3){width:22%}  /* Proposta */
-#nf-table th:nth-child(4){width:5%}   /* Obra     */
-#nf-table th:nth-child(5){width:6%}   /* Tipo     */
-#nf-table th:nth-child(6){width:9%}   /* Valor    */
-#nf-table th:nth-child(7){width:8%}   /* Status   */
-#nf-table th:nth-child(8){width:7%}   /* Emiss.   */
-#nf-table th:nth-child(9){width:7%}   /* Venc.    */
-#nf-table th:nth-child(10){width:8%}  /* Situação */
-#nf-table th:nth-child(11){width:7%}  /* Ações    */
+#nf-table th:nth-child(2){width:6%}   /* Nº PO    */
+#nf-table th:nth-child(3){width:15%}  /* Cliente  */
+#nf-table th:nth-child(4){width:21%}  /* Proposta */
+#nf-table th:nth-child(5){width:5%}   /* Obra     */
+#nf-table th:nth-child(6){width:6%}   /* Tipo     */
+#nf-table th:nth-child(7){width:9%}   /* Valor    */
+#nf-table th:nth-child(8){width:8%}   /* Status   */
+#nf-table th:nth-child(9){width:7%}   /* Emiss.   */
+#nf-table th:nth-child(10){width:7%}  /* Venc.    */
+#nf-table th:nth-child(11){width:7%}  /* Situação */
+#nf-table th:nth-child(12){width:4%}  /* Ações    */
 /* Texto longo: quebra de linha, sem overflow lateral */
 #nf-table .col-cliente{white-space:normal;overflow:hidden;overflow-wrap:break-word;max-width:none;text-overflow:clip}
 #nf-table .col-titulo{white-space:normal;overflow:hidden;overflow-wrap:break-word;max-width:none;text-overflow:clip;color:var(--text2)}
@@ -741,6 +742,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <thead>
         <tr>
           <th>Nº NF</th>
+          <th>Nº PO</th>
           <th>Cliente</th>
           <th>Proposta</th>
           <th class="th-obra">Obra</th>
@@ -2293,8 +2295,12 @@ function _renderTabelaNF(nfs) {
     var isCan  = st === 'cancelada';
     var rowCls = isCan ? ' style="opacity:.55"' : '';
 
+    var _prop = _nfGetProposta(nf.proposta_app_id);
+    var _nrPO = (_prop && _prop.stages && _prop.stages.aprovacao && _prop.stages.aprovacao.po_numero) || '';
+
     return '<tr class="row-conta" onclick="abrirDetalheNF(\'' + nf.id + '\')" title="Ver detalhes"' + rowCls + '>' +
       '<td style="font-family:monospace;font-weight:600">' + (nf.numero_nf || '<em style="color:var(--text3)">—</em>') + '</td>' +
+      '<td style="font-family:monospace;font-size:.68rem;color:var(--text2)">' + (_nrPO || '<em style="color:var(--text3)">—</em>') + '</td>' +
       '<td class="col-cliente">' + (conta.cliente_nome || '<em style="color:var(--text3)">—</em>') + '</td>' +
       '<td class="col-titulo">' + (conta.titulo || nf.proposta_app_id || '—') + '</td>' +
       '<td class="td-obra col-titulo">' + (conta.obra_id || '<em style="color:var(--text3)">—</em>') + '</td>' +
