@@ -4635,25 +4635,24 @@ async function nfFaseCsalvar() {
     }
 
     // 2. Montar metadados extras para o campo observacoes
+    // Formato estruturado: { texto, fase_c: { campos nomeados } }
+    // O texto livre do usuário nunca é perdido — fica em obsPayload.texto
     var pct   = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
     var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
-    var meta  = {
-      fase_c:       true,
-      prop_num:     p.num || '',
-      prop_tit:     String(p.tit || '').slice(0, 80),
-      pct_fat:      parseFloat(pct.toFixed(4)),
-      val_vend:     p.val || 0,
-      pct_rs:       parseFloat((pctRS * 100).toFixed(4)),
-      val_rs_consid: parseFloat((valor * pctRS).toFixed(2))
-    };
-    if (precisaJust) {
-      meta.justificativa = ((document.getElementById('nf-justificativa') || {}).value || '').trim();
-    }
-
     var obsUsuario = ((document.getElementById('nf-novo-obs') || {}).value || '').trim();
-    var obsFinal   = obsUsuario
-      ? obsUsuario + ' | meta:' + JSON.stringify(meta)
-      : 'meta:' + JSON.stringify(meta);
+    var obsPayload = {
+      texto: obsUsuario,
+      fase_c: {
+        percentual_faturamento:    parseFloat(pct.toFixed(4)),
+        valor_vendido_proposta:    p.val || 0,
+        percentual_rs_considerado: parseFloat((pctRS * 100).toFixed(4)),
+        valor_rs_considerado:      parseFloat((valor * pctRS).toFixed(2)),
+        justificativa_excedente:   precisaJust
+          ? ((document.getElementById('nf-justificativa') || {}).value || '').trim()
+          : ''
+      }
+    };
+    var obsFinal = JSON.stringify(obsPayload);
 
     // 3. Criar a NF no Financeiro (nunca escreve em prop.tl.nfs[])
     var dataEmissao = (document.getElementById('nf-novo-data') || {}).value
