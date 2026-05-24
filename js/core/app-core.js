@@ -1024,6 +1024,7 @@ function newProposal(btn){
   resetProposalForm();
   go('nova',btn||null);
   step(1);
+  setTimeout(function(){if(typeof window._uxFase1==='function')window._uxFase1();},50);
 }
 function cancelEdit(){
   if(confirm('Cancelar edição? Alterações não salvas serão perdidas.')){
@@ -2409,10 +2410,11 @@ function editP(id){
   go('nova',null);
   showActionBar(p);
   setTimeout(function(){
-    step(2);
+    step(1);
     rBudg();   // renderiza tabela de itens do orçamento
     updBT();   // sincroniza totais do orçamento
     updKpi();  // atualiza KPIs com as alíquotas restauradas
+    if(typeof window._uxFase1==='function') window._uxFase1();
   }, 150);
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
