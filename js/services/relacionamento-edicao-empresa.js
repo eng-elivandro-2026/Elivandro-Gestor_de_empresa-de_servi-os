@@ -1,15 +1,16 @@
 // ============================================================
 // relacionamento-edicao-empresa.js — Modal completo de edição
 // de Empresa com todos os campos + contatos relacionados
+// + vinculação de contatos existentes
 //
 // Regras:
 //  - Respeita empresa_id / DataGuard / sem apagar dados
 //  - Usa cliSaveDirect / ctsSaveDirect (via cadastro.js)
 //  - Usa cliRenomear / ctsAtualizarEmpresaRef / ctsRenomear
-//    (expostos em cadastro.js por esta feature)
-//  - Sobrescreve window.editarCliente (cadastro.js original
-//    abre modal simples; aqui abre modal completo)
-//  - Modal criado lazily (sem HTML hardcoded no index.html)
+//  - Lookup de contatos por (1) empresa_cliente_id, (2) razão
+//    social, (3) apelido — compatível com registros antigos
+//  - Modal criado lazily — sem HTML hardcoded no index.html
+//  - Sobrescreve window.editarCliente
 // ============================================================
 
 (function () {
@@ -39,12 +40,13 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // ── Contatos relacionados à empresa ────────────────────────
-  // Critério: c.empresa === nome (razão social) OR apelido
+  // ── Contatos relacionados à empresa ─────────────────────────
+  // Prioridade: (1) empresa_cliente_id, (2) razão social, (3) apelido
   function _findContatos(empresa) {
     var nNorm = (empresa.nome    || '').toLowerCase().trim();
     var aNorm = (empresa.apelido || '').toLowerCase().trim();
     return _ctsLoad().filter(function (c) {
+      if (c.empresa_cliente_id && c.empresa_cliente_id === empresa.id) return true;
       var eNorm = (c.empresa || '').toLowerCase().trim();
       if (!eNorm) return false;
       if (nNorm && eNorm === nNorm) return true;
@@ -55,9 +57,10 @@
 
   // ── Estado interno do modal ─────────────────────────────────
   var _st = {
-    empresaId:  null,
-    contatos:   [],
-    ctsMod:     {}   // { cid: { campo: valor, ... } }
+    empresaId: null,
+    contatos:  [],
+    ctsMod:    {},
+    empresa:   null   // empresa object completo (para vincular section)
   };
 
   // ── Estilos reutilizáveis ───────────────────────────────────
@@ -84,7 +87,6 @@
       + 'z-index:99990;align-items:center;justify-content:center;'
       + 'background:rgba(0,0,0,.8);padding:1rem">'
 
-      // Painel
       + '<div style="background:#1e2535;border:1px solid #334155;border-radius:10px;'
       + 'width:min(700px,98vw);max-height:92vh;overflow-y:auto;display:flex;flex-direction:column">'
 
@@ -100,7 +102,7 @@
       // Corpo
       + '<div style="padding:1rem;display:flex;flex-direction:column;gap:.75rem">'
 
-      // Seção: dados da empresa
+      // ── Dados da empresa
       + '<div style="' + S_SEC + '">🏢 Dados da Empresa</div>'
 
       // Razão Social + Apelido
@@ -146,14 +148,25 @@
       + _fld('Estado (UF)', 'eEmpEstado', 'text', 'SP')
       + '</div>'
 
-      // Observações (textarea)
+      // Observações
       + '<div><label style="' + S_LBL + '">Observações</label>'
       + '<textarea id="eEmpObs" rows="2" placeholder="Informações adicionais..." '
       + 'style="' + S_INP + ';resize:vertical;min-height:3rem"></textarea></div>'
 
-      // Seção: contatos relacionados
-      + '<div style="' + S_SEC + '">👤 Contatos Relacionados</div>'
+      // ── Contatos vinculados
+      + '<div style="' + S_SEC + '">👤 Contatos Vinculados</div>'
       + '<div id="m-editar-empresa-contatos" style="display:flex;flex-direction:column;gap:.75rem"></div>'
+
+      // ── Vincular contatos existentes
+      + '<div style="' + S_SEC + '">🔗 Vincular Contatos Existentes</div>'
+      + '<div style="font-size:.73rem;color:#94a3b8;margin-bottom:.3rem">'
+      + 'Contatos da empresa ativa ainda não vinculados a esta empresa</div>'
+      + '<input id="eEmpVincularBusca" type="text" placeholder="Buscar contato..." '
+      + 'oninput="_eeVincularFiltrar(this.value)" '
+      + 'style="' + S_INP + ';margin-top:0">'
+      + '<div id="m-editar-empresa-vincular" '
+      + 'style="display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem;'
+      + 'max-height:200px;overflow-y:auto"></div>'
 
       + '</div>' // fim corpo
 
@@ -169,7 +182,7 @@
       + 'cursor:pointer;font-size:.82rem;font-weight:700">💾 Salvar</button>'
       + '</div>'
 
-      + '</div></div>'; // fim painel + modal
+      + '</div></div>';
 
     var tmp = document.createElement('div');
     tmp.innerHTML = html;
@@ -186,6 +199,7 @@
     _st.empresaId = id;
     _st.contatos  = _findContatos(item);
     _st.ctsMod    = {};
+    _st.empresa   = item;
 
     function sv(elId, val) {
       var el = document.getElementById(elId);
@@ -212,12 +226,16 @@
     if (obsEl) obsEl.value = item.obs || '';
 
     _renderContatos();
+    _renderVincularDisponiveis('');
+
+    var bEl = document.getElementById('eEmpVincularBusca');
+    if (bEl) bEl.value = '';
 
     var m = document.getElementById('m-editar-empresa');
     if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
   };
 
-  // ── Render contatos relacionados inline ─────────────────────
+  // ── Render: contatos vinculados (editáveis inline) ──────────
   function _renderContatos() {
     var el = document.getElementById('m-editar-empresa-contatos');
     if (!el) return;
@@ -225,52 +243,94 @@
 
     if (!cts.length) {
       el.innerHTML = '<div style="font-size:.78rem;color:#94a3b8;text-align:center;'
-        + 'padding:.75rem 0">Nenhum contato relacionado a esta empresa.</div>';
+        + 'padding:.5rem 0">Nenhum contato vinculado a esta empresa.</div>';
       return;
     }
 
-    var INP_CTS = 'width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;'
+    var INP = 'width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;'
       + 'border-radius:4px;padding:.3rem .5rem;font-size:.78rem;box-sizing:border-box';
-    var LBL_CTS = 'font-size:.6rem;font-weight:600;color:#94a3b8;'
+    var LBL = 'font-size:.6rem;font-weight:600;color:#94a3b8;'
       + 'text-transform:uppercase;letter-spacing:.05em';
 
     el.innerHTML = cts.map(function (c) {
+      var vinculadoBadge = c.empresa_cliente_id
+        ? '<span style="font-size:.65rem;color:#22c55e;margin-left:.4rem">🔗</span>'
+        : '';
       return '<div style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:.75rem">'
         + '<div style="font-size:.8rem;font-weight:700;color:#e2e8f0;margin-bottom:.6rem">'
-        + '👤 ' + esc(c.nome) + '</div>'
+        + '👤 ' + esc(c.nome) + vinculadoBadge + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">'
 
-        + '<div><label style="' + LBL_CTS + '">Nome</label>'
+        + '<div><label style="' + LBL + '">Nome</label>'
         + '<input data-cid="' + esc(c.id) + '" data-campo="nome" type="text" '
-        + 'value="' + esc(c.nome) + '" style="' + INP_CTS + '" '
-        + 'oninput="window._eeCtsMark(this)"></div>'
+        + 'value="' + esc(c.nome) + '" style="' + INP + '" oninput="window._eeCtsMark(this)"></div>'
 
-        + '<div><label style="' + LBL_CTS + '">Cargo / Função</label>'
+        + '<div><label style="' + LBL + '">Cargo / Função</label>'
         + '<input data-cid="' + esc(c.id) + '" data-campo="departamento" type="text" '
-        + 'value="' + esc(c.departamento || '') + '" style="' + INP_CTS + '" '
-        + 'oninput="window._eeCtsMark(this)"></div>'
+        + 'value="' + esc(c.departamento || '') + '" style="' + INP + '" oninput="window._eeCtsMark(this)"></div>'
 
-        + '<div><label style="' + LBL_CTS + '">E-mail</label>'
+        + '<div><label style="' + LBL + '">E-mail</label>'
         + '<input data-cid="' + esc(c.id) + '" data-campo="email" type="email" '
-        + 'value="' + esc(c.email || '') + '" style="' + INP_CTS + '" '
-        + 'oninput="window._eeCtsMark(this)"></div>'
+        + 'value="' + esc(c.email || '') + '" style="' + INP + '" oninput="window._eeCtsMark(this)"></div>'
 
-        + '<div><label style="' + LBL_CTS + '">Telefone</label>'
+        + '<div><label style="' + LBL + '">Telefone</label>'
         + '<input data-cid="' + esc(c.id) + '" data-campo="telefone" type="text" '
-        + 'value="' + esc(c.telefone || '') + '" style="' + INP_CTS + '" '
-        + 'oninput="window._eeCtsMark(this)"></div>'
+        + 'value="' + esc(c.telefone || '') + '" style="' + INP + '" oninput="window._eeCtsMark(this)"></div>'
 
         + '</div></div>';
     }).join('');
   }
 
-  // ── Marcar campo de contato modificado ─────────────────────
+  // ── Render: contatos disponíveis para vincular ──────────────
+  function _renderVincularDisponiveis(q) {
+    var el = document.getElementById('m-editar-empresa-vincular');
+    if (!el || !_st.empresa) return;
+
+    // Hash de IDs já vinculados
+    var vinculadosHash = {};
+    _st.contatos.forEach(function (c) { vinculadosHash[c.id] = true; });
+
+    var todos      = _ctsLoad();
+    var disponiveis = todos.filter(function (c) { return !vinculadosHash[c.id]; });
+
+    if (q) {
+      var ql = q.toLowerCase();
+      disponiveis = disponiveis.filter(function (c) {
+        return (c.nome    || '').toLowerCase().indexOf(ql) >= 0
+            || (c.empresa || '').toLowerCase().indexOf(ql) >= 0;
+      });
+    }
+
+    if (!disponiveis.length) {
+      el.innerHTML = '<div style="font-size:.76rem;color:#94a3b8;text-align:center;padding:.5rem 0">'
+        + (q ? 'Nenhum contato encontrado.' : 'Todos os contatos já estão vinculados a uma empresa.') + '</div>';
+      return;
+    }
+
+    el.innerHTML = disponiveis.map(function (c) {
+      var sub = c.empresa
+        ? '<span style="color:#94a3b8;font-size:.72rem"> (' + esc(c.empresa) + ')</span>'
+        : '<span style="color:#64748b;font-size:.72rem"> (sem empresa)</span>';
+      return '<label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;'
+        + 'color:#e2e8f0;cursor:pointer;padding:.2rem 0">'
+        + '<input type="checkbox" data-cid="' + esc(c.id) + '" style="cursor:pointer;flex-shrink:0">'
+        + '<span><strong>' + esc(c.nome) + '</strong>' + sub + '</span>'
+        + '</label>';
+    }).join('');
+  }
+
+  // ── Handlers públicos ───────────────────────────────────────
+
   window._eeCtsMark = function (input) {
     var cid   = input.getAttribute('data-cid');
     var campo = input.getAttribute('data-campo');
     if (!cid || !campo) return;
     if (!_st.ctsMod[cid]) _st.ctsMod[cid] = {};
     _st.ctsMod[cid][campo] = input.value;
+  };
+
+  window._eeVincularFiltrar = function (q) {
+    _renderVincularDisponiveis(q);
   };
 
   // ── Fechar modal ────────────────────────────────────────────
@@ -280,9 +340,10 @@
     _st.empresaId = null;
     _st.contatos  = [];
     _st.ctsMod    = {};
+    _st.empresa   = null;
   };
 
-  // ── Salvar empresa + contatos ───────────────────────────────
+  // ── Salvar empresa + contatos + vincular ────────────────────
   window.salvarEdicaoEmpresa = function () {
     var gv = function (id) {
       var el = document.getElementById(id);
@@ -323,7 +384,6 @@
     });
 
     var newList = all.map(function (x, j) { return j === idx ? updated : x; });
-
     if (typeof window.cliSaveDirect === 'function') {
       window.cliSaveDirect(newList);
     } else {
@@ -333,27 +393,52 @@
 
     // 2. Propagar mudança de razão social
     if (oldNome && oldNome !== nome) {
-      if (typeof window.cliRenomear === 'function')          window.cliRenomear(oldNome, nome);
+      if (typeof window.cliRenomear          === 'function') window.cliRenomear(oldNome, nome);
       if (typeof window.ctsAtualizarEmpresaRef === 'function') window.ctsAtualizarEmpresaRef(oldNome, nome);
     }
 
-    // 3. Salvar contatos modificados
-    var cids = Object.keys(_st.ctsMod);
-    if (cids.length > 0) {
-      var allCts    = _ctsLoad();
-      var mods      = _st.ctsMod;
+    // 3. Coletar alterações de contatos (ctsMod) + vínculos novos — passe único
+    var mods = _st.ctsMod;
+    var modsIds = Object.keys(mods);
+
+    // Coletar checkboxes de vincular selecionados
+    var vincularEl = document.getElementById('m-editar-empresa-vincular');
+    var vincularIds = [];
+    if (vincularEl) {
+      var checks = vincularEl.querySelectorAll('input[type="checkbox"][data-cid]:checked');
+      for (var ci = 0; ci < checks.length; ci++) {
+        vincularIds.push(checks[ci].getAttribute('data-cid'));
+      }
+    }
+
+    if (modsIds.length > 0 || vincularIds.length > 0) {
+      var allCts     = _ctsLoad();
+      var empNome    = updated.apelido || updated.nome;
+      var empId      = updated.id;
       var ctsChanged = false;
 
       allCts = allCts.map(function (c) {
-        if (!mods[c.id]) return c;
+        var isMod      = mods[c.id]                    !== undefined;
+        var isVincular = vincularIds.indexOf(c.id) >= 0;
+        if (!isMod && !isVincular) return c;
+
         ctsChanged = true;
-        var delta  = mods[c.id];
         var merged = Object.assign({}, c);
-        Object.keys(delta).forEach(function (k) { merged[k] = delta[k]; });
-        // Propagação de renomeação de contato
-        if (delta.nome && delta.nome !== c.nome) {
-          if (typeof window.ctsRenomear === 'function') window.ctsRenomear(c.nome, delta.nome);
+
+        if (isMod) {
+          var delta = mods[c.id];
+          Object.keys(delta).forEach(function (k) { merged[k] = delta[k]; });
+          // Propagar renomeação de contato
+          if (delta.nome && delta.nome !== c.nome) {
+            if (typeof window.ctsRenomear === 'function') window.ctsRenomear(c.nome, delta.nome);
+          }
         }
+
+        if (isVincular) {
+          merged.empresa            = empNome;
+          merged.empresa_cliente_id = empId;
+        }
+
         return merged;
       });
 
@@ -368,7 +453,7 @@
     if (typeof toast === 'function') toast('✅ Empresa atualizada: ' + nome, 'ok');
   };
 
-  // ── Override: editarCliente agora abre o modal completo ─────
+  // ── Override: editarCliente abre o modal completo ───────────
   window.editarCliente = function (id) {
     window.abrirModalEditarEmpresa(id);
   };
