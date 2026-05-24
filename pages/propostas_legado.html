@@ -430,6 +430,23 @@ window.protegerPagina = async function () {
     window.location.href = "/login.html";
     return;
   }
+  // Guard de perfil: colaborador/prestador não acessa propostas legado
+  try {
+    var { data: _u } = await window.sbClient
+      .from('usuarios').select('perfil').eq('auth_id', data.user.id).maybeSingle();
+    if (_u && (_u.perfil === 'colaborador' || _u.perfil === 'prestador')) {
+      document.body.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;' +
+        'font-family:system-ui;background:#0d1117;color:#e6edf3">' +
+        '<div style="text-align:center;padding:2rem">' +
+        '<div style="font-size:2.5rem;margin-bottom:.8rem">🔒</div>' +
+        '<div style="font-size:1rem;font-weight:700;margin-bottom:.5rem">Acesso Restrito</div>' +
+        '<div style="font-size:.82rem;color:#8b949e">Acesso não autorizado para este perfil.</div>' +
+        '</div></div>';
+      return;
+    }
+  } catch(_e) {}
+
   // Carrega tudo da nuvem ao abrir
   try {
     if (typeof sbCarregarMeta === 'function') await sbCarregarMeta();
