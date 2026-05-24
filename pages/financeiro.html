@@ -425,6 +425,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .medit-bf-secao{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.22);border-radius:var(--r);padding:.6rem .85rem;margin:.35rem 0 .5rem}
 .medit-bf-ref{font-family:monospace;font-size:.62rem;color:var(--text3);word-break:break-all;padding:.16rem .38rem;background:var(--bg3);border-radius:3px;margin:.18rem 0 .38rem;border:1px solid var(--border)}
 .medit-bf-aviso{font-size:.69rem;color:var(--text3);margin-bottom:.42rem;line-height:1.45}
+/* ── Pedido de Compra / PO (Fase E) ─────────────────────────── */
+.po-status-badge{display:inline-flex;align-items:center;gap:.28rem;padding:.15rem .45rem;border-radius:var(--r2);font-size:.65rem;font-weight:700;letter-spacing:.02em}
+.po-status-badge.pendente{background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.42);color:#9a7000}
+.po-status-badge.recebido{background:rgba(56,139,253,.1);border:1px solid rgba(56,139,253,.4);color:#1a6bb5}
+.po-status-badge.conferido{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.4);color:#1e7b34}
+.po-status-badge.divergente{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);color:#a0190f}
+.po-status-badge.liberado{background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.5);color:#145a24}
 </style>
 </head>
 <body>
@@ -711,6 +718,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="cp-form-row">
           <label class="cp-form-label" for="nf-novo-data">Data de Emissão</label>
           <input type="date" id="nf-novo-data" class="cp-form-input">
+        </div>
+        <div class="cp-form-row">
+          <label class="cp-form-label" for="nf-novo-po">Nº PO / Pedido de Compra</label>
+          <input type="text" id="nf-novo-po" class="cp-form-input" placeholder="Ex: PC-2025-001">
         </div>
       </div>
       <div class="cp-form-row" style="margin-top:.3rem">
@@ -2295,8 +2306,12 @@ function _renderTabelaNF(nfs) {
     var isCan  = st === 'cancelada';
     var rowCls = isCan ? ' style="opacity:.55"' : '';
 
-    var _prop = _nfGetProposta(nf.proposta_app_id);
-    var _nrPO = (_prop && _prop.stages && _prop.stages.aprovacao && _prop.stages.aprovacao.po_numero) || '';
+    var _prop    = _nfGetProposta(nf.proposta_app_id);
+    var _obsNF   = _meditParseObs(nf.observacoes);
+    var _nrPO = (_obsNF.fase_c && _obsNF.fase_c.po && _obsNF.fase_c.po.numero) ||
+                (_prop && _prop.stages && _prop.stages.aprovacao && _prop.stages.aprovacao.po_numero) ||
+                (_prop && _prop.po && _prop.po.numero) ||
+                (_prop && _prop.po_numero) || '';
 
     return '<tr class="row-conta" onclick="abrirDetalheNF(\'' + nf.id + '\')" title="Ver detalhes"' + rowCls + '>' +
       '<td style="font-family:monospace;font-weight:600">' + (nf.numero_nf || '<em style="color:var(--text3)">—</em>') + '</td>' +
@@ -2358,6 +2373,7 @@ async function abrirDetalheNF(nfId) {
   // Renderização imediata — sem recebimentos ainda
   document.getElementById('nf-detalhe-corpo').innerHTML =
     _renderNFBasico(nf, obsObj) +
+    _renderNFPO(nf, obsObj, proposta) +
     _renderNFProposta(nf, proposta) +
     _renderNFConta(conta, obsObj) +
     '<div class="detalhe-secao"><div class="detalhe-secao-titulo">💰 Recebimentos</div>' +
@@ -2379,6 +2395,7 @@ async function abrirDetalheNF(nfId) {
     if (!document.getElementById('nf-detalhe-panel').classList.contains('on')) return;
     document.getElementById('nf-detalhe-corpo').innerHTML =
       _renderNFBasico(nf, obsObj) +
+      _renderNFPO(nf, obsObj, proposta) +
       _renderNFProposta(nf, proposta) +
       _renderNFConta(conta, obsObj) +
       _renderNFRecebimentos(recs, nf) +
@@ -2677,6 +2694,16 @@ function _renderNFAlertas(nf, proposta, conta, recs, obsObj) {
       _al('warn', '⚠️ Alíquota NF real (' + formatPct(ar.nf_real_pct) + ') acima da prevista (' + formatPct(prev.nfS * 100) + ').');
     }
   }
+  // Alertas de PO
+  var _poObj = obsObj && obsObj.fase_c && obsObj.fase_c.po;
+  var _poNr  = (_poObj && _poObj.numero) ||
+               (proposta && proposta.stages && proposta.stages.aprovacao && proposta.stages.aprovacao.po_numero) || '';
+  if (!_poNr) {
+    _al('warn', '⚠️ NF sem Nº PO informado.');
+  } else if (_poObj) {
+    if (_poObj.status === 'divergente') _al('error', '⚠️ PO com divergência — conferir antes do faturamento.');
+    else if (_poObj.status === 'pendente') _al('warn', '⚠️ PO pendente de conferência.');
+  }
   return '<div class="detalhe-secao">' +
     '<div class="detalhe-secao-titulo">🚨 Alertas Financeiros</div>' +
     (itens.length
@@ -2704,6 +2731,37 @@ function _renderNFHistorico(obsObj) {
   return '<div class="detalhe-secao">' +
     '<div class="detalhe-secao-titulo">📋 Histórico de Correções (' + hist.length + ')</div>' +
     rows.join('') + '</div>';
+}
+
+// ── Bloco 10: Pedido de Compra / PO ──────────────────────────
+function _renderNFPO(nf, obsObj, proposta) {
+  var _poLabels = { pendente:'⏳ Pendente', recebido:'📥 Recebido', conferido:'✅ Conferido', divergente:'⚠️ Divergente', liberado:'🟢 Liberado' };
+  var po = (obsObj && obsObj.fase_c && obsObj.fase_c.po) || null;
+  var poNumero = (po && po.numero) ||
+    (proposta && proposta.stages && proposta.stages.aprovacao && proposta.stages.aprovacao.po_numero) ||
+    (proposta && proposta.po && proposta.po.numero) ||
+    (proposta && proposta.po_numero) || '';
+  if (!poNumero && !po) {
+    return '<div class="detalhe-secao">' +
+      '<div class="detalhe-secao-titulo">📄 Pedido de Compra / PO</div>' +
+      '<div class="sub-vazio">PO não informado.</div></div>';
+  }
+  var st = (po && po.status) || '';
+  var stBadge = st ? '<span class="po-status-badge ' + st + '">' + (_poLabels[st] || st) + '</span>' : '';
+  return '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">📄 Pedido de Compra / PO</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Nº PO', _esc(poNumero) || '—') +
+      (st ? _di('Status', stBadge) : '') +
+      (po && po.data ? _di('Data do PO', _dataBR(po.data)) : '') +
+      (po && po.valor > 0 ? _di('Valor PO', formatBRL(po.valor), 'emp') : '') +
+      (po && po.condicao_pagamento ? _di('Condição', _esc(po.condicao_pagamento)) : '') +
+      (po && po.prazo ? _di('Prazo', _esc(po.prazo)) : '') +
+    '</div>' +
+    (po && po.observacoes
+      ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.32rem;padding:.28rem .45rem;background:var(--bg3);border-radius:4px">' + _esc(po.observacoes) + '</div>'
+      : '') +
+  '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4812,6 +4870,14 @@ async function nfOnProposta(propId) {
   if (dadosDiv)  dadosDiv.style.display  = '';
   if (camposDiv) camposDiv.style.display = '';
 
+  // Pré-preencher Nº PO da proposta (se campo estiver vazio)
+  var _poInputNovo = document.getElementById('nf-novo-po');
+  if (_poInputNovo && !_poInputNovo.value) {
+    var _pfullNovo = _nfGetProposta(propId);
+    var _prePoNovo = _pfullNovo && _pfullNovo.stages && _pfullNovo.stages.aprovacao && _pfullNovo.stages.aprovacao.po_numero;
+    if (_prePoNovo) _poInputNovo.value = _prePoNovo;
+  }
+
   // Limpar calculadora
   ['nf-calc-pct','nf-calc-valor'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
@@ -4981,6 +5047,7 @@ async function nfFaseCsalvar() {
     var pct      = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
     var pctRS    = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
     var obsUsuario = ((document.getElementById('nf-novo-obs') || {}).value || '').trim();
+    var _poNrNovo  = ((document.getElementById('nf-novo-po') || {}).value || '').trim();
     var obsPayload = {
       texto: obsUsuario,
       fase_c: {
@@ -4990,7 +5057,8 @@ async function nfFaseCsalvar() {
         valor_rs_considerado:      parseFloat((valor * pctRS).toFixed(2)),
         justificativa_excedente:   precisaJust
           ? ((document.getElementById('nf-justificativa') || {}).value || '').trim()
-          : ''
+          : '',
+        po: _poNrNovo ? { numero: _poNrNovo, status: 'pendente' } : undefined
       }
     };
     var obsFinal = JSON.stringify(obsPayload);
@@ -5062,7 +5130,7 @@ function _nfResetarForm() {
   ['nf-dados-proposta','nf-form-campos'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
-  ['nf-calc-pct','nf-calc-valor','nf-novo-numero','nf-novo-obs','nf-justificativa'].forEach(function(id) {
+  ['nf-calc-pct','nf-calc-valor','nf-novo-numero','nf-novo-po','nf-novo-obs','nf-justificativa'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   var st = document.getElementById('nf-form-status');
@@ -5426,6 +5494,23 @@ function _meditAtualizarAlertasFinanceiros() {
     }
   }
 
+  // Alertas de PO
+  var _meditPOObj = _meditNFAtual && (function() {
+    var ob = _meditParseObs(_meditNFAtual.observacoes);
+    return ob.fase_c && ob.fase_c.po;
+  })();
+  var _meditPONrEl = document.getElementById('medit-po-numero');
+  var _meditPOStEl = document.getElementById('medit-po-status');
+  var _meditPONr   = (_meditPONrEl && _meditPONrEl.value.trim()) || (_meditPOObj && _meditPOObj.numero) || '';
+  var _meditPOSt   = (_meditPOStEl && _meditPOStEl.value) || '';
+  if (!_meditPONr) {
+    _al('warn', '⚠️ NF sem Nº PO informado.');
+  } else if (_meditPOSt === 'divergente') {
+    _al('err', '⚠️ PO com divergência — conferir antes do faturamento.');
+  } else if (_meditPOSt === 'pendente') {
+    _al('warn', '⚠️ PO pendente de conferência.');
+  }
+
   el.innerHTML = itens.length
     ? itens.join('')
     : '<div class="medit-comparativo ok" style="font-size:.73rem">✅ Sem alertas financeiros pendentes.</div>';
@@ -5504,6 +5589,21 @@ async function editarNFCompleta(nfId) {
   if (scEl) scEl.value = (conta.status === 'recebido' || conta.status === 'parcialmente_recebido')
     ? conta.status : (conta.status || 'a_faturar');
   var oEl = document.getElementById('medit-obs');     if (oEl)  oEl.value  = obsObj.texto || '';
+
+  // Restaurar campos PO — lê de fase_c.po; fallback da proposta se ainda vazio
+  var _poData = (obsObj.fase_c && obsObj.fase_c.po) || {};
+  var poNrEl = document.getElementById('medit-po-numero');  if (poNrEl)  poNrEl.value  = _poData.numero || '';
+  var poStEl = document.getElementById('medit-po-status');  if (poStEl)  poStEl.value  = _poData.status || '';
+  var poDtEl = document.getElementById('medit-po-data');    if (poDtEl)  poDtEl.value  = _poData.data   || '';
+  var poVlEl = document.getElementById('medit-po-valor');   if (poVlEl)  poVlEl.value  = _poData.valor > 0 ? formatBRL(_poData.valor) : '';
+  var poCoEl = document.getElementById('medit-po-condicao');if (poCoEl)  poCoEl.value  = _poData.condicao_pagamento || '';
+  var poPrEl = document.getElementById('medit-po-prazo');   if (poPrEl)  poPrEl.value  = _poData.prazo  || '';
+  var poObEl = document.getElementById('medit-po-obs');     if (poObEl)  poObEl.value  = _poData.observacoes || '';
+  if (!_poData.numero && poNrEl) {
+    var _pfull = _nfGetProposta(nf.proposta_app_id);
+    var _prePO = _pfull && _pfull.stages && _pfull.stages.aprovacao && _pfull.stages.aprovacao.po_numero;
+    if (_prePO) poNrEl.value = _prePO;
+  }
 
   // Painel Curadoria Backfill
   var bfPanel = document.getElementById('medit-backfill-panel');
@@ -5693,6 +5793,15 @@ async function salvarEditarNF() {
   var arCom  = parsePct((document.getElementById('medit-com-real-pct')  || {}).value);
   var arDesc = parsePct((document.getElementById('medit-desc-real-pct') || {}).value);
   var arObs  = ((document.getElementById('medit-aliq-real-obs') || {}).value || '').trim();
+  // Pedido de Compra / PO
+  var _poNumero   = ((document.getElementById('medit-po-numero')   || {}).value || '').trim();
+  var _poStatus   =  (document.getElementById('medit-po-status')   || {}).value || '';
+  var _poDataPO   =  (document.getElementById('medit-po-data')     || {}).value || '';
+  var _poValorStr = ((document.getElementById('medit-po-valor')    || {}).value || '').trim();
+  var _poValor    = _poValorStr ? (parseBRL(_poValorStr) || 0) : 0;
+  var _poCondicao = ((document.getElementById('medit-po-condicao') || {}).value || '').trim();
+  var _poPrazo    = ((document.getElementById('medit-po-prazo')    || {}).value || '').trim();
+  var _poObsStr   = ((document.getElementById('medit-po-obs')      || {}).value || '').trim();
 
   // Validações
   if (novoValor <= 0) { _meditStatus('err', '❌ Valor da NF deve ser maior que zero.'); return; }
@@ -5781,7 +5890,18 @@ async function salvarEditarNF() {
       justificativa_excedente:   (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || ''),
       vencimento_modo:           _meditVencModo,
       prazo_vencimento_dias:     novoDias > 0 ? novoDias : (obsObj.fase_c.prazo_vencimento_dias || null),
-      aliquotas_reais:           Object.keys(aliqReaisPayload).length ? aliqReaisPayload : (obsObj.fase_c.aliquotas_reais || null)
+      aliquotas_reais:           Object.keys(aliqReaisPayload).length ? aliqReaisPayload : (obsObj.fase_c.aliquotas_reais || null),
+      po: (_poNumero || _poDataPO || _poValor || _poCondicao || _poPrazo || _poStatus || _poObsStr)
+        ? Object.assign(obsObj.fase_c.po || {}, {
+            numero:             _poNumero,
+            data:               _poDataPO,
+            valor:              _poValor,
+            condicao_pagamento: _poCondicao,
+            prazo:              _poPrazo,
+            status:             _poStatus || 'pendente',
+            observacoes:        _poObsStr
+          })
+        : (obsObj.fase_c.po || null)
     });
 
     // Registrar histórico de correções se houver mudanças relevantes
@@ -5932,6 +6052,50 @@ console.log('[Editar NF] módulo carregado e funções registradas');
             placeholder="Ex: Conferido com proposta 180A.25 — valores corretos">
         </div>
       </div>
+    </div>
+
+    <!-- Pedido de Compra / PO -->
+    <div class="medit-secao-titulo">📄 Pedido de Compra / PO</div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Nº PO / Pedido de Compra</div>
+        <input type="text" id="medit-po-numero" class="modal-input" placeholder="Ex: PC-2025-001">
+      </div>
+      <div>
+        <div class="medit-label">Status do PO</div>
+        <select id="medit-po-status" class="modal-input" onchange="window._meditAtualizarAlertasFinanceiros && window._meditAtualizarAlertasFinanceiros()">
+          <option value="">— Não informado —</option>
+          <option value="pendente">⏳ Pendente</option>
+          <option value="recebido">📥 Recebido</option>
+          <option value="conferido">✅ Conferido</option>
+          <option value="divergente">⚠️ Divergente</option>
+          <option value="liberado">🟢 Liberado</option>
+        </select>
+      </div>
+    </div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Data do PO</div>
+        <input type="date" id="medit-po-data" class="modal-input">
+      </div>
+      <div>
+        <div class="medit-label">Valor do PO (R$)</div>
+        <input type="text" id="medit-po-valor" class="modal-input" placeholder="R$ 0,00" inputmode="decimal">
+      </div>
+    </div>
+    <div class="medit-grid-2">
+      <div>
+        <div class="medit-label">Condição de Pagamento</div>
+        <input type="text" id="medit-po-condicao" class="modal-input" placeholder="Ex: 30/60/90 dias">
+      </div>
+      <div>
+        <div class="medit-label">Prazo do PO</div>
+        <input type="text" id="medit-po-prazo" class="modal-input" placeholder="Ex: 30 dias, até 31/12/2025">
+      </div>
+    </div>
+    <div class="medit-secao">
+      <div class="medit-label">Observações do PO</div>
+      <input type="text" id="medit-po-obs" class="modal-input" placeholder="Observações do pedido de compra">
     </div>
 
     <!-- Proposta vinculada -->
