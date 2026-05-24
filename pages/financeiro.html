@@ -419,6 +419,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 #nf-table .col-data{overflow:hidden;text-overflow:ellipsis}
 #nf-table .col-valor{overflow:hidden;text-overflow:ellipsis}
 #nf-table .col-acoes-nf{overflow:hidden}
+/* ── Curadoria Backfill (Fase C.3) ──────────────────────────── */
+.medit-bf-badge{display:inline-flex;align-items:center;gap:.32rem;padding:.18rem .52rem;background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.42);border-radius:var(--r2);font-size:.65rem;font-weight:700;color:#9a7000;letter-spacing:.02em}
+.medit-bf-secao{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.22);border-radius:var(--r);padding:.6rem .85rem;margin:.35rem 0 .5rem}
+.medit-bf-ref{font-family:monospace;font-size:.62rem;color:var(--text3);word-break:break-all;padding:.16rem .38rem;background:var(--bg3);border-radius:3px;margin:.18rem 0 .38rem;border:1px solid var(--border)}
+.medit-bf-aviso{font-size:.69rem;color:var(--text3);margin-bottom:.42rem;line-height:1.45}
 </style>
 </head>
 <body>
@@ -2394,10 +2399,22 @@ function _nfTipoLabel(t) {
 }
 
 function _renderNFBasico(nf, obsObj) {
-  var obs = obsObj || _meditParseObs(nf.observacoes);
-  var st  = _nfStatusComputado(nf);
+  var _bfR = _meditResolveBackfill(nf);
+  var obs  = _bfR.obsObj;
+  var st   = _nfStatusComputado(nf);
+  var bf   = obs.fase_c && obs.fase_c.backfill;
+  var bfBadge = '';
+  if (_bfR.isBackfill) {
+    var bfSt = (bf && bf.status_conferencia) || 'pendente';
+    var bfLabel = bfSt === 'conferido' ? '✅ Conferido' : bfSt === 'corrigido' ? '🔧 Corrigido' : '⏳ Pendente';
+    bfBadge = '<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin:.35rem 0 .1rem">' +
+      '<span class="medit-bf-badge">📦 Origem: Backfill</span>' +
+      '<span style="font-size:.64rem;color:var(--text3)">' + bfLabel + '</span></div>';
+  }
+  var obsTexto = (obs.texto && !obs.texto.startsWith('backfill_ref:')) ? obs.texto : '';
   return '<div class="detalhe-secao">' +
     '<div class="detalhe-secao-titulo">📄 Nota Fiscal</div>' +
+    bfBadge +
     '<div class="detalhe-grid">' +
       _di('Nº da NF',     nf.numero_nf || '—') +
       _di('Tipo',         _nfTipoLabel(nf.tipo_nf)) +
@@ -2406,10 +2423,10 @@ function _renderNFBasico(nf, obsObj) {
       _di('Status NF',    nf.status || '—') +
       _di('Situação',     '<span class="bdg ' + (_NF_STATUS_CLASS[st] || '') + '">' + (_NF_STATUS_LABEL[st] || st) + '</span>') +
     '</div>' +
-    (obs.texto
+    (obsTexto
       ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.45rem;padding:.38rem .5rem;background:var(--bg3);border-radius:4px;border-left:2px solid var(--border)">' +
         '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.15rem">Observações</div>' +
-        _esc(obs.texto) + '</div>'
+        _esc(obsTexto) + '</div>'
       : '') +
   '</div>';
 }
@@ -5092,7 +5109,37 @@ var _meditPropostaOrigId   = null;  // proposta_app_id original da NF
 var _meditPropostaAtual    = null;  // objeto proposta atualmente selecionado
 var _meditPropostasCache   = {};    // id → proposta
 var _meditTemRecebimento   = false; // bloqueia troca de proposta e alteração de valor
+var _meditIsBackfill       = false; // NF veio do backfill histórico
+var _meditBackfillRef      = null;  // ref bruta: "backfill_ref:nf:0:..."
 var _meditVencModo         = 'manual'; // 'dias' | 'manual'
+
+// ── Resolver backfill + migrar obs para JSON estruturado ───────
+// Se observacoes for string pura "backfill_ref:...", migra para
+// fase_c.backfill na primeira edição (sem gravar — só ao salvar).
+function _meditResolveBackfill(nf) {
+  var raw = nf.observacoes || '';
+  var obsObj = _meditParseObs(raw);
+  var isBackfill = false;
+  var bfRef = null;
+  if (typeof raw === 'string' && raw.indexOf('backfill_ref:') === 0) {
+    isBackfill = true;
+    bfRef = raw;
+    obsObj.texto = '';   // ref bruta não é texto humano
+    if (!obsObj.fase_c.backfill) {
+      obsObj.fase_c.backfill = {
+        origem: 'backfill', ref: bfRef,
+        status_conferencia: 'pendente',
+        conferido_em: null, conferido_por: null,
+        observacao_conferencia: '',
+        historico_curadoria: []
+      };
+    }
+  } else if (obsObj.fase_c && obsObj.fase_c.backfill) {
+    isBackfill = true;
+    bfRef = obsObj.fase_c.backfill.ref || '';
+  }
+  return { obsObj: obsObj, isBackfill: isBackfill, bfRef: bfRef };
+}
 
 // ── Helpers BRL / PCT ─────────────────────────────────────────
 function formatBRL(v) {
@@ -5395,7 +5442,10 @@ async function editarNFCompleta(nfId) {
   _meditTemRecebimento = false;
 
   var conta  = nf.conta_receber || {};
-  var obsObj = _meditParseObs(nf.observacoes);
+  var _bfResult = _meditResolveBackfill(nf);
+  var obsObj = _bfResult.obsObj;
+  _meditIsBackfill  = _bfResult.isBackfill;
+  _meditBackfillRef = _bfResult.bfRef;
 
   // IDs somente leitura
   document.getElementById('medit-ids').innerHTML =
@@ -5449,6 +5499,26 @@ async function editarNFCompleta(nfId) {
     ? conta.status : (conta.status || 'a_faturar');
   var oEl = document.getElementById('medit-obs');     if (oEl)  oEl.value  = obsObj.texto || '';
 
+  // Painel Curadoria Backfill
+  var bfPanel = document.getElementById('medit-backfill-panel');
+  if (bfPanel) bfPanel.style.display = _meditIsBackfill ? '' : 'none';
+  if (_meditIsBackfill) {
+    var bf = (obsObj.fase_c && obsObj.fase_c.backfill) || {};
+    var bfRefTxt = document.getElementById('medit-bf-ref-txt');
+    if (bfRefTxt) bfRefTxt.textContent = _meditBackfillRef || '—';
+    var bfStEl = document.getElementById('medit-bf-status');
+    if (bfStEl) bfStEl.value = bf.status_conferencia || 'pendente';
+    var bfPorEl = document.getElementById('medit-bf-por');
+    if (bfPorEl) bfPorEl.value = bf.conferido_por || '';
+    var bfObsEl = document.getElementById('medit-bf-obs-conf');
+    if (bfObsEl) bfObsEl.value = bf.observacao_conferencia || '';
+    var bfBadge = document.getElementById('medit-bf-status-badge');
+    if (bfBadge) {
+      var bfSt = bf.status_conferencia || 'pendente';
+      bfBadge.textContent = bfSt === 'conferido' ? '✅ Conferido' : bfSt === 'corrigido' ? '🔧 Corrigido' : '⏳ Pendente';
+    }
+  }
+
   // Alíquotas reais (restaurar do JSON salvo)
   var ar = (obsObj.fase_c && obsObj.fase_c.aliquotas_reais) || {};
   var arFields = { 'medit-nf-real-pct': 'nf_real_pct', 'medit-rs-real-pct': 'risco_sacado_real_pct',
@@ -5482,9 +5552,13 @@ async function editarNFCompleta(nfId) {
       _meditTemRecebimento = (recs && recs.length > 0);
       if (_meditTemRecebimento) {
         var bEl = document.getElementById('medit-bloqueio');
-        if (bEl) bEl.innerHTML =
-          '<div class="modal-aviso" style="margin:.4rem 0">🔒 Esta conta possui <strong>' + recs.length +
-          ' recebimento(s) vinculado(s)</strong>. Alteração de <strong>proposta</strong> e de <strong>valor</strong> estão bloqueadas.</div>';
+        if (bEl) {
+          var _bfExtra = _meditIsBackfill
+            ? '<div style="font-size:.68rem;color:var(--text3);margin-top:.22rem">ℹ️ Para alterar proposta ou valor, corrija/estorne o recebimento vinculado. Se for de backfill, use a seção 🧹 Curadoria acima para registrar a conferência.</div>'
+            : '';
+          bEl.innerHTML = '<div class="modal-aviso" style="margin:.4rem 0">🔒 Esta conta possui <strong>' + recs.length +
+            ' recebimento(s) vinculado(s)</strong>. Alteração de <strong>proposta</strong> e de <strong>valor</strong> estão bloqueadas.' + _bfExtra + '</div>';
+        }
         var propSel = document.getElementById('medit-proposta');
         if (propSel) propSel.disabled = true;
         if (vEl)  vEl.disabled  = true;
@@ -5518,7 +5592,11 @@ function fecharModalEditarNF() {
   _meditNFAtual = _meditPropostaAtual = null;
   _meditPropostaOrigId = null;
   _meditTemRecebimento = false;
+  _meditIsBackfill     = false;
+  _meditBackfillRef    = null;
   _meditVencModo = 'manual';
+  var bfPanel = document.getElementById('medit-backfill-panel');
+  if (bfPanel) bfPanel.style.display = 'none';
   // Limpar painéis dinâmicos
   ['medit-aliq-consideradas','medit-comparativo-panel','medit-alertas-financeiros'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.innerHTML = '';
@@ -5650,8 +5728,38 @@ async function salvarEditarNF() {
     var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
 
     // Montar observacoes: preservar fase_c existente, atualizar campos, append historico
-    var obsObj = _meditParseObs(nf.observacoes);
-    obsObj.texto  = novoObs;
+    var _bfRes2  = _meditResolveBackfill(nf);
+    var obsObj   = _bfRes2.obsObj;
+    obsObj.texto = novoObs;
+
+    // Salvar metadados de curadoria backfill (se aplicável)
+    if (_meditIsBackfill) {
+      var _bfStEl     = document.getElementById('medit-bf-status');
+      var _bfPorEl    = document.getElementById('medit-bf-por');
+      var _bfObsConfEl= document.getElementById('medit-bf-obs-conf');
+      var _bfStNovo   = _bfStEl     ? _bfStEl.value                    : 'pendente';
+      var _bfPorNovo  = _bfPorEl    ? _bfPorEl.value.trim()            : '';
+      var _bfObsNovo  = _bfObsConfEl? _bfObsConfEl.value.trim()        : '';
+      var _bfPrev     = obsObj.fase_c.backfill || {};
+      var _bfHist     = Array.isArray(_bfPrev.historico_curadoria) ? _bfPrev.historico_curadoria : [];
+      if (_bfStNovo !== (_bfPrev.status_conferencia || 'pendente')) {
+        _bfHist.push({
+          data_hora:       new Date().toISOString(),
+          status_anterior: _bfPrev.status_conferencia || 'pendente',
+          status_novo:     _bfStNovo,
+          conferido_por:   _bfPorNovo
+        });
+      }
+      obsObj.fase_c.backfill = Object.assign(_bfPrev, {
+        origem:                 'backfill',
+        ref:                    _meditBackfillRef || _bfPrev.ref || '',
+        status_conferencia:     _bfStNovo,
+        conferido_em:           _bfStNovo !== 'pendente' ? (_bfPrev.conferido_em || new Date().toISOString()) : null,
+        conferido_por:          _bfPorNovo  || _bfPrev.conferido_por  || null,
+        observacao_conferencia: _bfObsNovo  || _bfPrev.observacao_conferencia || '',
+        historico_curadoria:    _bfHist
+      });
+    }
     // Alíquotas reais (apenas campos preenchidos)
     var aliqReaisPayload = Object.assign(obsObj.fase_c.aliquotas_reais || {}, {});
     if (arNF   > 0) aliqReaisPayload.nf_real_pct               = parseFloat(arNF.toFixed(4));
@@ -5788,6 +5896,37 @@ console.log('[Editar NF] módulo carregado e funções registradas');
     <!-- Alertas de bloqueio / cancelamento -->
     <div id="medit-bloqueio"></div>
     <div id="medit-alerta-cancelada"></div>
+
+    <!-- Curadoria Backfill (Fase C.3) — visível somente para NFs de backfill -->
+    <div id="medit-backfill-panel" style="display:none">
+      <div class="medit-bf-secao">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem">
+          <span class="medit-bf-badge">📦 Origem: Backfill</span>
+          <span id="medit-bf-status-badge" style="font-size:.65rem;color:var(--text3)"></span>
+        </div>
+        <div class="medit-bf-ref" id="medit-bf-ref-txt">—</div>
+        <div class="medit-bf-aviso">⚠️ Este lançamento veio do backfill de dados históricos. Revise NF, proposta, conta e recebimentos antes de usar nos relatórios.</div>
+        <div class="medit-grid-2">
+          <div>
+            <div class="medit-label">Status de conferência</div>
+            <select id="medit-bf-status" class="modal-input">
+              <option value="pendente">⏳ Pendente de conferência</option>
+              <option value="conferido">✅ Conferido</option>
+              <option value="corrigido">🔧 Corrigido manualmente</option>
+            </select>
+          </div>
+          <div>
+            <div class="medit-label">Conferido por</div>
+            <input type="text" id="medit-bf-por" class="modal-input" placeholder="Nome ou login">
+          </div>
+        </div>
+        <div style="margin-top:.32rem">
+          <div class="medit-label">Observação de conferência</div>
+          <input type="text" id="medit-bf-obs-conf" class="modal-input"
+            placeholder="Ex: Conferido com proposta 180A.25 — valores corretos">
+        </div>
+      </div>
+    </div>
 
     <!-- Proposta vinculada -->
     <div class="medit-secao">
