@@ -4611,34 +4611,10 @@ async function nfFaseCsalvar() {
   _loading('⏳ Salvando NF…');
 
   try {
-    // 1. Encontrar conta_receber existente ou criar nova para a proposta
-    var contaId = null;
-    var contas  = await sf.listarContasReceber(empId);
-    var contaExist = (contas || []).find(function(c) {
-      return c.proposta_app_id === p.id;
-    });
-
-    if (contaExist) {
-      contaId = contaExist.id;
-    } else {
-      // Auto-criar conta a receber vinculada à proposta
-      var novaConta = await sf.criarContaReceber({
-        empresa_id:      empId,
-        titulo:          (p.num || '') + ' — ' + _esc(p.tit || p.cli || 'Proposta'),
-        cliente_nome:    p.cli || '',
-        proposta_app_id: p.id,
-        valor_previsto:  p.val || 0,
-        status:          'a_faturar'
-      });
-      contaId = novaConta.id;
-      console.log('[NF FaseC] Conta a receber criada automaticamente:', contaId);
-    }
-
-    // 2. Montar metadados extras para o campo observacoes
+    // 1. Montar metadados (feito primeiro — reutilizado na conta e na NF)
     // Formato estruturado: { texto, fase_c: { campos nomeados } }
-    // O texto livre do usuário nunca é perdido — fica em obsPayload.texto
-    var pct   = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
-    var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+    var pct      = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
+    var pctRS    = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
     var obsUsuario = ((document.getElementById('nf-novo-obs') || {}).value || '').trim();
     var obsPayload = {
       texto: obsUsuario,
@@ -4654,7 +4630,29 @@ async function nfFaseCsalvar() {
     };
     var obsFinal = JSON.stringify(obsPayload);
 
-    // 3. Criar a NF no Financeiro (nunca escreve em prop.tl.nfs[])
+    // 2. Criar conta_receber própria para ESTA NF (modelo N NFs → N contas)
+    //    proposta_app_id preenchido nos dois registros para rastreabilidade completa.
+    //    data_vencimento derivada de p.tl.prazoPgto quando disponível.
+    var nfNumero   = ((document.getElementById('nf-novo-numero') || {}).value || '').trim();
+    var dtVenc     = (p.tl && p.tl.prazoPgto && /^\d{4}-\d{2}-\d{2}$/.test(p.tl.prazoPgto))
+      ? p.tl.prazoPgto : null;
+    var labelNF    = nfNumero ? ('NF ' + nfNumero) : 'NF s/n';
+    var tituloConta = (p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(valor);
+
+    var novaConta = await sf.criarContaReceber({
+      empresa_id:      empId,
+      titulo:          tituloConta,
+      cliente_nome:    p.cli  || '',
+      proposta_app_id: p.id,
+      valor_previsto:  valor,
+      data_vencimento: dtVenc,
+      status:          'a_faturar',
+      observacoes:     obsFinal
+    });
+    var contaId = novaConta.id;
+    console.log('[NF FaseC] Conta a receber própria criada:', contaId, '— NF:', labelNF);
+
+    // 3. Criar a NF apontando para a conta desta NF (nunca escreve em prop.tl.nfs[])
     var dataEmissao = (document.getElementById('nf-novo-data') || {}).value
       || new Date().toISOString().slice(0, 10);
 
@@ -4662,7 +4660,7 @@ async function nfFaseCsalvar() {
       empresa_id:       empId,
       conta_receber_id: contaId,
       proposta_app_id:  p.id,
-      numero_nf:        ((document.getElementById('nf-novo-numero') || {}).value || '').trim() || null,
+      numero_nf:        nfNumero || null,
       tipo_nf:          (document.getElementById('nf-novo-tipo') || {}).value || 'servico',
       data_emissao:     dataEmissao,
       valor_nf:         valor,
