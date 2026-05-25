@@ -115,8 +115,15 @@
       tipo: 'iframe',
       src: 'pages/financeiro.html',
       perfisPermitidos: ['dono', 'admin', 'gestor'],
-      badge: 'Em breve',
-      nav: []
+      nav: [
+        { label: 'Notas Fiscais de Faturamento',  icon: '📄', action: "Router.iframeMsg('financeiro','SHOW_TAB','nfs');Router._setNavAtivo(this)" },
+        { label: 'Notas Fiscais de Fornecedores', icon: '📥', action: "Router.iframeMsg('financeiro','SHOW_TAB','nf-fornecedor');Router._setNavAtivo(this)" },
+        { label: 'Contas a Receber',              icon: '💰', action: "Router.iframeMsg('financeiro','SHOW_TAB','contas');Router._setNavAtivo(this)" },
+        { label: 'Contas a Pagar',                icon: '💳', action: "Router.iframeMsg('financeiro','SHOW_TAB','cp');Router._setNavAtivo(this)" },
+        { label: 'Fluxo de Caixa',                icon: '💵', action: "Router.iframeMsg('financeiro','SHOW_TAB','fluxo');Router._setNavAtivo(this)" },
+        { label: 'DRE Gerencial',                 icon: '📊', action: "Router.iframeMsg('financeiro','SHOW_TAB','dre');Router._setNavAtivo(this)" },
+        { label: 'Ferramentas',                   icon: '⚙️', action: "Router.iframeMsg('financeiro','SHOW_TAB','ferramentas');Router._setNavAtivo(this)" },
+      ]
     },
   ];
 
