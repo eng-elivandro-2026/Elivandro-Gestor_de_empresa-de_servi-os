@@ -9896,6 +9896,7 @@ function rExecTimeline(){
 <script src="js/core/proposta-stages.js"></script>
 <script src="js/core/app-core.js"></script>
 <script src="js/services/decision-engine/index.js"></script>
+<script src="js/core/permissoes.js?v=1"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js"></script>
 <script src="js/modules/categoria-analise.js?v=2"></script>
@@ -10009,6 +10010,7 @@ async function iniciarPlataforma() {
     var { data } = await window.sbClient.auth.getUser();
     if (data && data.user) {
       var email = data.user.email || '';
+      window._userEmail = email; // usado por permissoes.js para superadmin check (G4A)
       document.getElementById('hdr-email').textContent = email.split('@')[0];
       document.getElementById('hdr-avatar').textContent = email.slice(0,2).toUpperCase();
     }
@@ -10212,9 +10214,11 @@ function fecharMemorial(){
 // ══ GESTÃO DE USUÁRIOS ════════════════════════════════════════
 
 function abrirGerenciarUsuarios() {
-  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (_gp !== 'dono') {
-    alert('Acesso negado. Apenas o Dono da empresa pode gerenciar usuários.');
+  var _podeGU = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'usuarios')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_podeGU) {
+    toast('Acesso negado. Apenas Dono ou Admin podem gerenciar usuários.', 'err');
     return;
   }
   var m = document.getElementById('modalUsuarios');
@@ -10410,9 +10414,11 @@ function _gerarSenhaTemp() {
 }
 
 async function convidarUsuario() {
-  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (_gp !== 'dono') {
-    alert('Acesso negado. Apenas o Dono da empresa pode convidar usuários.');
+  var _podeConv = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'usuarios')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_podeConv) {
+    toast('Acesso negado. Apenas Dono ou Admin podem convidar usuários.', 'err');
     return;
   }
   var nome    = (document.getElementById('invNome')   ||{}).value||'';
@@ -10478,9 +10484,11 @@ async function _popularDropdownUsuarios() {
 }
 
 async function vincularUsuarioExistente() {
-  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (_gp !== 'dono') {
-    alert('Acesso negado. Apenas o Dono da empresa pode vincular usuários.');
+  var _podeVin = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'usuarios')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_podeVin) {
+    toast('Acesso negado. Apenas Dono ou Admin podem vincular usuários.', 'err');
     return;
   }
   var usuarioId = (document.getElementById('vinUsuario')||{}).value||'';
@@ -11262,11 +11270,12 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
 var _empEditandoId = null;
 
 function abrirEditarEmpresa() {
-  // Somente dono da empresa pode acessar o cadastro.
-  // admin/gestor não têm acesso por enquanto — upgrade em G3/G4.
-  var perfil = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (perfil !== 'dono') {
-    toast('Acesso negado. Apenas o Dono da empresa pode editar o cadastro.', 'err');
+  // Configurações.empresa: dono e admin (G4A — permissoes.js)
+  var _podeCfgEmp = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'empresa')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_podeCfgEmp) {
+    toast('Acesso negado. Apenas Dono ou Admin podem editar o cadastro da empresa.', 'err');
     return;
   }
 
@@ -11364,9 +11373,11 @@ function _empValidar() {
 async function salvarEditarEmpresa() {
   if (!_empEditandoId) { toast('Nenhuma empresa selecionada.', 'err'); return; }
 
-  var perfil = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (perfil !== 'dono') {
-    toast('Apenas o Dono pode salvar alterações no cadastro da empresa.', 'err');
+  var _podeSalvarEmp = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'empresa')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_podeSalvarEmp) {
+    toast('Apenas Dono ou Admin podem salvar alterações no cadastro da empresa.', 'err');
     return;
   }
 
