@@ -421,6 +421,54 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .po-status-badge.conferido{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.4);color:#1e7b34}
 .po-status-badge.divergente{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);color:#a0190f}
 .po-status-badge.liberado{background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.5);color:#145a24}
+/* ── Fase F: NF Fornecedor ──────────────────────────────────── */
+.nff-import-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1.25rem}
+.nff-import-title{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.75rem}
+.nff-import-row{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
+.nff-btn-file{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.8rem;color:var(--text);cursor:pointer;transition:.15s;font-family:inherit;line-height:1.4}
+.nff-btn-file:hover{border-color:var(--acc,var(--accent));color:var(--acc,var(--accent))}
+.nff-arquivo-nome{font-size:.8rem;color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nff-btn-ler{padding:.38rem .85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.8rem;color:var(--text);cursor:pointer;font-family:inherit;transition:.15s;line-height:1.4}
+.nff-btn-ler:hover:not(:disabled){border-color:var(--acc,var(--accent));color:var(--acc,var(--accent))}
+.nff-btn-ler:disabled{opacity:.4;cursor:not-allowed}
+.nff-preview-section{margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border)}
+.nff-alert{display:flex;align-items:flex-start;gap:.45rem;padding:.45rem .7rem;border-radius:var(--r2);font-size:.78rem;margin-bottom:.4rem;line-height:1.45}
+.nff-alert.err{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.28);color:#c0190f}
+.nff-alert.warn{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.28);color:#9a7000}
+.nff-alert.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:#1e7b34}
+.nff-preview-bloco{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem .9rem;margin-bottom:.65rem}
+.nff-preview-bloco-titulo{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.5rem}
+.nff-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.35rem .65rem}
+.nff-preview-item{display:flex;flex-direction:column;gap:.08rem}
+.nff-preview-label{font-size:.67rem;color:var(--text3)}
+.nff-preview-val{font-size:.8rem;color:var(--text);font-weight:500;word-break:break-word}
+.nff-preview-val.mono{font-family:monospace;font-size:.72rem}
+.nff-items-wrap{overflow-x:auto;margin-top:.5rem}
+.nff-items-table{width:100%;font-size:.72rem;border-collapse:collapse;min-width:520px}
+.nff-items-table th{background:var(--bg2);padding:.32rem .45rem;text-align:left;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap}
+.nff-items-table td{padding:.28rem .45rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.nff-items-table tr:last-child td{border-bottom:none}
+.nff-items-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.nff-preview-actions{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-top:.85rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.nff-btn-salvar{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:700;padding:.5rem 1.1rem;border-radius:var(--r2);border:1px solid var(--emp-bdr,var(--border));background:var(--emp-bg,var(--bg3));color:var(--emp-cor-2,var(--text));cursor:pointer;transition:all .15s;font-family:inherit}
+.nff-btn-salvar:hover:not(:disabled){filter:brightness(1.15)}
+.nff-btn-salvar:disabled{opacity:.4;cursor:not-allowed}
+.nff-btn-cancelar{padding:.45rem .85rem;background:none;border:1px solid var(--border);border-radius:var(--r2);font-size:.8rem;color:var(--text2);cursor:pointer;font-family:inherit;transition:.15s}
+.nff-btn-cancelar:hover{border-color:var(--red);color:var(--red)}
+.nff-lista-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem}
+.nff-lista-titulo{font-size:.82rem;font-weight:700;color:var(--text)}
+.nff-table-wrap{overflow-x:auto}
+#nff-table-nfs{width:100%;font-size:.75rem;border-collapse:collapse;min-width:600px}
+#nff-table-nfs th{background:var(--bg2);padding:.4rem .6rem;text-align:left;font-weight:600;color:var(--text3);border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+#nff-table-nfs td{padding:.38rem .6rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+#nff-table-nfs tr:hover td{background:var(--bg2)}
+#nff-table-nfs td.num{text-align:right;font-variant-numeric:tabular-nums}
+.nff-badge{display:inline-flex;align-items:center;gap:.28rem;padding:.14rem .42rem;border-radius:var(--r2);font-size:.67rem;font-weight:700;letter-spacing:.02em}
+.nff-badge.importado{background:rgba(56,139,253,.1);border:1px solid rgba(56,139,253,.3);color:#1a6bb5}
+.nff-badge.vinculado{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:#1e7b34}
+.nff-badge.cancelado{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:#c0190f}
+.nff-btn-ver{padding:.22rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.72rem;color:var(--text2);cursor:pointer;font-family:inherit;transition:.15s}
+.nff-btn-ver:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -1218,26 +1266,58 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <!-- ════════════════════════════════════════════════════════════ -->
 <div id="tab-nf-fornecedor" class="tab-content" style="display:none">
 <div class="wrap">
+  <!-- ── Cabeçalho ── -->
   <div class="page-header">
     <div class="page-header-left">
       <div class="page-title">📥 Notas Fiscais de Fornecedores</div>
-      <div class="page-sub">Gestão de NFs recebidas de fornecedores</div>
+      <div class="page-sub">Importe XML de NF-e de fornecedores para gerar Contas a Pagar e alimentar o Banco de Preços Reais.</div>
+    </div>
+    <div class="page-header-right">
+      <button class="btn-refresh" id="nff-btn-refresh" onclick="recarregarNFsFornecedor()" title="Recarregar lista">↺</button>
     </div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:center;min-height:320px">
-    <div style="text-align:center;max-width:420px;padding:2rem">
-      <div style="font-size:2.5rem;margin-bottom:.75rem">📥</div>
-      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Notas Fiscais de Fornecedores</div>
-      <div style="font-size:.82rem;color:var(--text2);line-height:1.6">
-        Esta funcionalidade será implementada em fase futura.<br>
-        Permitirá cadastrar e controlar NFs recebidas de fornecedores,<br>
-        vinculadas a obras e contas a pagar.
-      </div>
-      <div style="margin-top:1.25rem;display:inline-flex;align-items:center;gap:.45rem;padding:.45rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.75rem;color:var(--text3);font-weight:600">
-        ⏳ Em breve
+
+  <!-- ── Área de importação XML ── -->
+  <div class="nff-import-section">
+    <div class="nff-import-title">📥 Importar XML de Fornecedor</div>
+    <div class="nff-import-row">
+      <label for="nff-xml-input" class="nff-btn-file">📁 Selecionar XML</label>
+      <input type="file" id="nff-xml-input" accept=".xml" style="display:none" onchange="_nffArquivoSelecionado(this)">
+      <span id="nff-arquivo-nome" class="nff-arquivo-nome">Nenhum arquivo selecionado</span>
+      <button id="nff-btn-ler" class="nff-btn-ler" onclick="_nffLerXML()" disabled>🔍 Ler XML</button>
+    </div>
+
+    <!-- Preview (oculto até leitura do XML) -->
+    <div id="nff-preview" class="nff-preview-section" style="display:none">
+      <div id="nff-preview-alertas"></div>
+      <div id="nff-preview-conteudo"></div>
+      <div class="nff-preview-actions">
+        <button id="nff-btn-salvar" class="nff-btn-salvar" onclick="_nffSalvar()">💾 Criar Conta(s) a Pagar e Banco de Preços</button>
+        <button class="nff-btn-cancelar" onclick="_nffCancelarPreview()">✕ Cancelar</button>
+        <div id="nff-msg-salvar" class="status-msg"></div>
       </div>
     </div>
+
+    <div id="nff-import-msg" class="status-msg"></div>
   </div>
+
+  <!-- ── Lista de NFs importadas ── -->
+  <div id="nff-lista-wrap">
+    <div id="nff-lista-loading" class="status-msg loading" style="display:none">Carregando NFs de fornecedores…</div>
+    <div id="nff-lista-vazio" style="display:none">
+      <div class="sub-vazio">Nenhuma NF de fornecedor importada. Selecione um arquivo XML acima para começar.</div>
+    </div>
+    <div id="nff-lista-conteudo"></div>
+  </div>
+</div>
+
+<!-- ── Painel de detalhe lateral ── -->
+<div id="nff-detalhe-panel" class="detalhe-panel">
+  <div class="detalhe-hdr">
+    <span class="detalhe-titulo" id="nff-detalhe-titulo">NF Fornecedor</span>
+    <button class="btn-fechar" onclick="_nffFecharDetalhe()">✕</button>
+  </div>
+  <div class="detalhe-corpo" id="nff-detalhe-corpo"></div>
 </div>
 </div><!-- /#tab-nf-fornecedor -->
 
@@ -1985,6 +2065,663 @@ window.addEventListener('message', function(e) {
   }
 });
 
+// ============================================================
+// FASE F — Importação de XML de NF de Fornecedor
+// ============================================================
+
+// Estado da sessão de importação
+var _nffDadosAtual = null;   // dados parseados do XML atual
+var _nffsImportadas = [];    // lista de NFs fornecedor carregadas
+
+// ── Helpers de XML ───────────────────────────────────────────
+// Busca por tagName ignorando namespace (NF-e usa namespace canônico)
+function _nffXmlTag(ctx, tagName) {
+  var els = ctx.getElementsByTagName(tagName);
+  if (els.length) return els[0];
+  try { els = ctx.getElementsByTagNameNS('*', tagName); if (els.length) return els[0]; } catch(e) {}
+  var all = ctx.getElementsByTagName('*');
+  for (var i = 0; i < all.length; i++) {
+    if ((all[i].localName || all[i].tagName) === tagName) return all[i];
+  }
+  return null;
+}
+function _nffXmlText(ctx, tagName) {
+  var el = _nffXmlTag(ctx, tagName);
+  return el ? (el.textContent || '').trim() : '';
+}
+function _nffXmlAll(ctx, tagName) {
+  var els = ctx.getElementsByTagName(tagName);
+  if (els.length) return Array.prototype.slice.call(els);
+  try { els = ctx.getElementsByTagNameNS('*', tagName); if (els.length) return Array.prototype.slice.call(els); } catch(e) {}
+  var all = ctx.getElementsByTagName('*'), res = [];
+  for (var i = 0; i < all.length; i++) {
+    if ((all[i].localName || all[i].tagName) === tagName) res.push(all[i]);
+  }
+  return res;
+}
+
+// ── Parser principal do XML ──────────────────────────────────
+function _nffParsearXML(xmlString) {
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(xmlString, 'text/xml');
+  var pe = doc.querySelector('parsererror') || _nffXmlTag(doc, 'parsererror');
+  if (pe) return { erro: 'XML inválido ou corrompido.' };
+
+  // Chave de acesso — prioridade: atributo Id de infNFe → chNFe em protNFe
+  var infNFe = _nffXmlTag(doc, 'infNFe');
+  var chaveAcesso = '';
+  if (infNFe) {
+    var idAttr = infNFe.getAttribute('Id') || infNFe.getAttribute('id') || '';
+    if (idAttr) chaveAcesso = idAttr.replace(/^NFe/, '');
+  }
+  if (!chaveAcesso) chaveAcesso = _nffXmlText(doc, 'chNFe');
+
+  // IDE
+  var nNF          = _nffXmlText(doc, 'nNF');
+  var serie        = _nffXmlText(doc, 'serie');
+  var dhEmi        = _nffXmlText(doc, 'dhEmi') || _nffXmlText(doc, 'dEmi');
+  var natOp        = _nffXmlText(doc, 'natOp');
+  var dataEmissao  = dhEmi ? dhEmi.slice(0, 10) : '';
+
+  // Emitente (fornecedor)
+  var emitEl         = _nffXmlTag(doc, 'emit');
+  var fornNome       = emitEl ? _nffXmlText(emitEl, 'xNome') : '';
+  var fornCNPJ       = emitEl ? (_nffXmlText(emitEl, 'CNPJ') || _nffXmlText(emitEl, 'CPF')) : '';
+  var fornFantasia    = emitEl ? _nffXmlText(emitEl, 'xFant') : '';
+
+  // Destinatário
+  var destEl         = _nffXmlTag(doc, 'dest');
+  var destNome       = destEl ? _nffXmlText(destEl, 'xNome') : '';
+  var destCNPJ       = destEl ? (_nffXmlText(destEl, 'CNPJ') || _nffXmlText(destEl, 'CPF')) : '';
+
+  // Total
+  var vNF = parseFloat(_nffXmlText(doc, 'vNF') || '0') || 0;
+
+  // Informações adicionais
+  var infCpl = _nffXmlText(doc, 'infCpl') || _nffXmlText(doc, 'infAdFisco');
+
+  // Duplicatas (cobranças)
+  var dups = _nffXmlAll(doc, 'dup');
+  var duplicatas = dups.map(function(d) {
+    return {
+      nDup:  _nffXmlText(d, 'nDup'),
+      dVenc: _nffXmlText(d, 'dVenc'),
+      vDup:  parseFloat(_nffXmlText(d, 'vDup') || '0') || 0
+    };
+  });
+
+  // Itens (tag det)
+  var dets  = _nffXmlAll(doc, 'det');
+  var itens = [];
+  dets.forEach(function(det) {
+    var prod = _nffXmlTag(det, 'prod');
+    if (!prod) return;
+    var desconto = parseFloat(_nffXmlText(prod, 'vDesc') || '0') || 0;
+    // Impostos
+    var imposto = _nffXmlTag(det, 'imposto');
+    var impostosJson = null;
+    if (imposto) {
+      var imp = {};
+      var vICMS = _nffXmlText(imposto, 'vICMS');
+      var vIPI  = _nffXmlText(imposto, 'vIPI');
+      var vPIS  = _nffXmlText(imposto, 'vPIS');
+      var vCOF  = _nffXmlText(imposto, 'vCOFINS');
+      if (vICMS) imp.icms   = parseFloat(vICMS);
+      if (vIPI)  imp.ipi    = parseFloat(vIPI);
+      if (vPIS)  imp.pis    = parseFloat(vPIS);
+      if (vCOF)  imp.cofins = parseFloat(vCOF);
+      if (Object.keys(imp).length) impostosJson = JSON.stringify(imp);
+    }
+    itens.push({
+      codigo_fornecedor: _nffXmlText(prod, 'cProd'),
+      descricao:         _nffXmlText(prod, 'xProd'),
+      ncm:               _nffXmlText(prod, 'NCM'),
+      cfop:              _nffXmlText(prod, 'CFOP'),
+      unidade:           _nffXmlText(prod, 'uCom'),
+      quantidade:        parseFloat(_nffXmlText(prod, 'qCom')   || '0') || 0,
+      valor_unitario:    parseFloat(_nffXmlText(prod, 'vUnCom') || '0') || 0,
+      valor_total:       parseFloat(_nffXmlText(prod, 'vProd')  || '0') || 0,
+      desconto:          desconto || null,
+      impostos_json:     impostosJson
+    });
+  });
+
+  return {
+    erro:                null,
+    chave_acesso:        chaveAcesso,
+    numero_nf:           nNF,
+    serie:               serie,
+    data_emissao:        dataEmissao,
+    natureza_operacao:   natOp,
+    fornecedor_nome:     fornNome || fornFantasia,
+    fornecedor_cnpj:     fornCNPJ,
+    destinatario_nome:   destNome,
+    destinatario_cnpj:   destCNPJ,
+    valor_total:         vNF,
+    informacoes_adicionais: infCpl,
+    duplicatas:          duplicatas,
+    itens:               itens
+  };
+}
+
+// ── Seleção de arquivo ────────────────────────────────────────
+function _nffArquivoSelecionado(input) {
+  var nomeEl = document.getElementById('nff-arquivo-nome');
+  var btnLer = document.getElementById('nff-btn-ler');
+  var preview = document.getElementById('nff-preview');
+  var msg     = document.getElementById('nff-import-msg');
+  if (!input.files || !input.files.length) {
+    if (nomeEl) nomeEl.textContent = 'Nenhum arquivo selecionado';
+    if (btnLer) btnLer.disabled = true;
+    return;
+  }
+  var nome = input.files[0].name;
+  if (nomeEl) nomeEl.textContent = nome;
+  if (btnLer) btnLer.disabled = false;
+  if (preview) preview.style.display = 'none';
+  if (msg) msg.className = 'status-msg';
+  _nffDadosAtual = null;
+}
+
+// ── Leitura e parsing do XML ──────────────────────────────────
+function _nffLerXML() {
+  var input = document.getElementById('nff-xml-input');
+  var msg   = document.getElementById('nff-import-msg');
+  if (!input || !input.files || !input.files.length) return;
+  var btnLer = document.getElementById('nff-btn-ler');
+  if (btnLer) btnLer.disabled = true;
+  if (msg) { msg.className = 'status-msg loading'; msg.textContent = 'Lendo arquivo…'; }
+  var reader = new FileReader();
+  reader.onerror = function() {
+    if (msg) { msg.className = 'status-msg err'; msg.textContent = 'Erro ao ler o arquivo.'; }
+    if (btnLer) btnLer.disabled = false;
+  };
+  reader.onload = function(e) {
+    var xmlStr = e.target.result;
+    var dados  = _nffParsearXML(xmlStr);
+    if (dados.erro) {
+      if (msg) { msg.className = 'status-msg err'; msg.textContent = '⚠️ ' + dados.erro; }
+      if (btnLer) btnLer.disabled = false;
+      return;
+    }
+    _nffDadosAtual = dados;
+    if (msg) msg.className = 'status-msg';
+    if (btnLer) btnLer.disabled = false;
+    _nffMostrarPreview(dados);
+  };
+  reader.readAsText(input.files[0], 'UTF-8');
+}
+
+// ── Preview ───────────────────────────────────────────────────
+function _nffMostrarPreview(dados) {
+  var previArea   = document.getElementById('nff-preview');
+  var alertasEl   = document.getElementById('nff-preview-alertas');
+  var conteudoEl  = document.getElementById('nff-preview-conteudo');
+  var btnSalvar   = document.getElementById('nff-btn-salvar');
+  var msgSalvar   = document.getElementById('nff-msg-salvar');
+  if (!previArea) return;
+
+  // Limpar estado anterior
+  if (msgSalvar) msgSalvar.className = 'status-msg';
+
+  // Alertas de validação
+  var alertas = [];
+  var bloqueado = false;
+
+  if (!dados.chave_acesso) {
+    alertas.push({ tipo: 'warn', msg: '⚠️ Chave de acesso não encontrada no XML. A verificação de duplicidade será feita por NF + Série + CNPJ + Valor.' });
+  }
+  if (!dados.fornecedor_nome) {
+    alertas.push({ tipo: 'warn', msg: '⚠️ Nome do fornecedor não identificado no XML.' });
+  }
+  if (!dados.valor_total || dados.valor_total <= 0) {
+    alertas.push({ tipo: 'warn', msg: '⚠️ Valor total zerado ou não encontrado.' });
+  }
+  if (!dados.itens || !dados.itens.length) {
+    alertas.push({ tipo: 'warn', msg: '⚠️ Nenhum item encontrado no XML. O Banco de Preços não será alimentado.' });
+  }
+  if (!dados.duplicatas || !dados.duplicatas.length) {
+    alertas.push({ tipo: 'warn', msg: '⚠️ Sem duplicatas/vencimentos no XML. Será criada uma Conta a Pagar sem data de vencimento — revise após importar.' });
+  }
+  // Verificar destinatário vs empresa ativa
+  if (_empresaAtiva && dados.destinatario_cnpj) {
+    // se o portal tiver CNPJ disponível, comparar (best-effort)
+    try {
+      var empCNPJ = (window.parent && typeof window.parent.getEmpresaAtiva === 'function')
+        ? (window.parent.getEmpresaAtiva() || {}).cnpj || '' : '';
+      var cnpjLimpo = empCNPJ.replace(/\D/g,'');
+      var destLimpo = dados.destinatario_cnpj.replace(/\D/g,'');
+      if (cnpjLimpo && destLimpo && cnpjLimpo !== destLimpo) {
+        alertas.push({ tipo: 'err', msg: '🚫 CNPJ do destinatário (' + dados.destinatario_cnpj + ') é diferente da empresa ativa. Verifique se este XML pertence a esta empresa.' });
+      }
+    } catch(e) {}
+  }
+
+  // Renderizar alertas
+  var alertasHtml = alertas.map(function(a) {
+    return '<div class="nff-alert ' + a.tipo + '">' + a.msg + '</div>';
+  }).join('');
+  if (alertasEl) alertasEl.innerHTML = alertasHtml;
+
+  // Desabilitar salvar se bloqueado
+  if (btnSalvar) btnSalvar.disabled = bloqueado;
+
+  // ── Bloco: Dados da NF ──
+  var htmlNF = '<div class="nff-preview-bloco">'
+    + '<div class="nff-preview-bloco-titulo">📋 Dados da Nota Fiscal</div>'
+    + '<div class="nff-preview-grid">'
+    + _nffPreviewItem('Nº NF', dados.numero_nf || '—')
+    + _nffPreviewItem('Série', dados.serie || '—')
+    + _nffPreviewItem('Emissão', dados.data_emissao || '—')
+    + _nffPreviewItem('Natureza', dados.natureza_operacao || '—')
+    + _nffPreviewItem('Valor Total', _nffFmtMoeda(dados.valor_total))
+    + _nffPreviewItem('Chave Acesso', dados.chave_acesso || '—', true)
+    + '</div></div>';
+
+  // ── Bloco: Fornecedor ──
+  var htmlForn = '<div class="nff-preview-bloco">'
+    + '<div class="nff-preview-bloco-titulo">🏭 Fornecedor (Emitente)</div>'
+    + '<div class="nff-preview-grid">'
+    + _nffPreviewItem('Razão Social', dados.fornecedor_nome || '—')
+    + _nffPreviewItem('CNPJ', dados.fornecedor_cnpj || '—')
+    + '</div></div>';
+
+  // ── Bloco: Destinatário ──
+  var htmlDest = '<div class="nff-preview-bloco">'
+    + '<div class="nff-preview-bloco-titulo">🏢 Destinatário</div>'
+    + '<div class="nff-preview-grid">'
+    + _nffPreviewItem('Nome', dados.destinatario_nome || '—')
+    + _nffPreviewItem('CNPJ', dados.destinatario_cnpj || '—')
+    + '</div></div>';
+
+  // ── Bloco: Vencimentos ──
+  var htmlVenc = '<div class="nff-preview-bloco">'
+    + '<div class="nff-preview-bloco-titulo">📅 Vencimentos / Duplicatas</div>';
+  if (dados.duplicatas && dados.duplicatas.length) {
+    htmlVenc += '<table class="nff-items-table"><thead><tr>'
+      + '<th>Duplicata</th><th>Vencimento</th><th style="text-align:right">Valor</th>'
+      + '</tr></thead><tbody>';
+    dados.duplicatas.forEach(function(d) {
+      htmlVenc += '<tr><td>' + (d.nDup || '—') + '</td>'
+        + '<td>' + (d.dVenc || '—') + '</td>'
+        + '<td class="num">' + _nffFmtMoeda(d.vDup) + '</td></tr>';
+    });
+    htmlVenc += '</tbody></table>';
+  } else {
+    htmlVenc += '<div style="font-size:.78rem;color:var(--text3)">Sem duplicatas. Vencimento será em branco.</div>';
+  }
+  htmlVenc += '</div>';
+
+  // ── Bloco: Itens ──
+  var htmlItens = '<div class="nff-preview-bloco">'
+    + '<div class="nff-preview-bloco-titulo">📦 Itens (' + (dados.itens ? dados.itens.length : 0) + ')</div>';
+  if (dados.itens && dados.itens.length) {
+    htmlItens += '<div class="nff-items-wrap"><table class="nff-items-table"><thead><tr>'
+      + '<th>Cód.</th><th>Descrição</th><th>NCM</th><th>CFOP</th>'
+      + '<th>Un.</th><th style="text-align:right">Qtd</th>'
+      + '<th style="text-align:right">V.Unit.</th><th style="text-align:right">V.Total</th>'
+      + '</tr></thead><tbody>';
+    dados.itens.forEach(function(it) {
+      htmlItens += '<tr>'
+        + '<td>' + (it.codigo_fornecedor || '—') + '</td>'
+        + '<td>' + (it.descricao || '—') + '</td>'
+        + '<td>' + (it.ncm || '—') + '</td>'
+        + '<td>' + (it.cfop || '—') + '</td>'
+        + '<td>' + (it.unidade || '—') + '</td>'
+        + '<td class="num">' + _nffFmtNum(it.quantidade) + '</td>'
+        + '<td class="num">' + _nffFmtMoeda(it.valor_unitario) + '</td>'
+        + '<td class="num">' + _nffFmtMoeda(it.valor_total) + '</td>'
+        + '</tr>';
+    });
+    htmlItens += '</tbody></table></div>';
+  } else {
+    htmlItens += '<div style="font-size:.78rem;color:var(--text3)">Nenhum item encontrado.</div>';
+  }
+  htmlItens += '</div>';
+
+  if (conteudoEl) conteudoEl.innerHTML = htmlNF + htmlForn + htmlDest + htmlVenc + htmlItens;
+  previArea.style.display = '';
+}
+
+function _nffPreviewItem(label, val, mono) {
+  return '<div class="nff-preview-item">'
+    + '<span class="nff-preview-label">' + label + '</span>'
+    + '<span class="nff-preview-val' + (mono ? ' mono' : '') + '">' + _nffEsc(String(val)) + '</span>'
+    + '</div>';
+}
+
+// ── Cancelar preview ─────────────────────────────────────────
+function _nffCancelarPreview() {
+  _nffDadosAtual = null;
+  var previArea = document.getElementById('nff-preview');
+  var input     = document.getElementById('nff-xml-input');
+  var nomeEl    = document.getElementById('nff-arquivo-nome');
+  var btnLer    = document.getElementById('nff-btn-ler');
+  var msgSalvar = document.getElementById('nff-msg-salvar');
+  if (previArea)  previArea.style.display = 'none';
+  if (input)      input.value = '';
+  if (nomeEl)     nomeEl.textContent = 'Nenhum arquivo selecionado';
+  if (btnLer)     btnLer.disabled = true;
+  if (msgSalvar)  msgSalvar.className = 'status-msg';
+}
+
+// ── Salvar: NF âncora + CPs + Banco de Preços ────────────────
+async function _nffSalvar() {
+  if (!_nffDadosAtual) return;
+  if (!_empresaAtiva || !_empresaAtiva.id) {
+    _nffSetMsg('Empresa não identificada.', 'err'); return;
+  }
+  var sf = _sf();
+  if (!sf || !sf.criarNFFornecedor) {
+    _nffSetMsg('Módulo financeiro não disponível.', 'err'); return;
+  }
+  // Guard de perfil
+  try {
+    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario() : null;
+    if (!_p || ['dono','admin','gestor'].indexOf(_p) < 0) {
+      _nffSetMsg('Acesso negado. Apenas gestor, admin ou dono podem importar.', 'err'); return;
+    }
+  } catch(e) { _nffSetMsg('Erro ao verificar perfil.', 'err'); return; }
+
+  var btn = document.getElementById('nff-btn-salvar');
+  if (btn) btn.disabled = true;
+  _nffSetMsg('Verificando duplicidade…', 'loading');
+
+  var dados = _nffDadosAtual;
+  var empresaId = _empresaAtiva.id;
+
+  try {
+    // 1. Verificar duplicidade por chave de acesso
+    if (dados.chave_acesso) {
+      var jaExiste = await sf.verificarNFFornecedorDuplicada(empresaId, dados.chave_acesso);
+      if (jaExiste) {
+        _nffSetMsg('⚠️ Esta NF de fornecedor já foi importada (chave de acesso duplicada).', 'err');
+        if (btn) btn.disabled = false;
+        return;
+      }
+    }
+
+    _nffSetMsg('Criando registro da NF…', 'loading');
+
+    // 2. Criar NF âncora em financeiro_nfs_fornecedor
+    var metadados = {
+      numero_nf:    dados.numero_nf,
+      serie:        dados.serie,
+      data_emissao: dados.data_emissao,
+      fornecedor:   { nome: dados.fornecedor_nome, cnpj: dados.fornecedor_cnpj },
+      destinatario: { nome: dados.destinatario_nome, cnpj: dados.destinatario_cnpj },
+      valor_total:  dados.valor_total,
+      duplicatas:   dados.duplicatas,
+      itens_count:  (dados.itens || []).length,
+      importado_em: new Date().toISOString()
+    };
+    var nfCriada = await sf.criarNFFornecedor({
+      empresa_id:              empresaId,
+      chave_acesso:            dados.chave_acesso || ('NF' + dados.numero_nf + '-' + dados.fornecedor_cnpj),
+      numero_nf:               dados.numero_nf    || null,
+      serie:                   dados.serie        || null,
+      data_emissao:            dados.data_emissao || null,
+      natureza_operacao:       dados.natureza_operacao || null,
+      fornecedor_nome:         dados.fornecedor_nome  || null,
+      fornecedor_cnpj:         dados.fornecedor_cnpj  || null,
+      destinatario_nome:       dados.destinatario_nome || null,
+      destinatario_cnpj:       dados.destinatario_cnpj || null,
+      valor_total:             dados.valor_total || 0,
+      informacoes_adicionais:  dados.informacoes_adicionais || null,
+      xml_metadados_json:      JSON.stringify(metadados),
+      status:                  'importado'
+    });
+    var nfId = nfCriada.id;
+
+    // 3. Criar Conta(s) a Pagar
+    _nffSetMsg('Criando Conta(s) a Pagar…', 'loading');
+    var obsBase = {
+      texto: 'Importado via XML de fornecedor',
+      xml_fornecedor: {
+        chave_acesso:    dados.chave_acesso,
+        numero_nf:       dados.numero_nf,
+        serie:           dados.serie,
+        data_emissao:    dados.data_emissao,
+        fornecedor_nome: dados.fornecedor_nome,
+        fornecedor_cnpj: dados.fornecedor_cnpj,
+        valor_total:     dados.valor_total,
+        origem:          'xml'
+      }
+    };
+
+    if (dados.duplicatas && dados.duplicatas.length > 0) {
+      for (var i = 0; i < dados.duplicatas.length; i++) {
+        var dup = dados.duplicatas[i];
+        var sufParcela = dados.duplicatas.length > 1 ? ' — Parcela ' + (dup.nDup || (i + 1)) : '';
+        var obsCP = JSON.parse(JSON.stringify(obsBase));
+        obsCP.xml_fornecedor.parcela     = dup.nDup;
+        obsCP.xml_fornecedor.duplicatas  = dados.duplicatas;
+        await sf.criarContaPagar({
+          empresa_id:      empresaId,
+          descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor') + sufParcela,
+          fornecedor_nome: dados.fornecedor_nome || null,
+          fornecedor_cnpj: dados.fornecedor_cnpj || null,
+          categoria:       'material',
+          valor_previsto:  dup.vDup || dados.valor_total,
+          valor_pago:      0,
+          data_vencimento: dup.dVenc || null,
+          status:          'em_aberto',
+          origem:          'xml_fornecedor',
+          referencia_id:   dados.chave_acesso || nfId,
+          observacao:      JSON.stringify(obsCP)
+        });
+      }
+    } else {
+      var obsUnica = JSON.parse(JSON.stringify(obsBase));
+      obsUnica.xml_fornecedor.duplicatas = [];
+      await sf.criarContaPagar({
+        empresa_id:      empresaId,
+        descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor'),
+        fornecedor_nome: dados.fornecedor_nome || null,
+        fornecedor_cnpj: dados.fornecedor_cnpj || null,
+        categoria:       'material',
+        valor_previsto:  dados.valor_total || 0,
+        valor_pago:      0,
+        data_vencimento: null,
+        status:          'em_aberto',
+        origem:          'xml_fornecedor',
+        referencia_id:   dados.chave_acesso || nfId,
+        observacao:      JSON.stringify(obsUnica)
+      });
+    }
+
+    // 4. Gravar itens no Banco de Preços Reais
+    if (dados.itens && dados.itens.length > 0) {
+      _nffSetMsg('Gravando ' + dados.itens.length + ' item(ns) no Banco de Preços…', 'loading');
+      var lote = dados.itens.map(function(it) {
+        return Object.assign({
+          empresa_id:      empresaId,
+          nf_fornecedor_id: nfId,
+          chave_acesso:    dados.chave_acesso || null,
+          numero_nf:       dados.numero_nf    || null,
+          serie_nf:        dados.serie        || null,
+          data_emissao:    dados.data_emissao || null,
+          fornecedor_nome: dados.fornecedor_nome || null,
+          fornecedor_cnpj: dados.fornecedor_cnpj || null,
+          origem:          'xml_fornecedor'
+        }, it);
+      });
+      await sf.criarItensBancoPrecosEmLote(lote);
+    }
+
+    // Sucesso — resetar e recarregar
+    _nffSetMsg('✅ NF importada com sucesso!', 'ok');
+    _nffCancelarPreview();
+    await carregarNFsFornecedor(empresaId);
+    await carregarContasPagar(empresaId);
+    carregarFluxoCaixa(empresaId);
+
+    setTimeout(function() {
+      var m = document.getElementById('nff-import-msg');
+      if (m) m.className = 'status-msg';
+    }, 5000);
+
+  } catch(err) {
+    console.warn('[Fase F] erro ao salvar XML:', err);
+    _nffSetMsg('Erro: ' + (err.message || String(err)), 'err');
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _nffSetMsg(txt, tipo) {
+  // Atualiza a mensagem de status no painel de salvar se preview visível, senão na área de import
+  var m1 = document.getElementById('nff-msg-salvar');
+  var m2 = document.getElementById('nff-import-msg');
+  var preview = document.getElementById('nff-preview');
+  var usarSalvar = preview && preview.style.display !== 'none';
+  var el = usarSalvar ? m1 : m2;
+  if (el) { el.className = 'status-msg ' + (tipo || ''); el.textContent = txt; }
+}
+
+// ── Carregar lista de NFs fornecedor ──────────────────────────
+async function carregarNFsFornecedor(empresaId) {
+  var loadEl  = document.getElementById('nff-lista-loading');
+  var vazioEl = document.getElementById('nff-lista-vazio');
+  var contEl  = document.getElementById('nff-lista-conteudo');
+  if (!empresaId) return;
+  if (loadEl) { loadEl.style.display = ''; loadEl.className = 'status-msg loading'; }
+  if (contEl)  contEl.innerHTML = '';
+  if (vazioEl) vazioEl.style.display = 'none';
+  var sf = _sf();
+  if (!sf || !sf.listarNFsFornecedorEmpresa) {
+    if (loadEl) loadEl.style.display = 'none';
+    return;
+  }
+  try {
+    var lista = await sf.listarNFsFornecedorEmpresa(empresaId);
+    _nffsImportadas = lista || [];
+    if (loadEl) loadEl.style.display = 'none';
+    if (!_nffsImportadas.length) {
+      if (vazioEl) vazioEl.style.display = '';
+    } else {
+      _nffRenderLista(_nffsImportadas);
+    }
+  } catch(err) {
+    console.warn('[Fase F] erro ao carregar NFs fornecedor:', err);
+    if (loadEl) { loadEl.className = 'status-msg err'; loadEl.textContent = 'Erro ao carregar NFs: ' + (err.message || err); }
+  }
+}
+
+function recarregarNFsFornecedor() {
+  if (_empresaAtiva && _empresaAtiva.id) carregarNFsFornecedor(_empresaAtiva.id);
+}
+
+// ── Renderizar tabela de NFs importadas ───────────────────────
+function _nffRenderLista(lista) {
+  var contEl = document.getElementById('nff-lista-conteudo');
+  if (!contEl) return;
+  var html = '<div class="nff-lista-header">'
+    + '<span class="nff-lista-titulo">NFs Importadas (' + lista.length + ')</span>'
+    + '</div>'
+    + '<div class="nff-table-wrap">'
+    + '<table id="nff-table-nfs"><thead><tr>'
+    + '<th>Emissão</th><th>Nº NF</th><th>Fornecedor</th><th>CNPJ</th>'
+    + '<th style="text-align:right">Valor Total</th><th>Status</th>'
+    + '<th>Chave (início)</th><th>Ações</th>'
+    + '</tr></thead><tbody>';
+  lista.forEach(function(nf) {
+    var chaveAbrev = nf.chave_acesso ? nf.chave_acesso.slice(0, 10) + '…' : '—';
+    var statusBadge = '<span class="nff-badge ' + (nf.status || 'importado') + '">'
+      + ({ importado: '📥 Importado', vinculado: '✅ Vinculado', cancelado: '🚫 Cancelado' }[nf.status] || nf.status)
+      + '</span>';
+    html += '<tr>'
+      + '<td>' + (nf.data_emissao || '—') + '</td>'
+      + '<td>' + (nf.numero_nf || '—') + '</td>'
+      + '<td>' + _nffEsc(nf.fornecedor_nome || '—') + '</td>'
+      + '<td style="font-family:monospace;font-size:.7rem">' + (nf.fornecedor_cnpj || '—') + '</td>'
+      + '<td class="num">' + _nffFmtMoeda(nf.valor_total) + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '<td style="font-family:monospace;font-size:.69rem;color:var(--text3)">' + chaveAbrev + '</td>'
+      + '<td><button class="nff-btn-ver" onclick="_nffAbrirDetalhe(\'' + nf.id + '\')">Ver</button></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  contEl.innerHTML = html;
+}
+
+// ── Painel de detalhe ─────────────────────────────────────────
+function _nffAbrirDetalhe(id) {
+  var nf = (_nffsImportadas || []).find(function(n) { return n.id === id; });
+  if (!nf) return;
+  var tituloEl = document.getElementById('nff-detalhe-titulo');
+  var corpoEl  = document.getElementById('nff-detalhe-corpo');
+  var panel    = document.getElementById('nff-detalhe-panel');
+  if (tituloEl) tituloEl.textContent = 'NF ' + (nf.numero_nf || '') + ' — ' + (nf.fornecedor_nome || 'Fornecedor');
+  var metadados = null;
+  try { metadados = nf.xml_metadados_json ? JSON.parse(nf.xml_metadados_json) : null; } catch(e) {}
+  var html = '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Dados da NF</div>'
+    + _nffDetalheRow('Nº NF', nf.numero_nf)
+    + _nffDetalheRow('Série', nf.serie)
+    + _nffDetalheRow('Emissão', nf.data_emissao)
+    + _nffDetalheRow('Natureza', nf.natureza_operacao)
+    + _nffDetalheRow('Valor Total', _nffFmtMoeda(nf.valor_total))
+    + _nffDetalheRow('Status', nf.status)
+    + _nffDetalheRow('Importado em', nf.created_at ? nf.created_at.slice(0,10) : '—')
+    + '</div>'
+    + '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Fornecedor</div>'
+    + _nffDetalheRow('Nome', nf.fornecedor_nome)
+    + _nffDetalheRow('CNPJ', nf.fornecedor_cnpj)
+    + '</div>'
+    + '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Destinatário</div>'
+    + _nffDetalheRow('Nome', nf.destinatario_nome)
+    + _nffDetalheRow('CNPJ', nf.destinatario_cnpj)
+    + '</div>';
+  if (nf.chave_acesso) {
+    html += '<div class="detalhe-secao">'
+      + '<div class="detalhe-secao-titulo">Chave de Acesso</div>'
+      + '<div style="font-family:monospace;font-size:.7rem;color:var(--text2);word-break:break-all;padding:.3rem 0">' + nf.chave_acesso + '</div>'
+      + '</div>';
+  }
+  if (metadados && metadados.itens_count) {
+    html += '<div class="detalhe-secao">'
+      + '<div class="detalhe-secao-titulo">Banco de Preços</div>'
+      + _nffDetalheRow('Itens gravados', metadados.itens_count)
+      + '</div>';
+  }
+  if (nf.informacoes_adicionais) {
+    html += '<div class="detalhe-secao">'
+      + '<div class="detalhe-secao-titulo">Informações Adicionais</div>'
+      + '<div style="font-size:.78rem;color:var(--text2);line-height:1.5">' + _nffEsc(nf.informacoes_adicionais) + '</div>'
+      + '</div>';
+  }
+  if (corpoEl) corpoEl.innerHTML = html;
+  if (panel)   panel.classList.add('on');
+}
+
+function _nffFecharDetalhe() {
+  var panel = document.getElementById('nff-detalhe-panel');
+  if (panel) panel.classList.remove('on');
+}
+
+function _nffDetalheRow(label, val) {
+  return '<div style="display:flex;justify-content:space-between;padding:.22rem 0;border-bottom:1px solid var(--border)">'
+    + '<span style="font-size:.75rem;color:var(--text3)">' + label + '</span>'
+    + '<span style="font-size:.78rem;color:var(--text);font-weight:500">' + _nffEsc(String(val || '—')) + '</span>'
+    + '</div>';
+}
+
+// ── Utilitários de formatação ────────────────────────────────
+function _nffFmtMoeda(v) {
+  var n = parseFloat(v) || 0;
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function _nffFmtNum(v) {
+  var n = parseFloat(v) || 0;
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+}
+function _nffEsc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ── Inicialização ─────────────────────────────────────────────
 (function init() {
   // Sincronizar tema claro/escuro com portal pai
@@ -2012,6 +2749,8 @@ window.addEventListener('message', function(e) {
       // F4A — DRE Gerencial
       _dreInicializarPeriodo();
       carregarDRE(emp.id);
+      // Fase F — NF Fornecedor
+      carregarNFsFornecedor(emp.id);
     } else {
       _mostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _nfMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
@@ -2040,6 +2779,9 @@ document.addEventListener('keydown', function(e) {
     }
     if (document.getElementById('nf-detalhe-panel').classList.contains('on')) {
       fecharDetalheNF(); return;
+    }
+    if (document.getElementById('nff-detalhe-panel') && document.getElementById('nff-detalhe-panel').classList.contains('on')) {
+      _nffFecharDetalhe(); return;
     }
     if (document.getElementById('detalhe-panel').classList.contains('on')) {
       fecharDetalhe(); return;

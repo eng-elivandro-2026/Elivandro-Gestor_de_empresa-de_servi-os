@@ -745,6 +745,106 @@
 
 
   // ============================================================
+  // FASE F — NF Fornecedor + Banco de Preços Reais
+  // Funções isoladas — não alteram as anteriores.
+  // ============================================================
+
+  /**
+   * Cria cabeçalho de NF de fornecedor importada por XML.
+   * Âncora para CPs e itens do banco de preços.
+   */
+  async function sbCriarNFFornecedor(dados) {
+    if (!dados.empresa_id)   throw new Error('[Financeiro F] empresa_id obrigatório.');
+    if (!dados.chave_acesso) throw new Error('[Financeiro F] chave_acesso obrigatória.');
+
+    var r = await client()
+      .from('financeiro_nfs_fornecedor')
+      .insert(dados)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  /**
+   * Lista todas as NFs de fornecedor importadas da empresa,
+   * ordenadas por data de emissão decrescente.
+   */
+  async function sbListarNFsFornecedorEmpresa(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F] empresa_id obrigatório.');
+
+    var r = await client()
+      .from('financeiro_nfs_fornecedor')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('data_emissao', { ascending: false, nullsFirst: false })
+      .order('created_at',   { ascending: false });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Verifica duplicidade por chave de acesso dentro da empresa.
+   * Retorna o registro existente ou null se não houver.
+   */
+  async function sbVerificarNFFornecedorDuplicada(empresaId, chaveAcesso) {
+    if (!empresaId || !chaveAcesso) return null;
+
+    var r = await client()
+      .from('financeiro_nfs_fornecedor')
+      .select('id, numero_nf, data_emissao, fornecedor_nome')
+      .eq('empresa_id',   empresaId)
+      .eq('chave_acesso', chaveAcesso)
+      .maybeSingle();
+
+    if (r.error) throw r.error;
+    return r.data;  // null se não encontrado
+  }
+
+  /**
+   * Insere múltiplos itens no Banco de Preços Reais em lote.
+   * Tabela é append-only — sem UPDATE.
+   */
+  async function sbCriarItensBancoPrecosEmLote(lista) {
+    if (!lista || !lista.length) return [];
+
+    var r = await client()
+      .from('financeiro_banco_precos')
+      .insert(lista)
+      .select();
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Lista itens do Banco de Preços Reais da empresa.
+   * Aceita filtros opcionais: { descricao, ncm, fornecedor_cnpj, limit }
+   */
+  async function sbListarBancoPrecosEmpresa(empresaId, filtros) {
+    if (!empresaId) throw new Error('[Financeiro F] empresa_id obrigatório.');
+    filtros = filtros || {};
+
+    var q = client()
+      .from('financeiro_banco_precos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('data_emissao', { ascending: false, nullsFirst: false });
+
+    if (filtros.fornecedor_cnpj) q = q.eq('fornecedor_cnpj', filtros.fornecedor_cnpj);
+    if (filtros.ncm)             q = q.eq('ncm', filtros.ncm);
+    if (filtros.descricao)       q = q.ilike('descricao', '%' + filtros.descricao + '%');
+    if (filtros.limit)           q = q.limit(filtros.limit);
+
+    var r = await q;
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+
+  // ============================================================
   // EXPOSIÇÃO PÚBLICA
   // ============================================================
 
@@ -789,7 +889,14 @@
     listarContasReceberPeriodo:      sbListarContasReceberPeriodo,
     listarRecebimentosPeriodo:       sbListarRecebimentosPeriodo,
     listarContasPagarPeriodo:        sbListarContasPagarPeriodo,
-    calcularDREGerencial:            calcularDREGerencial
+    calcularDREGerencial:            calcularDREGerencial,
+
+    // Fase F — NF Fornecedor + Banco de Preços Reais
+    criarNFFornecedor:               sbCriarNFFornecedor,
+    listarNFsFornecedorEmpresa:      sbListarNFsFornecedorEmpresa,
+    verificarNFFornecedorDuplicada:  sbVerificarNFFornecedorDuplicada,
+    criarItensBancoPrecosEmLote:     sbCriarItensBancoPrecosEmLote,
+    listarBancoPrecosEmpresa:        sbListarBancoPrecosEmpresa
   };
 
 }(window));
