@@ -321,6 +321,60 @@
     return window._perfilUsuario;
   };
 
+  // ── Atualizar cadastro da empresa (apenas dono — RLS enforça) ────────────
+  window.sbAtualizarEmpresa = async function (empresaId, campos) {
+    if (!window.sbClient) return { error: { message: 'Supabase não disponível' } };
+    var res = await window.sbClient
+      .from('empresas')
+      .update(campos)
+      .eq('id', empresaId)
+      .select('id, nome, nome_curto, cnpj, regime_fiscal, logo_url, razao_social, inscricao_estadual, inscricao_municipal, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_municipio, endereco_uf, endereco_cep, telefone, email, email_financeiro, logo_storage_path, config_json')
+      .maybeSingle();
+    return res;
+  };
+
+  // ── Sincronizar empresa ativa após edição ────────────────────────────────
+  window.sincronizarEmpresaAtiva = function (empresaAtualizada) {
+    // Atualizar no array global
+    var idx = (window._empresasUsuario || []).findIndex(function(e){ return e.id === empresaAtualizada.id; });
+    if (idx >= 0) window._empresasUsuario[idx] = empresaAtualizada;
+    // Atualizar empresa ativa em memória sem disparar troca (só propaga)
+    window._empresaAtiva = empresaAtualizada;
+    // Atualizar localStorage
+    try {
+      localStorage.setItem('tf_empresa_ativa', JSON.stringify({
+        id:                  empresaAtualizada.id,
+        nome:                empresaAtualizada.nome,
+        nome_curto:          empresaAtualizada.nome_curto,
+        cnpj:                empresaAtualizada.cnpj,
+        razao_social:        empresaAtualizada.razao_social        || null,
+        inscricao_estadual:  empresaAtualizada.inscricao_estadual  || null,
+        email_financeiro:    empresaAtualizada.email_financeiro     || null,
+        regime_fiscal:       empresaAtualizada.regime_fiscal        || null
+      }));
+    } catch(e) {}
+    // Atualizar header visual
+    if (typeof atualizarHeaderEmpresa === 'function') atualizarHeaderEmpresa(empresaAtualizada);
+    // Propagar para iframes via postMessage (atualiza _empresaAtiva.cnpj no financeiro etc.)
+    document.querySelectorAll('.mod-frame').forEach(function(frame) {
+      try {
+        frame.contentWindow.postMessage({
+          type:               'SET_EMPRESA',
+          empresaId:          empresaAtualizada.id,
+          empresaNome:        empresaAtualizada.nome,
+          empresaNomeCurto:   empresaAtualizada.nome_curto,
+          empresaCnpj:        empresaAtualizada.cnpj            || null,
+          empresaRazaoSocial: empresaAtualizada.razao_social     || null,
+          empresaEmailFin:    empresaAtualizada.email_financeiro || null
+        }, '*');
+      } catch(e2) {}
+    });
+    // Disparar evento para módulos inline
+    try {
+      window.dispatchEvent(new CustomEvent('empresa:atualizada', { detail: { empresa: empresaAtualizada } }));
+    } catch(e) {}
+  };
+
   console.log('%c[multi-empresa] carregado', 'color:#f0a500;font-weight:700');
 
 })();

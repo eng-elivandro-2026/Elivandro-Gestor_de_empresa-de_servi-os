@@ -273,10 +273,13 @@
             var emp = window.getEmpresaAtiva ? window.getEmpresaAtiva() : null;
             if (emp && frame.contentWindow) {
               frame.contentWindow.postMessage({
-                type: 'SET_EMPRESA',
-                empresaId: emp.id,
-                empresaNome: emp.nome,
-                empresaNomeCurto: emp.nome_curto
+                type:               'SET_EMPRESA',
+                empresaId:          emp.id,
+                empresaNome:        emp.nome,
+                empresaNomeCurto:   emp.nome_curto,
+                empresaCnpj:        emp.cnpj            || null,
+                empresaRazaoSocial: emp.razao_social     || null,
+                empresaEmailFin:    emp.email_financeiro || null
               }, '*');
             }
           } catch(e) {}
