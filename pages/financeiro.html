@@ -41,19 +41,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 /* ── TABS ─────────────────────────────────────────────────────── */
-.tab-bar{
-  display:flex;gap:0;background:var(--bg2);
-  border-bottom:1px solid var(--border);
-  position:sticky;top:0;z-index:50;
+/* ── Layout principal: sidebar interna + conteúdo ─────────────── */
+body{display:flex;flex-direction:row;align-items:flex-start;min-height:100vh}
+.fin-sidebar{
+  flex:0 0 205px;width:205px;min-height:100vh;
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
+}
+.fin-sidebar-header{
+  font-size:.6rem;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;
+  padding:.65rem .9rem .55rem;border-bottom:1px solid var(--border);
+  margin-bottom:.3rem;white-space:nowrap;
 }
 .tab-btn{
-  padding:.55rem 1.1rem;font-size:.78rem;font-weight:600;
-  border:none;border-bottom:2px solid transparent;
+  width:100%;text-align:left;
+  padding:.58rem .9rem;font-size:.76rem;font-weight:600;
+  border:none;border-left:3px solid transparent;
   background:transparent;color:var(--text2);cursor:pointer;
-  font-family:inherit;transition:all .15s;white-space:nowrap;
+  font-family:inherit;transition:all .15s;
+  white-space:normal;line-height:1.35;
 }
-.tab-btn:hover{color:var(--text);background:var(--bg3)}
-.tab-btn.on{color:var(--emp-cor-2);border-bottom-color:var(--emp-cor);background:var(--emp-bg)}
+.tab-btn:hover{color:var(--text);background:var(--bg3);border-left-color:var(--border2)}
+.tab-btn.on{color:var(--emp-cor-2);border-left-color:var(--emp-cor);background:var(--emp-bg)}
+.tab-content{flex:1;min-width:0;min-height:100vh;overflow-y:auto}
 
 /* ── LAYOUT ───────────────────────────────────────────────────── */
 .wrap{max-width:1100px;margin:0 auto;padding:1.25rem}
@@ -436,21 +448,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </head>
 <body>
 
-<!-- ── TABS ───────────────────────────────────────────────────── -->
-<div class="tab-bar">
-  <button class="tab-btn on" id="tab-btn-contas" onclick="showTab('contas')">📋 Contas a Receber</button>
-  <button class="tab-btn" id="tab-btn-nfs" onclick="showTab('nfs')">📄 Notas Fiscais</button>
-  <button class="tab-btn" id="tab-btn-rec" onclick="showTab('rec')">💳 Recebimentos</button>
-  <button class="tab-btn" id="tab-btn-fluxo" onclick="showTab('fluxo')">💰 Fluxo de Caixa</button>
-  <button class="tab-btn" id="tab-btn-cp" onclick="showTab('cp')">💳 Contas a Pagar</button>
-  <button class="tab-btn" id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
-  <button class="tab-btn" id="tab-btn-dre" onclick="showTab('dre')">📊 DRE Gerencial</button>
-</div>
+<!-- ── MENU LATERAL INTERNO DO FINANCEIRO ─────────────────────── -->
+<nav class="fin-sidebar">
+  <div class="fin-sidebar-header">💼 Financeiro</div>
+  <button class="tab-btn on" id="tab-btn-nfs"         onclick="showTab('nfs')">📄 Notas Fiscais de Faturamento</button>
+  <button class="tab-btn"    id="tab-btn-nf-fornecedor" onclick="showTab('nf-fornecedor')">📥 Notas Fiscais de Fornecedores</button>
+  <button class="tab-btn"    id="tab-btn-contas"      onclick="showTab('contas')">💰 Contas a Receber</button>
+  <button class="tab-btn"    id="tab-btn-cp"          onclick="showTab('cp')">💳 Contas a Pagar</button>
+  <button class="tab-btn"    id="tab-btn-fluxo"       onclick="showTab('fluxo')">💵 Fluxo de Caixa</button>
+  <button class="tab-btn"    id="tab-btn-dre"         onclick="showTab('dre')">📊 DRE Gerencial</button>
+  <button class="tab-btn"    id="tab-btn-ferramentas" onclick="showTab('ferramentas')">⚙️ Ferramentas</button>
+  <!-- Recebimentos: oculto do menu visual, acessível via showTab('rec') se necessário -->
+  <button class="tab-btn" id="tab-btn-rec" style="display:none" onclick="showTab('rec')">💳 Recebimentos</button>
+</nav>
 
 <!-- ════════════════════════════════════════════════════════════ -->
 <!-- TAB: CONTAS A RECEBER                                        -->
 <!-- ════════════════════════════════════════════════════════════ -->
-<div id="tab-contas" class="tab-content">
+<div id="tab-contas" class="tab-content" style="display:none">
 <div class="wrap">
 
   <!-- Page header -->
@@ -561,7 +576,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <!-- ════════════════════════════════════════════════════════════ -->
 <!-- TAB: NOTAS FISCAIS — F2C                                     -->
 <!-- ════════════════════════════════════════════════════════════ -->
-<div id="tab-nfs" class="tab-content" style="display:none">
+<div id="tab-nfs" class="tab-content">
 <div class="wrap">
 
   <!-- Page header -->
@@ -1234,6 +1249,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 </div><!-- /.wrap -->
 </div><!-- /#tab-cp -->
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- TAB: NOTAS FISCAIS DE FORNECEDORES — placeholder Fase E+     -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div id="tab-nf-fornecedor" class="tab-content" style="display:none">
+<div class="wrap">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">📥 Notas Fiscais de Fornecedores</div>
+      <div class="page-sub">Gestão de NFs recebidas de fornecedores</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:center;min-height:320px">
+    <div style="text-align:center;max-width:420px;padding:2rem">
+      <div style="font-size:2.5rem;margin-bottom:.75rem">📥</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Notas Fiscais de Fornecedores</div>
+      <div style="font-size:.82rem;color:var(--text2);line-height:1.6">
+        Esta funcionalidade será implementada em fase futura.<br>
+        Permitirá cadastrar e controlar NFs recebidas de fornecedores,<br>
+        vinculadas a obras e contas a pagar.
+      </div>
+      <div style="margin-top:1.25rem;display:inline-flex;align-items:center;gap:.45rem;padding:.45rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.75rem;color:var(--text3);font-weight:600">
+        ⏳ Em breve
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /#tab-nf-fornecedor -->
 
 
 <!-- ════════════════════════════════════════════════════════════ -->
