@@ -5275,12 +5275,17 @@ function fecharDetalheCp() {
 
 // ── Criar Conta a Pagar ───────────────────────────────────────
 async function criarContaPagar() {
-  // H-006: guard de perfil para operação de escrita
+  // H-006: guard de perfil — usa matriz G4A/G4B (criar_cp_cr)
   try {
-    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
-      ? window.parent.getPerfilUsuario() : null;
-    if (!_p || ['dono', 'admin', 'gestor'].indexOf(_p) < 0) {
-      alert('Acesso negado. Apenas gestor, admin ou dono podem criar contas a pagar.');
+    var _podeCriarCP = (typeof window.parent.podeAcao === 'function')
+      ? window.parent.podeAcao('financeiro', 'criar_cp_cr')
+      : (function() {
+          var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+            ? window.parent.getPerfilUsuario() : null;
+          return _p && ['dono', 'admin', 'gestor', 'financeiro'].indexOf(_p) >= 0;
+        })();
+    if (!_podeCriarCP) {
+      alert('Acesso negado. Você não tem permissão para criar contas a pagar nesta empresa.');
       return;
     }
   } catch(e) { return; }
