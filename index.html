@@ -837,6 +837,7 @@ body.empresa-tema-fortex{
     <div class="hdr-right">
       <span id="hdr-data" style="font-size:.7rem;color:var(--text3)"></span>
       <button class="btn-hdr" onclick="toggleTheme()" id="btn-tema" title="Tema">🌙</button>
+      <button class="btn-hdr" id="btn-empresa" onclick="abrirEditarEmpresa()" title="Cadastro da Empresa" style="display:none">🏢</button>
       <button class="btn-hdr" id="btn-usuarios" onclick="abrirGerenciarUsuarios()" title="Gerenciar Usuários" style="display:none">👥</button>
       <div style="display:flex;align-items:center;gap:.4rem">
         <div class="hdr-avatar" id="hdr-avatar">EE</div>
@@ -9959,6 +9960,10 @@ async function iniciarPlataforma() {
           var _btnU = document.getElementById('btn-usuarios');
           if (_btnU) _btnU.style.display = '';
         }
+        // Mostrar botão de cadastro da empresa para dono, admin e gestor
+        // [G2 — provisório até G3/G4 implementar controle de acesso completo]
+        var _btnE = document.getElementById('btn-empresa');
+        if (_btnE) _btnE.style.display = '';
       } else {
         // Verificar se é colaborador puro
         var _cc = await window.sbClient
@@ -10649,6 +10654,366 @@ function _vinMsg(msg, tipo) {
   console.log('%c[UX] _uxFase1 / abrirEditorPropostaNaFaseDados / abrirComercialPropostasPadrao registrados', 'color:#f0a500;font-weight:700');
 
 }());
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     G2 — MODAL: CADASTRO DA EMPRESA
+     Permite visualizar e editar o cadastro completo da empresa ativa.
+     Salvar: somente perfil 'dono' (RLS enforça no banco).
+     Leitura: dono, admin, gestor — [provisório até G3/G4]
+     ══════════════════════════════════════════════════════════════════════ -->
+<style>
+#modalEmpresa .emp-form-label{font-size:.67rem;color:var(--text3);margin-bottom:.2rem}
+#modalEmpresa .emp-form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem;font-family:inherit;box-sizing:border-box}
+#modalEmpresa .emp-form-input:focus{outline:none;border-color:var(--blue)}
+#modalEmpresa .emp-form-input:disabled{opacity:.5;cursor:not-allowed}
+#modalEmpresa .emp-bloco{margin-bottom:1.1rem}
+#modalEmpresa .emp-bloco-titulo{font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)}
+#modalEmpresa .emp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+#modalEmpresa .emp-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.55rem}
+#modalEmpresa .emp-aviso-leitura{display:none;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.45rem .7rem;font-size:.75rem;color:var(--accent);margin-bottom:.85rem}
+#modalEmpresa .emp-aviso-leitura.on{display:block}
+#modalEmpresa .emp-aviso-sem-empresa{display:none;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.2);border-radius:6px;padding:.55rem .7rem;font-size:.78rem;color:var(--red);margin-bottom:.85rem}
+#modalEmpresa .emp-aviso-sem-empresa.on{display:block}
+</style>
+
+<div id="modalEmpresa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;padding:1.4rem;box-sizing:border-box">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:.95rem;font-weight:800;color:var(--blue)">🏢 Cadastro da Empresa</div>
+      <button class="nb" onclick="fecharEditarEmpresa()" style="font-size:1rem;color:var(--text3);line-height:1">✕</button>
+    </div>
+
+    <!-- Aviso: sem empresa ativa -->
+    <div class="emp-aviso-sem-empresa" id="empAviso-sem-empresa">
+      Nenhuma empresa ativa. Selecione uma empresa antes de editar.
+    </div>
+
+    <!-- Aviso: modo somente leitura -->
+    <div class="emp-aviso-leitura" id="empAviso-leitura">
+      🔒 Seu perfil tem acesso somente leitura. Apenas o <strong>Dono</strong> pode salvar alterações no cadastro da empresa.
+    </div>
+
+    <!-- BLOCO 1: Identificação -->
+    <div class="emp-bloco">
+      <div class="emp-bloco-titulo">Identificação</div>
+      <div class="emp-grid-2" style="margin-bottom:.55rem">
+        <div>
+          <div class="emp-form-label">Nome Fantasia *</div>
+          <input type="text" id="empF-nome" class="emp-form-input" placeholder="Ex: Tecfusion">
+        </div>
+        <div>
+          <div class="emp-form-label">Nome Curto</div>
+          <input type="text" id="empF-nome_curto" class="emp-form-input" placeholder="Ex: TC" maxlength="30">
+        </div>
+      </div>
+      <div style="margin-bottom:.55rem">
+        <div class="emp-form-label">Razão Social</div>
+        <input type="text" id="empF-razao_social" class="emp-form-input" placeholder="Ex: Tecfusion Tecnologia Industrial Ltda">
+      </div>
+      <div class="emp-grid-2">
+        <div>
+          <div class="emp-form-label">CNPJ</div>
+          <input type="text" id="empF-cnpj" class="emp-form-input" placeholder="00.000.000/0000-00" maxlength="18">
+        </div>
+        <div>
+          <div class="emp-form-label">Regime Tributário</div>
+          <select id="empF-regime_fiscal" class="emp-form-input">
+            <option value="">— não informado —</option>
+            <option value="simples_nacional">Simples Nacional</option>
+            <option value="lucro_presumido">Lucro Presumido</option>
+            <option value="lucro_real">Lucro Real</option>
+            <option value="mei">MEI</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 2: Dados fiscais -->
+    <div class="emp-bloco">
+      <div class="emp-bloco-titulo">Dados Fiscais</div>
+      <div class="emp-grid-2">
+        <div>
+          <div class="emp-form-label">Inscrição Estadual (IE)</div>
+          <input type="text" id="empF-inscricao_estadual" class="emp-form-input" placeholder="Ex: 123.456.789.000">
+        </div>
+        <div>
+          <div class="emp-form-label">Inscrição Municipal (IM)</div>
+          <input type="text" id="empF-inscricao_municipal" class="emp-form-input" placeholder="Ex: 12345678-9">
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 3: Endereço fiscal -->
+    <div class="emp-bloco">
+      <div class="emp-bloco-titulo">Endereço Fiscal</div>
+      <div class="emp-grid-3" style="margin-bottom:.55rem">
+        <div>
+          <div class="emp-form-label">CEP</div>
+          <input type="text" id="empF-endereco_cep" class="emp-form-input" placeholder="00000-000" maxlength="9">
+        </div>
+        <div style="grid-column:span 2">
+          <div class="emp-form-label">Logradouro</div>
+          <input type="text" id="empF-endereco_logradouro" class="emp-form-input" placeholder="Rua, Avenida, Alameda...">
+        </div>
+      </div>
+      <div class="emp-grid-3" style="margin-bottom:.55rem">
+        <div>
+          <div class="emp-form-label">Número</div>
+          <input type="text" id="empF-endereco_numero" class="emp-form-input" placeholder="123">
+        </div>
+        <div>
+          <div class="emp-form-label">Complemento</div>
+          <input type="text" id="empF-endereco_complemento" class="emp-form-input" placeholder="Sala 5, Bloco B">
+        </div>
+        <div>
+          <div class="emp-form-label">Bairro</div>
+          <input type="text" id="empF-endereco_bairro" class="emp-form-input" placeholder="Centro">
+        </div>
+      </div>
+      <div class="emp-grid-3">
+        <div style="grid-column:span 2">
+          <div class="emp-form-label">Município</div>
+          <input type="text" id="empF-endereco_municipio" class="emp-form-input" placeholder="São Paulo">
+        </div>
+        <div>
+          <div class="emp-form-label">UF</div>
+          <input type="text" id="empF-endereco_uf" class="emp-form-input" placeholder="SP" maxlength="2" style="text-transform:uppercase">
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 4: Contatos -->
+    <div class="emp-bloco">
+      <div class="emp-bloco-titulo">Contatos</div>
+      <div class="emp-grid-3">
+        <div>
+          <div class="emp-form-label">Telefone</div>
+          <input type="tel" id="empF-telefone" class="emp-form-input" placeholder="(11) 99999-9999">
+        </div>
+        <div>
+          <div class="emp-form-label">E-mail Geral</div>
+          <input type="email" id="empF-email" class="emp-form-input" placeholder="contato@empresa.com.br">
+        </div>
+        <div>
+          <div class="emp-form-label">E-mail Financeiro</div>
+          <input type="email" id="empF-email_financeiro" class="emp-form-input" placeholder="financeiro@empresa.com.br">
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 5: Logo -->
+    <div class="emp-bloco">
+      <div class="emp-bloco-titulo">Logo</div>
+      <div>
+        <div class="emp-form-label">Caminho no Storage (logo_storage_path)</div>
+        <input type="text" id="empF-logo_storage_path" class="emp-form-input" placeholder="logos/empresa-id/logo.png">
+        <div style="font-size:.67rem;color:var(--text3);margin-top:.25rem">Upload via Supabase Storage será implementado em fase posterior.</div>
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;padding-top:.75rem;border-top:1px solid var(--border)">
+      <button class="nb" onclick="fecharEditarEmpresa()" style="padding:.42rem .9rem;border:1px solid var(--border);border-radius:7px;font-size:.8rem;color:var(--text2);cursor:pointer">Cancelar</button>
+      <button id="empF-btn-salvar" class="nb" onclick="salvarEditarEmpresa()" style="padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.8rem;font-weight:700;cursor:pointer">Salvar</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── G2: Cadastro da Empresa ──────────────────────────────────────────────────
+
+var _empEditandoId = null;
+
+function abrirEditarEmpresa() {
+  var emp = window._empresaAtiva;
+  var m   = document.getElementById('modalEmpresa');
+  if (!m) return;
+
+  var avSemEmp  = document.getElementById('empAviso-sem-empresa');
+  var avLeitura = document.getElementById('empAviso-leitura');
+  var btnSalvar = document.getElementById('empF-btn-salvar');
+  var perfil    = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  var soDono    = perfil !== 'dono';
+
+  // Limpar estado
+  _empEditandoId = null;
+
+  if (!emp || !emp.id) {
+    if (avSemEmp)  avSemEmp.classList.add('on');
+    if (avLeitura) avLeitura.classList.remove('on');
+    _empFormLimpar();
+    _empFormDesabilitar(true);
+    if (btnSalvar) btnSalvar.style.display = 'none';
+    m.style.display = 'flex';
+    return;
+  }
+
+  if (avSemEmp)  avSemEmp.classList.remove('on');
+  if (avLeitura) avLeitura.classList.toggle('on', soDono);
+  if (btnSalvar) {
+    btnSalvar.style.display = '';
+    btnSalvar.disabled = soDono;
+    btnSalvar.style.opacity = soDono ? '.4' : '';
+    btnSalvar.title = soDono ? 'Apenas o Dono pode salvar alterações' : '';
+  }
+  _empFormDesabilitar(soDono);
+
+  _empEditandoId = emp.id;
+  _empFormPreencher(emp);
+  m.style.display = 'flex';
+}
+
+function fecharEditarEmpresa() {
+  var m = document.getElementById('modalEmpresa');
+  if (m) m.style.display = 'none';
+  _empEditandoId = null;
+}
+
+function _empFormLimpar() {
+  ['nome','nome_curto','razao_social','cnpj','regime_fiscal',
+   'inscricao_estadual','inscricao_municipal',
+   'endereco_cep','endereco_logradouro','endereco_numero',
+   'endereco_complemento','endereco_bairro','endereco_municipio','endereco_uf',
+   'telefone','email','email_financeiro','logo_storage_path'
+  ].forEach(function(f){
+    var el = document.getElementById('empF-' + f);
+    if (el) el.value = '';
+  });
+}
+
+function _empFormPreencher(emp) {
+  var mapa = {
+    'nome':                emp.nome                || '',
+    'nome_curto':          emp.nome_curto           || '',
+    'razao_social':        emp.razao_social         || '',
+    'cnpj':                emp.cnpj                 || '',
+    'regime_fiscal':       emp.regime_fiscal        || '',
+    'inscricao_estadual':  emp.inscricao_estadual   || '',
+    'inscricao_municipal': emp.inscricao_municipal  || '',
+    'endereco_cep':        emp.endereco_cep         || '',
+    'endereco_logradouro': emp.endereco_logradouro  || '',
+    'endereco_numero':     emp.endereco_numero      || '',
+    'endereco_complemento':emp.endereco_complemento|| '',
+    'endereco_bairro':     emp.endereco_bairro      || '',
+    'endereco_municipio':  emp.endereco_municipio   || '',
+    'endereco_uf':         emp.endereco_uf          || '',
+    'telefone':            emp.telefone             || '',
+    'email':               emp.email                || '',
+    'email_financeiro':    emp.email_financeiro     || '',
+    'logo_storage_path':   emp.logo_storage_path    || ''
+  };
+  Object.keys(mapa).forEach(function(f) {
+    var el = document.getElementById('empF-' + f);
+    if (el) el.value = mapa[f];
+  });
+}
+
+function _empFormDesabilitar(disabled) {
+  var inputs = document.querySelectorAll('#modalEmpresa .emp-form-input');
+  inputs.forEach(function(el){ el.disabled = disabled; });
+}
+
+function _empValidar() {
+  var cnpj  = (document.getElementById('empF-cnpj')  ||{}).value || '';
+  var uf    = (document.getElementById('empF-endereco_uf') ||{}).value || '';
+  var cep   = (document.getElementById('empF-endereco_cep')||{}).value || '';
+  var email = (document.getElementById('empF-email') ||{}).value || '';
+  var emailFin = (document.getElementById('empF-email_financeiro')||{}).value || '';
+  var nome  = (document.getElementById('empF-nome')  ||{}).value || '';
+
+  if (!nome.trim()) { toast('Nome Fantasia é obrigatório.', 'err'); return false; }
+
+  var cnpjDigits = cnpj.replace(/\D/g,'');
+  if (cnpj && cnpjDigits.length !== 14) { toast('CNPJ inválido — deve ter 14 dígitos.', 'err'); return false; }
+
+  if (uf && uf.replace(/\s/g,'').length !== 2) { toast('UF deve ter exatamente 2 letras (ex: SP).', 'err'); return false; }
+
+  var cepDigits = cep.replace(/\D/g,'');
+  if (cep && cepDigits.length !== 8) { toast('CEP inválido — deve ter 8 dígitos.', 'err'); return false; }
+
+  var reEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && !reEmail.test(email)) { toast('E-mail Geral com formato inválido.', 'err'); return false; }
+  if (emailFin && !reEmail.test(emailFin)) { toast('E-mail Financeiro com formato inválido.', 'err'); return false; }
+
+  return true;
+}
+
+async function salvarEditarEmpresa() {
+  if (!_empEditandoId) { toast('Nenhuma empresa selecionada.', 'err'); return; }
+
+  var perfil = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (perfil !== 'dono') {
+    toast('Apenas o Dono pode salvar alterações no cadastro da empresa.', 'err');
+    return;
+  }
+
+  if (!_empValidar()) return;
+
+  var btnSalvar = document.getElementById('empF-btn-salvar');
+  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
+
+  var campos = {
+    nome:                 (document.getElementById('empF-nome')                ||{}).value.trim()  || null,
+    nome_curto:           (document.getElementById('empF-nome_curto')          ||{}).value.trim()  || null,
+    razao_social:         (document.getElementById('empF-razao_social')        ||{}).value.trim()  || null,
+    cnpj:                 (document.getElementById('empF-cnpj')                ||{}).value.trim()  || null,
+    regime_fiscal:        (document.getElementById('empF-regime_fiscal')       ||{}).value         || null,
+    inscricao_estadual:   (document.getElementById('empF-inscricao_estadual')  ||{}).value.trim()  || null,
+    inscricao_municipal:  (document.getElementById('empF-inscricao_municipal') ||{}).value.trim()  || null,
+    endereco_cep:         (document.getElementById('empF-endereco_cep')        ||{}).value.trim()  || null,
+    endereco_logradouro:  (document.getElementById('empF-endereco_logradouro') ||{}).value.trim()  || null,
+    endereco_numero:      (document.getElementById('empF-endereco_numero')     ||{}).value.trim()  || null,
+    endereco_complemento: (document.getElementById('empF-endereco_complemento')||{}).value.trim()  || null,
+    endereco_bairro:      (document.getElementById('empF-endereco_bairro')     ||{}).value.trim()  || null,
+    endereco_municipio:   (document.getElementById('empF-endereco_municipio')  ||{}).value.trim()  || null,
+    endereco_uf:          ((document.getElementById('empF-endereco_uf')        ||{}).value.trim().toUpperCase().slice(0,2)) || null,
+    telefone:             (document.getElementById('empF-telefone')            ||{}).value.trim()  || null,
+    email:                (document.getElementById('empF-email')               ||{}).value.trim()  || null,
+    email_financeiro:     (document.getElementById('empF-email_financeiro')    ||{}).value.trim()  || null,
+    logo_storage_path:    (document.getElementById('empF-logo_storage_path')   ||{}).value.trim()  || null
+  };
+
+  // nome não pode ficar null (campo obrigatório no portal)
+  if (!campos.nome) { toast('Nome Fantasia é obrigatório.', 'err'); _empRestaurarBtnSalvar(); return; }
+
+  var res = await window.sbAtualizarEmpresa(_empEditandoId, campos);
+
+  if (res.error) {
+    var msgErro = res.error.message || 'Erro desconhecido.';
+    if (msgErro.toLowerCase().includes('permission') || msgErro.toLowerCase().includes('policy') || msgErro.toLowerCase().includes('rls')) {
+      toast('Acesso negado pelo banco. Apenas o Dono pode alterar o cadastro da empresa.', 'err', true);
+    } else {
+      toast('Erro ao salvar: ' + msgErro, 'err', true);
+    }
+    _empRestaurarBtnSalvar();
+    return;
+  }
+
+  if (res.data) {
+    if (typeof window.sincronizarEmpresaAtiva === 'function') {
+      window.sincronizarEmpresaAtiva(res.data);
+    }
+  }
+
+  toast('Cadastro da empresa salvo com sucesso.', 'ok');
+  fecharEditarEmpresa();
+}
+
+function _empRestaurarBtnSalvar() {
+  var btnSalvar = document.getElementById('empF-btn-salvar');
+  if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = 'Salvar'; }
+}
+
+// Fechar modal com Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var m = document.getElementById('modalEmpresa');
+    if (m && m.style.display !== 'none') fecharEditarEmpresa();
+  }
+});
 </script>
 
 </body>
