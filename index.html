@@ -839,6 +839,7 @@ body.empresa-tema-fortex{
       <button class="btn-hdr" onclick="toggleTheme()" id="btn-tema" title="Tema">🌙</button>
       <button class="btn-hdr" id="btn-empresa" onclick="abrirEditarEmpresa()" title="Cadastro da Empresa" style="display:none">🏢</button>
       <button class="btn-hdr" id="btn-usuarios" onclick="abrirGerenciarUsuarios()" title="Gerenciar Usuários" style="display:none">👥</button>
+      <button class="btn-hdr" id="btn-permissoes" onclick="abrirPermissoes()" title="Permissões por Perfil" style="display:none">⚙️</button>
       <div style="display:flex;align-items:center;gap:.4rem">
         <div class="hdr-avatar" id="hdr-avatar">EE</div>
         <span id="hdr-email" style="font-size:.72rem;color:var(--text2)"></span>
@@ -10914,6 +10915,258 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
 
   </div>
 </div>
+
+<!-- Modal Permissões por Perfil (G4B) -->
+<div id="modalPermissoes" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10001;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:920px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--text)">⚙️ Permissões por Perfil</div>
+        <div id="permSubtitulo" style="font-size:.7rem;color:var(--text3);margin-top:.15rem">Configure quais módulos e ações cada perfil pode acessar nesta empresa.</div>
+      </div>
+      <button class="nb" onclick="fecharPermissoes()" style="font-size:.85rem;color:var(--text3);padding:.2rem .5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3)">✕</button>
+    </div>
+
+    <!-- Aviso -->
+    <div style="flex-shrink:0;padding:.55rem 1.25rem;background:rgba(245,158,11,.07);border-bottom:1px solid rgba(245,158,11,.2)">
+      <span style="font-size:.72rem;color:#f59e0b">⚠️ Cuidado: alterar permissões pode ocultar módulos para usuários desta empresa. Perfil <strong>dono</strong> sempre mantém acesso total e não pode ser removido das ações críticas.</span>
+    </div>
+
+    <!-- Tabela -->
+    <div style="flex:1;overflow:auto;padding:.85rem 1rem">
+      <div id="permTabelaContainer"></div>
+    </div>
+
+    <!-- Resultado + Footer -->
+    <div id="permResultado" style="flex-shrink:0;padding:0 1.25rem"></div>
+    <div style="flex-shrink:0;padding:.8rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.6rem">
+      <span style="font-size:.68rem;color:var(--text3)">Salvo em <code style="background:var(--bg3);padding:.1rem .3rem;border-radius:3px">empresas.config_json.permissoes</code></span>
+      <div style="display:flex;gap:.6rem">
+        <button class="nb" onclick="fecharPermissoes()" style="padding:.42rem .9rem;border:1px solid var(--border);border-radius:7px;font-size:.82rem;cursor:pointer;background:var(--bg3);color:var(--text2)">Cancelar</button>
+        <button id="btnSalvarPermissoes" class="nb" onclick="salvarPermissoes()" style="padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer">💾 Salvar Permissões</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══ PERMISSÕES POR PERFIL — G4B ══════════════════════════
+
+// Grupos de módulos/ações para renderização da tabela
+var _PERM_GRUPOS = [
+  { mod: 'financeiro', label: '💰 Financeiro', actions: [
+    { key: 'ver',            label: 'Ver' },
+    { key: 'criar_cp_cr',    label: 'Criar CP/CR' },
+    { key: 'editar_cp_cr',   label: 'Editar CP/CR' },
+    { key: 'cancelar_cp_cr', label: 'Cancelar CP/CR' },
+    { key: 'importar_nf',    label: 'Importar NF' },
+    { key: 'cofre',          label: 'Cofre' }
+  ]},
+  { mod: 'comercial', label: '📊 Comercial', actions: [
+    { key: 'ver',              label: 'Ver' },
+    { key: 'criar_proposta',   label: 'Criar Proposta' },
+    { key: 'aprovar_proposta', label: 'Aprovar Proposta' },
+    { key: 'editar_margem',    label: 'Editar Margem' }
+  ]},
+  { mod: 'historico', label: '💬 Relacionamento', actions: [
+    { key: 'ver',    label: 'Ver' },
+    { key: 'editar', label: 'Criar/Editar' }
+  ]},
+  { mod: 'operacional', label: 'OP Operacional', actions: [
+    { key: 'ver',    label: 'Ver' },
+    { key: 'editar', label: 'Criar/Editar' }
+  ]},
+  { mod: 'gestao', label: '🎯 Gestão CEO', actions: [
+    { key: 'ver',    label: 'Ver' },
+    { key: 'editar', label: 'Editar' }
+  ]},
+  { mod: 'rh', label: '👷 RH / Equipes', actions: [
+    { key: 'ver',    label: 'Ver' },
+    { key: 'editar', label: 'Editar' }
+  ]},
+  { mod: 'cofre', label: '🔐 Cofre', actions: [
+    { key: 'acesso', label: 'Acesso' }
+  ]},
+  { mod: 'configuracoes', label: '⚙️ Configurações', actions: [
+    { key: 'empresa',  label: 'Empresa' },
+    { key: 'usuarios', label: 'Usuários' },
+    { key: 'modulos',  label: 'Módulos' }
+  ]}
+];
+
+var _PERM_PERFIS = ['dono','admin','gestor','financeiro','comercial','colaborador','prestador'];
+var _PERM_PERFIL_LABELS = {
+  dono: '👑 Dono', admin: '⚙️ Admin', gestor: '🔑 Gestor',
+  financeiro: '💰 Fin.', comercial: '📊 Com.', colaborador: '👷 Col.', prestador: '🔧 Pres.'
+};
+
+function abrirPermissoes() {
+  var _pode = typeof window.podeAcao === 'function'
+    ? window.podeAcao('configuracoes', 'modulos')
+    : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+  if (!_pode) { toast('Acesso negado. Apenas o Dono pode editar as permissões de perfil.', 'err'); return; }
+
+  var m = document.getElementById('modalPermissoes');
+  if (!m) return;
+
+  var emp = window._empresaAtiva;
+  var sub = document.getElementById('permSubtitulo');
+  if (sub) sub.textContent = (emp ? 'Empresa: ' + (emp.nome_curto || emp.nome || '') + ' — ' : '')
+    + 'Configure quais módulos e ações cada perfil pode acessar nesta empresa.';
+
+  // Carregar matriz ativa (override da empresa ou PERMISSOES_PADRAO)
+  var matriz = typeof window.getMatrizAtiva === 'function'
+    ? window.getMatrizAtiva()
+    : (window.PERMISSOES_PADRAO || {});
+
+  _renderTabelaPermissoes(matriz);
+  document.getElementById('permResultado').innerHTML = '';
+  var btnS = document.getElementById('btnSalvarPermissoes');
+  if (btnS) { btnS.disabled = false; btnS.textContent = '💾 Salvar Permissões'; }
+  m.style.display = 'flex';
+}
+
+function fecharPermissoes() {
+  var m = document.getElementById('modalPermissoes');
+  if (m) m.style.display = 'none';
+}
+
+function _renderTabelaPermissoes(matriz) {
+  var cont = document.getElementById('permTabelaContainer');
+  if (!cont) return;
+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:.72rem;min-width:600px">';
+
+  // Cabeçalho
+  html += '<thead><tr>';
+  html += '<th style="text-align:left;padding:.5rem .7rem;background:var(--bg3);border:1px solid var(--border);'
+    + 'font-size:.7rem;font-weight:700;color:var(--text2);min-width:150px;position:sticky;left:0;z-index:2">Módulo / Ação</th>';
+  _PERM_PERFIS.forEach(function (p) {
+    var isDono = p === 'dono';
+    html += '<th style="text-align:center;padding:.38rem .25rem;background:' + (isDono ? 'rgba(88,166,255,.1)' : 'var(--bg3)')
+      + ';border:1px solid var(--border);font-size:.63rem;font-weight:700;color:' + (isDono ? 'var(--blue)' : 'var(--text2)')
+      + ';min-width:68px">' + _PERM_PERFIL_LABELS[p]
+      + (isDono ? '<br><span style="font-size:.56rem;opacity:.65;font-weight:400">sempre ✓</span>' : '')
+      + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  // Grupos de módulos
+  _PERM_GRUPOS.forEach(function (grupo) {
+    // Matriz do módulo: custom override ou fallback para PERMISSOES_PADRAO
+    var padrao = (window.PERMISSOES_PADRAO || {})[grupo.mod] || {};
+    var matMod = (matriz && matriz[grupo.mod]) ? matriz[grupo.mod] : padrao;
+
+    // Linha de grupo
+    html += '<tr><td colspan="' + (_PERM_PERFIS.length + 1) + '" style="padding:.42rem .7rem;'
+      + 'background:rgba(88,166,255,.05);border:1px solid var(--border);font-weight:700;'
+      + 'color:var(--text);font-size:.74rem">' + grupo.label + '</td></tr>';
+
+    // Linhas de ação
+    grupo.actions.forEach(function (acao) {
+      var permitidos = matMod[acao.key] || [];
+      html += '<tr>';
+      html += '<td style="padding:.28rem .7rem .28rem 1.2rem;border:1px solid var(--border);'
+        + 'color:var(--text2);background:var(--bg1);position:sticky;left:0;z-index:1">↳ ' + acao.label + '</td>';
+      _PERM_PERFIS.forEach(function (p) {
+        var isDono = p === 'dono';
+        var checked = isDono || (permitidos.indexOf(p) >= 0);
+        var cbId = 'cb_' + grupo.mod + '_' + acao.key + '_' + p;
+        html += '<td style="text-align:center;padding:.28rem;border:1px solid var(--border);'
+          + 'background:' + (isDono ? 'rgba(88,166,255,.03)' : 'var(--bg1)') + '">'
+          + '<input type="checkbox" id="' + cbId + '"'
+          + ' data-mod="' + grupo.mod + '" data-action="' + acao.key + '" data-perfil="' + p + '"'
+          + (checked ? ' checked' : '')
+          + (isDono ? ' disabled title="Dono sempre tem acesso"' : '')
+          + ' style="width:14px;height:14px;cursor:' + (isDono ? 'not-allowed' : 'pointer')
+          + ';accent-color:var(--blue)">'
+          + '</td>';
+      });
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  cont.innerHTML = html;
+}
+
+function _permMsg(msg, tipo) {
+  var bg  = tipo === 'ok' ? 'rgba(34,197,94,.1)'  : 'rgba(239,68,68,.1)';
+  var brd = tipo === 'ok' ? 'rgba(34,197,94,.3)'  : 'rgba(239,68,68,.3)';
+  var cl  = tipo === 'ok' ? 'var(--green)' : '#ef4444';
+  return '<div style="background:' + bg + ';border:1px solid ' + brd + ';border-radius:8px;'
+    + 'padding:.55rem .8rem;margin:.4rem 0;font-size:.78rem;color:' + cl + '">' + msg + '</div>';
+}
+
+async function salvarPermissoes() {
+  var btnS = document.getElementById('btnSalvarPermissoes');
+  var res  = document.getElementById('permResultado');
+  res.innerHTML = '';
+
+  // Construir nova matriz a partir dos checkboxes
+  var novaMatriz = {};
+  _PERM_GRUPOS.forEach(function (grupo) {
+    novaMatriz[grupo.mod] = {};
+    grupo.actions.forEach(function (acao) {
+      var permitidos = ['dono']; // dono sempre incluído
+      _PERM_PERFIS.forEach(function (p) {
+        if (p === 'dono') return;
+        var cb = document.getElementById('cb_' + grupo.mod + '_' + acao.key + '_' + p);
+        if (cb && cb.checked) permitidos.push(p);
+      });
+      novaMatriz[grupo.mod][acao.key] = permitidos;
+    });
+  });
+
+  // Segurança: garantir que dono não perde configurações críticas
+  ['empresa', 'usuarios', 'modulos'].forEach(function (k) {
+    if (!novaMatriz.configuracoes) novaMatriz.configuracoes = {};
+    var arr = novaMatriz.configuracoes[k] || [];
+    if (arr.indexOf('dono') < 0) arr.unshift('dono');
+    novaMatriz.configuracoes[k] = arr;
+  });
+
+  var emp = window._empresaAtiva;
+  if (!emp || !emp.id) {
+    res.innerHTML = _permMsg('❌ Nenhuma empresa ativa.', 'err');
+    return;
+  }
+
+  // Preservar outras chaves de config_json (não sobrescrever inadvertidamente)
+  var configAtual = Object.assign({}, emp.config_json || {});
+  configAtual.permissoes = novaMatriz;
+
+  btnS.disabled = true;
+  btnS.textContent = 'Salvando...';
+
+  try {
+    var upd = await window.sbAtualizarEmpresa(emp.id, { config_json: configAtual });
+    if (upd.error) throw new Error(upd.error.message);
+
+    // Atualizar empresa ativa em memória para que getMatrizAtiva() reflita imediatamente
+    window._empresaAtiva.config_json = configAtual;
+    var idx = (window._empresasUsuario || []).findIndex(function (e) { return e.id === emp.id; });
+    if (idx >= 0) window._empresasUsuario[idx].config_json = configAtual;
+
+    // Recalcular menus com a nova matriz (permissoes.js lê _empresaAtiva.config_json.permissoes)
+    if (typeof window.Router !== 'undefined' && typeof window.Router.atualizarMenus === 'function') {
+      window.Router.atualizarMenus();
+    }
+
+    res.innerHTML = _permMsg('✅ Permissões salvas com sucesso.', 'ok');
+    btnS.disabled = false;
+    btnS.textContent = '💾 Salvar Permissões';
+    setTimeout(function () { fecharPermissoes(); }, 1500);
+  } catch (e) {
+    res.innerHTML = _permMsg('❌ Erro ao salvar: ' + e.message, 'err');
+    btnS.disabled = false;
+    btnS.textContent = '💾 Salvar Permissões';
+  }
+}
+</script>
 
 <!-- ══ MODAIS GLOBAIS: NOVO CONTATO / NOVO CLIENTE ══ -->
 <!-- Ficam fora de qualquer section/wrap para não serem afetados por display:none do pai -->

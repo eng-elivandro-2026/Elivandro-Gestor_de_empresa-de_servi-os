@@ -352,6 +352,7 @@
 
   // ── Controle de visibilidade dos botões de administração ─────────────────
   // Usa matriz de permissões (G4A): configuracoes.empresa/usuarios = ['dono','admin']
+  // G4B: btn-permissoes para configuracoes.modulos = ['dono']
   window._atualizarBotoesAdmin = function () {
     var podeEmpresa  = typeof window.podeAcao === 'function'
       ? window.podeAcao('configuracoes', 'empresa')
@@ -359,10 +360,15 @@
     var podeUsuarios = typeof window.podeAcao === 'function'
       ? window.podeAcao('configuracoes', 'usuarios')
       : (window._perfilUsuario === 'dono');
+    var podeModulos  = typeof window.podeAcao === 'function'
+      ? window.podeAcao('configuracoes', 'modulos')
+      : (window._perfilUsuario === 'dono');
     var btnU = document.getElementById('btn-usuarios');
     var btnE = document.getElementById('btn-empresa');
+    var btnP = document.getElementById('btn-permissoes');
     if (btnU) btnU.style.display = podeUsuarios ? '' : 'none';
     if (btnE) btnE.style.display = podeEmpresa  ? '' : 'none';
+    if (btnP) btnP.style.display = podeModulos  ? '' : 'none';
     console.log('%c[multi-empresa] perfil na empresa ativa: ' + window._perfilUsuario, 'color:#f0a500');
   };
 
