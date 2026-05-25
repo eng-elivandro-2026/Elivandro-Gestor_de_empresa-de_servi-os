@@ -9955,15 +9955,17 @@ async function iniciarPlataforma() {
         .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
       // Se é dono ou gestor, fica na plataforma principal
       if (_usr.data && (_usr.data.perfil === 'dono' || _usr.data.perfil === 'gestor')) {
-        // Mostrar botão de usuários apenas para dono
+        // Botões de administração visíveis somente para dono da empresa.
+        // admin/gestor não veem por enquanto — upgrade em G3/G4.
+        // Criação de nova empresa: restrita ao dono do software.
+        // [PROVISÓRIO] Identificado por e-mail nascimento.gaube@gmail.com até que
+        // o papel 'superadmin' seja criado em G3/G4.
         if (_usr.data.perfil === 'dono') {
           var _btnU = document.getElementById('btn-usuarios');
           if (_btnU) _btnU.style.display = '';
+          var _btnE = document.getElementById('btn-empresa');
+          if (_btnE) _btnE.style.display = '';
         }
-        // Mostrar botão de cadastro da empresa para dono, admin e gestor
-        // [G2 — provisório até G3/G4 implementar controle de acesso completo]
-        var _btnE = document.getElementById('btn-empresa');
-        if (_btnE) _btnE.style.display = '';
       } else {
         // Verificar se é colaborador puro
         var _cc = await window.sbClient
@@ -10218,8 +10220,8 @@ function fecharMemorial(){
 
 function abrirGerenciarUsuarios() {
   var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
-    alert('Acesso negado. Apenas dono e admin podem gerenciar usuários.');
+  if (_gp !== 'dono') {
+    alert('Acesso negado. Apenas o Dono da empresa pode gerenciar usuários.');
     return;
   }
   var m = document.getElementById('modalUsuarios');
@@ -10287,8 +10289,8 @@ function _gerarSenhaTemp() {
 
 async function convidarUsuario() {
   var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
-    alert('Acesso negado. Apenas dono e admin podem convidar usuários.');
+  if (_gp !== 'dono') {
+    alert('Acesso negado. Apenas o Dono da empresa pode convidar usuários.');
     return;
   }
   var nome    = (document.getElementById('invNome')   ||{}).value||'';
@@ -10368,8 +10370,8 @@ async function _popularDropdownUsuarios() {
 
 async function vincularUsuarioExistente() {
   var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  if (!_gp || ['dono', 'admin'].indexOf(_gp) < 0) {
-    alert('Acesso negado. Apenas dono e admin podem vincular usuários.');
+  if (_gp !== 'dono') {
+    alert('Acesso negado. Apenas o Dono da empresa pode vincular usuários.');
     return;
   }
   var usuarioId = (document.getElementById('vinUsuario')||{}).value||'';
@@ -10657,22 +10659,19 @@ function _vinMsg(msg, tipo) {
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     G2 — MODAL: CADASTRO DA EMPRESA
-     Permite visualizar e editar o cadastro completo da empresa ativa.
-     Salvar: somente perfil 'dono' (RLS enforça no banco).
-     Leitura: dono, admin, gestor — [provisório até G3/G4]
+     G2/G3 — MODAL: CADASTRO DA EMPRESA
+     Acesso restrito ao perfil 'dono' da empresa ativa.
+     admin/gestor não têm acesso — upgrade em G3/G4.
+     Criação de nova empresa: restrita ao superadmin (G3/G4).
      ══════════════════════════════════════════════════════════════════════ -->
 <style>
 #modalEmpresa .emp-form-label{font-size:.67rem;color:var(--text3);margin-bottom:.2rem}
 #modalEmpresa .emp-form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem;font-family:inherit;box-sizing:border-box}
 #modalEmpresa .emp-form-input:focus{outline:none;border-color:var(--blue)}
-#modalEmpresa .emp-form-input:disabled{opacity:.5;cursor:not-allowed}
 #modalEmpresa .emp-bloco{margin-bottom:1.1rem}
 #modalEmpresa .emp-bloco-titulo{font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)}
 #modalEmpresa .emp-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
 #modalEmpresa .emp-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.55rem}
-#modalEmpresa .emp-aviso-leitura{display:none;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.45rem .7rem;font-size:.75rem;color:var(--accent);margin-bottom:.85rem}
-#modalEmpresa .emp-aviso-leitura.on{display:block}
 #modalEmpresa .emp-aviso-sem-empresa{display:none;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.2);border-radius:6px;padding:.55rem .7rem;font-size:.78rem;color:var(--red);margin-bottom:.85rem}
 #modalEmpresa .emp-aviso-sem-empresa.on{display:block}
 </style>
@@ -10688,11 +10687,6 @@ function _vinMsg(msg, tipo) {
     <!-- Aviso: sem empresa ativa -->
     <div class="emp-aviso-sem-empresa" id="empAviso-sem-empresa">
       Nenhuma empresa ativa. Selecione uma empresa antes de editar.
-    </div>
-
-    <!-- Aviso: modo somente leitura -->
-    <div class="emp-aviso-leitura" id="empAviso-leitura">
-      🔒 Seu perfil tem acesso somente leitura. Apenas o <strong>Dono</strong> pode salvar alterações no cadastro da empresa.
     </div>
 
     <!-- BLOCO 1: Identificação -->
@@ -10828,39 +10822,29 @@ function _vinMsg(msg, tipo) {
 var _empEditandoId = null;
 
 function abrirEditarEmpresa() {
+  // Somente dono da empresa pode acessar o cadastro.
+  // admin/gestor não têm acesso por enquanto — upgrade em G3/G4.
+  var perfil = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (perfil !== 'dono') {
+    toast('Acesso negado. Apenas o Dono da empresa pode editar o cadastro.', 'err');
+    return;
+  }
+
   var emp = window._empresaAtiva;
   var m   = document.getElementById('modalEmpresa');
   if (!m) return;
 
-  var avSemEmp  = document.getElementById('empAviso-sem-empresa');
-  var avLeitura = document.getElementById('empAviso-leitura');
-  var btnSalvar = document.getElementById('empF-btn-salvar');
-  var perfil    = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-  var soDono    = perfil !== 'dono';
-
-  // Limpar estado
+  var avSemEmp = document.getElementById('empAviso-sem-empresa');
   _empEditandoId = null;
 
   if (!emp || !emp.id) {
-    if (avSemEmp)  avSemEmp.classList.add('on');
-    if (avLeitura) avLeitura.classList.remove('on');
+    if (avSemEmp) avSemEmp.classList.add('on');
     _empFormLimpar();
-    _empFormDesabilitar(true);
-    if (btnSalvar) btnSalvar.style.display = 'none';
     m.style.display = 'flex';
     return;
   }
 
-  if (avSemEmp)  avSemEmp.classList.remove('on');
-  if (avLeitura) avLeitura.classList.toggle('on', soDono);
-  if (btnSalvar) {
-    btnSalvar.style.display = '';
-    btnSalvar.disabled = soDono;
-    btnSalvar.style.opacity = soDono ? '.4' : '';
-    btnSalvar.title = soDono ? 'Apenas o Dono pode salvar alterações' : '';
-  }
-  _empFormDesabilitar(soDono);
-
+  if (avSemEmp) avSemEmp.classList.remove('on');
   _empEditandoId = emp.id;
   _empFormPreencher(emp);
   m.style.display = 'flex';
@@ -10911,10 +10895,6 @@ function _empFormPreencher(emp) {
   });
 }
 
-function _empFormDesabilitar(disabled) {
-  var inputs = document.querySelectorAll('#modalEmpresa .emp-form-input');
-  inputs.forEach(function(el){ el.disabled = disabled; });
-}
 
 function _empValidar() {
   var cnpj  = (document.getElementById('empF-cnpj')  ||{}).value || '';
