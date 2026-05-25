@@ -13,7 +13,11 @@
 //   - Nenhum dado antigo é apagado.
 //
 // Como usar (console do portal logado):
-//   var relatorio = await window.FinanceiroBackfillApply.aplicar();
+//   var relatorio = await window.FinanceiroBackfillApply.aplicar({
+//     empresaId: '...',
+//     permitirEscrita: true,
+//     confirmacao: 'APLICAR BACKFILL FINANCEIRO PARA ...'
+//   });
 //   console.table(relatorio);
 // ============================================================
 
@@ -61,6 +65,21 @@
     }
     console.info('[BackfillApply] empresa_id via', fonte, '→', id);
     return id;
+  }
+
+  function _perfilPermitido() {
+    try {
+      var perfil = null;
+      if (typeof window.getPerfilUsuario === 'function') {
+        perfil = window.getPerfilUsuario();
+      } else if (window.parent && window.parent !== window && typeof window.parent.getPerfilUsuario === 'function') {
+        perfil = window.parent.getPerfilUsuario();
+      }
+      if (!perfil) return true; // fallback: confirmacao forte + empresaId continuam obrigatorios
+      return perfil === 'dono' || perfil === 'admin';
+    } catch (e) {
+      return true; // sem perfil disponivel, nao afrouxa os demais bloqueios
+    }
   }
 
   function _parseDados(dadosJson) {
@@ -475,6 +494,17 @@
   async function aplicar(opcoes) {
     var opts = opcoes || {};
     var empresaId = opts.empresaId || _empresaId();
+    var confirmacaoEsperada = 'APLICAR BACKFILL FINANCEIRO PARA ' + empresaId;
+
+    if (opts.permitirEscrita !== true) {
+      throw new Error('[BackfillApply] Execucao bloqueada: permitirEscrita=true e obrigatorio.');
+    }
+    if (opts.confirmacao !== confirmacaoEsperada) {
+      throw new Error('[BackfillApply] Execucao bloqueada: confirmacao forte invalida para empresa_id ' + empresaId + '.');
+    }
+    if (!_perfilPermitido()) {
+      throw new Error('[BackfillApply] Execucao bloqueada: apenas dono ou admin podem aplicar backfill financeiro.');
+    }
 
     console.info('[BackfillApply] ═══ BACKFILL OFICIAL INICIADO ═══');
     console.info('[BackfillApply] Empresa:', empresaId);

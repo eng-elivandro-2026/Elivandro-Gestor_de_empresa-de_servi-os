@@ -980,6 +980,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="secao-titulo">⚡ Aplicar Backfill Financeiro</div>
     <div class="apply-info" id="apply-info"></div>
     <button class="btn-apply" id="btn-apply" onclick="executarApply()">⚡ Aplicar backfill financeiro</button>
+    <div class="aviso-escrita">ATENCAO: este backfill recria dados financeiros antigos a partir de propostas.dados_json.tl. Use somente em implantacao controlada.</div>
     <div class="aviso-escrita">⚠ Esta ação cria registros financeiros. Nenhuma proposta será alterada. Idempotente.</div>
     <div class="status-msg" id="apply-status-msg"></div>
     <div class="resumo-grid" id="apply-resumo-grid" style="display:none"></div>
@@ -4125,14 +4126,17 @@ function _setApplyStatus(tipo, msg) {
   el.textContent = msg;
 }
 
-var FRASE_CONFIRMACAO = 'APLICAR BACKFILL FINANCEIRO';
+var FRASE_CONFIRMACAO_PREFIXO = 'APLICAR BACKFILL FINANCEIRO PARA ';
 var _modalResolve = null;
+var _fraseConfirmacaoAtual = '';
 
-function _abrirModalConfirmacao(resumo, empNome) {
+function _abrirModalConfirmacao(resumo, empNome, empresaId) {
   return new Promise(function(resolve) {
     _modalResolve = resolve;
+    _fraseConfirmacaoAtual = FRASE_CONFIRMACAO_PREFIXO + empresaId;
     var linhas = [
       { label:'Empresa ativa',       valor: empNome },
+      { label:'empresa_id',          valor: empresaId },
       { label:'Contas a receber',    valor: (resumo.contas_receber_a_criar||0) + ' a criar' },
       { label:'Notas fiscais',       valor: (resumo.notas_fiscais_a_criar||0) + ' a criar' },
       { label:'Recebimentos',        valor: (resumo.recebimentos_a_criar||0) + ' a criar' },
@@ -4143,6 +4147,8 @@ function _abrirModalConfirmacao(resumo, empNome) {
       return '<div class="modal-linha"><span class="modal-linha-label">' + l.label + '</span>' +
         '<span class="modal-linha-valor">' + l.valor + '</span></div>';
     }).join('');
+    var instr = document.querySelector('#modal-confirmacao .modal-instrucao strong');
+    if (instr) instr.textContent = _fraseConfirmacaoAtual;
     var input = document.getElementById('modal-input-confirmacao');
     input.value = '';
     input.className = 'modal-input';
@@ -4156,7 +4162,7 @@ function modalValidarTexto() {
   var input = document.getElementById('modal-input-confirmacao');
   var btn   = document.getElementById('modal-btn-confirmar');
   var val   = input.value;
-  if (val === FRASE_CONFIRMACAO) { input.className='modal-input ok'; btn.disabled=false; }
+  if (val === _fraseConfirmacaoAtual) { input.className='modal-input ok'; btn.disabled=false; }
   else if (val.length>0)         { input.className='modal-input err'; btn.disabled=true; }
   else                            { input.className='modal-input'; btn.disabled=true; }
 }
@@ -4167,9 +4173,9 @@ function modalCancelar() {
 }
 
 function modalConfirmar() {
-  if (document.getElementById('modal-input-confirmacao').value !== FRASE_CONFIRMACAO) return;
+  if (document.getElementById('modal-input-confirmacao').value !== _fraseConfirmacaoAtual) return;
   document.getElementById('modal-confirmacao').style.display = 'none';
-  if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
+  if (_modalResolve) { _modalResolve(_fraseConfirmacaoAtual); _modalResolve = null; }
 }
 
 document.addEventListener('click', function(e) {
@@ -4178,6 +4184,7 @@ document.addEventListener('click', function(e) {
 });
 
 var _ultimoResumoPrevia = null;
+var _ultimoPreviewEmpresaId = null;
 
 async function executarPrevia() {
   // H-006: backfill preview restrito a gestor+
@@ -4195,6 +4202,7 @@ async function executarPrevia() {
   var bfp  = _getBFP();
 
   _ultimoResumoPrevia = null;
+  _ultimoPreviewEmpresaId = null;
   document.getElementById('secao-apply').style.display = 'none';
   document.getElementById('apply-resumo-grid').style.display = 'none';
 
@@ -4205,6 +4213,8 @@ async function executarPrevia() {
   _setStatus('loading','Executando prévia... aguarde.');
 
   try {
+    var empPrev = _empresaAtiva || _empAtiva();
+    _ultimoPreviewEmpresaId = empPrev && empPrev.id ? empPrev.id : null;
     var resultado = await bfp.executar();
     var r = resultado.resumo;
     _ultimoResumoPrevia = r;
@@ -4265,15 +4275,26 @@ async function executarApply() {
   if (!bfa) { _setApplyStatus('err','FinanceiroBackfillApply não encontrado. Recarregue o portal.'); return; }
 
   var empNome = 'não identificada';
+  var empresaId = null;
   try {
     var emp = _empresaAtiva || _empAtiva();
     if (emp && emp.nome) empNome = emp.nome;
+    if (emp && emp.id) empresaId = emp.id;
   } catch(e) {}
+  if (!empresaId) { _setApplyStatus('err','Empresa ativa não identificada. Nenhum dado foi gravado.'); return; }
+  if (!_ultimoResumoPrevia || !_ultimoPreviewEmpresaId) {
+    _setApplyStatus('err','Execute a prévia do backfill nesta sessão antes de aplicar. Nenhum dado foi gravado.');
+    return;
+  }
+  if (_ultimoPreviewEmpresaId !== empresaId) {
+    _setApplyStatus('err','A empresa ativa mudou desde a prévia. Execute a prévia novamente antes de aplicar.');
+    return;
+  }
 
   var resumo = _ultimoResumoPrevia || {};
-  var confirmado = await _abrirModalConfirmacao(resumo, empNome);
+  var confirmacao = await _abrirModalConfirmacao(resumo, empNome, empresaId);
 
-  if (!confirmado) { _setApplyStatus('warn','Backfill cancelado. Nenhum dado foi gravado.'); return; }
+  if (!confirmacao) { _setApplyStatus('warn','Backfill cancelado. Nenhum dado foi gravado.'); return; }
 
   var btn  = document.getElementById('btn-apply');
   var grid = document.getElementById('apply-resumo-grid');
@@ -4283,7 +4304,11 @@ async function executarApply() {
   _setApplyStatus('loading','Aplicando backfill... aguarde. Isso pode levar alguns segundos.');
 
   try {
-    var rel = await bfa.aplicar();
+    var rel = await bfa.aplicar({
+      empresaId: empresaId,
+      permitirEscrita: true,
+      confirmacao: confirmacao
+    });
     var temErros = rel.erros && rel.erros.length > 0;
     _setApplyStatus(temErros?'warn':'ok',
       'Backfill aplicado. ' + rel.aviso + (temErros?' — '+rel.erros.length+' erro(s).':''));
