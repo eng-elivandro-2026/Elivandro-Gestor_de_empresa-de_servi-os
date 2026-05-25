@@ -9954,18 +9954,11 @@ async function iniciarPlataforma() {
         .from('usuarios').select('perfil')
         .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
       // Se é dono ou gestor, fica na plataforma principal
+      // Botões 🏢 e 👥 são controlados por _atualizarBotoesAdmin() em multi-empresa.js
+      // baseado em perfil_empresa da empresa ativa (migration 020).
+      // [PROVISÓRIO] nascimento.gaube@gmail.com = superadmin até G4 formalizar.
       if (_usr.data && (_usr.data.perfil === 'dono' || _usr.data.perfil === 'gestor')) {
-        // Botões de administração visíveis somente para dono da empresa.
-        // admin/gestor não veem por enquanto — upgrade em G3/G4.
-        // Criação de nova empresa: restrita ao dono do software.
-        // [PROVISÓRIO] Identificado por e-mail nascimento.gaube@gmail.com até que
-        // o papel 'superadmin' seja criado em G3/G4.
-        if (_usr.data.perfil === 'dono') {
-          var _btnU = document.getElementById('btn-usuarios');
-          if (_btnU) _btnU.style.display = '';
-          var _btnE = document.getElementById('btn-empresa');
-          if (_btnE) _btnE.style.display = '';
-        }
+        // Fica na plataforma — botões aparecem via _atualizarBotoesAdmin() quando empresa carrega
       } else {
         // Verificar se é colaborador puro
         var _cc = await window.sbClient
@@ -10256,7 +10249,7 @@ async function _carregarListaUsuarios() {
 
   var res = await window.sbClient
     .from('usuario_empresas')
-    .select('usuario_id, empresa_id, ativo, usuarios(id, nome, perfil, email, auth_id), empresas(nome_curto)')
+    .select('usuario_id, empresa_id, ativo, perfil_empresa, usuarios(id, nome, perfil, email, auth_id), empresas(nome_curto)')
     .in('empresa_id', empIds)
     .eq('ativo', true);
 
@@ -10271,9 +10264,10 @@ async function _carregarListaUsuarios() {
     var emp = ue.empresas  || {};
     var uid = ue.usuario_id;
     var eid = ue.empresa_id;
-    var nome   = (u.nome  || '—').replace(/'/g, "\\'");
-    var perfil = u.perfil || '';
-    var email  = (u.email || '').replace(/'/g, "\\'");
+    var nome    = (u.nome  || '—').replace(/'/g, "\\'");
+    // perfil_empresa é a fonte primária; fallback para usuarios.perfil
+    var perfil  = ue.perfil_empresa || u.perfil || '';
+    var email   = (u.email || '').replace(/'/g, "\\'");
     var nomeEmp = (emp.nome_curto || '—').replace(/'/g, "\\'");
     return '<div style="display:flex;align-items:center;gap:.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.45rem .75rem">'
       + '<div style="width:28px;height:28px;border-radius:50%;background:rgba(88,166,255,.2);display:grid;place-items:center;font-size:.65rem;font-weight:700;color:var(--blue);flex-shrink:0">'
@@ -10281,7 +10275,7 @@ async function _carregarListaUsuarios() {
       + '</div>'
       + '<div style="flex:1;min-width:0">'
       +   '<div style="font-size:.8rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(u.nome||'—') + '</div>'
-      +   '<div style="font-size:.67rem;color:var(--text3)">' + (lblPerfil[u.perfil]||u.perfil||'—') + ' · ' + esc(emp.nome_curto||'—') + '</div>'
+      +   '<div style="font-size:.67rem;color:var(--text3)">' + (lblPerfil[perfil]||perfil||'—') + ' · ' + esc(emp.nome_curto||'—') + '</div>'
       + '</div>'
       + '<div style="display:flex;gap:.3rem;flex-shrink:0">'
       +   '<button class="nb" title="Editar acesso" onclick="_abrirEditarUsuario(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\',\'' + email + '\',\'' + nomeEmp + '\')" '
@@ -10338,11 +10332,13 @@ async function convidarUsuario() {
       );
     }
 
-    // Vincular à empresa (ignorar se já vinculado)
+    // Vincular à empresa com perfil_empresa (migration 020)
+    var perfilConvite = (document.getElementById('invPerfil')||{}).value || 'gestor';
     var insEmp = await window.sbClient.from('usuario_empresas').upsert({
-      usuario_id: novoUserId,
-      empresa_id: empId,
-      ativo:      true
+      usuario_id:     novoUserId,
+      empresa_id:     empId,
+      ativo:          true,
+      perfil_empresa: perfilConvite
     }, { onConflict: 'usuario_id,empresa_id' });
     if (insEmp.error) throw new Error('Erro ao vincular empresa: ' + insEmp.error.message);
 
@@ -10393,10 +10389,12 @@ async function vincularUsuarioExistente() {
   if (!usuarioId) { res.innerHTML = _vinMsg('❌ Selecione um usuário.', 'err'); return; }
   if (!empId)     { res.innerHTML = _vinMsg('❌ Selecione a empresa.', 'err'); return; }
   try {
+    var perfilVin = (document.getElementById('vinPerfil')||{}).value || 'gestor';
     var ins = await window.sbClient.from('usuario_empresas').upsert({
-      usuario_id: usuarioId,
-      empresa_id: empId,
-      ativo: true
+      usuario_id:     usuarioId,
+      empresa_id:     empId,
+      ativo:          true,
+      perfil_empresa: perfilVin
     }, { onConflict: 'usuario_id,empresa_id' });
     if (ins.error) throw new Error(ins.error.message);
     var nomeSel = document.getElementById('vinUsuario').selectedOptions[0].text;
@@ -10419,12 +10417,13 @@ function _vinMsg(msg, tipo) {
 
 async function _contarDonoAtivo(empId) {
   if (!window.sbClient) return 0;
+  // Usa perfil_empresa (migration 020) — sem join necessário
   var res = await window.sbClient
     .from('usuario_empresas')
-    .select('usuario_id, usuarios!inner(perfil)')
+    .select('usuario_id')
     .eq('empresa_id', empId)
     .eq('ativo', true)
-    .eq('usuarios.perfil', 'dono');
+    .eq('perfil_empresa', 'dono');
   return res.data ? res.data.length : 0;
 }
 
@@ -10478,24 +10477,33 @@ async function _salvarEditarUsuario() {
   btnSalvar.textContent = 'Salvando…';
 
   try {
+    // Atualizar perfil_empresa em usuario_empresas (por empresa — não toca usuarios.perfil global)
     var upd = await window.sbClient
-      .from('usuarios')
-      .update({ perfil: perfilNovo })
-      .eq('id', usuarioId);
+      .from('usuario_empresas')
+      .update({ perfil_empresa: perfilNovo })
+      .eq('usuario_id', usuarioId)
+      .eq('empresa_id', empId);
 
     if (upd.error) throw new Error(upd.error.message);
 
-    // Atualizar perfil global em memória (_perfilUsuario) se for o próprio usuário
-    var { data: me } = await window.sbClient.auth.getUser();
-    if (me && me.user) {
-      var { data: meRow } = await window.sbClient.from('usuarios').select('id').eq('auth_id', me.user.id).maybeSingle();
-      if (meRow && meRow.id === usuarioId) window._perfilUsuario = perfilNovo;
+    // Se editou o próprio vínculo na empresa ativa, atualizar estado em memória
+    var empAtiva = window._empresaAtiva;
+    if (empAtiva && empAtiva.id === empId) {
+      var { data: me } = await window.sbClient.auth.getUser();
+      if (me && me.user) {
+        var { data: meRow } = await window.sbClient.from('usuarios').select('id').eq('auth_id', me.user.id).maybeSingle();
+        if (meRow && meRow.id === usuarioId) {
+          window._perfilUsuario = perfilNovo;
+          // Atualizar empresa ativa em memória e botões
+          empAtiva.perfil_empresa = perfilNovo;
+          if (typeof window._atualizarBotoesAdmin === 'function') window._atualizarBotoesAdmin();
+        }
+      }
     }
 
-    res.innerHTML = _vinMsg('✅ Perfil de ' + nome + ' atualizado para <strong>' + perfilNovo + '</strong>. ⚠️ Alteração global — afeta todas as empresas do usuário.', 'ok');
+    res.innerHTML = _vinMsg('✅ Perfil de ' + nome + ' nesta empresa atualizado para <strong>' + perfilNovo + '</strong>.', 'ok');
     btnSalvar.textContent = '💾 Salvar';
     btnSalvar.disabled = false;
-    // Atualizar perfil no data-original para nova referência
     document.getElementById('euPerfil').dataset.original = perfilNovo;
     setTimeout(function() { fecharEditarUsuario(); _carregarListaUsuarios(); }, 1500);
   } catch(e) {
@@ -10555,7 +10563,7 @@ async function _removerDaEmpresa(usuarioId, empId, nome, perfilAtual) {
 
       <!-- Seção: vincular usuário já cadastrado -->
       <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Adicionar usuário existente a outra empresa</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.6rem">
         <div>
           <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Usuário *</div>
           <select id="vinUsuario" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"><option value="">— carregando...</option></select>
@@ -10563,6 +10571,16 @@ async function _removerDaEmpresa(usuarioId, empId, nome, perfilAtual) {
         <div>
           <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Empresa *</div>
           <select id="vinEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"></select>
+        </div>
+        <div>
+          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Perfil *</div>
+          <select id="vinPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
+            <option value="gestor">🔑 Gestor</option>
+            <option value="admin">⚙️ Admin</option>
+            <option value="colaborador">👤 Colaborador</option>
+            <option value="prestador">🔧 Prestador</option>
+            <option value="dono">👑 Dono</option>
+          </select>
         </div>
       </div>
       <button class="nb" onclick="vincularUsuarioExistente()" style="width:100%;background:var(--green);color:#fff;border-radius:7px;padding:.5rem;font-size:.82rem;font-weight:700;margin-bottom:.5rem">🔗 Vincular à Empresa</button>
@@ -10610,10 +10628,9 @@ async function _removerDaEmpresa(usuarioId, empId, nome, perfilAtual) {
       <button class="nb" onclick="fecharEditarUsuario()" style="font-size:1rem;color:var(--text3)">✕</button>
     </div>
 
-    <!-- Aviso global -->
-    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:7px;padding:.55rem .75rem;margin-bottom:1rem;font-size:.73rem;color:#f87171;line-height:1.45">
-      ⚠️ <strong>O perfil é global</strong> e afeta todas as empresas do usuário.<br>
-      <span style="color:var(--text3);font-size:.7rem">[PROVISÓRIO — será por empresa após migration 021]</span>
+    <!-- Aviso por empresa -->
+    <div style="background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:7px;padding:.55rem .75rem;margin-bottom:1rem;font-size:.73rem;color:var(--blue);line-height:1.45">
+      🏢 O perfil abaixo é <strong>específico desta empresa</strong>. Outras empresas do usuário não são afetadas.
     </div>
 
     <!-- Campos somente leitura -->

@@ -6,8 +6,9 @@
 (function () {
 
   // Estado global da empresa ativa
-  window._empresaAtiva = null;
-  window._perfilUsuario = null;
+  window._empresaAtiva    = null;
+  window._perfilUsuario   = null;  // perfil na empresa ativa (perfil_empresa com fallback)
+  window._perfilGlobal    = null;  // usuarios.perfil — fallback e enforcement do RLS
   window._empresasUsuario = [];
 
   // ── Carregar empresas do usuário logado ──────────────────
@@ -30,12 +31,14 @@
         console.warn('[multi-empresa] usuário não encontrado para auth_id:', authId);
         return [];
       }
-      window._perfilUsuario = usuario.perfil;
+      // Salvar perfil global como fallback e para RLS
+      window._perfilGlobal  = usuario.perfil;
+      window._perfilUsuario = usuario.perfil; // será sobrescrito em setEmpresaAtiva()
 
-      // Buscar empresas vinculadas pelo usuario_id (não depende de RLS/auth.uid)
+      // Buscar empresas vinculadas com perfil_empresa (migration 020)
       var { data: vinculos, error: errV } = await window.sbClient
         .from('usuario_empresas')
-        .select('empresa_id')
+        .select('empresa_id, perfil_empresa')
         .eq('usuario_id', usuario.id)
         .eq('ativo', true);
 
@@ -43,6 +46,10 @@
         console.warn('[multi-empresa] sem vínculos de empresa');
         return [];
       }
+
+      // Mapear perfil_empresa por empresa_id
+      var perfilMap = {};
+      vinculos.forEach(function(v) { perfilMap[v.empresa_id] = v.perfil_empresa || null; });
 
       var ids = vinculos.map(function(v){ return v.empresa_id; });
 
@@ -53,9 +60,14 @@
         .in('id', ids)
         .eq('ativo', true);
 
-      window._empresasUsuario = empresas || [];
+      // Mesclar perfil_empresa em cada objeto de empresa
+      window._empresasUsuario = (empresas || []).map(function(emp) {
+        return Object.assign({}, emp, {
+          perfil_empresa: perfilMap[emp.id] || usuario.perfil // fallback para global
+        });
+      });
       console.log('%c[multi-empresa] ' + (empresas||[]).length + ' empresa(s) carregada(s) para ' + usuario.nome, 'color:#f0a500');
-      return empresas || [];
+      return window._empresasUsuario;
 
     } catch (e) {
       console.warn('[multi-empresa] erro ao carregar empresas:', e);
@@ -106,6 +118,13 @@
     if (window._empresaAtiva && window._empresaAtiva.id === empresa.id) return;
     _trocandoEmpresa = true;
     window._empresaAtiva = empresa;
+
+    // Atualizar perfil operacional para a empresa ativa
+    // perfil_empresa foi mesclado no objeto em carregarEmpresasUsuario()
+    window._perfilUsuario = empresa.perfil_empresa || window._perfilGlobal || null;
+
+    // Atualizar visibilidade dos botões de administração
+    if (typeof window._atualizarBotoesAdmin === 'function') window._atualizarBotoesAdmin();
 
     // Aplicar tema visual imediatamente (antes do overlay)
     if (typeof window.aplicarTemaEmpresa === 'function') window.aplicarTemaEmpresa(empresa);
@@ -317,8 +336,25 @@
     return window._empresaAtiva ? window._empresaAtiva.id : null;
   };
 
+  // Retorna perfil da empresa ativa (perfil_empresa com fallback para global)
   window.getPerfilUsuario = function () {
     return window._perfilUsuario;
+  };
+
+  // Retorna perfil global (usuarios.perfil) — usado como fallback e pelo RLS
+  window.getPerfilGlobal = function () {
+    return window._perfilGlobal;
+  };
+
+  // ── Controle de visibilidade dos botões de administração ─────────────────
+  // Chamado em setEmpresaAtiva() e pode ser chamado de fora para recheck.
+  window._atualizarBotoesAdmin = function () {
+    var isDono = window._perfilUsuario === 'dono';
+    var btnU = document.getElementById('btn-usuarios');
+    var btnE = document.getElementById('btn-empresa');
+    if (btnU) btnU.style.display = isDono ? '' : 'none';
+    if (btnE) btnE.style.display = isDono ? '' : 'none';
+    console.log('%c[multi-empresa] perfil na empresa ativa: ' + window._perfilUsuario, 'color:#f0a500');
   };
 
   // ── Atualizar cadastro da empresa (apenas dono — RLS enforça) ────────────
