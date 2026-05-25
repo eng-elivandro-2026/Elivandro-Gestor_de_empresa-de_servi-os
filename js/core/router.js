@@ -76,7 +76,6 @@
       label: 'Gestão CEO',
       icon: '🎯',
       tipo: 'inline',
-      perfisPermitidos: ['dono', 'admin', 'gestor'],
       init: function () { go('gestao'); if (typeof rGestaoCeo === 'function') rGestaoCeo(); },
       nav: [
         { separator: true, label: 'Gestão Executiva' },
@@ -98,7 +97,6 @@
       label: 'RH / Equipes',
       icon: '👷',
       tipo: 'inline',
-      perfisPermitidos: ['dono', 'admin', 'gestor'],
       init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
       nav: [
         { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',null)" },
@@ -114,7 +112,6 @@
       icon: '💰',
       tipo: 'iframe',
       src: 'pages/financeiro.html',
-      perfisPermitidos: ['dono', 'admin', 'gestor'],
       nav: [
         { label: 'Notas Fiscais de Faturamento',  icon: '📄', action: "Router.iframeMsg('financeiro','SHOW_TAB','nfs');Router._setNavAtivo(this)" },
         { label: 'Notas Fiscais de Fornecedores', icon: '📥', action: "Router.iframeMsg('financeiro','SHOW_TAB','nf-fornecedor');Router._setNavAtivo(this)" },
@@ -136,6 +133,11 @@
     init: function (moduloInicial) {
       moduloInicial = moduloInicial || 'comercial';
       this._renderSidebarModulos();
+      // Se o módulo salvo não está acessível, usar o primeiro permitido
+      if (typeof window.podeAcessarModulo === 'function' && !window.podeAcessarModulo(moduloInicial)) {
+        var _permitidos = typeof window.getModulosPermitidos === 'function' ? window.getModulosPermitidos() : [];
+        moduloInicial = _permitidos.length > 0 ? _permitidos[0] : moduloInicial;
+      }
       this.ir(moduloInicial);
     },
 
@@ -144,14 +146,14 @@
       var mod = this._getMod(id);
       if (!mod) return console.warn('[Router] Módulo não encontrado:', id);
 
-      // Guard de perfil — fail-closed: bloqueia se perfil não carregou ou não autorizado
-      if (mod.perfisPermitidos) {
+      // Guard via matriz centralizada (permissoes.js — fail-closed)
+      if (typeof window.podeAcessarModulo === 'function' && !window.podeAcessarModulo(id)) {
         var _p = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
-        if (!_p || mod.perfisPermitidos.indexOf(_p) < 0) {
-          console.warn('[Router] Acesso bloqueado ao módulo "' + id + '" — perfil:', _p);
-          if (_p) alert('Acesso restrito. Seu perfil (' + _p + ') não tem permissão para o módulo "' + mod.label + '".');
-          return;
+        console.warn('[Router] Acesso bloqueado ao módulo "' + id + '" — perfil:', _p);
+        if (typeof toast === 'function') {
+          toast('Você não tem acesso ao módulo "' + mod.label + '" nesta empresa.', 'err');
         }
+        return;
       }
 
       // Desativa módulo anterior
@@ -200,6 +202,23 @@
       this._renderSidebarModulos();
     },
 
+    // Recalcula menus e redireciona se módulo ativo perdeu permissão (chamado ao trocar empresa)
+    atualizarMenus: function () {
+      this._renderSidebarModulos();
+      if (_moduloAtivo && typeof window.podeAcessarModulo === 'function' && !window.podeAcessarModulo(_moduloAtivo)) {
+        var permitidos = typeof window.getModulosPermitidos === 'function' ? window.getModulosPermitidos() : [];
+        if (permitidos.length > 0) {
+          this.ir(permitidos[0]);
+        } else {
+          // Nenhum módulo disponível para este perfil
+          var el = document.getElementById('sidebar-modulos');
+          if (el) el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.8rem .6rem;line-height:1.4">Nenhum módulo disponível para seu perfil nesta empresa.</div>';
+          var elNav = document.getElementById('sidebar-nav-mod');
+          if (elNav) elNav.innerHTML = '';
+        }
+      }
+    },
+
     // ── Internos ─────────────────────────────────────────
 
     _getMod: function (id) {
@@ -209,13 +228,29 @@
     _renderSidebarModulos: function () {
       var el = document.getElementById('sidebar-modulos');
       if (!el) return;
-      el.innerHTML = MODULOS.map(function (m) {
+      // Filtra módulos pelo perfil atual (permissoes.js); sem filtro se ainda não carregou
+      var visiveis = MODULOS.filter(function (m) {
+        return typeof window.podeAcessarModulo === 'function'
+          ? window.podeAcessarModulo(m.id)
+          : true;
+      });
+      if (!visiveis.length) {
+        el.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:.8rem .6rem;line-height:1.4">Nenhum módulo disponível para seu perfil nesta empresa.</div>';
+        return;
+      }
+      el.innerHTML = visiveis.map(function (m) {
         return '<button class="mod-btn nb" data-mod="' + m.id + '" onclick="Router.ir(\'' + m.id + '\')">' +
           '<span class="mod-icon">' + m.icon + '</span>' +
           '<span class="mod-label">' + m.label + '</span>' +
           (m.badge ? '<span class="mod-badge">' + m.badge + '</span>' : '') +
           '</button>';
       }).join('');
+      // Reaplica destaque ao módulo ativo (se ainda visível)
+      if (_moduloAtivo) {
+        el.querySelectorAll('.mod-btn').forEach(function (b) {
+          b.classList.toggle('on', b.dataset.mod === _moduloAtivo);
+        });
+      }
     },
 
     _renderNavMod: function (mod) {

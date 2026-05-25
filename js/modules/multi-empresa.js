@@ -123,8 +123,12 @@
     // perfil_empresa foi mesclado no objeto em carregarEmpresasUsuario()
     window._perfilUsuario = empresa.perfil_empresa || window._perfilGlobal || null;
 
-    // Atualizar visibilidade dos botões de administração
+    // Atualizar visibilidade dos botões de administração e menus
     if (typeof window._atualizarBotoesAdmin === 'function') window._atualizarBotoesAdmin();
+    // Recalcular menus conforme nova empresa/perfil (G4A)
+    if (typeof window.Router !== 'undefined' && typeof window.Router.atualizarMenus === 'function') {
+      window.Router.atualizarMenus();
+    }
 
     // Aplicar tema visual imediatamente (antes do overlay)
     if (typeof window.aplicarTemaEmpresa === 'function') window.aplicarTemaEmpresa(empresa);
@@ -347,13 +351,18 @@
   };
 
   // ── Controle de visibilidade dos botões de administração ─────────────────
-  // Chamado em setEmpresaAtiva() e pode ser chamado de fora para recheck.
+  // Usa matriz de permissões (G4A): configuracoes.empresa/usuarios = ['dono','admin']
   window._atualizarBotoesAdmin = function () {
-    var isDono = window._perfilUsuario === 'dono';
+    var podeEmpresa  = typeof window.podeAcao === 'function'
+      ? window.podeAcao('configuracoes', 'empresa')
+      : (window._perfilUsuario === 'dono'); // fallback antes de permissoes.js carregar
+    var podeUsuarios = typeof window.podeAcao === 'function'
+      ? window.podeAcao('configuracoes', 'usuarios')
+      : (window._perfilUsuario === 'dono');
     var btnU = document.getElementById('btn-usuarios');
     var btnE = document.getElementById('btn-empresa');
-    if (btnU) btnU.style.display = isDono ? '' : 'none';
-    if (btnE) btnE.style.display = isDono ? '' : 'none';
+    if (btnU) btnU.style.display = podeUsuarios ? '' : 'none';
+    if (btnE) btnE.style.display = podeEmpresa  ? '' : 'none';
     console.log('%c[multi-empresa] perfil na empresa ativa: ' + window._perfilUsuario, 'color:#f0a500');
   };
 
