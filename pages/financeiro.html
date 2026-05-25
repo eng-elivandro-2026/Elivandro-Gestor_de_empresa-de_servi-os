@@ -1453,16 +1453,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <script>
 'use strict';
 
-// ── H-005: Guard de acesso — bloquear colaborador/prestador ──
+// ── H-005: Guard de acesso — respeita matriz G4A/G4B ──────────
 // Executado imediatamente, antes de qualquer estado ou DOM.
 // Cobre: URL direta, iframe embed sem router, console bypass.
+// Usa podeAcessarModulo('financeiro') do portal pai quando disponível;
+// cai em getPerfilUsuario() como fallback para compatibilidade.
 (function() {
   function _perfilPermitido() {
     try {
       if (window.parent === window) return false; // acesso direto sem portal pai
+      // Matriz G4A/G4B — fonte de verdade
+      if (typeof window.parent.podeAcessarModulo === 'function') {
+        return window.parent.podeAcessarModulo('financeiro');
+      }
+      // Fallback: perfil direto (inclui 'financeiro' explicitamente)
       if (typeof window.parent.getPerfilUsuario !== 'function') return false;
       var p = window.parent.getPerfilUsuario();
-      return p && ['dono', 'admin', 'gestor'].indexOf(p) >= 0;
+      return p && ['dono', 'admin', 'gestor', 'financeiro'].indexOf(p) >= 0;
     } catch(e) { return false; }
   }
   if (!_perfilPermitido()) {
@@ -1472,7 +1479,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       '<div style="text-align:center;padding:2rem">' +
       '<div style="font-size:2.5rem;margin-bottom:.8rem">🔒</div>' +
       '<div style="font-size:1rem;font-weight:700;margin-bottom:.5rem">Acesso Restrito</div>' +
-      '<div style="font-size:.82rem;color:#8b949e">O módulo Financeiro requer perfil gestor, admin ou dono.' +
+      '<div style="font-size:.82rem;color:#8b949e">Você não tem permissão para acessar o módulo Financeiro nesta empresa.' +
       '<br>Solicite acesso ao administrador do sistema.</div>' +
       '</div></div>';
     throw new Error('[Financeiro] Acesso bloqueado — perfil insuficiente.');
@@ -2498,12 +2505,17 @@ async function _nffSalvar() {
   if (!sf || !sf.criarNFFornecedor) {
     _nffSetMsg('Módulo financeiro não disponível.', 'err'); return;
   }
-  // Guard de perfil
+  // Guard de perfil — usa matriz G4A/G4B
   try {
-    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
-      ? window.parent.getPerfilUsuario() : null;
-    if (!_p || ['dono','admin','gestor'].indexOf(_p) < 0) {
-      _nffSetMsg('Acesso negado. Apenas gestor, admin ou dono podem importar.', 'err'); return;
+    var _podeImportar = (typeof window.parent.podeAcao === 'function')
+      ? window.parent.podeAcao('financeiro', 'importar_nf')
+      : (function() {
+          var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+            ? window.parent.getPerfilUsuario() : null;
+          return _p && ['dono','admin','gestor','financeiro'].indexOf(_p) >= 0;
+        })();
+    if (!_podeImportar) {
+      _nffSetMsg('Acesso negado. Você não tem permissão para importar NF nesta empresa.', 'err'); return;
     }
   } catch(e) { _nffSetMsg('Erro ao verificar perfil.', 'err'); return; }
 
@@ -5263,12 +5275,17 @@ function fecharDetalheCp() {
 
 // ── Criar Conta a Pagar ───────────────────────────────────────
 async function criarContaPagar() {
-  // H-006: guard de perfil para operação de escrita
+  // H-006: guard de perfil — usa matriz G4A/G4B (criar_cp_cr)
   try {
-    var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
-      ? window.parent.getPerfilUsuario() : null;
-    if (!_p || ['dono', 'admin', 'gestor'].indexOf(_p) < 0) {
-      alert('Acesso negado. Apenas gestor, admin ou dono podem criar contas a pagar.');
+    var _podeCriarCP = (typeof window.parent.podeAcao === 'function')
+      ? window.parent.podeAcao('financeiro', 'criar_cp_cr')
+      : (function() {
+          var _p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+            ? window.parent.getPerfilUsuario() : null;
+          return _p && ['dono', 'admin', 'gestor', 'financeiro'].indexOf(_p) >= 0;
+        })();
+    if (!_podeCriarCP) {
+      alert('Acesso negado. Você não tem permissão para criar contas a pagar nesta empresa.');
       return;
     }
   } catch(e) { return; }
