@@ -49,7 +49,7 @@
       // Buscar dados das empresas pelos IDs
       var { data: empresas } = await window.sbClient
         .from('empresas')
-        .select('id, nome, nome_curto, cnpj, regime_fiscal, logo_url')
+        .select('id, nome, nome_curto, cnpj, regime_fiscal, logo_url, razao_social, inscricao_estadual, inscricao_municipal, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_municipio, endereco_uf, endereco_cep, telefone, email, email_financeiro, logo_storage_path, config_json')
         .in('id', ids)
         .eq('ativo', true);
 
@@ -117,10 +117,14 @@
     // Salvar no localStorage para restaurar na próxima visita
     try {
       localStorage.setItem('tf_empresa_ativa', JSON.stringify({
-        id: empresa.id,
-        nome: empresa.nome,
-        nome_curto: empresa.nome_curto,
-        cnpj: empresa.cnpj
+        id:                  empresa.id,
+        nome:                empresa.nome,
+        nome_curto:          empresa.nome_curto,
+        cnpj:                empresa.cnpj,
+        razao_social:        empresa.razao_social        || null,
+        inscricao_estadual:  empresa.inscricao_estadual  || null,
+        email_financeiro:    empresa.email_financeiro     || null,
+        regime_fiscal:       empresa.regime_fiscal        || null
       }));
     } catch (e) {}
 
@@ -137,10 +141,13 @@
     document.querySelectorAll('.mod-frame').forEach(function(frame) {
       try {
         frame.contentWindow.postMessage({
-          type: 'SET_EMPRESA',
-          empresaId: empresa.id,
-          empresaNome: empresa.nome,
-          empresaNomeCurto: empresa.nome_curto
+          type:              'SET_EMPRESA',
+          empresaId:         empresa.id,
+          empresaNome:       empresa.nome,
+          empresaNomeCurto:  empresa.nome_curto,
+          empresaCnpj:       empresa.cnpj            || null,
+          empresaRazaoSocial:empresa.razao_social     || null,
+          empresaEmailFin:   empresa.email_financeiro || null
         }, '*');
       } catch(e) {}
     });
