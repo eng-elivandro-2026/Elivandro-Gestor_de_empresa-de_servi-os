@@ -371,43 +371,51 @@
 
   // ── Sincronizar empresa ativa após edição ────────────────────────────────
   window.sincronizarEmpresaAtiva = function (empresaAtualizada) {
+    // Preservar perfil_empresa (vem de usuario_empresas, não da tabela empresas)
+    var perfilEmpresaAtual = window._empresaAtiva && window._empresaAtiva.id === empresaAtualizada.id
+      ? (window._empresaAtiva.perfil_empresa || null)
+      : null;
+    var empresaCompleta = Object.assign({}, empresaAtualizada, {
+      perfil_empresa: perfilEmpresaAtual
+    });
+
     // Atualizar no array global
-    var idx = (window._empresasUsuario || []).findIndex(function(e){ return e.id === empresaAtualizada.id; });
-    if (idx >= 0) window._empresasUsuario[idx] = empresaAtualizada;
+    var idx = (window._empresasUsuario || []).findIndex(function(e){ return e.id === empresaCompleta.id; });
+    if (idx >= 0) window._empresasUsuario[idx] = empresaCompleta;
     // Atualizar empresa ativa em memória sem disparar troca (só propaga)
-    window._empresaAtiva = empresaAtualizada;
+    window._empresaAtiva = empresaCompleta;
     // Atualizar localStorage
     try {
       localStorage.setItem('tf_empresa_ativa', JSON.stringify({
-        id:                  empresaAtualizada.id,
-        nome:                empresaAtualizada.nome,
-        nome_curto:          empresaAtualizada.nome_curto,
-        cnpj:                empresaAtualizada.cnpj,
-        razao_social:        empresaAtualizada.razao_social        || null,
-        inscricao_estadual:  empresaAtualizada.inscricao_estadual  || null,
-        email_financeiro:    empresaAtualizada.email_financeiro     || null,
-        regime_fiscal:       empresaAtualizada.regime_fiscal        || null
+        id:                  empresaCompleta.id,
+        nome:                empresaCompleta.nome,
+        nome_curto:          empresaCompleta.nome_curto,
+        cnpj:                empresaCompleta.cnpj,
+        razao_social:        empresaCompleta.razao_social        || null,
+        inscricao_estadual:  empresaCompleta.inscricao_estadual  || null,
+        email_financeiro:    empresaCompleta.email_financeiro     || null,
+        regime_fiscal:       empresaCompleta.regime_fiscal        || null
       }));
     } catch(e) {}
     // Atualizar header visual
-    if (typeof atualizarHeaderEmpresa === 'function') atualizarHeaderEmpresa(empresaAtualizada);
+    if (typeof atualizarHeaderEmpresa === 'function') atualizarHeaderEmpresa(empresaCompleta);
     // Propagar para iframes via postMessage (atualiza _empresaAtiva.cnpj no financeiro etc.)
     document.querySelectorAll('.mod-frame').forEach(function(frame) {
       try {
         frame.contentWindow.postMessage({
           type:               'SET_EMPRESA',
-          empresaId:          empresaAtualizada.id,
-          empresaNome:        empresaAtualizada.nome,
-          empresaNomeCurto:   empresaAtualizada.nome_curto,
-          empresaCnpj:        empresaAtualizada.cnpj            || null,
-          empresaRazaoSocial: empresaAtualizada.razao_social     || null,
-          empresaEmailFin:    empresaAtualizada.email_financeiro || null
+          empresaId:          empresaCompleta.id,
+          empresaNome:        empresaCompleta.nome,
+          empresaNomeCurto:   empresaCompleta.nome_curto,
+          empresaCnpj:        empresaCompleta.cnpj            || null,
+          empresaRazaoSocial: empresaCompleta.razao_social     || null,
+          empresaEmailFin:    empresaCompleta.email_financeiro || null
         }, '*');
       } catch(e2) {}
     });
     // Disparar evento para módulos inline
     try {
-      window.dispatchEvent(new CustomEvent('empresa:atualizada', { detail: { empresa: empresaAtualizada } }));
+      window.dispatchEvent(new CustomEvent('empresa:atualizada', { detail: { empresa: empresaCompleta } }));
     } catch(e) {}
   };
 
