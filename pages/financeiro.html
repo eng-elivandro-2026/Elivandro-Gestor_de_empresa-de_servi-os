@@ -1480,7 +1480,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 })();
 
 // ── Estado global ─────────────────────────────────────────────
-var _empresaAtiva  = null;   // { id, nome, nome_curto }
+var _empresaAtiva  = null;   // { id, nome, nome_curto, cnpj, razao_social, email_financeiro }
 var _todasContas   = [];     // contas carregadas do Supabase
 var _carregando    = false;
 var _loadToken     = 0;      // race condition guard
@@ -2016,9 +2016,12 @@ function _onTrocaEmpresa(dados) {
   if (dreAv)  dreAv.style.display = 'none';
 
   _empresaAtiva = {
-    id:        dados.empresaId,
-    nome:      dados.empresaNome      || '',
-    nome_curto:dados.empresaNomeCurto || ''
+    id:           dados.empresaId,
+    nome:         dados.empresaNome       || '',
+    nome_curto:   dados.empresaNomeCurto  || '',
+    cnpj:         dados.empresaCnpj       || null,
+    razao_social: dados.empresaRazaoSocial|| null,
+    email_financeiro: dados.empresaEmailFin || null
   };
 
   _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
@@ -2285,10 +2288,11 @@ function _nffMostrarPreview(dados) {
   }
   // Verificar destinatário vs empresa ativa
   if (_empresaAtiva && dados.destinatario_cnpj) {
-    // se o portal tiver CNPJ disponível, comparar (best-effort)
+    // Usa cnpj do _empresaAtiva (preenchido via postMessage SET_EMPRESA com empresaCnpj)
+    // Fallback para window.parent.getEmpresaAtiva() em caso de carga inicial antes do SET_EMPRESA
     try {
-      var empCNPJ = (window.parent && typeof window.parent.getEmpresaAtiva === 'function')
-        ? (window.parent.getEmpresaAtiva() || {}).cnpj || '' : '';
+      var empCNPJ = (_empresaAtiva.cnpj) || (window.parent && typeof window.parent.getEmpresaAtiva === 'function'
+        ? (window.parent.getEmpresaAtiva() || {}).cnpj || '' : '');
       var cnpjLimpo = empCNPJ.replace(/\D/g,'');
       var destLimpo = dados.destinatario_cnpj.replace(/\D/g,'');
       if (cnpjLimpo && destLimpo && cnpjLimpo !== destLimpo) {
