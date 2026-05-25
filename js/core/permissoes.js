@@ -17,6 +17,9 @@
   //   gestao, rh, financeiro
   // Módulos lógicos sem ID no Router:
   //   cofre (botão dentro do Financeiro), configuracoes (botões 🏢/👥/⚙️)
+  // Perfis canônicos do sistema (mesma lista dos selects de usuário):
+  //   dono · admin · gestor · financeiro · comercial · rh · operacional
+  //   colaborador · leitura · prestador
   window.PERMISSOES_PADRAO = {
     financeiro: {
       ver:           ['dono', 'admin', 'gestor', 'financeiro'],
@@ -27,27 +30,27 @@
       cofre:         ['dono', 'admin']
     },
     comercial: {
-      ver:              ['dono', 'admin', 'gestor', 'comercial', 'colaborador'],
+      ver:              ['dono', 'admin', 'gestor', 'comercial', 'colaborador', 'leitura'],
       criar_proposta:   ['dono', 'admin', 'gestor', 'comercial'],
       aprovar_proposta: ['dono', 'admin', 'gestor'],
       editar_margem:    ['dono', 'admin']
     },
     historico: {
       // ID do Router para o módulo Relacionamento é 'historico'
-      ver:    ['dono', 'admin', 'gestor', 'comercial', 'colaborador'],
+      ver:    ['dono', 'admin', 'gestor', 'comercial', 'colaborador', 'rh', 'operacional', 'leitura'],
       editar: ['dono', 'admin', 'gestor', 'comercial']
     },
     operacional: {
-      ver:    ['dono', 'admin', 'gestor', 'colaborador', 'prestador'],
-      editar: ['dono', 'admin', 'gestor', 'colaborador']
+      ver:    ['dono', 'admin', 'gestor', 'colaborador', 'prestador', 'rh', 'operacional', 'leitura'],
+      editar: ['dono', 'admin', 'gestor', 'colaborador', 'operacional']
     },
     gestao: {
       ver:    ['dono', 'admin', 'gestor'],
       editar: ['dono', 'admin']
     },
     rh: {
-      ver:    ['dono', 'admin', 'gestor'],
-      editar: ['dono', 'admin']
+      ver:    ['dono', 'admin', 'gestor', 'rh'],
+      editar: ['dono', 'admin', 'rh']
     },
     cofre: {
       acesso: ['dono', 'admin']
