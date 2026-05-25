@@ -2406,6 +2406,85 @@ function _nffCancelarPreview() {
 }
 
 // ── Salvar: NF âncora + CPs + Banco de Preços ────────────────
+// ── _nffCriarCPs: cria CPs de uma NF, retorna array de referencia_ids criados ─
+async function _nffCriarCPs(sf, empresaId, nfId, dados, chaveAcesso) {
+  var obsBase = {
+    texto: 'Importado via XML de fornecedor',
+    xml_fornecedor: {
+      chave_acesso:    chaveAcesso,
+      numero_nf:       dados.numero_nf,
+      serie:           dados.serie,
+      data_emissao:    dados.data_emissao,
+      fornecedor_nome: dados.fornecedor_nome,
+      fornecedor_cnpj: dados.fornecedor_cnpj,
+      valor_total:     dados.valor_total,
+      origem:          'xml'
+    }
+  };
+  if (dados.duplicatas && dados.duplicatas.length > 0) {
+    for (var i = 0; i < dados.duplicatas.length; i++) {
+      var dup = dados.duplicatas[i];
+      // referencia_id único por parcela: permite verificar quais já existem no reprocessamento
+      var nDupKey = (dup.nDup || String(i + 1));
+      var sufParcela = dados.duplicatas.length > 1 ? ' — Parcela ' + nDupKey : '';
+      var obsCP = JSON.parse(JSON.stringify(obsBase));
+      obsCP.xml_fornecedor.parcela    = nDupKey;
+      obsCP.xml_fornecedor.duplicatas = dados.duplicatas;
+      await sf.criarContaPagar({
+        empresa_id:      empresaId,
+        descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor') + sufParcela,
+        fornecedor_nome: dados.fornecedor_nome || null,
+        fornecedor_cnpj: dados.fornecedor_cnpj || null,
+        categoria:       'material',
+        valor_previsto:  dup.vDup || dados.valor_total,
+        valor_pago:      0,
+        data_vencimento: dup.dVenc || null,
+        status:          'em_aberto',
+        origem:          'xml_fornecedor',
+        referencia_id:   chaveAcesso + '|' + nDupKey,  // chave única por parcela
+        observacao:      JSON.stringify(obsCP)
+      });
+    }
+  } else {
+    var obsUnica = JSON.parse(JSON.stringify(obsBase));
+    obsUnica.xml_fornecedor.duplicatas = [];
+    await sf.criarContaPagar({
+      empresa_id:      empresaId,
+      descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor'),
+      fornecedor_nome: dados.fornecedor_nome || null,
+      fornecedor_cnpj: dados.fornecedor_cnpj || null,
+      categoria:       'material',
+      valor_previsto:  dados.valor_total || 0,
+      valor_pago:      0,
+      data_vencimento: null,
+      status:          'em_aberto',
+      origem:          'xml_fornecedor',
+      referencia_id:   chaveAcesso,  // CP única: referencia_id = chave pura
+      observacao:      JSON.stringify(obsUnica)
+    });
+  }
+}
+
+// ── _nffCriarLoteBP: grava itens no Banco de Preços ──────────
+async function _nffCriarLoteBP(sf, empresaId, nfId, dados, chaveAcesso) {
+  if (!dados.itens || !dados.itens.length) return;
+  var lote = dados.itens.map(function(it) {
+    return Object.assign({
+      empresa_id:       empresaId,
+      nf_fornecedor_id: nfId,
+      chave_acesso:     chaveAcesso || null,
+      numero_nf:        dados.numero_nf    || null,
+      serie_nf:         dados.serie        || null,
+      data_emissao:     dados.data_emissao || null,
+      fornecedor_nome:  dados.fornecedor_nome || null,
+      fornecedor_cnpj:  dados.fornecedor_cnpj || null,
+      origem:           'xml_fornecedor'
+    }, it);
+  });
+  await sf.criarItensBancoPrecosEmLote(lote);
+}
+
+// ── Importação principal ──────────────────────────────────────
 async function _nffSalvar() {
   if (!_nffDadosAtual) return;
   if (!_empresaAtiva || !_empresaAtiva.id) {
@@ -2428,23 +2507,31 @@ async function _nffSalvar() {
   if (btn) btn.disabled = true;
   _nffSetMsg('Verificando duplicidade…', 'loading');
 
-  var dados = _nffDadosAtual;
+  var dados     = _nffDadosAtual;
   var empresaId = _empresaAtiva.id;
+  var chaveAcesso = dados.chave_acesso || ('NF' + dados.numero_nf + '-' + dados.fornecedor_cnpj);
+  var nfId = null;
 
   try {
-    // 1. Verificar duplicidade por chave de acesso
-    if (dados.chave_acesso) {
-      var jaExiste = await sf.verificarNFFornecedorDuplicada(empresaId, dados.chave_acesso);
-      if (jaExiste) {
-        _nffSetMsg('⚠️ Esta NF de fornecedor já foi importada (chave de acesso duplicada).', 'err');
+    // ── Etapa 1: verificar duplicidade ────────────────────────
+    var jaExiste = await sf.verificarNFFornecedorDuplicada(empresaId, chaveAcesso);
+    if (jaExiste) {
+      if (['importado', 'vinculado'].indexOf(jaExiste.status) >= 0) {
+        _nffSetMsg('🚫 Esta NF já foi importada com sucesso (status: ' + jaExiste.status + '). Não é possível reimportar.', 'err');
         if (btn) btn.disabled = false;
         return;
       }
+      // status parcial/erro/processando: redirecionar para reprocessamento com o XML atual
+      var statusTexto = { processando: 'processamento interrompido', parcial: 'importação parcial (banco de preços pendente)', erro: 'erro de importação anterior' };
+      _nffSetMsg('⚠️ Esta NF tem ' + (statusTexto[jaExiste.status] || jaExiste.status) + '. Use o botão abaixo para reprocessar com o XML selecionado.', 'warn');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Reprocessar NF Incompleta'; btn.onclick = function() { _nffReprocessarComXML(dados, jaExiste); }; }
+      return;
     }
 
+    // ── Etapa 2: criar NF âncora com status 'processando' ────
+    // Status 'processando' garante que qualquer falha nas próximas etapas
+    // seja identificável — a NF nunca fica com status 'importado' prematuramente.
     _nffSetMsg('Criando registro da NF…', 'loading');
-
-    // 2. Criar NF âncora em financeiro_nfs_fornecedor
     var metadados = {
       numero_nf:    dados.numero_nf,
       serie:        dados.serie,
@@ -2457,100 +2544,63 @@ async function _nffSalvar() {
       importado_em: new Date().toISOString()
     };
     var nfCriada = await sf.criarNFFornecedor({
-      empresa_id:              empresaId,
-      chave_acesso:            dados.chave_acesso || ('NF' + dados.numero_nf + '-' + dados.fornecedor_cnpj),
-      numero_nf:               dados.numero_nf    || null,
-      serie:                   dados.serie        || null,
-      data_emissao:            dados.data_emissao || null,
-      natureza_operacao:       dados.natureza_operacao || null,
-      fornecedor_nome:         dados.fornecedor_nome  || null,
-      fornecedor_cnpj:         dados.fornecedor_cnpj  || null,
-      destinatario_nome:       dados.destinatario_nome || null,
-      destinatario_cnpj:       dados.destinatario_cnpj || null,
-      valor_total:             dados.valor_total || 0,
-      informacoes_adicionais:  dados.informacoes_adicionais || null,
-      xml_metadados_json:      JSON.stringify(metadados),
-      status:                  'importado'
+      empresa_id:             empresaId,
+      chave_acesso:           chaveAcesso,
+      numero_nf:              dados.numero_nf    || null,
+      serie:                  dados.serie        || null,
+      data_emissao:           dados.data_emissao || null,
+      natureza_operacao:      dados.natureza_operacao || null,
+      fornecedor_nome:        dados.fornecedor_nome  || null,
+      fornecedor_cnpj:        dados.fornecedor_cnpj  || null,
+      destinatario_nome:      dados.destinatario_nome || null,
+      destinatario_cnpj:      dados.destinatario_cnpj || null,
+      valor_total:            dados.valor_total || 0,
+      informacoes_adicionais: dados.informacoes_adicionais || null,
+      xml_metadados_json:     JSON.stringify(metadados),
+      status:                 'processando'  // ← nunca 'importado' prematuramente
     });
-    var nfId = nfCriada.id;
+    nfId = nfCriada.id;
 
-    // 3. Criar Conta(s) a Pagar
+    // ── Etapa 3: criar Conta(s) a Pagar ──────────────────────
     _nffSetMsg('Criando Conta(s) a Pagar…', 'loading');
-    var obsBase = {
-      texto: 'Importado via XML de fornecedor',
-      xml_fornecedor: {
-        chave_acesso:    dados.chave_acesso,
-        numero_nf:       dados.numero_nf,
-        serie:           dados.serie,
-        data_emissao:    dados.data_emissao,
-        fornecedor_nome: dados.fornecedor_nome,
-        fornecedor_cnpj: dados.fornecedor_cnpj,
-        valor_total:     dados.valor_total,
-        origem:          'xml'
-      }
-    };
-
-    if (dados.duplicatas && dados.duplicatas.length > 0) {
-      for (var i = 0; i < dados.duplicatas.length; i++) {
-        var dup = dados.duplicatas[i];
-        var sufParcela = dados.duplicatas.length > 1 ? ' — Parcela ' + (dup.nDup || (i + 1)) : '';
-        var obsCP = JSON.parse(JSON.stringify(obsBase));
-        obsCP.xml_fornecedor.parcela     = dup.nDup;
-        obsCP.xml_fornecedor.duplicatas  = dados.duplicatas;
-        await sf.criarContaPagar({
-          empresa_id:      empresaId,
-          descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor') + sufParcela,
-          fornecedor_nome: dados.fornecedor_nome || null,
-          fornecedor_cnpj: dados.fornecedor_cnpj || null,
-          categoria:       'material',
-          valor_previsto:  dup.vDup || dados.valor_total,
-          valor_pago:      0,
-          data_vencimento: dup.dVenc || null,
-          status:          'em_aberto',
-          origem:          'xml_fornecedor',
-          referencia_id:   dados.chave_acesso || nfId,
-          observacao:      JSON.stringify(obsCP)
-        });
-      }
-    } else {
-      var obsUnica = JSON.parse(JSON.stringify(obsBase));
-      obsUnica.xml_fornecedor.duplicatas = [];
-      await sf.criarContaPagar({
-        empresa_id:      empresaId,
-        descricao:       'NF Fornecedor nº ' + (dados.numero_nf || '?') + ' — ' + (dados.fornecedor_nome || 'Fornecedor'),
-        fornecedor_nome: dados.fornecedor_nome || null,
-        fornecedor_cnpj: dados.fornecedor_cnpj || null,
-        categoria:       'material',
-        valor_previsto:  dados.valor_total || 0,
-        valor_pago:      0,
-        data_vencimento: null,
-        status:          'em_aberto',
-        origem:          'xml_fornecedor',
-        referencia_id:   dados.chave_acesso || nfId,
-        observacao:      JSON.stringify(obsUnica)
-      });
+    try {
+      await _nffCriarCPs(sf, empresaId, nfId, dados, chaveAcesso);
+    } catch(errCP) {
+      // CPs falharam: marcar NF como 'erro', informar usuário com caminho de recuperação
+      try { await sf.atualizarNFFornecedor(nfId, {
+        status: 'erro',
+        xml_metadados_json: JSON.stringify(Object.assign({}, metadados, { erro: 'CP: ' + errCP.message }))
+      }); } catch(e2) { console.warn('[Fase F] falha ao atualizar status para erro:', e2); }
+      await carregarNFsFornecedor(empresaId);
+      throw new Error('Falha ao criar Contas a Pagar: ' + errCP.message
+        + '\n\nA NF foi registrada com status "erro". Selecione o XML novamente e clique em "Reprocessar" para completar sem duplicar.');
     }
 
-    // 4. Gravar itens no Banco de Preços Reais
+    // ── Etapa 4: gravar Banco de Preços Reais ────────────────
     if (dados.itens && dados.itens.length > 0) {
       _nffSetMsg('Gravando ' + dados.itens.length + ' item(ns) no Banco de Preços…', 'loading');
-      var lote = dados.itens.map(function(it) {
-        return Object.assign({
-          empresa_id:      empresaId,
-          nf_fornecedor_id: nfId,
-          chave_acesso:    dados.chave_acesso || null,
-          numero_nf:       dados.numero_nf    || null,
-          serie_nf:        dados.serie        || null,
-          data_emissao:    dados.data_emissao || null,
-          fornecedor_nome: dados.fornecedor_nome || null,
-          fornecedor_cnpj: dados.fornecedor_cnpj || null,
-          origem:          'xml_fornecedor'
-        }, it);
-      });
-      await sf.criarItensBancoPrecosEmLote(lote);
+      try {
+        await _nffCriarLoteBP(sf, empresaId, nfId, dados, chaveAcesso);
+      } catch(errBP) {
+        // CPs gravadas, itens falharam: marcar como 'parcial'
+        try { await sf.atualizarNFFornecedor(nfId, {
+          status: 'parcial',
+          xml_metadados_json: JSON.stringify(Object.assign({}, metadados, { erro_parcial: 'BP: ' + errBP.message }))
+        }); } catch(e2) { console.warn('[Fase F] falha ao atualizar status para parcial:', e2); }
+        await carregarNFsFornecedor(empresaId);
+        await carregarContasPagar(empresaId);
+        carregarFluxoCaixa(empresaId);
+        _nffCancelarPreview();
+        _nffSetMsg('⚠️ Contas a Pagar criadas com sucesso, mas o Banco de Preços não foi gravado ('
+          + errBP.message + '). NF marcada como "parcial". Selecione o XML novamente para completar.', 'warn');
+        if (btn) btn.disabled = false;
+        return;
+      }
     }
 
-    // Sucesso — resetar e recarregar
+    // ── Etapa 5: tudo ok → marcar como 'importado' ───────────
+    await sf.atualizarNFFornecedor(nfId, { status: 'importado' });
+
     _nffSetMsg('✅ NF importada com sucesso!', 'ok');
     _nffCancelarPreview();
     await carregarNFsFornecedor(empresaId);
@@ -2565,7 +2615,121 @@ async function _nffSalvar() {
   } catch(err) {
     console.warn('[Fase F] erro ao salvar XML:', err);
     _nffSetMsg('Erro: ' + (err.message || String(err)), 'err');
-    if (btn) btn.disabled = false;
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Criar Conta(s) a Pagar e Banco de Preços'; btn.onclick = _nffSalvar; }
+  }
+}
+
+// ── Reprocessamento de importação parcial ─────────────────────
+// Chamado quando o usuário re-seleciona um XML de NF que está com
+// status 'parcial', 'erro' ou 'processando'.
+// Cria apenas o que está faltando — sem duplicar o que já existe.
+async function _nffReprocessarComXML(dadosXml, nfExistente) {
+  var sf = _sf();
+  if (!sf) return;
+  var empresaId   = _empresaAtiva.id;
+  var nfId        = nfExistente.id;
+  var chaveAcesso = nfExistente.chave_acesso;
+  var btn         = document.getElementById('nff-btn-salvar');
+  if (btn) btn.disabled = true;
+
+  var metadados = null;
+  try { metadados = nfExistente.xml_metadados_json ? JSON.parse(nfExistente.xml_metadados_json) : {}; } catch(e) { metadados = {}; }
+
+  try {
+    _nffSetMsg('Verificando o que está faltando…', 'loading');
+
+    // ── O que já existe? ──────────────────────────────────────
+    var refIdsCPs     = await sf.buscarRefIdsCPNFFornecedor(empresaId, chaveAcesso);
+    var itensBPCount  = await sf.contarItensBancoPrecos(empresaId, nfId);
+    var existingRefIds = refIdsCPs.map(function(cp) { return cp.referencia_id; });
+
+    var duplicatas   = dadosXml.duplicatas || [];
+    var expectedCPs  = duplicatas.length > 0 ? duplicatas.length : 1;
+    var expectedItens = (dadosXml.itens || []).length;
+
+    // ── Criar CPs faltantes ───────────────────────────────────
+    var cpsFaltando = 0;
+    if (duplicatas.length > 0) {
+      for (var i = 0; i < duplicatas.length; i++) {
+        var nDupKey = (duplicatas[i].nDup || String(i + 1));
+        var refId   = chaveAcesso + '|' + nDupKey;
+        if (existingRefIds.indexOf(refId) < 0) cpsFaltando++;
+      }
+    } else {
+      // CP única: referencia_id = chave pura
+      if (existingRefIds.indexOf(chaveAcesso) < 0) cpsFaltando = 1;
+    }
+
+    if (cpsFaltando > 0) {
+      _nffSetMsg('Criando ' + cpsFaltando + ' Conta(s) a Pagar faltante(s)…', 'loading');
+      // Criar apenas as parcelas que não existem ainda
+      if (duplicatas.length > 0) {
+        for (var j = 0; j < duplicatas.length; j++) {
+          var dup = duplicatas[j];
+          var ndk = (dup.nDup || String(j + 1));
+          var rid = chaveAcesso + '|' + ndk;
+          if (existingRefIds.indexOf(rid) >= 0) continue; // já existe, pular
+          var sufP = duplicatas.length > 1 ? ' — Parcela ' + ndk : '';
+          var obsCP = { texto: 'Reprocessado via XML de fornecedor',
+            xml_fornecedor: { chave_acesso: chaveAcesso, numero_nf: dadosXml.numero_nf,
+              fornecedor_nome: dadosXml.fornecedor_nome, parcela: ndk, reprocessado: true } };
+          await sf.criarContaPagar({
+            empresa_id:      empresaId,
+            descricao:       'NF Fornecedor nº ' + (dadosXml.numero_nf || '?') + ' — ' + (dadosXml.fornecedor_nome || 'Fornecedor') + sufP,
+            fornecedor_nome: dadosXml.fornecedor_nome || null,
+            fornecedor_cnpj: dadosXml.fornecedor_cnpj || null,
+            categoria:       'material',
+            valor_previsto:  dup.vDup || dadosXml.valor_total,
+            valor_pago:      0,
+            data_vencimento: dup.dVenc || null,
+            status:          'em_aberto',
+            origem:          'xml_fornecedor',
+            referencia_id:   rid,
+            observacao:      JSON.stringify(obsCP)
+          });
+        }
+      } else {
+        var obsU = { texto: 'Reprocessado via XML de fornecedor',
+          xml_fornecedor: { chave_acesso: chaveAcesso, numero_nf: dadosXml.numero_nf, reprocessado: true } };
+        await sf.criarContaPagar({
+          empresa_id:      empresaId,
+          descricao:       'NF Fornecedor nº ' + (dadosXml.numero_nf || '?') + ' — ' + (dadosXml.fornecedor_nome || 'Fornecedor'),
+          fornecedor_nome: dadosXml.fornecedor_nome || null,
+          fornecedor_cnpj: dadosXml.fornecedor_cnpj || null,
+          categoria:       'material',
+          valor_previsto:  dadosXml.valor_total || 0,
+          valor_pago:      0,
+          data_vencimento: null,
+          status:          'em_aberto',
+          origem:          'xml_fornecedor',
+          referencia_id:   chaveAcesso,
+          observacao:      JSON.stringify(obsU)
+        });
+      }
+    }
+
+    // ── Gravar Banco de Preços se estava vazio ────────────────
+    // Append-only: só grava se count == 0 para evitar duplicar itens
+    if (itensBPCount === 0 && expectedItens > 0) {
+      _nffSetMsg('Gravando ' + expectedItens + ' item(ns) no Banco de Preços…', 'loading');
+      await _nffCriarLoteBP(sf, empresaId, nfId, dadosXml, chaveAcesso);
+    }
+
+    // ── Marcar como importado ─────────────────────────────────
+    await sf.atualizarNFFornecedor(nfId, { status: 'importado' });
+
+    _nffSetMsg('✅ Reprocessamento concluído com sucesso!', 'ok');
+    _nffCancelarPreview();
+    // Restaurar botão ao estado original
+    if (btn) { btn.textContent = '💾 Criar Conta(s) a Pagar e Banco de Preços'; btn.onclick = _nffSalvar; }
+    await carregarNFsFornecedor(empresaId);
+    await carregarContasPagar(empresaId);
+    carregarFluxoCaixa(empresaId);
+
+  } catch(err) {
+    console.warn('[Fase F] erro no reprocessamento:', err);
+    _nffSetMsg('Erro no reprocessamento: ' + (err.message || String(err)), 'err');
+    if (btn) { btn.disabled = false; }
   }
 }
 
@@ -2655,7 +2819,19 @@ function _nffAbrirDetalhe(id) {
   if (tituloEl) tituloEl.textContent = 'NF ' + (nf.numero_nf || '') + ' — ' + (nf.fornecedor_nome || 'Fornecedor');
   var metadados = null;
   try { metadados = nf.xml_metadados_json ? JSON.parse(nf.xml_metadados_json) : null; } catch(e) {}
-  var html = '<div class="detalhe-secao">'
+
+  // ── Alerta de status incompleto ──
+  var _statusInfo = {
+    importado:    { cls: 'ok',   txt: '✅ Importado com sucesso' },
+    vinculado:    { cls: 'ok',   txt: '✅ Vinculado' },
+    processando:  { cls: 'warn', txt: '⚠️ Processamento interrompido — reimporte o XML para completar.' },
+    parcial:      { cls: 'warn', txt: '⚠️ Importação parcial: Contas a Pagar criadas, mas Banco de Preços pendente. Reimporte o XML para completar.' },
+    erro:         { cls: 'err',  txt: '🚫 Erro de importação: Contas a Pagar não foram criadas. Reimporte o XML para tentar novamente.' }
+  };
+  var si = _statusInfo[nf.status] || { cls: 'ok', txt: nf.status };
+  var html = '<div class="nff-alert ' + si.cls + '" style="margin-bottom:.85rem">' + si.txt + '</div>';
+
+  html += '<div class="detalhe-secao">'
     + '<div class="detalhe-secao-titulo">Dados da NF</div>'
     + _nffDetalheRow('Nº NF', nf.numero_nf)
     + _nffDetalheRow('Série', nf.serie)
@@ -2681,16 +2857,32 @@ function _nffAbrirDetalhe(id) {
       + '<div style="font-family:monospace;font-size:.7rem;color:var(--text2);word-break:break-all;padding:.3rem 0">' + nf.chave_acesso + '</div>'
       + '</div>';
   }
-  if (metadados && metadados.itens_count) {
+  if (metadados) {
     html += '<div class="detalhe-secao">'
       + '<div class="detalhe-secao-titulo">Banco de Preços</div>'
-      + _nffDetalheRow('Itens gravados', metadados.itens_count)
+      + _nffDetalheRow('Itens esperados', metadados.itens_count || 0)
+      + _nffDetalheRow('Duplicatas esperadas', metadados.duplicatas ? metadados.duplicatas.length || '1 (única)' : '—')
       + '</div>';
+    if (metadados.erro || metadados.erro_parcial) {
+      var erroMsg = metadados.erro || metadados.erro_parcial || '';
+      html += '<div class="detalhe-secao">'
+        + '<div class="detalhe-secao-titulo">Detalhes do Erro</div>'
+        + '<div style="font-size:.75rem;color:var(--text2);word-break:break-word;padding:.25rem 0">' + _nffEsc(erroMsg) + '</div>'
+        + '</div>';
+    }
   }
   if (nf.informacoes_adicionais) {
     html += '<div class="detalhe-secao">'
       + '<div class="detalhe-secao-titulo">Informações Adicionais</div>'
       + '<div style="font-size:.78rem;color:var(--text2);line-height:1.5">' + _nffEsc(nf.informacoes_adicionais) + '</div>'
+      + '</div>';
+  }
+  // Orientação de recuperação para status incompletos
+  if (['processando','parcial','erro'].indexOf(nf.status) >= 0) {
+    html += '<div style="margin-top:1rem;padding:.65rem .85rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.78rem;color:var(--text2);line-height:1.55">'
+      + '🔄 <strong>Como recuperar:</strong> Selecione o mesmo arquivo XML na área de importação acima. '
+      + 'O sistema detectará automaticamente esta importação incompleta e exibirá o botão "Reprocessar", '
+      + 'que cria apenas o que está faltando sem duplicar o que já foi gravado.'
       + '</div>';
   }
   if (corpoEl) corpoEl.innerHTML = html;

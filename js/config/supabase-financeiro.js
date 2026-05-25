@@ -844,6 +844,56 @@
   }
 
 
+  // ── Funções auxiliares para reprocessamento de importação parcial ──
+
+  /**
+   * Atualiza campos de uma NF de fornecedor (ex: status após cada etapa).
+   */
+  async function sbAtualizarNFFornecedor(id, dados) {
+    if (!id) throw new Error('[Financeiro F] id obrigatório para atualizar NF fornecedor.');
+    var r = await client()
+      .from('financeiro_nfs_fornecedor')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  /**
+   * Lista CPs existentes vinculadas a uma NF de fornecedor pela chave de acesso.
+   * Retorna array de { id, referencia_id } para verificar quais parcelas já existem.
+   * Usa origem='xml_fornecedor' + referencia_id LIKE chave% para cobrir todos os formatos.
+   */
+  async function sbBuscarRefIdsCPNFFornecedor(empresaId, chaveAcesso) {
+    if (!empresaId || !chaveAcesso) return [];
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .select('id, referencia_id')
+      .eq('empresa_id', empresaId)
+      .eq('origem', 'xml_fornecedor')
+      .like('referencia_id', chaveAcesso + '%');
+    if (r.error) return [];
+    return r.data || [];
+  }
+
+  /**
+   * Conta itens gravados no Banco de Preços Reais para uma NF de fornecedor.
+   * Retorna 0 se nenhum item foi gravado (indica importação parcial).
+   */
+  async function sbContarItensBancoPrecos(empresaId, nfFornecedorId) {
+    if (!empresaId || !nfFornecedorId) return 0;
+    var r = await client()
+      .from('financeiro_banco_precos')
+      .select('id', { count: 'exact', head: true })
+      .eq('empresa_id', empresaId)
+      .eq('nf_fornecedor_id', nfFornecedorId);
+    if (r.error) return 0;
+    return r.count || 0;
+  }
+
+
   // ============================================================
   // EXPOSIÇÃO PÚBLICA
   // ============================================================
@@ -896,7 +946,11 @@
     listarNFsFornecedorEmpresa:      sbListarNFsFornecedorEmpresa,
     verificarNFFornecedorDuplicada:  sbVerificarNFFornecedorDuplicada,
     criarItensBancoPrecosEmLote:     sbCriarItensBancoPrecosEmLote,
-    listarBancoPrecosEmpresa:        sbListarBancoPrecosEmpresa
+    listarBancoPrecosEmpresa:        sbListarBancoPrecosEmpresa,
+    // Reprocessamento de importação parcial
+    atualizarNFFornecedor:           sbAtualizarNFFornecedor,
+    buscarRefIdsCPNFFornecedor:      sbBuscarRefIdsCPNFFornecedor,
+    contarItensBancoPrecos:          sbContarItensBancoPrecos
   };
 
 }(window));
