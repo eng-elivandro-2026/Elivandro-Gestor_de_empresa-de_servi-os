@@ -1,21 +1,22 @@
 // ============================================================
-// permissoes.js — Matriz centralizada de permissões G4A
+// permissoes.js — Matriz centralizada de permissões G4A/G4B
 // Fonte única de verdade para perfis, módulos e ações.
+// G4B: suporta override por empresa via config_json.permissoes
 // ============================================================
 
 (function () {
 
   // ── Superadmin provisório ────────────────────────────────
   // nascimento.gaube@gmail.com é o dono do software/plataforma.
-  // Bypass total enquanto tela formal de gestão (G4B) não existe.
+  // Bypass total enquanto gestão formal de superadmin não existe.
   var _SUPERADMIN_EMAIL = 'nascimento.gaube@gmail.com';
 
-  // ── Matriz de permissões ─────────────────────────────────
+  // ── Matriz de permissões padrão ──────────────────────────
   // Chaves de módulo correspondem exatamente aos IDs do Router:
   //   comercial, operacional, historico (= Relacionamento),
   //   gestao, rh, financeiro
-  // Módulos lógicos sem ID próprio no Router:
-  //   cofre (botão dentro do Financeiro), configuracoes (botões 🏢/👥)
+  // Módulos lógicos sem ID no Router:
+  //   cofre (botão dentro do Financeiro), configuracoes (botões 🏢/👥/⚙️)
   window.PERMISSOES_PADRAO = {
     financeiro: {
       ver:           ['dono', 'admin', 'gestor', 'financeiro'],
@@ -71,6 +72,26 @@
     return window.getPerfilUsuario ? window.getPerfilUsuario() : null;
   }
 
+  // Retorna a matriz ativa: override da empresa ativa ou PERMISSOES_PADRAO como fallback.
+  // Para cada módulo, usa o override se existir; caso contrário cai no padrão.
+  function _getMatriz() {
+    var emp = window._empresaAtiva;
+    if (emp && emp.config_json && emp.config_json.permissoes) {
+      return emp.config_json.permissoes;
+    }
+    return window.PERMISSOES_PADRAO;
+  }
+
+  // Retorna permissões do módulo: override da empresa ou fallback para PERMISSOES_PADRAO
+  function _getMatrizMod(modulo) {
+    var emp = window._empresaAtiva;
+    if (emp && emp.config_json && emp.config_json.permissoes) {
+      var custom = emp.config_json.permissoes[modulo];
+      if (custom) return custom;
+    }
+    return window.PERMISSOES_PADRAO[modulo] || null;
+  }
+
   // ── API pública ──────────────────────────────────────────
 
   // Verifica se o perfil atual pode acessar um módulo (ação 'ver' / 'acesso')
@@ -79,7 +100,7 @@
     var perfil = _getPerfil();
     if (!perfil) return false;
     if (perfil === 'dono') return true;
-    var mat = window.PERMISSOES_PADRAO[modulo];
+    var mat = _getMatrizMod(modulo);
     if (!mat) return false;
     var permitidos = mat.ver || mat.acesso || [];
     return permitidos.indexOf(perfil) >= 0;
@@ -91,7 +112,7 @@
     var perfil = _getPerfil();
     if (!perfil) return false;
     if (perfil === 'dono') return true;
-    var mat = window.PERMISSOES_PADRAO[modulo];
+    var mat = _getMatrizMod(modulo);
     if (!mat) return false;
     var permitidos = mat[acao] || [];
     return permitidos.indexOf(perfil) >= 0;
@@ -104,14 +125,19 @@
     });
   };
 
-  // Retorna mapa completo de permissões para o perfil atual (útil para debug / G4B)
+  // Retorna a matriz ativa (usada pela tela G4B para carregar valores atuais)
+  window.getMatrizAtiva = function () {
+    return _getMatriz();
+  };
+
+  // Retorna mapa completo de permissões para o perfil atual (debug / G4B)
   window.getPermissoesPerfilAtual = function () {
     var perfil = _getPerfil();
     if (!perfil) return {};
     var result = {};
     Object.keys(window.PERMISSOES_PADRAO).forEach(function (modulo) {
       result[modulo] = {};
-      var mat = window.PERMISSOES_PADRAO[modulo];
+      var mat = _getMatrizMod(modulo) || window.PERMISSOES_PADRAO[modulo];
       Object.keys(mat).forEach(function (acao) {
         result[modulo][acao] = window.podeAcao(modulo, acao);
       });
@@ -119,6 +145,6 @@
     return result;
   };
 
-  console.log('%c[permissoes] carregado — matriz G4A ativa', 'color:#f0a500;font-weight:700');
+  console.log('%c[permissoes] carregado — G4A/G4B ativa', 'color:#f0a500;font-weight:700');
 
 })();
