@@ -10219,24 +10219,495 @@ function abrirGerenciarUsuarios() {
   }
   var m = document.getElementById('modalUsuarios');
   if (!m) return;
+
+  // Badge da empresa ativa
+  var emp = window._empresaAtiva;
+  var sub = document.getElementById('guSubtitulo');
+  if (sub && emp) sub.textContent = 'Empresa ativa: ' + (emp.nome_curto || emp.nome || '');
+
+  // Popular selects de empresa
   var empresaOpts = (window._empresasUsuario || []).map(function(e){
     return '<option value="'+e.id+'">'+e.nome+'</option>';
   }).join('');
-  // Popular selects de empresa (convite + vínculo)
   var selInv = document.getElementById('invEmpresa');
   if (selInv) selInv.innerHTML = empresaOpts;
   var selVin = document.getElementById('vinEmpresa');
   if (selVin) selVin.innerHTML = empresaOpts;
-  document.getElementById('invResultado').innerHTML = '';
-  document.getElementById('vinResultado').innerHTML = '';
+
+  // Limpar feedbacks
+  ['invResultado','vinResultado'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+
+  // Garantir que seção adicionar começa fechada
+  var body = document.getElementById('guAdicionarBody');
+  var chev = document.getElementById('guAdicionarChevron');
+  if (body) body.style.display = 'none';
+  if (chev) chev.textContent = '▼';
+
   m.style.display = 'flex';
   _carregarListaUsuarios();
   _popularDropdownUsuarios();
 }
+
 function fecharGerenciarUsuarios() {
   var m = document.getElementById('modalUsuarios');
   if (m) m.style.display = 'none';
 }
+
+function _toggleGuAdicionar() {
+  var body = document.getElementById('guAdicionarBody');
+  var chev = document.getElementById('guAdicionarChevron');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.textContent = open ? '▼' : '▲';
+}
+
+function _guTab(tab) {
+  var pVin  = document.getElementById('guPainelVin');
+  var pConv = document.getElementById('guPainelConv');
+  var tVin  = document.getElementById('guTabVin');
+  var tConv = document.getElementById('guTabConv');
+  var ativo  = 'border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;background:none;border-top:none;border-left:none;border-right:none;cursor:pointer;padding:.35rem .75rem;font-size:.78rem';
+  var inativo = 'border-bottom:2px solid transparent;color:var(--text3);background:none;border-top:none;border-left:none;border-right:none;cursor:pointer;padding:.35rem .75rem;font-size:.78rem';
+  if (tab === 'vin') {
+    if (pVin)  pVin.style.display  = '';
+    if (pConv) pConv.style.display = 'none';
+    if (tVin)  tVin.style.cssText  = ativo;
+    if (tConv) tConv.style.cssText = inativo;
+  } else {
+    if (pVin)  pVin.style.display  = 'none';
+    if (pConv) pConv.style.display = '';
+    if (tVin)  tVin.style.cssText  = inativo;
+    if (tConv) tConv.style.cssText = ativo;
+  }
+}
+
+async function _carregarListaUsuarios() {
+  var el = document.getElementById('usuariosLista');
+  if (!el || !window.sbClient) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Carregando...</div>';
+
+  var empIds = (window._empresasUsuario || []).map(function(e){ return e.id; });
+  if (!empIds.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.8rem">Nenhuma empresa carregada.</div>';
+    return;
+  }
+
+  // Carrega ativos E inativos para poder reativar
+  var res = await window.sbClient
+    .from('usuario_empresas')
+    .select('usuario_id, empresa_id, ativo, perfil_empresa, permissoes_json, usuarios(id, nome, perfil, email, auth_id), empresas(nome_curto)')
+    .in('empresa_id', empIds)
+    .order('empresa_id');
+
+  if (res.error || !res.data || !res.data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Nenhum usuário encontrado.</div>';
+    return;
+  }
+
+  // Calcular stats
+  var ativos   = res.data.filter(function(ue){ return ue.ativo; });
+  var inativos = res.data.filter(function(ue){ return !ue.ativo; });
+  var donos    = ativos.filter(function(ue){ return ue.perfil_empresa === 'dono'; }).length;
+  var gestAdm  = ativos.filter(function(ue){ return ue.perfil_empresa === 'gestor' || ue.perfil_empresa === 'admin'; }).length;
+  var outros   = ativos.length - donos - gestAdm;
+
+  var statsEl = document.getElementById('guStats');
+  if (statsEl) {
+    statsEl.innerHTML = [
+      { v: ativos.length,   l: 'Ativos',        c: 'var(--green)' },
+      { v: donos,           l: 'Donos',          c: 'var(--blue)'  },
+      { v: gestAdm,         l: 'Gestores/Admins',c: '#a78bfa'      },
+      { v: outros,          l: 'Outros',         c: 'var(--text2)' },
+      { v: inativos.length, l: 'Inativos',       c: 'var(--text3)' }
+    ].map(function(s){
+      return '<div style="display:flex;flex-direction:column;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:.35rem .65rem;min-width:70px">'
+        + '<span style="font-size:1.05rem;font-weight:800;color:'+s.c+'">'+s.v+'</span>'
+        + '<span style="font-size:.6rem;color:var(--text3);white-space:nowrap">'+s.l+'</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Perfis com label e cor
+  var perfilCfg = {
+    dono:        { l:'👑 Dono',        bg:'rgba(88,166,255,.12)',  cl:'#58a6ff' },
+    admin:       { l:'⚙️ Admin',       bg:'rgba(167,139,250,.12)', cl:'#a78bfa' },
+    gestor:      { l:'🔑 Gestor',      bg:'rgba(34,197,94,.1)',    cl:'#22c55e' },
+    colaborador: { l:'👤 Colaborador', bg:'rgba(148,163,184,.12)', cl:'#94a3b8' },
+    prestador:   { l:'🔧 Prestador',   bg:'rgba(251,191,36,.1)',   cl:'#fbbf24' },
+    comercial:   { l:'💼 Comercial',   bg:'rgba(251,146,60,.1)',   cl:'#fb923c' },
+    financeiro:  { l:'💰 Financeiro',  bg:'rgba(52,211,153,.1)',   cl:'#34d399' },
+    rh:          { l:'🧑‍💼 RH',         bg:'rgba(244,114,182,.1)', cl:'#f472b6' },
+    operacional: { l:'🏗️ Operacional', bg:'rgba(156,163,175,.12)', cl:'#9ca3af' },
+    leitura:     { l:'👁️ Leitura',     bg:'rgba(148,163,184,.08)','cl':'#64748b' }
+  };
+
+  function _perfilBadge(p) {
+    var cfg = perfilCfg[p];
+    if (!cfg) return '<span style="font-size:.65rem;color:var(--text3)">'+esc(p||'—')+'</span>';
+    return '<span style="font-size:.65rem;font-weight:600;background:'+cfg.bg+';color:'+cfg.cl+';border-radius:4px;padding:.15rem .45rem;white-space:nowrap">'+cfg.l+'</span>';
+  }
+
+  // Separar: ativos primeiro, inativos depois
+  var ordenados = ativos.concat(inativos);
+
+  el.innerHTML = ordenados.map(function(ue) {
+    var u   = ue.usuarios  || {};
+    var emp = ue.empresas  || {};
+    var uid = ue.usuario_id;
+    var eid = ue.empresa_id;
+    var nome    = (u.nome  || '—').replace(/'/g, "\\'");
+    var perfil  = ue.perfil_empresa || u.perfil || '';
+    var email   = (u.email || '').replace(/'/g, "\\'");
+    var nomeEmp = (emp.nome_curto || '—').replace(/'/g, "\\'");
+    var ativoStr = ue.ativo ? '1' : '0';
+    var obs = ((ue.permissoes_json && ue.permissoes_json.obs) || '').replace(/'/g, "\\'").replace(/[\n\r]/g, ' ');
+    var isInativo = !ue.ativo;
+
+    var rowStyle = isInativo
+      ? 'display:grid;grid-template-columns:32px 1fr auto auto;align-items:center;gap:.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.55rem .8rem;opacity:.5'
+      : 'display:grid;grid-template-columns:32px 1fr auto auto;align-items:center;gap:.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.55rem .8rem';
+
+    var avatar = '<div style="width:32px;height:32px;border-radius:50%;background:rgba(88,166,255,.18);display:grid;place-items:center;font-size:.65rem;font-weight:800;color:var(--blue);flex-shrink:0">'
+      + esc((u.nome||'?').slice(0,2).toUpperCase())
+      + '</div>';
+
+    var info = '<div style="min-width:0">'
+      + '<div style="font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(u.nome||'—') + '</div>'
+      + '<div style="font-size:.67rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(u.email||'—') + ' · ' + esc(emp.nome_curto||'—') + (isInativo ? ' · <span style="color:#ef4444">inativo</span>' : '') + '</div>'
+      + '</div>';
+
+    var badge = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem">'
+      + _perfilBadge(perfil)
+      + '</div>';
+
+    var acoes;
+    if (isInativo) {
+      acoes = '<div style="display:flex;gap:.3rem">'
+        + '<button class="nb" title="Reativar na empresa" onclick="_reativarDaEmpresa(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\')" '
+        +   'style="font-size:.78rem;padding:.2rem .55rem;border:1px solid rgba(34,197,94,.3);border-radius:5px;color:#22c55e;cursor:pointer;background:rgba(34,197,94,.07)">🔄 Reativar</button>'
+        + '</div>';
+    } else {
+      acoes = '<div style="display:flex;gap:.3rem">'
+        + '<button class="nb" title="Editar usuário" onclick="_abrirEditarUsuario(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\',\'' + email + '\',\'' + nomeEmp + '\',\'' + ativoStr + '\',\'' + obs + '\')" '
+        +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Editar">✏️</button>'
+        + '<button class="nb" title="Desativar da empresa" onclick="_removerDaEmpresa(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\')" '
+        +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:#ef4444;cursor:pointer;background:var(--bg2)" aria-label="Desativar">🚫</button>'
+        + '</div>';
+    }
+
+    return '<div style="'+rowStyle+'">' + avatar + info + badge + acoes + '</div>';
+  }).join('');
+}
+
+function _gerarSenhaTemp() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+  var s = '';
+  for (var i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+async function convidarUsuario() {
+  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (_gp !== 'dono') {
+    alert('Acesso negado. Apenas o Dono da empresa pode convidar usuários.');
+    return;
+  }
+  var nome    = (document.getElementById('invNome')   ||{}).value||'';
+  var email   = (document.getElementById('invEmail')  ||{}).value||'';
+  var perfil  = (document.getElementById('invPerfil') ||{}).value||'gestor';
+  var empId   = (document.getElementById('invEmpresa')||{}).value||'';
+
+  if (!nome.trim())  { alert('Informe o nome.'); return; }
+  if (!email.trim() || !email.includes('@')) { alert('E-mail inválido.'); return; }
+  if (!empId) { alert('Selecione a empresa.'); return; }
+
+  var btn = document.getElementById('btnConvidar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
+
+  try {
+    var emailLower = email.trim().toLowerCase();
+    var novoUserId = null;
+
+    var existingByEmail = await window.sbClient.from('usuarios').select('id,auth_id').eq('email', emailLower).maybeSingle();
+    if (existingByEmail.data) novoUserId = existingByEmail.data.id;
+
+    if (!novoUserId) {
+      throw new Error(
+        'Usuário não encontrado. Se já acessa outra empresa, use "Vincular à Empresa". ' +
+        'Para usuário novo, peça que ele entre no portal uma vez antes.'
+      );
+    }
+
+    var perfilConvite = (document.getElementById('invPerfil')||{}).value || 'gestor';
+    var insEmp = await window.sbClient.from('usuario_empresas').upsert({
+      usuario_id:     novoUserId,
+      empresa_id:     empId,
+      ativo:          true,
+      perfil_empresa: perfilConvite
+    }, { onConflict: 'usuario_id,empresa_id' });
+    if (insEmp.error) throw new Error('Erro ao vincular empresa: ' + insEmp.error.message);
+
+    document.getElementById('invResultado').innerHTML = _vinMsg('✅ ' + nome.trim() + ' (' + email + ') configurado com sucesso!', 'ok');
+    _carregarListaUsuarios();
+    document.getElementById('invNome').value  = '';
+    document.getElementById('invEmail').value = '';
+
+  } catch(e) {
+    document.getElementById('invResultado').innerHTML = _vinMsg('❌ ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Configurar Acesso'; }
+  }
+}
+
+async function _popularDropdownUsuarios() {
+  var sel = document.getElementById('vinUsuario');
+  if (!sel || !window.sbClient) return;
+  sel.innerHTML = '<option value="">— carregando...</option>';
+  var res = await window.sbClient.from('usuarios').select('id,nome,perfil').eq('ativo', true).order('nome');
+  if (res.error || !res.data || !res.data.length) {
+    sel.innerHTML = '<option value="">Nenhum usuário encontrado</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">— selecione...</option>'
+    + res.data.map(function(u){
+        return '<option value="'+u.id+'">'+esc(u.nome)+' ('+( u.perfil )+')</option>';
+      }).join('');
+}
+
+async function vincularUsuarioExistente() {
+  var _gp = window.getPerfilUsuario ? window.getPerfilUsuario() : null;
+  if (_gp !== 'dono') {
+    alert('Acesso negado. Apenas o Dono da empresa pode vincular usuários.');
+    return;
+  }
+  var usuarioId = (document.getElementById('vinUsuario')||{}).value||'';
+  var empId     = (document.getElementById('vinEmpresa')||{}).value||'';
+  var res       = document.getElementById('vinResultado');
+  if (!usuarioId) { res.innerHTML = _vinMsg('❌ Selecione um usuário.', 'err'); return; }
+  if (!empId)     { res.innerHTML = _vinMsg('❌ Selecione a empresa.', 'err'); return; }
+  try {
+    var perfilVin = (document.getElementById('vinPerfil')||{}).value || 'gestor';
+    var ins = await window.sbClient.from('usuario_empresas').upsert({
+      usuario_id:     usuarioId,
+      empresa_id:     empId,
+      ativo:          true,
+      perfil_empresa: perfilVin
+    }, { onConflict: 'usuario_id,empresa_id' });
+    if (ins.error) throw new Error(ins.error.message);
+    var nomeSel = document.getElementById('vinUsuario').selectedOptions[0].text;
+    var empSel  = document.getElementById('vinEmpresa').selectedOptions[0].text;
+    res.innerHTML = _vinMsg('✅ ' + nomeSel + ' vinculado à ' + empSel + ' como ' + perfilVin + '.', 'ok');
+    _carregarListaUsuarios();
+  } catch(e) {
+    res.innerHTML = _vinMsg('❌ ' + e.message, 'err');
+  }
+}
+
+function _vinMsg(msg, tipo) {
+  var bg  = tipo==='ok' ? 'rgba(34,197,94,.1)'  : 'rgba(239,68,68,.1)';
+  var brd = tipo==='ok' ? 'rgba(34,197,94,.3)'  : 'rgba(239,68,68,.3)';
+  var cl  = tipo==='ok' ? 'var(--green)' : '#ef4444';
+  return '<div style="background:'+bg+';border:1px solid '+brd+';border-radius:8px;padding:.7rem;margin-top:.5rem;font-size:.78rem;color:'+cl+'">'+msg+'</div>';
+}
+
+// ── G3.1: Editar usuário ───────────────────────────────────────────────────
+
+async function _contarDonoAtivo(empId) {
+  if (!window.sbClient) return 0;
+  var res = await window.sbClient
+    .from('usuario_empresas')
+    .select('usuario_id')
+    .eq('empresa_id', empId)
+    .eq('ativo', true)
+    .eq('perfil_empresa', 'dono');
+  return res.data ? res.data.length : 0;
+}
+
+function _abrirEditarUsuario(usuarioId, empId, nome, perfil, email, nomeEmp, ativoStr, obs) {
+  document.getElementById('euUserId').value  = usuarioId;
+  document.getElementById('euEmpId').value   = empId;
+  document.getElementById('euNome').value    = nome;
+  document.getElementById('euEmail').value   = email;
+  document.getElementById('euEmpNome').value = nomeEmp;
+  var euPerfil = document.getElementById('euPerfil');
+  euPerfil.value = perfil;
+  euPerfil.dataset.original = perfil;
+  var euAtivo = document.getElementById('euAtivo');
+  if (euAtivo) euAtivo.value = (ativoStr === '0') ? 'false' : 'true';
+  var euObs = document.getElementById('euObs');
+  if (euObs) euObs.value = obs || '';
+  document.getElementById('euResultado').innerHTML = '';
+  var btnSalvar = document.getElementById('euBtnSalvar');
+  if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = '💾 Salvar'; }
+  document.getElementById('modalEditarUsuario').style.display = 'flex';
+}
+
+function fecharEditarUsuario() {
+  document.getElementById('modalEditarUsuario').style.display = 'none';
+}
+
+async function _salvarEditarUsuario() {
+  var usuarioId  = document.getElementById('euUserId').value;
+  var empId      = document.getElementById('euEmpId').value;
+  var nome       = document.getElementById('euNome').value.trim();
+  var perfilNovo = document.getElementById('euPerfil').value;
+  var perfilAtual= document.getElementById('euPerfil').dataset.original || '';
+  var ativoNovo  = document.getElementById('euAtivo').value === 'true';
+  var obs        = (document.getElementById('euObs').value || '').trim();
+  var resEl      = document.getElementById('euResultado');
+  var btnSalvar  = document.getElementById('euBtnSalvar');
+
+  resEl.innerHTML = '';
+  if (!nome)       { resEl.innerHTML = _vinMsg('❌ Nome não pode ficar vazio.', 'err'); return; }
+  if (!perfilNovo) { resEl.innerHTML = _vinMsg('❌ Selecione um perfil.', 'err'); return; }
+
+  // Proteção último dono: troca de dono para outro perfil
+  if (perfilAtual === 'dono' && perfilNovo !== 'dono') {
+    try {
+      var qtd = await _contarDonoAtivo(empId);
+      if (qtd <= 1) {
+        resEl.innerHTML = _vinMsg('❌ ' + nome + ' é o único Dono ativo desta empresa. Defina outro Dono antes de alterar.', 'err');
+        return;
+      }
+    } catch(e) {
+      resEl.innerHTML = _vinMsg('❌ Erro ao verificar donos: ' + e.message, 'err');
+      return;
+    }
+  }
+
+  // Proteção último dono: desativar o último dono
+  if (perfilAtual === 'dono' && !ativoNovo) {
+    try {
+      var qtd2 = await _contarDonoAtivo(empId);
+      if (qtd2 <= 1) {
+        resEl.innerHTML = _vinMsg('❌ Não é possível desativar o único Dono ativo desta empresa.', 'err');
+        return;
+      }
+    } catch(e) {
+      resEl.innerHTML = _vinMsg('❌ Erro ao verificar donos: ' + e.message, 'err');
+      return;
+    }
+  }
+
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = 'Salvando…';
+
+  var msgs = [];
+  var temErro = false;
+
+  // Update 1: dados globais do usuário (nome) — não toca perfil nem email
+  try {
+    var updU = await window.sbClient
+      .from('usuarios')
+      .update({ nome: nome })
+      .eq('id', usuarioId);
+    if (updU.error) {
+      msgs.push('⚠️ Dados globais não salvos: ' + updU.error.message);
+      temErro = true;
+    } else {
+      msgs.push('✅ Nome atualizado.');
+    }
+  } catch(e) {
+    msgs.push('⚠️ Dados globais não salvos: ' + e.message);
+    temErro = true;
+  }
+
+  // Update 2: vínculo com a empresa (perfil_empresa, ativo, permissoes_json.obs)
+  try {
+    var permJson = { obs: obs };
+    var updVin = await window.sbClient
+      .from('usuario_empresas')
+      .update({ perfil_empresa: perfilNovo, ativo: ativoNovo, permissoes_json: permJson })
+      .eq('usuario_id', usuarioId)
+      .eq('empresa_id', empId);
+    if (updVin.error) {
+      msgs.push('❌ Acesso na empresa não salvo: ' + updVin.error.message);
+      temErro = true;
+    } else {
+      msgs.push('✅ Acesso na empresa atualizado.');
+    }
+  } catch(e) {
+    msgs.push('❌ Acesso na empresa não salvo: ' + e.message);
+    temErro = true;
+  }
+
+  resEl.innerHTML = _vinMsg(msgs.join('<br>'), temErro ? 'err' : 'ok');
+
+  // Atualizar estado em memória se for o próprio vínculo ativo
+  if (!temErro) {
+    var empAtiva = window._empresaAtiva;
+    if (empAtiva && empAtiva.id === empId) {
+      try {
+        var { data: me } = await window.sbClient.auth.getUser();
+        if (me && me.user) {
+          var { data: meRow } = await window.sbClient.from('usuarios').select('id').eq('auth_id', me.user.id).maybeSingle();
+          if (meRow && meRow.id === usuarioId) {
+            window._perfilUsuario = perfilNovo;
+            empAtiva.perfil_empresa = perfilNovo;
+            if (typeof window._atualizarBotoesAdmin === 'function') window._atualizarBotoesAdmin();
+          }
+        }
+      } catch(e2) {}
+    }
+    document.getElementById('euPerfil').dataset.original = perfilNovo;
+    btnSalvar.textContent = '💾 Salvar';
+    btnSalvar.disabled = false;
+    setTimeout(function() { fecharEditarUsuario(); _carregarListaUsuarios(); }, 1800);
+  } else {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = '💾 Salvar';
+  }
+}
+
+async function _removerDaEmpresa(usuarioId, empId, nome, perfilAtual) {
+  if (!confirm('Desativar ' + nome + ' nesta empresa? O usuário global não será excluído — apenas o vínculo fica inativo.')) return;
+
+  if (perfilAtual === 'dono') {
+    try {
+      var qtd = await _contarDonoAtivo(empId);
+      if (qtd <= 1) {
+        toast('Não é possível desativar ' + nome + ': único Dono ativo da empresa.', 'err');
+        return;
+      }
+    } catch(e) {
+      toast('Erro ao verificar donos: ' + e.message, 'err');
+      return;
+    }
+  }
+
+  try {
+    var upd = await window.sbClient
+      .from('usuario_empresas')
+      .update({ ativo: false })
+      .eq('usuario_id', usuarioId)
+      .eq('empresa_id', empId);
+    if (upd.error) throw new Error(upd.error.message);
+    toast(nome + ' desativado nesta empresa.', 'ok');
+    _carregarListaUsuarios();
+  } catch(e) {
+    toast('Erro ao desativar: ' + e.message, 'err');
+  }
+}
+
+async function _reativarDaEmpresa(usuarioId, empId, nome) {
+  if (!confirm('Reativar ' + nome + ' nesta empresa?')) return;
+  try {
+    var upd = await window.sbClient
+      .from('usuario_empresas')
+      .update({ ativo: true })
+      .eq('usuario_id', usuarioId)
+      .eq('empresa_id', empId);
+    if (upd.error) throw new Error(upd.error.message);
+    toast(nome + ' reativado com sucesso.', 'ok');
+    _carregarListaUsuarios();
+  } catch(e) {
+    toast('Erro ao reativar: ' + e.message, 'err');
+  }
+}
+</script>
 
 async function _carregarListaUsuarios() {
   var el = document.getElementById('usuariosLista');
@@ -10546,131 +11017,201 @@ async function _removerDaEmpresa(usuarioId, empId, nome, perfilAtual) {
 }
 </script>
 
-<!-- Modal Gestão de Usuários -->
-<div id="modalUsuarios" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:1rem">
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:1.25rem">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <div style="font-size:.95rem;font-weight:800;color:var(--blue)">👥 Gerenciar Usuários</div>
-      <button class="nb" onclick="fecharGerenciarUsuarios()" style="font-size:1rem;color:var(--text3)">✕</button>
+<!-- Modal Gestão de Usuários (G3.1 — redesign profissional) -->
+<div id="modalUsuarios" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:680px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--text)">👥 Gerenciar Usuários</div>
+        <div id="guSubtitulo" style="font-size:.7rem;color:var(--text3);margin-top:.1rem">Controle de acessos</div>
+      </div>
+      <button class="nb" onclick="fecharGerenciarUsuarios()" style="font-size:1rem;color:var(--text3);padding:.3rem .55rem;border-radius:6px;border:1px solid transparent" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='transparent'">✕</button>
     </div>
 
-    <!-- Lista de usuários -->
-    <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.4rem">Usuários ativos</div>
-    <div id="usuariosLista" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.2rem"></div>
+    <!-- Stats bar -->
+    <div id="guStats" style="display:flex;gap:.55rem;padding:.65rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;background:var(--bg1)"></div>
 
-    <!-- Formulário convite -->
-    <div style="border-top:1px solid var(--border);padding-top:1rem">
+    <!-- Lista de usuários (scrollável) -->
+    <div style="flex:1;overflow-y:auto;padding:.85rem 1.25rem">
+      <div style="font-size:.62rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.55rem">Membros</div>
+      <div id="usuariosLista" style="display:flex;flex-direction:column;gap:.38rem"></div>
+    </div>
 
-      <!-- Seção: vincular usuário já cadastrado -->
-      <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Adicionar usuário existente a outra empresa</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.6rem">
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Usuário *</div>
-          <select id="vinUsuario" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"><option value="">— carregando...</option></select>
-        </div>
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Empresa *</div>
-          <select id="vinEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"></select>
-        </div>
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Perfil *</div>
-          <select id="vinPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
-            <option value="gestor">🔑 Gestor</option>
-            <option value="admin">⚙️ Admin</option>
-            <option value="colaborador">👤 Colaborador</option>
-            <option value="prestador">🔧 Prestador</option>
-            <option value="dono">👑 Dono</option>
-          </select>
-        </div>
-      </div>
-      <button class="nb" onclick="vincularUsuarioExistente()" style="width:100%;background:var(--green);color:#fff;border-radius:7px;padding:.5rem;font-size:.82rem;font-weight:700;margin-bottom:.5rem">🔗 Vincular à Empresa</button>
-      <div id="vinResultado"></div>
+    <!-- Seção Adicionar (acordeão na base) -->
+    <div style="border-top:1px solid var(--border);flex-shrink:0">
+      <button class="nb" onclick="_toggleGuAdicionar()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.25rem;font-size:.82rem;color:var(--text2);font-weight:600;background:none;border:none;cursor:pointer" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'">
+        <span>➕ Adicionar Usuário</span>
+        <span id="guAdicionarChevron" style="font-size:.62rem;color:var(--text3)">▼</span>
+      </button>
+      <div id="guAdicionarBody" style="display:none;border-top:1px solid var(--border);padding:.85rem 1.25rem 1rem;max-height:360px;overflow-y:auto">
 
-      <!-- Seção: configurar novo usuário convidado -->
-      <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
-      <div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Configurar acesso de usuário convidado</div>
-      <div style="font-size:.72rem;color:var(--text3);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:6px;padding:.45rem .65rem;margin-bottom:.75rem">
-        📋 <strong>Use este campo apenas para usuários que já entraram no portal ao menos uma vez.</strong> Para vincular alguém já cadastrado a uma nova empresa, use "Adicionar usuário existente" acima.
+        <!-- Abas internas -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:.85rem">
+          <button id="guTabVin"  class="nb" onclick="_guTab('vin')"  style="border:none;border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">🔗 Vincular Existente</button>
+          <button id="guTabConv" class="nb" onclick="_guTab('conv')" style="border:none;border-bottom:2px solid transparent;color:var(--text3);background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">📋 Configurar Convidado</button>
+        </div>
+
+        <!-- Painel: vincular usuário existente -->
+        <div id="guPainelVin">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.55rem;margin-bottom:.55rem">
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Usuário *</div>
+              <select id="vinUsuario" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem"><option value="">— carregando...</option></select>
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Empresa *</div>
+              <select id="vinEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem"></select>
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Perfil *</div>
+              <select id="vinPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+                <option value="gestor">🔑 Gestor</option>
+                <option value="colaborador">👤 Colaborador</option>
+                <option value="admin">⚙️ Admin</option>
+                <option value="comercial">💼 Comercial</option>
+                <option value="financeiro">💰 Financeiro</option>
+                <option value="rh">🧑‍💼 RH</option>
+                <option value="operacional">🏗️ Operacional</option>
+                <option value="leitura">👁️ Leitura</option>
+                <option value="prestador">🔧 Prestador</option>
+                <option value="dono">👑 Dono</option>
+              </select>
+            </div>
+          </div>
+          <button class="nb" onclick="vincularUsuarioExistente()" style="width:100%;background:var(--green);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">🔗 Vincular à Empresa</button>
+          <div id="vinResultado"></div>
+        </div>
+
+        <!-- Painel: configurar convidado -->
+        <div id="guPainelConv" style="display:none">
+          <div style="font-size:.72rem;color:var(--text3);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:.4rem .6rem;margin-bottom:.7rem;line-height:1.4">
+            📋 Use apenas para usuários que <strong>já acessaram o portal ao menos uma vez</strong>. Para cadastrados em outra empresa, use "Vincular Existente".
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.55rem">
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Nome *</div>
+              <input type="text" id="invNome" placeholder="Ex: Adriano" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">E-mail do convite *</div>
+              <input type="email" id="invEmail" placeholder="adriano@empresa.com.br" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Perfil de acesso</div>
+              <select id="invPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+                <option value="gestor">🔑 Gestor</option>
+                <option value="colaborador">👤 Colaborador</option>
+                <option value="admin">⚙️ Admin</option>
+                <option value="comercial">💼 Comercial</option>
+                <option value="financeiro">💰 Financeiro</option>
+                <option value="rh">🧑‍💼 RH</option>
+                <option value="operacional">🏗️ Operacional</option>
+                <option value="leitura">👁️ Leitura</option>
+                <option value="prestador">🔧 Prestador</option>
+                <option value="dono">👑 Dono</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Empresa *</div>
+              <select id="invEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem"></select>
+            </div>
+          </div>
+          <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">✅ Configurar Acesso</button>
+          <div id="invResultado"></div>
+        </div>
+
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Nome *</div>
-          <input type="text" id="invNome" placeholder="Ex: Adriano" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
-        </div>
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">E-mail (mesmo do convite) *</div>
-          <input type="email" id="invEmail" placeholder="adriano@tecfusion.com.br" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
-        </div>
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Perfil de acesso</div>
-          <select id="invPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem">
-            <option value="gestor">🔑 Gestor — acesso total</option>
-            <option value="admin">⚙️ Admin</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Empresa *</div>
-          <select id="invEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.35rem .55rem;font-size:.78rem"></select>
-        </div>
-      </div>
-      <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.5rem;font-size:.82rem;font-weight:700">✅ Configurar Acesso</button>
-      <div id="invResultado"></div>
-      </div><!-- /novo usuário -->
-    </div><!-- /formulário convite -->
+    </div>
+
   </div>
 </div>
 
-<!-- Modal Editar Usuário (G3) -->
-<div id="modalEditarUsuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:1rem">
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:440px;padding:1.25rem">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <div style="font-size:.95rem;font-weight:800;color:var(--blue)">✏️ Editar Acesso</div>
-      <button class="nb" onclick="fecharEditarUsuario()" style="font-size:1rem;color:var(--text3)">✕</button>
-    </div>
+<!-- Modal Editar Usuário (G3.1 — redesign profissional) -->
+<div id="modalEditarUsuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
 
-    <!-- Aviso por empresa -->
-    <div style="background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:7px;padding:.55rem .75rem;margin-bottom:1rem;font-size:.73rem;color:var(--blue);line-height:1.45">
-      🏢 O perfil abaixo é <strong>específico desta empresa</strong>. Outras empresas do usuário não são afetadas.
-    </div>
-
-    <!-- Campos somente leitura -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1">
       <div>
-        <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Nome</div>
-        <input id="euNome" type="text" readonly style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:5px;padding:.35rem .55rem;font-size:.78rem;opacity:.7;cursor:default">
+        <div style="font-size:.9rem;font-weight:800;color:var(--text)">✏️ Editar Usuário</div>
+        <div style="font-size:.68rem;color:var(--text3);margin-top:.1rem">Dados globais + acesso nesta empresa</div>
       </div>
-      <div>
-        <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">E-mail</div>
-        <input id="euEmail" type="text" readonly style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:5px;padding:.35rem .55rem;font-size:.78rem;opacity:.7;cursor:default">
+      <button class="nb" onclick="fecharEditarUsuario()" style="font-size:1rem;color:var(--text3);padding:.3rem .55rem;border-radius:6px;border:1px solid transparent" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='transparent'">✕</button>
+    </div>
+
+    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.85rem">
+
+      <!-- Seção 1: Dados Globais -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);margin-bottom:.65rem">🌐 Dados Globais do Usuário</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem">
+          <div>
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Nome *</div>
+            <input id="euNome" type="text" placeholder="Nome do usuário" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.38rem .55rem;font-size:.82rem">
+          </div>
+          <div>
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">E-mail <span style="color:var(--text3);font-weight:400;font-size:.6rem">(readonly)</span></div>
+            <input id="euEmail" type="text" readonly style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:.38rem .55rem;font-size:.82rem;opacity:.7;cursor:default" title="E-mail vinculado ao login — não editável para evitar dessincronização com o sistema de autenticação">
+          </div>
+        </div>
+        <div style="font-size:.65rem;color:var(--text3);margin-top:.5rem;opacity:.7">⚠️ O e-mail não pode ser alterado aqui — está vinculado ao login de autenticação.</div>
       </div>
-    </div>
-    <div style="margin-bottom:.6rem">
-      <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Empresa</div>
-      <input id="euEmpNome" type="text" readonly style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:5px;padding:.35rem .55rem;font-size:.78rem;opacity:.7;cursor:default">
+
+      <!-- Seção 2: Acesso nesta Empresa -->
+      <div style="background:var(--bg3);border:1px solid rgba(88,166,255,.2);border-radius:10px;padding:.85rem">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--blue);margin-bottom:.65rem">🏢 Acesso nesta Empresa</div>
+
+        <div style="margin-bottom:.55rem">
+          <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Empresa</div>
+          <input id="euEmpNome" type="text" readonly style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:.38rem .55rem;font-size:.82rem;opacity:.7;cursor:default">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.55rem">
+          <div>
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Perfil nesta empresa *</div>
+            <select id="euPerfil" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.38rem .5rem;font-size:.82rem">
+              <option value="dono">👑 Dono</option>
+              <option value="admin">⚙️ Admin</option>
+              <option value="gestor">🔑 Gestor</option>
+              <option value="colaborador">👤 Colaborador</option>
+              <option value="comercial">💼 Comercial</option>
+              <option value="financeiro">💰 Financeiro</option>
+              <option value="rh">🧑‍💼 RH</option>
+              <option value="operacional">🏗️ Operacional</option>
+              <option value="leitura">👁️ Leitura</option>
+              <option value="prestador">🔧 Prestador</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Status do vínculo</div>
+            <select id="euAtivo" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.38rem .5rem;font-size:.82rem">
+              <option value="true">✅ Ativo</option>
+              <option value="false">🔴 Inativo</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:.65rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Observação de acesso <span style="font-weight:400">(opcional)</span></div>
+          <textarea id="euObs" rows="2" placeholder="Ex: Acesso temporário até dez/2025..." style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.38rem .55rem;font-size:.78rem;resize:vertical;font-family:inherit"></textarea>
+          <div style="font-size:.6rem;color:var(--text3);margin-top:.2rem">Salvo em permissoes_json.obs</div>
+        </div>
+      </div>
+
+      <div id="euResultado"></div>
+
     </div>
 
-    <!-- Perfil editável -->
-    <div style="margin-bottom:1rem">
-      <div style="font-size:.67rem;color:var(--text3);margin-bottom:.2rem">Perfil de acesso *</div>
-      <select id="euPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:.38rem .55rem;font-size:.82rem">
-        <option value="dono">👑 Dono</option>
-        <option value="admin">⚙️ Admin</option>
-        <option value="gestor">🔑 Gestor</option>
-        <option value="colaborador">👤 Colaborador</option>
-        <option value="prestador">🔧 Prestador</option>
-      </select>
+    <!-- Footer fixo -->
+    <div style="display:flex;gap:.6rem;justify-content:flex-end;padding:.85rem 1.25rem;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--bg2)">
+      <input type="hidden" id="euUserId">
+      <input type="hidden" id="euEmpId">
+      <button class="nb" onclick="fecharEditarUsuario()" style="padding:.42rem 1.1rem;border:1px solid var(--border);border-radius:7px;font-size:.82rem;color:var(--text3);cursor:pointer;background:var(--bg3)">Cancelar</button>
+      <button id="euBtnSalvar" class="nb" onclick="_salvarEditarUsuario()" style="padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer">💾 Salvar</button>
     </div>
 
-    <div id="euResultado"></div>
-
-    <!-- Campos ocultos -->
-    <input type="hidden" id="euUserId">
-    <input type="hidden" id="euEmpId">
-
-    <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.8rem">
-      <button class="nb" onclick="fecharEditarUsuario()" style="padding:.4rem 1rem;border:1px solid var(--border);border-radius:7px;font-size:.82rem;color:var(--text3)">Cancelar</button>
-      <button id="euBtnSalvar" class="nb" onclick="_salvarEditarUsuario()" style="padding:.4rem 1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700">💾 Salvar</button>
-    </div>
   </div>
 </div>
 
