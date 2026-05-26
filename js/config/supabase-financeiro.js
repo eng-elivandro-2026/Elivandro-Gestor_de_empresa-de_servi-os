@@ -972,6 +972,154 @@
     return r.data;
   }
 
+  async function sbListarCaixasInternos(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_caixas_internos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarCaixaInterno(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    if (!dados.nome) throw new Error('[Financeiro F3.3] nome obrigatorio.');
+    var payload = Object.assign({ ativo: true, saldo_inicial: 0 }, dados);
+    var r = await client()
+      .from('financeiro_caixas_internos')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarCaixaInterno(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar caixa interno.');
+    var r = await client()
+      .from('financeiro_caixas_internos')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbListarCartoesEmpresa(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_cartoes_empresa')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('apelido', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarCartaoEmpresa(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    if (!dados.apelido) throw new Error('[Financeiro F3.3] apelido obrigatorio.');
+    if (!dados.tipo_cartao) throw new Error('[Financeiro F3.3] tipo_cartao obrigatorio.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_cartoes_empresa')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarCartaoEmpresa(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar cartao empresarial.');
+    var r = await client()
+      .from('financeiro_cartoes_empresa')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbListarMeiosPagamento(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_meios_pagamento')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarMeioPagamento(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    if (!dados.nome) throw new Error('[Financeiro F3.3] nome obrigatorio.');
+    if (!dados.tipo) throw new Error('[Financeiro F3.3] tipo obrigatorio.');
+    if (!dados.natureza) throw new Error('[Financeiro F3.3] natureza obrigatoria.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_meios_pagamento')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarMeioPagamento(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar meio de pagamento.');
+    var r = await client()
+      .from('financeiro_meios_pagamento')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbListarFontesFinanceiras(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_fontes_financeiras')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarFonteFinanceira(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.3] empresa_id obrigatorio.');
+    if (!dados.nome) throw new Error('[Financeiro F3.3] nome obrigatorio.');
+    if (!dados.tipo) throw new Error('[Financeiro F3.3] tipo obrigatorio.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_fontes_financeiras')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarFonteFinanceira(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar fonte financeira.');
+    var r = await client()
+      .from('financeiro_fontes_financeiras')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // EXPOSIÇÃO PÚBLICA
@@ -1037,7 +1185,21 @@
     atualizarBanco:                  sbAtualizarBanco,
     listarContasBancarias:           sbListarContasBancarias,
     salvarContaBancaria:             sbSalvarContaBancaria,
-    atualizarContaBancaria:          sbAtualizarContaBancaria
+    atualizarContaBancaria:          sbAtualizarContaBancaria,
+
+    // F3.3 - Caixas, cartoes, meios e fontes financeiras
+    listarCaixasInternos:            sbListarCaixasInternos,
+    salvarCaixaInterno:              sbSalvarCaixaInterno,
+    atualizarCaixaInterno:           sbAtualizarCaixaInterno,
+    listarCartoesEmpresa:            sbListarCartoesEmpresa,
+    salvarCartaoEmpresa:             sbSalvarCartaoEmpresa,
+    atualizarCartaoEmpresa:          sbAtualizarCartaoEmpresa,
+    listarMeiosPagamento:            sbListarMeiosPagamento,
+    salvarMeioPagamento:             sbSalvarMeioPagamento,
+    atualizarMeioPagamento:          sbAtualizarMeioPagamento,
+    listarFontesFinanceiras:         sbListarFontesFinanceiras,
+    salvarFonteFinanceira:           sbSalvarFonteFinanceira,
+    atualizarFonteFinanceira:        sbAtualizarFonteFinanceira
   };
 
 }(window));
