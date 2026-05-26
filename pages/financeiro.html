@@ -111,6 +111,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 }
 .btn-limpar:hover{color:var(--red)}
 .filtro-count{font-size:.72rem;color:var(--text2);margin-left:auto;white-space:nowrap}
+.bc-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.55rem}
+.bc-tab{padding:.4rem .8rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg2);color:var(--text2);font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit}
+.bc-tab.on{border-color:var(--emp-bdr);background:var(--emp-bg);color:var(--emp-cor-2)}
+.bc-actions{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin-bottom:.85rem}
+.bc-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .85rem;border:1px solid var(--emp-bdr);border-radius:var(--r2);background:var(--emp-bg);color:var(--emp-cor-2);font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit}
+.bc-btn.sec{border-color:var(--border);background:var(--bg3);color:var(--text2)}
+.bc-btn.danger{border-color:rgba(248,81,73,.35);background:rgba(248,81,73,.08);color:var(--red)}
+.bc-btn:hover:not(:disabled){filter:brightness(1.12)}
+.bc-btn:disabled{opacity:.45;cursor:not-allowed}
+.bc-status{display:inline-flex;align-items:center;padding:.12rem .45rem;border-radius:999px;font-size:.66rem;font-weight:800}
+.bc-status.on{background:rgba(63,185,80,.1);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.bc-status.off{background:rgba(139,148,158,.12);color:var(--text3);border:1px solid var(--border)}
+.bc-modal{position:fixed;inset:0;z-index:260;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:1rem}
+.bc-modal.on{display:flex}
+.bc-modal-box{width:min(720px,96vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 18px 70px rgba(0,0,0,.35)}
+.bc-modal-hdr{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:1rem 1.1rem;border-bottom:1px solid var(--border)}
+.bc-modal-title{font-size:1rem;font-weight:800;color:var(--text)}
+.bc-modal-body{padding:1rem 1.1rem}
+.bc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem .85rem}
+.bc-form-row{display:flex;flex-direction:column;gap:.28rem}
+.bc-form-row.full{grid-column:1/-1}
+.bc-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:800}
+.bc-input{width:100%;padding:.5rem .65rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);color:var(--text);font-size:.82rem;font-family:inherit}
+.bc-input:focus{outline:none;border-color:var(--emp-cor)}
+.bc-modal-actions{display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)}
+@media(max-width:680px){.bc-form-grid{grid-template-columns:1fr}.bc-actions .filtro-input.busca{max-width:none}}
 
 /* ── STATUS LOADING / EMPTY / ERROR ──────────────────────────── */
 .estado{
@@ -1003,6 +1029,97 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </div><!-- /.wrap -->
 </div><!-- /#tab-ferramentas -->
 
+<div id="tab-bancos-contas" class="tab-content" style="display:none">
+<div class="wrap">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">🏦 Bancos e Contas</div>
+      <div class="page-sub">Cadastros base para fontes financeiras — sem impacto no Fluxo de Caixa.</div>
+      <div id="bc-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
+    </div>
+    <button class="btn-refresh" id="bc-btn-refresh" onclick="bcRecarregar()" title="Recarregar bancos e contas">🔄 Atualizar</button>
+  </div>
+  <div class="kpi-row" id="bc-kpi-row">
+    <div class="kpi-card destaque"><div class="kpi-label">Bancos ativos</div><div class="kpi-valor emp" id="bc-kpi-bancos">—</div><div class="kpi-sub">Cadastros disponíveis</div></div>
+    <div class="kpi-card recebido"><div class="kpi-label">Contas ativas</div><div class="kpi-valor verde" id="bc-kpi-contas-ativas">—</div><div class="kpi-sub">Somente cadastro</div></div>
+    <div class="kpi-card"><div class="kpi-label">Contas inativas</div><div class="kpi-valor" id="bc-kpi-contas-inativas">—</div><div class="kpi-sub">Sem exclusão física</div></div>
+  </div>
+  <div class="bc-tabs">
+    <button class="bc-tab on" id="bc-tab-btn-bancos" onclick="bcMostrarSubtab('bancos')">Bancos</button>
+    <button class="bc-tab" id="bc-tab-btn-contas" onclick="bcMostrarSubtab('contas')">Contas Bancárias</button>
+  </div>
+  <div id="bc-status" class="status-msg"></div>
+  <section id="bc-subtab-bancos">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-novo-banco" onclick="bcAbrirBanco()">+ Novo Banco</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-bancos" placeholder="Buscar nome, apelido ou código..." oninput="bcRenderBancos()">
+      <span class="filtro-count" id="bc-count-bancos"></span>
+    </div>
+    <div class="table-wrap" id="bc-bancos-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Banco</th><th>Código</th><th>Apelido</th><th>Site</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-bancos-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-bancos-vazio" style="display:none"><span class="estado-icon">🏦</span><div class="estado-msg">Nenhum banco cadastrado.</div><div class="estado-sub">Cadastre um banco para vincular contas bancárias.</div></div>
+  </section>
+  <section id="bc-subtab-contas" style="display:none">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-nova-conta" onclick="bcAbrirConta()">+ Nova Conta Bancária</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-contas" placeholder="Buscar banco, apelido, titular, agência ou conta..." oninput="bcRenderContas()">
+      <span class="filtro-count" id="bc-count-contas"></span>
+    </div>
+    <div class="table-wrap" id="bc-contas-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Apelido</th><th>Banco</th><th>Agência</th><th>Conta</th><th>Tipo</th><th>Titular</th><th>Chave Pix</th><th class="col-valor">Saldo Inicial</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-contas-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-contas-vazio" style="display:none"><span class="estado-icon">💳</span><div class="estado-msg">Nenhuma conta bancária cadastrada.</div><div class="estado-sub">O saldo inicial é apenas cadastral nesta fase.</div></div>
+  </section>
+</div>
+</div><!-- /#tab-bancos-contas -->
+
+<div class="bc-modal" id="bc-modal-banco" onclick="if(event.target===this)bcFecharModal('banco')">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr"><div class="bc-modal-title" id="bc-banco-titulo">Novo Banco</div><button class="btn-fechar" onclick="bcFecharModal('banco')">✕</button></div>
+    <div class="bc-modal-body">
+      <input type="hidden" id="bc-banco-id">
+      <div class="bc-form-grid">
+        <div class="bc-form-row"><label class="bc-label" for="bc-banco-codigo">Código</label><input class="bc-input" id="bc-banco-codigo" placeholder="Ex: 341"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-banco-nome">Nome do banco *</label><input class="bc-input" id="bc-banco-nome" placeholder="Ex: Itaú Unibanco"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-banco-apelido">Apelido</label><input class="bc-input" id="bc-banco-apelido" placeholder="Ex: Itaú PJ"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-banco-site">Site</label><input class="bc-input" id="bc-banco-site" placeholder="https://..."></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-banco-ativo">Status</label><select class="bc-input" id="bc-banco-ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></div>
+        <div class="bc-form-row full"><label class="bc-label" for="bc-banco-obs">Observação</label><textarea class="bc-input" id="bc-banco-obs" rows="3"></textarea></div>
+      </div>
+      <div class="bc-modal-actions"><button class="bc-btn sec" onclick="bcFecharModal('banco')">Cancelar</button><button class="bc-btn sec" onclick="bcSalvarBanco(true)">Salvar e novo</button><button class="bc-btn" onclick="bcSalvarBanco(false)">Salvar</button></div>
+      <div class="status-msg" id="bc-banco-msg"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bc-modal" id="bc-modal-conta" onclick="if(event.target===this)bcFecharModal('conta')">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr"><div class="bc-modal-title" id="bc-conta-titulo">Nova Conta Bancária</div><button class="btn-fechar" onclick="bcFecharModal('conta')">✕</button></div>
+    <div class="bc-modal-body">
+      <input type="hidden" id="bc-conta-id">
+      <div class="bc-form-grid">
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-banco">Banco *</label><select class="bc-input" id="bc-conta-banco"></select></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-apelido">Apelido *</label><input class="bc-input" id="bc-conta-apelido" placeholder="Ex: Conta Itaú PJ"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-titular">Titular</label><input class="bc-input" id="bc-conta-titular"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-doc">CPF/CNPJ titular</label><input class="bc-input" id="bc-conta-doc"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-agencia">Agência</label><input class="bc-input" id="bc-conta-agencia"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-numero">Conta</label><input class="bc-input" id="bc-conta-numero"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-digito">Dígito</label><input class="bc-input" id="bc-conta-digito"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-tipo">Tipo *</label><select class="bc-input" id="bc-conta-tipo"><option value="corrente">Corrente</option><option value="poupanca">Poupança</option><option value="pagamento">Pagamento</option><option value="investimento">Investimento</option><option value="outro">Outro</option></select></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-pix">Chave Pix</label><input class="bc-input" id="bc-conta-pix"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-saldo">Saldo inicial cadastral</label><input class="bc-input" id="bc-conta-saldo" placeholder="0,00"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-data-saldo">Data saldo inicial</label><input type="date" class="bc-input" id="bc-conta-data-saldo"></div>
+        <div class="bc-form-row"><label class="bc-label" for="bc-conta-ativo">Status</label><select class="bc-input" id="bc-conta-ativo"><option value="true">Ativa</option><option value="false">Inativa</option></select></div>
+        <div class="bc-form-row full"><label class="bc-label" for="bc-conta-obs">Observação</label><textarea class="bc-input" id="bc-conta-obs" rows="3"></textarea></div>
+      </div>
+      <div style="font-size:.72rem;color:var(--text3);margin-top:.7rem">Saldo inicial é somente cadastral nesta fase; não altera Fluxo de Caixa, saldos de caixa nem movimentos.</div>
+      <div class="bc-modal-actions"><button class="bc-btn sec" onclick="bcFecharModal('conta')">Cancelar</button><button class="bc-btn sec" onclick="bcSalvarConta(true)">Salvar e novo</button><button class="bc-btn" onclick="bcSalvarConta(false)">Salvar</button></div>
+      <div class="status-msg" id="bc-conta-msg"></div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ════════════════════════════════════════════════════════════ -->
 <!-- TAB: FLUXO DE CAIXA                                          -->
@@ -1518,6 +1635,12 @@ var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
 var _cpLoadToken      = 0;    // race condition guard
 var _cpFiltros        = { busca: '', status: '', categoria: '', centroCusto: '', vencInicio: '', vencFim: '' };
 
+// ── Bancos e Contas — estado (F3.2) ─────────────────────────
+var _bcBancos         = [];   // financeiro_bancos da empresa ativa
+var _bcContas         = [];   // financeiro_contas_bancarias da empresa ativa
+var _bcLoadToken      = 0;    // race condition guard
+var _bcSubtab         = 'bancos';
+
 // ── DRE Gerencial — estado (F4A) ─────────────────────────────
 var _dreLoadToken   = 0;      // race condition guard próprio da DRE
 var _dreCarregando  = false;
@@ -2030,6 +2153,16 @@ function _onTrocaEmpresa(dados) {
   var cpWrap = document.getElementById('cp-table-wrap');
   if (cpWrap) cpWrap.style.display = 'none';
 
+  // Limpar Bancos e Contas imediatamente
+  _bcBancos = [];
+  _bcContas = [];
+  _bcLoadToken++;
+  var bcBancoBody = document.getElementById('bc-bancos-tbody');
+  var bcContaBody = document.getElementById('bc-contas-tbody');
+  if (bcBancoBody) bcBancoBody.innerHTML = '';
+  if (bcContaBody) bcContaBody.innerHTML = '';
+  bcRenderKpis();
+
   // Limpar DRE Gerencial imediatamente (F4A)
   _dreLoadToken++;
   var dreRow = document.getElementById('dre-kpi-row');
@@ -2050,6 +2183,7 @@ function _onTrocaEmpresa(dados) {
   _atualizarBadge(_empresaAtiva);
   _atualizarBadgeNF(_empresaAtiva);
   _atualizarBadgeRec(_empresaAtiva);
+  bcAtualizarBadge(_empresaAtiva);
 
   // Recarregar todas as tabs
   carregarContas(_empresaAtiva.id);
@@ -2058,6 +2192,7 @@ function _onTrocaEmpresa(dados) {
   _fluxoInicializarFiltros();
   carregarFluxoCaixa(_empresaAtiva.id);
   carregarContasPagar(_empresaAtiva.id);
+  carregarBancosContas(_empresaAtiva.id);
   // F4A — DRE: recarregar preservando o preset atual
   _dreInicializarPeriodo();
   carregarDRE(_empresaAtiva.id);
@@ -3118,12 +3253,14 @@ function _nffJsArg(s) {
       _atualizarBadge(emp);
       _atualizarBadgeNF(emp);
       _atualizarBadgeRec(emp);
+      bcAtualizarBadge(emp);
       carregarContas(emp.id);
       carregarNFs(emp.id);
       carregarRec(emp.id);
       _fluxoInicializarFiltros();
       carregarFluxoCaixa(emp.id);
       carregarContasPagar(emp.id);
+      carregarBancosContas(emp.id);
       // F4A — DRE Gerencial
       _dreInicializarPeriodo();
       carregarDRE(emp.id);
@@ -3135,6 +3272,7 @@ function _nffJsArg(s) {
       _recMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _fluxoMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
       _cpMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar os dados.');
+      carregarBancosContas(null);
     }
   } catch(e) {
     console.warn('[Financeiro F2B/F2C/F2D/F3/F3B] init error:', e);
@@ -3143,12 +3281,19 @@ function _nffJsArg(s) {
     _recMostrarVazio('Erro ao identificar empresa ativa.');
     _fluxoMostrarErro('Erro ao identificar empresa ativa.');
     _cpMostrarErro('Erro ao identificar empresa ativa.');
+    carregarBancosContas(null);
   }
 })();
 
 // Fechar painéis de detalhe com Escape
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    if (document.getElementById('bc-modal-conta') && document.getElementById('bc-modal-conta').classList.contains('on')) {
+      bcFecharModal('conta'); return;
+    }
+    if (document.getElementById('bc-modal-banco') && document.getElementById('bc-modal-banco').classList.contains('on')) {
+      bcFecharModal('banco'); return;
+    }
     if (document.getElementById('cp-detalhe-panel').classList.contains('on')) {
       fecharDetalheCp(); return;
     }
@@ -5547,6 +5692,480 @@ function fecharDetalheCp() {
 }
 
 // ── Criar Conta a Pagar ───────────────────────────────────────
+// F3.2 - Bancos e Contas Bancarias
+function bcPodeEditar() {
+  try {
+    if (window.parent && typeof window.parent.podeAcao === 'function') {
+      return !!window.parent.podeAcao('financeiro', 'criar_cp_cr');
+    }
+  } catch(e) {}
+  try {
+    var p = (window.parent !== window && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario()
+      : null;
+    return !!p && ['dono', 'admin', 'gestor', 'financeiro'].indexOf(String(p).toLowerCase()) >= 0;
+  } catch(e2) {
+    return false;
+  }
+}
+
+function bcAtualizarBadge(emp) {
+  var el = document.getElementById('bc-empresa-badge');
+  if (!el) return;
+  if (emp && (emp.nome_curto || emp.nome)) {
+    el.textContent = '🏢 ' + (emp.nome_curto || emp.nome);
+    el.style.display = 'inline-flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function bcSetStatus(msg, tipo) {
+  var el = document.getElementById('bc-status');
+  if (!el) return;
+  el.className = 'status-msg ' + (tipo || '');
+  el.textContent = msg || '';
+}
+
+function bcMsg(id, msg, tipo) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status-msg ' + (tipo || '');
+  el.textContent = msg || '';
+}
+
+function bcJsArg(s) {
+  return _esc(JSON.stringify(String(s || '')));
+}
+
+function bcNormalizarBusca(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function bcBool(v) {
+  return v === true || v === 'true' || v === 1;
+}
+
+function bcValor(id) {
+  var el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+}
+
+function bcNull(v) {
+  v = String(v || '').trim();
+  return v ? v : null;
+}
+
+function bcParseMoney(v) {
+  var s = String(v || '').trim();
+  if (!s) return 0;
+  s = s.replace(/[R$\s]/g, '');
+  if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  var n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+
+function bcFmtData(v) {
+  if (!v) return '';
+  return String(v).slice(0, 10);
+}
+
+function bcStatusBadge(ativo) {
+  return '<span class="bc-status ' + (ativo === false ? 'off' : 'on') + '">' + (ativo === false ? 'Inativo' : 'Ativo') + '</span>';
+}
+
+function bcTipoContaLabel(v) {
+  var map = {
+    corrente: 'Corrente',
+    poupanca: 'Poupança',
+    pagamento: 'Pagamento',
+    investimento: 'Investimento',
+    outro: 'Outro'
+  };
+  return map[v] || (v || '—');
+}
+
+function bcSiteLink(site) {
+  if (!site) return '—';
+  var url = String(site || '').trim();
+  var href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+  return '<a href="' + _esc(href) + '" target="_blank" rel="noopener noreferrer">' + _esc(url) + '</a>';
+}
+
+function bcBancoPorId(id) {
+  return (_bcBancos || []).find(function(b) { return String(b.id) === String(id); }) || null;
+}
+
+function bcContaBanco(c) {
+  if (c && c.banco && (c.banco.nome_banco || c.banco.apelido)) return c.banco;
+  return bcBancoPorId(c && c.banco_id);
+}
+
+function bcAplicarPermissoes() {
+  var pode = bcPodeEditar();
+  ['bc-btn-novo-banco', 'bc-btn-nova-conta'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = pode ? 'inline-flex' : 'none';
+  });
+  return pode;
+}
+
+function bcMostrarSubtab(tipo) {
+  _bcSubtab = tipo === 'contas' ? 'contas' : 'bancos';
+  var sb = document.getElementById('bc-subtab-bancos');
+  var sc = document.getElementById('bc-subtab-contas');
+  var bb = document.getElementById('bc-tab-btn-bancos');
+  var bc = document.getElementById('bc-tab-btn-contas');
+  if (sb) sb.style.display = _bcSubtab === 'bancos' ? '' : 'none';
+  if (sc) sc.style.display = _bcSubtab === 'contas' ? '' : 'none';
+  if (bb) bb.classList.toggle('on', _bcSubtab === 'bancos');
+  if (bc) bc.classList.toggle('on', _bcSubtab === 'contas');
+}
+
+function bcRenderKpis() {
+  var bancosAtivos = (_bcBancos || []).filter(function(b) { return b.ativo !== false; }).length;
+  var contasAtivas = (_bcContas || []).filter(function(c) { return c.ativo !== false; }).length;
+  var contasInativas = (_bcContas || []).filter(function(c) { return c.ativo === false; }).length;
+  var eb = document.getElementById('bc-kpi-bancos');
+  var ea = document.getElementById('bc-kpi-contas-ativas');
+  var ei = document.getElementById('bc-kpi-contas-inativas');
+  if (eb) eb.textContent = bancosAtivos;
+  if (ea) ea.textContent = contasAtivas;
+  if (ei) ei.textContent = contasInativas;
+}
+
+function bcRenderBancos() {
+  bcAplicarPermissoes();
+  bcRenderKpis();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-bancos') || {}).value || '');
+  var lista = (_bcBancos || []).filter(function(b) {
+    if (!busca) return true;
+    return bcNormalizarBusca([b.nome_banco, b.apelido, b.codigo_banco, b.site].join(' ')).indexOf(busca) >= 0;
+  });
+  var body = document.getElementById('bc-bancos-tbody');
+  var wrap = document.getElementById('bc-bancos-wrap');
+  var vazio = document.getElementById('bc-bancos-vazio');
+  var count = document.getElementById('bc-count-bancos');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' banco' : ' bancos');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(b) {
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirBanco(' + bcJsArg(b.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarBanco(' + bcJsArg(b.id) + ')">' + (b.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(b.nome_banco || '—') + '</strong></td>'
+      + '<td>' + _esc(b.codigo_banco || '—') + '</td>'
+      + '<td>' + _esc(b.apelido || '—') + '</td>'
+      + '<td>' + bcSiteLink(b.site) + '</td>'
+      + '<td>' + bcStatusBadge(b.ativo) + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
+function bcRenderContas() {
+  bcAplicarPermissoes();
+  bcRenderKpis();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-contas') || {}).value || '');
+  var lista = (_bcContas || []).filter(function(c) {
+    if (!busca) return true;
+    var b = bcContaBanco(c);
+    return bcNormalizarBusca([
+      c.apelido, c.titular_nome, c.titular_documento, c.agencia, c.conta, c.digito,
+      c.chave_pix, c.tipo_conta, b && b.nome_banco, b && b.apelido, b && b.codigo_banco
+    ].join(' ')).indexOf(busca) >= 0;
+  });
+  var body = document.getElementById('bc-contas-tbody');
+  var wrap = document.getElementById('bc-contas-wrap');
+  var vazio = document.getElementById('bc-contas-vazio');
+  var count = document.getElementById('bc-count-contas');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' conta' : ' contas');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(c) {
+    var banco = bcContaBanco(c);
+    var contaFmt = [c.conta || '', c.digito || ''].filter(Boolean).join('-') || '—';
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirConta(' + bcJsArg(c.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarConta(' + bcJsArg(c.id) + ')">' + (c.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(c.apelido || '—') + '</strong></td>'
+      + '<td>' + _esc((banco && (banco.apelido || banco.nome_banco)) || '—') + '</td>'
+      + '<td>' + _esc(c.agencia || '—') + '</td>'
+      + '<td>' + _esc(contaFmt) + '</td>'
+      + '<td>' + _esc(bcTipoContaLabel(c.tipo_conta)) + '</td>'
+      + '<td>' + _esc(c.titular_nome || '—') + '</td>'
+      + '<td style="max-width:210px;white-space:normal;word-break:break-word" title="' + _esc(c.chave_pix || '') + '">' + _esc(c.chave_pix || '—') + '</td>'
+      + '<td class="col-valor">' + _fmtVal(_n(c.saldo_inicial)) + '</td>'
+      + '<td>' + bcStatusBadge(c.ativo) + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
+function bcPopularBancosSelect(selectedId) {
+  var el = document.getElementById('bc-conta-banco');
+  if (!el) return;
+  var ativos = (_bcBancos || []).filter(function(b) {
+    return b.ativo !== false || String(b.id) === String(selectedId || '');
+  });
+  if (!ativos.length) {
+    el.innerHTML = '<option value="">Cadastre um banco primeiro</option>';
+    return;
+  }
+  el.innerHTML = '<option value="">Selecionar...</option>' + ativos.map(function(b) {
+    var label = (b.apelido || b.nome_banco || 'Banco') + (b.codigo_banco ? ' (' + b.codigo_banco + ')' : '');
+    return '<option value="' + _esc(b.id) + '">' + _esc(label) + '</option>';
+  }).join('');
+  if (selectedId) el.value = selectedId;
+}
+
+async function carregarBancosContas(empresaId) {
+  var token = ++_bcLoadToken;
+  var sf = _sf();
+  bcAtualizarBadge(_empresaAtiva);
+  bcAplicarPermissoes();
+  if (!empresaId) {
+    _bcBancos = [];
+    _bcContas = [];
+    bcRenderBancos();
+    bcRenderContas();
+    bcSetStatus('Empresa não identificada. Selecione uma empresa no portal.', 'err');
+    return;
+  }
+  if (!sf || !sf.listarBancos || !sf.listarContasBancarias) {
+    bcSetStatus('Integração Supabase de bancos e contas indisponível.', 'err');
+    return;
+  }
+  bcSetStatus('Carregando bancos e contas...', '');
+  try {
+    var res = await Promise.all([
+      sf.listarBancos(empresaId),
+      sf.listarContasBancarias(empresaId)
+    ]);
+    if (token !== _bcLoadToken) return;
+    _bcBancos = Array.isArray(res[0]) ? res[0] : [];
+    _bcContas = Array.isArray(res[1]) ? res[1] : [];
+    bcRenderBancos();
+    bcRenderContas();
+    bcSetStatus('', '');
+  } catch(e) {
+    console.error('[Financeiro F3.2] erro ao carregar bancos/contas:', e);
+    bcSetStatus('Erro ao carregar bancos e contas: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
+function bcRecarregar() {
+  carregarBancosContas((_empresaAtiva || {}).id);
+}
+
+function bcAbrirBanco(id) {
+  if (!bcPodeEditar()) {
+    alert('Acesso negado. Você não tem permissão para alterar bancos nesta empresa.');
+    return;
+  }
+  bcMsg('bc-banco-msg', '', '');
+  var b = id ? bcBancoPorId(id) : null;
+  var modal = document.getElementById('bc-modal-banco');
+  var titulo = document.getElementById('bc-banco-titulo');
+  if (titulo) titulo.textContent = b ? 'Editar Banco' : 'Novo Banco';
+  document.getElementById('bc-banco-id').value = b ? b.id : '';
+  document.getElementById('bc-banco-codigo').value = b ? (b.codigo_banco || '') : '';
+  document.getElementById('bc-banco-nome').value = b ? (b.nome_banco || '') : '';
+  document.getElementById('bc-banco-apelido').value = b ? (b.apelido || '') : '';
+  document.getElementById('bc-banco-site').value = b ? (b.site || '') : '';
+  document.getElementById('bc-banco-ativo').value = b && b.ativo === false ? 'false' : 'true';
+  document.getElementById('bc-banco-obs').value = b ? (b.observacao || '') : '';
+  if (modal) modal.classList.add('on');
+}
+
+function bcAbrirConta(id) {
+  if (!bcPodeEditar()) {
+    alert('Acesso negado. Você não tem permissão para alterar contas bancárias nesta empresa.');
+    return;
+  }
+  if (!_bcBancos.length) {
+    alert('Cadastre um banco antes de criar uma conta bancária.');
+    bcMostrarSubtab('bancos');
+    return;
+  }
+  bcMsg('bc-conta-msg', '', '');
+  var c = id ? (_bcContas || []).find(function(x) { return String(x.id) === String(id); }) : null;
+  bcPopularBancosSelect(c && c.banco_id);
+  var modal = document.getElementById('bc-modal-conta');
+  var titulo = document.getElementById('bc-conta-titulo');
+  if (titulo) titulo.textContent = c ? 'Editar Conta Bancária' : 'Nova Conta Bancária';
+  document.getElementById('bc-conta-id').value = c ? c.id : '';
+  document.getElementById('bc-conta-banco').value = c ? (c.banco_id || '') : '';
+  document.getElementById('bc-conta-apelido').value = c ? (c.apelido || '') : '';
+  document.getElementById('bc-conta-titular').value = c ? (c.titular_nome || '') : '';
+  document.getElementById('bc-conta-doc').value = c ? (c.titular_documento || '') : '';
+  document.getElementById('bc-conta-agencia').value = c ? (c.agencia || '') : '';
+  document.getElementById('bc-conta-numero').value = c ? (c.conta || '') : '';
+  document.getElementById('bc-conta-digito').value = c ? (c.digito || '') : '';
+  document.getElementById('bc-conta-tipo').value = c ? (c.tipo_conta || 'corrente') : 'corrente';
+  document.getElementById('bc-conta-pix').value = c ? (c.chave_pix || '') : '';
+  document.getElementById('bc-conta-saldo').value = c && c.saldo_inicial != null ? String(c.saldo_inicial).replace('.', ',') : '';
+  document.getElementById('bc-conta-data-saldo').value = c ? bcFmtData(c.data_saldo_inicial) : '';
+  document.getElementById('bc-conta-ativo').value = c && c.ativo === false ? 'false' : 'true';
+  document.getElementById('bc-conta-obs').value = c ? (c.observacao || '') : '';
+  if (modal) modal.classList.add('on');
+}
+
+function bcFecharModal(tipo) {
+  var id = tipo === 'conta' ? 'bc-modal-conta' : 'bc-modal-banco';
+  var modal = document.getElementById(id);
+  if (modal) modal.classList.remove('on');
+}
+
+function bcPayloadBanco() {
+  return {
+    empresa_id: _empresaAtiva && _empresaAtiva.id,
+    codigo_banco: bcNull(bcValor('bc-banco-codigo')),
+    nome_banco: bcValor('bc-banco-nome'),
+    apelido: bcNull(bcValor('bc-banco-apelido')),
+    site: bcNull(bcValor('bc-banco-site')),
+    ativo: bcBool(bcValor('bc-banco-ativo')),
+    observacao: bcNull(bcValor('bc-banco-obs')),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function bcPayloadConta() {
+  return {
+    empresa_id: _empresaAtiva && _empresaAtiva.id,
+    banco_id: bcValor('bc-conta-banco'),
+    apelido: bcValor('bc-conta-apelido'),
+    titular_nome: bcNull(bcValor('bc-conta-titular')),
+    titular_documento: bcNull(bcValor('bc-conta-doc')),
+    agencia: bcNull(bcValor('bc-conta-agencia')),
+    conta: bcNull(bcValor('bc-conta-numero')),
+    digito: bcNull(bcValor('bc-conta-digito')),
+    tipo_conta: bcValor('bc-conta-tipo') || 'corrente',
+    chave_pix: bcNull(bcValor('bc-conta-pix')),
+    saldo_inicial: bcParseMoney(bcValor('bc-conta-saldo')),
+    data_saldo_inicial: bcNull(bcValor('bc-conta-data-saldo')),
+    ativo: bcBool(bcValor('bc-conta-ativo')),
+    observacao: bcNull(bcValor('bc-conta-obs')),
+    updated_at: new Date().toISOString()
+  };
+}
+
+async function bcSalvarBanco(salvarNovo) {
+  var sf = _sf();
+  if (!sf || !sf.salvarBanco || !sf.atualizarBanco) {
+    bcMsg('bc-banco-msg', 'Integração Supabase indisponível.', 'err');
+    return;
+  }
+  if (!bcPodeEditar()) {
+    bcMsg('bc-banco-msg', 'Acesso negado para alterar bancos.', 'err');
+    return;
+  }
+  var id = bcValor('bc-banco-id');
+  var dados = bcPayloadBanco();
+  if (!dados.empresa_id) {
+    bcMsg('bc-banco-msg', 'Empresa ativa não identificada.', 'err');
+    return;
+  }
+  if (!dados.nome_banco) {
+    bcMsg('bc-banco-msg', 'Nome do banco é obrigatório.', 'err');
+    return;
+  }
+  try {
+    bcMsg('bc-banco-msg', 'Salvando banco...', '');
+    if (id) await sf.atualizarBanco(id, dados);
+    else await sf.salvarBanco(dados);
+    await carregarBancosContas(dados.empresa_id);
+    if (salvarNovo) bcAbrirBanco();
+    else bcFecharModal('banco');
+  } catch(e) {
+    console.error('[Financeiro F3.2] erro ao salvar banco:', e);
+    bcMsg('bc-banco-msg', 'Erro ao salvar banco: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
+async function bcSalvarConta(salvarNovo) {
+  var sf = _sf();
+  if (!sf || !sf.salvarContaBancaria || !sf.atualizarContaBancaria) {
+    bcMsg('bc-conta-msg', 'Integração Supabase indisponível.', 'err');
+    return;
+  }
+  if (!bcPodeEditar()) {
+    bcMsg('bc-conta-msg', 'Acesso negado para alterar contas bancárias.', 'err');
+    return;
+  }
+  var id = bcValor('bc-conta-id');
+  var dados = bcPayloadConta();
+  if (!dados.empresa_id) {
+    bcMsg('bc-conta-msg', 'Empresa ativa não identificada.', 'err');
+    return;
+  }
+  if (!dados.banco_id) {
+    bcMsg('bc-conta-msg', 'Banco é obrigatório.', 'err');
+    return;
+  }
+  if (!dados.apelido) {
+    bcMsg('bc-conta-msg', 'Apelido da conta é obrigatório.', 'err');
+    return;
+  }
+  try {
+    bcMsg('bc-conta-msg', 'Salvando conta bancária...', '');
+    if (id) await sf.atualizarContaBancaria(id, dados);
+    else await sf.salvarContaBancaria(dados);
+    await carregarBancosContas(dados.empresa_id);
+    if (salvarNovo) bcAbrirConta();
+    else bcFecharModal('conta');
+  } catch(e) {
+    console.error('[Financeiro F3.2] erro ao salvar conta:', e);
+    bcMsg('bc-conta-msg', 'Erro ao salvar conta bancária: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
+async function bcAlternarBanco(id) {
+  var b = bcBancoPorId(id);
+  var sf = _sf();
+  if (!b || !sf || !sf.atualizarBanco || !bcPodeEditar()) return;
+  var novoStatus = b.ativo === false;
+  try {
+    await sf.atualizarBanco(id, { ativo: novoStatus, updated_at: new Date().toISOString() });
+    await carregarBancosContas((_empresaAtiva || {}).id);
+  } catch(e) {
+    alert('Erro ao atualizar status do banco: ' + (e && e.message ? e.message : e));
+  }
+}
+
+async function bcAlternarConta(id) {
+  var c = (_bcContas || []).find(function(x) { return String(x.id) === String(id); });
+  var sf = _sf();
+  if (!c || !sf || !sf.atualizarContaBancaria || !bcPodeEditar()) return;
+  var novoStatus = c.ativo === false;
+  try {
+    await sf.atualizarContaBancaria(id, { ativo: novoStatus, updated_at: new Date().toISOString() });
+    await carregarBancosContas((_empresaAtiva || {}).id);
+  } catch(e) {
+    alert('Erro ao atualizar status da conta bancária: ' + (e && e.message ? e.message : e));
+  }
+}
+
 async function criarContaPagar() {
   // H-006: guard de perfil — usa matriz G4A/G4B (criar_cp_cr)
   try {

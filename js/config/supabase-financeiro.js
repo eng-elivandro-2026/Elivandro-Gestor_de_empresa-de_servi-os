@@ -895,6 +895,85 @@
 
 
   // ============================================================
+  // F3.2 - BANCOS E CONTAS BANCARIAS
+  // ============================================================
+
+  async function sbListarBancos(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.2] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_bancos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome_banco', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarBanco(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.2] empresa_id obrigatorio.');
+    if (!dados.nome_banco) throw new Error('[Financeiro F3.2] nome_banco obrigatorio.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_bancos')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarBanco(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.2] id obrigatorio para atualizar banco.');
+    var r = await client()
+      .from('financeiro_bancos')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbListarContasBancarias(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.2] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_contas_bancarias')
+      .select('*, banco:financeiro_bancos(id, nome_banco, codigo_banco, apelido)')
+      .eq('empresa_id', empresaId)
+      .order('apelido', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarContaBancaria(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.2] empresa_id obrigatorio.');
+    if (!dados.apelido) throw new Error('[Financeiro F3.2] apelido obrigatorio.');
+    if (!dados.banco_id) throw new Error('[Financeiro F3.2] banco_id obrigatorio.');
+    if (!dados.tipo_conta) throw new Error('[Financeiro F3.2] tipo_conta obrigatorio.');
+    var payload = Object.assign({ ativo: true, saldo_inicial: 0 }, dados);
+    var r = await client()
+      .from('financeiro_contas_bancarias')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarContaBancaria(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.2] id obrigatorio para atualizar conta bancaria.');
+    var r = await client()
+      .from('financeiro_contas_bancarias')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+
+  // ============================================================
   // EXPOSIÇÃO PÚBLICA
   // ============================================================
 
@@ -950,7 +1029,15 @@
     // Reprocessamento de importação parcial
     atualizarNFFornecedor:           sbAtualizarNFFornecedor,
     buscarRefIdsCPNFFornecedor:      sbBuscarRefIdsCPNFFornecedor,
-    contarItensBancoPrecos:          sbContarItensBancoPrecos
+    contarItensBancoPrecos:          sbContarItensBancoPrecos,
+
+    // F3.2 - Bancos e contas bancarias
+    listarBancos:                    sbListarBancos,
+    salvarBanco:                     sbSalvarBanco,
+    atualizarBanco:                  sbAtualizarBanco,
+    listarContasBancarias:           sbListarContasBancarias,
+    salvarContaBancaria:             sbSalvarContaBancaria,
+    atualizarContaBancaria:          sbAtualizarContaBancaria
   };
 
 }(window));
