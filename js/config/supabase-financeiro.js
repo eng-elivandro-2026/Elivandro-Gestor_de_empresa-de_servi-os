@@ -1120,6 +1120,80 @@
     return r.data;
   }
 
+  async function sbListarAdquirentes(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_adquirentes')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarAdquirente(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
+    if (!dados.nome) throw new Error('[Financeiro F3.4-B] nome obrigatorio.');
+    if (!dados.provedor) throw new Error('[Financeiro F3.4-B] provedor obrigatorio.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_adquirentes')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarAdquirente(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.4-B] id obrigatorio para atualizar adquirente.');
+    var r = await client()
+      .from('financeiro_adquirentes')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbListarMaquininhas(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_maquininhas')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('apelido', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarMaquininha(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
+    if (!dados.adquirente_id) throw new Error('[Financeiro F3.4-B] adquirente_id obrigatorio.');
+    if (!dados.apelido) throw new Error('[Financeiro F3.4-B] apelido obrigatorio.');
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_maquininhas')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarMaquininha(id, dados) {
+    if (!id) throw new Error('[Financeiro F3.4-B] id obrigatorio para atualizar maquininha.');
+    var r = await client()
+      .from('financeiro_maquininhas')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // EXPOSIÇÃO PÚBLICA
@@ -1199,7 +1273,15 @@
     atualizarMeioPagamento:          sbAtualizarMeioPagamento,
     listarFontesFinanceiras:         sbListarFontesFinanceiras,
     salvarFonteFinanceira:           sbSalvarFonteFinanceira,
-    atualizarFonteFinanceira:        sbAtualizarFonteFinanceira
+    atualizarFonteFinanceira:        sbAtualizarFonteFinanceira,
+
+    // F3.4-B - Adquirentes e maquininhas
+    listarAdquirentes:               sbListarAdquirentes,
+    salvarAdquirente:                sbSalvarAdquirente,
+    atualizarAdquirente:             sbAtualizarAdquirente,
+    listarMaquininhas:               sbListarMaquininhas,
+    salvarMaquininha:                sbSalvarMaquininha,
+    atualizarMaquininha:             sbAtualizarMaquininha
   };
 
 }(window));

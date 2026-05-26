@@ -1046,6 +1046,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="kpi-card"><div class="kpi-label">Cartões ativos</div><div class="kpi-valor" id="bc-kpi-cartoes">—</div><div class="kpi-sub">Sem fatura nesta fase</div></div>
     <div class="kpi-card"><div class="kpi-label">Meios ativos</div><div class="kpi-valor" id="bc-kpi-meios">—</div><div class="kpi-sub">Pagamento/recebimento</div></div>
     <div class="kpi-card"><div class="kpi-label">Fontes ativas</div><div class="kpi-valor" id="bc-kpi-fontes">—</div><div class="kpi-sub">Origem/destino financeiro</div></div>
+    <div class="kpi-card"><div class="kpi-label">Adquirentes ativos</div><div class="kpi-valor" id="bc-kpi-adquirentes">—</div><div class="kpi-sub">Recebimento por cartão</div></div>
+    <div class="kpi-card"><div class="kpi-label">Maquininhas ativas</div><div class="kpi-valor" id="bc-kpi-maquininhas">—</div><div class="kpi-sub">Terminais cadastrados</div></div>
+    <div class="kpi-card"><div class="kpi-label">Maquininhas inativas</div><div class="kpi-valor" id="bc-kpi-maquininhas-inativas">—</div><div class="kpi-sub">Sem exclusão física</div></div>
+    <div class="kpi-card"><div class="kpi-label">Contas destino</div><div class="kpi-valor" id="bc-kpi-contas-destino">—</div><div class="kpi-sub">Adquirentes configuradas</div></div>
   </div>
   <div class="bc-tabs">
     <button class="bc-tab on" id="bc-tab-btn-bancos" onclick="bcMostrarSubtab('bancos')">Bancos</button>
@@ -1054,6 +1058,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="bc-tab" id="bc-tab-btn-cartoes" onclick="bcMostrarSubtab('cartoes')">Cartões</button>
     <button class="bc-tab" id="bc-tab-btn-meios" onclick="bcMostrarSubtab('meios')">Meios de Pagamento</button>
     <button class="bc-tab" id="bc-tab-btn-fontes" onclick="bcMostrarSubtab('fontes')">Fontes Financeiras</button>
+    <button class="bc-tab" id="bc-tab-btn-adquirentes" onclick="bcMostrarSubtab('adquirentes')">Adquirentes</button>
+    <button class="bc-tab" id="bc-tab-btn-maquininhas" onclick="bcMostrarSubtab('maquininhas')">Maquininhas</button>
   </div>
   <div id="bc-status" class="status-msg"></div>
   <section id="bc-subtab-bancos">
@@ -1121,6 +1127,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <table class="fin-table"><thead><tr><th>Fonte Financeira</th><th>Tipo</th><th>Vínculo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-fontes-tbody"></tbody></table>
     </div>
     <div class="estado" id="bc-fontes-vazio" style="display:none"><span class="estado-icon">🏦</span><div class="estado-msg">Nenhuma fonte financeira cadastrada.</div><div class="estado-sub">A fonte define onde o dinheiro entra ou sai, sem movimentação nesta fase.</div></div>
+  </section>
+  <section id="bc-subtab-adquirentes" style="display:none">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-nova-adquirente" onclick="bcAbrirAdquirente()">+ Nova Adquirente</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-adquirentes" placeholder="Buscar nome, provedor, código ou conta destino..." oninput="bcRenderAdquirentes()">
+      <span class="filtro-count" id="bc-count-adquirentes"></span>
+    </div>
+    <div class="table-wrap" id="bc-adquirentes-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Nome</th><th>Provedor</th><th>Cód. estabelecimento</th><th>Conta destino</th><th>Prazo</th><th>Taxa débito</th><th>Taxa crédito</th><th>Taxa parc.</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-adquirentes-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-adquirentes-vazio" style="display:none"><span class="estado-icon">💳</span><div class="estado-msg">Nenhuma adquirente cadastrada.</div><div class="estado-sub">Taxas e prazos são apenas cadastrais nesta fase.</div></div>
+  </section>
+  <section id="bc-subtab-maquininhas" style="display:none">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-nova-maquininha" onclick="bcAbrirMaquininha()">+ Nova Maquininha</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-maquininhas" placeholder="Buscar adquirente, apelido, série, modelo, local ou responsável..." oninput="bcRenderMaquininhas()">
+      <span class="filtro-count" id="bc-count-maquininhas"></span>
+    </div>
+    <div class="table-wrap" id="bc-maquininhas-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Apelido</th><th>Adquirente</th><th>Número de série</th><th>Modelo</th><th>Local de uso</th><th>Responsável</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-maquininhas-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-maquininhas-vazio" style="display:none"><span class="estado-icon">📟</span><div class="estado-msg">Nenhuma maquininha cadastrada.</div><div class="estado-sub">Maquininhas não geram vendas, taxas ou movimentos nesta fase.</div></div>
   </section>
 </div>
 </div><!-- /#tab-bancos-contas -->
@@ -1706,6 +1734,8 @@ var _bcCaixas         = [];   // financeiro_caixas_internos da empresa ativa
 var _bcCartoes        = [];   // financeiro_cartoes_empresa da empresa ativa
 var _bcMeios          = [];   // financeiro_meios_pagamento da empresa ativa
 var _bcFontes         = [];   // financeiro_fontes_financeiras da empresa ativa
+var _bcAdquirentes    = [];   // financeiro_adquirentes da empresa ativa
+var _bcMaquininhas    = [];   // financeiro_maquininhas da empresa ativa
 var _bcLoadToken      = 0;    // race condition guard
 var _bcSubtab         = 'bancos';
 var _bcModalTipo      = '';
@@ -2230,6 +2260,8 @@ function _onTrocaEmpresa(dados) {
   _bcCartoes = [];
   _bcMeios = [];
   _bcFontes = [];
+  _bcAdquirentes = [];
+  _bcMaquininhas = [];
   _bcLoadToken++;
   var bcBancoBody = document.getElementById('bc-bancos-tbody');
   var bcContaBody = document.getElementById('bc-contas-tbody');
@@ -2237,18 +2269,24 @@ function _onTrocaEmpresa(dados) {
   var bcCartaoBody = document.getElementById('bc-cartoes-tbody');
   var bcMeioBody = document.getElementById('bc-meios-tbody');
   var bcFonteBody = document.getElementById('bc-fontes-tbody');
+  var bcAdqBody = document.getElementById('bc-adquirentes-tbody');
+  var bcMaqBody = document.getElementById('bc-maquininhas-tbody');
   if (bcBancoBody) bcBancoBody.innerHTML = '';
   if (bcContaBody) bcContaBody.innerHTML = '';
   if (bcCaixaBody) bcCaixaBody.innerHTML = '';
   if (bcCartaoBody) bcCartaoBody.innerHTML = '';
   if (bcMeioBody) bcMeioBody.innerHTML = '';
   if (bcFonteBody) bcFonteBody.innerHTML = '';
+  if (bcAdqBody) bcAdqBody.innerHTML = '';
+  if (bcMaqBody) bcMaqBody.innerHTML = '';
   bcRenderBancos();
   bcRenderContas();
   bcRenderCaixas();
   bcRenderCartoes();
   bcRenderMeios();
   bcRenderFontes();
+  bcRenderAdquirentes();
+  bcRenderMaquininhas();
 
   // Limpar DRE Gerencial imediatamente (F4A)
   _dreLoadToken++;
@@ -5916,11 +5954,25 @@ function bcFontePorId(id) {
   return (_bcFontes || []).find(function(f) { return String(f.id) === String(id); }) || null;
 }
 
+function bcAdquirentePorId(id) {
+  return (_bcAdquirentes || []).find(function(a) { return String(a.id) === String(id); }) || null;
+}
+
+function bcMaquininhaPorId(id) {
+  return (_bcMaquininhas || []).find(function(m) { return String(m.id) === String(id); }) || null;
+}
+
 function bcContaLabel(id) {
   var c = bcContaPorId(id);
   if (!c) return '—';
   var banco = bcContaBanco(c);
   return (c.apelido || 'Conta') + (banco ? ' / ' + (banco.apelido || banco.nome_banco || 'Banco') : '');
+}
+
+function bcAdquirenteLabel(id) {
+  var a = bcAdquirentePorId(id);
+  if (!a) return '—';
+  return (a.nome || 'Adquirente') + (a.provedor ? ' / ' + bcProvedorLabel(a.provedor) : '');
 }
 
 function bcCartaoLabel(id) {
@@ -5978,9 +6030,30 @@ function bcFonteTipoLabel(v) {
   });
 }
 
+function bcProvedorLabel(v) {
+  return bcLabelTipo(v, {
+    stone: 'Stone',
+    cielo: 'Cielo',
+    rede: 'Rede',
+    pagseguro: 'PagSeguro',
+    mercado_pago: 'Mercado Pago',
+    getnet: 'Getnet',
+    safrapay: 'SafraPay',
+    sumup: 'SumUp',
+    outro: 'Outro'
+  });
+}
+
+function bcFmtPercent(v) {
+  if (v == null || v === '') return '—';
+  var n = parseFloat(v);
+  if (!isFinite(n)) return '—';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
+}
+
 function bcAplicarPermissoes() {
   var pode = bcPodeEditar();
-  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte'].forEach(function(id) {
+  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte', 'bc-btn-nova-adquirente', 'bc-btn-nova-maquininha'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = pode ? 'inline-flex' : 'none';
   });
@@ -5988,7 +6061,7 @@ function bcAplicarPermissoes() {
 }
 
 function bcMostrarSubtab(tipo) {
-  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes'];
+  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes', 'adquirentes', 'maquininhas'];
   _bcSubtab = abas.indexOf(tipo) >= 0 ? tipo : 'bancos';
   abas.forEach(function(a) {
     var sec = document.getElementById('bc-subtab-' + a);
@@ -6005,18 +6078,30 @@ function bcRenderKpis() {
   var cartoesAtivos = (_bcCartoes || []).filter(function(c) { return c.ativo !== false; }).length;
   var meiosAtivos = (_bcMeios || []).filter(function(m) { return m.ativo !== false; }).length;
   var fontesAtivas = (_bcFontes || []).filter(function(f) { return f.ativo !== false; }).length;
+  var adquirentesAtivos = (_bcAdquirentes || []).filter(function(a) { return a.ativo !== false; }).length;
+  var maquininhasAtivas = (_bcMaquininhas || []).filter(function(m) { return m.ativo !== false; }).length;
+  var maquininhasInativas = (_bcMaquininhas || []).filter(function(m) { return m.ativo === false; }).length;
+  var contasDestino = (_bcAdquirentes || []).filter(function(a) { return a.conta_bancaria_destino_id; }).length;
   var eb = document.getElementById('bc-kpi-bancos');
   var ea = document.getElementById('bc-kpi-contas-ativas');
   var ecx = document.getElementById('bc-kpi-caixas');
   var ect = document.getElementById('bc-kpi-cartoes');
   var em = document.getElementById('bc-kpi-meios');
   var ef = document.getElementById('bc-kpi-fontes');
+  var ead = document.getElementById('bc-kpi-adquirentes');
+  var emq = document.getElementById('bc-kpi-maquininhas');
+  var emqi = document.getElementById('bc-kpi-maquininhas-inativas');
+  var ecd = document.getElementById('bc-kpi-contas-destino');
   if (eb) eb.textContent = bancosAtivos;
   if (ea) ea.textContent = contasAtivas;
   if (ecx) ecx.textContent = caixasAtivos;
   if (ect) ect.textContent = cartoesAtivos;
   if (em) em.textContent = meiosAtivos;
   if (ef) ef.textContent = fontesAtivas;
+  if (ead) ead.textContent = adquirentesAtivos;
+  if (emq) emq.textContent = maquininhasAtivas;
+  if (emqi) emqi.textContent = maquininhasInativas;
+  if (ecd) ecd.textContent = contasDestino;
 }
 
 function bcRenderBancos() {
@@ -6232,8 +6317,8 @@ function bcFonteVinculo(f) {
   if (f.tipo === 'conta_bancaria') return bcContaLabel(f.conta_bancaria_id);
   if (f.tipo === 'cartao_empresa') return bcCartaoLabel(f.cartao_empresa_id);
   if (f.tipo === 'caixa') return bcCaixaLabel(f.caixa_interno_id);
+  if (f.tipo === 'adquirente') return f.adquirente_id ? bcAdquirenteLabel(f.adquirente_id) : 'Adquirente sem vínculo dedicado';
   if (f.tipo === 'carteira') return 'Carteira digital sem cadastro dedicado';
-  if (f.tipo === 'adquirente') return 'Adquirente sem cadastro dedicado nesta fase';
   return f.banco_id ? bcBancoLabel(f.banco_id) : 'Sem vínculo dedicado';
 }
 
@@ -6275,6 +6360,96 @@ function bcRenderFontes() {
   vazio.style.display = 'none';
 }
 
+function bcRenderAdquirentes() {
+  bcAplicarPermissoes();
+  bcRenderKpis();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-adquirentes') || {}).value || '');
+  var lista = (_bcAdquirentes || []).filter(function(a) {
+    if (!busca) return true;
+    return bcNormalizarBusca([
+      a.nome, bcProvedorLabel(a.provedor), a.codigo_estabelecimento,
+      bcContaLabel(a.conta_bancaria_destino_id), a.observacao
+    ].join(' ')).indexOf(busca) >= 0;
+  });
+  var body = document.getElementById('bc-adquirentes-tbody');
+  var wrap = document.getElementById('bc-adquirentes-wrap');
+  var vazio = document.getElementById('bc-adquirentes-vazio');
+  var count = document.getElementById('bc-count-adquirentes');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' adquirente' : ' adquirentes');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(a) {
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirAdquirente(' + bcJsArg(a.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarExtra(' + bcJsArg('adquirente') + ',' + bcJsArg(a.id) + ')">' + (a.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(a.nome || '—') + '</strong></td>'
+      + '<td>' + _esc(bcProvedorLabel(a.provedor)) + '</td>'
+      + '<td>' + _esc(a.codigo_estabelecimento || '—') + '</td>'
+      + '<td style="max-width:220px;white-space:normal;word-break:break-word" title="' + _esc(bcContaLabel(a.conta_bancaria_destino_id)) + '">' + _esc(bcContaLabel(a.conta_bancaria_destino_id)) + '</td>'
+      + '<td>' + (a.prazo_recebimento_padrao != null ? _esc(a.prazo_recebimento_padrao + ' dias') : '—') + '</td>'
+      + '<td>' + _esc(bcFmtPercent(a.taxa_debito_padrao)) + '</td>'
+      + '<td>' + _esc(bcFmtPercent(a.taxa_credito_padrao)) + '</td>'
+      + '<td>' + _esc(bcFmtPercent(a.taxa_credito_parcelado_padrao)) + '</td>'
+      + '<td>' + bcStatusBadge(a.ativo) + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
+function bcRenderMaquininhas() {
+  bcAplicarPermissoes();
+  bcRenderKpis();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-maquininhas') || {}).value || '');
+  var lista = (_bcMaquininhas || []).filter(function(m) {
+    if (!busca) return true;
+    return bcNormalizarBusca([
+      m.apelido, bcAdquirenteLabel(m.adquirente_id), m.numero_serie,
+      m.modelo, m.local_uso, m.responsavel, m.observacao
+    ].join(' ')).indexOf(busca) >= 0;
+  });
+  var body = document.getElementById('bc-maquininhas-tbody');
+  var wrap = document.getElementById('bc-maquininhas-wrap');
+  var vazio = document.getElementById('bc-maquininhas-vazio');
+  var count = document.getElementById('bc-count-maquininhas');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' maquininha' : ' maquininhas');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(m) {
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirMaquininha(' + bcJsArg(m.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarExtra(' + bcJsArg('maquininha') + ',' + bcJsArg(m.id) + ')">' + (m.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(m.apelido || '—') + '</strong></td>'
+      + '<td>' + _esc(bcAdquirenteLabel(m.adquirente_id)) + '</td>'
+      + '<td>' + _esc(m.numero_serie || '—') + '</td>'
+      + '<td>' + _esc(m.modelo || '—') + '</td>'
+      + '<td>' + _esc(m.local_uso || '—') + '</td>'
+      + '<td>' + _esc(m.responsavel || '—') + '</td>'
+      + '<td>' + bcStatusBadge(m.ativo) + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
 function bcPopularBancosSelect(selectedId) {
   var el = document.getElementById('bc-conta-banco');
   if (!el) return;
@@ -6304,16 +6479,20 @@ async function carregarBancosContas(empresaId) {
     _bcCartoes = [];
     _bcMeios = [];
     _bcFontes = [];
+    _bcAdquirentes = [];
+    _bcMaquininhas = [];
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
     bcRenderCartoes();
     bcRenderMeios();
     bcRenderFontes();
+    bcRenderAdquirentes();
+    bcRenderMaquininhas();
     bcSetStatus('Empresa não identificada. Selecione uma empresa no portal.', 'err');
     return;
   }
-  if (!sf || !sf.listarBancos || !sf.listarContasBancarias || !sf.listarCaixasInternos || !sf.listarCartoesEmpresa || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras) {
+  if (!sf || !sf.listarBancos || !sf.listarContasBancarias || !sf.listarCaixasInternos || !sf.listarCartoesEmpresa || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras || !sf.listarAdquirentes || !sf.listarMaquininhas) {
     bcSetStatus('Integração Supabase de fontes financeiras indisponível.', 'err');
     return;
   }
@@ -6325,7 +6504,9 @@ async function carregarBancosContas(empresaId) {
       sf.listarCaixasInternos(empresaId),
       sf.listarCartoesEmpresa(empresaId),
       sf.listarMeiosPagamento(empresaId),
-      sf.listarFontesFinanceiras(empresaId)
+      sf.listarFontesFinanceiras(empresaId),
+      sf.listarAdquirentes(empresaId),
+      sf.listarMaquininhas(empresaId)
     ]);
     if (token !== _bcLoadToken) return;
     _bcBancos = Array.isArray(res[0]) ? res[0] : [];
@@ -6334,12 +6515,16 @@ async function carregarBancosContas(empresaId) {
     _bcCartoes = Array.isArray(res[3]) ? res[3] : [];
     _bcMeios = Array.isArray(res[4]) ? res[4] : [];
     _bcFontes = Array.isArray(res[5]) ? res[5] : [];
+    _bcAdquirentes = Array.isArray(res[6]) ? res[6] : [];
+    _bcMaquininhas = Array.isArray(res[7]) ? res[7] : [];
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
     bcRenderCartoes();
     bcRenderMeios();
     bcRenderFontes();
+    bcRenderAdquirentes();
+    bcRenderMaquininhas();
     bcSetStatus('', '');
   } catch(e) {
     console.error('[Financeiro F3.3] erro ao carregar fontes financeiras:', e);
@@ -6460,6 +6645,14 @@ function bcAbrirFonte(id) {
   bcAbrirExtra('fonte', id);
 }
 
+function bcAbrirAdquirente(id) {
+  bcAbrirExtra('adquirente', id);
+}
+
+function bcAbrirMaquininha(id) {
+  bcAbrirExtra('maquininha', id);
+}
+
 function bcAbrirExtra(tipo, id) {
   if (!bcPodeEditar()) {
     alert('Acesso negado. Você não tem permissão para alterar fontes financeiras nesta empresa.');
@@ -6487,11 +6680,13 @@ function bcRegistroExtra(tipo, id) {
   if (tipo === 'cartao') return bcCartaoPorId(id);
   if (tipo === 'meio') return bcMeioPorId(id);
   if (tipo === 'fonte') return bcFontePorId(id);
+  if (tipo === 'adquirente') return bcAdquirentePorId(id);
+  if (tipo === 'maquininha') return bcMaquininhaPorId(id);
   return null;
 }
 
 function bcTituloExtra(tipo, editando) {
-  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira' };
+  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira', adquirente: 'Adquirente', maquininha: 'Maquininha' };
   return (editando ? 'Editar ' : 'Novo ') + (nomes[tipo] || 'Cadastro');
 }
 
@@ -6531,8 +6726,33 @@ function bcCamposExtra(tipo, r) {
       + bcSelect('bc-fonte-conta', 'Conta bancária', r.conta_bancaria_id, bcOptions(_bcContas, r.conta_bancaria_id, function(c) { return bcContaLabel(c.id); }, true), { rowId: 'bc-row-fonte-conta' })
       + bcSelect('bc-fonte-cartao', 'Cartão empresarial', r.cartao_empresa_id, bcOptions(_bcCartoes, r.cartao_empresa_id, function(c) { return bcCartaoLabel(c.id); }, true), { rowId: 'bc-row-fonte-cartao' })
       + bcSelect('bc-fonte-caixa', 'Caixa interno', r.caixa_interno_id, bcOptions(_bcCaixas, r.caixa_interno_id, function(c) { return c.nome || 'Caixa'; }, true), { rowId: 'bc-row-fonte-caixa' })
+      + bcSelect('bc-fonte-adquirente', 'Adquirente', r.adquirente_id, bcOptions(_bcAdquirentes, r.adquirente_id, function(a) { return bcAdquirenteLabel(a.id); }, true), { rowId: 'bc-row-fonte-adquirente' })
       + bcStatusSelect('bc-fonte-ativo', r.ativo)
       + bcTextArea('bc-fonte-obs', 'Observação', r.observacao);
+  }
+  if (tipo === 'adquirente') {
+    return bcCampo('bc-adq-nome', 'Nome *', r.nome, 'Ex: Stone, Cielo, PagSeguro')
+      + bcSelect('bc-adq-provedor', 'Provedor *', r.provedor || 'stone', '<option value="stone">Stone</option><option value="cielo">Cielo</option><option value="rede">Rede</option><option value="pagseguro">PagSeguro</option><option value="mercado_pago">Mercado Pago</option><option value="getnet">Getnet</option><option value="safrapay">SafraPay</option><option value="sumup">SumUp</option><option value="outro">Outro</option>')
+      + bcCampo('bc-adq-codigo', 'Código estabelecimento', r.codigo_estabelecimento, 'Opcional')
+      + bcSelect('bc-adq-conta-destino', 'Conta bancária destino', r.conta_bancaria_destino_id, bcOptions(_bcContas, r.conta_bancaria_destino_id, function(c) { return bcContaLabel(c.id); }, true))
+      + bcCampo('bc-adq-prazo', 'Prazo recebimento padrão', r.prazo_recebimento_padrao, 'Dias', 'number')
+      + bcCampo('bc-adq-taxa-debito', 'Taxa débito %', r.taxa_debito_padrao != null ? String(r.taxa_debito_padrao).replace('.', ',') : '', 'Ex: 1,50')
+      + bcCampo('bc-adq-taxa-credito', 'Taxa crédito %', r.taxa_credito_padrao != null ? String(r.taxa_credito_padrao).replace('.', ',') : '', 'Ex: 2,50')
+      + bcCampo('bc-adq-taxa-parc', 'Taxa crédito parcelado %', r.taxa_credito_parcelado_padrao != null ? String(r.taxa_credito_parcelado_padrao).replace('.', ',') : '', 'Ex: 3,20')
+      + bcStatusSelect('bc-adq-ativo', r.ativo)
+      + bcTextArea('bc-adq-obs', 'Observação', r.observacao)
+      + '<div class="bc-form-row full" style="font-size:.72rem;color:var(--text3)">Taxas e prazos são apenas cadastrais; não calculam valor líquido, recebimento ou movimento nesta fase.</div>';
+  }
+  if (tipo === 'maquininha') {
+    return bcSelect('bc-maq-adquirente', 'Adquirente *', r.adquirente_id, bcOptions(_bcAdquirentes, r.adquirente_id, function(a) { return bcAdquirenteLabel(a.id); }, true))
+      + bcCampo('bc-maq-apelido', 'Apelido *', r.apelido, 'Ex: Stone balcão')
+      + bcCampo('bc-maq-serie', 'Número de série', r.numero_serie, 'Opcional')
+      + bcCampo('bc-maq-modelo', 'Modelo', r.modelo, 'Opcional')
+      + bcCampo('bc-maq-local', 'Local de uso', r.local_uso, 'Ex: Recepção, obra, loja')
+      + bcCampo('bc-maq-responsavel', 'Responsável', r.responsavel, 'Opcional')
+      + bcStatusSelect('bc-maq-ativo', r.ativo)
+      + bcTextArea('bc-maq-obs', 'Observação', r.observacao)
+      + '<div class="bc-form-row full" style="font-size:.72rem;color:var(--text3)">Cadastro de maquininha não cria venda, taxa, transação, recebimento ou conciliação.</div>';
   }
   return '';
 }
@@ -6542,14 +6762,17 @@ function bcAtualizarFonteCampos() {
   [
     ['bc-row-fonte-conta', tipo === 'conta_bancaria'],
     ['bc-row-fonte-cartao', tipo === 'cartao_empresa'],
-    ['bc-row-fonte-caixa', tipo === 'caixa']
+    ['bc-row-fonte-caixa', tipo === 'caixa'],
+    ['bc-row-fonte-adquirente', tipo === 'adquirente']
   ].forEach(function(p) {
     var el = document.getElementById(p[0]);
     if (el) el.style.display = p[1] ? '' : 'none';
   });
   var ajuda = document.getElementById('bc-extra-ajuda');
   if (!ajuda) return;
-  if (tipo === 'carteira' || tipo === 'adquirente' || tipo === 'outro') {
+  if (tipo === 'adquirente') {
+    ajuda.textContent = 'Selecione uma adquirente se quiser vincular esta fonte a um cadastro dedicado. O vínculo ainda é opcional nesta fase.';
+  } else if (tipo === 'carteira' || tipo === 'outro') {
     ajuda.textContent = 'Este tipo pode ficar sem vínculo dedicado nesta fase.';
   } else {
     ajuda.textContent = 'Selecione o cadastro vinculado ao tipo da fonte financeira.';
@@ -6591,6 +6814,13 @@ function bcPayloadConta() {
 
 function bcIntOpcional(v) {
   var n = parseInt(v, 10);
+  return isFinite(n) ? n : null;
+}
+
+function bcDecimalOpcional(v) {
+  var s = String(v || '').trim();
+  if (!s) return null;
+  var n = bcParseMoney(s);
   return isFinite(n) ? n : null;
 }
 
@@ -6641,6 +6871,7 @@ function bcPayloadFonte() {
   var contaId = tipo === 'conta_bancaria' ? bcNull(bcValor('bc-fonte-conta')) : null;
   var cartaoId = tipo === 'cartao_empresa' ? bcNull(bcValor('bc-fonte-cartao')) : null;
   var caixaId = tipo === 'caixa' ? bcNull(bcValor('bc-fonte-caixa')) : null;
+  var adquirenteId = tipo === 'adquirente' ? bcNull(bcValor('bc-fonte-adquirente')) : null;
   var conta = contaId ? bcContaPorId(contaId) : null;
   return {
     empresa_id: _empresaAtiva && _empresaAtiva.id,
@@ -6650,8 +6881,41 @@ function bcPayloadFonte() {
     conta_bancaria_id: contaId,
     cartao_empresa_id: cartaoId,
     caixa_interno_id: caixaId,
+    adquirente_id: adquirenteId,
     ativo: bcBool(bcValor('bc-fonte-ativo')),
     observacao: bcNull(bcValor('bc-fonte-obs')),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function bcPayloadAdquirente() {
+  return {
+    empresa_id: _empresaAtiva && _empresaAtiva.id,
+    nome: bcValor('bc-adq-nome'),
+    provedor: bcValor('bc-adq-provedor') || 'stone',
+    codigo_estabelecimento: bcNull(bcValor('bc-adq-codigo')),
+    conta_bancaria_destino_id: bcNull(bcValor('bc-adq-conta-destino')),
+    prazo_recebimento_padrao: bcIntOpcional(bcValor('bc-adq-prazo')),
+    taxa_debito_padrao: bcDecimalOpcional(bcValor('bc-adq-taxa-debito')),
+    taxa_credito_padrao: bcDecimalOpcional(bcValor('bc-adq-taxa-credito')),
+    taxa_credito_parcelado_padrao: bcDecimalOpcional(bcValor('bc-adq-taxa-parc')),
+    ativo: bcBool(bcValor('bc-adq-ativo')),
+    observacao: bcNull(bcValor('bc-adq-obs')),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function bcPayloadMaquininha() {
+  return {
+    empresa_id: _empresaAtiva && _empresaAtiva.id,
+    adquirente_id: bcValor('bc-maq-adquirente'),
+    apelido: bcValor('bc-maq-apelido'),
+    numero_serie: bcNull(bcValor('bc-maq-serie')),
+    modelo: bcNull(bcValor('bc-maq-modelo')),
+    local_uso: bcNull(bcValor('bc-maq-local')),
+    responsavel: bcNull(bcValor('bc-maq-responsavel')),
+    ativo: bcBool(bcValor('bc-maq-ativo')),
+    observacao: bcNull(bcValor('bc-maq-obs')),
     updated_at: new Date().toISOString()
   };
 }
@@ -6677,6 +6941,18 @@ function bcValidarExtra(tipo, dados) {
     if (dados.tipo === 'conta_bancaria' && !dados.conta_bancaria_id) return 'Fonte do tipo conta bancária exige uma conta bancária.';
     if (dados.tipo === 'cartao_empresa' && !dados.cartao_empresa_id) return 'Fonte do tipo cartão empresarial exige um cartão.';
     if (dados.tipo === 'caixa' && !dados.caixa_interno_id) return 'Fonte do tipo caixa exige um caixa interno.';
+  }
+  if (tipo === 'adquirente') {
+    if (!dados.nome) return 'Nome da adquirente é obrigatório.';
+    if (!dados.provedor) return 'Provedor da adquirente é obrigatório.';
+    if (dados.prazo_recebimento_padrao != null && dados.prazo_recebimento_padrao < 0) return 'Prazo padrão deve ser maior ou igual a zero.';
+    if (dados.taxa_debito_padrao != null && dados.taxa_debito_padrao < 0) return 'Taxa de débito não pode ser negativa.';
+    if (dados.taxa_credito_padrao != null && dados.taxa_credito_padrao < 0) return 'Taxa de crédito não pode ser negativa.';
+    if (dados.taxa_credito_parcelado_padrao != null && dados.taxa_credito_parcelado_padrao < 0) return 'Taxa de crédito parcelado não pode ser negativa.';
+  }
+  if (tipo === 'maquininha') {
+    if (!dados.adquirente_id) return 'Adquirente é obrigatória.';
+    if (!dados.apelido) return 'Apelido da maquininha é obrigatório.';
   }
   return '';
 }
@@ -6758,6 +7034,8 @@ function bcExtraApi(tipo) {
   if (tipo === 'cartao') return { criar: sf.salvarCartaoEmpresa, atualizar: sf.atualizarCartaoEmpresa, payload: bcPayloadCartao };
   if (tipo === 'meio') return { criar: sf.salvarMeioPagamento, atualizar: sf.atualizarMeioPagamento, payload: bcPayloadMeio };
   if (tipo === 'fonte') return { criar: sf.salvarFonteFinanceira, atualizar: sf.atualizarFonteFinanceira, payload: bcPayloadFonte };
+  if (tipo === 'adquirente') return { criar: sf.salvarAdquirente, atualizar: sf.atualizarAdquirente, payload: bcPayloadAdquirente };
+  if (tipo === 'maquininha') return { criar: sf.salvarMaquininha, atualizar: sf.atualizarMaquininha, payload: bcPayloadMaquininha };
   return null;
 }
 
