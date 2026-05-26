@@ -68,7 +68,9 @@
 
   var PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   var PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
   var _pdfJsLoading = null;
+  var _tesseractLoading = null;
   var _cnpjPdf = { texto: '', dados: null, arquivo: null };
 
   // ── Estilos reutilizáveis ───────────────────────────────────
@@ -169,7 +171,7 @@
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">'
       + '<div style="' + S_SEC + ';flex:1;margin:0">Dados fiscais / CNPJ</div>'
       + '<button type="button" onclick="_eeConferirDadosEmpresa()" style="' + S_BTN_MUTED + '">Conferir dados</button>'
-      + '<button type="button" onclick="_eeSelecionarPdfCnpj()" title="Importa texto de PDF CNPJ para conferência antes de preencher a ficha" style="' + S_BTN_MUTED + '">Importar PDF CNPJ</button>'
+      + '<button type="button" onclick="_eeSelecionarPdfCnpj()" title="Importa PDF ou imagem de CNPJ para conferência antes de preencher a ficha" style="' + S_BTN_MUTED + '">Importar PDF / Imagem CNPJ</button>'
       + '</div>'
       + _grid('1fr 1fr',
           _fld('CNPJ', 'eEmpCnpj', 'text', '00.000.000/0000-00')
@@ -226,7 +228,7 @@
       + '<div style="font-size:.74rem;color:#94a3b8;line-height:1.45">'
       + 'Ações administrativas como replicação entre empresas e importação por PDF ficam separadas para evitar alterações acidentais. Nesta fase, a ficha apenas prepara a experiência visual.</div>'
       + '</section>'
-      + '<input id="eEmpPdfCnpjFile" type="file" accept="application/pdf,.pdf" style="display:none" onchange="_eeProcessarPdfCnpj(this)">'
+      + '<input id="eEmpPdfCnpjFile" type="file" accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display:none" onchange="_eeProcessarPdfCnpj(this)">'
 
       + '</div>' // fim corpo
 
@@ -365,6 +367,72 @@
     return _pdfJsLoading;
   }
 
+  function _loadTesseract() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (_tesseractLoading) return _tesseractLoading;
+    _tesseractLoading = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = TESSERACT_URL;
+      s.async = true;
+      s.onload = function () {
+        if (!window.Tesseract) { reject(new Error('Tesseract.js não ficou disponível após o carregamento.')); return; }
+        resolve(window.Tesseract);
+      };
+      s.onerror = function () { reject(new Error('Não foi possível carregar Tesseract.js pela CDN.')); };
+      document.head.appendChild(s);
+    });
+    return _tesseractLoading;
+  }
+
+  function _isPdfFile(file) {
+    return !!file && ((file.type || '') === 'application/pdf' || /\.pdf$/i.test(file.name || ''));
+  }
+
+  function _isImageFile(file) {
+    return !!file && (/^image\/(jpeg|png|webp)$/i.test(file.type || '') || /\.(jpe?g|png|webp)$/i.test(file.name || ''));
+  }
+
+  async function _lerImagemPorOCR(imageSource, origem) {
+    _setStatusPdf('Executando OCR, isso pode levar alguns segundos...', 'aviso');
+    var Tesseract = await _loadTesseract();
+    var result = await Tesseract.recognize(imageSource, 'por+eng', {
+      logger: function (m) {
+        if (!m || m.status !== 'recognizing text' || !m.progress) return;
+        _setStatusPdf('Executando OCR... ' + Math.round(m.progress * 100) + '%', 'aviso');
+      }
+    });
+    var texto = result && result.data && result.data.text ? result.data.text : '';
+    texto = _normalizarTextoOCR(texto);
+    if (!texto || texto.replace(/\s+/g, '').length < 40) {
+      throw new Error('OCR sem resultado útil em ' + (origem || 'imagem'));
+    }
+    return texto;
+  }
+
+  async function _renderPdfPageToCanvas(pdf, pageNum) {
+    var page = await pdf.getPage(pageNum);
+    var viewport = page.getViewport({ scale: 2 });
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    return canvas;
+  }
+
+  async function _lerPdfEscaneadoPorOCR(pdf) {
+    var maxPages = Math.min(pdf.numPages || 0, 2);
+    if (!maxPages) throw new Error('PDF sem páginas para OCR.');
+    var partes = [];
+    _setStatusPdf('PDF sem texto selecionável, iniciando OCR nas primeiras ' + maxPages + ' página(s)...', 'aviso');
+    for (var i = 1; i <= maxPages; i++) {
+      _setStatusPdf('Renderizando página ' + i + ' para OCR...', 'aviso');
+      var canvas = await _renderPdfPageToCanvas(pdf, i);
+      partes.push(await _lerImagemPorOCR(canvas, 'página ' + i));
+    }
+    return _normalizarTextoOCR(partes.join('\n\n'));
+  }
+
   window._eeSelecionarPdfCnpj = function () {
     _ensurePdfModal();
     var input = document.getElementById('eEmpPdfCnpjFile');
@@ -376,21 +444,30 @@
   window._eeProcessarPdfCnpj = async function (input) {
     var file = input && input.files && input.files[0];
     if (!file) return;
-    if (!/\.pdf$/i.test(file.name || '') && file.type !== 'application/pdf') {
-      _toast('Selecione um arquivo PDF válido.', 'err');
+    if (!_isPdfFile(file) && !_isImageFile(file)) {
+      _toast('Selecione um PDF ou imagem válida (JPG, PNG ou WebP).', 'err');
       return;
     }
     if (file.size > 12 * 1024 * 1024) {
-      _toast('PDF muito grande. Limite sugerido nesta fase: 12 MB.', 'err');
+      _toast('Arquivo muito grande. Limite sugerido nesta fase: 12 MB.', 'err');
       return;
     }
     try {
       _ensurePdfModal();
       _abrirConferenciaPdf();
-      _setStatusPdf('Lendo PDF...', 'aviso');
+      _setStatusPdf('Lendo arquivo...', 'aviso');
       _cnpjPdf = { texto: '', dados: null, arquivo: file.name || '' };
+      var texto = '';
+
+      if (_isImageFile(file)) {
+        _setStatusPdf('Imagem selecionada. Executando OCR, isso pode levar alguns segundos...', 'aviso');
+        texto = await _lerImagemPorOCR(file, file.name || 'imagem');
+        _finalizarTextoImportado(texto);
+        return;
+      }
+
       var pdfjs = await _loadPdfJs();
-      _setStatusPdf('Extraindo texto...', 'aviso');
+      _setStatusPdf('Tentando extrair texto...', 'aviso');
       var buffer = await file.arrayBuffer();
       var pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
       var partes = [];
@@ -400,20 +477,16 @@
         var pageText = (content.items || []).map(function (it) { return it.str || ''; }).join('\n');
         partes.push(pageText);
       }
-      var texto = _normalizarTextoPdf(partes.join('\n'));
+      texto = _normalizarTextoPdf(partes.join('\n'));
       if (!texto || texto.replace(/\s+/g, '').length < 80) {
-        _setStatusPdf('PDF sem texto selecionável. Parece ser imagem/escaneado; OCR ficará para fase futura.', 'erro');
-        _cnpjPdf.texto = texto || '';
-        _renderTextoPdf();
-        return;
+        texto = await _lerPdfEscaneadoPorOCR(pdf);
       }
-      var dados = _extrairDadosCnpj(texto);
-      _cnpjPdf.texto = texto;
-      _cnpjPdf.dados = dados;
-      _renderConferenciaPdf(dados);
+      _finalizarTextoImportado(texto);
     } catch (e) {
       console.error('[CNPJ PDF] erro:', e);
-      _setStatusPdf('PDF ilegível ou falha ao carregar a biblioteca. Nenhum dado foi alterado.', 'erro');
+      _setStatusPdf('Não foi possível identificar os dados com segurança. Tente uma imagem mais nítida ou cadastre manualmente.', 'erro');
+      _cnpjPdf.texto = _cnpjPdf.texto || '';
+      _renderTextoPdf();
     }
   };
 
@@ -423,6 +496,26 @@
       .replace(/[ \t]+/g, ' ')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+  }
+
+  function _normalizarTextoOCR(txt) {
+    return _normalizarTextoPdf(txt)
+      .replace(/[|]/g, ' ')
+      .replace(/\bC N P J\b/gi, 'CNPJ')
+      .replace(/\bC\.?N\.?P\.?J\.?\b/gi, 'CNPJ')
+      .replace(/(\d{2})\s*[\.,]\s*(\d{3})\s*[\.,]\s*(\d{3})\s*[\/|]\s*(\d{4})\s*[-–]\s*(\d{2})/g, '$1.$2.$3/$4-$5')
+      .replace(/(\d{5})\s*[-–]\s*(\d{3})/g, '$1-$2');
+  }
+
+  function _finalizarTextoImportado(texto) {
+    texto = _normalizarTextoOCR(texto || '');
+    _cnpjPdf.texto = texto;
+    var dados = _extrairDadosCnpj(texto);
+    _cnpjPdf.dados = dados;
+    _renderConferenciaPdf(dados);
+    if (!dados.cnpj && !dados.razaoSocial) {
+      _setStatusPdf('Não foi possível identificar os dados com segurança. Tente uma imagem mais nítida ou cadastre manualmente.', 'erro');
+    }
   }
 
   function _linhas(txt) {
