@@ -43,23 +43,47 @@
   // ── Estado interno ───────────────────────────────────────────
   var _cst = {
     contatoId:        null,
+    modo:             'editar',
+    callback:         null,
     empresaClienteId: null   // id da empresa selecionada no dropdown
   };
 
   // ── Estilos ─────────────────────────────────────────────────
   var S_INP = 'width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;'
-    + 'border-radius:4px;padding:.38rem .55rem;font-size:.82rem;margin-top:.2rem;'
+    + 'border-radius:6px;padding:.46rem .6rem;font-size:.82rem;margin-top:.22rem;'
     + 'box-sizing:border-box';
   var S_LBL = 'font-size:.62rem;font-weight:600;color:#94a3b8;'
     + 'text-transform:uppercase;letter-spacing:.06em';
-  var S_SEC = 'font-size:.72rem;font-weight:700;color:#38bdf8;'
-    + 'text-transform:uppercase;letter-spacing:.06em;'
-    + 'padding-bottom:.3rem;border-bottom:1px solid #334155;margin-top:.25rem';
+  var S_SEC = 'font-size:.72rem;font-weight:800;color:#38bdf8;'
+    + 'text-transform:uppercase;letter-spacing:.07em;'
+    + 'padding:.25rem 0 .45rem;border-bottom:1px solid #334155;margin-top:.15rem';
+  var S_PANEL = 'background:#111827;border:1px solid #334155;border-radius:8px;padding:.85rem;display:flex;flex-direction:column;gap:.65rem';
+  var S_BTN = 'padding:.46rem .85rem;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:700;border:1px solid #334155';
+  var S_BTN_MUTED = S_BTN + ';background:#1e2535;color:#cbd5e1';
+  var S_BTN_PRIMARY = S_BTN + ';background:#f05a1a;color:#000;border-color:#f05a1a';
+  var S_BTN_DISABLED = S_BTN + ';background:#111827;color:#64748b;border-color:#334155;cursor:not-allowed';
 
   function _fld(lbl, id, type, ph) {
     return '<div><label style="' + S_LBL + '">' + lbl + '</label>'
       + '<input id="' + id + '" type="' + (type || 'text') + '" placeholder="'
       + ph + '" autocomplete="off" style="' + S_INP + '"></div>';
+  }
+
+  function _grid(cols, inner) {
+    return '<div style="display:grid;grid-template-columns:' + cols + ';gap:.7rem">' + inner + '</div>';
+  }
+
+  function _id(prefix) {
+    return (prefix || 'cta') + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  }
+
+  function _setTituloModalContato() {
+    var t = document.getElementById('m-editar-contato-titulo');
+    var s = document.getElementById('m-editar-contato-sub');
+    if (t) t.textContent = _cst.modo === 'novo' ? 'Novo Contato' : 'Editar Contato';
+    if (s) s.textContent = _cst.modo === 'novo'
+      ? 'Cadastre a pessoa e, se possível, vincule a uma empresa já existente.'
+      : 'Ficha profissional da pessoa dentro da conta, mantendo compatibilidade com dados antigos.';
   }
 
   // ── Criar modal lazily ───────────────────────────────────────
@@ -68,37 +92,62 @@
 
     var html = '<div id="m-editar-contato" style="display:none;position:fixed;inset:0;'
       + 'z-index:99991;align-items:center;justify-content:center;'
-      + 'background:rgba(0,0,0,.8);padding:1rem">'
+      + 'background:rgba(0,0,0,.78);padding:1rem">'
 
       + '<div style="background:#1e2535;border:1px solid #334155;border-radius:10px;'
-      + 'width:min(640px,98vw);max-height:92vh;overflow-y:auto;display:flex;flex-direction:column">'
+      + 'width:min(820px,98vw);max-height:92vh;overflow-y:auto;display:flex;flex-direction:column">'
 
       // Header
       + '<div style="display:flex;align-items:center;justify-content:space-between;'
-      + 'padding:.85rem 1rem;border-bottom:1px solid #334155;'
+      + 'padding:.9rem 1rem;border-bottom:1px solid #334155;'
       + 'position:sticky;top:0;background:#1e2535;z-index:2;border-radius:10px 10px 0 0">'
-      + '<div style="font-size:.88rem;font-weight:700;color:#e2e8f0">✏️ Editar Contato</div>'
+      + '<div><div id="m-editar-contato-titulo" style="font-size:1rem;font-weight:800;color:#e2e8f0">Editar Contato</div>'
+      + '<div id="m-editar-contato-sub" style="font-size:.72rem;color:#94a3b8;margin-top:.15rem"></div></div>'
       + '<button onclick="_fecharModalContato2()" style="background:none;border:none;'
       + 'color:#94a3b8;cursor:pointer;font-size:1rem;padding:.2rem .4rem">✕</button>'
       + '</div>'
 
       // Corpo
-      + '<div style="padding:1rem;display:flex;flex-direction:column;gap:.75rem">'
+      + '<div style="padding:1rem;display:flex;flex-direction:column;gap:.9rem">'
 
-      // Seção: dados do contato
-      + '<div style="' + S_SEC + '">👤 Dados do Contato</div>'
-
-      // Nome + Status
-      + '<div style="display:grid;grid-template-columns:3fr 1fr;gap:.6rem">'
-      + _fld('Nome *', 'eCtaNome', 'text', 'Ex: Rafael Soares')
+      // Identificação da pessoa
+      + '<section style="' + S_PANEL + '">'
+      + '<div style="' + S_SEC + '">Identificação da pessoa</div>'
+      + _grid('3fr 1fr',
+          _fld('Nome *', 'eCtaNome', 'text', 'Ex: Rafael Soares')
       + '<div><label style="' + S_LBL + '">Status</label>'
       + '<select id="eCtaAtivo" style="' + S_INP + '">'
       + '<option value="true">Ativo</option>'
       + '<option value="false">Inativo</option>'
-      + '</select></div>'
-      + '</div>'
+      + '</select></div>')
+      + '</section>'
 
-      // Empresa vinculada (campo especial com dropdown)
+      // Comunicação
+      + '<section style="' + S_PANEL + '">'
+      + '<div style="' + S_SEC + '">Comunicação</div>'
+      + _grid('1fr 1fr',
+          _fld('E-mail', 'eCtaEmail', 'email', 'email@empresa.com')
+        + _fld('Telefone', 'eCtaTelefone', 'text', '(11) 9999-0000'))
+      + _grid('1fr 1fr',
+          _fld('WhatsApp', 'eCtaWhatsapp', 'text', '(11) 9999-0000')
+        + _fld('LinkedIn', 'eCtaLinkedin', 'text', 'linkedin.com/in/...'))
+      + '<div><label style="' + S_LBL + '">Preferência de contato</label>'
+      + '<select id="eCtaPreferencia" style="' + S_INP + '">'
+      + '<option value="">Não definido</option>'
+      + '<option value="email">E-mail</option>'
+      + '<option value="telefone">Telefone</option>'
+      + '<option value="whatsapp">WhatsApp</option>'
+      + '<option value="linkedin">LinkedIn</option>'
+      + '</select></div>'
+      + '</section>'
+
+      // Empresa vinculada
+      + '<section style="' + S_PANEL + '">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">'
+      + '<div style="' + S_SEC + ';flex:1;margin:0">Empresa vinculada</div>'
+      + '<button type="button" onclick="_eeCtaFocarEmpresa()" style="' + S_BTN_MUTED + '">Vincular empresa</button>'
+      + '<button type="button" disabled title="Fase futura: criar empresa sem perder os dados do contato" style="' + S_BTN_DISABLED + '">Criar empresa — em breve</button>'
+      + '</div>'
       + '<div><label style="' + S_LBL + '">Empresa Vinculada</label>'
       + '<div style="position:relative">'
       + '<input id="eCtaEmpresa" type="text" placeholder="Buscar ou digitar empresa..." '
@@ -112,61 +161,40 @@
       + '<div id="eCtaEmpresaInfo" style="display:none;font-size:.7rem;color:#94a3b8;'
       + 'margin-top:.25rem;padding:.2rem .4rem;background:#0f172a;border-radius:4px"></div>'
       + '</div>'
+      + '<div style="font-size:.72rem;color:#94a3b8;line-height:1.45">'
+      + 'Ao selecionar uma empresa cadastrada, o contato mantém <code>empresa_cliente_id</code>. Se digitar livremente, o texto legado <code>empresa</code> continua válido.</div>'
+      + '</section>'
 
-      // Cargo + Departamento
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
-      + _fld('Cargo', 'eCtaCargo', 'text', 'Ex: Diretor de Compras')
-      + _fld('Departamento', 'eCtaDept', 'text', 'Ex: Engenharia')
-      + '</div>'
-
-      // E-mail + Telefone
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
-      + _fld('E-mail', 'eCtaEmail', 'email', 'email@empresa.com')
-      + _fld('Telefone', 'eCtaTelefone', 'text', '(11) 9999-0000')
-      + '</div>'
-
-      // WhatsApp + LinkedIn
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
-      + _fld('WhatsApp', 'eCtaWhatsapp', 'text', '(11) 9999-0000')
-      + _fld('LinkedIn', 'eCtaLinkedin', 'text', 'linkedin.com/in/...')
-      + '</div>'
-
-      // Seção: relacionamento
-      + '<div style="' + S_SEC + '">📋 Relacionamento</div>'
-
-      // Origem + Preferência de contato
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
-      + _fld('Origem do Contato', 'eCtaOrigem', 'text', 'Ex: Indicação, LinkedIn')
-      + '<div><label style="' + S_LBL + '">Preferência de Contato</label>'
-      + '<select id="eCtaPreferencia" style="' + S_INP + '">'
-      + '<option value="">Não definido</option>'
-      + '<option value="email">E-mail</option>'
-      + '<option value="telefone">Telefone</option>'
-      + '<option value="whatsapp">WhatsApp</option>'
-      + '<option value="linkedin">LinkedIn</option>'
-      + '</select></div>'
-      + '</div>'
-
-      // Último contato (data)
-      + _fld('Data do Último Contato', 'eCtaUltimoContato', 'date', '')
+      // Função/departamento
+      + '<section style="' + S_PANEL + '">'
+      + '<div style="' + S_SEC + '">Função / Departamento</div>'
+      + _grid('1fr 1fr',
+          _fld('Cargo / Função', 'eCtaCargo', 'text', 'Ex: Diretor de Compras')
+        + _fld('Departamento', 'eCtaDept', 'text', 'Ex: Engenharia'))
+      + _grid('1fr 1fr',
+          _fld('Tipo / Origem do contato', 'eCtaOrigem', 'text', 'Ex: Indicação, LinkedIn')
+        + _fld('Data do último contato', 'eCtaUltimoContato', 'date', ''))
+      + '</section>'
 
       // Observações
-      + '<div><label style="' + S_LBL + '">Observações</label>'
-      + '<textarea id="eCtaObs" rows="2" placeholder="Informações adicionais..." '
-      + 'style="' + S_INP + ';resize:vertical;min-height:3rem"></textarea></div>'
+      + '<section style="' + S_PANEL + '">'
+      + '<div style="' + S_SEC + '">Observações</div>'
+      + '<textarea id="eCtaObs" rows="3" placeholder="Informações de relacionamento, preferências, histórico ou cuidados..." '
+      + 'style="' + S_INP + ';resize:vertical;min-height:4.2rem"></textarea>'
+      + '</section>'
 
       + '</div>' // fim corpo
 
       // Footer
-      + '<div style="display:flex;gap:.5rem;justify-content:flex-end;'
+      + '<div style="display:flex;gap:.5rem;justify-content:space-between;align-items:center;flex-wrap:wrap;'
       + 'padding:.75rem 1rem;border-top:1px solid #334155;'
       + 'position:sticky;bottom:0;background:#1e2535;border-radius:0 0 10px 10px">'
-      + '<button onclick="_fecharModalContato2()" style="padding:.38rem 1rem;'
-      + 'background:#1e2535;border:1px solid #334155;color:#94a3b8;border-radius:6px;'
-      + 'cursor:pointer;font-size:.82rem">Cancelar</button>'
-      + '<button onclick="salvarEdicaoContato()" style="padding:.38rem 1rem;'
-      + 'background:#f05a1a;border:none;color:#000;border-radius:6px;'
-      + 'cursor:pointer;font-size:.82rem;font-weight:700">💾 Salvar</button>'
+      + '<div style="font-size:.7rem;color:#64748b">Sem migration, mantendo vínculo simples atual.</div>'
+      + '<div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end">'
+      + '<button onclick="_fecharModalContato2()" style="' + S_BTN_MUTED + '">Cancelar</button>'
+      + '<button onclick="salvarEdicaoContato({novoDepois:true})" style="' + S_BTN_MUTED + '">Salvar e novo</button>'
+      + '<button onclick="salvarEdicaoContato()" style="' + S_BTN_PRIMARY + '">Salvar</button>'
+      + '</div>'
       + '</div>'
 
       + '</div></div>';
@@ -175,6 +203,14 @@
     tmp.innerHTML = html;
     document.body.appendChild(tmp.firstElementChild);
   }
+
+  window._eeCtaFocarEmpresa = function () {
+    var inp = document.getElementById('eCtaEmpresa');
+    if (inp) {
+      inp.focus();
+      _eeCtaRenderDD(inp.value || '');
+    }
+  };
 
   // ── Dropdown de empresas ────────────────────────────────────
 
@@ -269,7 +305,10 @@
     if (!item) { console.error('[EdicaoContato] contato não encontrado:', id); return; }
 
     _cst.contatoId        = id;
+    _cst.modo             = 'editar';
+    _cst.callback         = null;
     _cst.empresaClienteId = item.empresa_cliente_id || null;
+    _setTituloModalContato();
 
     function sv(elId, val) {
       var el = document.getElementById(elId);
@@ -320,16 +359,49 @@
     if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
   };
 
+  window.abrirModalNovoContatoProfissional = function (nome, callback) {
+    _ensureModal();
+    _cst.contatoId        = null;
+    _cst.modo             = 'novo';
+    _cst.callback         = callback || null;
+    _cst.empresaClienteId = null;
+    _setTituloModalContato();
+
+    [
+      'eCtaNome','eCtaEmpresa','eCtaCargo','eCtaDept','eCtaEmail','eCtaTelefone',
+      'eCtaWhatsapp','eCtaLinkedin','eCtaOrigem','eCtaUltimoContato','eCtaObs'
+    ].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var nomeEl = document.getElementById('eCtaNome');
+    if (nomeEl) nomeEl.value = nome || '';
+    var ativoEl = document.getElementById('eCtaAtivo');
+    if (ativoEl) ativoEl.value = 'true';
+    var prefEl = document.getElementById('eCtaPreferencia');
+    if (prefEl) prefEl.value = '';
+    var info = document.getElementById('eCtaEmpresaInfo');
+    if (info) info.style.display = 'none';
+    var dd = document.getElementById('eCtaEmpresaDD');
+    if (dd) dd.style.display = 'none';
+
+    var m = document.getElementById('m-editar-contato');
+    if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
+  };
+
   // ── Fechar modal ─────────────────────────────────────────────
   window._fecharModalContato2 = function () {
     var m = document.getElementById('m-editar-contato');
     if (m) m.style.display = 'none';
     _cst.contatoId        = null;
+    _cst.modo             = 'editar';
+    _cst.callback         = null;
     _cst.empresaClienteId = null;
   };
 
   // ── Salvar contato ───────────────────────────────────────────
-  window.salvarEdicaoContato = function () {
+  window.salvarEdicaoContato = function (opcoes) {
+    opcoes = opcoes || {};
     var gv = function (id) {
       var el = document.getElementById(id);
       return el ? el.value.trim() : '';
@@ -337,7 +409,6 @@
 
     var nome = gv('eCtaNome');
     if (!nome) { alert('Nome é obrigatório.'); return; }
-    if (!_cst.contatoId) return;
     if (!_eid()) { alert('Empresa ativa não identificada.'); return; }
 
     var email = gv('eCtaEmail').toLowerCase();
@@ -346,7 +417,7 @@
     // Verificar duplicata de e-mail/telefone (ignorando o próprio contato)
     if (email || tel) {
       var dup = _ctsLoad().find(function (c) {
-        if (c.id === _cst.contatoId) return false;
+        if (_cst.contatoId && c.id === _cst.contatoId) return false;
         if (email && c.email && c.email.trim().toLowerCase() === email) return true;
         if (tel   && _normTel(c.telefone) === tel && tel.length >= 8)   return true;
         return false;
@@ -359,10 +430,12 @@
 
     var allCts = _ctsLoad();
     var idx = -1;
-    for (var i = 0; i < allCts.length; i++) { if (allCts[i].id === _cst.contatoId) { idx = i; break; } }
-    if (idx < 0) { alert('Contato não encontrado. Feche e tente novamente.'); return; }
+    if (_cst.contatoId) {
+      for (var i = 0; i < allCts.length; i++) { if (allCts[i].id === _cst.contatoId) { idx = i; break; } }
+      if (idx < 0) { alert('Contato não encontrado. Feche e tente novamente.'); return; }
+    }
 
-    var old     = allCts[idx];
+    var old     = idx >= 0 ? allCts[idx] : {};
     var oldNome = old.nome || '';
 
     var empTexto = gv('eCtaEmpresa');
@@ -372,6 +445,7 @@
     if (!empTexto) empId = null;
 
     var updated = Object.assign({}, old, {
+      id:                 old.id || _id('cad'),
       nome:               nome,
       cargo:              gv('eCtaCargo'),
       departamento:       gv('eCtaDept'),
@@ -390,7 +464,9 @@
       obs:                (document.getElementById('eCtaObs') || {value:''}).value.trim()
     });
 
-    var newList = allCts.map(function (c, j) { return j === idx ? updated : c; });
+    var newList = idx >= 0
+      ? allCts.map(function (c, j) { return j === idx ? updated : c; })
+      : [updated].concat(allCts);
 
     if (typeof window.ctsSaveDirect === 'function') {
       window.ctsSaveDirect(newList);
@@ -400,18 +476,25 @@
     }
 
     // Propagar renomeação
-    if (oldNome && oldNome !== nome) {
+    if (idx >= 0 && oldNome && oldNome !== nome) {
       if (typeof window.ctsRenomear === 'function') window.ctsRenomear(oldNome, nome);
     }
 
+    var cb = _cst.callback;
     window._fecharModalContato2();
     if (typeof window.renderTabelaContatos === 'function') window.renderTabelaContatos();
-    if (typeof toast === 'function') toast('✅ Contato atualizado: ' + nome, 'ok');
+    if (typeof cb === 'function') cb(updated);
+    if (typeof toast === 'function') toast((idx >= 0 ? '✅ Contato atualizado: ' : '✅ Contato cadastrado: ') + nome, 'ok');
+    if (opcoes.novoDepois) window.abrirModalNovoContatoProfissional('', cb || null);
   };
 
   // ── Override: editarContato agora abre o modal completo ──────
   window.editarContato = function (id) {
     window.abrirModalEditarContato(id);
+  };
+
+  window.abrirModalNovoContato = function (nome, callback) {
+    window.abrirModalNovoContatoProfissional(nome || '', callback || null);
   };
 
 })();
