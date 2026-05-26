@@ -137,14 +137,6 @@
   function _aplicarGovernancaVisualRelacionamento() {
     var admin = _isDonoAdminRelacionamento();
 
-    var dgResultado = document.getElementById('dg-resultado');
-    if (dgResultado && dgResultado.previousElementSibling) {
-      _setAdminVisible(dgResultado.previousElementSibling, admin);
-      _setAdminVisible(dgResultado, admin);
-    }
-
-    _setAdminVisible(document.getElementById('hSecRecuperacao'), admin);
-
     [
       'hAbrirRelatorio',
       'abrirModalDuplicados',
@@ -1060,7 +1052,6 @@
     }
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
-    setTimeout(_aplicarGovernancaVisualRelacionamento, 100);
 
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
