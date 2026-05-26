@@ -469,6 +469,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .nff-badge.cancelado{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:#c0190f}
 .nff-btn-ver{padding:.22rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);font-size:.72rem;color:var(--text2);cursor:pointer;font-family:inherit;transition:.15s}
 .nff-btn-ver:hover{border-color:var(--accent);color:var(--accent)}
+.nff-rastro{display:grid;gap:.42rem;margin:.35rem 0 .2rem}
+.nff-rastro-item{display:flex;align-items:flex-start;gap:.45rem;padding:.42rem .55rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg2);font-size:.76rem;color:var(--text2);line-height:1.35}
+.nff-rastro-dot{width:.48rem;height:.48rem;border-radius:999px;margin-top:.22rem;flex:0 0 auto;background:var(--text3)}
+.nff-rastro-item.ok .nff-rastro-dot{background:#3fb950}
+.nff-rastro-item.warn .nff-rastro-dot{background:#f0a500}
+.nff-rastro-item.neutro .nff-rastro-dot{background:var(--text3)}
+.nff-mini-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem}
+.nff-mini-btn{padding:.32rem .6rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);color:var(--text2);font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit}
+.nff-mini-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.nff-mini-btn:disabled{opacity:.55;cursor:not-allowed}
+.nff-produtos-lista{display:grid;gap:.38rem;margin-top:.45rem;max-height:260px;overflow:auto;padding-right:.15rem}
+.nff-produto-item{border:1px solid var(--border);border-radius:var(--r2);padding:.48rem .55rem;background:var(--bg2)}
+.nff-produto-desc{font-size:.77rem;font-weight:650;color:var(--text);line-height:1.35;word-break:break-word}
+.nff-produto-meta{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.28rem;font-size:.68rem;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -2834,8 +2848,12 @@ function _nffAbrirDetalhe(id) {
   var corpoEl  = document.getElementById('nff-detalhe-corpo');
   var panel    = document.getElementById('nff-detalhe-panel');
   if (tituloEl) tituloEl.textContent = 'NF ' + (nf.numero_nf || '') + ' — ' + (nf.fornecedor_nome || 'Fornecedor');
-  var metadados = null;
-  try { metadados = nf.xml_metadados_json ? JSON.parse(nf.xml_metadados_json) : null; } catch(e) {}
+  var metadados = _nffLerMetadados(nf);
+  var cpsVinculadas = _nffContasPagarVinculadas(nf);
+  var totalCps = cpsVinculadas.length;
+  var cpsPagas = cpsVinculadas.filter(function(c) { return (c.status || '') === 'pago'; }).length;
+  var temPagamento = totalCps > 0 && cpsPagas === totalCps;
+  var itensEsperados = metadados && metadados.itens_count ? metadados.itens_count : 0;
 
   // ── Alerta de status incompleto ──
   var _statusInfo = {
@@ -2847,6 +2865,8 @@ function _nffAbrirDetalhe(id) {
   };
   var si = _statusInfo[nf.status] || { cls: 'ok', txt: nf.status };
   var html = '<div class="nff-alert ' + si.cls + '" style="margin-bottom:.85rem">' + si.txt + '</div>';
+
+  html += _nffRenderRastreabilidade(nf, metadados, cpsVinculadas);
 
   html += '<div class="detalhe-secao">'
     + '<div class="detalhe-secao-titulo">Dados da NF</div>'
@@ -2874,20 +2894,45 @@ function _nffAbrirDetalhe(id) {
       + '<div style="font-family:monospace;font-size:.7rem;color:var(--text2);word-break:break-all;padding:.3rem 0">' + nf.chave_acesso + '</div>'
       + '</div>';
   }
+  html += '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Produtos da NF</div>'
+    + '<div id="nff-produtos-status" style="font-size:.76rem;color:var(--text2);line-height:1.45">'
+    + (itensEsperados ? 'XML registrou ' + itensEsperados + ' item(ns). Conferindo itens salvos no Banco de Precos Reais...' : 'Nenhum item esperado foi registrado nos metadados desta NF.')
+    + '</div>'
+    + '<div id="nff-produtos-lista"></div>'
+    + '</div>';
   if (metadados) {
     html += '<div class="detalhe-secao">'
-      + '<div class="detalhe-secao-titulo">Banco de Preços</div>'
-      + _nffDetalheRow('Itens esperados', metadados.itens_count || 0)
+      + '<div class="detalhe-secao-titulo">Banco de Preços Reais</div>'
+      + _nffDetalheRow('Itens esperados no XML', metadados.itens_count || 0)
+      + '<div style="display:flex;justify-content:space-between;padding:.22rem 0;border-bottom:1px solid var(--border)"><span style="font-size:.75rem;color:var(--text3)">Itens salvos</span><span id="nff-bp-count" style="font-size:.78rem;color:var(--text);font-weight:500">Conferindo...</span></div>'
       + _nffDetalheRow('Duplicatas esperadas', metadados.duplicatas ? metadados.duplicatas.length || '1 (única)' : '—')
+      + '<div class="nff-mini-actions">'
+      + '<button class="nff-mini-btn" type="button" disabled title="Tela dedicada do Banco de Preços será conectada em fase futura">Ver itens no Banco de Preços (em breve)</button>'
+      + '</div>'
       + '</div>';
     if (metadados.erro || metadados.erro_parcial) {
       var erroMsg = metadados.erro || metadados.erro_parcial || '';
       html += '<div class="detalhe-secao">'
         + '<div class="detalhe-secao-titulo">Detalhes do Erro</div>'
         + '<div style="font-size:.75rem;color:var(--text2);word-break:break-word;padding:.25rem 0">' + _nffEsc(erroMsg) + '</div>'
-        + '</div>';
+      + '</div>';
     }
   }
+  html += '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Conta a Pagar vinculada</div>'
+    + _nffRenderContasPagar(cpsVinculadas, nf)
+    + '</div>';
+
+  html += '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Pagamento</div>'
+    + _nffDetalheRow('Situacao', totalCps ? (temPagamento ? 'Pago' : 'Pendente / em aberto') : 'Conta a Pagar nao localizada')
+    + '<div class="nff-mini-actions">'
+    + '<button class="nff-mini-btn" type="button" onclick="_nffIrParaContasPagar(' + _nffJsArg(nf.chave_acesso || nf.numero_nf || '') + ')">Ir para Contas a Pagar</button>'
+    + '<button class="nff-mini-btn" type="button" disabled title="Use o fluxo seguro ja existente de Contas a Pagar; nenhum registro de pagamento e criado neste painel.">Registrar pagamento (em breve)</button>'
+    + '</div>'
+    + '</div>';
+
   if (nf.informacoes_adicionais) {
     html += '<div class="detalhe-secao">'
       + '<div class="detalhe-secao-titulo">Informações Adicionais</div>'
@@ -2904,6 +2949,127 @@ function _nffAbrirDetalhe(id) {
   }
   if (corpoEl) corpoEl.innerHTML = html;
   if (panel)   panel.classList.add('on');
+  _nffCarregarProdutosBancoPrecos(nf);
+}
+
+function _nffLerMetadados(nf) {
+  try { return nf && nf.xml_metadados_json ? JSON.parse(nf.xml_metadados_json) : null; }
+  catch(e) { return null; }
+}
+
+function _nffContasPagarVinculadas(nf) {
+  if (!nf || !nf.chave_acesso) return [];
+  var chave = String(nf.chave_acesso);
+  return (_todasContasPagar || []).filter(function(c) {
+    return c
+      && c.origem === 'xml_fornecedor'
+      && c.referencia_id
+      && String(c.referencia_id).indexOf(chave) === 0;
+  });
+}
+
+function _nffRenderRastreabilidade(nf, metadados, cps) {
+  var itensEsperados = metadados && metadados.itens_count ? metadados.itens_count : 0;
+  var cpQtd = cps ? cps.length : 0;
+  var pagas = (cps || []).filter(function(c) { return (c.status || '') === 'pago'; }).length;
+  function item(cls, texto) {
+    return '<div class="nff-rastro-item ' + cls + '"><span class="nff-rastro-dot"></span><span>' + texto + '</span></div>';
+  }
+  return '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Rastreabilidade</div>'
+    + '<div class="nff-rastro">'
+    + item('ok', 'NF de fornecedor importada em <strong>financeiro_nfs_fornecedor</strong>.')
+    + item(itensEsperados ? 'ok' : 'warn', itensEsperados ? itensEsperados + ' produto(s) identificado(s) no XML para o Banco de Precos.' : 'Nenhum produto identificado no XML.')
+    + item('neutro', 'Banco de Precos Reais vinculado por <strong>nf_fornecedor_id</strong> e <strong>chave_acesso</strong>.')
+    + item(cpQtd ? 'ok' : 'warn', cpQtd ? cpQtd + ' Conta(s) a Pagar localizada(s) por origem XML e chave de acesso.' : 'Conta a Pagar vinculada nao localizada na carga atual.')
+    + item(cpQtd && pagas === cpQtd ? 'ok' : 'warn', cpQtd && pagas === cpQtd ? 'Pagamento identificado como pago na Conta a Pagar.' : 'Pagamento deve ser acompanhado em Contas a Pagar.')
+    + '</div>'
+    + '</div>';
+}
+
+function _nffRenderContasPagar(cps, nf) {
+  if (!cps || !cps.length) {
+    return '<div style="font-size:.76rem;color:var(--text2);line-height:1.45">Nenhuma Conta a Pagar vinculada foi encontrada na carga atual. O vinculo esperado usa <strong>origem=xml_fornecedor</strong> e <strong>referencia_id</strong> iniciando pela chave de acesso da NF.</div>'
+      + '<div class="nff-mini-actions"><button class="nff-mini-btn" type="button" onclick="_nffIrParaContasPagar(' + _nffJsArg((nf && (nf.chave_acesso || nf.numero_nf)) || '') + ')">Ir para Contas a Pagar</button></div>';
+  }
+  var html = cps.map(function(c) {
+    return '<div class="nff-produto-item">'
+      + '<div class="nff-produto-desc">' + _nffEsc(c.descricao || 'Conta a Pagar') + '</div>'
+      + '<div class="nff-produto-meta">'
+      + '<span>Valor: ' + _nffFmtMoeda(c.valor_previsto) + '</span>'
+      + '<span>Vencimento: ' + _nffEsc(c.data_vencimento ? c.data_vencimento.slice(0,10) : '—') + '</span>'
+      + '<span>Status: ' + _nffEsc(c.status || 'em_aberto') + '</span>'
+      + '</div>'
+      + '<div class="nff-mini-actions">'
+      + '<button class="nff-mini-btn" type="button" onclick="_nffAbrirContaPagar(' + _nffJsArg(c.id) + ')">Ver Conta a Pagar</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="nff-produtos-lista">' + html + '</div>';
+}
+
+async function _nffCarregarProdutosBancoPrecos(nf) {
+  var statusEl = document.getElementById('nff-produtos-status');
+  var listaEl  = document.getElementById('nff-produtos-lista');
+  var countEl  = document.getElementById('nff-bp-count');
+  var sf = _sf();
+  if (!nf || !sf || !sf.listarBancoPrecosEmpresa || !_empresaAtiva || !_empresaAtiva.id) {
+    if (countEl) countEl.textContent = 'Nao conferido';
+    return;
+  }
+  try {
+    var totalSalvo = null;
+    if (sf.contarItensBancoPrecos) {
+      totalSalvo = await sf.contarItensBancoPrecos(_empresaAtiva.id, nf.id);
+    }
+    var itens = await sf.listarBancoPrecosEmpresa(_empresaAtiva.id, {
+      fornecedor_cnpj: nf.fornecedor_cnpj || null,
+      limit: 250
+    });
+    itens = (itens || []).filter(function(it) {
+      return (nf.id && it.nf_fornecedor_id === nf.id)
+        || (nf.chave_acesso && it.chave_acesso === nf.chave_acesso);
+    });
+    if (totalSalvo === null) totalSalvo = itens.length;
+    if (countEl) countEl.textContent = String(totalSalvo);
+    if (statusEl) statusEl.textContent = itens.length
+      ? totalSalvo + ' item(ns) salvo(s) no Banco de Precos Reais para esta NF.'
+      : 'Nenhum item do Banco de Precos foi localizado para esta NF.';
+    if (listaEl) listaEl.innerHTML = itens.length ? _nffRenderProdutosBP(itens) : '';
+  } catch(err) {
+    console.warn('[F2-rastro] falha ao consultar itens do Banco de Precos:', err);
+    if (countEl) countEl.textContent = 'Falha na consulta';
+    if (statusEl) statusEl.textContent = 'Nao foi possivel consultar os itens do Banco de Precos agora.';
+  }
+}
+
+function _nffRenderProdutosBP(itens) {
+  return '<div class="nff-produtos-lista">' + itens.map(function(it) {
+    return '<div class="nff-produto-item">'
+      + '<div class="nff-produto-desc">' + _nffEsc(it.descricao || 'Produto sem descricao') + '</div>'
+      + '<div class="nff-produto-meta">'
+      + '<span>Cod.: ' + _nffEsc(it.codigo_fornecedor || '—') + '</span>'
+      + '<span>NCM: ' + _nffEsc(it.ncm || '—') + '</span>'
+      + '<span>Qtd.: ' + _nffFmtNum(it.quantidade) + ' ' + _nffEsc(it.unidade || '') + '</span>'
+      + '<span>Unit.: ' + _nffFmtMoeda(it.valor_unitario) + '</span>'
+      + '<span>Total: ' + _nffFmtMoeda(it.valor_total) + '</span>'
+      + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function _nffAbrirContaPagar(id) {
+  _nffFecharDetalhe();
+  showTab('cp');
+  abrirDetalheCp(id);
+}
+
+function _nffIrParaContasPagar(termo) {
+  _nffFecharDetalhe();
+  showTab('cp');
+  var busca = document.getElementById('cp-filtro-busca');
+  if (busca && termo) busca.value = termo;
+  if (typeof cpAplicarFiltros === 'function') cpAplicarFiltros();
 }
 
 function _nffFecharDetalhe() {
@@ -2929,6 +3095,9 @@ function _nffFmtNum(v) {
 }
 function _nffEsc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _nffJsArg(s) {
+  return _nffEsc(JSON.stringify(String(s || '')));
 }
 
 // ── Inicialização ─────────────────────────────────────────────
