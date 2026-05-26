@@ -117,6 +117,50 @@
   }
 
   // ── ID gerador ────────────────────────────────────────────
+  function _perfilAtual() {
+    try {
+      if (typeof window.getPerfilUsuario === 'function') return window.getPerfilUsuario();
+    } catch(e) {}
+    return null;
+  }
+
+  function _isDonoAdminRelacionamento() {
+    var p = _perfilAtual();
+    if (!p) return true; // fallback local/legado: nao esconder se perfil ainda nao carregou
+    return p === 'dono' || p === 'admin';
+  }
+
+  function _setAdminVisible(el, visible) {
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+
+  function _aplicarGovernancaVisualRelacionamento() {
+    var admin = _isDonoAdminRelacionamento();
+
+    var dgResultado = document.getElementById('dg-resultado');
+    if (dgResultado && dgResultado.previousElementSibling) {
+      _setAdminVisible(dgResultado.previousElementSibling, admin);
+      _setAdminVisible(dgResultado, admin);
+    }
+
+    _setAdminVisible(document.getElementById('hSecRecuperacao'), admin);
+
+    [
+      'hAbrirRelatorio',
+      'abrirModalDuplicados',
+      'dgDiagnosticoUI',
+      'window.dgDesbloquear',
+      'dgDesbloquear',
+      'abrirBackupModal',
+      'sbMigrarLocal'
+    ].forEach(function (needle) {
+      document.querySelectorAll('button[onclick]').forEach(function (btn) {
+        var oc = btn.getAttribute('onclick') || '';
+        if (oc.indexOf(needle) >= 0) _setAdminVisible(btn, admin);
+      });
+    });
+  }
+
   function _id() { return 'cad_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
 
   // ── Normalização para comparação ──────────────────────────
@@ -402,11 +446,16 @@
 
   // ── Alternar seções no módulo Relacionamento ─────────────
   window.hShowSec = function(sec) {
+    if (sec === 'recuperacao' && !_isDonoAdminRelacionamento()) {
+      if (typeof toast === 'function') toast('Ferramentas administrativas disponiveis apenas para dono/admin.', 'err');
+      sec = 'clientes';
+    }
     var secs = ['hSecRegistros', 'hSecClientes', 'hSecContatos', 'hSecRecuperacao'];
     secs.forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.style.display = (id === 'hSec' + sec.charAt(0).toUpperCase() + sec.slice(1)) ? '' : 'none';
     });
+    _aplicarGovernancaVisualRelacionamento();
     if (sec === 'clientes')    renderTabelaClientes();
     if (sec === 'contatos')    renderTabelaContatos();
     if (sec === 'recuperacao') {
@@ -708,6 +757,7 @@
   function renderTabelaContatos() {
     var el = document.getElementById('tabelaContatos');
     if (!el) return;
+    _aplicarGovernancaVisualRelacionamento();
     var list = ctsLoad().sort(function(a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
     window._ctsEditData = {};
     list.forEach(function(x) { window._ctsEditData[x.id] = x; });
@@ -716,18 +766,29 @@
       return;
     }
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+    function dash(s) { return s ? esc(s) : '<span style="color:var(--text3)">—</span>'; }
+    function tdTxt(s, cor, extra) {
+      var val = String(s || '').trim();
+      return '<td title="' + esc(val || '—') + '" style="padding:.5rem .6rem;color:' + (cor || 'var(--text2)') + ';'
+        + 'white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;vertical-align:top;'
+        + (extra || '') + '">' + dash(val) + '</td>';
+    }
+    el.innerHTML = '<div style="width:100%;overflow-x:auto"><table style="width:100%;min-width:980px;border-collapse:collapse;font-size:.78rem;table-layout:fixed">'
       + '<thead><tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Contato</th>'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Empresa</th>'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Depto / Função</th>'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">E-mail</th>'
-      + '<th style="padding:.4rem .6rem;text-align:left;font-weight:600">Telefone</th>'
-      + '<th style="padding:.4rem .6rem;width:80px"></th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:18%">Contato</th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:17%">Empresa</th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:18%">Cargo / Função</th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:13%">Departamento</th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:18%">E-mail</th>'
+      + '<th style="padding:.45rem .6rem;text-align:left;font-weight:600;width:11%">Telefone</th>'
+      + '<th style="padding:.45rem .6rem;width:5%;min-width:78px">Ações</th>'
       + '</tr></thead><tbody>'
       + list.map(function(x) {
           // Fallback: nome → email → telefone → placeholder
           var nomeCtaEfetivo = x.nome || x.email || x.telefone || 'Contato sem nome';
+          var cargoFuncao = x.cargo || x.funcao || x.cargoFuncao || '';
+          var departamento = x.departamento || x.depto || '';
+          var telefone = x.telefone || x.whatsapp || '';
           var semNomeBadge = !x.nome
             ? '<span style="font-size:.65rem;color:#f59e0b;margin-left:.35rem;font-weight:600" title="id: ' + esc(x.id) + '">[sem nome]</span>'
             : '';
@@ -741,17 +802,18 @@
             ? '<span style="font-size:.68rem;color:#22c55e;margin-left:.25rem" title="Empresa vinculada">🔗</span>'
             : '';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            + '<td style="padding:.45rem .6rem;font-weight:600;color:var(--text)">' + nomeCtaHtml + semNomeBadge + statusBadge + '</td>'
-            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.empresa) + vinculoBadge + '</td>'
-            + '<td style="padding:.45rem .6rem;color:var(--text3);font-size:.75rem">' + esc(x.departamento) + '</td>'
-            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.email) + '</td>'
-            + '<td style="padding:.45rem .6rem;color:var(--text2)">' + esc(x.telefone) + '</td>'
-            + '<td style="padding:.45rem .6rem;display:flex;gap:.4rem">'
+            + '<td title="' + esc(nomeCtaEfetivo) + '" style="padding:.5rem .6rem;font-weight:600;color:var(--text);white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;vertical-align:top">' + nomeCtaHtml + semNomeBadge + statusBadge + '</td>'
+            + '<td title="' + esc(x.empresa || '—') + '" style="padding:.5rem .6rem;color:var(--text2);white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;vertical-align:top">' + dash(x.empresa) + vinculoBadge + '</td>'
+            + tdTxt(cargoFuncao, 'var(--text2)')
+            + tdTxt(departamento, 'var(--text3)', 'font-size:.75rem;')
+            + tdTxt(x.email, 'var(--text2)')
+            + tdTxt(telefone, 'var(--text2)')
+            + '<td style="padding:.5rem .6rem;display:flex;gap:.4rem;vertical-align:top">'
             + '<button class="nb" onclick="editarContato(\'' + x.id + '\')" style="font-size:.72rem;color:var(--blue)">✏️</button>'
             + '<button class="nb" onclick="excluirContato(\'' + x.id + '\')" style="font-size:.72rem;color:var(--text3)">🗑️</button>'
             + '</td></tr>';
         }).join('')
-      + '</tbody></table>';
+      + '</tbody></table></div>';
   }
 
   window.renderTabelaClientes = renderTabelaClientes;
@@ -998,6 +1060,7 @@
     }
     // Wire formulário de propostas (campos sempre no DOM)
     setTimeout(wirePropForm, 600);
+    setTimeout(_aplicarGovernancaVisualRelacionamento, 100);
 
     console.log('%c[Cadastro] carregado — contatos: ' + ctsLoad().length + ' · clientes: ' + cliLoad().length, 'color:#22c55e;font-weight:700');
   }
