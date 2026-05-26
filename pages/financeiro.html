@@ -136,7 +136,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .bc-input{width:100%;padding:.5rem .65rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);color:var(--text);font-size:.82rem;font-family:inherit}
 .bc-input:focus{outline:none;border-color:var(--emp-cor)}
 .bc-modal-actions{display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)}
+.cp-pag-resumo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin-bottom:.85rem}
+.cp-pag-card{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);padding:.55rem .7rem}
+.cp-pag-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:800;margin-bottom:.18rem}
+.cp-pag-valor{font-size:.83rem;color:var(--text);font-weight:700;word-break:break-word}
+.cp-pag-alerta{font-size:.74rem;color:var(--text2);line-height:1.45;border:1px solid var(--emp-bdr);background:var(--emp-bg);border-radius:var(--r2);padding:.55rem .7rem;margin:.7rem 0}
+.cp-pag-alerta.err{border-color:rgba(248,81,73,.35);background:rgba(248,81,73,.08);color:var(--red)}
+.cp-pag-lista{display:flex;flex-direction:column;gap:.45rem;margin-top:.55rem}
+.cp-pag-item{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);padding:.55rem .7rem}
+.cp-pag-top{display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap;margin-bottom:.25rem}
+.cp-pag-meta{font-size:.7rem;color:var(--text2);line-height:1.45}
 @media(max-width:680px){.bc-form-grid{grid-template-columns:1fr}.bc-actions .filtro-input.busca{max-width:none}}
+@media(max-width:680px){.cp-pag-resumo{grid-template-columns:1fr}}
 
 /* ── STATUS LOADING / EMPTY / ERROR ──────────────────────────── */
 .estado{
@@ -1618,6 +1629,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <!-- ════════════════════════════════════════════════════════════ -->
 <!-- TAB: DRE GERENCIAL — F4A                                      -->
 <!-- ════════════════════════════════════════════════════════════ -->
+<div class="bc-modal" id="cp-pag-modal" onclick="if(event.target===this)cpFecharModalPagamento()">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr">
+      <div class="bc-modal-title">Registrar pagamento</div>
+      <button class="btn-fechar" onclick="cpFecharModalPagamento()">x</button>
+    </div>
+    <div class="bc-modal-body">
+      <div id="cp-pag-resumo" class="cp-pag-resumo"></div>
+      <div id="cp-pag-alerta" class="cp-pag-alerta">
+        Pagamentos registrados nesta fase ficam em historico auxiliar. A Conta a Pagar e o Fluxo de Caixa ainda nao sao atualizados automaticamente.
+      </div>
+      <div class="bc-form-grid">
+        <div class="bc-form-row">
+          <label class="bc-label" for="cp-pag-data">Data do pagamento *</label>
+          <input type="date" id="cp-pag-data" class="bc-input">
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cp-pag-valor">Valor pago *</label>
+          <input type="text" id="cp-pag-valor" class="bc-input" placeholder="R$ 0,00" inputmode="decimal">
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cp-pag-meio">Meio de pagamento *</label>
+          <select id="cp-pag-meio" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cp-pag-fonte">Fonte financeira *</label>
+          <select id="cp-pag-fonte" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="cp-pag-comprovante">Comprovante / link</label>
+          <input type="text" id="cp-pag-comprovante" class="bc-input" placeholder="URL ou referencia do comprovante">
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="cp-pag-obs">Observacao</label>
+          <textarea id="cp-pag-obs" class="bc-input" rows="3" placeholder="Observacao do pagamento"></textarea>
+        </div>
+      </div>
+      <div id="cp-pag-status" class="status-msg"></div>
+      <div class="bc-modal-actions">
+        <button class="bc-btn sec" onclick="cpFecharModalPagamento()">Cancelar</button>
+        <button class="bc-btn" id="cp-pag-btn-salvar" onclick="cpSalvarPagamentoAuxiliar()">Registrar pagamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="tab-dre" class="tab-content" style="display:none">
 <div class="wrap">
 
@@ -1726,6 +1783,11 @@ var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: 
 var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
 var _cpLoadToken      = 0;    // race condition guard
 var _cpFiltros        = { busca: '', status: '', categoria: '', centroCusto: '', vencInicio: '', vencFim: '' };
+var _cpPagamentosPorConta = {}; // conta_pagar_id -> financeiro_pagamentos[]
+var _cpMeiosPagamento = [];     // meios ativos para registro auxiliar de pagamento
+var _cpFontesFinanceiras = [];  // fontes ativas para registro auxiliar de pagamento
+var _cpContaPagamentoAtual = null;
+var _cpPagamentosAtuais = [];
 
 // ── Fontes Financeiras — estado (F3.2/F3.3) ─────────────────
 var _bcBancos         = [];   // financeiro_bancos da empresa ativa
@@ -2246,8 +2308,14 @@ function _onTrocaEmpresa(dados) {
 
   // Limpar Contas a Pagar imediatamente
   _todasContasPagar = [];
+  _cpPagamentosPorConta = {};
+  _cpMeiosPagamento = [];
+  _cpFontesFinanceiras = [];
+  _cpContaPagamentoAtual = null;
+  _cpPagamentosAtuais = [];
   _cpLoadToken++;
   fecharDetalheCp();
+  cpFecharModalPagamento();
   var cpBody = document.getElementById('cp-tbody');
   if (cpBody) cpBody.innerHTML = '';
   var cpWrap = document.getElementById('cp-table-wrap');
@@ -3421,6 +3489,9 @@ document.addEventListener('keydown', function(e) {
     }
     if (document.getElementById('bc-modal-banco') && document.getElementById('bc-modal-banco').classList.contains('on')) {
       bcFecharModal('banco'); return;
+    }
+    if (document.getElementById('cp-pag-modal') && document.getElementById('cp-pag-modal').classList.contains('on')) {
+      cpFecharModalPagamento(); return;
     }
     if (document.getElementById('cp-detalhe-panel').classList.contains('on')) {
       fecharDetalheCp(); return;
@@ -5672,7 +5743,7 @@ function _cpRenderTabela(filtradas) {
 }
 
 // ── Detalhe lateral ───────────────────────────────────────────
-function abrirDetalheCp(id) {
+function abrirDetalheCp(id, skipFetch) {
   var c = _todasContasPagar.find(function(x) { return x.id === id; });
   if (!c) return;
 
@@ -5693,7 +5764,10 @@ function abrirDetalheCp(id) {
       '<div class="detalhe-item-valor' + (cls ? ' ' + cls : '') + '">' + valor + '</div>' +
     '</div>';
   };
+  _cpContaPagamentoAtual = c;
+  var pagamentos = _cpPagamentosPorConta[c.id] || [];
   var obsHtml = _cpRenderObservacaoTratada(c);
+  var pagHtml = _cpRenderPagamentosRegistrados(c, pagamentos, !skipFetch, '');
 
   corpo.innerHTML =
     '<div class="detalhe-secao">' +
@@ -5725,6 +5799,7 @@ function abrirDetalheCp(id) {
         _row('Referência',     _esc(c.referencia_id   || '—')) +
       '</div>' +
     '</div>' +
+    pagHtml +
     obsHtml +
     '<div class="detalhe-secao" style="margin-top:1rem">' +
       '<div style="font-size:.65rem;color:var(--text3)">Criado em ' + (c.created_at ? c.created_at.slice(0,10) : '—') + '</div>' +
@@ -5732,6 +5807,300 @@ function abrirDetalheCp(id) {
 
   document.getElementById('cp-detalhe-overlay').classList.add('on');
   document.getElementById('cp-detalhe-panel').classList.add('on');
+  if (!skipFetch) _cpAtualizarPagamentosDetalhe(c.id);
+}
+
+function cpPodeRegistrarPagamento() {
+  return bcPodeEditar();
+}
+
+function _cpTotalPagamentosRegistrados(pagamentos) {
+  return (pagamentos || []).reduce(function(total, p) {
+    return (p.status || 'registrado') === 'registrado' ? total + _n(p.valor_pago) : total;
+  }, 0);
+}
+
+function _cpResumoPagamentosAux(c, pagamentos) {
+  var total = _cpTotalPagamentosRegistrados(pagamentos);
+  var base = _n(c && c.valor_previsto);
+  var saldo = Math.max(0, base - total);
+  return { totalRegistrado: total, saldoVisual: saldo };
+}
+
+function _cpMeioPagamentoLabel(id) {
+  var m = (_cpMeiosPagamento || []).find(function(x) { return String(x.id) === String(id); });
+  if (!m) m = (_bcMeios || []).find(function(x) { return String(x.id) === String(id); });
+  if (!m) return id ? 'Meio nao carregado' : '—';
+  return (m.nome || 'Meio') + (m.tipo ? ' / ' + bcMeioTipoLabel(m.tipo) : '');
+}
+
+function _cpFonteFinanceiraLabel(id) {
+  var f = (_cpFontesFinanceiras || []).find(function(x) { return String(x.id) === String(id); });
+  if (!f) f = (_bcFontes || []).find(function(x) { return String(x.id) === String(id); });
+  if (!f) return id ? 'Fonte nao carregada' : '—';
+  return (f.nome || 'Fonte') + (f.tipo ? ' / ' + bcFonteTipoLabel(f.tipo) : '');
+}
+
+function _cpComprovanteHtml(url) {
+  if (!url) return '';
+  var safe = _esc(url);
+  var isUrl = /^https?:\/\//i.test(String(url || ''));
+  return isUrl
+    ? '<div class="cp-pag-meta"><a href="' + safe + '" target="_blank" rel="noopener noreferrer">Ver comprovante</a></div>'
+    : '<div class="cp-pag-meta">Comprovante: ' + safe + '</div>';
+}
+
+function _cpRenderListaPagamentos(pagamentos, carregando, erro) {
+  if (erro) return '<div class="cp-pag-alerta err">' + _esc(erro) + '</div>';
+  if (carregando) return '<div class="cp-pag-alerta">Carregando pagamentos registrados...</div>';
+  if (!pagamentos || !pagamentos.length) {
+    return '<div class="cp-pag-alerta">Nenhum pagamento registrado no historico auxiliar.</div>';
+  }
+  return '<div class="cp-pag-lista">' + pagamentos.map(function(p) {
+    return '<div class="cp-pag-item">'
+      + '<div class="cp-pag-top">'
+      + '<strong>' + _fmtVal(_n(p.valor_pago)) + '</strong>'
+      + '<span class="bc-status ' + (p.status === 'registrado' ? 'on' : 'off') + '">' + _esc(p.status || 'registrado') + '</span>'
+      + '</div>'
+      + '<div class="cp-pag-meta">Data: ' + (p.data_pagamento ? _fmtDt(String(p.data_pagamento).slice(0,10)) : '—') + '</div>'
+      + '<div class="cp-pag-meta">Meio: ' + _esc(_cpMeioPagamentoLabel(p.meio_pagamento_id)) + '</div>'
+      + '<div class="cp-pag-meta">Fonte: ' + _esc(_cpFonteFinanceiraLabel(p.fonte_financeira_id)) + '</div>'
+      + (p.observacao ? '<div class="cp-pag-meta">Obs: ' + _esc(p.observacao) + '</div>' : '')
+      + _cpComprovanteHtml(p.comprovante_url)
+      + '<div class="cp-pag-meta">Criado em: ' + (p.created_at ? _fmtDt(String(p.created_at).slice(0,10)) : '—') + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function _cpRenderPagamentosRegistrados(c, pagamentos, carregando, erro) {
+  var resumo = _cpResumoPagamentosAux(c, pagamentos || []);
+  var podeRegistrar = cpPodeRegistrarPagamento();
+  var btn = erro
+    ? '<button class="bc-btn" type="button" disabled>Historico indisponivel</button>'
+    : (carregando
+    ? '<button class="bc-btn" type="button" disabled>Carregando historico...</button>'
+    : (podeRegistrar
+    ? '<button class="bc-btn" type="button" onclick="cpAbrirModalPagamento(' + bcJsArg(c.id) + ')">Registrar pagamento</button>'
+    : '<span style="font-size:.72rem;color:var(--text3)">Sem permissao para registrar pagamento.</span>'));
+  return '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Pagamentos registrados</div>'
+    + '<div class="detalhe-grid">'
+    + _di('Total registrado', _fmtVal(resumo.totalRegistrado), resumo.totalRegistrado > 0 ? 'verde' : '')
+    + _di('Saldo visual pendente', _fmtVal(resumo.saldoVisual), resumo.saldoVisual > 0 ? 'vermelho' : 'verde')
+    + '</div>'
+    + '<div class="cp-pag-alerta">Nesta fase, os pagamentos sao registrados em historico auxiliar. A atualizacao automatica da Conta a Pagar sera feita na F3.5-C.</div>'
+    + '<div class="cp-pag-alerta">Rastreabilidade: Conta a Pagar -> Pagamentos registrados. Movimento de caixa ainda nao e criado nesta fase.</div>'
+    + '<div style="margin:.65rem 0">' + btn + '</div>'
+    + _cpRenderListaPagamentos(pagamentos || [], carregando, erro)
+    + '</div>';
+}
+
+async function _cpAtualizarPagamentosDetalhe(contaId) {
+  var c = _todasContasPagar.find(function(x) { return x.id === contaId; });
+  if (!c || !_empresaAtiva || !_empresaAtiva.id) return;
+  var sf = _sf();
+  if (!sf || !sf.listarPagamentosContaPagar) return;
+  try {
+    await _cpCarregarOpcoesPagamento();
+    var pagamentos = await sf.listarPagamentosContaPagar(_empresaAtiva.id, contaId);
+    _cpPagamentosPorConta[contaId] = pagamentos || [];
+    if (_cpContaPagamentoAtual && _cpContaPagamentoAtual.id === contaId) {
+      abrirDetalheCp(contaId, true);
+    }
+  } catch(e) {
+    if (_cpContaPagamentoAtual && _cpContaPagamentoAtual.id === contaId) {
+      var corpo = document.getElementById('cp-detalhe-corpo');
+      if (corpo) {
+        var html = corpo.innerHTML.replace(/<div class="detalhe-secao"><div class="detalhe-secao-titulo">Pagamentos registrados<\/div>[\s\S]*?<\/div><div class="detalhe-secao">/, _cpRenderPagamentosRegistrados(c, [], false, 'Erro ao carregar pagamentos: ' + (e.message || e)) + '<div class="detalhe-secao">');
+        corpo.innerHTML = html;
+      }
+    }
+  }
+}
+
+function _cpSetStatusPagamento(tipo, msg) {
+  var el = document.getElementById('cp-pag-status');
+  if (!el) return;
+  el.className = 'status-msg' + (tipo ? ' ' + tipo : '');
+  el.textContent = msg || '';
+}
+
+function _cpOpcaoHtml(id, label, selected) {
+  return '<option value="' + _esc(id || '') + '"' + (String(id || '') === String(selected || '') ? ' selected' : '') + '>' + _esc(label || '—') + '</option>';
+}
+
+async function _cpCarregarOpcoesPagamento() {
+  var sf = _sf();
+  if (!sf || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras) {
+    throw new Error('Integracao de meios/fontes financeiras indisponivel.');
+  }
+  if (!_empresaAtiva || !_empresaAtiva.id) throw new Error('Empresa ativa nao identificada.');
+  var res = await Promise.all([
+    sf.listarMeiosPagamento(_empresaAtiva.id),
+    sf.listarFontesFinanceiras(_empresaAtiva.id)
+  ]);
+  _cpMeiosPagamento = (res[0] || []).filter(function(m) {
+    return m.ativo !== false && (m.natureza === 'pagamento' || m.natureza === 'ambos');
+  });
+  _cpFontesFinanceiras = (res[1] || []).filter(function(f) {
+    return f.ativo !== false;
+  });
+  return { meios: _cpMeiosPagamento, fontes: _cpFontesFinanceiras };
+}
+
+function _cpPopularSelectsPagamento(meioId, fonteId) {
+  var meio = document.getElementById('cp-pag-meio');
+  var fonte = document.getElementById('cp-pag-fonte');
+  if (meio) {
+    meio.innerHTML = _cpOpcaoHtml('', 'Selecionar meio...', meioId)
+      + (_cpMeiosPagamento || []).map(function(m) {
+        return _cpOpcaoHtml(m.id, _cpMeioPagamentoLabel(m.id), meioId);
+      }).join('');
+  }
+  if (fonte) {
+    fonte.innerHTML = _cpOpcaoHtml('', 'Selecionar fonte...', fonteId)
+      + (_cpFontesFinanceiras || []).map(function(f) {
+        return _cpOpcaoHtml(f.id, _cpFonteFinanceiraLabel(f.id), fonteId);
+      }).join('');
+  }
+}
+
+function cpIrFontesFinanceiras(subtab) {
+  cpFecharModalPagamento();
+  fecharDetalheCp();
+  showTab('bancos-contas');
+  if (typeof bcMostrarSubtab === 'function') bcMostrarSubtab(subtab || 'meios');
+}
+
+function cpFecharModalPagamento() {
+  var modal = document.getElementById('cp-pag-modal');
+  if (modal) modal.classList.remove('on');
+  _cpSetStatusPagamento('', '');
+}
+
+async function cpAbrirModalPagamento(contaId) {
+  if (!cpPodeRegistrarPagamento()) {
+    alert('Acesso negado. Voce nao tem permissao para registrar pagamento nesta empresa.');
+    return;
+  }
+  var c = _todasContasPagar.find(function(x) { return x.id === contaId; });
+  if (!c) return;
+  if (!_empresaAtiva || !_empresaAtiva.id || c.empresa_id !== _empresaAtiva.id) {
+    alert('Empresa ativa nao confere com a Conta a Pagar selecionada.');
+    return;
+  }
+
+  _cpContaPagamentoAtual = c;
+  _cpPagamentosAtuais = _cpPagamentosPorConta[c.id] || [];
+  var resumo = _cpResumoPagamentosAux(c, _cpPagamentosAtuais);
+  var modal = document.getElementById('cp-pag-modal');
+  var resumoEl = document.getElementById('cp-pag-resumo');
+  var alerta = document.getElementById('cp-pag-alerta');
+  var btn = document.getElementById('cp-pag-btn-salvar');
+
+  if (resumoEl) resumoEl.innerHTML = _cpResumoModalPagamentoHtml(c, resumo);
+  if (alerta) {
+    alerta.className = 'cp-pag-alerta';
+    alerta.innerHTML = 'Carregando meios e fontes financeiras...';
+  }
+  if (btn) btn.disabled = true;
+  ['cp-pag-data', 'cp-pag-valor', 'cp-pag-comprovante', 'cp-pag-obs'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (document.getElementById('cp-pag-data')) document.getElementById('cp-pag-data').value = _hoje();
+  if (document.getElementById('cp-pag-valor')) document.getElementById('cp-pag-valor').value = resumo.saldoVisual > 0 ? resumo.saldoVisual.toFixed(2).replace('.', ',') : '';
+  _cpSetStatusPagamento('', '');
+  if (modal) modal.classList.add('on');
+
+  try {
+    await _cpCarregarOpcoesPagamento();
+    _cpPopularSelectsPagamento('', '');
+    var avisos = [];
+    if (!_cpMeiosPagamento.length) avisos.push('Nenhum meio de pagamento ativo cadastrado.');
+    if (!_cpFontesFinanceiras.length) avisos.push('Nenhuma fonte financeira ativa cadastrada.');
+    if (resumo.saldoVisual <= 0) avisos.push('Saldo visual pendente ja esta zerado pelo historico auxiliar.');
+    if (alerta) {
+      alerta.className = avisos.length ? 'cp-pag-alerta err' : 'cp-pag-alerta';
+      alerta.innerHTML = avisos.length
+        ? avisos.join(' ') + ' <button class="bc-btn sec" type="button" onclick="cpIrFontesFinanceiras(' + bcJsArg('meios') + ')">Ir para Fontes Financeiras</button>'
+        : 'Pagamentos registrados nesta fase ficam em historico auxiliar. A Conta a Pagar e o Fluxo de Caixa ainda nao sao atualizados automaticamente.';
+    }
+    if (btn) btn.disabled = !!avisos.length;
+  } catch(e) {
+    if (alerta) {
+      alerta.className = 'cp-pag-alerta err';
+      alerta.textContent = 'Erro ao carregar meios/fontes: ' + (e.message || e);
+    }
+  }
+}
+
+function _cpResumoModalPagamentoHtml(c, resumo) {
+  var nf = c && c.origem === 'xml_fornecedor' ? (c.referencia_id || 'XML fornecedor') : '—';
+  return ''
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Fornecedor</div><div class="cp-pag-valor">' + _esc(c.fornecedor_nome || '—') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Descricao</div><div class="cp-pag-valor">' + _esc(c.descricao || '—') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Valor previsto</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_previsto)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Registrado no historico</div><div class="cp-pag-valor">' + _fmtVal(resumo.totalRegistrado) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Saldo visual pendente</div><div class="cp-pag-valor">' + _fmtVal(resumo.saldoVisual) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Vencimento / origem / NF</div><div class="cp-pag-valor">' + (c.data_vencimento ? _fmtDt(String(c.data_vencimento).slice(0,10)) : '—') + ' / ' + _esc(c.origem || 'manual') + ' / ' + _esc(nf) + '</div></div>';
+}
+
+async function cpSalvarPagamentoAuxiliar() {
+  var c = _cpContaPagamentoAtual;
+  var sf = _sf();
+  var btn = document.getElementById('cp-pag-btn-salvar');
+  if (!c || !sf || !sf.criarPagamentoContaPagar) return;
+  if (!_empresaAtiva || !_empresaAtiva.id || c.empresa_id !== _empresaAtiva.id) {
+    _cpSetStatusPagamento('err', 'Empresa ativa nao confere com a Conta a Pagar selecionada.');
+    return;
+  }
+
+  var pagamentos = _cpPagamentosPorConta[c.id] || _cpPagamentosAtuais || [];
+  var resumo = _cpResumoPagamentosAux(c, pagamentos);
+  var data = bcValor('cp-pag-data');
+  var valor = bcParseMoney(bcValor('cp-pag-valor'));
+  var meioId = bcValor('cp-pag-meio');
+  var fonteId = bcValor('cp-pag-fonte');
+  var meio = (_cpMeiosPagamento || []).find(function(m) { return String(m.id) === String(meioId); });
+  var fonte = (_cpFontesFinanceiras || []).find(function(f) { return String(f.id) === String(fonteId); });
+
+  if (!data) return _cpSetStatusPagamento('err', 'Data do pagamento e obrigatoria.');
+  if (!valor || valor <= 0) return _cpSetStatusPagamento('err', 'Valor pago deve ser maior que zero.');
+  if (valor - resumo.saldoVisual > 0.009) return _cpSetStatusPagamento('err', 'Valor pago nao pode ultrapassar o saldo visual pendente.');
+  if (!_cpMeiosPagamento.length) return _cpSetStatusPagamento('err', 'Cadastre um meio de pagamento ativo antes de registrar.');
+  if (!_cpFontesFinanceiras.length) return _cpSetStatusPagamento('err', 'Cadastre uma fonte financeira ativa antes de registrar.');
+  if (!meio) return _cpSetStatusPagamento('err', 'Selecione um meio de pagamento da empresa ativa.');
+  if (!fonte) return _cpSetStatusPagamento('err', 'Selecione uma fonte financeira da empresa ativa.');
+
+  var payload = {
+    empresa_id: _empresaAtiva.id,
+    conta_pagar_id: c.id,
+    meio_pagamento_id: meio.id,
+    fonte_financeira_id: fonte.id,
+    data_pagamento: data,
+    valor_pago: valor,
+    observacao: bcNull(bcValor('cp-pag-obs')),
+    comprovante_url: bcNull(bcValor('cp-pag-comprovante')),
+    status: 'registrado',
+    origem: c.origem === 'xml_fornecedor' ? 'xml_fornecedor' : 'manual',
+    referencia_id: 'cp:' + c.id
+  };
+
+  try {
+    if (btn) btn.disabled = true;
+    _cpSetStatusPagamento('loading', 'Registrando pagamento auxiliar...');
+    await sf.criarPagamentoContaPagar(payload);
+    var novos = await sf.listarPagamentosContaPagar(_empresaAtiva.id, c.id);
+    _cpPagamentosPorConta[c.id] = novos || [];
+    _cpSetStatusPagamento('ok', 'Pagamento registrado no historico auxiliar.');
+    cpFecharModalPagamento();
+    abrirDetalheCp(c.id, true);
+  } catch(e) {
+    _cpSetStatusPagamento('err', 'Erro ao registrar pagamento: ' + (e.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function _cpParseObservacao(obs) {

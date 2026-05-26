@@ -604,6 +604,48 @@
   // Funções novas — não alteram nenhuma função existente.
   // ============================================================
 
+  // ============================================================
+  // PAGAMENTOS AUXILIARES DE CONTAS A PAGAR (F3.5-B)
+  // ============================================================
+
+  async function sbListarPagamentosContaPagar(empresaId, contaPagarId) {
+    if (!empresaId) throw new Error('[Financeiro F3.5-B] empresa_id obrigatorio.');
+    if (!contaPagarId) throw new Error('[Financeiro F3.5-B] conta_pagar_id obrigatorio.');
+
+    var r = await client()
+      .from('financeiro_pagamentos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('conta_pagar_id', contaPagarId)
+      .order('data_pagamento', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbCriarPagamentoContaPagar(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.5-B] empresa_id obrigatorio.');
+    if (!dados.conta_pagar_id) throw new Error('[Financeiro F3.5-B] conta_pagar_id obrigatorio.');
+    if (!dados.data_pagamento) throw new Error('[Financeiro F3.5-B] data_pagamento obrigatoria.');
+    if (_num(dados.valor_pago) <= 0) throw new Error('[Financeiro F3.5-B] valor_pago deve ser maior que zero.');
+
+    var payload = Object.assign({
+      status: 'registrado',
+      origem: 'manual'
+    }, dados);
+
+    var r = await client()
+      .from('financeiro_pagamentos')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+
   /**
    * Lista contas a receber da empresa filtradas por data_vencimento.
    * Retorna apenas os campos necessários para o cálculo da DRE.
@@ -1231,6 +1273,8 @@
     listarContasPagar:               sbListarContasPagar,
     criarContaPagar:                 sbCriarContaPagar,
     atualizarContaPagar:             sbAtualizarContaPagar,
+    listarPagamentosContaPagar:      sbListarPagamentosContaPagar,
+    criarPagamentoContaPagar:        sbCriarPagamentoContaPagar,
 
     // Cálculos locais
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
