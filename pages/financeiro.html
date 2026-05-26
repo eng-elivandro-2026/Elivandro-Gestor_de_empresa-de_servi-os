@@ -5420,6 +5420,7 @@ function abrirDetalheCp(id) {
       '<div class="detalhe-item-valor' + (cls ? ' ' + cls : '') + '">' + valor + '</div>' +
     '</div>';
   };
+  var obsHtml = _cpRenderObservacaoTratada(c);
 
   corpo.innerHTML =
     '<div class="detalhe-secao">' +
@@ -5451,13 +5452,91 @@ function abrirDetalheCp(id) {
         _row('Referência',     _esc(c.referencia_id   || '—')) +
       '</div>' +
     '</div>' +
-    (c.observacao ? '<div class="detalhe-secao"><div class="detalhe-secao-titulo">Observação</div><p style="font-size:.82rem;color:var(--text2)">' + _esc(c.observacao) + '</p></div>' : '') +
+    obsHtml +
     '<div class="detalhe-secao" style="margin-top:1rem">' +
       '<div style="font-size:.65rem;color:var(--text3)">Criado em ' + (c.created_at ? c.created_at.slice(0,10) : '—') + '</div>' +
     '</div>';
 
   document.getElementById('cp-detalhe-overlay').classList.add('on');
   document.getElementById('cp-detalhe-panel').classList.add('on');
+}
+
+function _cpParseObservacao(obs) {
+  if (!obs || typeof obs !== 'string') return { texto: '', json: null, xml: null, bruto: '' };
+  var bruto = obs.trim();
+  if (!bruto) return { texto: '', json: null, xml: null, bruto: '' };
+  try {
+    var parsed = JSON.parse(bruto);
+    return {
+      texto: parsed && parsed.texto ? String(parsed.texto) : '',
+      json: parsed || null,
+      xml: parsed && parsed.xml_fornecedor ? parsed.xml_fornecedor : null,
+      bruto: bruto
+    };
+  } catch(e) {
+    return { texto: bruto, json: null, xml: null, bruto: bruto };
+  }
+}
+
+function _cpRenderObservacaoTratada(c) {
+  var obs = _cpParseObservacao(c && c.observacao);
+  if (!obs.texto && !obs.xml) return '';
+
+  if (!obs.xml) {
+    return '<div class="detalhe-secao">'
+      + '<div class="detalhe-secao-titulo">Observacao</div>'
+      + '<p style="font-size:.82rem;color:var(--text2);line-height:1.5">' + _esc(obs.texto) + '</p>'
+      + '</div>';
+  }
+
+  var xml = obs.xml || {};
+  var duplicatas = Array.isArray(xml.duplicatas) ? xml.duplicatas : [];
+  var parcela = xml.parcela || '';
+  if (!parcela && c && c.referencia_id && String(c.referencia_id).indexOf('|') >= 0) {
+    parcela = String(c.referencia_id).split('|').slice(1).join('|');
+  }
+  var dupResumo = duplicatas.length
+    ? duplicatas.map(function(d) {
+        return _esc(d.nDup || 'parcela') + ' - ' + _esc(d.dVenc || 'sem venc.') + ' - ' + _fmtVal(_n(d.vDup));
+      }).join('<br>')
+    : 'Sem duplicatas no XML';
+
+  var html = '<div class="detalhe-secao">'
+    + '<div class="detalhe-secao-titulo">Origem XML Fornecedor</div>'
+    + '<div class="detalhe-grid">'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Origem</div><div class="detalhe-item-valor">XML de fornecedor</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">NF</div><div class="detalhe-item-valor">' + _esc(xml.numero_nf || '—') + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Fornecedor</div><div class="detalhe-item-valor">' + _esc(xml.fornecedor_nome || (c && c.fornecedor_nome) || '—') + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">CNPJ</div><div class="detalhe-item-valor">' + _esc(xml.fornecedor_cnpj || (c && c.fornecedor_cnpj) || '—') + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Parcela</div><div class="detalhe-item-valor">' + _esc(parcela || '—') + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Vencimento</div><div class="detalhe-item-valor">' + _esc(c && c.data_vencimento ? c.data_vencimento.slice(0,10) : '—') + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Valor</div><div class="detalhe-item-valor">' + _fmtVal(_n(c && c.valor_previsto)) + '</div></div>'
+    + '<div class="detalhe-item"><div class="detalhe-item-label">Referencia</div><div class="detalhe-item-valor">' + _esc((c && c.referencia_id) || '—') + '</div></div>'
+    + '</div>'
+    + '<div style="margin-top:.55rem;font-size:.72rem;color:var(--text3);line-height:1.45;word-break:break-all">'
+    + '<strong>Chave de acesso:</strong> ' + _esc(xml.chave_acesso || (c && c.referencia_id ? String(c.referencia_id).split('|')[0] : '') || '—')
+    + '</div>'
+    + '<div style="margin-top:.45rem;font-size:.72rem;color:var(--text3);line-height:1.45">'
+    + '<strong>Duplicatas do XML:</strong><br>' + dupResumo
+    + '</div>'
+    + '</div>';
+
+  if (obs.texto) {
+    html += '<div class="detalhe-secao">'
+      + '<div class="detalhe-secao-titulo">Observacao</div>'
+      + '<p style="font-size:.82rem;color:var(--text2);line-height:1.5">' + _esc(obs.texto) + '</p>'
+      + '</div>';
+  }
+
+  if (obs.bruto) {
+    html += '<div class="detalhe-secao">'
+      + '<details style="font-size:.76rem;color:var(--text2)">'
+      + '<summary style="cursor:pointer;color:var(--text3);font-weight:700">Ver dados tecnicos</summary>'
+      + '<pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.55rem;margin-top:.45rem;max-height:180px;overflow:auto">' + _esc(obs.bruto) + '</pre>'
+      + '</details>'
+      + '</div>';
+  }
+  return html;
 }
 
 function fecharDetalheCp() {
