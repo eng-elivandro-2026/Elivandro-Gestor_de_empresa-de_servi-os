@@ -518,6 +518,28 @@
   }
 
   /**
+   * Lista movimentos realizados para a DRE Gerencial por Plano.
+   * Usa data_real e nao cria/atualiza nenhum dado financeiro.
+   */
+  async function sbListarMovimentosDREGerencial(empresaId, dataInicio, dataFim) {
+    if (!empresaId) throw new Error('[Financeiro F3.11-B] empresa_id obrigatorio.');
+    var query = client()
+      .from('financeiro_movimentos_caixa')
+      .select('id, empresa_id, tipo, natureza, origem, referencia_id, data_prevista, data_real, valor_previsto, valor_real, status, categoria, centro_custo, descricao, categoria_gerencial_id')
+      .eq('empresa_id', empresaId)
+      .eq('natureza', 'realizado')
+      .eq('status', 'realizado')
+      .order('data_real', { ascending: true });
+
+    if (dataInicio) query = query.gte('data_real', dataInicio);
+    if (dataFim)    query = query.lte('data_real', dataFim);
+
+    var r = await query;
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
    * Registra um movimento de caixa manualmente.
    */
   async function sbCriarMovimentoCaixa(dados) {
@@ -1437,6 +1459,7 @@
 
     // Movimentos de caixa
     listarMovimentosCaixa:           sbListarMovimentosCaixa,
+    listarMovimentosDREGerencial:    sbListarMovimentosDREGerencial,
     criarMovimentoCaixa:             sbCriarMovimentoCaixa,
 
     // Saldos de caixa

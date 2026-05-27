@@ -1914,6 +1914,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     Contas Pagas/A Pagar usam <code>data_pagamento</code> ou <code>data_vencimento</code>.
   </p>
 
+  <section id="dre-plano-section" style="display:none;margin-top:1rem">
+    <div class="section-title-row" style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;margin-bottom:.75rem">
+      <div>
+        <div class="section-title">DRE Gerencial Realizada por Plano Gerencial</div>
+        <div class="section-sub">Somente movimentos realizados, por data real e categorias que impactam DRE.</div>
+      </div>
+      <span class="filtro-count" id="dre-plano-count"></span>
+    </div>
+
+    <div class="kpi-row" id="dre-plano-kpi-row" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))"></div>
+
+    <div class="estado" id="dre-plano-vazio" style="display:none;margin-top:.75rem">
+      <span class="estado-icon">📊</span>
+      <div class="estado-msg">Nenhum movimento realizado com categoria de DRE no periodo.</div>
+      <div class="estado-sub">A DRE realizada usa apenas movimentos de caixa realizados e categorias gerenciais.</div>
+    </div>
+
+    <div class="table-scroll" id="dre-plano-table-wrap" style="display:none;margin-top:.75rem">
+      <table class="fin-table">
+        <thead>
+          <tr>
+            <th>Bloco</th>
+            <th>Grupo</th>
+            <th>Subgrupo</th>
+            <th>Categoria</th>
+            <th>Entradas</th>
+            <th>Saidas</th>
+            <th>Saldo</th>
+            <th>Mov.</th>
+          </tr>
+        </thead>
+        <tbody id="dre-plano-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
 </div><!-- /.wrap -->
 </div><!-- /#tab-dre -->
 
@@ -2005,6 +2041,7 @@ var _bcModalRegistro  = null;
 var _dreLoadToken   = 0;      // race condition guard próprio da DRE
 var _dreCarregando  = false;
 var _drePeriodo     = { dataInicio: '', dataFim: '', preset: 'mes' };
+var _drePlanoLinhas = [];
 
 // NF Fornecedor - isolamento visual multiempresa
 var _nffLoadToken = 0;        // race condition guard para troca de empresa
@@ -9260,7 +9297,20 @@ function _dreAtualizarPeriodoLabel() {
 }
 
 // ── Estados visuais da DRE ────────────────────────────────────
+function _dreAtualizarBadgeEmpresa() {
+  var badge = document.getElementById('dre-empresa-badge');
+  if (!badge) return;
+  if (_empresaAtiva) {
+    badge.textContent = '🏢 ' + (_empresaAtiva.nome_curto || _empresaAtiva.nome || '');
+    badge.style.display = '';
+  } else {
+    badge.textContent = '🏢 —';
+    badge.style.display = 'none';
+  }
+}
+
 function _dreMostrarLoading() {
+  _dreAtualizarBadgeEmpresa();
   var el = document.getElementById('dre-estado');
   if (el) {
     el.style.display = '';
@@ -9273,9 +9323,11 @@ function _dreMostrarLoading() {
   if (row) row.style.display = 'none';
   var av = document.getElementById('dre-aviso-leitura');
   if (av) av.style.display = 'none';
+  _drePlanoLimpar();
 }
 
 function _dreMostrarVazio(msg, sub) {
+  _dreAtualizarBadgeEmpresa();
   var el = document.getElementById('dre-estado');
   if (el) {
     el.style.display = '';
@@ -9286,6 +9338,7 @@ function _dreMostrarVazio(msg, sub) {
   }
   var row = document.getElementById('dre-kpi-row');
   if (row) row.style.display = 'none';
+  _drePlanoLimpar();
 }
 
 function _dreMostrarErro(msg) {
@@ -9299,6 +9352,7 @@ function _dreMostrarErro(msg) {
   }
   var row = document.getElementById('dre-kpi-row');
   if (row) row.style.display = 'none';
+  _drePlanoLimpar();
 }
 
 function _dreMostrarCards() {
@@ -9396,6 +9450,193 @@ function _renderDRECards(r) {
 }
 
 // ── Carregar DRE ──────────────────────────────────────────────
+function _drePlanoLimpar() {
+  _drePlanoLinhas = [];
+  var sec = document.getElementById('dre-plano-section');
+  var row = document.getElementById('dre-plano-kpi-row');
+  var tbody = document.getElementById('dre-plano-tbody');
+  var wrap = document.getElementById('dre-plano-table-wrap');
+  var vazio = document.getElementById('dre-plano-vazio');
+  var count = document.getElementById('dre-plano-count');
+  if (sec) sec.style.display = 'none';
+  if (row) row.innerHTML = '';
+  if (tbody) tbody.innerHTML = '';
+  if (wrap) wrap.style.display = 'none';
+  if (vazio) vazio.style.display = 'none';
+  if (count) count.textContent = '';
+}
+
+function _drePlanoClassificar(cat, mov) {
+  if (!cat) return 'Sem categoria gerencial';
+  if (cat.impacta_dre === false) return 'Fora da DRE';
+  var grupo = String(cat.grupo || '').toLowerCase();
+  var natureza = String(cat.natureza || '').toLowerCase();
+  var tipo = String(mov.tipo || cat.tipo_movimento || '').toLowerCase();
+  if (natureza === 'financeira') return 'Resultado Financeiro';
+  if (natureza === 'imposto' || grupo.indexOf('impostos') >= 0) return 'Impostos';
+  if (tipo === 'entrada') return 'Receita Operacional';
+  if (grupo.indexOf('custos diretos') >= 0) return 'Custos Diretos';
+  if (grupo.indexOf('despesas operacionais') >= 0) return 'Despesas Operacionais';
+  if (tipo === 'saida') return 'Outras Saidas DRE';
+  return 'Outras Entradas DRE';
+}
+
+function _drePlanoMontar(movimentos, categorias) {
+  var catMap = {};
+  (categorias || []).forEach(function(c) {
+    if (c && c.id) catMap[String(c.id)] = c;
+  });
+
+  var grupos = {};
+  var resumo = {
+    receitaOperacional: 0, custosDiretos: 0, despesasOperacionais: 0,
+    entradasFinanceiras: 0, saidasFinanceiras: 0, impostos: 0,
+    entradasDre: 0, saidasDre: 0,
+    entradasForaDre: 0, saidasForaDre: 0,
+    entradasSemCategoria: 0, saidasSemCategoria: 0,
+    movimentosDre: 0, movimentosForaDre: 0, movimentosSemCategoria: 0, movimentosTotal: 0
+  };
+
+  function n(v) { return parseFloat(v) || 0; }
+  function addGrupo(bloco, cat, entrada, saida) {
+    var codigo = cat && cat.codigo ? cat.codigo : '';
+    var nome = cat && cat.nome ? cat.nome : 'Sem categoria gerencial';
+    var grupo = cat && cat.grupo ? cat.grupo : 'Sem categoria gerencial';
+    var subgrupo = cat && cat.subgrupo ? cat.subgrupo : '';
+    var key = [bloco, grupo, subgrupo, codigo, nome].join('|');
+    if (!grupos[key]) {
+      grupos[key] = { bloco: bloco, grupo: grupo, subgrupo: subgrupo, codigo: codigo, nome: nome, entradas: 0, saidas: 0, movimentos: 0 };
+    }
+    grupos[key].entradas += entrada;
+    grupos[key].saidas += saida;
+    grupos[key].movimentos += 1;
+  }
+
+  (movimentos || []).forEach(function(m) {
+    if (!m || String(m.natureza || '').toLowerCase() !== 'realizado') return;
+    if (String(m.status || '').toLowerCase() !== 'realizado') return;
+    var valor = n(m.valor_real);
+    if (!valor) return;
+    var tipo = String(m.tipo || '').toLowerCase();
+    var entrada = tipo === 'entrada' ? valor : 0;
+    var saida = tipo === 'saida' ? valor : 0;
+    var cat = m.categoria_gerencial_id ? catMap[String(m.categoria_gerencial_id)] : null;
+    var bloco = _drePlanoClassificar(cat, m);
+    resumo.movimentosTotal += 1;
+    addGrupo(bloco, cat, entrada, saida);
+
+    if (!cat) {
+      resumo.entradasSemCategoria += entrada;
+      resumo.saidasSemCategoria += saida;
+      resumo.movimentosSemCategoria += 1;
+      return;
+    }
+    if (cat.impacta_dre === false) {
+      resumo.entradasForaDre += entrada;
+      resumo.saidasForaDre += saida;
+      resumo.movimentosForaDre += 1;
+      return;
+    }
+
+    resumo.entradasDre += entrada;
+    resumo.saidasDre += saida;
+    resumo.movimentosDre += 1;
+    if (bloco === 'Receita Operacional') resumo.receitaOperacional += entrada;
+    if (bloco === 'Custos Diretos') resumo.custosDiretos += saida;
+    if (bloco === 'Despesas Operacionais') resumo.despesasOperacionais += saida;
+    if (bloco === 'Resultado Financeiro') {
+      resumo.entradasFinanceiras += entrada;
+      resumo.saidasFinanceiras += saida;
+    }
+    if (bloco === 'Impostos') resumo.impostos += saida;
+  });
+
+  resumo.lucroBruto = resumo.receitaOperacional - resumo.custosDiretos;
+  resumo.resultadoOperacional = resumo.lucroBruto - resumo.despesasOperacionais;
+  resumo.resultadoFinanceiro = resumo.entradasFinanceiras - resumo.saidasFinanceiras;
+  resumo.resultadoGerencial = resumo.entradasDre - resumo.saidasDre;
+
+  var ordem = {
+    'Receita Operacional': 1, 'Custos Diretos': 2, 'Despesas Operacionais': 3,
+    'Resultado Financeiro': 4, 'Impostos': 5, 'Outras Entradas DRE': 6,
+    'Outras Saidas DRE': 7, 'Fora da DRE': 8, 'Sem categoria gerencial': 9
+  };
+  var linhas = Object.keys(grupos).map(function(k) { return grupos[k]; });
+  linhas.sort(function(a, b) {
+    var oa = ordem[a.bloco] || 99;
+    var ob = ordem[b.bloco] || 99;
+    if (oa !== ob) return oa - ob;
+    return (a.grupo + a.subgrupo + a.codigo + a.nome).localeCompare(b.grupo + b.subgrupo + b.codigo + b.nome);
+  });
+  return { resumo: resumo, linhas: linhas };
+}
+
+function _drePlanoRender(resultado) {
+  var sec = document.getElementById('dre-plano-section');
+  var row = document.getElementById('dre-plano-kpi-row');
+  var tbody = document.getElementById('dre-plano-tbody');
+  var wrap = document.getElementById('dre-plano-table-wrap');
+  var vazio = document.getElementById('dre-plano-vazio');
+  var count = document.getElementById('dre-plano-count');
+  if (!sec || !row || !tbody) return;
+
+  var r = resultado && resultado.resumo ? resultado.resumo : {};
+  var linhas = resultado && resultado.linhas ? resultado.linhas : [];
+  _drePlanoLinhas = linhas;
+  sec.style.display = '';
+  if (count) count.textContent = (r.movimentosTotal || 0) + ((r.movimentosTotal || 0) === 1 ? ' movimento' : ' movimentos');
+
+  var cards = [
+    { label: 'Receita Operacional', valor: r.receitaOperacional || 0, cls: 'recebido', sub: 'Entradas realizadas que impactam DRE' },
+    { label: 'Custos Diretos', valor: r.custosDiretos || 0, cls: '', sub: 'Saidas realizadas de custos diretos' },
+    { label: 'Lucro Bruto', valor: r.lucroBruto || 0, cls: (r.lucroBruto || 0) >= 0 ? 'recebido' : 'vencida', sub: 'Receita operacional - custos diretos' },
+    { label: 'Despesas Operacionais', valor: r.despesasOperacionais || 0, cls: '', sub: 'Saidas operacionais realizadas' },
+    { label: 'Resultado Operacional', valor: r.resultadoOperacional || 0, cls: (r.resultadoOperacional || 0) >= 0 ? 'recebido' : 'vencida', sub: 'Lucro bruto - despesas operacionais' },
+    { label: 'Resultado Financeiro', valor: r.resultadoFinanceiro || 0, cls: (r.resultadoFinanceiro || 0) >= 0 ? 'recebido' : 'vencida', sub: 'Entradas - saidas financeiras' },
+    { label: 'Impostos', valor: r.impostos || 0, cls: '', sub: 'Saidas realizadas de impostos' },
+    { label: 'Resultado Gerencial', valor: r.resultadoGerencial || 0, cls: (r.resultadoGerencial || 0) >= 0 ? 'recebido' : 'vencida', sub: 'Entradas DRE - saidas DRE' }
+  ];
+  row.innerHTML = cards.map(function(c) {
+    var valCls = c.valor < 0 ? 'vermelho' : ((c.label.indexOf('Resultado') >= 0 || c.label.indexOf('Lucro') >= 0 || c.label.indexOf('Receita') >= 0) ? 'verde' : '');
+    return '<div class="kpi-card ' + c.cls + '">' +
+      '<div class="kpi-label">' + _esc(c.label) + '</div>' +
+      '<div class="kpi-valor ' + valCls + '">' + _money(c.valor) + '</div>' +
+      '<div class="kpi-sub">' + _esc(c.sub) + '</div>' +
+    '</div>';
+  }).join('');
+
+  if (!linhas.length) {
+    if (wrap) wrap.style.display = 'none';
+    if (vazio) vazio.style.display = '';
+    tbody.innerHTML = '';
+    return;
+  }
+
+  if (vazio) vazio.style.display = 'none';
+  if (wrap) wrap.style.display = '';
+  tbody.innerHTML = linhas.map(function(l) {
+    var saldo = (l.entradas || 0) - (l.saidas || 0);
+    var cls = l.bloco === 'Sem categoria gerencial' ? 'vencida' : (l.bloco === 'Fora da DRE' ? 'ignorado' : '');
+    var nome = (l.codigo ? l.codigo + ' - ' : '') + l.nome;
+    return '<tr class="' + cls + '">' +
+      '<td>' + _esc(l.bloco) + '</td>' +
+      '<td>' + _esc(l.grupo || '-') + '</td>' +
+      '<td>' + _esc(l.subgrupo || '-') + '</td>' +
+      '<td>' + _esc(nome) + '</td>' +
+      '<td>' + _money(l.entradas || 0) + '</td>' +
+      '<td>' + _money(l.saidas || 0) + '</td>' +
+      '<td>' + _money(saldo) + '</td>' +
+      '<td>' + (l.movimentos || 0) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  if ((r.movimentosSemCategoria || 0) || (r.movimentosForaDre || 0)) {
+    tbody.innerHTML += '<tr class="ignorado"><td colspan="8">Alertas: ' +
+      (r.movimentosSemCategoria || 0) + ' movimento(s) sem categoria gerencial; ' +
+      (r.movimentosForaDre || 0) + ' movimento(s) fora da DRE.</td></tr>';
+  }
+}
+
 async function carregarDRE(empresaId) {
   var sf = _sf();
   var empresaConsulta = String(empresaId || '');
@@ -9404,7 +9645,8 @@ async function carregarDRE(empresaId) {
     return;
   }
   if (!sf.listarContasReceberPeriodo || !sf.listarRecebimentosPeriodo ||
-      !sf.listarContasPagarPeriodo   || !sf.calcularDREGerencial) {
+      !sf.listarContasPagarPeriodo   || !sf.calcularDREGerencial ||
+      !sf.listarMovimentosDREGerencial || !sf.listarCategoriasGerenciais) {
     _dreMostrarErro('Módulo DRE não disponível. Recarregue o portal.');
     return;
   }
@@ -9419,8 +9661,10 @@ async function carregarDRE(empresaId) {
     var ini = _drePeriodo.dataInicio;
     var fim = _drePeriodo.dataFim;
 
-    // Três queries em paralelo — todas filtradas por empresa_id
+    // Queries em paralelo — todas filtradas por empresa_id
     var results = await Promise.all([
+      sf.listarMovimentosDREGerencial(empresaId, ini, fim),
+      sf.listarCategoriasGerenciais(empresaId),
       sf.listarContasReceberPeriodo(empresaId, ini, fim),  // filtro: data_vencimento
       sf.listarRecebimentosPeriodo(empresaId, ini, fim),   // filtro: data_recebimento
       sf.listarContasPagarPeriodo(empresaId)               // filtro de período em JS
@@ -9429,12 +9673,15 @@ async function carregarDRE(empresaId) {
     // Race condition: descarta se empresa trocou durante o await
     if (token !== _dreLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
-    var contas        = results[0] || [];
-    var recebimentos  = results[1] || [];
-    var contasPagar   = results[2] || [];
+    var movimentosDre = results[0] || [];
+    var categoriasDre = results[1] || [];
+    var contas        = results[2] || [];
+    var recebimentos  = results[3] || [];
+    var contasPagar   = results[4] || [];
 
     // Calcular DRE localmente — somente leitura, sem alterar dados
     var resultado = sf.calcularDREGerencial(contas, recebimentos, contasPagar, ini, fim);
+    var drePlano = _drePlanoMontar(movimentosDre, categoriasDre);
 
     _dreCarregando = false;
     if (btn) btn.disabled = false;
@@ -9443,7 +9690,8 @@ async function carregarDRE(empresaId) {
     var temDados = resultado.receitaBruta > 0 ||
                    resultado.recebido     > 0 ||
                    resultado.contasPagas  > 0 ||
-                   resultado.contasAPagar > 0;
+                   resultado.contasAPagar > 0 ||
+                   drePlano.resumo.movimentosTotal > 0;
 
     if (!temDados) {
       _dreMostrarVazio(
@@ -9453,11 +9701,14 @@ async function carregarDRE(empresaId) {
         (_empresaAtiva ? (_empresaAtiva.nome_curto || _empresaAtiva.nome) : 'esta empresa') +
         ' no período selecionado.'
       );
+      _dreAtualizarBadgeEmpresa();
+      _drePlanoRender(drePlano);
       return;
     }
 
     _renderDRECards(resultado);
     _dreMostrarCards();
+    _drePlanoRender(drePlano);
 
     // Atualizar badge da empresa
     var badge = document.getElementById('dre-empresa-badge');
