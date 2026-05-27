@@ -700,6 +700,29 @@
     return r.data;
   }
 
+  async function sbRegistrarBaixaContaPagar(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.8-D] empresa_id obrigatorio.');
+    if (!dados.conta_pagar_id) throw new Error('[Financeiro F3.8-D] conta_pagar_id obrigatorio.');
+    if (!dados.data_pagamento) throw new Error('[Financeiro F3.8-D] data_pagamento obrigatoria.');
+    if (_num(dados.valor_pago) <= 0) throw new Error('[Financeiro F3.8-D] valor_pago deve ser maior que zero.');
+    if (!dados.meio_pagamento_id) throw new Error('[Financeiro F3.8-D] meio_pagamento_id obrigatorio.');
+    if (!dados.fonte_financeira_id) throw new Error('[Financeiro F3.8-D] fonte_financeira_id obrigatorio.');
+
+    var r = await client().rpc('financeiro_registrar_baixa_conta_pagar', {
+      p_empresa_id: dados.empresa_id,
+      p_conta_pagar_id: dados.conta_pagar_id,
+      p_valor_pago: _num(dados.valor_pago),
+      p_data_pagamento: dados.data_pagamento,
+      p_meio_pagamento_id: dados.meio_pagamento_id,
+      p_fonte_financeira_id: dados.fonte_financeira_id,
+      p_observacao: dados.observacao || null,
+      p_comprovante_url: dados.comprovante_url || null
+    });
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   /**
    * Lista contas a receber da empresa filtradas por data_vencimento.
@@ -1403,6 +1426,7 @@
     atualizarCategoriaGerencialContaPagar: sbAtualizarCategoriaGerencialContaPagar,
     listarPagamentosContaPagar:      sbListarPagamentosContaPagar,
     criarPagamentoContaPagar:        sbCriarPagamentoContaPagar,
+    registrarBaixaContaPagar:        sbRegistrarBaixaContaPagar,
 
     // Cálculos locais
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
