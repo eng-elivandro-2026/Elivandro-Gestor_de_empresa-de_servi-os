@@ -416,6 +416,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   background:var(--bg3);border:1px solid var(--border);
   border-radius:var(--r2);padding:.55rem .7rem;margin-bottom:.75rem;
 }
+.fg-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin-top:.85rem}
+.fg-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);
+  padding:.75rem .85rem;min-height:92px;display:flex;flex-direction:column;justify-content:space-between
+}
+.fg-card-label{font-size:.64rem;color:var(--text3);text-transform:uppercase;font-weight:800;letter-spacing:.04em;line-height:1.3}
+.fg-card-valor{font-size:1.05rem;font-weight:800;font-variant-numeric:tabular-nums;margin:.35rem 0 .25rem;color:var(--text)}
+.fg-card-valor.verde{color:var(--green)}
+.fg-card-valor.vermelho{color:var(--red)}
+.fg-card-valor.emp{color:var(--emp-cor-2)}
+.fg-card-sub{font-size:.68rem;color:var(--text3);line-height:1.35}
 .fg-cat{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
 .pvr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
 .pvr-item{background:var(--bg3);border-radius:var(--r2);padding:.7rem .9rem}
@@ -1354,6 +1365,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- Previsto × Realizado -->
   <div id="fluxo-pvr-section"></div>
+
+  <!-- Cards Gerenciais CP/CR -->
+  <div class="fluxo-gerencial" id="fg-cards-section">
+    <div class="fluxo-gerencial-head">
+      <div>
+        <div class="fluxo-gerencial-title">Cards Gerenciais - Previsto CP/CR</div>
+        <div class="fluxo-gerencial-sub">Resumo separado de CP/CR pendentes. Nao altera os cards atuais do Fluxo.</div>
+      </div>
+      <div class="fluxo-gerencial-count" id="fg-cards-count">0 evento(s)</div>
+    </div>
+    <div class="fluxo-gerencial-note">
+      Calculo gerencial somente por CP/CR em aberto, vencidas ou parciais. Movimentos previstos nao sao somados aqui para evitar duplicidade.
+    </div>
+    <div class="fg-cards-grid" id="fg-cards-grid"></div>
+  </div>
 
   <!-- Previsto Gerencial CP/CR -->
   <div class="fluxo-gerencial" id="fluxo-gerencial-section">
@@ -5456,15 +5482,21 @@ function _fluxoGerencialLimparVisual() {
   var wrap = document.getElementById('fg-table-wrap');
   var estado = document.getElementById('fg-estado');
   var count = document.getElementById('fg-count');
+  var cardsGrid = document.getElementById('fg-cards-grid');
+  var cardsCount = document.getElementById('fg-cards-count');
   if (tbody) tbody.innerHTML = '';
   if (wrap) wrap.style.display = 'none';
   if (estado) estado.style.display = 'none';
   if (count) count.textContent = '0 evento(s)';
+  if (cardsGrid) cardsGrid.innerHTML = '';
+  if (cardsCount) cardsCount.textContent = '0 evento(s)';
 }
 
 function _fluxoGerencialMostrarLoading() {
   var estado = document.getElementById('fg-estado');
   var wrap = document.getElementById('fg-table-wrap');
+  var cardsGrid = document.getElementById('fg-cards-grid');
+  var cardsCount = document.getElementById('fg-cards-count');
   if (estado) {
     estado.style.display = '';
     document.getElementById('fg-spinner').style.display = '';
@@ -5473,6 +5505,8 @@ function _fluxoGerencialMostrarLoading() {
     document.getElementById('fg-estado-sub').textContent = '';
   }
   if (wrap) wrap.style.display = 'none';
+  if (cardsGrid) cardsGrid.innerHTML = '<div class="fg-card"><div class="fg-card-label">Carregando</div><div class="fg-card-sub">Atualizando resumo gerencial de CP/CR.</div></div>';
+  if (cardsCount) cardsCount.textContent = 'Carregando...';
 }
 
 function _fluxoGerencialMostrarVazio(msg, sub) {
@@ -5488,6 +5522,7 @@ function _fluxoGerencialMostrarVazio(msg, sub) {
     document.getElementById('fg-estado-sub').textContent = sub || '';
   }
   if (wrap) wrap.style.display = 'none';
+  renderFluxoGerencialCards([]);
 }
 
 function _fluxoGerencialCategoriaLabel(categoriaId) {
@@ -5529,6 +5564,90 @@ function _fluxoGerencialMovimentoPrevistoExiste(movs, prefixes, id) {
     var ref = String(m.referencia_id || '');
     return prefixes.some(function(prefix) { return ref === prefix + sid; });
   });
+}
+
+function _fluxoGerencialSaldoRealAtual() {
+  var saldo = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+  (_todosMovimentos || []).forEach(function(m) {
+    if ((m.status || '') !== 'realizado') return;
+    var valor = _n(m.valor_real);
+    if (m.tipo === 'entrada') saldo += valor;
+    else if (m.tipo === 'saida') saldo -= valor;
+  });
+  return saldo;
+}
+
+function _fluxoGerencialResumoEventos(eventos) {
+  var resumo = { entradas: 0, saidas: 0, qtdEntradas: 0, qtdSaidas: 0, qtd: 0 };
+  (eventos || []).forEach(function(ev) {
+    var valor = _n(ev.valor_pendente);
+    if (valor <= 0) return;
+    resumo.qtd++;
+    if (ev.tipo === 'entrada') {
+      resumo.entradas += valor;
+      resumo.qtdEntradas++;
+    } else if (ev.tipo === 'saida') {
+      resumo.saidas += valor;
+      resumo.qtdSaidas++;
+    }
+  });
+  return resumo;
+}
+
+function _fluxoGerencialResumoJanela(eventos, inicio, fim) {
+  return _fluxoGerencialResumoEventos((eventos || []).filter(function(ev) {
+    var data = ev.data_prevista || '';
+    if (!data) return false;
+    if (inicio && data < inicio) return false;
+    if (fim && data > fim) return false;
+    return true;
+  }));
+}
+
+function _fluxoGerencialCardHtml(label, valor, cls, sub) {
+  return '<div class="fg-card">' +
+    '<div class="fg-card-label">' + _esc(label) + '</div>' +
+    '<div class="fg-card-valor ' + _esc(cls || '') + '">' + _fmtVal(valor) + '</div>' +
+    '<div class="fg-card-sub">' + _esc(sub || '') + '</div>' +
+  '</div>';
+}
+
+function _fluxoGerencialSubJanela(resumo) {
+  return 'Entradas ' + _fmtVal(resumo.entradas) + ' | Saidas ' + _fmtVal(resumo.saidas) + ' | ' + resumo.qtd + ' evento(s)';
+}
+
+function renderFluxoGerencialCards(eventos) {
+  var grid = document.getElementById('fg-cards-grid');
+  var count = document.getElementById('fg-cards-count');
+  if (!grid) return;
+
+  var lista = eventos || [];
+  var resumo = _fluxoGerencialResumoEventos(lista);
+  var saldoReal = _fluxoGerencialSaldoRealAtual();
+  var saldoProjetado = saldoReal + resumo.entradas - resumo.saidas;
+  var caixaComprometido = resumo.saidas;
+  var caixaLivre = saldoReal - caixaComprometido;
+  var hoje = _fluxoHoje();
+  var vencidos = _fluxoGerencialResumoJanela(lista, '', _fluxoAddDias(hoje, -1));
+  var prox7 = _fluxoGerencialResumoJanela(lista, hoje, _fluxoAddDias(hoje, 7));
+  var prox15 = _fluxoGerencialResumoJanela(lista, hoje, _fluxoAddDias(hoje, 15));
+  var prox30 = _fluxoGerencialResumoJanela(lista, hoje, _fluxoAddDias(hoje, 30));
+
+  if (count) count.textContent = lista.length + ' evento(s)';
+
+  grid.innerHTML = [
+    _fluxoGerencialCardHtml('Entradas Gerenciais Previstas', resumo.entradas, 'verde', resumo.qtdEntradas + ' CR(s) no filtro atual'),
+    _fluxoGerencialCardHtml('Saidas Gerenciais Previstas', resumo.saidas, resumo.saidas > 0 ? 'vermelho' : '', resumo.qtdSaidas + ' CP(s) no filtro atual'),
+    _fluxoGerencialCardHtml('Saldo Projetado Gerencial', saldoProjetado, saldoProjetado >= 0 ? 'verde' : 'vermelho', 'Saldo real + entradas - saidas CP/CR'),
+    _fluxoGerencialCardHtml('Caixa Comprometido Gerencial', caixaComprometido, caixaComprometido > 0 ? 'vermelho' : 'verde', 'Somente CP pendentes/parciais'),
+    _fluxoGerencialCardHtml('Caixa Livre Estimado', caixaLivre, caixaLivre >= 0 ? 'verde' : 'vermelho', 'Saldo real - CP gerencial'),
+    _fluxoGerencialCardHtml('Vencidos', vencidos.entradas - vencidos.saidas, (vencidos.entradas - vencidos.saidas) >= 0 ? 'verde' : 'vermelho', _fluxoGerencialSubJanela(vencidos)),
+    _fluxoGerencialCardHtml('Proximos 7 dias', prox7.entradas - prox7.saidas, (prox7.entradas - prox7.saidas) >= 0 ? 'verde' : 'vermelho', _fluxoGerencialSubJanela(prox7)),
+    _fluxoGerencialCardHtml('Proximos 15 dias', prox15.entradas - prox15.saidas, (prox15.entradas - prox15.saidas) >= 0 ? 'verde' : 'vermelho', _fluxoGerencialSubJanela(prox15)),
+    _fluxoGerencialCardHtml('Proximos 30 dias', prox30.entradas - prox30.saidas, (prox30.entradas - prox30.saidas) >= 0 ? 'verde' : 'vermelho', _fluxoGerencialSubJanela(prox30))
+  ].join('');
 }
 
 function _fluxoGerencialMontarEventos(contasReceber, contasPagar, categorias, movs, empresaId) {
@@ -5678,6 +5797,7 @@ function renderFluxoGerencial() {
       ? eventos.length + ' evento(s)'
       : eventos.length + ' de ' + (_fluxoGerencialEventos || []).length + ' evento(s)';
   }
+  renderFluxoGerencialCards(eventos);
 
   var tbody = document.getElementById('fg-tbody');
   var wrap = document.getElementById('fg-table-wrap');
