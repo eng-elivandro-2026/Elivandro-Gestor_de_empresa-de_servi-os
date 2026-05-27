@@ -2346,7 +2346,7 @@ function _renderCategoriaGerencialContaReceber(c) {
     ['entrada', 'transferencia'],
     'cr-detalhe-categoria-gerencial',
     'cr-categoria-gerencial-msg',
-    'salvarCategoriaGerencialCr(' + bcJsArg(c.id) + ')'
+    'salvarCategoriaGerencialCr(' + bcJsArgAspasSimples(c.id) + ')'
   );
 }
 
@@ -2356,7 +2356,7 @@ function _renderCategoriaGerencialContaPagar(c) {
     ['saida', 'transferencia'],
     'cp-detalhe-categoria-gerencial',
     'cp-categoria-gerencial-msg',
-    'salvarCategoriaGerencialCp(' + bcJsArg(c.id) + ')'
+    'salvarCategoriaGerencialCp(' + bcJsArgAspasSimples(c.id) + ')'
   );
 }
 
@@ -6592,6 +6592,15 @@ function bcMsg(id, msg, tipo) {
 
 function bcJsArg(s) {
   return _esc(JSON.stringify(String(s || '')));
+}
+
+function bcJsArgAspasSimples(s) {
+  return "'" + String(s || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/</g, '\\x3C') + "'";
 }
 
 function bcNormalizarBusca(s) {
