@@ -396,6 +396,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   text-transform:uppercase;letter-spacing:.05em;
   margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);
 }
+.fluxo-gerencial{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:1rem 1.1rem;margin-top:1.2rem;
+}
+.fluxo-gerencial-head{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  gap:.8rem;flex-wrap:wrap;margin-bottom:.8rem;
+  padding-bottom:.4rem;border-bottom:1px solid var(--border);
+}
+.fluxo-gerencial-title{
+  font-size:.7rem;font-weight:700;color:var(--emp-cor-2);
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.fluxo-gerencial-sub{font-size:.72rem;color:var(--text3);margin-top:.25rem;line-height:1.45}
+.fluxo-gerencial-count{font-size:.72rem;color:var(--text2);white-space:nowrap}
+.fluxo-gerencial-note{
+  font-size:.72rem;color:var(--text3);line-height:1.45;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r2);padding:.55rem .7rem;margin-bottom:.75rem;
+}
+.fg-cat{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
 .pvr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
 .pvr-item{background:var(--bg3);border-radius:var(--r2);padding:.7rem .9rem}
 .pvr-label{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;font-weight:700}
@@ -1334,6 +1355,69 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <!-- Previsto × Realizado -->
   <div id="fluxo-pvr-section"></div>
 
+  <!-- Previsto Gerencial CP/CR -->
+  <div class="fluxo-gerencial" id="fluxo-gerencial-section">
+    <div class="fluxo-gerencial-head">
+      <div>
+        <div class="fluxo-gerencial-title">Previsto Gerencial CP/CR</div>
+        <div class="fluxo-gerencial-sub">Contas a pagar e a receber em aberto, vencidas ou parciais. Somente leitura.</div>
+      </div>
+      <div class="fluxo-gerencial-count" id="fg-count">0 evento(s)</div>
+    </div>
+
+    <div class="filtros-bar" id="fg-filtros-bar">
+      <span class="filtro-label">De</span>
+      <input type="date" id="fg-data-inicio" class="filtro-input" oninput="fluxoGerencialAtualizarFiltros()" title="Data inicial prevista">
+      <span class="filtro-label">Até</span>
+      <input type="date" id="fg-data-fim" class="filtro-input" oninput="fluxoGerencialAtualizarFiltros()" title="Data final prevista">
+      <select id="fg-tipo" class="filtro-input filtro-select" onchange="fluxoGerencialAtualizarFiltros()" title="Tipo">
+        <option value="">Entrada e saída</option>
+        <option value="entrada">Entradas</option>
+        <option value="saida">Saídas</option>
+      </select>
+      <select id="fg-status" class="filtro-input filtro-select" onchange="fluxoGerencialAtualizarFiltros()" title="Status">
+        <option value="">Todos os status</option>
+      </select>
+      <select id="fg-categoria" class="filtro-input filtro-select" onchange="fluxoGerencialAtualizarFiltros()" title="Categoria gerencial">
+        <option value="">Todas as categorias</option>
+      </select>
+      <input type="search" id="fg-busca" class="filtro-input busca" placeholder="Buscar cliente, fornecedor ou título" oninput="fluxoGerencialAtualizarFiltros()" title="Busca">
+      <button class="btn-limpar" onclick="fluxoGerencialLimparFiltros()" title="Limpar filtros da previsão gerencial">✕ Limpar</button>
+    </div>
+
+    <div class="fluxo-gerencial-note">
+      Visualização gerencial de CP/CR pendentes. Esta seção não altera cards, DRE, CP/CR, baixa, pagamentos ou movimentos de caixa.
+    </div>
+
+    <div class="estado" id="fg-estado" style="display:none">
+      <div class="loading-spinner" id="fg-spinner" style="display:none"></div>
+      <span class="estado-icon" id="fg-estado-icon"></span>
+      <div class="estado-msg" id="fg-estado-msg"></div>
+      <div class="estado-sub" id="fg-estado-sub"></div>
+    </div>
+
+    <div class="table-wrap" id="fg-table-wrap" style="display:none">
+      <table class="fin-table">
+        <thead>
+          <tr>
+            <th class="th-data">Data prevista</th>
+            <th>Tipo</th>
+            <th>Origem</th>
+            <th>Cliente/Fornecedor</th>
+            <th>Descrição/Título</th>
+            <th>Categoria Gerencial</th>
+            <th>Categoria</th>
+            <th>Centro Custo</th>
+            <th class="col-valor">Valor pendente</th>
+            <th>Status</th>
+            <th>Vencimento</th>
+          </tr>
+        </thead>
+        <tbody id="fg-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div><!-- /.wrap -->
 </div><!-- /#tab-fluxo -->
 
@@ -1811,6 +1895,9 @@ var _todosMovimentos  = [];   // financeiro_movimentos_caixa da empresa ativa
 var _saldoCaixaAtual  = null; // financeiro_saldos_caixa mais recente
 var _fluxoLoadToken   = 0;    // race condition guard
 var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: '', preset: 'mes' };
+var _fluxoGerencialEventos = []; // CP/CR pendentes normalizadas para leitura gerencial
+var _fluxoGerencialCategorias = [];
+var _fluxoGerencialFiltros = { dataInicio: '', dataFim: '', tipo: '', status: '', categoria: '', busca: '' };
 
 // ── Contas a Pagar — estado ──────────────────────────────────
 var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
@@ -2571,6 +2658,9 @@ function _onTrocaEmpresa(dados) {
   if (fluxoKpi) fluxoKpi.innerHTML = '';
   var fluxoPvr = document.getElementById('fluxo-pvr-section');
   if (fluxoPvr) fluxoPvr.innerHTML = '';
+  _fluxoGerencialEventos = [];
+  _fluxoGerencialCategorias = [];
+  _fluxoGerencialLimparVisual();
 
   // Limpar Contas a Pagar imediatamente
   _todasContasPagar = [];
@@ -5341,6 +5431,294 @@ async function _enriquecerMovimentos(movs, empresaId) {
 }
 
 // ── Preset de período ────────────────────────────────────────
+function _fluxoGerencialResetFiltrosPeriodo(inicio, fim) {
+  _fluxoGerencialFiltros.dataInicio = inicio || '';
+  _fluxoGerencialFiltros.dataFim = fim || '';
+  _fluxoGerencialFiltros.tipo = '';
+  _fluxoGerencialFiltros.status = '';
+  _fluxoGerencialFiltros.categoria = '';
+  _fluxoGerencialFiltros.busca = '';
+  [
+    ['fg-data-inicio', _fluxoGerencialFiltros.dataInicio],
+    ['fg-data-fim', _fluxoGerencialFiltros.dataFim],
+    ['fg-tipo', ''],
+    ['fg-status', ''],
+    ['fg-categoria', ''],
+    ['fg-busca', '']
+  ].forEach(function(par) {
+    var el = document.getElementById(par[0]);
+    if (el) el.value = par[1];
+  });
+}
+
+function _fluxoGerencialLimparVisual() {
+  var tbody = document.getElementById('fg-tbody');
+  var wrap = document.getElementById('fg-table-wrap');
+  var estado = document.getElementById('fg-estado');
+  var count = document.getElementById('fg-count');
+  if (tbody) tbody.innerHTML = '';
+  if (wrap) wrap.style.display = 'none';
+  if (estado) estado.style.display = 'none';
+  if (count) count.textContent = '0 evento(s)';
+}
+
+function _fluxoGerencialMostrarLoading() {
+  var estado = document.getElementById('fg-estado');
+  var wrap = document.getElementById('fg-table-wrap');
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fg-spinner').style.display = '';
+    document.getElementById('fg-estado-icon').textContent = '';
+    document.getElementById('fg-estado-msg').textContent = 'Carregando previsto gerencial...';
+    document.getElementById('fg-estado-sub').textContent = '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+
+function _fluxoGerencialMostrarVazio(msg, sub) {
+  var estado = document.getElementById('fg-estado');
+  var wrap = document.getElementById('fg-table-wrap');
+  var tbody = document.getElementById('fg-tbody');
+  if (tbody) tbody.innerHTML = '';
+  if (estado) {
+    estado.style.display = '';
+    document.getElementById('fg-spinner').style.display = 'none';
+    document.getElementById('fg-estado-icon').textContent = '📢';
+    document.getElementById('fg-estado-msg').textContent = msg || 'Nenhuma previsão gerencial encontrada.';
+    document.getElementById('fg-estado-sub').textContent = sub || '';
+  }
+  if (wrap) wrap.style.display = 'none';
+}
+
+function _fluxoGerencialCategoriaLabel(categoriaId) {
+  if (!categoriaId) return '—';
+  var c = (_fluxoGerencialCategorias || []).find(function(cat) {
+    return String(cat.id) === String(categoriaId);
+  });
+  if (!c) return '—';
+  return (c.codigo ? c.codigo + ' — ' : '') + (c.nome || 'Categoria');
+}
+
+function _fluxoGerencialStatusLabel(ev) {
+  if (!ev) return '—';
+  if (ev.origem_tipo === 'cp') return _cpStatusLabel(ev.status);
+  return _STATUS_LABEL[ev.status] || ev.status || '—';
+}
+
+function _fluxoGerencialStatusPermitido(tipoOrigem, status) {
+  var st = status || '';
+  if (tipoOrigem === 'cp') {
+    return ['em_aberto', 'previsto', 'vencido', 'parcial'].indexOf(st) >= 0;
+  }
+  return ['previsto', 'a_faturar', 'faturado', 'parcialmente_recebido', 'vencido', 'em_aberto', 'parcial'].indexOf(st) >= 0;
+}
+
+function _fluxoGerencialSituacao(dataIso) {
+  if (!dataIso) return 'Sem vencimento';
+  var data = String(dataIso).slice(0, 10);
+  var hoje = _fluxoHoje();
+  if (data < hoje) return 'Vencido';
+  if (data === hoje) return 'Vence hoje';
+  return 'A vencer';
+}
+
+function _fluxoGerencialMovimentoPrevistoExiste(movs, prefixes, id) {
+  if (!id) return false;
+  var sid = String(id);
+  return (movs || []).some(function(m) {
+    var ref = String(m.referencia_id || '');
+    return prefixes.some(function(prefix) { return ref === prefix + sid; });
+  });
+}
+
+function _fluxoGerencialMontarEventos(contasReceber, contasPagar, categorias, movs, empresaId) {
+  var empresaConsulta = String(empresaId || '');
+  _fluxoGerencialCategorias = (categorias || []).filter(function(c) {
+    return String(c.empresa_id || '') === empresaConsulta;
+  });
+
+  var eventos = [];
+  (contasReceber || []).forEach(function(c) {
+    if (String(c.empresa_id || '') !== empresaConsulta) return;
+    if (!_fluxoGerencialStatusPermitido('cr', c.status)) return;
+    var valor = _n(c.valor_pendente);
+    if (valor <= 0) return;
+    eventos.push({
+      id: c.id,
+      empresa_id: c.empresa_id,
+      tipo: 'entrada',
+      origem_tipo: 'cr',
+      origem_label: 'CR',
+      cliente_fornecedor: c.cliente_nome || '—',
+      descricao: c.titulo || 'Conta a receber',
+      categoria_gerencial_id: c.categoria_gerencial_id || null,
+      categoria_textual: c.categoria || '—',
+      centro_custo: c.centro_custo || '—',
+      data_prevista: c.data_vencimento || null,
+      valor_pendente: valor,
+      status: c.status || 'previsto',
+      tem_movimento_previsto: _fluxoGerencialMovimentoPrevistoExiste(movs, ['previsto:', 'cr:'], c.id)
+    });
+  });
+
+  (contasPagar || []).forEach(function(c) {
+    if (String(c.empresa_id || '') !== empresaConsulta) return;
+    if (!_fluxoGerencialStatusPermitido('cp', c.status)) return;
+    var valor = _n(c.valor_pendente);
+    if (valor <= 0) return;
+    eventos.push({
+      id: c.id,
+      empresa_id: c.empresa_id,
+      tipo: 'saida',
+      origem_tipo: 'cp',
+      origem_label: 'CP',
+      cliente_fornecedor: c.fornecedor_nome || '—',
+      descricao: c.descricao || 'Conta a pagar',
+      categoria_gerencial_id: c.categoria_gerencial_id || null,
+      categoria_textual: c.categoria || '—',
+      centro_custo: c.centro_custo || '—',
+      data_prevista: c.data_vencimento || null,
+      valor_pendente: valor,
+      status: c.status || 'em_aberto',
+      tem_movimento_previsto: _fluxoGerencialMovimentoPrevistoExiste(movs, ['cp:', 'conta_pagar:', 'pagamento_cp:'], c.id)
+    });
+  });
+
+  return eventos.sort(function(a, b) {
+    var da = a.data_prevista || '9999-12-31';
+    var db = b.data_prevista || '9999-12-31';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+}
+
+function _fluxoGerencialPopularFiltros() {
+  var statusSel = document.getElementById('fg-status');
+  var catSel = document.getElementById('fg-categoria');
+  if (statusSel) {
+    var atualStatus = statusSel.value || '';
+    var statusMap = {};
+    (_fluxoGerencialEventos || []).forEach(function(ev) {
+      statusMap[ev.status || ''] = _fluxoGerencialStatusLabel(ev);
+    });
+    var optsStatus = Object.keys(statusMap).filter(Boolean).sort(function(a, b) {
+      return statusMap[a].localeCompare(statusMap[b], 'pt-BR');
+    }).map(function(st) {
+      return '<option value="' + _esc(st) + '"' + (st === atualStatus ? ' selected' : '') + '>' + _esc(statusMap[st]) + '</option>';
+    }).join('');
+    statusSel.innerHTML = '<option value="">Todos os status</option>' + optsStatus;
+    if (atualStatus) statusSel.value = atualStatus;
+  }
+  if (catSel) {
+    var atualCat = catSel.value || '';
+    var usadas = {};
+    (_fluxoGerencialEventos || []).forEach(function(ev) {
+      if (ev.categoria_gerencial_id) usadas[String(ev.categoria_gerencial_id)] = true;
+    });
+    var optsCat = (_fluxoGerencialCategorias || []).filter(function(c) {
+      return usadas[String(c.id)];
+    }).sort(function(a, b) {
+      var la = (a.codigo || '') + ' ' + (a.nome || '');
+      var lb = (b.codigo || '') + ' ' + (b.nome || '');
+      return la.localeCompare(lb, 'pt-BR');
+    }).map(function(c) {
+      var label = (c.codigo ? c.codigo + ' — ' : '') + (c.nome || 'Categoria');
+      return '<option value="' + _esc(c.id) + '"' + (String(c.id) === String(atualCat) ? ' selected' : '') + '>' + _esc(label) + '</option>';
+    }).join('');
+    catSel.innerHTML = '<option value="">Todas as categorias</option>' + optsCat;
+    if (atualCat) catSel.value = atualCat;
+  }
+}
+
+function fluxoGerencialAtualizarFiltros() {
+  var di = document.getElementById('fg-data-inicio');
+  var df = document.getElementById('fg-data-fim');
+  var tp = document.getElementById('fg-tipo');
+  var st = document.getElementById('fg-status');
+  var ct = document.getElementById('fg-categoria');
+  var bs = document.getElementById('fg-busca');
+  if (di) _fluxoGerencialFiltros.dataInicio = di.value;
+  if (df) _fluxoGerencialFiltros.dataFim = df.value;
+  if (tp) _fluxoGerencialFiltros.tipo = tp.value;
+  if (st) _fluxoGerencialFiltros.status = st.value;
+  if (ct) _fluxoGerencialFiltros.categoria = ct.value;
+  if (bs) _fluxoGerencialFiltros.busca = bs.value;
+  renderFluxoGerencial();
+}
+
+function fluxoGerencialLimparFiltros() {
+  _fluxoGerencialResetFiltrosPeriodo('', '');
+  renderFluxoGerencial();
+}
+
+function renderFluxoGerencial() {
+  var eventos = (_fluxoGerencialEventos || []).filter(function(ev) {
+    var data = ev.data_prevista || '';
+    if (_fluxoGerencialFiltros.dataInicio && data < _fluxoGerencialFiltros.dataInicio) return false;
+    if (_fluxoGerencialFiltros.dataFim && data > _fluxoGerencialFiltros.dataFim) return false;
+    if (_fluxoGerencialFiltros.tipo && ev.tipo !== _fluxoGerencialFiltros.tipo) return false;
+    if (_fluxoGerencialFiltros.status && ev.status !== _fluxoGerencialFiltros.status) return false;
+    if (_fluxoGerencialFiltros.categoria && String(ev.categoria_gerencial_id || '') !== String(_fluxoGerencialFiltros.categoria)) return false;
+    var busca = String(_fluxoGerencialFiltros.busca || '').trim().toLowerCase();
+    if (busca) {
+      var texto = [
+        ev.cliente_fornecedor,
+        ev.descricao,
+        ev.categoria_textual,
+        _fluxoGerencialCategoriaLabel(ev.categoria_gerencial_id),
+        _fluxoGerencialStatusLabel(ev)
+      ].join(' ').toLowerCase();
+      if (texto.indexOf(busca) < 0) return false;
+    }
+    return true;
+  });
+
+  var count = document.getElementById('fg-count');
+  if (count) {
+    count.textContent = eventos.length === (_fluxoGerencialEventos || []).length
+      ? eventos.length + ' evento(s)'
+      : eventos.length + ' de ' + (_fluxoGerencialEventos || []).length + ' evento(s)';
+  }
+
+  var tbody = document.getElementById('fg-tbody');
+  var wrap = document.getElementById('fg-table-wrap');
+  var estado = document.getElementById('fg-estado');
+  if (!tbody || !wrap || !estado) return;
+
+  if (!eventos.length) {
+    _fluxoGerencialMostrarVazio('Nenhuma CP/CR pendente no filtro selecionado.', 'Ajuste período, tipo, status, categoria ou busca.');
+    return;
+  }
+
+  estado.style.display = 'none';
+  wrap.style.display = '';
+  tbody.innerHTML = eventos.map(function(ev) {
+    var isEnt = ev.tipo === 'entrada';
+    var tipoBdg = isEnt
+      ? '<span class="bdg" style="background:rgba(63,185,80,.1);color:var(--green)">↑ Entrada</span>'
+      : '<span class="bdg" style="background:rgba(248,81,73,.1);color:var(--red)">↓ Saída</span>';
+    var origem = '<strong>' + _esc(ev.origem_label) + '</strong>';
+    if (ev.tem_movimento_previsto) {
+      origem += '<div style="font-size:.64rem;color:var(--text3);margin-top:.18rem">movimento previsto existe</div>';
+    }
+    var statusBdg = '<span class="bdg bdg-' + _esc(ev.status || 'previsto') + '">' + _esc(_fluxoGerencialStatusLabel(ev)) + '</span>';
+    var venc = _fluxoGerencialSituacao(ev.data_prevista);
+    var vencCls = venc === 'Vencido' ? 'vermelho' : '';
+    return '<tr>' +
+      '<td class="col-data">' + _fmtDt(ev.data_prevista) + '</td>' +
+      '<td>' + tipoBdg + '</td>' +
+      '<td>' + origem + '</td>' +
+      '<td class="col-cliente">' + _esc(ev.cliente_fornecedor) + '</td>' +
+      '<td class="col-titulo">' + _esc(ev.descricao) + '</td>' +
+      '<td class="fg-cat">' + _esc(_fluxoGerencialCategoriaLabel(ev.categoria_gerencial_id)) + '</td>' +
+      '<td class="td-cc">' + _esc(ev.categoria_textual) + '</td>' +
+      '<td class="td-cc">' + _esc(ev.centro_custo) + '</td>' +
+      '<td class="col-valor">' + _fmtVal(ev.valor_pendente) + '</td>' +
+      '<td>' + statusBdg + '</td>' +
+      '<td class="' + vencCls + '">' + _esc(venc) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
 function fluxoSetPreset(preset) {
   _fluxoFiltros.preset = preset;
   var hoje = _fluxoHoje();
@@ -5673,18 +6051,23 @@ async function carregarFluxoCaixa(empresaId) {
   var empresaConsulta = String(empresaId || '');
   if (!sf || !empresaId) {
     _fluxoMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
+    _fluxoGerencialMostrarVazio('Empresa não identificada.', 'Selecione uma empresa no portal para carregar o previsto gerencial.');
     return;
   }
 
   var token = ++_fluxoLoadToken;
   _fluxoMostrarLoading();
+  _fluxoGerencialMostrarLoading();
   var btnRef = document.getElementById('fluxo-btn-refresh');
   if (btnRef) btnRef.disabled = true;
 
   try {
     var results = await Promise.all([
       sf.buscarSaldoCaixaAtual(empresaId).catch(function() { return null; }),
-      sf.listarMovimentosCaixa(empresaId).catch(function() { return []; })
+      sf.listarMovimentosCaixa(empresaId).catch(function() { return []; }),
+      sf.listarContasReceber ? sf.listarContasReceber(empresaId).catch(function() { return []; }) : Promise.resolve([]),
+      sf.listarContasPagar ? sf.listarContasPagar(empresaId).catch(function() { return []; }) : Promise.resolve([]),
+      sf.listarCategoriasGerenciais ? sf.listarCategoriasGerenciais(empresaId).catch(function() { return []; }) : Promise.resolve([])
     ]);
     if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
@@ -5694,6 +6077,8 @@ async function carregarFluxoCaixa(empresaId) {
     var movsBrutos = results[1] || [];
     if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _todosMovimentos = await _enriquecerMovimentos(movsBrutos, empresaId);
+    if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
+    _fluxoGerencialEventos = _fluxoGerencialMontarEventos(results[2] || [], results[3] || [], results[4] || [], movsBrutos, empresaId);
     if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     var avisoEl = document.getElementById('fluxo-aviso-saldo');
@@ -5719,11 +6104,14 @@ async function carregarFluxoCaixa(empresaId) {
     }
 
     filtrarFluxo();
+    _fluxoGerencialPopularFiltros();
+    renderFluxoGerencial();
 
   } catch(e) {
     if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     console.warn('[F3-fluxo] erro ao carregar:', e);
     _fluxoMostrarErro('Erro ao carregar fluxo de caixa: ' + e.message);
+    _fluxoGerencialMostrarVazio('Erro ao carregar previsto gerencial.', e.message || 'Tente novamente.');
   } finally {
     if (token === _fluxoLoadToken && empresaConsulta === _empresaAtivaId() && btnRef) btnRef.disabled = false;
   }
@@ -5778,6 +6166,7 @@ function _fluxoInicializarFiltros() {
   var df = document.getElementById('fluxo-data-fim');
   if (di) di.value = _fluxoFiltros.dataInicio;
   if (df) df.value = _fluxoFiltros.dataFim;
+  _fluxoGerencialResetFiltrosPeriodo(_fluxoFiltros.dataInicio, _fluxoFiltros.dataFim);
 }
 
 
