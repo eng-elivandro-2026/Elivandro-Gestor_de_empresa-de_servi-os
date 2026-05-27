@@ -2675,7 +2675,7 @@ function _crOpcaoHtml(id, label, selected) {
 function _crMeioRecebimentoLabel(id) {
   var m = (_crMeiosRecebimento || []).find(function(x) { return String(x.id) === String(id); });
   if (!m) return '-';
-  return (m.nome || 'Meio') + (m.tipo ? ' - ' + bcLabelTipo(m.tipo) : '');
+  return (m.nome || 'Meio') + (m.tipo ? ' - ' + bcMeioTipoLabel(m.tipo) : '');
 }
 
 function _crFonteRecebimentoLabel(id) {
