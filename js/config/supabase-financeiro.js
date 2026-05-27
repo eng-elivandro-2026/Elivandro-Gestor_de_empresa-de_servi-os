@@ -1273,6 +1273,59 @@
     return r.data;
   }
 
+  async function sbListarCategoriasGerenciais(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro F3.6-B] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_categorias_gerenciais')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('tipo_movimento', { ascending: true })
+      .order('grupo', { ascending: true })
+      .order('subgrupo', { ascending: true, nullsFirst: false })
+      .order('ordem', { ascending: true })
+      .order('codigo', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  async function sbSalvarCategoriaGerencial(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.6-B] empresa_id obrigatorio.');
+    if (!dados.codigo) throw new Error('[Financeiro F3.6-B] codigo obrigatorio.');
+    if (!dados.nome) throw new Error('[Financeiro F3.6-B] nome obrigatorio.');
+    if (!dados.tipo_movimento) throw new Error('[Financeiro F3.6-B] tipo_movimento obrigatorio.');
+    if (!dados.grupo) throw new Error('[Financeiro F3.6-B] grupo obrigatorio.');
+    if (!dados.natureza) throw new Error('[Financeiro F3.6-B] natureza obrigatoria.');
+    var payload = Object.assign({
+      ativo: true,
+      impacta_fluxo_caixa: true,
+      impacta_dre: true,
+      impacta_resultado_operacional: true,
+      ordem: 0
+    }, dados);
+    var r = await client()
+      .from('financeiro_categorias_gerenciais')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarCategoriaGerencial(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
+    if (!id) throw new Error('[Financeiro F3.6-B] id obrigatorio para atualizar categoria gerencial.');
+    if (!empresaId) throw new Error('[Financeiro F3.6-B] empresa_id obrigatorio para atualizar categoria gerencial.');
+    var q = client()
+      .from('financeiro_categorias_gerenciais')
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // EXPOSIÇÃO PÚBLICA
@@ -1362,7 +1415,12 @@
     atualizarAdquirente:             sbAtualizarAdquirente,
     listarMaquininhas:               sbListarMaquininhas,
     salvarMaquininha:                sbSalvarMaquininha,
-    atualizarMaquininha:             sbAtualizarMaquininha
+    atualizarMaquininha:             sbAtualizarMaquininha,
+
+    // F3.6-B - Plano Gerencial / categorias financeiras
+    listarCategoriasGerenciais:      sbListarCategoriasGerenciais,
+    salvarCategoriaGerencial:        sbSalvarCategoriaGerencial,
+    atualizarCategoriaGerencial:     sbAtualizarCategoriaGerencial
   };
 
 }(window));

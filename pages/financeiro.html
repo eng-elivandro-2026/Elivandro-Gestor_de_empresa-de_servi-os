@@ -1061,6 +1061,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="kpi-card"><div class="kpi-label">Maquininhas ativas</div><div class="kpi-valor" id="bc-kpi-maquininhas">—</div><div class="kpi-sub">Terminais cadastrados</div></div>
     <div class="kpi-card"><div class="kpi-label">Maquininhas inativas</div><div class="kpi-valor" id="bc-kpi-maquininhas-inativas">—</div><div class="kpi-sub">Sem exclusão física</div></div>
     <div class="kpi-card"><div class="kpi-label">Contas destino</div><div class="kpi-valor" id="bc-kpi-contas-destino">—</div><div class="kpi-sub">Adquirentes configuradas</div></div>
+    <div class="kpi-card"><div class="kpi-label">Categorias ativas</div><div class="kpi-valor" id="bc-kpi-categorias">—</div><div class="kpi-sub">Plano gerencial</div></div>
   </div>
   <div class="bc-tabs">
     <button class="bc-tab on" id="bc-tab-btn-bancos" onclick="bcMostrarSubtab('bancos')">Bancos</button>
@@ -1071,6 +1072,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="bc-tab" id="bc-tab-btn-fontes" onclick="bcMostrarSubtab('fontes')">Fontes Financeiras</button>
     <button class="bc-tab" id="bc-tab-btn-adquirentes" onclick="bcMostrarSubtab('adquirentes')">Adquirentes</button>
     <button class="bc-tab" id="bc-tab-btn-maquininhas" onclick="bcMostrarSubtab('maquininhas')">Maquininhas</button>
+    <button class="bc-tab" id="bc-tab-btn-categorias" onclick="bcMostrarSubtab('categorias')">Plano Gerencial</button>
   </div>
   <div id="bc-status" class="status-msg"></div>
   <section id="bc-subtab-bancos">
@@ -1160,6 +1162,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <table class="fin-table"><thead><tr><th>Apelido</th><th>Adquirente</th><th>Número de série</th><th>Modelo</th><th>Local de uso</th><th>Responsável</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-maquininhas-tbody"></tbody></table>
     </div>
     <div class="estado" id="bc-maquininhas-vazio" style="display:none"><span class="estado-icon">📟</span><div class="estado-msg">Nenhuma maquininha cadastrada.</div><div class="estado-sub">Maquininhas não geram vendas, taxas ou movimentos nesta fase.</div></div>
+  </section>
+  <section id="bc-subtab-categorias" style="display:none">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-nova-categoria" onclick="bcAbrirCategoria()">+ Nova Categoria</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-categorias" placeholder="Buscar código ou nome..." oninput="bcRenderCategoriasGerenciais()">
+      <select class="filtro-input filtro-select" id="bc-filtro-cat-tipo" onchange="bcRenderCategoriasGerenciais()" title="Tipo de movimento">
+        <option value="">Todos os tipos</option>
+        <option value="entrada">Entradas</option>
+        <option value="saida">Saídas</option>
+        <option value="transferencia">Transferências</option>
+      </select>
+      <select class="filtro-input filtro-select" id="bc-filtro-cat-grupo" onchange="bcRenderCategoriasGerenciais()" title="Grupo"><option value="">Todos os grupos</option></select>
+      <select class="filtro-input filtro-select" id="bc-filtro-cat-subgrupo" onchange="bcRenderCategoriasGerenciais()" title="Subgrupo"><option value="">Todos os subgrupos</option></select>
+      <select class="filtro-input filtro-select" id="bc-filtro-cat-natureza" onchange="bcRenderCategoriasGerenciais()" title="Natureza"><option value="">Todas as naturezas</option></select>
+      <select class="filtro-input filtro-select" id="bc-filtro-cat-ativo" onchange="bcRenderCategoriasGerenciais()" title="Status">
+        <option value="">Ativas e inativas</option>
+        <option value="true">Somente ativas</option>
+        <option value="false">Somente inativas</option>
+      </select>
+      <span class="filtro-count" id="bc-count-categorias"></span>
+    </div>
+    <div class="table-wrap" id="bc-categorias-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Grupo</th><th>Subgrupo</th><th>Natureza</th><th>Impacta fluxo</th><th>Impacta DRE</th><th>Impacta resultado</th><th>Status</th><th>Ordem</th><th>Ações</th></tr></thead><tbody id="bc-categorias-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-categorias-vazio" style="display:none"><span class="estado-icon">📊</span><div class="estado-msg">Nenhuma categoria gerencial encontrada.</div><div class="estado-sub">O plano gerencial organiza CP, CR, Fluxo e DRE sem alterar cálculos nesta fase.</div></div>
   </section>
 </div>
 </div><!-- /#tab-bancos-contas -->
@@ -1798,6 +1825,7 @@ var _bcMeios          = [];   // financeiro_meios_pagamento da empresa ativa
 var _bcFontes         = [];   // financeiro_fontes_financeiras da empresa ativa
 var _bcAdquirentes    = [];   // financeiro_adquirentes da empresa ativa
 var _bcMaquininhas    = [];   // financeiro_maquininhas da empresa ativa
+var _bcCategorias     = [];   // financeiro_categorias_gerenciais da empresa ativa
 var _bcLoadToken      = 0;    // race condition guard
 var _bcSubtab         = 'bancos';
 var _bcModalTipo      = '';
@@ -2447,6 +2475,7 @@ function _onTrocaEmpresa(dados) {
   _bcFontes = [];
   _bcAdquirentes = [];
   _bcMaquininhas = [];
+  _bcCategorias = [];
   _bcLoadToken++;
   var bcBancoBody = document.getElementById('bc-bancos-tbody');
   var bcContaBody = document.getElementById('bc-contas-tbody');
@@ -2456,6 +2485,7 @@ function _onTrocaEmpresa(dados) {
   var bcFonteBody = document.getElementById('bc-fontes-tbody');
   var bcAdqBody = document.getElementById('bc-adquirentes-tbody');
   var bcMaqBody = document.getElementById('bc-maquininhas-tbody');
+  var bcCatBody = document.getElementById('bc-categorias-tbody');
   if (bcBancoBody) bcBancoBody.innerHTML = '';
   if (bcContaBody) bcContaBody.innerHTML = '';
   if (bcCaixaBody) bcCaixaBody.innerHTML = '';
@@ -2464,6 +2494,7 @@ function _onTrocaEmpresa(dados) {
   if (bcFonteBody) bcFonteBody.innerHTML = '';
   if (bcAdqBody) bcAdqBody.innerHTML = '';
   if (bcMaqBody) bcMaqBody.innerHTML = '';
+  if (bcCatBody) bcCatBody.innerHTML = '';
   bcRenderBancos();
   bcRenderContas();
   bcRenderCaixas();
@@ -2472,6 +2503,7 @@ function _onTrocaEmpresa(dados) {
   bcRenderFontes();
   bcRenderAdquirentes();
   bcRenderMaquininhas();
+  bcRenderCategoriasGerenciais();
 
   // Limpar DRE Gerencial imediatamente (F4A)
   _dreLoadToken++;
@@ -6525,6 +6557,10 @@ function bcMaquininhaPorId(id) {
   return (_bcMaquininhas || []).find(function(m) { return String(m.id) === String(id); }) || null;
 }
 
+function bcCategoriaPorId(id) {
+  return (_bcCategorias || []).find(function(c) { return String(c.id) === String(id); }) || null;
+}
+
 function bcContaLabel(id) {
   var c = bcContaPorId(id);
   if (!c) return '—';
@@ -6582,6 +6618,22 @@ function bcNaturezaLabel(v) {
   return bcLabelTipo(v, { pagamento: 'Pagamento', recebimento: 'Recebimento', ambos: 'Ambos' });
 }
 
+function bcCategoriaTipoLabel(v) {
+  return bcLabelTipo(v, { entrada: 'Entrada', saida: 'Saída', transferencia: 'Transferência' });
+}
+
+function bcCategoriaNaturezaLabel(v) {
+  return bcLabelTipo(v, {
+    operacional: 'Operacional',
+    financeira: 'Financeira',
+    investimento: 'Investimento',
+    socios: 'Sócios / capital',
+    divida: 'Dívida / empréstimo',
+    transferencia: 'Transferência',
+    imposto: 'Imposto'
+  });
+}
+
 function bcFonteTipoLabel(v) {
   return bcLabelTipo(v, {
     conta_bancaria: 'Conta bancária',
@@ -6616,7 +6668,7 @@ function bcFmtPercent(v) {
 
 function bcAplicarPermissoes() {
   var pode = bcPodeEditar();
-  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte', 'bc-btn-nova-adquirente', 'bc-btn-nova-maquininha'].forEach(function(id) {
+  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte', 'bc-btn-nova-adquirente', 'bc-btn-nova-maquininha', 'bc-btn-nova-categoria'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = pode ? 'inline-flex' : 'none';
   });
@@ -6624,7 +6676,7 @@ function bcAplicarPermissoes() {
 }
 
 function bcMostrarSubtab(tipo) {
-  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes', 'adquirentes', 'maquininhas'];
+  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes', 'adquirentes', 'maquininhas', 'categorias'];
   _bcSubtab = abas.indexOf(tipo) >= 0 ? tipo : 'bancos';
   abas.forEach(function(a) {
     var sec = document.getElementById('bc-subtab-' + a);
@@ -6645,6 +6697,7 @@ function bcRenderKpis() {
   var maquininhasAtivas = (_bcMaquininhas || []).filter(function(m) { return m.ativo !== false; }).length;
   var maquininhasInativas = (_bcMaquininhas || []).filter(function(m) { return m.ativo === false; }).length;
   var contasDestino = (_bcAdquirentes || []).filter(function(a) { return a.conta_bancaria_destino_id; }).length;
+  var categoriasAtivas = (_bcCategorias || []).filter(function(c) { return c.ativo !== false; }).length;
   var eb = document.getElementById('bc-kpi-bancos');
   var ea = document.getElementById('bc-kpi-contas-ativas');
   var ecx = document.getElementById('bc-kpi-caixas');
@@ -6655,6 +6708,7 @@ function bcRenderKpis() {
   var emq = document.getElementById('bc-kpi-maquininhas');
   var emqi = document.getElementById('bc-kpi-maquininhas-inativas');
   var ecd = document.getElementById('bc-kpi-contas-destino');
+  var ecat = document.getElementById('bc-kpi-categorias');
   if (eb) eb.textContent = bancosAtivos;
   if (ea) ea.textContent = contasAtivas;
   if (ecx) ecx.textContent = caixasAtivos;
@@ -6665,6 +6719,7 @@ function bcRenderKpis() {
   if (emq) emq.textContent = maquininhasAtivas;
   if (emqi) emqi.textContent = maquininhasInativas;
   if (ecd) ecd.textContent = contasDestino;
+  if (ecat) ecat.textContent = categoriasAtivas;
 }
 
 function bcRenderBancos() {
@@ -7013,6 +7068,96 @@ function bcRenderMaquininhas() {
   vazio.style.display = 'none';
 }
 
+function bcAtualizarFiltroCategoriasOptions() {
+  function preencher(id, valores, labelVazio) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var atual = el.value || '';
+    var unicos = [];
+    (valores || []).forEach(function(v) {
+      v = String(v || '').trim();
+      if (v && unicos.indexOf(v) < 0) unicos.push(v);
+    });
+    unicos.sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+    el.innerHTML = '<option value="">' + _esc(labelVazio) + '</option>' + unicos.map(function(v) {
+      return '<option value="' + _esc(v) + '">' + _esc(v) + '</option>';
+    }).join('');
+    if (atual && unicos.indexOf(atual) >= 0) el.value = atual;
+  }
+  preencher('bc-filtro-cat-grupo', (_bcCategorias || []).map(function(c) { return c.grupo; }), 'Todos os grupos');
+  preencher('bc-filtro-cat-subgrupo', (_bcCategorias || []).map(function(c) { return c.subgrupo; }), 'Todos os subgrupos');
+  preencher('bc-filtro-cat-natureza', (_bcCategorias || []).map(function(c) { return c.natureza; }), 'Todas as naturezas');
+}
+
+function bcFlagBadge(valor) {
+  var ligado = valor !== false;
+  return '<span class="bc-status ' + (ligado ? 'on' : 'off') + '">' + (ligado ? 'Sim' : 'Não') + '</span>';
+}
+
+function bcRenderCategoriasGerenciais() {
+  bcAplicarPermissoes();
+  bcRenderKpis();
+  bcAtualizarFiltroCategoriasOptions();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-categorias') || {}).value || '');
+  var tipo = bcValor('bc-filtro-cat-tipo');
+  var grupo = bcValor('bc-filtro-cat-grupo');
+  var subgrupo = bcValor('bc-filtro-cat-subgrupo');
+  var natureza = bcValor('bc-filtro-cat-natureza');
+  var ativo = bcValor('bc-filtro-cat-ativo');
+  var lista = (_bcCategorias || []).filter(function(c) {
+    if (!_mesmaEmpresaRegistro(c)) return false;
+    if (tipo && c.tipo_movimento !== tipo) return false;
+    if (grupo && c.grupo !== grupo) return false;
+    if (subgrupo && c.subgrupo !== subgrupo) return false;
+    if (natureza && c.natureza !== natureza) return false;
+    if (ativo === 'true' && c.ativo === false) return false;
+    if (ativo === 'false' && c.ativo !== false) return false;
+    if (!busca) return true;
+    return bcNormalizarBusca([c.codigo, c.nome].join(' ')).indexOf(busca) >= 0;
+  }).sort(function(a, b) {
+    return String(a.tipo_movimento || '').localeCompare(String(b.tipo_movimento || ''), 'pt-BR')
+      || String(a.grupo || '').localeCompare(String(b.grupo || ''), 'pt-BR')
+      || String(a.subgrupo || '').localeCompare(String(b.subgrupo || ''), 'pt-BR')
+      || ((a.ordem || 0) - (b.ordem || 0))
+      || String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR');
+  });
+  var body = document.getElementById('bc-categorias-tbody');
+  var wrap = document.getElementById('bc-categorias-wrap');
+  var vazio = document.getElementById('bc-categorias-vazio');
+  var count = document.getElementById('bc-count-categorias');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' categoria' : ' categorias');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(c) {
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirCategoria(' + bcJsArg(c.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarExtra(' + bcJsArg('categoria') + ',' + bcJsArg(c.id) + ')">' + (c.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(c.codigo || '—') + '</strong></td>'
+      + '<td style="min-width:260px;white-space:normal;word-break:break-word" title="' + _esc(c.nome || '') + '">' + _esc(c.nome || '—') + '</td>'
+      + '<td>' + _esc(bcCategoriaTipoLabel(c.tipo_movimento)) + '</td>'
+      + '<td style="white-space:normal;word-break:break-word" title="' + _esc(c.grupo || '') + '">' + _esc(c.grupo || '—') + '</td>'
+      + '<td style="white-space:normal;word-break:break-word" title="' + _esc(c.subgrupo || '') + '">' + _esc(c.subgrupo || '—') + '</td>'
+      + '<td>' + _esc(bcCategoriaNaturezaLabel(c.natureza)) + '</td>'
+      + '<td>' + bcFlagBadge(c.impacta_fluxo_caixa) + '</td>'
+      + '<td>' + bcFlagBadge(c.impacta_dre) + '</td>'
+      + '<td>' + bcFlagBadge(c.impacta_resultado_operacional) + '</td>'
+      + '<td>' + bcStatusBadge(c.ativo) + '</td>'
+      + '<td>' + _esc(c.ordem != null ? c.ordem : '—') + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
 function bcPopularBancosSelect(selectedId) {
   var el = document.getElementById('bc-conta-banco');
   if (!el) return;
@@ -7045,6 +7190,7 @@ async function carregarBancosContas(empresaId) {
     _bcFontes = [];
     _bcAdquirentes = [];
     _bcMaquininhas = [];
+    _bcCategorias = [];
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
@@ -7053,10 +7199,11 @@ async function carregarBancosContas(empresaId) {
     bcRenderFontes();
     bcRenderAdquirentes();
     bcRenderMaquininhas();
+    bcRenderCategoriasGerenciais();
     bcSetStatus('Empresa não identificada. Selecione uma empresa no portal.', 'err');
     return;
   }
-  if (!sf || !sf.listarBancos || !sf.listarContasBancarias || !sf.listarCaixasInternos || !sf.listarCartoesEmpresa || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras || !sf.listarAdquirentes || !sf.listarMaquininhas) {
+  if (!sf || !sf.listarBancos || !sf.listarContasBancarias || !sf.listarCaixasInternos || !sf.listarCartoesEmpresa || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras || !sf.listarAdquirentes || !sf.listarMaquininhas || !sf.listarCategoriasGerenciais) {
     bcSetStatus('Integração Supabase de fontes financeiras indisponível.', 'err');
     return;
   }
@@ -7070,7 +7217,8 @@ async function carregarBancosContas(empresaId) {
       sf.listarMeiosPagamento(empresaId),
       sf.listarFontesFinanceiras(empresaId),
       sf.listarAdquirentes(empresaId),
-      sf.listarMaquininhas(empresaId)
+      sf.listarMaquininhas(empresaId),
+      sf.listarCategoriasGerenciais(empresaId)
     ]);
     if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _bcBancos = Array.isArray(res[0]) ? res[0] : [];
@@ -7081,6 +7229,7 @@ async function carregarBancosContas(empresaId) {
     _bcFontes = Array.isArray(res[5]) ? res[5] : [];
     _bcAdquirentes = Array.isArray(res[6]) ? res[6] : [];
     _bcMaquininhas = Array.isArray(res[7]) ? res[7] : [];
+    _bcCategorias = Array.isArray(res[8]) ? res[8] : [];
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
@@ -7089,6 +7238,7 @@ async function carregarBancosContas(empresaId) {
     bcRenderFontes();
     bcRenderAdquirentes();
     bcRenderMaquininhas();
+    bcRenderCategoriasGerenciais();
     bcSetStatus('', '');
   } catch(e) {
     if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
@@ -7218,6 +7368,10 @@ function bcAbrirMaquininha(id) {
   bcAbrirExtra('maquininha', id);
 }
 
+function bcAbrirCategoria(id) {
+  bcAbrirExtra('categoria', id);
+}
+
 function bcAbrirExtra(tipo, id) {
   if (!bcPodeEditar()) {
     alert('Acesso negado. Você não tem permissão para alterar fontes financeiras nesta empresa.');
@@ -7236,6 +7390,7 @@ function bcAbrirExtra(tipo, id) {
   if (titulo) titulo.textContent = bcTituloExtra(tipo, !!r.id);
   if (campos) campos.innerHTML = bcCamposExtra(tipo, r);
   if (tipo === 'fonte') bcAtualizarFonteCampos();
+  if (tipo === 'categoria') bcAtualizarCategoriaAjuda();
   if (modal) modal.classList.add('on');
 }
 
@@ -7247,11 +7402,12 @@ function bcRegistroExtra(tipo, id) {
   if (tipo === 'fonte') return bcFontePorId(id);
   if (tipo === 'adquirente') return bcAdquirentePorId(id);
   if (tipo === 'maquininha') return bcMaquininhaPorId(id);
+  if (tipo === 'categoria') return bcCategoriaPorId(id);
   return null;
 }
 
 function bcTituloExtra(tipo, editando) {
-  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira', adquirente: 'Adquirente', maquininha: 'Maquininha' };
+  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira', adquirente: 'Adquirente', maquininha: 'Maquininha', categoria: 'Categoria Gerencial' };
   return (editando ? 'Editar ' : 'Novo ') + (nomes[tipo] || 'Cadastro');
 }
 
@@ -7319,7 +7475,27 @@ function bcCamposExtra(tipo, r) {
       + bcTextArea('bc-maq-obs', 'Observação', r.observacao)
       + '<div class="bc-form-row full" style="font-size:.72rem;color:var(--text3)">Cadastro de maquininha não cria venda, taxa, transação, recebimento ou conciliação.</div>';
   }
+  if (tipo === 'categoria') {
+    return bcCampo('bc-cat-codigo', 'Codigo *', r.codigo, 'Ex: REC.OP.001')
+      + bcCampo('bc-cat-nome', 'Nome *', r.nome, 'Ex: Receita de Servicos Tecnicos')
+      + bcSelect('bc-cat-tipo', 'Tipo *', r.tipo_movimento || 'saida', '<option value="entrada">Entrada</option><option value="saida">Saida</option><option value="transferencia">Transferencia</option>')
+      + bcCampo('bc-cat-grupo', 'Grupo *', r.grupo, 'Ex: Custos Diretos')
+      + bcCampo('bc-cat-subgrupo', 'Subgrupo', r.subgrupo, 'Ex: Mao de Obra Direta')
+      + bcSelect('bc-cat-natureza', 'Natureza *', r.natureza || 'operacional', '<option value="operacional">Operacional</option><option value="financeira">Financeira</option><option value="investimento">Investimento</option><option value="socios">Socios / capital</option><option value="divida">Divida / emprestimo</option><option value="transferencia">Transferencia</option><option value="imposto">Imposto</option>')
+      + bcSelect('bc-cat-fluxo', 'Impacta Fluxo de Caixa', r.impacta_fluxo_caixa === false ? 'false' : 'true', '<option value="true">Sim</option><option value="false">Nao</option>')
+      + bcSelect('bc-cat-dre', 'Impacta DRE', r.impacta_dre === false ? 'false' : 'true', '<option value="true">Sim</option><option value="false">Nao</option>')
+      + bcSelect('bc-cat-resultado', 'Impacta resultado operacional', r.impacta_resultado_operacional === false ? 'false' : 'true', '<option value="true">Sim</option><option value="false">Nao</option>')
+      + bcCampo('bc-cat-ordem', 'Ordem', r.ordem != null ? r.ordem : '', 'Ex: 10', 'number')
+      + bcStatusSelect('bc-cat-ativo', r.ativo)
+      + bcTextArea('bc-cat-obs', 'Observacao', r.observacao)
+      + '<div class="bc-form-row full" style="font-size:.72rem;color:var(--text3)">Categoria gerencial nao altera CP, CR, Fluxo, DRE, baixa ou calculos nesta fase.</div>';
+  }
   return '';
+}
+
+function bcAtualizarCategoriaAjuda() {
+  var ajuda = document.getElementById('bc-extra-ajuda');
+  if (ajuda) ajuda.textContent = 'Use nomes claros para o financeiro. Ex: Mao de Obra Direta - Funcionarios em Obra para custo ligado a obra; Salarios - Equipe Interna para equipe sem vinculo direto com obra.';
 }
 
 function bcAtualizarFonteCampos() {
@@ -7485,6 +7661,26 @@ function bcPayloadMaquininha() {
   };
 }
 
+function bcPayloadCategoria() {
+  var ordem = bcIntOpcional(bcValor('bc-cat-ordem'));
+  return {
+    empresa_id: _empresaAtiva && _empresaAtiva.id,
+    codigo: String(bcValor('bc-cat-codigo') || '').trim().toUpperCase(),
+    nome: bcValor('bc-cat-nome'),
+    tipo_movimento: bcValor('bc-cat-tipo') || 'saida',
+    grupo: bcValor('bc-cat-grupo'),
+    subgrupo: bcNull(bcValor('bc-cat-subgrupo')),
+    natureza: bcValor('bc-cat-natureza') || 'operacional',
+    impacta_fluxo_caixa: bcBool(bcValor('bc-cat-fluxo')),
+    impacta_dre: bcBool(bcValor('bc-cat-dre')),
+    impacta_resultado_operacional: bcBool(bcValor('bc-cat-resultado')),
+    ordem: ordem == null ? 0 : ordem,
+    ativo: bcBool(bcValor('bc-cat-ativo')),
+    observacao: bcNull(bcValor('bc-cat-obs')),
+    updated_at: new Date().toISOString()
+  };
+}
+
 function bcValidarExtra(tipo, dados) {
   if (!dados.empresa_id) return 'Empresa ativa não identificada.';
   if (tipo === 'caixa' && !dados.nome) return 'Nome do caixa é obrigatório.';
@@ -7518,6 +7714,15 @@ function bcValidarExtra(tipo, dados) {
   if (tipo === 'maquininha') {
     if (!dados.adquirente_id) return 'Adquirente é obrigatória.';
     if (!dados.apelido) return 'Apelido da maquininha é obrigatório.';
+  }
+  if (tipo === 'categoria') {
+    if (!dados.codigo) return 'Codigo da categoria e obrigatorio.';
+    if (!dados.nome) return 'Nome da categoria e obrigatorio.';
+    if (!dados.tipo_movimento) return 'Tipo de movimento e obrigatorio.';
+    if (!dados.grupo) return 'Grupo da categoria e obrigatorio.';
+    if (!dados.natureza) return 'Natureza da categoria e obrigatoria.';
+    if (['entrada', 'saida', 'transferencia'].indexOf(dados.tipo_movimento) < 0) return 'Tipo de movimento invalido.';
+    if (['operacional', 'financeira', 'investimento', 'socios', 'divida', 'transferencia', 'imposto'].indexOf(dados.natureza) < 0) return 'Natureza invalida.';
   }
   return '';
 }
@@ -7601,6 +7806,7 @@ function bcExtraApi(tipo) {
   if (tipo === 'fonte') return { criar: sf.salvarFonteFinanceira, atualizar: sf.atualizarFonteFinanceira, payload: bcPayloadFonte };
   if (tipo === 'adquirente') return { criar: sf.salvarAdquirente, atualizar: sf.atualizarAdquirente, payload: bcPayloadAdquirente };
   if (tipo === 'maquininha') return { criar: sf.salvarMaquininha, atualizar: sf.atualizarMaquininha, payload: bcPayloadMaquininha };
+  if (tipo === 'categoria') return { criar: sf.salvarCategoriaGerencial, atualizar: sf.atualizarCategoriaGerencial, payload: bcPayloadCategoria };
   return null;
 }
 
