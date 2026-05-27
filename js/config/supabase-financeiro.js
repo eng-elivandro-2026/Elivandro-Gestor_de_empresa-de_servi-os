@@ -313,6 +313,29 @@
     return r.data;
   }
 
+  async function sbRegistrarRecebimentoContaReceber(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.9-D] empresa_id obrigatorio.');
+    if (!dados.conta_receber_id) throw new Error('[Financeiro F3.9-D] conta_receber_id obrigatorio.');
+    if (!dados.data_recebimento) throw new Error('[Financeiro F3.9-D] data_recebimento obrigatoria.');
+    if (_num(dados.valor_recebido) <= 0) throw new Error('[Financeiro F3.9-D] valor_recebido deve ser maior que zero.');
+    if (!dados.meio_pagamento_id) throw new Error('[Financeiro F3.9-D] meio_pagamento_id obrigatorio.');
+    if (!dados.fonte_financeira_id) throw new Error('[Financeiro F3.9-D] fonte_financeira_id obrigatorio.');
+
+    var r = await client().rpc('financeiro_registrar_recebimento_conta_receber', {
+      p_empresa_id: dados.empresa_id,
+      p_conta_receber_id: dados.conta_receber_id,
+      p_valor_recebido: _num(dados.valor_recebido),
+      p_data_recebimento: dados.data_recebimento,
+      p_meio_pagamento_id: dados.meio_pagamento_id,
+      p_fonte_financeira_id: dados.fonte_financeira_id,
+      p_observacao: dados.observacao || null,
+      p_comprovante_url: dados.comprovante_url || null
+    });
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // CÁLCULOS LOCAIS (sem chamada ao banco)
@@ -1410,6 +1433,7 @@
     listarRecebimentosConta:         sbListarRecebimentosConta,
     listarNFsDaConta:                sbListarNFsDaConta,
     criarRecebimento:                sbCriarRecebimento,
+    registrarRecebimentoContaReceber: sbRegistrarRecebimentoContaReceber,
 
     // Movimentos de caixa
     listarMovimentosCaixa:           sbListarMovimentosCaixa,

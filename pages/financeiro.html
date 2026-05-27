@@ -1719,6 +1719,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <!-- ════════════════════════════════════════════════════════════ -->
 <!-- PAINEL DE DETALHE NF — slide da direita                      -->
 <!-- ════════════════════════════════════════════════════════════ -->
+<div class="bc-modal" id="cr-rec-modal" onclick="if(event.target===this)crFecharModalRecebimento()">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr">
+      <div class="bc-modal-title">Registrar recebimento real</div>
+      <button class="btn-fechar" onclick="crFecharModalRecebimento()">x</button>
+    </div>
+    <div class="bc-modal-body">
+      <div id="cr-rec-resumo" class="cp-pag-resumo"></div>
+      <div id="cr-rec-alerta" class="cp-pag-alerta">
+        Esta acao registra recebimento real, atualiza a Conta a Receber e cria movimento realizado de entrada no Fluxo de Caixa.
+      </div>
+      <div class="bc-form-grid">
+        <div class="bc-form-row">
+          <label class="bc-label" for="cr-rec-data">Data do recebimento *</label>
+          <input type="date" id="cr-rec-data" class="bc-input">
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cr-rec-valor">Valor recebido *</label>
+          <input type="text" id="cr-rec-valor" class="bc-input" placeholder="R$ 0,00" inputmode="decimal">
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cr-rec-meio">Meio de pagamento *</label>
+          <select id="cr-rec-meio" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="cr-rec-fonte">Fonte financeira *</label>
+          <select id="cr-rec-fonte" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="cr-rec-comprovante">Comprovante / link</label>
+          <input type="text" id="cr-rec-comprovante" class="bc-input" placeholder="URL ou referencia do comprovante">
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="cr-rec-obs">Observacao</label>
+          <textarea id="cr-rec-obs" class="bc-input" rows="3" placeholder="Observacao do recebimento"></textarea>
+        </div>
+      </div>
+      <div id="cr-rec-status" class="status-msg"></div>
+      <div class="bc-modal-actions">
+        <button class="bc-btn sec" onclick="crFecharModalRecebimento()">Cancelar</button>
+        <button class="bc-btn danger" id="cr-rec-btn-real" onclick="crEfetivarRecebimentoReal()">Registrar recebimento real</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="detalhe-overlay" id="nf-detalhe-overlay" onclick="fecharDetalheNF()"></div>
 
 <div class="detalhe-panel" id="nf-detalhe-panel">
@@ -1916,6 +1962,9 @@ var _empresaAtiva  = null;   // { id, nome, nome_curto, cnpj, razao_social, emai
 var _todasContas   = [];     // contas carregadas do Supabase
 var _carregando    = false;
 var _loadToken     = 0;      // race condition guard
+var _crMeiosRecebimento = [];
+var _crFontesFinanceiras = [];
+var _crContaRecebimentoAtual = null;
 
 // ── Fluxo de Caixa — estado ──────────────────────────────────
 var _todosMovimentos  = [];   // financeiro_movimentos_caixa da empresa ativa
@@ -2417,6 +2466,7 @@ function _renderDetalheBasico(c) {
       _di('Recebido',  _money(c.valor_recebido),  'verde') +
       _di('Pendente',  _money(c.valor_pendente),  parseFloat(c.valor_pendente) > 0 && _isVencida(c) ? 'vermelho' : '') +
     '</div>' +
+    _renderAcaoRecebimentoCr(c) +
   '</div>';
 }
 
@@ -2585,6 +2635,256 @@ function _renderDetalheResumo(conta, notas, recs) {
   } catch(e) { return ''; }
 }
 
+function _renderAcaoRecebimentoCr(c) {
+  var pode = bcPodeEditar();
+  var status = String(c && c.status || '').toLowerCase();
+  var saldo = _n(c && c.valor_pendente);
+  var bloqueada = status === 'recebido' || status === 'recebida' || status === 'quitado' || status === 'quitada' || status === 'cancelado' || status === 'cancelada' || saldo <= 0;
+  var motivo = '';
+  if (!pode) motivo = 'Somente leitura para seu perfil nesta empresa.';
+  else if (status === 'cancelado' || status === 'cancelada') motivo = 'Conta a Receber cancelada nao pode receber baixa real.';
+  else if (bloqueada) motivo = 'Conta a Receber sem saldo real pendente.';
+  else motivo = 'A baixa real atualiza a Conta a Receber e cria uma entrada realizada no Fluxo de Caixa.';
+
+  return '<div class="detalhe-secao" style="margin-top:.9rem">' +
+    '<div class="detalhe-secao-titulo">Recebimento Real</div>' +
+    '<div class="cp-pag-alerta">' + _esc(motivo) + '</div>' +
+    '<div class="nff-mini-actions">' +
+      '<button class="mini-btn" type="button" onclick="crAbrirModalRecebimento(' + bcJsArgAspasSimples(c.id) + ')"' +
+        ((!pode || bloqueada) ? ' disabled' : '') + '>Registrar recebimento real</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function _crSetStatusRecebimento(tipo, msg) {
+  var el = document.getElementById('cr-rec-status');
+  if (!el) return;
+  el.className = 'status-msg' + (tipo ? ' ' + tipo : '');
+  el.textContent = msg || '';
+}
+
+function _crSetBotoesRecebimento(disabled) {
+  var btn = document.getElementById('cr-rec-btn-real');
+  if (btn) btn.disabled = !!disabled;
+}
+
+function _crOpcaoHtml(id, label, selected) {
+  return '<option value="' + _esc(id || '') + '"' + (String(id || '') === String(selected || '') ? ' selected' : '') + '>' + _esc(label || '-') + '</option>';
+}
+
+function _crMeioRecebimentoLabel(id) {
+  var m = (_crMeiosRecebimento || []).find(function(x) { return String(x.id) === String(id); });
+  if (!m) return '-';
+  return (m.nome || 'Meio') + (m.tipo ? ' - ' + bcLabelTipo(m.tipo) : '');
+}
+
+function _crFonteRecebimentoLabel(id) {
+  var f = (_crFontesFinanceiras || []).find(function(x) { return String(x.id) === String(id); });
+  if (!f) return '-';
+  return f.nome || f.apelido || 'Fonte financeira';
+}
+
+async function _crCarregarOpcoesRecebimento() {
+  var sf = _sf();
+  if (!sf || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras) {
+    throw new Error('Integracao de meios/fontes financeiras indisponivel.');
+  }
+  if (!_empresaAtiva || !_empresaAtiva.id) throw new Error('Empresa ativa nao identificada.');
+  var empresaConsulta = _empresaAtivaId();
+  var res = await Promise.all([
+    sf.listarMeiosPagamento(empresaConsulta),
+    sf.listarFontesFinanceiras(empresaConsulta)
+  ]);
+  if (empresaConsulta !== _empresaAtivaId()) throw new Error('Empresa ativa mudou durante o carregamento.');
+  _crMeiosRecebimento = (res[0] || []).filter(function(m) {
+    return m.ativo !== false && (m.natureza === 'recebimento' || m.natureza === 'ambos');
+  });
+  _crFontesFinanceiras = (res[1] || []).filter(function(f) {
+    return f.ativo !== false;
+  });
+  return { meios: _crMeiosRecebimento, fontes: _crFontesFinanceiras };
+}
+
+function _crPopularSelectsRecebimento(meioId, fonteId) {
+  var meio = document.getElementById('cr-rec-meio');
+  var fonte = document.getElementById('cr-rec-fonte');
+  if (meio) {
+    meio.innerHTML = _crOpcaoHtml('', 'Selecionar meio...', meioId)
+      + (_crMeiosRecebimento || []).map(function(m) {
+        return _crOpcaoHtml(m.id, _crMeioRecebimentoLabel(m.id), meioId);
+      }).join('');
+  }
+  if (fonte) {
+    fonte.innerHTML = _crOpcaoHtml('', 'Selecionar fonte...', fonteId)
+      + (_crFontesFinanceiras || []).map(function(f) {
+        return _crOpcaoHtml(f.id, _crFonteRecebimentoLabel(f.id), fonteId);
+      }).join('');
+  }
+}
+
+function _crResumoModalRecebimentoHtml(c) {
+  return ''
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Cliente</div><div class="cp-pag-valor">' + _esc(c.cliente_nome || '-') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Titulo</div><div class="cp-pag-valor">' + _esc(c.titulo || c.proposta_app_id || '-') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Valor previsto</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_previsto)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Valor recebido</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_recebido)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Saldo pendente real</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_pendente)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Vencimento</div><div class="cp-pag-valor">' + (c.data_vencimento ? _fmtDt(String(c.data_vencimento).slice(0,10)) : '-') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Categoria gerencial</div><div class="cp-pag-valor">' + _esc(catGerencialLabel(c.categoria_gerencial_id)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Centro de custo / origem</div><div class="cp-pag-valor">' + _esc(c.centro_custo || '-') + ' / ' + _esc(c.origem || '-') + '</div></div>';
+}
+
+async function crAbrirModalRecebimento(contaId) {
+  var c = (_todasContas || []).find(function(x) { return String(x.id) === String(contaId); });
+  if (!c || !_mesmaEmpresaRegistro(c)) {
+    _mostrarVazio('Conta a receber ignorada por seguranca.', 'A empresa ativa mudou; recarregue a lista desta empresa.');
+    return;
+  }
+  if (!bcPodeEditar()) {
+    alert('Acesso negado para registrar recebimento nesta empresa.');
+    return;
+  }
+
+  var status = String(c.status || '').toLowerCase();
+  if (status === 'recebido' || status === 'recebida' || status === 'quitado' || status === 'quitada' || status === 'cancelado' || status === 'cancelada' || _n(c.valor_pendente) <= 0) {
+    alert('Conta a Receber sem saldo real disponivel para recebimento.');
+    return;
+  }
+
+  _crContaRecebimentoAtual = c;
+  var modal = document.getElementById('cr-rec-modal');
+  var resumoEl = document.getElementById('cr-rec-resumo');
+  var alerta = document.getElementById('cr-rec-alerta');
+  var btn = document.getElementById('cr-rec-btn-real');
+
+  if (resumoEl) resumoEl.innerHTML = _crResumoModalRecebimentoHtml(c);
+  if (alerta) {
+    alerta.className = 'cp-pag-alerta';
+    alerta.innerHTML = 'Carregando meios e fontes financeiras...';
+  }
+  if (btn) btn.disabled = true;
+  ['cr-rec-data', 'cr-rec-valor', 'cr-rec-comprovante', 'cr-rec-obs'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (document.getElementById('cr-rec-data')) document.getElementById('cr-rec-data').value = _hoje();
+  if (document.getElementById('cr-rec-valor')) {
+    var saldo = _n(c.valor_pendente);
+    document.getElementById('cr-rec-valor').value = saldo > 0 ? saldo.toFixed(2).replace('.', ',') : '';
+  }
+  _crSetStatusRecebimento('', '');
+  if (modal) modal.classList.add('on');
+
+  try {
+    await _crCarregarOpcoesRecebimento();
+    _crPopularSelectsRecebimento('', '');
+    var avisos = [];
+    if (!_crMeiosRecebimento.length) avisos.push('Nenhum meio de pagamento ativo para recebimento cadastrado.');
+    if (!_crFontesFinanceiras.length) avisos.push('Nenhuma fonte financeira ativa cadastrada.');
+    if (_n(c.valor_pendente) <= 0) avisos.push('Saldo real pendente da Conta a Receber ja esta zerado.');
+    if (alerta) {
+      alerta.className = avisos.length ? 'cp-pag-alerta err' : 'cp-pag-alerta';
+      alerta.innerHTML = avisos.length
+        ? avisos.join(' ')
+        : 'Esta acao registra recebimento real, atualiza a Conta a Receber e cria movimento realizado de entrada no Fluxo de Caixa.';
+    }
+    if (btn) btn.disabled = !!avisos.length;
+  } catch(e) {
+    if (alerta) {
+      alerta.className = 'cp-pag-alerta err';
+      alerta.textContent = 'Erro ao carregar meios/fontes: ' + (e.message || e);
+    }
+    if (btn) btn.disabled = true;
+  }
+}
+
+function crFecharModalRecebimento() {
+  var modal = document.getElementById('cr-rec-modal');
+  if (modal) modal.classList.remove('on');
+  _crContaRecebimentoAtual = null;
+  _crSetStatusRecebimento('', '');
+}
+
+async function _crRecarregarAposRecebimento(contaId) {
+  if (!_empresaAtiva || !_empresaAtiva.id || !contaId) return;
+  var empresaConsulta = _empresaAtivaId();
+  await carregarContas(empresaConsulta);
+  if (empresaConsulta !== _empresaAtivaId()) return;
+  await carregarRec(empresaConsulta);
+  if (empresaConsulta !== _empresaAtivaId()) return;
+  await carregarFluxoCaixa(empresaConsulta);
+  if (empresaConsulta !== _empresaAtivaId()) return;
+  var atualizada = (_todasContas || []).find(function(x) { return String(x.id) === String(contaId); });
+  if (atualizada) abrirDetalhe(contaId);
+}
+
+async function crEfetivarRecebimentoReal() {
+  var c = _crContaRecebimentoAtual;
+  var sf = _sf();
+  if (!c || !sf || !sf.registrarRecebimentoContaReceber) {
+    _crSetStatusRecebimento('err', 'RPC de recebimento real indisponivel nesta versao.');
+    return;
+  }
+  if (!_mesmaEmpresaRegistro(c)) {
+    _crSetStatusRecebimento('err', 'Empresa ativa nao confere com a Conta a Receber selecionada.');
+    return;
+  }
+
+  var data = bcValor('cr-rec-data');
+  var valor = bcParseMoney(bcValor('cr-rec-valor'));
+  var meioId = bcValor('cr-rec-meio');
+  var fonteId = bcValor('cr-rec-fonte');
+  var meio = (_crMeiosRecebimento || []).find(function(m) { return String(m.id) === String(meioId); });
+  var fonte = (_crFontesFinanceiras || []).find(function(f) { return String(f.id) === String(fonteId); });
+  var saldoReal = _n(c.valor_pendente);
+  var status = String(c.status || '').toLowerCase();
+
+  if (!data) return _crSetStatusRecebimento('err', 'Data do recebimento e obrigatoria.');
+  if (!valor || valor <= 0) return _crSetStatusRecebimento('err', 'Valor recebido deve ser maior que zero.');
+  if (valor - saldoReal > 0.009) return _crSetStatusRecebimento('err', 'Valor recebido nao pode ultrapassar o saldo real pendente da Conta a Receber.');
+  if (status === 'recebido' || status === 'recebida' || status === 'quitado' || status === 'quitada' || status === 'cancelado' || status === 'cancelada') {
+    return _crSetStatusRecebimento('err', 'Conta a Receber quitada ou cancelada nao pode receber baixa real.');
+  }
+  if (!_crMeiosRecebimento.length) return _crSetStatusRecebimento('err', 'Cadastre um meio de pagamento ativo para recebimento antes de registrar.');
+  if (!_crFontesFinanceiras.length) return _crSetStatusRecebimento('err', 'Cadastre uma fonte financeira ativa antes de registrar.');
+  if (!meio) return _crSetStatusRecebimento('err', 'Selecione um meio de pagamento de recebimento da empresa ativa.');
+  if (meio.natureza !== 'recebimento' && meio.natureza !== 'ambos') return _crSetStatusRecebimento('err', 'O meio selecionado nao permite recebimento.');
+  if (!fonte) return _crSetStatusRecebimento('err', 'Selecione uma fonte financeira da empresa ativa.');
+
+  var msg = 'Esta acao vai registrar recebimento real, atualizar a Conta a Receber e criar movimento de entrada no Fluxo de Caixa. Deseja continuar?\n\n'
+    + 'Cliente: ' + (c.cliente_nome || '-') + '\n'
+    + 'Titulo: ' + (c.titulo || c.proposta_app_id || '-') + '\n'
+    + 'Valor do recebimento: ' + _fmtVal(valor) + '\n'
+    + 'Saldo real pendente: ' + _fmtVal(saldoReal);
+  if (!confirm(msg)) return;
+
+  var payload = {
+    empresa_id: _empresaAtiva.id,
+    conta_receber_id: c.id,
+    meio_pagamento_id: meio.id,
+    fonte_financeira_id: fonte.id,
+    data_recebimento: data,
+    valor_recebido: valor,
+    observacao: bcNull(bcValor('cr-rec-obs')),
+    comprovante_url: bcNull(bcValor('cr-rec-comprovante'))
+  };
+
+  try {
+    _crSetBotoesRecebimento(true);
+    _crSetStatusRecebimento('loading', 'Registrando recebimento real pela RPC transacional...');
+    var resultado = await sf.registrarRecebimentoContaReceber(payload);
+    if (!_mesmaEmpresaRegistro(c)) return;
+    _crSetStatusRecebimento('ok', 'Recebimento real registrado. Atualizando Conta a Receber e Fluxo de Caixa...');
+    crFecharModalRecebimento();
+    await _crRecarregarAposRecebimento(c.id);
+    console.log('[F3.9-D] recebimento real CR efetivado', resultado);
+  } catch(e) {
+    _crSetStatusRecebimento('err', 'Erro ao registrar recebimento real: ' + (e.message || e));
+  } finally {
+    _crSetBotoesRecebimento(false);
+  }
+}
+
 function _di(label, valor, colorClass) {
   return '<div>' +
     '<div class="detalhe-item-label">' + label + '</div>' +
@@ -2656,8 +2956,12 @@ function _nffLimparEstadoVisual() {
 function _onTrocaEmpresa(dados) {
   // Limpar dados da empresa anterior imediatamente
   _todasContas = [];
+  _crMeiosRecebimento = [];
+  _crFontesFinanceiras = [];
+  _crContaRecebimentoAtual = null;
   _loadToken++;
   fecharDetalhe();
+  crFecharModalRecebimento();
   document.getElementById('tabela-body').innerHTML = '';
 
   // Limpar NFs também
