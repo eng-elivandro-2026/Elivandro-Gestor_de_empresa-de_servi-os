@@ -151,6 +151,25 @@
     return r.data;
   }
 
+  async function sbAtualizarCategoriaGerencialContaReceber(id, empresaId, categoriaGerencialId) {
+    if (!id) throw new Error('[Financeiro F3.6-C] id obrigatorio para atualizar categoria da conta a receber.');
+    if (!empresaId) throw new Error('[Financeiro F3.6-C] empresa_id obrigatorio para atualizar categoria da conta a receber.');
+
+    var r = await client()
+      .from('financeiro_contas_receber')
+      .update({
+        categoria_gerencial_id: categoriaGerencialId || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('empresa_id', empresaId)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   // ============================================================
   // NOTAS FISCAIS
@@ -626,6 +645,25 @@
   // ============================================================
   // PAGAMENTOS AUXILIARES DE CONTAS A PAGAR (F3.5-B)
   // ============================================================
+
+  async function sbAtualizarCategoriaGerencialContaPagar(id, empresaId, categoriaGerencialId) {
+    if (!id) throw new Error('[Financeiro F3.6-C] id obrigatorio para atualizar categoria da conta a pagar.');
+    if (!empresaId) throw new Error('[Financeiro F3.6-C] empresa_id obrigatorio para atualizar categoria da conta a pagar.');
+
+    var r = await client()
+      .from('financeiro_contas_pagar')
+      .update({
+        categoria_gerencial_id: categoriaGerencialId || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('empresa_id', empresaId)
+      .select()
+      .single();
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
 
   async function sbListarPagamentosContaPagar(empresaId, contaPagarId) {
     if (!empresaId) throw new Error('[Financeiro F3.5-B] empresa_id obrigatorio.');
@@ -1338,6 +1376,7 @@
     buscarResumoFinanceiroObra:      sbBuscarResumoFinanceiroObra,
     criarContaReceber:               sbCriarContaReceber,
     atualizarContaReceber:           sbAtualizarContaReceber,
+    atualizarCategoriaGerencialContaReceber: sbAtualizarCategoriaGerencialContaReceber,
 
     // Notas fiscais
     listarNotasFiscaisEmpresa:       sbListarNotasFiscaisEmpresa,
@@ -1363,6 +1402,7 @@
     listarContasPagar:               sbListarContasPagar,
     criarContaPagar:                 sbCriarContaPagar,
     atualizarContaPagar:             sbAtualizarContaPagar,
+    atualizarCategoriaGerencialContaPagar: sbAtualizarCategoriaGerencialContaPagar,
     listarPagamentosContaPagar:      sbListarPagamentosContaPagar,
     criarPagamentoContaPagar:        sbCriarPagamentoContaPagar,
 

@@ -1481,6 +1481,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         </select>
       </div>
       <div class="cp-form-row">
+        <label class="cp-form-label" for="cp-nova-categoria-gerencial">Categoria Gerencial</label>
+        <select id="cp-nova-categoria-gerencial" class="cp-form-input">
+          <option value="">Carregando categorias...</option>
+        </select>
+      </div>
+      <div class="cp-form-row">
         <label class="cp-form-label" for="cp-novo-cc">Centro de Custo</label>
         <input type="text" id="cp-novo-cc" class="cp-form-input" placeholder="Ex: ADM, OBR-001">
       </div>
@@ -1827,6 +1833,7 @@ var _bcAdquirentes    = [];   // financeiro_adquirentes da empresa ativa
 var _bcMaquininhas    = [];   // financeiro_maquininhas da empresa ativa
 var _bcCategorias     = [];   // financeiro_categorias_gerenciais da empresa ativa
 var _bcLoadToken      = 0;    // race condition guard
+var _catLoadToken     = 0;    // categorias usadas em CP/CR
 var _bcSubtab         = 'bancos';
 var _bcModalTipo      = '';
 var _bcModalRegistro  = null;
@@ -2064,6 +2071,8 @@ async function carregarContas(empresaId) {
 
     // Race condition: descarta se empresa mudou durante o await
     if (token !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
+    await carregarCategoriasGerenciaisClassificacao(empresaId);
+    if (token !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     _todasContas = contas || [];
     _carregando  = false;
@@ -2217,7 +2226,9 @@ async function abrirDetalhe(contaId) {
 
   _contaDetalhe = conta;
   document.getElementById('detalhe-titulo').textContent = conta.titulo || conta.proposta_app_id || 'Detalhes';
-  document.getElementById('detalhe-corpo').innerHTML = _renderDetalheBasico(conta);
+  document.getElementById('detalhe-corpo').innerHTML =
+    _renderDetalheBasico(conta) +
+    _renderCategoriaGerencialContaReceber(conta);
 
   // Abrir painel imediatamente com dados básicos
   document.getElementById('detalhe-overlay').classList.add('on');
@@ -2242,6 +2253,7 @@ async function abrirDetalhe(contaId) {
     var recebimentos = results[1] || [];
     document.getElementById('detalhe-corpo').innerHTML =
       _renderDetalheBasico(conta) +
+      _renderCategoriaGerencialContaReceber(conta) +
       _renderDetalheNFs(notas) +
       _renderDetalheRecebimentos(recebimentos) +
       _renderDetalheResumo(conta, notas, recebimentos);
@@ -2288,6 +2300,110 @@ function _renderDetalheBasico(c) {
       _di('Pendente',  _money(c.valor_pendente),  parseFloat(c.valor_pendente) > 0 && _isVencida(c) ? 'vermelho' : '') +
     '</div>' +
   '</div>';
+}
+
+function _catSetMsg(id, msg, tipo) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status-msg ' + (tipo || '');
+  el.textContent = msg || '';
+}
+
+function _renderCategoriaGerencialEditor(reg, tipos, selectId, msgId, salvarFn) {
+  var catId = reg && reg.categoria_gerencial_id;
+  var pode = bcPodeEditar();
+  var html = '<div class="detalhe-secao">' +
+    '<div class="detalhe-secao-titulo">Categoria Gerencial</div>' +
+    '<div class="detalhe-grid">' +
+      _di('Categoria Gerencial', _esc(catGerencialLabel(catId))) +
+    '</div>';
+  if (!pode) {
+    return html + '<div class="cp-pag-alerta">Somente leitura para seu perfil nesta empresa.</div></div>';
+  }
+  return html +
+    '<div class="bc-form-row full" style="margin-top:.65rem">' +
+      '<label class="bc-label" for="' + _esc(selectId) + '">Alterar categoria gerencial</label>' +
+      '<select class="bc-input" id="' + _esc(selectId) + '">' + catOptionsGerenciais(tipos, catId) + '</select>' +
+    '</div>' +
+    '<div style="margin-top:.55rem">' +
+      '<button class="mini-btn" type="button" onclick="' + _esc(salvarFn) + '">Salvar categoria</button>' +
+    '</div>' +
+    '<div class="status-msg" id="' + _esc(msgId) + '"></div>' +
+  '</div>';
+}
+
+function _renderCategoriaGerencialContaReceber(c) {
+  return _renderCategoriaGerencialEditor(
+    c,
+    ['entrada', 'transferencia'],
+    'cr-detalhe-categoria-gerencial',
+    'cr-categoria-gerencial-msg',
+    'salvarCategoriaGerencialCr(' + bcJsArg(c.id) + ')'
+  );
+}
+
+function _renderCategoriaGerencialContaPagar(c) {
+  return _renderCategoriaGerencialEditor(
+    c,
+    ['saida', 'transferencia'],
+    'cp-detalhe-categoria-gerencial',
+    'cp-categoria-gerencial-msg',
+    'salvarCategoriaGerencialCp(' + bcJsArg(c.id) + ')'
+  );
+}
+
+async function salvarCategoriaGerencialCr(id) {
+  var c = (_todasContas || []).find(function(x) { return String(x.id) === String(id); });
+  var sf = _sf();
+  if (!c || !_mesmaEmpresaRegistro(c)) {
+    _catSetMsg('cr-categoria-gerencial-msg', 'Conta a receber fora da empresa ativa. Recarregue a tela.', 'err');
+    return;
+  }
+  if (!sf || !sf.atualizarCategoriaGerencialContaReceber) {
+    _catSetMsg('cr-categoria-gerencial-msg', 'Integração Supabase indisponível.', 'err');
+    return;
+  }
+  if (!bcPodeEditar()) {
+    _catSetMsg('cr-categoria-gerencial-msg', 'Acesso negado para alterar categoria nesta empresa.', 'err');
+    return;
+  }
+  var categoriaId = bcNull(bcValor('cr-detalhe-categoria-gerencial'));
+  try {
+    _catSetMsg('cr-categoria-gerencial-msg', 'Salvando categoria...', '');
+    await sf.atualizarCategoriaGerencialContaReceber(id, c.empresa_id, categoriaId);
+    c.categoria_gerencial_id = categoriaId;
+    if (_contaDetalhe && String(_contaDetalhe.id) === String(id)) _contaDetalhe.categoria_gerencial_id = categoriaId;
+    abrirDetalhe(id);
+  } catch(e) {
+    _catSetMsg('cr-categoria-gerencial-msg', 'Erro ao salvar categoria: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
+async function salvarCategoriaGerencialCp(id) {
+  var c = (_todasContasPagar || []).find(function(x) { return String(x.id) === String(id); });
+  var sf = _sf();
+  if (!c || !_mesmaEmpresaRegistro(c)) {
+    _catSetMsg('cp-categoria-gerencial-msg', 'Conta a pagar fora da empresa ativa. Recarregue a tela.', 'err');
+    return;
+  }
+  if (!sf || !sf.atualizarCategoriaGerencialContaPagar) {
+    _catSetMsg('cp-categoria-gerencial-msg', 'Integração Supabase indisponível.', 'err');
+    return;
+  }
+  if (!bcPodeEditar()) {
+    _catSetMsg('cp-categoria-gerencial-msg', 'Acesso negado para alterar categoria nesta empresa.', 'err');
+    return;
+  }
+  var categoriaId = bcNull(bcValor('cp-detalhe-categoria-gerencial'));
+  try {
+    _catSetMsg('cp-categoria-gerencial-msg', 'Salvando categoria...', '');
+    await sf.atualizarCategoriaGerencialContaPagar(id, c.empresa_id, categoriaId);
+    c.categoria_gerencial_id = categoriaId;
+    if (_cpContaPagamentoAtual && String(_cpContaPagamentoAtual.id) === String(id)) _cpContaPagamentoAtual.categoria_gerencial_id = categoriaId;
+    abrirDetalheCp(id, true);
+  } catch(e) {
+    _catSetMsg('cp-categoria-gerencial-msg', 'Erro ao salvar categoria: ' + (e && e.message ? e.message : e), 'err');
+  }
 }
 
 function _renderDetalheNFs(notas) {
@@ -2477,6 +2593,7 @@ function _onTrocaEmpresa(dados) {
   _bcMaquininhas = [];
   _bcCategorias = [];
   _bcLoadToken++;
+  _catLoadToken++;
   var bcBancoBody = document.getElementById('bc-bancos-tbody');
   var bcContaBody = document.getElementById('bc-contas-tbody');
   var bcCaixaBody = document.getElementById('bc-caixas-tbody');
@@ -2495,6 +2612,7 @@ function _onTrocaEmpresa(dados) {
   if (bcAdqBody) bcAdqBody.innerHTML = '';
   if (bcMaqBody) bcMaqBody.innerHTML = '';
   if (bcCatBody) bcCatBody.innerHTML = '';
+  catAtualizarSelectsClassificacao();
   bcRenderBancos();
   bcRenderContas();
   bcRenderCaixas();
@@ -5769,6 +5887,8 @@ async function carregarContasPagar(empresaId) {
   try {
     var contas = await sf.listarContasPagar(empresaId);
     if (token !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
+    await carregarCategoriasGerenciaisClassificacao(empresaId);
+    if (token !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     _todasContasPagar = contas || [];
 
@@ -5998,6 +6118,7 @@ function abrirDetalheCp(id, skipFetch) {
         _row('Origem',         _esc(c.origem          || 'manual')) +
       '</div>' +
     '</div>' +
+    _renderCategoriaGerencialContaPagar(c) +
     '<div class="detalhe-secao">' +
       '<div class="detalhe-secao-titulo">Financeiro</div>' +
       '<div class="detalhe-grid">' +
@@ -6634,6 +6755,79 @@ function bcCategoriaNaturezaLabel(v) {
   });
 }
 
+function catGerencialLabel(id) {
+  var c = bcCategoriaPorId(id);
+  if (!c || !_mesmaEmpresaRegistro(c)) return '—';
+  return (c.codigo ? c.codigo + ' — ' : '') + (c.nome || 'Categoria');
+}
+
+function catGerenciaisPorTipo(tipos, selectedId) {
+  tipos = tipos || [];
+  return (_bcCategorias || []).filter(function(c) {
+    if (!_mesmaEmpresaRegistro(c)) return false;
+    var selecionada = selectedId && String(c.id) === String(selectedId);
+    if (c.ativo === false && !selecionada) return false;
+    return tipos.indexOf(c.tipo_movimento) >= 0 || selecionada;
+  }).sort(function(a, b) {
+    var pa = tipos.indexOf(a.tipo_movimento); if (pa < 0) pa = 99;
+    var pb = tipos.indexOf(b.tipo_movimento); if (pb < 0) pb = 99;
+    return pa - pb
+      || String(a.grupo || '').localeCompare(String(b.grupo || ''), 'pt-BR')
+      || String(a.subgrupo || '').localeCompare(String(b.subgrupo || ''), 'pt-BR')
+      || ((a.ordem || 0) - (b.ordem || 0))
+      || String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR');
+  });
+}
+
+function catOptionsGerenciais(tipos, selectedId) {
+  var lista = catGerenciaisPorTipo(tipos, selectedId);
+  var html = '<option value="">Sem categoria gerencial</option>';
+  if (!lista.length) {
+    return html + '<option value="" disabled>Nenhuma categoria disponivel para este tipo</option>';
+  }
+  return html + lista.map(function(c) {
+    var label = (c.codigo ? c.codigo + ' — ' : '') + (c.nome || 'Categoria') + ' (' + bcCategoriaTipoLabel(c.tipo_movimento) + ')';
+    return '<option value="' + _esc(c.id) + '"' + (String(c.id) === String(selectedId || '') ? ' selected' : '') + '>' + _esc(label) + '</option>';
+  }).join('');
+}
+
+function catAtualizarSelectsClassificacao() {
+  var cpNovo = document.getElementById('cp-nova-categoria-gerencial');
+  if (cpNovo) {
+    var atualCp = cpNovo.value || '';
+    cpNovo.innerHTML = catOptionsGerenciais(['saida', 'transferencia'], atualCp);
+    if (atualCp) cpNovo.value = atualCp;
+  }
+  var cpDet = document.getElementById('cp-detalhe-categoria-gerencial');
+  if (cpDet && _cpContaPagamentoAtual) cpDet.innerHTML = catOptionsGerenciais(['saida', 'transferencia'], _cpContaPagamentoAtual.categoria_gerencial_id);
+  var crDet = document.getElementById('cr-detalhe-categoria-gerencial');
+  if (crDet && _contaDetalhe) crDet.innerHTML = catOptionsGerenciais(['entrada', 'transferencia'], _contaDetalhe.categoria_gerencial_id);
+}
+
+async function carregarCategoriasGerenciaisClassificacao(empresaId) {
+  var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
+  if (!sf || !sf.listarCategoriasGerenciais || !empresaId) {
+    _bcCategorias = [];
+    catAtualizarSelectsClassificacao();
+    return [];
+  }
+  var token = ++_catLoadToken;
+  try {
+    var categorias = await sf.listarCategoriasGerenciais(empresaId);
+    if (token !== _catLoadToken || empresaConsulta !== _empresaAtivaId()) return _bcCategorias;
+    _bcCategorias = categorias || [];
+    catAtualizarSelectsClassificacao();
+    bcRenderKpis();
+    return _bcCategorias;
+  } catch(e) {
+    if (token !== _catLoadToken || empresaConsulta !== _empresaAtivaId()) return _bcCategorias;
+    console.warn('[Financeiro F3.6-C] erro ao carregar categorias gerenciais:', e);
+    catAtualizarSelectsClassificacao();
+    return _bcCategorias;
+  }
+}
+
 function bcFonteTipoLabel(v) {
   return bcLabelTipo(v, {
     conta_bancaria: 'Conta bancária',
@@ -7191,6 +7385,7 @@ async function carregarBancosContas(empresaId) {
     _bcAdquirentes = [];
     _bcMaquininhas = [];
     _bcCategorias = [];
+    catAtualizarSelectsClassificacao();
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
@@ -7230,6 +7425,7 @@ async function carregarBancosContas(empresaId) {
     _bcAdquirentes = Array.isArray(res[6]) ? res[6] : [];
     _bcMaquininhas = Array.isArray(res[7]) ? res[7] : [];
     _bcCategorias = Array.isArray(res[8]) ? res[8] : [];
+    catAtualizarSelectsClassificacao();
     bcRenderBancos();
     bcRenderContas();
     bcRenderCaixas();
@@ -7933,6 +8129,7 @@ async function criarContaPagar() {
       fornecedor_nome:  ((document.getElementById('cp-novo-fornecedor') || {}).value || '').trim() || null,
       fornecedor_cnpj:  ((document.getElementById('cp-novo-cnpj')       || {}).value || '').trim() || null,
       categoria:        ((document.getElementById('cp-nova-categoria')   || {}).value || '') || null,
+      categoria_gerencial_id: bcNull((document.getElementById('cp-nova-categoria-gerencial') || {}).value || ''),
       centro_custo:     ((document.getElementById('cp-novo-cc')          || {}).value || '').trim() || null,
       forma_pagamento:  ((document.getElementById('cp-nova-forma')       || {}).value || '') || null,
       observacao:       ((document.getElementById('cp-nova-obs')         || {}).value || '').trim() || null,
@@ -7953,7 +8150,7 @@ async function criarContaPagar() {
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
-    ['cp-nova-categoria','cp-nova-forma'].forEach(function(id) {
+    ['cp-nova-categoria','cp-nova-categoria-gerencial','cp-nova-forma'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
