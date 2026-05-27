@@ -2266,6 +2266,10 @@ async function abrirDetalhe(contaId) {
 function fecharDetalhe() {
   document.getElementById('detalhe-overlay').classList.remove('on');
   document.getElementById('detalhe-panel').classList.remove('on');
+  var corpo = document.getElementById('detalhe-corpo');
+  var titulo = document.getElementById('detalhe-titulo');
+  if (corpo) corpo.innerHTML = '';
+  if (titulo) titulo.textContent = 'Detalhes da Conta';
   _contaDetalhe = null;
 }
 
@@ -6531,8 +6535,12 @@ function _cpRenderObservacaoTratada(c) {
 function fecharDetalheCp() {
   var ov = document.getElementById('cp-detalhe-overlay');
   var pn = document.getElementById('cp-detalhe-panel');
+  var corpo = document.getElementById('cp-detalhe-corpo');
+  var titulo = document.getElementById('cp-detalhe-titulo');
   if (ov) ov.classList.remove('on');
   if (pn) pn.classList.remove('on');
+  if (corpo) corpo.innerHTML = '';
+  if (titulo) titulo.textContent = 'Detalhes da Conta a Pagar';
 }
 
 // ── Criar Conta a Pagar ───────────────────────────────────────
