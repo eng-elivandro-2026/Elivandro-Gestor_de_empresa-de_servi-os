@@ -1808,6 +1808,9 @@ var _dreLoadToken   = 0;      // race condition guard próprio da DRE
 var _dreCarregando  = false;
 var _drePeriodo     = { dataInicio: '', dataFim: '', preset: 'mes' };
 
+// NF Fornecedor - isolamento visual multiempresa
+var _nffLoadToken = 0;        // race condition guard para troca de empresa
+
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {
   if (window.sbFinanceiro)        return window.sbFinanceiro;
@@ -2274,6 +2277,44 @@ function _atualizarBadge(emp) {
 }
 
 // ── Troca de empresa (postMessage) ────────────────────────────
+function _nffLimparEstadoVisual() {
+  _nffLoadToken++;
+  _nffsImportadas = [];
+  _nffDadosAtual = null;
+
+  try { _nffFecharDetalhe(); } catch(e) {}
+
+  var detalheCorpo = document.getElementById('nff-detalhe-corpo');
+  var detalheTitulo = document.getElementById('nff-detalhe-titulo');
+  var lista = document.getElementById('nff-lista-conteudo');
+  var loading = document.getElementById('nff-lista-loading');
+  var vazio = document.getElementById('nff-lista-vazio');
+  var preview = document.getElementById('nff-preview');
+  var previewAlertas = document.getElementById('nff-preview-alertas');
+  var previewConteudo = document.getElementById('nff-preview-conteudo');
+  var importMsg = document.getElementById('nff-import-msg');
+  var salvarMsg = document.getElementById('nff-msg-salvar');
+  var input = document.getElementById('nff-xml-input');
+  var nomeArquivo = document.getElementById('nff-arquivo-nome');
+  var btnLer = document.getElementById('nff-btn-ler');
+  var btnSalvar = document.getElementById('nff-btn-salvar');
+
+  if (detalheCorpo) detalheCorpo.innerHTML = '';
+  if (detalheTitulo) detalheTitulo.textContent = 'NF Fornecedor';
+  if (lista) lista.innerHTML = '';
+  if (loading) loading.style.display = 'none';
+  if (vazio) vazio.style.display = 'none';
+  if (preview) preview.style.display = 'none';
+  if (previewAlertas) previewAlertas.innerHTML = '';
+  if (previewConteudo) previewConteudo.innerHTML = '';
+  if (importMsg) { importMsg.className = 'status-msg'; importMsg.textContent = ''; }
+  if (salvarMsg) { salvarMsg.className = 'status-msg'; salvarMsg.textContent = ''; }
+  if (input) input.value = '';
+  if (nomeArquivo) nomeArquivo.textContent = 'Nenhum arquivo selecionado';
+  if (btnLer) btnLer.disabled = true;
+  if (btnSalvar) btnSalvar.disabled = false;
+}
+
 function _onTrocaEmpresa(dados) {
   // Limpar dados da empresa anterior imediatamente
   _todasContas = [];
@@ -2320,6 +2361,9 @@ function _onTrocaEmpresa(dados) {
   if (cpBody) cpBody.innerHTML = '';
   var cpWrap = document.getElementById('cp-table-wrap');
   if (cpWrap) cpWrap.style.display = 'none';
+
+  // Limpar NF Fornecedor imediatamente para evitar dados da empresa anterior
+  _nffLimparEstadoVisual();
 
   // Limpar Bancos e Contas imediatamente
   _bcBancos = [];
@@ -2381,6 +2425,7 @@ function _onTrocaEmpresa(dados) {
   // Recarregar todas as tabs
   carregarContas(_empresaAtiva.id);
   carregarNFs(_empresaAtiva.id);
+  carregarNFsFornecedor(_empresaAtiva.id);
   carregarRec(_empresaAtiva.id);
   _fluxoInicializarFiltros();
   carregarFluxoCaixa(_empresaAtiva.id);
@@ -3104,21 +3149,30 @@ function _nffSetMsg(txt, tipo) {
 
 // ── Carregar lista de NFs fornecedor ──────────────────────────
 async function carregarNFsFornecedor(empresaId) {
+  var empresaConsulta = empresaId ? String(empresaId) : '';
+  var token = ++_nffLoadToken;
   var loadEl  = document.getElementById('nff-lista-loading');
   var vazioEl = document.getElementById('nff-lista-vazio');
   var contEl  = document.getElementById('nff-lista-conteudo');
-  if (!empresaId) return;
+  if (!empresaConsulta) {
+    _nffLimparEstadoVisual();
+    return;
+  }
   if (loadEl) { loadEl.style.display = ''; loadEl.className = 'status-msg loading'; }
   if (contEl)  contEl.innerHTML = '';
   if (vazioEl) vazioEl.style.display = 'none';
   var sf = _sf();
   if (!sf || !sf.listarNFsFornecedorEmpresa) {
+    if (token !== _nffLoadToken) return;
     if (loadEl) loadEl.style.display = 'none';
     return;
   }
   try {
     var lista = await sf.listarNFsFornecedorEmpresa(empresaId);
-    _nffsImportadas = lista || [];
+    if (token !== _nffLoadToken || !_empresaAtiva || String(_empresaAtiva.id) !== empresaConsulta) return;
+    _nffsImportadas = (lista || []).filter(function(nf) {
+      return nf && String(nf.empresa_id || '') === empresaConsulta;
+    });
     if (loadEl) loadEl.style.display = 'none';
     if (!_nffsImportadas.length) {
       if (vazioEl) vazioEl.style.display = '';
@@ -3126,6 +3180,7 @@ async function carregarNFsFornecedor(empresaId) {
       _nffRenderLista(_nffsImportadas);
     }
   } catch(err) {
+    if (token !== _nffLoadToken || !_empresaAtiva || String(_empresaAtiva.id) !== empresaConsulta) return;
     console.warn('[Fase F] erro ao carregar NFs fornecedor:', err);
     if (loadEl) { loadEl.className = 'status-msg err'; loadEl.textContent = 'Erro ao carregar NFs: ' + (err.message || err); }
   }
@@ -3139,6 +3194,10 @@ function recarregarNFsFornecedor() {
 function _nffRenderLista(lista) {
   var contEl = document.getElementById('nff-lista-conteudo');
   if (!contEl) return;
+  var empresaId = _empresaAtiva && _empresaAtiva.id ? String(_empresaAtiva.id) : '';
+  lista = (lista || []).filter(function(nf) {
+    return nf && empresaId && String(nf.empresa_id || '') === empresaId;
+  });
   var html = '<div class="nff-lista-header">'
     + '<span class="nff-lista-titulo">NFs Importadas (' + lista.length + ')</span>'
     + '</div>'
@@ -3172,6 +3231,18 @@ function _nffRenderLista(lista) {
 function _nffAbrirDetalhe(id) {
   var nf = (_nffsImportadas || []).find(function(n) { return n.id === id; });
   if (!nf) return;
+  if (!_empresaAtiva || !nf.empresa_id || String(nf.empresa_id) !== String(_empresaAtiva.id)) {
+    console.warn('[F3-SAFE] NF fornecedor ignorada por empresa divergente:', {
+      nf_id: id,
+      nf_empresa_id: nf && nf.empresa_id,
+      empresa_ativa_id: _empresaAtiva && _empresaAtiva.id
+    });
+    _nffFecharDetalhe();
+    var corpoSeguro = document.getElementById('nff-detalhe-corpo');
+    if (corpoSeguro) corpoSeguro.innerHTML = '';
+    _nffSetMsg('NF de fornecedor ignorada: a empresa ativa mudou. Recarregue a lista.', 'err');
+    return;
+  }
   var tituloEl = document.getElementById('nff-detalhe-titulo');
   var corpoEl  = document.getElementById('nff-detalhe-corpo');
   var panel    = document.getElementById('nff-detalhe-panel');
@@ -3287,9 +3358,12 @@ function _nffLerMetadados(nf) {
 
 function _nffContasPagarVinculadas(nf) {
   if (!nf || !nf.chave_acesso) return [];
+  if (!_empresaAtiva || !nf.empresa_id || String(nf.empresa_id) !== String(_empresaAtiva.id)) return [];
+  var empresaId = String(nf.empresa_id);
   var chave = String(nf.chave_acesso);
   return (_todasContasPagar || []).filter(function(c) {
     return c
+      && String(c.empresa_id || '') === empresaId
       && c.origem === 'xml_fornecedor'
       && c.referencia_id
       && String(c.referencia_id).indexOf(chave) === 0;
@@ -3345,18 +3419,28 @@ async function _nffCarregarProdutosBancoPrecos(nf) {
     if (countEl) countEl.textContent = 'Nao conferido';
     return;
   }
+  var empresaId = String(_empresaAtiva.id);
+  var token = _nffLoadToken;
+  if (!nf.empresa_id || String(nf.empresa_id) !== empresaId) {
+    if (countEl) countEl.textContent = 'Nao conferido';
+    if (statusEl) statusEl.textContent = 'Itens nao consultados porque a NF nao pertence a empresa ativa.';
+    return;
+  }
   try {
     var totalSalvo = null;
     if (sf.contarItensBancoPrecos) {
-      totalSalvo = await sf.contarItensBancoPrecos(_empresaAtiva.id, nf.id);
+      totalSalvo = await sf.contarItensBancoPrecos(empresaId, nf.id);
+      if (token !== _nffLoadToken || !_empresaAtiva || String(_empresaAtiva.id) !== empresaId) return;
     }
-    var itens = await sf.listarBancoPrecosEmpresa(_empresaAtiva.id, {
+    var itens = await sf.listarBancoPrecosEmpresa(empresaId, {
       fornecedor_cnpj: nf.fornecedor_cnpj || null,
       limit: 250
     });
+    if (token !== _nffLoadToken || !_empresaAtiva || String(_empresaAtiva.id) !== empresaId) return;
     itens = (itens || []).filter(function(it) {
-      return (nf.id && it.nf_fornecedor_id === nf.id)
-        || (nf.chave_acesso && it.chave_acesso === nf.chave_acesso);
+      return String(it.empresa_id || '') === empresaId
+        && ((nf.id && it.nf_fornecedor_id === nf.id)
+        || (nf.chave_acesso && it.chave_acesso === nf.chave_acesso));
     });
     if (totalSalvo === null) totalSalvo = itens.length;
     if (countEl) countEl.textContent = String(totalSalvo);
