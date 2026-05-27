@@ -158,8 +158,7 @@
     var r = await client()
       .from('financeiro_contas_receber')
       .update({
-        categoria_gerencial_id: categoriaGerencialId || null,
-        updated_at: new Date().toISOString()
+        categoria_gerencial_id: categoriaGerencialId || null
       })
       .eq('id', id)
       .eq('empresa_id', empresaId)
@@ -653,8 +652,7 @@
     var r = await client()
       .from('financeiro_contas_pagar')
       .update({
-        categoria_gerencial_id: categoriaGerencialId || null,
-        updated_at: new Date().toISOString()
+        categoria_gerencial_id: categoriaGerencialId || null
       })
       .eq('id', id)
       .eq('empresa_id', empresaId)
