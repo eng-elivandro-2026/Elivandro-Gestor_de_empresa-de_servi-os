@@ -2316,10 +2316,14 @@ function _catSetMsg(id, msg, tipo) {
 function _renderCategoriaGerencialEditor(reg, tipos, selectId, msgId, salvarFn) {
   var catId = reg && reg.categoria_gerencial_id;
   var pode = bcPodeEditar();
+  var labelId = selectId ? selectId + '-label' : '';
   var html = '<div class="detalhe-secao">' +
     '<div class="detalhe-secao-titulo">Categoria Gerencial</div>' +
     '<div class="detalhe-grid">' +
-      _di('Categoria Gerencial', _esc(catGerencialLabel(catId))) +
+      '<div>' +
+        '<div class="detalhe-item-label">Categoria Gerencial</div>' +
+        '<div class="detalhe-item-valor" id="' + _esc(labelId) + '">' + _esc(catGerencialLabel(catId)) + '</div>' +
+      '</div>' +
     '</div>';
   if (!pode) {
     return html + '<div class="cp-pag-alerta">Somente leitura para seu perfil nesta empresa.</div></div>';
@@ -6799,6 +6803,11 @@ function catOptionsGerenciais(tipos, selectedId) {
   }).join('');
 }
 
+function catAtualizarLabelClassificacao(labelId, categoriaId) {
+  var el = document.getElementById(labelId);
+  if (el) el.textContent = catGerencialLabel(categoriaId);
+}
+
 function catAtualizarSelectsClassificacao() {
   var cpNovo = document.getElementById('cp-nova-categoria-gerencial');
   if (cpNovo) {
@@ -6807,9 +6816,15 @@ function catAtualizarSelectsClassificacao() {
     if (atualCp) cpNovo.value = atualCp;
   }
   var cpDet = document.getElementById('cp-detalhe-categoria-gerencial');
-  if (cpDet && _cpContaPagamentoAtual) cpDet.innerHTML = catOptionsGerenciais(['saida', 'transferencia'], _cpContaPagamentoAtual.categoria_gerencial_id);
+  if (cpDet && _cpContaPagamentoAtual) {
+    cpDet.innerHTML = catOptionsGerenciais(['saida', 'transferencia'], _cpContaPagamentoAtual.categoria_gerencial_id);
+    catAtualizarLabelClassificacao('cp-detalhe-categoria-gerencial-label', _cpContaPagamentoAtual.categoria_gerencial_id);
+  }
   var crDet = document.getElementById('cr-detalhe-categoria-gerencial');
-  if (crDet && _contaDetalhe) crDet.innerHTML = catOptionsGerenciais(['entrada', 'transferencia'], _contaDetalhe.categoria_gerencial_id);
+  if (crDet && _contaDetalhe) {
+    crDet.innerHTML = catOptionsGerenciais(['entrada', 'transferencia'], _contaDetalhe.categoria_gerencial_id);
+    catAtualizarLabelClassificacao('cr-detalhe-categoria-gerencial-label', _contaDetalhe.categoria_gerencial_id);
+  }
 }
 
 async function carregarCategoriasGerenciaisClassificacao(empresaId) {
