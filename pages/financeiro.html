@@ -6670,17 +6670,32 @@ function cpPodeRegistrarPagamento() {
   return bcPodeEditar();
 }
 
-function _cpTotalPagamentosRegistrados(pagamentos) {
-  return (pagamentos || []).reduce(function(total, p) {
-    return (p.status || 'registrado') === 'registrado' ? total + _n(p.valor_pago) : total;
-  }, 0);
+function _cpPagamentoBaixaReal(p) {
+  return !!(p && (p.movimento_caixa_id || p.origem === 'baixa_cp' || p.status === 'efetivado'));
+}
+
+function _cpPagamentoAtivo(p) {
+  var status = String((p && p.status) || 'registrado').toLowerCase();
+  return status !== 'cancelado' && status !== 'estornado';
 }
 
 function _cpResumoPagamentosAux(c, pagamentos) {
-  var total = _cpTotalPagamentosRegistrados(pagamentos);
+  var totalAuxiliar = 0;
+  var totalBaixaReal = 0;
+  (pagamentos || []).forEach(function(p) {
+    if (!_cpPagamentoAtivo(p)) return;
+    if (_cpPagamentoBaixaReal(p)) totalBaixaReal += _n(p.valor_pago);
+    else if ((p.status || 'registrado') === 'registrado') totalAuxiliar += _n(p.valor_pago);
+  });
   var base = _n(c && c.valor_previsto);
-  var saldo = Math.max(0, base - total);
-  return { totalRegistrado: total, saldoVisual: saldo };
+  var saldoAuxiliar = Math.max(0, base - totalAuxiliar);
+  return {
+    totalAuxiliar: totalAuxiliar,
+    totalBaixaReal: totalBaixaReal,
+    totalRegistrado: totalAuxiliar + totalBaixaReal,
+    saldoAuxiliar: saldoAuxiliar,
+    saldoVisual: saldoAuxiliar
+  };
 }
 
 function _cpMeioPagamentoLabel(id) {
@@ -6713,7 +6728,7 @@ function _cpRenderListaPagamentos(pagamentos, carregando, erro) {
     return '<div class="cp-pag-alerta">Nenhum pagamento registrado no historico auxiliar.</div>';
   }
   return '<div class="cp-pag-lista">' + pagamentos.map(function(p) {
-    var baixaReal = !!p.movimento_caixa_id || p.origem === 'baixa_cp';
+    var baixaReal = _cpPagamentoBaixaReal(p);
     var statusTxt = baixaReal ? 'baixa real' : (p.status || 'registrado');
     return '<div class="cp-pag-item">'
       + '<div class="cp-pag-top">'
@@ -6744,8 +6759,10 @@ function _cpRenderPagamentosRegistrados(c, pagamentos, carregando, erro) {
   return '<div class="detalhe-secao">'
     + '<div class="detalhe-secao-titulo">Pagamentos registrados</div>'
     + '<div class="detalhe-grid">'
-    + _di('Total registrado', _fmtVal(resumo.totalRegistrado), resumo.totalRegistrado > 0 ? 'verde' : '')
-    + _di('Saldo visual pendente', _fmtVal(resumo.saldoVisual), resumo.saldoVisual > 0 ? 'vermelho' : 'verde')
+    + _di('Baixa real efetivada', _fmtVal(resumo.totalBaixaReal), resumo.totalBaixaReal > 0 ? 'verde' : '')
+    + _di('Historico auxiliar', _fmtVal(resumo.totalAuxiliar), resumo.totalAuxiliar > 0 ? 'verde' : '')
+    + _di('Saldo real pendente', _fmtVal(_n(c && c.valor_pendente)), _n(c && c.valor_pendente) > 0 ? 'vermelho' : 'verde')
+    + _di('Saldo auxiliar pendente', _fmtVal(resumo.saldoAuxiliar), resumo.saldoAuxiliar > 0 ? 'vermelho' : 'verde')
     + '</div>'
     + '<div class="cp-pag-alerta">Pagamento auxiliar grava apenas historico e nao baixa a Conta a Pagar.</div>'
     + '<div class="cp-pag-alerta">Baixa real atualiza a Conta a Pagar e cria movimento realizado no Fluxo de Caixa pela RPC transacional.</div>'
@@ -6885,7 +6902,7 @@ async function cpAbrirModalPagamento(contaId) {
   });
   if (document.getElementById('cp-pag-data')) document.getElementById('cp-pag-data').value = _hoje();
   if (document.getElementById('cp-pag-valor')) {
-    var saldoPadrao = _n(c.valor_pendente) > 0 ? _n(c.valor_pendente) : resumo.saldoVisual;
+    var saldoPadrao = _n(c.valor_pendente) > 0 ? _n(c.valor_pendente) : resumo.saldoAuxiliar;
     document.getElementById('cp-pag-valor').value = saldoPadrao > 0 ? saldoPadrao.toFixed(2).replace('.', ',') : '';
   }
   _cpSetStatusPagamento('', '');
@@ -6897,7 +6914,7 @@ async function cpAbrirModalPagamento(contaId) {
     var avisos = [];
     if (!_cpMeiosPagamento.length) avisos.push('Nenhum meio de pagamento ativo cadastrado.');
     if (!_cpFontesFinanceiras.length) avisos.push('Nenhuma fonte financeira ativa cadastrada.');
-    if (resumo.saldoVisual <= 0) avisos.push('Saldo visual pendente ja esta zerado pelo historico auxiliar.');
+    if (resumo.saldoAuxiliar <= 0) avisos.push('Saldo auxiliar pendente ja esta zerado pelo historico auxiliar.');
     if (_n(c.valor_pendente) <= 0) avisos.push('Saldo real pendente da Conta a Pagar ja esta zerado.');
     if (alerta) {
       alerta.className = avisos.length ? 'cp-pag-alerta err' : 'cp-pag-alerta';
@@ -6906,7 +6923,7 @@ async function cpAbrirModalPagamento(contaId) {
         : 'Escolha Registrar pagamento auxiliar para apenas historico, ou Efetivar baixa real para atualizar a Conta a Pagar e criar movimento realizado no Fluxo de Caixa.';
     }
     var semMeioFonte = !_cpMeiosPagamento.length || !_cpFontesFinanceiras.length;
-    if (btn) btn.disabled = semMeioFonte || resumo.saldoVisual <= 0;
+    if (btn) btn.disabled = semMeioFonte || resumo.saldoAuxiliar <= 0;
     if (btnReal) btnReal.disabled = semMeioFonte || _n(c.valor_pendente) <= 0 || ['pago','cancelado'].indexOf(String(c.status || '').toLowerCase()) >= 0;
   } catch(e) {
     if (alerta) {
@@ -6925,8 +6942,9 @@ function _cpResumoModalPagamentoHtml(c, resumo) {
     + '<div class="cp-pag-card"><div class="cp-pag-label">Descricao</div><div class="cp-pag-valor">' + _esc(c.descricao || '—') + '</div></div>'
     + '<div class="cp-pag-card"><div class="cp-pag-label">Valor previsto</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_previsto)) + '</div></div>'
     + '<div class="cp-pag-card"><div class="cp-pag-label">Saldo real da CP</div><div class="cp-pag-valor">' + _fmtVal(_n(c.valor_pendente)) + '</div></div>'
-    + '<div class="cp-pag-card"><div class="cp-pag-label">Registrado no historico</div><div class="cp-pag-valor">' + _fmtVal(resumo.totalRegistrado) + '</div></div>'
-    + '<div class="cp-pag-card"><div class="cp-pag-label">Saldo visual pendente</div><div class="cp-pag-valor">' + _fmtVal(resumo.saldoVisual) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Baixa real efetivada</div><div class="cp-pag-valor">' + _fmtVal(resumo.totalBaixaReal) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Historico auxiliar</div><div class="cp-pag-valor">' + _fmtVal(resumo.totalAuxiliar) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Saldo auxiliar pendente</div><div class="cp-pag-valor">' + _fmtVal(resumo.saldoAuxiliar) + '</div></div>'
     + '<div class="cp-pag-card"><div class="cp-pag-label">Vencimento / origem / NF</div><div class="cp-pag-valor">' + (c.data_vencimento ? _fmtDt(String(c.data_vencimento).slice(0,10)) : '—') + ' / ' + _esc(c.origem || 'manual') + ' / ' + _esc(nf) + '</div></div>';
 }
 
@@ -6950,7 +6968,7 @@ async function cpSalvarPagamentoAuxiliar() {
 
   if (!data) return _cpSetStatusPagamento('err', 'Data do pagamento e obrigatoria.');
   if (!valor || valor <= 0) return _cpSetStatusPagamento('err', 'Valor pago deve ser maior que zero.');
-  if (valor - resumo.saldoVisual > 0.009) return _cpSetStatusPagamento('err', 'Valor pago nao pode ultrapassar o saldo visual pendente.');
+  if (valor - resumo.saldoAuxiliar > 0.009) return _cpSetStatusPagamento('err', 'Valor pago nao pode ultrapassar o saldo auxiliar pendente.');
   if (!_cpMeiosPagamento.length) return _cpSetStatusPagamento('err', 'Cadastre um meio de pagamento ativo antes de registrar.');
   if (!_cpFontesFinanceiras.length) return _cpSetStatusPagamento('err', 'Cadastre uma fonte financeira ativa antes de registrar.');
   if (!meio) return _cpSetStatusPagamento('err', 'Selecione um meio de pagamento da empresa ativa.');
