@@ -1827,6 +1827,68 @@ function _empAtiva() {
   return null;
 }
 
+function _empresaAtivaId() {
+  return _empresaAtiva && _empresaAtiva.id ? String(_empresaAtiva.id) : '';
+}
+
+function _mesmaEmpresaRegistro(reg) {
+  return !!(reg && reg.empresa_id && _empresaAtivaId() && String(reg.empresa_id) === _empresaAtivaId());
+}
+
+function _mesmaEmpresaOuSemId(reg) {
+  return !reg || !reg.empresa_id || _mesmaEmpresaRegistro(reg);
+}
+
+function _normalizarTextoSeguro(v) {
+  return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function _somenteDigitos(v) {
+  return String(v || '').replace(/\D/g, '');
+}
+
+function _propPertenceEmpresaAtiva(prop) {
+  if (!prop || !_empresaAtivaId()) return false;
+  var empresaIds = [
+    prop.empresa_id,
+    prop.empresaId,
+    prop.empresa_ref,
+    prop.emp_id,
+    prop.empresa && prop.empresa.id
+  ].filter(Boolean).map(String);
+  if (empresaIds.indexOf(_empresaAtivaId()) >= 0) return true;
+
+  var cnpjAtivo = _somenteDigitos(_empresaAtiva && _empresaAtiva.cnpj);
+  var cnpjs = [
+    prop.empresa_cnpj,
+    prop.cnpj_empresa,
+    prop.empresaCnpj,
+    prop.empresa && prop.empresa.cnpj
+  ].map(_somenteDigitos).filter(Boolean);
+  if (cnpjAtivo && cnpjs.indexOf(cnpjAtivo) >= 0) return true;
+
+  var nomesAtivos = [
+    _empresaAtiva && _empresaAtiva.nome,
+    _empresaAtiva && _empresaAtiva.nome_curto,
+    _empresaAtiva && _empresaAtiva.razao_social
+  ].map(_normalizarTextoSeguro).filter(Boolean);
+  var nomesProp = [
+    prop.empresa_nome,
+    prop.empresaNome,
+    prop.nome_empresa,
+    prop.empresa && prop.empresa.nome,
+    prop.empresa && prop.empresa.nome_curto,
+    prop.empresa && prop.empresa.razao_social
+  ].map(_normalizarTextoSeguro).filter(Boolean);
+  return nomesProp.some(function(nome) { return nomesAtivos.indexOf(nome) >= 0; });
+}
+
+function _propsFinanceiroEmpresaAtiva() {
+  var todas = [];
+  try { todas = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+  return (todas || []).filter(_propPertenceEmpresaAtiva);
+}
+
 // ── Formatação ────────────────────────────────────────────────
 function _money(v) {
   var n = typeof v === 'string'
@@ -1953,6 +2015,7 @@ function _mostrarTabela() {
 // ── Carregar contas ───────────────────────────────────────────
 async function carregarContas(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf) {
     _mostrarErro('sbFinanceiro não disponível. Recarregue o portal.');
     return;
@@ -1972,7 +2035,7 @@ async function carregarContas(empresaId) {
     var contas = await sf.listarContasReceber(empresaId);
 
     // Race condition: descarta se empresa mudou durante o await
-    if (token !== _loadToken) return;
+    if (token !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     _todasContas = contas || [];
     _carregando  = false;
@@ -1982,7 +2045,7 @@ async function carregarContas(empresaId) {
     aplicarFiltros();
 
   } catch(e) {
-    if (token !== _loadToken) return;
+    if (token !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
     _carregando = false;
     document.getElementById('btn-refresh').disabled = false;
     console.error('[Financeiro F2B] erro ao carregar contas:', e);
@@ -2116,6 +2179,13 @@ var _contaDetalhe = null;
 async function abrirDetalhe(contaId) {
   var conta = _todasContas.find(function(c) { return c.id === contaId; });
   if (!conta) return;
+  if (!_mesmaEmpresaRegistro(conta)) {
+    fecharDetalhe();
+    _mostrarVazio('Conta a receber ignorada por seguranca.', 'A empresa ativa mudou; recarregue a lista desta empresa.');
+    return;
+  }
+  var empresaConsulta = _empresaAtivaId();
+  var tokenDetalhe = _loadToken;
 
   _contaDetalhe = conta;
   document.getElementById('detalhe-titulo').textContent = conta.titulo || conta.proposta_app_id || 'Detalhes';
@@ -2131,12 +2201,14 @@ async function abrirDetalhe(contaId) {
 
   try {
     var results = await Promise.all([
-      sf.listarNotasFiscaisConta(_empresaAtiva.id, contaId),
-      sf.listarRecebimentosConta(_empresaAtiva.id, contaId)
+      sf.listarNotasFiscaisConta(empresaConsulta, contaId),
+      sf.listarRecebimentosConta(empresaConsulta, contaId)
     ]);
 
     // Se o painel foi fechado durante o await, não atualizar
     if (!document.getElementById('detalhe-panel').classList.contains('on')) return;
+    if (tokenDetalhe !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
+    if (!_contaDetalhe || _contaDetalhe.id !== contaId) return;
 
     var notas        = results[0] || [];
     var recebimentos = results[1] || [];
@@ -2326,6 +2398,7 @@ function _onTrocaEmpresa(dados) {
   _todasNFs = [];
   _nfLoadToken++;
   fecharDetalheNF();
+  try { fecharModalEditarNF(); } catch(e) {}
   var nfBody = document.getElementById('nf-tabela-body');
   if (nfBody) nfBody.innerHTML = '';
 
@@ -2972,6 +3045,7 @@ async function _nffSalvar() {
     } catch(errCP) {
       // CPs falharam: marcar NF como 'erro', informar usuário com caminho de recuperação
       try { await sf.atualizarNFFornecedor(nfId, {
+        empresa_id: empresaId,
         status: 'erro',
         xml_metadados_json: JSON.stringify(Object.assign({}, metadados, { erro: 'CP: ' + errCP.message }))
       }); } catch(e2) { console.warn('[Fase F] falha ao atualizar status para erro:', e2); }
@@ -2988,6 +3062,7 @@ async function _nffSalvar() {
       } catch(errBP) {
         // CPs gravadas, itens falharam: marcar como 'parcial'
         try { await sf.atualizarNFFornecedor(nfId, {
+          empresa_id: empresaId,
           status: 'parcial',
           xml_metadados_json: JSON.stringify(Object.assign({}, metadados, { erro_parcial: 'BP: ' + errBP.message }))
         }); } catch(e2) { console.warn('[Fase F] falha ao atualizar status para parcial:', e2); }
@@ -3003,7 +3078,7 @@ async function _nffSalvar() {
     }
 
     // ── Etapa 5: tudo ok → marcar como 'importado' ───────────
-    await sf.atualizarNFFornecedor(nfId, { status: 'importado' });
+    await sf.atualizarNFFornecedor(nfId, { empresa_id: empresaId, status: 'importado' });
 
     _nffSetMsg('✅ NF importada com sucesso!', 'ok');
     _nffCancelarPreview();
@@ -3120,7 +3195,7 @@ async function _nffReprocessarComXML(dadosXml, nfExistente) {
     }
 
     // ── Marcar como importado ─────────────────────────────────
-    await sf.atualizarNFFornecedor(nfId, { status: 'importado' });
+    await sf.atualizarNFFornecedor(nfId, { empresa_id: empresaId, status: 'importado' });
 
     _nffSetMsg('✅ Reprocessamento concluído com sucesso!', 'ok');
     _nffCancelarPreview();
@@ -3718,6 +3793,7 @@ function _atualizarBadgeNF(emp) {
 // ── Carregar NFs ──────────────────────────────────────────────
 async function carregarNFs(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf || !sf.listarNotasFiscaisEmpresa) {
     _nfMostrarErro('sbFinanceiro.listarNotasFiscaisEmpresa não disponível. Recarregue o portal.');
     return;
@@ -3736,7 +3812,7 @@ async function carregarNFs(empresaId) {
   try {
     var nfs = await sf.listarNotasFiscaisEmpresa(empresaId);
 
-    if (token !== _nfLoadToken) return; // empresa mudou durante o await
+    if (token !== _nfLoadToken || empresaConsulta !== _empresaAtivaId()) return; // empresa mudou durante o await
 
     _todasNFs     = nfs || [];
     _nfCarregando = false;
@@ -3746,7 +3822,7 @@ async function carregarNFs(empresaId) {
     aplicarFiltrosNF();
 
   } catch(e) {
-    if (token !== _nfLoadToken) return;
+    if (token !== _nfLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _nfCarregando = false;
     document.getElementById('nf-btn-refresh').disabled = false;
     console.error('[Financeiro F2C] erro ao carregar NFs:', e);
@@ -3902,7 +3978,7 @@ function _renderTabelaNF(nfs) {
 function _nfGetProposta(propId) {
   if (!propId) return null;
   try {
-    var todas = JSON.parse(localStorage.getItem('tf_props') || '[]');
+    var todas = _propsFinanceiroEmpresaAtiva();
     return todas.find(function(p) { return p && p.id === propId; }) || null;
   } catch(e) { return null; }
 }
@@ -3915,6 +3991,13 @@ function _nfDetalheAtualizar() {
 async function abrirDetalheNF(nfId) {
   var nf = _todasNFs.find(function(n) { return n.id === nfId; });
   if (!nf) return;
+  if (!_mesmaEmpresaRegistro(nf) || !_mesmaEmpresaOuSemId(nf.conta_receber)) {
+    fecharDetalheNF();
+    _nfMostrarVazio('NF ignorada por seguranca.', 'A empresa ativa mudou; recarregue a lista desta empresa.');
+    return;
+  }
+  var empresaConsulta = _empresaAtivaId();
+  var tokenDetalhe = _nfLoadToken;
 
   _nfDetalheAtualId        = nfId;
   window._nfDetalheAtualId = nfId;
@@ -3950,8 +4033,10 @@ async function abrirDetalheNF(nfId) {
   var sf = _sf();
   if (!sf || !conta.id || !_empresaAtiva) return;
   try {
-    var recs = await sf.listarRecebimentosConta(_empresaAtiva.id, conta.id);
+    var recs = await sf.listarRecebimentosConta(empresaConsulta, conta.id);
     if (!document.getElementById('nf-detalhe-panel').classList.contains('on')) return;
+    if (tokenDetalhe !== _nfLoadToken || empresaConsulta !== _empresaAtivaId()) return;
+    if (_nfDetalheAtualId !== nfId) return;
     document.getElementById('nf-detalhe-corpo').innerHTML =
       _renderNFBasico(nf, obsObj) +
       _renderNFPO(nf, obsObj, proposta) +
@@ -4387,6 +4472,7 @@ function _recMostrarTabela() {
 // ── Carregar Recebimentos ─────────────────────────────────────
 async function carregarRec(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf || !sf.listarRecebimentosEmpresa) {
     _recMostrarErro('sbFinanceiro.listarRecebimentosEmpresa não disponível. Recarregue o portal.');
     return;
@@ -4405,7 +4491,7 @@ async function carregarRec(empresaId) {
   try {
     var recs = await sf.listarRecebimentosEmpresa(empresaId);
 
-    if (token !== _recLoadToken) return; // empresa mudou durante o await
+    if (token !== _recLoadToken || empresaConsulta !== _empresaAtivaId()) return; // empresa mudou durante o await
 
     _todasRec      = recs || [];
     _recCarregando = false;
@@ -4415,7 +4501,7 @@ async function carregarRec(empresaId) {
     aplicarFiltrosRec();
 
   } catch(e) {
-    if (token !== _recLoadToken) return;
+    if (token !== _recLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _recCarregando = false;
     document.getElementById('rec-btn-refresh').disabled = false;
     console.error('[Financeiro F2D] erro ao carregar recebimentos:', e);
@@ -4584,6 +4670,13 @@ function _renderTabelaRec(recs) {
 async function abrirDetalheRec(recId) {
   var rec = _todasRec.find(function(r) { return r.id === recId; });
   if (!rec) return;
+  if (!_mesmaEmpresaRegistro(rec) || !_mesmaEmpresaOuSemId(rec.conta_receber)) {
+    fecharDetalheRec();
+    _recMostrarVazio('Recebimento ignorado por seguranca.', 'A empresa ativa mudou; recarregue a lista desta empresa.');
+    return;
+  }
+  var empresaConsulta = _empresaAtivaId();
+  var tokenDetalhe = _recLoadToken;
 
   // Título do painel
   document.getElementById('rec-detalhe-titulo').textContent =
@@ -4600,8 +4693,9 @@ async function abrirDetalheRec(recId) {
   if (!sf || !conta.id || !_empresaAtiva) return;
 
   try {
-    var nfs = await sf.listarNFsDaConta(_empresaAtiva.id, conta.id);
+    var nfs = await sf.listarNFsDaConta(empresaConsulta, conta.id);
     if (!document.getElementById('rec-detalhe-panel').classList.contains('on')) return;
+    if (tokenDetalhe !== _recLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     document.getElementById('rec-detalhe-corpo').innerHTML =
       _renderRecBasico(rec) +
       _renderRecConta(conta) +
@@ -5418,6 +5512,7 @@ function renderFluxoPVR(movs) {
 // ── Carregar dados do servidor ───────────────────────────────
 async function carregarFluxoCaixa(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf || !empresaId) {
     _fluxoMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
     return;
@@ -5433,15 +5528,15 @@ async function carregarFluxoCaixa(empresaId) {
       sf.buscarSaldoCaixaAtual(empresaId).catch(function() { return null; }),
       sf.listarMovimentosCaixa(empresaId).catch(function() { return []; })
     ]);
-    if (token !== _fluxoLoadToken) return;
+    if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     _saldoCaixaAtual = results[0];
 
     // Enriquecer com dados de conta/recebimento antes de exibir
     var movsBrutos = results[1] || [];
-    if (token !== _fluxoLoadToken) return;
+    if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _todosMovimentos = await _enriquecerMovimentos(movsBrutos, empresaId);
-    if (token !== _fluxoLoadToken) return;
+    if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     var avisoEl = document.getElementById('fluxo-aviso-saldo');
     if (avisoEl) avisoEl.style.display = _saldoCaixaAtual ? 'none' : '';
@@ -5468,11 +5563,11 @@ async function carregarFluxoCaixa(empresaId) {
     filtrarFluxo();
 
   } catch(e) {
-    if (token !== _fluxoLoadToken) return;
+    if (token !== _fluxoLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     console.warn('[F3-fluxo] erro ao carregar:', e);
     _fluxoMostrarErro('Erro ao carregar fluxo de caixa: ' + e.message);
   } finally {
-    if (token === _fluxoLoadToken && btnRef) btnRef.disabled = false;
+    if (token === _fluxoLoadToken && empresaConsulta === _empresaAtivaId() && btnRef) btnRef.disabled = false;
   }
 }
 
@@ -5629,6 +5724,7 @@ function _cpEsconderEstado() {
 // ── Carregar contas a pagar da empresa ────────────────────────
 async function carregarContasPagar(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf || !empresaId) {
     _cpMostrarErro('Módulo financeiro não disponível.');
     return;
@@ -5640,7 +5736,7 @@ async function carregarContasPagar(empresaId) {
 
   try {
     var contas = await sf.listarContasPagar(empresaId);
-    if (token !== _cpLoadToken) return;
+    if (token !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     _todasContasPagar = contas || [];
 
@@ -5659,11 +5755,11 @@ async function carregarContasPagar(empresaId) {
     console.log('%c[F3B-cp] ' + _todasContasPagar.length + ' conta(s) a pagar carregada(s)', 'color:#f0a500');
 
   } catch(err) {
-    if (token !== _cpLoadToken) return;
+    if (token !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     console.warn('[F3B-cp] erro ao carregar:', err);
     _cpMostrarErro('Erro ao carregar contas a pagar: ' + (err.message || err));
   } finally {
-    if (token === _cpLoadToken && btnRef) btnRef.disabled = false;
+    if (token === _cpLoadToken && empresaConsulta === _empresaAtivaId() && btnRef) btnRef.disabled = false;
   }
 }
 
@@ -5830,6 +5926,11 @@ function _cpRenderTabela(filtradas) {
 function abrirDetalheCp(id, skipFetch) {
   var c = _todasContasPagar.find(function(x) { return x.id === id; });
   if (!c) return;
+  if (!_mesmaEmpresaRegistro(c)) {
+    fecharDetalheCp();
+    _cpMostrarVazio('Conta a pagar ignorada por seguranca.', 'A empresa ativa mudou; recarregue a lista desta empresa.');
+    return;
+  }
 
   var hoje = _hoje();
   var dv   = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
@@ -5982,11 +6083,16 @@ function _cpRenderPagamentosRegistrados(c, pagamentos, carregando, erro) {
 async function _cpAtualizarPagamentosDetalhe(contaId) {
   var c = _todasContasPagar.find(function(x) { return x.id === contaId; });
   if (!c || !_empresaAtiva || !_empresaAtiva.id) return;
+  if (!_mesmaEmpresaRegistro(c)) return;
+  var empresaConsulta = _empresaAtivaId();
+  var tokenDetalhe = _cpLoadToken;
   var sf = _sf();
   if (!sf || !sf.listarPagamentosContaPagar) return;
   try {
     await _cpCarregarOpcoesPagamento();
-    var pagamentos = await sf.listarPagamentosContaPagar(_empresaAtiva.id, contaId);
+    if (tokenDetalhe !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
+    var pagamentos = await sf.listarPagamentosContaPagar(empresaConsulta, contaId);
+    if (tokenDetalhe !== _cpLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _cpPagamentosPorConta[contaId] = pagamentos || [];
     if (_cpContaPagamentoAtual && _cpContaPagamentoAtual.id === contaId) {
       abrirDetalheCp(contaId, true);
@@ -6019,10 +6125,12 @@ async function _cpCarregarOpcoesPagamento() {
     throw new Error('Integracao de meios/fontes financeiras indisponivel.');
   }
   if (!_empresaAtiva || !_empresaAtiva.id) throw new Error('Empresa ativa nao identificada.');
+  var empresaConsulta = _empresaAtivaId();
   var res = await Promise.all([
-    sf.listarMeiosPagamento(_empresaAtiva.id),
-    sf.listarFontesFinanceiras(_empresaAtiva.id)
+    sf.listarMeiosPagamento(empresaConsulta),
+    sf.listarFontesFinanceiras(empresaConsulta)
   ]);
+  if (empresaConsulta !== _empresaAtivaId()) throw new Error('Empresa ativa mudou durante o carregamento.');
   _cpMeiosPagamento = (res[0] || []).filter(function(m) {
     return m.ativo !== false && (m.natureza === 'pagamento' || m.natureza === 'ambos');
   });
@@ -6069,7 +6177,7 @@ async function cpAbrirModalPagamento(contaId) {
   }
   var c = _todasContasPagar.find(function(x) { return x.id === contaId; });
   if (!c) return;
-  if (!_empresaAtiva || !_empresaAtiva.id || c.empresa_id !== _empresaAtiva.id) {
+  if (!_mesmaEmpresaRegistro(c)) {
     alert('Empresa ativa nao confere com a Conta a Pagar selecionada.');
     return;
   }
@@ -6135,7 +6243,7 @@ async function cpSalvarPagamentoAuxiliar() {
   var sf = _sf();
   var btn = document.getElementById('cp-pag-btn-salvar');
   if (!c || !sf || !sf.criarPagamentoContaPagar) return;
-  if (!_empresaAtiva || !_empresaAtiva.id || c.empresa_id !== _empresaAtiva.id) {
+  if (!_mesmaEmpresaRegistro(c)) {
     _cpSetStatusPagamento('err', 'Empresa ativa nao confere com a Conta a Pagar selecionada.');
     return;
   }
@@ -6175,7 +6283,9 @@ async function cpSalvarPagamentoAuxiliar() {
     if (btn) btn.disabled = true;
     _cpSetStatusPagamento('loading', 'Registrando pagamento auxiliar...');
     await sf.criarPagamentoContaPagar(payload);
-    var novos = await sf.listarPagamentosContaPagar(_empresaAtiva.id, c.id);
+    if (!_mesmaEmpresaRegistro(c)) return;
+    var novos = await sf.listarPagamentosContaPagar(_empresaAtivaId(), c.id);
+    if (!_mesmaEmpresaRegistro(c)) return;
     _cpPagamentosPorConta[c.id] = novos || [];
     _cpSetStatusPagamento('ok', 'Pagamento registrado no historico auxiliar.');
     cpFecharModalPagamento();
@@ -6922,6 +7032,7 @@ function bcPopularBancosSelect(selectedId) {
 
 async function carregarBancosContas(empresaId) {
   var token = ++_bcLoadToken;
+  var empresaConsulta = String(empresaId || '');
   var sf = _sf();
   bcAtualizarBadge(_empresaAtiva);
   bcAplicarPermissoes();
@@ -6961,7 +7072,7 @@ async function carregarBancosContas(empresaId) {
       sf.listarAdquirentes(empresaId),
       sf.listarMaquininhas(empresaId)
     ]);
-    if (token !== _bcLoadToken) return;
+    if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _bcBancos = Array.isArray(res[0]) ? res[0] : [];
     _bcContas = Array.isArray(res[1]) ? res[1] : [];
     _bcCaixas = Array.isArray(res[2]) ? res[2] : [];
@@ -6980,6 +7091,7 @@ async function carregarBancosContas(empresaId) {
     bcRenderMaquininhas();
     bcSetStatus('', '');
   } catch(e) {
+    if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     console.error('[Financeiro F3.3] erro ao carregar fontes financeiras:', e);
     bcSetStatus('Erro ao carregar fontes financeiras: ' + (e && e.message ? e.message : e), 'err');
   }
@@ -7527,9 +7639,10 @@ async function bcAlternarBanco(id) {
   var b = bcBancoPorId(id);
   var sf = _sf();
   if (!b || !sf || !sf.atualizarBanco || !bcPodeEditar()) return;
+  if (!_mesmaEmpresaRegistro(b)) return;
   var novoStatus = b.ativo === false;
   try {
-    await sf.atualizarBanco(id, { ativo: novoStatus, updated_at: new Date().toISOString() });
+    await sf.atualizarBanco(id, { empresa_id: b.empresa_id, ativo: novoStatus, updated_at: new Date().toISOString() });
     await carregarBancosContas((_empresaAtiva || {}).id);
   } catch(e) {
     alert('Erro ao atualizar status do banco: ' + (e && e.message ? e.message : e));
@@ -7540,9 +7653,10 @@ async function bcAlternarConta(id) {
   var c = (_bcContas || []).find(function(x) { return String(x.id) === String(id); });
   var sf = _sf();
   if (!c || !sf || !sf.atualizarContaBancaria || !bcPodeEditar()) return;
+  if (!_mesmaEmpresaRegistro(c)) return;
   var novoStatus = c.ativo === false;
   try {
-    await sf.atualizarContaBancaria(id, { ativo: novoStatus, updated_at: new Date().toISOString() });
+    await sf.atualizarContaBancaria(id, { empresa_id: c.empresa_id, ativo: novoStatus, updated_at: new Date().toISOString() });
     await carregarBancosContas((_empresaAtiva || {}).id);
   } catch(e) {
     alert('Erro ao atualizar status da conta bancária: ' + (e && e.message ? e.message : e));
@@ -7553,9 +7667,10 @@ async function bcAlternarExtra(tipo, id) {
   var registro = bcRegistroExtra(tipo, id);
   var api = bcExtraApi(tipo);
   if (!registro || !api || !api.atualizar || !bcPodeEditar()) return;
+  if (!_mesmaEmpresaRegistro(registro)) return;
   var novoStatus = registro.ativo === false;
   try {
-    await api.atualizar(id, { ativo: novoStatus, updated_at: new Date().toISOString() });
+    await api.atualizar(id, { empresa_id: registro.empresa_id, ativo: novoStatus, updated_at: new Date().toISOString() });
     await carregarBancosContas((_empresaAtiva || {}).id);
   } catch(e) {
     alert('Erro ao atualizar status: ' + (e && e.message ? e.message : e));
@@ -7919,6 +8034,7 @@ function _renderDRECards(r) {
 // ── Carregar DRE ──────────────────────────────────────────────
 async function carregarDRE(empresaId) {
   var sf = _sf();
+  var empresaConsulta = String(empresaId || '');
   if (!sf || !empresaId) {
     _dreMostrarVazio('Empresa não identificada. Selecione uma empresa no portal.');
     return;
@@ -7947,7 +8063,7 @@ async function carregarDRE(empresaId) {
     ]);
 
     // Race condition: descarta se empresa trocou durante o await
-    if (token !== _dreLoadToken) return;
+    if (token !== _dreLoadToken || empresaConsulta !== _empresaAtivaId()) return;
 
     var contas        = results[0] || [];
     var recebimentos  = results[1] || [];
@@ -7994,9 +8110,9 @@ async function carregarDRE(empresaId) {
       'color:#58a6ff;font-weight:700');
 
   } catch(e) {
-    if (token !== _dreLoadToken) return;
+    if (token !== _dreLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _dreCarregando = false;
-    if (btn) btn.disabled = false;
+    if (empresaConsulta === _empresaAtivaId() && btn) btn.disabled = false;
     console.warn('[DRE F4A] erro ao carregar:', e);
     _dreMostrarErro('Erro ao carregar DRE Gerencial: ' + (e.message || e));
   }
@@ -8056,8 +8172,7 @@ function _nfCarregarPropostas() {
   var sel = document.getElementById('nf-sel-proposta');
   if (!sel) return;
 
-  var todas = [];
-  try { todas = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+  var todas = _propsFinanceiroEmpresaAtiva();
 
   _nfPropostasCache = {};
   var faturavel = todas.filter(function(p) {
@@ -8511,8 +8626,7 @@ function _meditParseObs(raw) {
 function _meditCarregarPropostas(propIdAtual) {
   var sel = document.getElementById('medit-proposta');
   if (!sel) return;
-  var todas = [];
-  try { todas = JSON.parse(localStorage.getItem('tf_props') || '[]'); } catch(e) {}
+  var todas = _propsFinanceiroEmpresaAtiva();
 
   _meditPropostasCache = {};
   var faturavel = todas.filter(function(p) {
@@ -8777,6 +8891,10 @@ async function editarNFCompleta(nfId) {
   var nf = (_todasNFs || []).find(function(n) { return n.id === nfId; });
   console.log('[Editar NF] nf encontrada', nf);
   if (!nf) { alert('NF não encontrada. Recarregue a lista.'); return; }
+  if (!_mesmaEmpresaRegistro(nf) || !_mesmaEmpresaOuSemId(nf.conta_receber)) {
+    alert('NF nao pertence a empresa ativa. Recarregue a lista desta empresa.');
+    return;
+  }
   if (!nf.conta_receber_id) {
     alert('❌ Esta NF não possui Conta a Receber vinculada.');
     return;
@@ -9025,6 +9143,10 @@ async function salvarEditarNF() {
   var conta = nf.conta_receber || {};
   var p     = _meditPropostaAtual;
   var empId = _empresaAtiva && _empresaAtiva.id;
+  if (!_mesmaEmpresaRegistro(nf) || !_mesmaEmpresaOuSemId(conta)) {
+    _meditStatus('err', 'NF ou Conta a Receber nao pertence a empresa ativa.');
+    return;
+  }
   if (!empId) { _meditStatus('err', '❌ Empresa não identificada.'); return; }
 
   // Ler campos
@@ -9183,6 +9305,7 @@ async function salvarEditarNF() {
 
     // Atualizar NF
     var nfPayload = {
+      empresa_id:       empId,
       numero_nf:       novoNumero || null,
       tipo_nf:         novoTipo,
       data_emissao:    novaEmissao,
@@ -9195,6 +9318,7 @@ async function salvarEditarNF() {
 
     // Atualizar Conta a Receber
     var contaPayload = {
+      empresa_id:      empId,
       titulo:          tituloConta,
       valor_previsto:  novoValor,
       data_vencimento: novoVenc || null,

@@ -26,6 +26,21 @@
     return new Date().toISOString().slice(0, 10);
   }
 
+  function _empresaFiltro(dados) {
+    return dados && dados.empresa_id ? String(dados.empresa_id) : '';
+  }
+
+  function _payloadSemEmpresa(dados) {
+    var payload = Object.assign({}, dados || {});
+    delete payload.id;
+    delete payload.empresa_id;
+    return payload;
+  }
+
+  function _aplicarEmpresaFiltro(query, empresaId) {
+    return empresaId ? query.eq('empresa_id', empresaId) : query;
+  }
+
 
   // ============================================================
   // CONTAS A RECEBER
@@ -121,14 +136,16 @@
    * dados: campos a atualizar
    */
   async function sbAtualizarContaReceber(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro] id obrigatório para atualizar.');
 
-    var r = await client()
+    var q = client()
       .from('financeiro_contas_receber')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
 
     if (r.error) throw r.error;
     return r.data;
@@ -167,7 +184,7 @@
         'id', 'empresa_id', 'conta_receber_id', 'proposta_app_id',
         'numero_nf', 'tipo_nf', 'data_emissao', 'valor_nf',
         'status', 'observacoes', 'created_at',
-        'conta_receber:conta_receber_id(id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo, valor_previsto, valor_recebido, valor_pendente, data_vencimento, status)'
+        'conta_receber:conta_receber_id(id, empresa_id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo, valor_previsto, valor_recebido, valor_pendente, data_vencimento, status)'
       ].join(','))
       .eq('empresa_id', empresaId)
       .order('data_emissao', { ascending: false, nullsFirst: false });
@@ -214,20 +231,20 @@
    * dados: campos a atualizar (nunca altera empresa_id nem conta_receber_id)
    */
   async function sbAtualizarNotaFiscal(id, dados) {
+    var empresaId = _empresaFiltro(dados);
     if (!id) throw new Error('[Financeiro] id obrigatório para atualizar NF.');
 
     // Garantia: nunca permite alterar empresa_id ou conta_receber_id por esta função
-    var payload = Object.assign({}, dados);
-    delete payload.empresa_id;
+    var payload = _payloadSemEmpresa(dados);
     delete payload.conta_receber_id;
     delete payload.id;
 
-    var r = await client()
+    var q = client()
       .from('financeiro_notas_fiscais')
       .update(payload)
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
 
     if (r.error) throw r.error;
     return r.data;
@@ -407,7 +424,7 @@
         'valor_perdido_risco_sacado', 'percentual_perdido_risco_sacado',
         'observacoes', 'created_at',
         'conta_receber:conta_receber_id(' +
-          'id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo,' +
+          'id, empresa_id, titulo, cliente_nome, proposta_app_id, obra_id, centro_custo,' +
           'valor_previsto, valor_recebido, valor_pendente, data_vencimento, status' +
         ')'
       ].join(','))
@@ -579,20 +596,22 @@
    * Atualiza campos de uma conta a pagar existente.
    */
   async function sbAtualizarContaPagar(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro] id obrigatório para atualizar.');
 
     // Recalcular valor_pendente se valor_previsto ou valor_pago mudou
-    if (dados.valor_previsto !== undefined || dados.valor_pago !== undefined) {
+    if (payload.valor_previsto !== undefined || payload.valor_pago !== undefined) {
       // Os valores atuais precisam vir no payload para recalcular
-      dados.valor_pendente = Math.max(0, _num(dados.valor_previsto || 0) - _num(dados.valor_pago || 0));
+      payload.valor_pendente = Math.max(0, _num(payload.valor_previsto || 0) - _num(payload.valor_pago || 0));
     }
 
-    var r = await client()
+    var q = client()
       .from('financeiro_contas_pagar')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
 
     if (r.error) throw r.error;
     return r.data;
@@ -892,13 +911,15 @@
    * Atualiza campos de uma NF de fornecedor (ex: status após cada etapa).
    */
   async function sbAtualizarNFFornecedor(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F] id obrigatório para atualizar NF fornecedor.');
-    var r = await client()
+    var q = client()
       .from('financeiro_nfs_fornecedor')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -965,13 +986,15 @@
   }
 
   async function sbAtualizarBanco(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.2] id obrigatorio para atualizar banco.');
-    var r = await client()
+    var q = client()
       .from('financeiro_bancos')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1003,13 +1026,15 @@
   }
 
   async function sbAtualizarContaBancaria(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.2] id obrigatorio para atualizar conta bancaria.');
-    var r = await client()
+    var q = client()
       .from('financeiro_contas_bancarias')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1039,13 +1064,15 @@
   }
 
   async function sbAtualizarCaixaInterno(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar caixa interno.');
-    var r = await client()
+    var q = client()
       .from('financeiro_caixas_internos')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1076,13 +1103,15 @@
   }
 
   async function sbAtualizarCartaoEmpresa(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar cartao empresarial.');
-    var r = await client()
+    var q = client()
       .from('financeiro_cartoes_empresa')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1114,13 +1143,15 @@
   }
 
   async function sbAtualizarMeioPagamento(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar meio de pagamento.');
-    var r = await client()
+    var q = client()
       .from('financeiro_meios_pagamento')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1151,13 +1182,15 @@
   }
 
   async function sbAtualizarFonteFinanceira(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.3] id obrigatorio para atualizar fonte financeira.');
-    var r = await client()
+    var q = client()
       .from('financeiro_fontes_financeiras')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1188,13 +1221,15 @@
   }
 
   async function sbAtualizarAdquirente(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.4-B] id obrigatorio para atualizar adquirente.');
-    var r = await client()
+    var q = client()
       .from('financeiro_adquirentes')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -1225,13 +1260,15 @@
   }
 
   async function sbAtualizarMaquininha(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro F3.4-B] id obrigatorio para atualizar maquininha.');
-    var r = await client()
+    var q = client()
       .from('financeiro_maquininhas')
-      .update(dados)
-      .eq('id', id)
-      .select()
-      .single();
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
     if (r.error) throw r.error;
     return r.data;
   }
