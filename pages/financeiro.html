@@ -1310,6 +1310,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn-refresh" id="fluxo-btn-exportar-csv" onclick="fluxoExportarCSV()" title="Exportar CSV do fluxo filtrado">
         Exportar CSV
       </button>
+      <button class="btn-refresh" id="fluxo-btn-exportar-conciliacoes-csv" onclick="fluxoExportarConciliacoesCSV()" title="Exportar CSV das concilia&ccedil;&otilde;es financeiras">
+        Exportar CSV Concilia&ccedil;&otilde;es
+      </button>
       <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
         🔄 Atualizar
       </button>
@@ -6523,6 +6526,136 @@ function fluxoExportarCSV() {
 }
 
 // ── Renderizar KPI cards (visão CFO) ─────────────────────────
+function _fluxoConcCsvDataHora(v) {
+  if (!v) return '';
+  var d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleString('pt-BR');
+}
+
+function _fluxoConcCsvFonteLabel(c) {
+  var f = c && c.fonte_financeira;
+  if (!f) return (c && c.fonte_financeira_id) || '';
+  return f.nome || f.tipo || c.fonte_financeira_id || '';
+}
+
+function _fluxoConcCsvMeioLabel(c) {
+  var m = c && c.meio_pagamento;
+  if (!m) return (c && c.meio_pagamento_id) || '';
+  var tipo = m.tipo && typeof bcMeioTipoLabel === 'function' ? ' - ' + bcMeioTipoLabel(m.tipo) : '';
+  return (m.nome || 'Meio de pagamento') + tipo;
+}
+
+function _fluxoConcCsvMovimento(c) {
+  return (c && c.movimento_caixa) || {};
+}
+
+function _fluxoConcCsvTipoMovimento(m) {
+  if (!m || !m.tipo) return '';
+  return m.tipo === 'entrada' ? 'Entrada' : (m.tipo === 'saida' ? 'Saida' : m.tipo);
+}
+
+function _fluxoConcCsvDescricao(m) {
+  if (!m) return '';
+  return m.descricao || (typeof _descricaoAmigavel === 'function' ? _descricaoAmigavel(m) : '') || '';
+}
+
+function _fluxoConcCsvValor(m) {
+  if (!m) return '';
+  var valor = m.valor_real != null ? m.valor_real : m.valor_previsto;
+  return _fluxoCsvMoeda(valor);
+}
+
+function _fluxoConcCsvMontarConteudo(conciliacoes, inicio, fim) {
+  var empresa = (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
+  var linhas = [[
+    'Empresa',
+    'Data conciliacao',
+    'Status',
+    'Tipo movimento',
+    'Origem',
+    'Descricao',
+    'Valor',
+    'Fonte',
+    'Meio',
+    'Identificador bancario',
+    'Comprovante',
+    'Observacao',
+    'Criado por',
+    'Criado em',
+    'Movimento ID',
+    'Conciliacao ID'
+  ]];
+
+  (conciliacoes || []).forEach(function(c) {
+    var m = _fluxoConcCsvMovimento(c);
+    linhas.push([
+      empresa,
+      c.data_conciliacao ? _fmtDt(String(c.data_conciliacao).slice(0, 10)) : '',
+      c.status || '',
+      _fluxoConcCsvTipoMovimento(m),
+      _traduzirOrigem(m.origem || ''),
+      _fluxoConcCsvDescricao(m),
+      _fluxoConcCsvValor(m),
+      _fluxoConcCsvFonteLabel(c),
+      _fluxoConcCsvMeioLabel(c),
+      c.identificador_bancario || '',
+      c.comprovante_url || '',
+      c.observacao || '',
+      c.created_by || '',
+      _fluxoConcCsvDataHora(c.created_at),
+      c.movimento_caixa_id || '',
+      c.id || ''
+    ]);
+  });
+
+  return '\uFEFF' + linhas.map(_fluxoCsvLinha).join('\r\n');
+}
+
+async function fluxoExportarConciliacoesCSV() {
+  var empresaId = _empresaAtivaId();
+  if (!empresaId) {
+    alert('Empresa ativa nao identificada. Recarregue o Financeiro antes de exportar.');
+    return;
+  }
+
+  var sf = _sf();
+  if (!sf || !sf.listarConciliacoesFinanceiras) {
+    alert('Exportacao de conciliacoes indisponivel nesta versao.');
+    return;
+  }
+
+  var btn = document.getElementById('fluxo-btn-exportar-conciliacoes-csv');
+  if (btn && btn.disabled) return;
+  if (btn) btn.disabled = true;
+
+  try {
+    var inicio = _fluxoFiltros.dataInicio || null;
+    var fim = _fluxoFiltros.dataFim || null;
+    var conciliacoes = await sf.listarConciliacoesFinanceiras(empresaId, {
+      dataInicio: inicio,
+      dataFim: fim
+    });
+    if (empresaId !== _empresaAtivaId()) {
+      alert('Empresa ativa mudou durante a exportacao. Recarregue o Fluxo e tente novamente.');
+      return;
+    }
+    conciliacoes = (conciliacoes || []).filter(function(c) {
+      var m = c && c.movimento_caixa;
+      return c && String(c.empresa_id) === String(empresaId)
+        && (!m || !m.empresa_id || String(m.empresa_id) === String(empresaId));
+    });
+    var csv = _fluxoConcCsvMontarConteudo(conciliacoes, inicio, fim);
+    var empresa = _fluxoCsvSlug((_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'empresa');
+    var periodo = _fluxoCsvPeriodoArquivo(inicio, fim);
+    _csvBaixarArquivo(csv, 'conciliacoes-financeiras-' + empresa + '-' + periodo + '.csv');
+  } catch(e) {
+    alert('Erro ao exportar conciliacoes: ' + (e.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function _csvEmpresaNomeAtiva() {
   return (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
 }

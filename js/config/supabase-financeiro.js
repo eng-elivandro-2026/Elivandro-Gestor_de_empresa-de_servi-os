@@ -829,6 +829,88 @@
     return conc;
   }
 
+  async function sbListarConciliacoesFinanceiras(empresaId, filtros) {
+    if (!empresaId) throw new Error('[Financeiro F3.13-I] empresa_id obrigatorio.');
+    filtros = filtros || {};
+    var dataInicio = filtros.dataInicio || filtros.data_inicio || null;
+    var dataFim = filtros.dataFim || filtros.data_fim || null;
+
+    var query = client()
+      .from('financeiro_conciliacoes_movimentos')
+      .select('id, empresa_id, movimento_caixa_id, fonte_financeira_id, meio_pagamento_id, data_conciliacao, observacao, comprovante_url, identificador_bancario, status, created_by, created_at, updated_at')
+      .eq('empresa_id', empresaId)
+      .order('data_conciliacao', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (dataInicio) query = query.gte('data_conciliacao', dataInicio);
+    if (dataFim)    query = query.lte('data_conciliacao', dataFim);
+
+    var r = await query;
+    if (r.error) throw r.error;
+    var conciliacoes = r.data || [];
+    if (!conciliacoes.length) return [];
+
+    function idsUnicos(campo) {
+      var mapa = {};
+      conciliacoes.forEach(function(c) {
+        if (c && c[campo]) mapa[String(c[campo])] = true;
+      });
+      return Object.keys(mapa);
+    }
+
+    function mapaPorId(lista) {
+      var mapa = {};
+      (lista || []).forEach(function(item) {
+        if (item && item.id) mapa[String(item.id)] = item;
+      });
+      return mapa;
+    }
+
+    var movimentoIds = idsUnicos('movimento_caixa_id');
+    var fonteIds = idsUnicos('fonte_financeira_id');
+    var meioIds = idsUnicos('meio_pagamento_id');
+
+    var consultas = [];
+    consultas.push(movimentoIds.length
+      ? client()
+        .from('financeiro_movimentos_caixa')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .in('id', movimentoIds)
+      : Promise.resolve({ data: [], error: null }));
+    consultas.push(fonteIds.length
+      ? client()
+        .from('financeiro_fontes_financeiras')
+        .select('id, empresa_id, nome, tipo, ativo')
+        .eq('empresa_id', empresaId)
+        .in('id', fonteIds)
+      : Promise.resolve({ data: [], error: null }));
+    consultas.push(meioIds.length
+      ? client()
+        .from('financeiro_meios_pagamento')
+        .select('id, empresa_id, nome, tipo, natureza, ativo')
+        .eq('empresa_id', empresaId)
+        .in('id', meioIds)
+      : Promise.resolve({ data: [], error: null }));
+
+    var res = await Promise.all(consultas);
+    if (res[0] && res[0].error) throw res[0].error;
+    if (res[1] && res[1].error) throw res[1].error;
+    if (res[2] && res[2].error) throw res[2].error;
+
+    var movimentos = mapaPorId(res[0] ? res[0].data : []);
+    var fontes = mapaPorId(res[1] ? res[1].data : []);
+    var meios = mapaPorId(res[2] ? res[2].data : []);
+
+    return conciliacoes.map(function(c) {
+      var item = Object.assign({}, c);
+      item.movimento_caixa = movimentos[String(c.movimento_caixa_id)] || null;
+      item.fonte_financeira = c.fonte_financeira_id ? (fontes[String(c.fonte_financeira_id)] || null) : null;
+      item.meio_pagamento = c.meio_pagamento_id ? (meios[String(c.meio_pagamento_id)] || null) : null;
+      return item;
+    });
+  }
+
 
   /**
    * Lista contas a receber da empresa filtradas por data_vencimento.
@@ -1524,6 +1606,7 @@
     criarMovimentoCaixa:             sbCriarMovimentoCaixa,
     conciliarMovimentoCaixa:         sbConciliarMovimentoCaixa,
     listarConciliacaoMovimento:      sbListarConciliacaoMovimento,
+    listarConciliacoesFinanceiras:   sbListarConciliacoesFinanceiras,
 
     // Saldos de caixa
     buscarSaldoCaixaAtual:           sbBuscarSaldoCaixaAtual,
