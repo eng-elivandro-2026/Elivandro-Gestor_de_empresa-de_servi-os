@@ -27,6 +27,9 @@ var _aptEditId   = null;
 var _aptEditData = null; // full apt record while edit modal is open
 var _modoApt = 'equipe'; // 'equipe' | 'meus'
 var _colabProprio = null; // null=não verificado, false=não é colab, objeto=é colab
+var _usuarioRH = null;
+var _rhPerfil = null;
+var _rhValoresVisiveis = false;
 var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
 var _empresaId = (typeof getEmpresaAtivaId === "function") ? getEmpresaAtivaId() : null;
 var _propostas = [];
@@ -42,7 +45,69 @@ function fmtData(d) {
   var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0];
 }
 function fmtMoeda(v) {
+  if (!_rhValoresVisiveis) return '••••';
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function garantirBotaoValoresRH() {
+  if (document.getElementById('btnToggleValoresRH')) return;
+  var label = document.getElementById('rhEmpresaLabel');
+  var row = label ? label.closest('div') : null;
+  var parent = row && row.parentElement;
+  if (!parent) return;
+  var btn = document.createElement('button');
+  btn.className = 'btn bg bsm';
+  btn.id = 'btnToggleValoresRH';
+  btn.type = 'button';
+  btn.onclick = toggleValoresRH;
+  parent.appendChild(btn);
+}
+function atualizarBotaoValoresRH() {
+  garantirBotaoValoresRH();
+  var btn = document.getElementById('btnToggleValoresRH');
+  if (btn) btn.textContent = _rhValoresVisiveis ? 'Ocultar valores' : 'Mostrar valores';
+}
+function toggleValoresRH() {
+  _rhValoresVisiveis = !_rhValoresVisiveis;
+  atualizarBotaoValoresRH();
+  carregarColabs();
+  carregarKpiApt();
+  if (document.getElementById('sec-apontamentos')?.classList.contains('on')) carregarApontamentos();
+  if (document.getElementById('sec-boletins')?.classList.contains('on')) carregarBoletins();
+  if (document.getElementById('sec-despesas')?.classList.contains('on')) carregarDespesas();
+  if (_colabAtivo && document.getElementById('sec-detalhe')?.classList.contains('on')) abrirDetalhe(_colabAtivo.id);
+}
+function perfilRHPermitido(perfil) {
+  return ['dono','gestor','admin','super_admin','socio','sócio'].includes(String(perfil||'').toLowerCase());
+}
+function bloquearAcessoRH() {
+  var root = document.getElementById('rhRoot') || document.body;
+  root.innerHTML = '<div style="min-height:360px;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:system-ui;padding:2rem;text-align:center">'
+    + '<div style="max-width:360px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
+    + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p></div></div>';
+}
+async function validarAcessoRHAdministrativo() {
+  var { data: authData } = await sb.auth.getUser();
+  if (!authData || !authData.user) {
+    window.location.href = '/login';
+    return false;
+  }
+  var { data: usr, error } = await sb.from('usuarios')
+    .select('id,nome,email,perfil,ativo')
+    .eq('auth_id', authData.user.id)
+    .maybeSingle();
+  if (error || !usr || usr.ativo === false || !perfilRHPermitido(usr.perfil)) {
+    bloquearAcessoRH();
+    return false;
+  }
+  _usuarioRH = usr;
+  _rhPerfil = String(usr.perfil || '').toLowerCase();
+  if (_rhPerfil === 'dono' || authData.user.email === 'nascimento.gaube@gmail.com') {
+    document.body.classList.add('master-admin');
+  } else {
+    document.body.classList.remove('master-admin');
+  }
+  atualizarBotaoValoresRH();
+  return true;
 }
 var _docEditId = null;
 var _docsCache = [];
@@ -287,11 +352,12 @@ function renderColabs(lista) {
     var tipoBdg = c.tipo === 'clt' ? 'bdg-blue' : c.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
     var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
     var inativo = !c.ativo;
+    var podeGerenciarEmpresas = document.body.classList.contains('master-admin');
     var acoes = inativo
       ? '<button class="btn bs bsm" onclick="event.stopPropagation();reativarColabById(\'' + c.id + '\',\'' + (c.nome||'').replace(/'/g,"\\'") + '\')">🔄 Reativar</button>'
         + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
       : '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
-        + '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>'
+        + (podeGerenciarEmpresas ? '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>' : '')
         + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>';
     return '<div class="colab-card" onclick="abrirDetalhe(\'' + c.id + '\')" style="' + (inativo ? 'opacity:.6' : '') + '">'
       + '<div class="colab-avatar" style="' + (inativo ? 'background:var(--bg3);color:var(--text3)' : '') + '">' + ini + '</div>'
@@ -301,7 +367,7 @@ function renderColabs(lista) {
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (inativo ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>')
-          + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
+          + (c.valor_hora ? '<span class="bdg bdg-gray">' + fmtMoeda(c.valor_hora) + '/h</span>' : '')
           + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '%</span>' : '')
         + '</div>'
       + '</div>'
@@ -4573,13 +4639,8 @@ async function rejeitarDespesa(id) {
     }
   } catch(e) {}
 
-  // Detectar master admin
-  try {
-    var { data: authData } = await sb.auth.getUser();
-    if (authData && authData.user && authData.user.email === 'nascimento.gaube@gmail.com') {
-      document.body.classList.add('master-admin');
-    }
-  } catch(e) {}
+  var acessoOK = await validarAcessoRHAdministrativo();
+  if (!acessoOK) return;
 
   // Carregar colaboradores
   await carregarColabs();
@@ -4595,6 +4656,7 @@ async function rejeitarDespesa(id) {
   window.gerarRelatorioHoras = gerarRelatorioHoras;
   window.filtrarHorasColab = filtrarHorasColab;
   window.limparFiltroHoras = limparFiltroHoras;
+  window.toggleValoresRH = toggleValoresRH;
 
   // E-mails de alerta
   window.abrirConfigEmails = abrirConfigEmails;
