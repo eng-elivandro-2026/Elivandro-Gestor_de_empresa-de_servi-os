@@ -44,6 +44,131 @@ function fmtData(d) {
 function fmtMoeda(v) {
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+var _rhValoresVisiveis = true;
+var _rhMasterAdmin = false;
+
+function rhPerfilAtual() {
+  var p = '';
+  try { if (window.getPerfilUsuario) p = window.getPerfilUsuario(); } catch(e) {}
+  try { if (!p && window.parent && window.parent.getPerfilUsuario) p = window.parent.getPerfilUsuario(); } catch(e) {}
+  if (!p) p = window._perfilUsuario || window._perfilGlobal || '';
+  return String(p || '').toLowerCase();
+}
+
+function rhPodeAlternarValores() {
+  var p = rhPerfilAtual();
+  return _rhMasterAdmin || document.body.classList.contains('master-admin') || p === 'dono' || p === 'admin' || p === 'gestor';
+}
+
+function rhIsDonoPortal() {
+  var p = rhPerfilAtual();
+  return _rhMasterAdmin
+    || document.body.classList.contains('master-admin')
+    || p === 'dono'
+    || p === 'superadmin'
+    || p === 'super-admin'
+    || p === 'owner';
+}
+
+function rhValoresLiberados() {
+  return rhPodeAlternarValores() && _rhValoresVisiveis;
+}
+
+function rhDefinirVisibilidadePadrao() {
+  _rhValoresVisiveis = rhPodeAlternarValores();
+}
+
+function rhValorOculto() {
+  return '<span class="rh-valor-oculto" style="color:var(--text3);font-weight:600">Valor oculto</span>';
+}
+
+function rhValorOcultoTexto() {
+  return 'Valor oculto';
+}
+
+function fmtMoedaRh(v) {
+  return rhValoresLiberados() ? fmtMoeda(v) : rhValorOculto();
+}
+
+function fmtMoedaRhTexto(v) {
+  return rhValoresLiberados() ? fmtMoeda(v) : rhValorOcultoTexto();
+}
+
+function fmtValorHoraRh(v) {
+  return v ? (rhValoresLiberados() ? fmtMoeda(v) + '/h' : rhValorOculto()) : '—';
+}
+
+function fmtValorHoraRhTexto(v) {
+  return v ? (rhValoresLiberados() ? fmtMoeda(v) + '/h' : rhValorOcultoTexto()) : '—';
+}
+
+function rhEnsureValoresToggle() {
+  var btn = document.getElementById('rhToggleValoresBtn');
+  var pode = rhPodeAlternarValores();
+  if (!pode) {
+    _rhValoresVisiveis = false;
+    if (btn) btn.remove();
+    return;
+  }
+  if (!btn) {
+    var label = document.getElementById('rhEmpresaLabel');
+    var row = label ? label.closest('div[style*="justify-content"]') : null;
+    if (!row) return;
+    btn = document.createElement('button');
+    btn.id = 'rhToggleValoresBtn';
+    btn.type = 'button';
+    btn.className = 'btn bg bsm';
+    btn.style.marginLeft = 'auto';
+    btn.onclick = toggleValoresRh;
+    row.appendChild(btn);
+  }
+  btn.textContent = _rhValoresVisiveis ? 'Ocultar valores' : 'Mostrar valores';
+  btn.title = _rhValoresVisiveis ? 'Ocultar valores de hora e remuneracao' : 'Mostrar valores de hora e remuneracao';
+}
+
+function rhRecarregarSecaoAtualValores() {
+  var sec = document.querySelector('.rhsec.on');
+  var id = sec ? sec.id.replace('sec-', '') : 'colaboradores';
+  if (id === 'colaboradores') { renderColabs(_colabs || []); renderKpiColabs(_colabs || []); return; }
+  if (id === 'detalhe' && _colabAtivo) { abrirDetalhe(_colabAtivo.id); return; }
+  if (id === 'apontamentos') { carregarApontamentos(); carregarKpiApt(); return; }
+  if (id === 'boletins') { carregarBoletins(); return; }
+  if (id === 'despesas') { carregarDespesas(); return; }
+  if (id === 'ferias-geral') { carregarFeriasGeral(); return; }
+  if (_colabAtivo) carregarHorasColab(_colabAtivo.id);
+}
+
+function toggleValoresRh() {
+  if (!rhPodeAlternarValores()) {
+    _rhValoresVisiveis = false;
+    toast('Seu perfil nao permite visualizar valores de RH.', 'err');
+    rhEnsureValoresToggle();
+    return;
+  }
+  _rhValoresVisiveis = !_rhValoresVisiveis;
+  rhEnsureValoresToggle();
+  rhRecarregarSecaoAtualValores();
+}
+
+function rhAtualizarScopeBtns() {
+  var pode = rhIsDonoPortal();
+  document.querySelectorAll('.scope-btn').forEach(function(btn) {
+    btn.style.display = pode ? 'inline-block' : 'none';
+    btn.disabled = !pode;
+    btn.setAttribute('aria-hidden', pode ? 'false' : 'true');
+  });
+}
+
+function rhLimparModaisEmpresa() {
+  ['modalColab','modalAddEmpresa','modalVerBolGestor','modalGerarBol','modalHistoricoApt','modalCancelApt','modalReabrirApt','modalEditarApt','modalDespesa'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('on');
+  });
+  _aptEditId = null;
+  _aptEditData = null;
+  _bolGestorAtivo = null;
+}
+
 var _docEditId = null;
 var _docsCache = [];
 var _saudeEditId = null;
@@ -168,7 +293,7 @@ async function verificarColabProprio() {
     if (!authData || !authData.user) return;
     var { data: colab } = await sb
       .from('colaboradores')
-      .select('id, nome, valor_hora')
+      .select('id, nome')
       .eq('auth_id', authData.user.id)
       .eq('ativo', true)
       .maybeSingle();
@@ -277,6 +402,8 @@ function filtrarColabs() {
 }
 
 function renderColabs(lista) {
+  rhEnsureValoresToggle();
+  rhAtualizarScopeBtns();
   var el = document.getElementById('colabList');
   if (!lista.length) {
     el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">Nenhum colaborador encontrado.</div>';
@@ -291,7 +418,7 @@ function renderColabs(lista) {
       ? '<button class="btn bs bsm" onclick="event.stopPropagation();reativarColabById(\'' + c.id + '\',\'' + (c.nome||'').replace(/'/g,"\\'") + '\')">🔄 Reativar</button>'
         + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>'
       : '<button class="btn ba bsm" onclick="event.stopPropagation();abrirModalAptColab(\'' + c.id + '\')">+ Horas</button>'
-        + '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>'
+        + (rhIsDonoPortal() ? '<button class="btn bp bsm" onclick="event.stopPropagation();abrirModalAdicionarEmpresa(\'' + c.id + '\')">+ Empresa</button>' : '')
         + '<button class="btn bg bsm" onclick="event.stopPropagation();abrirDetalhe(\'' + c.id + '\')">Ver</button>';
     return '<div class="colab-card" onclick="abrirDetalhe(\'' + c.id + '\')" style="' + (inativo ? 'opacity:.6' : '') + '">'
       + '<div class="colab-avatar" style="' + (inativo ? 'background:var(--bg3);color:var(--text3)' : '') + '">' + ini + '</div>'
@@ -301,7 +428,7 @@ function renderColabs(lista) {
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (inativo ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>')
-          + (c.valor_hora ? '<span class="bdg bdg-gray">R$ ' + Number(c.valor_hora).toFixed(2).replace('.',',') + '/h</span>' : '')
+          + (c.valor_hora ? '<span class="bdg bdg-gray">' + fmtValorHoraRh(c.valor_hora) + '</span>' : '')
           + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '%</span>' : '')
         + '</div>'
       + '</div>'
@@ -647,7 +774,7 @@ async function abrirDetalhe(id) {
     campo('CPF/CNPJ', _colabAtivo.documento||'—') +
     campo('E-mail', _colabAtivo.email||'—') +
     campo('Telefone', _colabAtivo.telefone||'—') +
-    campo('Valor/hora', _colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora) + '/h' : '—') +
+    campo('Valor/hora', fmtValorHoraRh(_colabAtivo.valor_hora)) +
     campo('Função', _colabAtivo.funcao||'—') +
     campo(admissaoLabel, fmtData(_colabAtivo.admissao)) +
     (!isClt && _colabAtivo.fim_contrato ? campo('Término do contrato', fmtData(_colabAtivo.fim_contrato)) : '') +
@@ -686,6 +813,7 @@ async function carregarDocs(colabId) {
     var avisoBadge = aviso > 0 ? ' · <span style="font-size:.7rem;color:var(--text3)">🔔 aviso ' + aviso + 'd</span>' : '';
     var shared = !d.empresa_id;
     var toggleBtn = '<button onclick="toggleDocCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
+    if (!rhIsDonoPortal()) toggleBtn = '';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(88,166,255,.1);color:var(--blue)">📄</div>'
       + '<div class="doc-info">'
@@ -728,6 +856,7 @@ async function carregarSaude(colabId) {
     var obsClean = getObsClean(d.observacoes);
     var shared = !d.empresa_id;
     var toggleBtn = '<button onclick="toggleSaudeCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
+    if (!rhIsDonoPortal()) toggleBtn = '';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(63,185,80,.1);color:var(--green)">' + icon + '</div>'
       + '<div class="doc-info">'
@@ -761,6 +890,7 @@ async function carregarEpis(colabId) {
     var obsClean = getObsClean(d.observacoes);
     var shared = !d.empresa_id;
     var toggleBtn = '<button onclick="toggleEpiCompartilhar(\'' + d.id + '\')" title="' + (shared ? 'Visível em todas as empresas — clique para restringir a esta' : 'Visível só nesta empresa — clique para compartilhar') + '" style="margin-right:.3rem;font-size:.67rem;padding:.12rem .4rem;border-radius:10px;border:1px solid ' + (shared ? 'rgba(88,166,255,.4)' : 'rgba(110,118,129,.25)') + ';background:' + (shared ? 'rgba(88,166,255,.12)' : 'transparent') + ';color:' + (shared ? 'var(--blue)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap">' + (shared ? '🔗 Todas' : '🏢 Só esta') + '</button>';
+    if (!rhIsDonoPortal()) toggleBtn = '';
     return '<div class="doc-item">'
       + '<div class="doc-icon" style="background:rgba(240,165,0,.1);color:var(--accent)">🦺</div>'
       + '<div class="doc-info">'
@@ -822,7 +952,7 @@ async function carregarHorasColab(colabId) {
   // Mapa reverso aptId → boletim numero via apontamentos_ids
   var mapaAptBolPreview = {};
   var { data: bolsColab } = await sb.from('boletins')
-    .select('numero, apontamentos_ids').eq('colaborador_id', colabId).neq('status','cancelado');
+    .select('numero, apontamentos_ids').eq('colaborador_id', colabId).eq('empresa_id', empId).neq('status','cancelado');
   (bolsColab||[]).forEach(function(b){
     (b.apontamentos_ids||[]).forEach(function(aid){
       mapaAptBolPreview[String(aid)] = b.numero || '—';
@@ -854,7 +984,7 @@ async function carregarHorasColab(colabId) {
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
-      + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td style="color:var(--green)">' + fmtMoedaRh(a.valor_total) + '</td>'
       + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
       + '<td>' + bolCell + '</td>'
     + '</tr>';
@@ -864,7 +994,7 @@ async function carregarHorasColab(colabId) {
     kpi(totalNormal.toFixed(1)+'h', 'Normal') +
     kpi(totalExtra50.toFixed(1)+'h', 'Extra 50%') +
     kpi(totalExtra100.toFixed(1)+'h', 'Extra 100%') +
-    kpi(fmtMoeda(totalValor), 'Total R$') +
+    kpi(fmtMoedaRh(totalValor), 'Total R$') +
     kpi(String(totalAprov), 'Aprovados') +
     kpi(String(totalPend), 'Pendentes') +
     (totalRej ? kpi(String(totalRej), 'Rejeitados') : '');
@@ -894,7 +1024,7 @@ async function gerarRelatorioHoras() {
   var propIds = [...new Set(apts.map(function(a){ return a.proposta_id; }).filter(Boolean))];
   var mapaProps = {};
   if (propIds.length) {
-    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo, cliente').in('app_id', propIds);
+    var { data: props } = await sb.from('propostas').select('app_id, numero_proposta, titulo, cliente').eq('empresa_id', empId).in('app_id', propIds);
     (props||[]).forEach(function(p){ mapaProps[p.app_id] = p; });
   }
 
@@ -918,7 +1048,7 @@ async function gerarRelatorioHoras() {
   var historicos = {};
   if (aptIds.length) {
     var { data: hist } = await sb.from('apontamentos_historico')
-      .select('*').in('apontamento_id', aptIds).order('criado_em', {ascending:true});
+      .select('*').eq('empresa_id', empId).in('apontamento_id', aptIds).order('criado_em', {ascending:true});
     (hist||[]).forEach(function(h){
       if (!historicos[h.apontamento_id]) historicos[h.apontamento_id] = [];
       historicos[h.apontamento_id].push(h);
@@ -965,7 +1095,7 @@ async function gerarRelatorioHoras() {
       + '<td style="text-align:center">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td style="text-align:center">' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
-      + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoedaRhTexto(a.valor_total) + '</td>'
       + '<td style="text-align:center">' + badge(a.status) + '</td>'
       + '<td style="text-align:center;font-size:10px;color:#0969da">' + bolInfo + '</td>'
     + '</tr>';
@@ -982,7 +1112,7 @@ async function gerarRelatorioHoras() {
         + '<td style="font-weight:700">' + (b.numero||'—') + '</td>'
         + '<td>' + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim) + '</td>'
         + '<td style="text-align:center">' + Number(b.horas_total||0).toFixed(1) + 'h</td>'
-        + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoeda(b.valor_total) + '</td>'
+        + '<td style="text-align:right;font-weight:600;color:#1a7f37">' + fmtMoedaRhTexto(b.valor_total) + '</td>'
         + '<td style="text-align:center">' + badge(b.status==='valido'?'valido':b.status) + '</td>'
         + '<td style="text-align:center">' + assinPrest + '</td>'
         + '<td style="text-align:center">' + assinEmp + '</td>'
@@ -1074,7 +1204,7 @@ async function gerarRelatorioHoras() {
     + '<div class="info-row"><span class="info-label">Colaborador:</span><span class="info-val">' + _colabAtivo.nome + '</span></div>'
     + '<div class="info-row"><span class="info-label">Tipo de contrato:</span><span class="info-val">' + (_colabAtivo.tipo||'—').toUpperCase() + '</span></div>'
     + '<div class="info-row"><span class="info-label">Função / Cargo:</span><span class="info-val">' + (_colabAtivo.funcao||'—') + '</span></div>'
-    + '<div class="info-row"><span class="info-label">Valor/hora base:</span><span class="info-val">' + (_colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora)+'/h' : '—') + '</span></div>'
+    + '<div class="info-row"><span class="info-label">Valor/hora base:</span><span class="info-val">' + fmtValorHoraRhTexto(_colabAtivo.valor_hora) + '</span></div>'
     + '<div class="info-row"><span class="info-label">Período do relatório:</span><span class="info-val">' + periodoTxt + '</span></div>'
     + '<div class="info-row"><span class="info-label">CPF / CNPJ:</span><span class="info-val">' + (_colabAtivo.documento||'—') + '</span></div>'
     + '</div>'
@@ -1086,7 +1216,7 @@ async function gerarRelatorioHoras() {
     + '<div class="kpi"><b>' + totalExtra50.toFixed(1)+'h</b><span>Extra 50%</span></div>'
     + '<div class="kpi"><b>' + totalExtra100.toFixed(1)+'h</b><span>Extra 100%</span></div>'
     + '<div class="kpi"><b>' + totalHoras.toFixed(1)+'h</b><span>Total Horas</span></div>'
-    + '<div class="kpi"><b style="color:#1a7f37">' + fmtMoeda(totalValor)+'</b><span>Total R$</span></div>'
+    + '<div class="kpi"><b style="color:#1a7f37">' + fmtMoedaRhTexto(totalValor)+'</b><span>Total R$</span></div>'
     + '<div class="kpi"><b style="color:#1a7f37">' + totalAprov+'</b><span>Aprovados</span></div>'
     + '<div class="kpi"><b style="color:#9a6700">' + totalPend+'</b><span>Pendentes</span></div>'
     + (totalRej ? '<div class="kpi"><b style="color:#cf222e">'+totalRej+'</b><span>Rejeitados</span></div>' : '')
@@ -1104,7 +1234,7 @@ async function gerarRelatorioHoras() {
     + '<td style="text-align:center">' + totalNormal.toFixed(1)+'h</td>'
     + '<td style="text-align:center">' + totalExtra50.toFixed(1)+'h</td>'
     + '<td style="text-align:center">' + totalExtra100.toFixed(1)+'h</td>'
-    + '<td style="text-align:right;color:#1a7f37">' + fmtMoeda(totalValor)+'</td>'
+      + '<td style="text-align:right;color:#1a7f37">' + fmtMoedaRhTexto(totalValor)+'</td>'
     + '<td colspan="2"></td>'
     + '</tr></tfoot>'
     + '</table>'
@@ -1148,7 +1278,7 @@ async function carregarApontamentos() {
   var empId = await getEmpresaId();
   var status = document.getElementById('filtroAptStatus').value;
   var q = sb.from('apontamentos')
-    .select('*, colaboradores(nome,valor_hora)')
+    .select('*, colaboradores(nome)')
     .order('data', {ascending:false})
     .limit(100);
 
@@ -1223,7 +1353,7 @@ async function carregarApontamentos() {
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
-      + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td style="color:var(--green)">' + fmtMoedaRh(a.valor_total) + '</td>'
       + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
       + '<td><div class="br">' + acoes + '</div></td>'
     + '</tr>';
@@ -1246,7 +1376,7 @@ async function carregarKpiApt() {
     .reduce(function(s,a){ return s+Number(a.valor_total||0); }, 0);
   document.getElementById('kpiApt').innerHTML =
     kpi(pend, 'Pendentes') + kpi(aprov, 'Aprovados') +
-    kpi(totalH.toFixed(1)+'h', 'Total Horas') + kpi(fmtMoeda(totalV), 'Custo Aprovado');
+    kpi(totalH.toFixed(1)+'h', 'Total Horas') + kpi(fmtMoedaRh(totalV), 'Custo Aprovado');
 }
 
 async function aprovarApt(id) {
@@ -1281,10 +1411,11 @@ async function _resolverUsuarioLogado() {
 }
 
 async function abrirModalCancelApt(id) {
+  var empId = await getEmpresaId();
   // Re-fetch apontamento to get current state and boletim link
   var { data: apt, error } = await sb.from('apontamentos')
     .select('id, data, hora_entrada, hora_saida, horas_total, valor_total, status, boletim_id, boletim_numero, colaboradores(nome)')
-    .eq('id', id).single();
+    .eq('id', id).eq('empresa_id', empId).single();
   if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
 
   // Status guard
@@ -1310,7 +1441,7 @@ async function abrirModalCancelApt(id) {
     + ' · ' + fmtData(apt.data)
     + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
     + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
-    + ' · ' + fmtMoeda(apt.valor_total)
+    + ' · ' + fmtMoedaRh(apt.valor_total)
     + '<br><span style="color:var(--accent);font-size:.72rem">Status atual: ' + (apt.status||'—') + '</span>';
   document.getElementById('txtMotivoCancelApt').value = '';
   document.getElementById('cancelAptMotivoErr').style.display = 'none';
@@ -1338,7 +1469,7 @@ async function confirmarCancelApt() {
 
   // Re-verify server-side before writing (race condition guard)
   var { data: apt } = await sb.from('apontamentos')
-    .select('id, status, boletim_id').eq('id', _aptCancelId).single();
+    .select('id, status, boletim_id').eq('id', _aptCancelId).eq('empresa_id', empId).single();
   if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status === 'cancelado') { toast('Já cancelado.', 'err'); fecharModalCancelApt(); return; }
   if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Cancele o documento primeiro.', 'err'); fecharModalCancelApt(); return; }
@@ -1371,9 +1502,10 @@ async function confirmarCancelApt() {
 }
 
 async function abrirModalReabrirApt(id) {
+  var empId = await getEmpresaId();
   var { data: apt, error } = await sb.from('apontamentos')
     .select('id, data, hora_entrada, hora_saida, horas_total, valor_total, status, boletim_id, boletim_numero, colaboradores(nome)')
-    .eq('id', id).single();
+    .eq('id', id).eq('empresa_id', empId).single();
   if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
 
   if (apt.status !== 'aprovado') { toast('Somente apontamentos aprovados podem ser reabertos.', 'err'); return; }
@@ -1396,7 +1528,7 @@ async function abrirModalReabrirApt(id) {
     + ' · ' + fmtData(apt.data)
     + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
     + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
-    + ' · ' + fmtMoeda(apt.valor_total)
+    + ' · ' + fmtMoedaRh(apt.valor_total)
     + '<br><span style="color:var(--green);font-size:.72rem">Status atual: ' + (apt.status||'—') + '</span>';
   document.getElementById('txtMotivoReabrirApt').value = '';
   document.getElementById('reabrirAptMotivoErr').style.display = 'none';
@@ -1424,7 +1556,7 @@ async function confirmarReabrirApt() {
 
   // Re-verify server-side before writing (race condition guard)
   var { data: apt } = await sb.from('apontamentos')
-    .select('id, status, boletim_id').eq('id', _aptReabrirId).single();
+    .select('id, status, boletim_id').eq('id', _aptReabrirId).eq('empresa_id', empId).single();
   if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status !== 'aprovado') { toast('Este apontamento não pode mais ser reaberto.', 'err'); fecharModalReabrirApt(); return; }
   if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Cancele o documento primeiro.', 'err'); fecharModalReabrirApt(); return; }
@@ -1457,9 +1589,10 @@ async function confirmarReabrirApt() {
 // ══ EDITAR APONTAMENTO ═══════════════════════════════════════
 
 async function abrirModalEditarApt(id) {
+  var empId = await getEmpresaId();
   var { data: apt, error } = await sb.from('apontamentos')
     .select('*, colaboradores(nome), propostas(numero_proposta, titulo)')
-    .eq('id', id).single();
+    .eq('id', id).eq('empresa_id', empId).single();
   if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status !== 'pendente') { toast('Apenas apontamentos pendentes podem ser editados.', 'err'); return; }
   if (apt.boletim_id) { toast('Apontamento está vinculado a um documento e não pode ser editado.', 'err'); return; }
@@ -1527,23 +1660,23 @@ function calcularHorasEditApt() {
   var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percP, baseP);
 
   document.getElementById('eHorasPrevia').style.display = 'block';
-  document.getElementById('ePvNormal').textContent    = r.horas_normal.toFixed(1)    + 'h → ' + fmtMoeda(r.valor_normal);
-  document.getElementById('ePvExtra50').textContent   = r.horas_extra_50.toFixed(1)  + 'h → ' + fmtMoeda(r.valor_extra_50);
-  document.getElementById('ePvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
-  document.getElementById('ePvNoturno').textContent   = r.horas_noturno.toFixed(1)   + 'h → ' + fmtMoeda(r.valor_noturno);
+  document.getElementById('ePvNormal').textContent    = r.horas_normal.toFixed(1)    + 'h -> ' + fmtMoedaRhTexto(r.valor_normal);
+  document.getElementById('ePvExtra50').textContent   = r.horas_extra_50.toFixed(1)  + 'h -> ' + fmtMoedaRhTexto(r.valor_extra_50);
+  document.getElementById('ePvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_extra_100);
+  document.getElementById('ePvNoturno').textContent   = r.horas_noturno.toFixed(1)   + 'h -> ' + fmtMoedaRhTexto(r.valor_noturno);
 
   var perigRow = document.getElementById('ePvPerigRow');
   if (perig && r.valor_periculosidade > 0) {
     var baseLabel = baseP === 'total' ? 'h totais' : 'h normais';
     document.getElementById('ePvPericulosidade').textContent =
       (baseP === 'total' ? r.horas_total : r.horas_normal).toFixed(1) + baseLabel
-      + ' × ' + percP + '% → ' + fmtMoeda(r.valor_periculosidade);
+      + ' x ' + percP + '% -> ' + fmtMoedaRhTexto(r.valor_periculosidade);
     perigRow.style.display = '';
   } else {
     perigRow.style.display = 'none';
   }
 
-  document.getElementById('ePvTotal').textContent = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
+  document.getElementById('ePvTotal').textContent = r.horas_total.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_total);
 }
 
 async function salvarEdicaoApt() {
@@ -1574,7 +1707,7 @@ async function salvarEdicaoApt() {
   // Race-condition guard: re-fetch current state before writing
   var { data: apt } = await sb.from('apontamentos')
     .select('id, status, boletim_id, hora_entrada, hora_saida, intervalo_inicio, intervalo_fim, tipo_dia, descricao, horas_normal, horas_extra_50, horas_extra_100, horas_noturno, horas_total, valor_total, valor_hora_base, periculoso, perc_periculosidade, periculosidade_base, jornada_inicio, jornada_fim')
-    .eq('id', _aptEditId).single();
+    .eq('id', _aptEditId).eq('empresa_id', empId).single();
   if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status !== 'pendente') { toast('Apontamento não está mais pendente. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
   if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
@@ -1609,7 +1742,6 @@ async function salvarEdicaoApt() {
   };
 
   var agora = new Date().toISOString();
-  // Fix: no empresa_id filter — UPDATE by id only (avoids 0-row silent fail in "Meus" mode)
   // .select('id') forces Supabase to return the affected rows so we can detect 0-row matches
   var { data: updated, error: errUpd } = await sb.from('apontamentos').update(Object.assign({
     data:             data,
@@ -1624,7 +1756,7 @@ async function salvarEdicaoApt() {
     editado_em:       agora,
     motivo_edicao:    motivo,
     updated_at:       agora
-  }, calc)).eq('id', _aptEditId).select('id');
+  }, calc)).eq('id', _aptEditId).eq('empresa_id', empId).select('id');
   if (errUpd) { toast('Erro ao salvar: ' + errUpd.message, 'err'); return; }
   if (!updated || !updated.length) { toast('Nenhuma linha atualizada — apontamento não encontrado ou sem permissão.', 'err'); return; }
 
@@ -1674,6 +1806,9 @@ function _renderDiffApt(antes, depois) {
   var b = depois || {};
   var keys = Object.keys(_DIFF_LABELS);
   var changed = keys.filter(function(k) { return String(a[k]||'') !== String(b[k]||''); });
+  if (!rhValoresLiberados()) {
+    changed = changed.filter(function(k) { return k.indexOf('valor_') !== 0; });
+  }
   if (!changed.length) return '';
   return '<div style="margin-top:.5rem;border-top:1px solid rgba(255,255,255,.07);padding-top:.45rem">'
     + '<div style="font-size:.67rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Alterações</div>'
@@ -1711,10 +1846,11 @@ function _renderHistoricoItem(h) {
 }
 
 async function carregarHistoricoApt(id) {
+  var empId = await getEmpresaId();
   // Fetch apontamento summary (include created_at for fallback criado event)
   var { data: apt } = await sb.from('apontamentos')
     .select('data, hora_entrada, hora_saida, horas_total, valor_total, status, created_at, colaboradores(nome)')
-    .eq('id', id).maybeSingle();
+    .eq('id', id).eq('empresa_id', empId).maybeSingle();
 
   // Populate header
   var nomeColab = apt && apt.colaboradores ? apt.colaboradores.nome : '—';
@@ -1723,7 +1859,7 @@ async function carregarHistoricoApt(id) {
       + ' · ' + fmtData(apt.data)
       + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
       + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
-      + ' · ' + fmtMoeda(apt.valor_total)
+      + ' · ' + fmtMoedaRh(apt.valor_total)
       + '<br><span style="font-size:.72rem;color:var(--text3)">Status atual: <strong>' + (apt.status||'—') + '</strong></span>'
     : '';
 
@@ -1731,6 +1867,7 @@ async function carregarHistoricoApt(id) {
   var { data: hist, error } = await sb.from('apontamentos_historico')
     .select('*')
     .eq('apontamento_id', id)
+    .eq('empresa_id', empId)
     .order('criado_em', { ascending: true });
   if (error) { toast('Erro ao carregar histórico: ' + error.message, 'err'); return; }
 
@@ -1905,23 +2042,23 @@ function calcularHorasApt() {
   var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   document.getElementById('horasPrevia').style.display = 'block';
-  document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
-  document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
-  document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
-  document.getElementById('pvNoturno').textContent   = r.horas_noturno.toFixed(1) + 'h → ' + fmtMoeda(r.valor_noturno);
+  document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_normal);
+  document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_extra_50);
+  document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_extra_100);
+  document.getElementById('pvNoturno').textContent   = r.horas_noturno.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_noturno);
 
   var pvPerigRow = document.getElementById('pvPerigRow');
   if (perig && r.valor_periculosidade > 0) {
     var baseLabel = basePerig === 'total' ? 'h totais' : 'h normais';
     document.getElementById('pvPericulosidade').textContent =
       (basePerig === 'total' ? r.horas_total : r.horas_normal).toFixed(1) + baseLabel
-      + ' × ' + percPerig + '% → ' + fmtMoeda(r.valor_periculosidade);
+      + ' x ' + percPerig + '% -> ' + fmtMoedaRhTexto(r.valor_periculosidade);
     pvPerigRow.style.display = '';
   } else {
     pvPerigRow.style.display = 'none';
   }
 
-  document.getElementById('pvTotal').textContent     = r.horas_total.toFixed(1) + 'h → ' + fmtMoeda(r.valor_total);
+  document.getElementById('pvTotal').textContent     = r.horas_total.toFixed(1) + 'h -> ' + fmtMoedaRhTexto(r.valor_total);
 }
 
 // ══ MODAIS COLABORADOR ═══════════════════════════════════════
@@ -1955,6 +2092,15 @@ var _SCOPE_INPUT  = { nome:'cNome', tipo:'cTipo', valor_hora:'cValorHora', email
 function updateScopeBtn(field) {
   var btn = document.getElementById('scopeBtn_' + field);
   if (!btn) return;
+  if (!rhIsDonoPortal()) {
+    btn.style.display = 'none';
+    btn.disabled = true;
+    btn.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  btn.style.display = 'inline-block';
+  btn.disabled = false;
+  btn.setAttribute('aria-hidden', 'false');
   var isSolo = _fieldScopes[field] === 'solo';
   btn.textContent = isSolo ? '🏢 Só esta' : '🔗 Todas';
   if (isSolo) {
@@ -1969,6 +2115,11 @@ function updateScopeBtn(field) {
 }
 
 function toggleScope(field) {
+  if (!rhIsDonoPortal()) {
+    toast('Apenas o dono do portal pode alterar este escopo.', 'err');
+    rhAtualizarScopeBtns();
+    return;
+  }
   var nowSolo = _fieldScopes[field] !== 'solo';
   _fieldScopes[field] = nowSolo ? 'solo' : 'global';
   var inputId = _SCOPE_INPUT[field];
@@ -1997,6 +2148,11 @@ async function abrirModalColab(id) {
 
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cFimContrato','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
+    var valorHoraNovo = document.getElementById('cValorHora');
+    if (valorHoraNovo) {
+      valorHoraNovo.disabled = !rhValoresLiberados();
+      valorHoraNovo.placeholder = rhValoresLiberados() ? '60.00' : 'Valor oculto';
+    }
     document.getElementById('cTipo').value                = 'mei';
     document.getElementById('cPericuloso').value          = 'false';
     document.getElementById('cPercPericulosidade').value  = '30';
@@ -2035,7 +2191,12 @@ async function abrirModalColab(id) {
       document.getElementById('cDoc').value                 = c.documento||'';
       document.getElementById('cEmail').value               = c.email||'';
       document.getElementById('cTel').value                 = c.telefone||'';
-      document.getElementById('cValorHora').value           = c.valor_hora||'';
+      var campoValorHora = document.getElementById('cValorHora');
+      if (campoValorHora) {
+        campoValorHora.disabled = !rhValoresLiberados();
+        campoValorHora.placeholder = rhValoresLiberados() ? '60.00' : 'Valor oculto';
+        campoValorHora.value = rhValoresLiberados() ? (c.valor_hora||'') : '';
+      }
       document.getElementById('cFuncao').value              = c.funcao||'';
       document.getElementById('cAdmissao').value            = c.admissao||'';
       document.getElementById('cFimContrato').value         = c.fim_contrato||'';
@@ -2089,7 +2250,8 @@ function fecharModalColab() {
 async function salvarColab() {
   var empId     = await getEmpresaId();
   var tipo      = document.getElementById('cTipo').value;
-  var valor_hora= parseFloat(document.getElementById('cValorHora').value)||null;
+  var podeSalvarValorHora = rhValoresLiberados();
+  var valor_hora= podeSalvarValorHora ? (parseFloat(document.getElementById('cValorHora').value)||null) : null;
   var email     = document.getElementById('cEmail').value.trim();
   var telefone  = document.getElementById('cTel').value.trim();
   var funcao    = document.getElementById('cFuncao').value.trim();
@@ -2109,7 +2271,7 @@ async function salvarColab() {
   // Campos com escopo: se "global" → salvar em colaboradores; se "solo" → salvar só no override
   if (_fieldScopes.nome        !== 'solo') dadosGlobal.nome        = nome;
   if (_fieldScopes.tipo        !== 'solo') dadosGlobal.tipo        = tipo;
-  if (_fieldScopes.valor_hora  !== 'solo') dadosGlobal.valor_hora  = valor_hora;
+  if (podeSalvarValorHora && _fieldScopes.valor_hora  !== 'solo') dadosGlobal.valor_hora  = valor_hora;
   if (_fieldScopes.email       !== 'solo') dadosGlobal.email       = email;
   if (_fieldScopes.telefone    !== 'solo') dadosGlobal.telefone    = telefone;
   if (_fieldScopes.funcao      !== 'solo') dadosGlobal.funcao      = funcao;
@@ -2153,7 +2315,7 @@ async function salvarColab() {
     var overridesEmpAtiva = {
       nome:        usarOverride('nome')        ? nome        : null,
       tipo:        usarOverride('tipo')        ? tipo        : null,
-      valor_hora:  usarOverride('valor_hora')  ? valor_hora  : null,
+      valor_hora:  podeSalvarValorHora ? (usarOverride('valor_hora')  ? valor_hora  : null) : ((_colabRawOverride.valor_hora != null) ? _colabRawOverride.valor_hora : null),
       email:       usarOverride('email')       ? email       : null,
       telefone:    usarOverride('telefone')    ? telefone    : null,
       funcao:      usarOverride('funcao')      ? funcao      : null,
@@ -3249,6 +3411,7 @@ async function excluirEpi(id) {
 
 // ── Toggle de vínculo de empresa por registro ─────────────────
 async function toggleDocCompartilhar(id) {
+  if (!rhIsDonoPortal()) { toast('Apenas o dono do portal pode alterar este escopo.', 'err'); return; }
   var empId = await getEmpresaId();
   var doc = _docsCache.find(function(x){ return x.id === id; });
   if (!doc) return;
@@ -3257,6 +3420,7 @@ async function toggleDocCompartilhar(id) {
   if (_colabAtivo) carregarDocs(_colabAtivo.id);
 }
 async function toggleSaudeCompartilhar(id) {
+  if (!rhIsDonoPortal()) { toast('Apenas o dono do portal pode alterar este escopo.', 'err'); return; }
   var empId = await getEmpresaId();
   var rec = _saudeCacheList.find(function(x){ return x.id === id; });
   if (!rec) return;
@@ -3265,6 +3429,7 @@ async function toggleSaudeCompartilhar(id) {
   if (_colabAtivo) carregarSaude(_colabAtivo.id);
 }
 async function toggleEpiCompartilhar(id) {
+  if (!rhIsDonoPortal()) { toast('Apenas o dono do portal pode alterar este escopo.', 'err'); return; }
   var empId = await getEmpresaId();
   var rec = _epiCacheList.find(function(x){ return x.id === id; });
   if (!rec) return;
@@ -3311,7 +3476,7 @@ async function carregarBoletins() {
         + '<div class="doc-nome">' + b.numero + ' — ' + nome + '</div>'
         + '<div class="doc-meta" style="font-size:.67rem">' + docNome + ' · '
           + fmtData(b.periodo_inicio) + ' a ' + fmtData(b.periodo_fim)
-          + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h · ' + fmtMoeda(b.valor_total) + '</div>'
+          + ' · ' + Number(b.horas_total||0).toFixed(1) + 'h · ' + fmtMoedaRh(b.valor_total) + '</div>'
       + '</div>'
       + '<span class="bdg ' + sBdg + '">' + (sLabels[b.status]||b.status) + '</span>'
       + (b.revisado_em ? ' <span class="bdg bdg-gray" style="font-size:.6rem;margin-left:.25rem">✓ Rev</span>' : '')
@@ -3412,6 +3577,7 @@ async function previewApontamentosBol() {
   var { data: bolsDaColab } = await sb.from('boletins')
     .select('numero,apontamentos_ids')
     .eq('colaborador_id', colabId)
+    .eq('empresa_id', empresaId)
     .neq('status','cancelado');
   (bolsDaColab||[]).forEach(function(b) {
     if (b.apontamentos_ids && b.apontamentos_ids.length) {
@@ -3441,7 +3607,7 @@ async function previewApontamentosBol() {
       + (usedIds.size > 0 ? 'Todos os apontamentos aprovados neste período já estão em documentos ativos.' : 'Nenhum apontamento aprovado neste período.')
       + '</div>';
     document.getElementById('bolTotHoras').textContent = '0h';
-    document.getElementById('bolTotValor').textContent = 'R$ 0,00';
+    document.getElementById('bolTotValor').textContent = fmtMoedaRhTexto(0);
     document.getElementById('bolTotQtd').textContent   = '0';
     document.getElementById('btnGerarBol').style.display = 'none';
     return;
@@ -3462,13 +3628,13 @@ async function previewApontamentosBol() {
           + '<td style="padding:.3rem .5rem">' + fmtData(a.data) + '</td>'
           + '<td style="padding:.3rem .5rem;color:var(--text2)">' + ((_previewPropostaMap[a.proposta_id]||{}).numero_proposta || (a.proposta_id ? a.proposta_id.slice(0,8) : '—')) + '</td>'
           + '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
-          + '<td style="padding:.3rem .5rem;text-align:right;color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+          + '<td style="padding:.3rem .5rem;text-align:right;color:var(--green)">' + fmtMoedaRh(a.valor_total) + '</td>'
           + '</tr>';
       }).join('')
     + '</tbody></table>';
 
   document.getElementById('bolTotHoras').textContent = totH.toFixed(1) + 'h';
-  document.getElementById('bolTotValor').textContent = fmtMoeda(totV);
+  document.getElementById('bolTotValor').textContent = fmtMoedaRhTexto(totV);
   document.getElementById('bolTotQtd').textContent   = _bolAptPreview.length;
   document.getElementById('btnGerarBol').style.display = 'inline-flex';
 }
@@ -3529,9 +3695,10 @@ async function gerarBoletim() {
 
 // ── Ver e assinar boletim (gestor) ────────────────────────────
 async function abrirBoletimGestor(bolId) {
+  var empId = await getEmpresaId();
   var { data: bol, error: bolErr } = await sb.from('boletins')
     .select('*, colaboradores(nome, tipo, documento, email)')
-    .eq('id', bolId).single();
+    .eq('id', bolId).eq('empresa_id', empId).single();
   if (bolErr) { console.error('[Boletim]', bolErr); toast('Erro: ' + bolErr.message,'err'); return; }
   if (!bol) { toast('Documento não encontrado.','err'); return; }
   _bolGestorAtivo = bol;
@@ -3546,7 +3713,7 @@ async function abrirBoletimGestor(bolId) {
   var apts = [];
   if (bol.apontamentos_ids && bol.apontamentos_ids.length) {
     var { data: aptsData } = await sb.from('apontamentos')
-      .select('*').in('id', bol.apontamentos_ids).order('data',{ascending:true});
+      .select('*').eq('empresa_id', empId).in('id', bol.apontamentos_ids).order('data',{ascending:true});
     apts = aptsData || [];
   }
 
@@ -3554,7 +3721,7 @@ async function abrirBoletimGestor(bolId) {
   _bolGestorAtivo._propostaMap = {};
   var _aptPropostaIds = (apts||[]).map(function(a){ return a.proposta_id; }).filter(Boolean);
   if (_aptPropostaIds.length) {
-    var { data: _propsData } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').in('app_id', _aptPropostaIds);
+    var { data: _propsData } = await sb.from('propostas').select('app_id,numero_proposta,titulo,cliente').eq('empresa_id', empId).in('app_id', _aptPropostaIds);
     (_propsData||[]).forEach(function(p){ _bolGestorAtivo._propostaMap[p.app_id] = p; });
   }
 
@@ -3602,7 +3769,7 @@ async function abrirBoletimGestor(bolId) {
     html += '<td style="padding:.3rem .5rem;font-size:10px">' + (_prop.numero_proposta||'—') + '</td>';
     html += '<td style="padding:.3rem .5rem;font-size:10px;color:#6c757d">' + (_prop.cliente||'—') + '</td>';
     html += '<td style="padding:.3rem .5rem;text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>';
-    html += '<td style="padding:.3rem .5rem;text-align:right;color:#198754;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>';
+    html += '<td style="padding:.3rem .5rem;text-align:right;color:#198754;font-weight:600">' + fmtMoedaRhTexto(a.valor_total) + '</td>';
     html += '<td style="padding:.3rem .5rem;color:#6c757d;font-size:10px">' + (a.descricao||'') + '</td>';
     html += '</tr>';
   });
@@ -3616,16 +3783,16 @@ async function abrirBoletimGestor(bolId) {
   if (_perigApts.length > 0) {
     html += '<tr style="background:#e9ecef;color:#495057">';
     html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">Subtotal (horas trabalhadas)</td>';
-    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totSemPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoedaRhTexto(_totSemPerig) + '</td>';
     html += '<td style="padding:.4rem .5rem"></td></tr>';
     html += '<tr style="background:#fff3cd;color:#856404">';
     html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-size:10px">⚡ Adicional Periculosidade</td>';
-    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoeda(_totPerig) + '</td>';
+    html += '<td style="padding:.4rem .5rem;text-align:right;font-size:10px">' + fmtMoedaRhTexto(_totPerig) + '</td>';
     html += '<td style="padding:.4rem .5rem"></td></tr>';
   }
   html += '<tr style="background:#1e3a5f;color:white">';
   html += '<td colspan="' + (isClt?'5':'7') + '" style="padding:.4rem .5rem;font-weight:700">TOTAL</td>';
-  html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoeda(bol.valor_total) + '</td>';
+  html += '<td style="padding:.4rem .5rem;text-align:right;font-weight:700">' + fmtMoedaRhTexto(bol.valor_total) + '</td>';
   html += '<td style="padding:.4rem .5rem"></td></tr></tfoot></table>';
 
   // Memória de cálculo — periculosidade (só renderiza se houver apontamentos com periculoso=true)
@@ -3644,8 +3811,8 @@ async function abrirBoletimGestor(bolId) {
     html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base de cálculo</td><td style="padding:.25rem .4rem;font-weight:600">' + _pBaseLabel + '</td></tr>';
     html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Percentual</td><td style="padding:.25rem .4rem;font-weight:600">' + _pPerc + '%</td></tr>';
     html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Horas base acumuladas</td><td style="padding:.25rem .4rem;font-weight:600">' + _totHPerig.toFixed(2) + 'h</td></tr>';
-    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:.25rem .4rem;font-weight:600">' + fmtMoeda(_totVHBase) + '</td></tr>';
-    html += '<tr style="border-top:1px solid #ffc107"><td style="padding:.35rem .4rem;font-weight:700;color:#856404">Adicional total</td><td style="padding:.35rem .4rem;font-weight:700;color:#856404">' + fmtMoeda(_totPerig) + '</td></tr>';
+    html += '<tr><td style="padding:.25rem .4rem;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:.25rem .4rem;font-weight:600">' + fmtMoedaRhTexto(_totVHBase) + '</td></tr>';
+    html += '<tr style="border-top:1px solid #ffc107"><td style="padding:.35rem .4rem;font-weight:700;color:#856404">Adicional total</td><td style="padding:.35rem .4rem;font-weight:700;color:#856404">' + fmtMoedaRhTexto(_totPerig) + '</td></tr>';
     html += '</table></div>';
   }
 
@@ -3798,7 +3965,7 @@ async function imprimirBoletim() {
   var apts = [];
   if (bol.apontamentos_ids && bol.apontamentos_ids.length) {
     var { data: aptsData } = await sb.from('apontamentos')
-      .select('*').in('id', bol.apontamentos_ids).order('data',{ascending:true});
+      .select('*').eq('empresa_id', bol.empresa_id).in('id', bol.apontamentos_ids).order('data',{ascending:true});
     apts = aptsData || [];
   }
 
@@ -3811,7 +3978,7 @@ async function imprimirBoletim() {
   var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(validUrl);
 
   var totH = Number(bol.horas_total||0).toFixed(1);
-  var totV = fmtMoeda(bol.valor_total);
+  var totV = fmtMoedaRhTexto(bol.valor_total);
 
   // Periculosidade — derivada dos apontamentos snapshot
   var _prPrintApts  = (apts||[]).filter(function(a){ return a.periculoso === true; });
@@ -3831,7 +3998,7 @@ async function imprimirBoletim() {
         + '<td style="text-align:center">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
         + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
         + '<td>' + (_pmp.cliente||'—') + '</td>'
-        + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
+        + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoedaRhTexto(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>'
       : '<td>' + fmtData(a.data) + '</td>'
         + '<td style="text-align:center">' + (a.hora_entrada||'—') + '</td>'
@@ -3839,7 +4006,7 @@ async function imprimirBoletim() {
         + '<td style="text-align:center">' + Number(a.horas_total||0).toFixed(1) + 'h</td>'
         + '<td>' + (_pmp.numero_proposta||'—') + '</td>'
         + '<td>' + (_pmp.cliente||'—') + '</td>'
-        + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoeda(a.valor_total) + '</td>'
+        + '<td style="text-align:right;color:#1a7a3c;font-weight:600">' + fmtMoedaRhTexto(a.valor_total) + '</td>'
         + '<td>' + (a.descricao||'') + '</td>';
     return '<tr style="background:' + bg + '">' + cols + '</tr>';
   }).join('');
@@ -3925,8 +4092,8 @@ async function imprimirBoletim() {
     + '<table><thead><tr>' + headers + '</tr></thead><tbody>' + linhas + '</tbody>'
     + '<tfoot>'
     + (_prHasPerig
-        ? '<tr style="background:#e9ecef;color:#495057"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">Subtotal (horas trabalhadas)</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotSemPerig) + '</td><td></td></tr>'
-        + '<tr style="background:#fff3cd;color:#856404"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">⚡ Adicional Periculosidade</td><td style="text-align:right;font-size:9px">' + fmtMoeda(_prTotPerig) + '</td><td></td></tr>'
+        ? '<tr style="background:#e9ecef;color:#495057"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">Subtotal (horas trabalhadas)</td><td style="text-align:right;font-size:9px">' + fmtMoedaRhTexto(_prTotSemPerig) + '</td><td></td></tr>'
+        + '<tr style="background:#fff3cd;color:#856404"><td colspan="' + (isClt?'7':'6') + '" style="font-size:9px">⚡ Adicional Periculosidade</td><td style="text-align:right;font-size:9px">' + fmtMoedaRhTexto(_prTotPerig) + '</td><td></td></tr>'
         : '')
     + '<tr class="total-row"><td colspan="' + (isClt?'7':'6') + '">TOTAL</td><td style="text-align:right">' + totV + '</td><td></td></tr>'
     + '</tfoot>'
@@ -3946,8 +4113,8 @@ async function imprimirBoletim() {
           + '<tr><td style="padding:2px 4px;color:#6c757d">Base de cálculo</td><td style="padding:2px 4px;font-weight:600">' + _pLbl2 + '</td></tr>'
           + '<tr><td style="padding:2px 4px;color:#6c757d">Percentual</td><td style="padding:2px 4px;font-weight:600">' + _pPerc2 + '%</td></tr>'
           + '<tr><td style="padding:2px 4px;color:#6c757d">Horas base acumuladas</td><td style="padding:2px 4px;font-weight:600">' + _pHoras2.toFixed(2) + 'h</td></tr>'
-          + '<tr><td style="padding:2px 4px;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:2px 4px;font-weight:600">' + fmtMoeda(_pVHBase2) + '</td></tr>'
-          + '<tr style="border-top:1px solid #ffc107"><td style="padding:4px;font-weight:700;color:#856404">Adicional total</td><td style="padding:4px;font-weight:700;color:#856404">' + fmtMoeda(_prTotPerig) + '</td></tr>'
+          + '<tr><td style="padding:2px 4px;color:#6c757d">Base salarial (h × R$/h)</td><td style="padding:2px 4px;font-weight:600">' + fmtMoedaRhTexto(_pVHBase2) + '</td></tr>'
+          + '<tr style="border-top:1px solid #ffc107"><td style="padding:4px;font-weight:700;color:#856404">Adicional total</td><td style="padding:4px;font-weight:700;color:#856404">' + fmtMoedaRhTexto(_prTotPerig) + '</td></tr>'
           + '</table></div>';
       })() : '')
 
@@ -4114,13 +4281,14 @@ async function assinarComoPrestadorGestor() {
     ip_prestador:       'registrado',
     hash_assinatura_p:  hashDoc,
     status:             'aguard_empresa'
-  }).eq('id', _bolGestorAtivo.id);
+  }).eq('id', _bolGestorAtivo.id).eq('empresa_id', _bolGestorAtivo.empresa_id);
 
   if (error) { toast('Erro: ' + error.message,'err'); return; }
 
   toast('✅ Assinado como prestador! Agora assine como empresa.','ok');
+  var bolIdAssinado = _bolGestorAtivo.id;
   fecharVerBolGestor();
-  setTimeout(function(){ abrirBoletimGestor(_bolGestorAtivo.id); }, 300);
+  setTimeout(function(){ abrirBoletimGestor(bolIdAssinado); }, 300);
   carregarBoletins();
 }
 
@@ -4131,17 +4299,18 @@ function fecharVerBolGestor() {
 
 async function cancelarBoletim() {
   if (!_bolGestorAtivo) return;
+  var empId = await getEmpresaId();
   var opcao = confirm('Clique OK para CANCELAR o documento (mantém histórico)\nClique Cancelar para EXCLUIR permanentemente.');
   if (opcao === null) return; // fechou o dialog
   if (opcao) {
     // Cancelar — mantém no histórico
-    var { error } = await sb.from('boletins').update({ status:'cancelado' }).eq('id', _bolGestorAtivo.id);
+    var { error } = await sb.from('boletins').update({ status:'cancelado' }).eq('id', _bolGestorAtivo.id).eq('empresa_id', empId);
     if (error) { toast('Erro: ' + error.message,'err'); return; }
     toast('Documento cancelado.','ok');
   } else {
     // Excluir permanentemente
     if (!confirm('Tem certeza? Esta ação é IRREVERSÍVEL.')) return;
-    var { error } = await sb.from('boletins').delete().eq('id', _bolGestorAtivo.id);
+    var { error } = await sb.from('boletins').delete().eq('id', _bolGestorAtivo.id).eq('empresa_id', empId);
     if (error) { toast('Erro: ' + error.message,'err'); return; }
     toast('Documento excluído permanentemente.','ok');
   }
@@ -4220,7 +4389,7 @@ async function assinarComoEmpresa() {
     assinante_empresa_nome: usr.nome,
     hash_documento_final: hashFinalStr,
     status:              'valido'
-  }).eq('id', _bolGestorAtivo.id);
+  }).eq('id', _bolGestorAtivo.id).eq('empresa_id', _bolGestorAtivo.empresa_id);
 
   if (error) { toast('Erro: ' + error.message,'err'); return; }
 
@@ -4276,6 +4445,7 @@ window.addEventListener('message', function(e) {
   }
   if (e.data.type === 'SET_EMPRESA') {
     _empresaId = e.data.empresaId;
+    rhLimparModaisEmpresa();
     // Resetar estado de colaborador ativo (era da empresa anterior)
     _colabAtivo = null;
     _horasColabCache = [];
@@ -4288,7 +4458,7 @@ window.addEventListener('message', function(e) {
     if (empLabel) empLabel.textContent = e.data.empresaNomeCurto || '';
 
     // Recarregar seção ativa (ou voltar para colaboradores se estiver em detalhe)
-    var secAtiva = document.querySelector('.sec.on');
+    var secAtiva = document.querySelector('.rhsec.on');
     var secId = secAtiva ? secAtiva.id.replace('sec-','') : '';
     if (secId === 'colaboradores') {
       carregarColabs(); gerarAlertas();
@@ -4310,6 +4480,7 @@ window.addEventListener('message', function(e) {
 
 // ══ ADICIONAR COLABORADOR A OUTRA EMPRESA ════════════════════
 async function abrirModalAdicionarEmpresa(colabId) {
+  if (!rhIsDonoPortal()) { toast('Apenas o dono do portal pode alterar empresas do colaborador.', 'err'); return; }
   _colabAddEmpId = colabId;
   var c = _colabs.find(function(x){ return x.id===colabId; });
   if (!c) return;
@@ -4352,6 +4523,7 @@ function fecharModalAddEmpresa() {
 }
 
 async function salvarAdicionarEmpresa() {
+  if (!rhIsDonoPortal()) { toast('Apenas o dono do portal pode alterar empresas do colaborador.', 'err'); return; }
   if (!_colabAddEmpId) return;
 
   var empsSel = (_todasEmpresas||[]).filter(function(e) {
@@ -4479,7 +4651,7 @@ async function carregarDespesas() {
       + '<td>' + (tipoLabel[d.tipo_despesa]   || d.tipo_despesa   || '—') + '</td>'
       + '<td>' + (formaLabel[d.forma_pagamento]|| d.forma_pagamento|| '—') + '</td>'
       + '<td>' + tipoBdg + '</td>'
-      + '<td style="color:var(--green);font-weight:600">' + fmtMoeda(d.valor) + '</td>'
+      + '<td style="color:var(--green);font-weight:600">' + fmtMoedaRh(d.valor) + '</td>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (d.descricao||'') + '">' + (d.descricao||'—') + '</td>'
       + '<td><span class="bdg ' + cfg.cls + '">' + cfg.txt + '</span></td>'
       + '<td><div class="br">' + acoes + '</div></td>'
@@ -4577,9 +4749,14 @@ async function rejeitarDespesa(id) {
   try {
     var { data: authData } = await sb.auth.getUser();
     if (authData && authData.user && authData.user.email === 'nascimento.gaube@gmail.com') {
+      _rhMasterAdmin = true;
       document.body.classList.add('master-admin');
     }
   } catch(e) {}
+
+  rhDefinirVisibilidadePadrao();
+  rhEnsureValoresToggle();
+  rhAtualizarScopeBtns();
 
   // Carregar colaboradores
   await carregarColabs();
@@ -4663,6 +4840,7 @@ async function rejeitarDespesa(id) {
   window.togglePercPerig = togglePercPerig;
   window.updateScopeBtn = updateScopeBtn;
   window.toggleScope = toggleScope;
+  window.toggleValoresRh = toggleValoresRh;
 
   // Documentos
   window.abrirModalDoc = abrirModalDoc;
@@ -4716,6 +4894,9 @@ async function rejeitarDespesa(id) {
   window.rRH = function() {
     // Sincronizar empresa ativa
     if(typeof getEmpresaAtivaId === 'function') _empresaId = getEmpresaAtivaId();
+    rhDefinirVisibilidadePadrao();
+    rhEnsureValoresToggle();
+    rhAtualizarScopeBtns();
     // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
     if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
@@ -4743,11 +4924,15 @@ async function rejeitarDespesa(id) {
     // Limpar estado da empresa anterior
     _colabAtivo = null;
     _colabProprio = null;
+    rhLimparModaisEmpresa();
     _colabs = [];
     _propostas = [];
     _horasColabCache = [];
     _horasColabDe = null;
     _horasColabAte = null;
+    rhDefinirVisibilidadePadrao();
+    rhEnsureValoresToggle();
+    rhAtualizarScopeBtns();
 
     // Mostrar loading imediato na lista de colaboradores
     var colabListEl = document.getElementById('colabList');
