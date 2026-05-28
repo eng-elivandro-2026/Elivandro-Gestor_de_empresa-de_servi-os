@@ -10256,24 +10256,7 @@ function abrirGerenciarUsuarios() {
   var m = document.getElementById('modalUsuarios');
   if (!m) return;
 
-  // Badge da empresa ativa
-  var emp = window._empresaAtiva;
-  var sub = document.getElementById('guSubtitulo');
-  if (sub && emp) sub.textContent = 'Empresa ativa: ' + (emp.nome_curto || emp.nome || '');
-
-  // Popular selects de empresa
-  var empresaOpts = (window._empresasUsuario || []).map(function(e){
-    return '<option value="'+e.id+'">'+e.nome+'</option>';
-  }).join('');
-  var selInv = document.getElementById('invEmpresa');
-  if (selInv) selInv.innerHTML = empresaOpts;
-  var selVin = document.getElementById('vinEmpresa');
-  if (selVin) selVin.innerHTML = empresaOpts;
-
-  // Limpar feedbacks
-  ['invResultado','vinResultado'].forEach(function(id){
-    var el = document.getElementById(id); if (el) el.innerHTML = '';
-  });
+  _sincronizarModalUsuariosEmpresaAtiva();
 
   // Garantir que seção adicionar começa fechada
   var body = document.getElementById('guAdicionarBody');
@@ -10291,6 +10274,39 @@ function fecharGerenciarUsuarios() {
   if (m) m.style.display = 'none';
 }
 
+function _sincronizarModalUsuariosEmpresaAtiva() {
+  var emp = window._empresaAtiva;
+  var sub = document.getElementById('guSubtitulo');
+  if (sub && emp) sub.textContent = 'Empresa ativa: ' + (emp.nome_curto || emp.nome || '');
+
+  var empresaOpts = _guEmpresasEscopoAtual().map(function(e){
+    return '<option value="'+e.id+'">'+esc(e.nome || e.nome_curto || '')+'</option>';
+  }).join('');
+  var selInv = document.getElementById('invEmpresa');
+  if (selInv) selInv.innerHTML = empresaOpts;
+  var selVin = document.getElementById('vinEmpresa');
+  if (selVin) selVin.innerHTML = empresaOpts;
+  var selCriar = document.getElementById('criarAcessoEmpresa');
+  if (selCriar) {
+    selCriar.innerHTML = empresaOpts;
+    if (emp && emp.id) selCriar.value = emp.id;
+  }
+
+  ['invResultado','vinResultado','criarAcessoResultado'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+  _atualizarCriarAcessoVisibilidade();
+}
+
+window.addEventListener('empresa:changed', function() {
+  var m = document.getElementById('modalUsuarios');
+  if (!m || m.style.display === 'none') return;
+  _sincronizarModalUsuariosEmpresaAtiva();
+  _carregarListaUsuarios();
+  _popularDropdownUsuarios();
+});
+
 function _toggleGuAdicionar() {
   var body = document.getElementById('guAdicionarBody');
   var chev = document.getElementById('guAdicionarChevron');
@@ -10303,20 +10319,33 @@ function _toggleGuAdicionar() {
 function _guTab(tab) {
   var pVin  = document.getElementById('guPainelVin');
   var pConv = document.getElementById('guPainelConv');
+  var pCriar = document.getElementById('guPainelCriar');
   var tVin  = document.getElementById('guTabVin');
   var tConv = document.getElementById('guTabConv');
+  var tCriar = document.getElementById('guTabCriar');
   var ativo  = 'border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;background:none;border-top:none;border-left:none;border-right:none;cursor:pointer;padding:.35rem .75rem;font-size:.78rem';
   var inativo = 'border-bottom:2px solid transparent;color:var(--text3);background:none;border-top:none;border-left:none;border-right:none;cursor:pointer;padding:.35rem .75rem;font-size:.78rem';
   if (tab === 'vin') {
     if (pVin)  pVin.style.display  = '';
     if (pConv) pConv.style.display = 'none';
+    if (pCriar) pCriar.style.display = 'none';
     if (tVin)  tVin.style.cssText  = ativo;
     if (tConv) tConv.style.cssText = inativo;
+    if (tCriar) tCriar.style.cssText = inativo;
+  } else if (tab === 'criar') {
+    if (pVin)  pVin.style.display  = 'none';
+    if (pConv) pConv.style.display = 'none';
+    if (pCriar) pCriar.style.display = '';
+    if (tVin)  tVin.style.cssText  = inativo;
+    if (tConv) tConv.style.cssText = inativo;
+    if (tCriar) tCriar.style.cssText = ativo;
   } else {
     if (pVin)  pVin.style.display  = 'none';
     if (pConv) pConv.style.display = '';
+    if (pCriar) pCriar.style.display = 'none';
     if (tVin)  tVin.style.cssText  = inativo;
     if (tConv) tConv.style.cssText = ativo;
+    if (tCriar) tCriar.style.cssText = inativo;
   }
 }
 
@@ -10325,7 +10354,7 @@ async function _carregarListaUsuarios() {
   if (!el || !window.sbClient) return;
   el.innerHTML = '<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Carregando...</div>';
 
-  var empIds = (window._empresasUsuario || []).map(function(e){ return e.id; });
+  var empIds = _guEmpresasEscopoAtual().map(function(e){ return e.id; });
   if (!empIds.length) {
     el.innerHTML = '<div style="color:var(--text3);font-size:.8rem">Nenhuma empresa carregada.</div>';
     return;
@@ -10455,6 +10484,56 @@ function _podeGerenciarUsuarios() {
     : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
 }
 
+function _normalizarPerfilUsuario(valor) {
+  return String(valor || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function _ehSuperAdminPortal() {
+  return !!(window._userEmail && String(window._userEmail).toLowerCase() === 'nascimento.gaube@gmail.com');
+}
+
+function _perfilEmpresaAtualUsuarios() {
+  var emp = window._empresaAtiva || {};
+  return _normalizarPerfilUsuario(emp.perfil_empresa || (window.getPerfilUsuario ? window.getPerfilUsuario() : ''));
+}
+
+function _guEmpresasEscopoAtual() {
+  var ativa = window._empresaAtiva;
+  if (ativa && ativa.id) return [ativa];
+  return window._empresasUsuario || [];
+}
+
+function _podeCriarAcessoUsuario() {
+  if (_ehSuperAdminPortal()) return true;
+  if (!_podeGerenciarUsuarios()) return false;
+  var perfil = _perfilEmpresaAtualUsuarios();
+  return perfil === 'dono' || perfil === 'admin';
+}
+
+function _atualizarCriarAcessoVisibilidade() {
+  var tab = document.getElementById('guTabCriar');
+  var painel = document.getElementById('guPainelCriar');
+  var aviso = document.getElementById('guCriarAcessoBloqueado');
+  var pode = _podeCriarAcessoUsuario();
+  if (tab) tab.style.display = pode ? '' : 'none';
+  if (aviso) aviso.style.display = pode ? 'none' : '';
+  if (!pode && painel && painel.style.display !== 'none') _guTab('vin');
+}
+
+function _perfisCriarAcessoPermitidos() {
+  return ['admin', 'gestor', 'colaborador', 'comercial', 'financeiro', 'rh', 'operacional', 'leitura', 'prestador', 'dono'];
+}
+
+function _mensagemErroCriarAcesso(status, erro) {
+  var msg = String(erro || 'Nao foi possivel criar o acesso.');
+  if (status === 401 || status === 403) return 'Permissao negada para criar acesso nesta empresa.';
+  if (msg.toLowerCase().indexOf('perfil') >= 0) return 'Perfil sem permissao ou perfil invalido para esta acao.';
+  if (msg.toLowerCase().indexOf('usuario') >= 0 && msg.toLowerCase().indexOf('existe') >= 0) {
+    return 'Usuario ja existe. Use Vincular Existente ou Reenviar acesso.';
+  }
+  return msg;
+}
+
 function _portalLoginUrl() {
   var host = window.location.hostname || '';
   var rota = (host === 'localhost' || host === '127.0.0.1') ? '/login.html' : '/login';
@@ -10538,17 +10617,131 @@ async function convidarUsuario() {
   }
 }
 
+async function criarAcessoUsuarioNovo() {
+  var resEl = document.getElementById('criarAcessoResultado');
+  var btn = document.getElementById('btnCriarAcesso');
+  if (resEl) resEl.innerHTML = '';
+
+  if (!_podeCriarAcessoUsuario()) {
+    if (resEl) resEl.innerHTML = _vinMsg('Acesso negado. Apenas dono, super admin ou admin autorizado podem criar acesso novo.', 'err');
+    return;
+  }
+  if (!window.sbClient || !window.sbClient.functions) {
+    if (resEl) resEl.innerHTML = _vinMsg('Supabase nao esta disponivel para criar acesso.', 'err');
+    return;
+  }
+
+  var nome = ((document.getElementById('criarAcessoNome') || {}).value || '').trim();
+  var email = ((document.getElementById('criarAcessoEmail') || {}).value || '').trim().toLowerCase();
+  var empresaId = ((document.getElementById('criarAcessoEmpresa') || {}).value || '').trim();
+  var perfil = _normalizarPerfilUsuario((document.getElementById('criarAcessoPerfil') || {}).value || '');
+  var dryRun = !!((document.getElementById('criarAcessoDryRun') || {}).checked);
+  var enviarEmail = !!((document.getElementById('criarAcessoEnviarEmail') || {}).checked);
+  var perfis = _perfisCriarAcessoPermitidos();
+
+  if (!nome) { if (resEl) resEl.innerHTML = _vinMsg('Informe o nome.', 'err'); return; }
+  if (!email || email.indexOf('@') < 1) { if (resEl) resEl.innerHTML = _vinMsg('Informe um e-mail valido.', 'err'); return; }
+  if (!empresaId) { if (resEl) resEl.innerHTML = _vinMsg('Selecione a empresa.', 'err'); return; }
+  if (perfis.indexOf(perfil) < 0) { if (resEl) resEl.innerHTML = _vinMsg('Selecione um perfil valido.', 'err'); return; }
+
+  var empresaAutorizada = _guEmpresasEscopoAtual().some(function(e) { return e.id === empresaId; });
+  if (!empresaAutorizada) {
+    if (resEl) resEl.innerHTML = _vinMsg('Empresa nao disponivel para o usuario logado.', 'err');
+    return;
+  }
+
+  if (!dryRun) {
+    var empSelect = document.getElementById('criarAcessoEmpresa');
+    var empresaNome = empSelect && empSelect.selectedOptions && empSelect.selectedOptions[0] ? empSelect.selectedOptions[0].text : empresaId;
+    var msg = 'Criar acesso real para ' + nome + ' (' + email + ')?\n\n'
+      + 'Empresa: ' + empresaNome + '\n'
+      + 'Perfil: ' + perfil + '\n'
+      + (enviarEmail ? 'O e-mail de acesso sera enviado.' : 'Nenhum e-mail sera enviado agora.') + '\n\n'
+      + 'Confirme somente se esta criacao foi autorizada.';
+    if (!confirm(msg)) return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = dryRun ? 'Validando...' : 'Criando...';
+  }
+
+  try {
+    var sess = await window.sbClient.auth.getSession();
+    var token = sess && sess.data && sess.data.session ? sess.data.session.access_token : '';
+    if (!token) throw new Error('Sessao expirada. Entre novamente.');
+
+    var fn = await window.sbClient.functions.invoke('criar-usuario-acesso', {
+      body: {
+        nome: nome,
+        email: email,
+        empresa_id: empresaId,
+        perfil_empresa: perfil,
+        dry_run: dryRun,
+        enviar_email: enviarEmail
+      },
+      headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (fn.error) {
+      throw new Error(_mensagemErroCriarAcesso(fn.error.status || 0, fn.error.message));
+    }
+    if (!fn.data || fn.data.ok === false) {
+      throw new Error(_mensagemErroCriarAcesso(0, fn.data && fn.data.erro));
+    }
+
+    if (dryRun) {
+      if (resEl) resEl.innerHTML = _vinMsg('Validacao concluida pelo backend seguro. Nenhum usuario foi criado.', 'ok');
+    } else {
+      if (resEl) {
+        resEl.innerHTML = _vinMsg(
+          'Acesso criado com sucesso para ' + email + '. ' + (enviarEmail ? 'E-mail de acesso solicitado.' : 'Use Reenviar acesso quando quiser enviar o link.'),
+          'ok'
+        );
+      }
+      _carregarListaUsuarios();
+      _popularDropdownUsuarios();
+      document.getElementById('criarAcessoNome').value = '';
+      document.getElementById('criarAcessoEmail').value = '';
+      var dryEl = document.getElementById('criarAcessoDryRun');
+      if (dryEl) dryEl.checked = true;
+      var mailEl = document.getElementById('criarAcessoEnviarEmail');
+      if (mailEl) mailEl.checked = false;
+    }
+  } catch(e) {
+    if (resEl) resEl.innerHTML = _vinMsg(_mensagemErroCriarAcesso(0, e.message), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Criar Acesso';
+    }
+  }
+}
+
 async function _popularDropdownUsuarios() {
   var sel = document.getElementById('vinUsuario');
   if (!sel || !window.sbClient) return;
   sel.innerHTML = '<option value="">— carregando...</option>';
-  var res = await window.sbClient.from('usuarios').select('id,nome,perfil').eq('ativo', true).order('nome');
+  var empIds = _guEmpresasEscopoAtual().map(function(e){ return e.id; });
+  if (!empIds.length) {
+    sel.innerHTML = '<option value="">Nenhum usuario encontrado</option>';
+    return;
+  }
+  var res = await window.sbClient
+    .from('usuario_empresas')
+    .select('usuario_id, perfil_empresa, usuarios(id,nome,perfil)')
+    .in('empresa_id', empIds)
+    .eq('ativo', true)
+    .order('usuario_id');
   if (res.error || !res.data || !res.data.length) {
     sel.innerHTML = '<option value="">Nenhum usuário encontrado</option>';
     return;
   }
   sel.innerHTML = '<option value="">— selecione...</option>'
-    + res.data.map(function(u){
+    + res.data.map(function(v){
+        var u = v.usuarios || {};
+        u.perfil = v.perfil_empresa || u.perfil || '';
+        u.id = u.id || v.usuario_id;
         return '<option value="'+u.id+'">'+esc(u.nome)+' ('+( u.perfil )+')</option>';
       }).join('');
 }
@@ -10821,6 +11014,10 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
         <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:.85rem">
           <button id="guTabVin"  class="nb" onclick="_guTab('vin')"  style="border:none;border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">🔗 Vincular Existente</button>
           <button id="guTabConv" class="nb" onclick="_guTab('conv')" style="border:none;border-bottom:2px solid transparent;color:var(--text3);background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">📋 Preparar Acesso</button>
+          <button id="guTabCriar" class="nb" onclick="_guTab('criar')" style="border:none;border-bottom:2px solid transparent;color:var(--text3);background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">Criar Acesso</button>
+        </div>
+        <div id="guCriarAcessoBloqueado" style="display:none;font-size:.72rem;color:var(--text3);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:.4rem .6rem;margin-bottom:.7rem;line-height:1.4">
+          Criar acesso novo fica disponivel apenas para dono, super admin ou admin autorizado da empresa ativa.
         </div>
 
         <!-- Painel: vincular usuário existente -->
@@ -10890,6 +11087,52 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
           </div>
           <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">✅ Preparar acesso</button>
           <div id="invResultado"></div>
+        </div>
+
+        <!-- Painel: criar acesso novo via backend seguro -->
+        <div id="guPainelCriar" style="display:none">
+          <div style="font-size:.72rem;color:var(--text3);background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.45rem .6rem;margin-bottom:.7rem;line-height:1.4">
+            Este fluxo usa a Edge Function segura no Supabase. A chave administrativa fica somente no servidor.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.55rem">
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Nome *</div>
+              <input type="text" id="criarAcessoNome" placeholder="Ex: Adriano Silva" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">E-mail *</div>
+              <input type="email" id="criarAcessoEmail" placeholder="adriano@empresa.com.br" autocomplete="off" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Empresa *</div>
+              <select id="criarAcessoEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem"></select>
+            </div>
+            <div>
+              <div style="font-size:.62rem;color:var(--text3);margin-bottom:.2rem;font-weight:600">Perfil *</div>
+              <select id="criarAcessoPerfil" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem">
+                <option value="colaborador">Colaborador</option>
+                <option value="prestador">Prestador</option>
+                <option value="gestor">Gestor</option>
+                <option value="admin">Admin</option>
+                <option value="comercial">Comercial</option>
+                <option value="financeiro">Financeiro</option>
+                <option value="rh">RH</option>
+                <option value="operacional">Operacional</option>
+                <option value="leitura">Leitura</option>
+                <option value="dono">Dono</option>
+              </select>
+            </div>
+          </div>
+          <label style="display:flex;gap:.45rem;align-items:flex-start;font-size:.72rem;color:var(--text2);margin:.35rem 0">
+            <input type="checkbox" id="criarAcessoDryRun" checked style="margin-top:.12rem">
+            <span>Modo validacao: conferir permissao e dados sem criar usuario.</span>
+          </label>
+          <label style="display:flex;gap:.45rem;align-items:flex-start;font-size:.72rem;color:var(--text2);margin:.35rem 0 .7rem">
+            <input type="checkbox" id="criarAcessoEnviarEmail" style="margin-top:.12rem">
+            <span>Enviar e-mail de acesso quando a criacao real estiver autorizada.</span>
+          </label>
+          <button id="btnCriarAcesso" class="nb" onclick="criarAcessoUsuarioNovo()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">Criar Acesso</button>
+          <div id="criarAcessoResultado"></div>
         </div>
 
       </div>
