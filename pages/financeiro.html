@@ -146,6 +146,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cp-pag-item{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);padding:.55rem .7rem}
 .cp-pag-top{display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap;margin-bottom:.25rem}
 .cp-pag-meta{font-size:.7rem;color:var(--text2);line-height:1.45}
+.fluxo-conc-cell{display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;min-width:120px}
+.fluxo-conc-cell .bc-btn{padding:.25rem .55rem;font-size:.68rem}
+.bdg-conc-ok{background:rgba(63,185,80,.10);color:var(--green)}
+.bdg-conc-pendente{background:rgba(240,165,0,.12);color:var(--accent)}
+.bdg-conc-na{background:rgba(139,148,158,.12);color:var(--text3)}
 @media(max-width:680px){.bc-form-grid{grid-template-columns:1fr}.bc-actions .filtro-input.busca{max-width:none}}
 @media(max-width:680px){.cp-pag-resumo{grid-template-columns:1fr}}
 
@@ -1356,6 +1361,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           <th class="col-valor">Previsto</th>
           <th class="col-valor">Realizado</th>
           <th>Status</th>
+          <th>Conciliação</th>
           <th class="col-valor" title="Realizado usa valor real; Previsto usa valor esperado">Saldo Proj.</th>
         </tr>
       </thead>
@@ -1865,6 +1871,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<div class="bc-modal" id="fluxo-conc-modal" onclick="if(event.target===this)fluxoFecharModalConciliacao()">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr">
+      <div class="bc-modal-title">Conciliar movimento de caixa</div>
+      <button class="btn-fechar" onclick="fluxoFecharModalConciliacao()">x</button>
+    </div>
+    <div class="bc-modal-body">
+      <div id="fluxo-conc-resumo" class="cp-pag-resumo"></div>
+      <div id="fluxo-conc-alerta" class="cp-pag-alerta">
+        Esta acao marca o movimento realizado como conciliado usando a RPC transacional. Nao altera valor, origem, CP, CR, DRE ou categoria.
+      </div>
+      <div class="bc-form-grid">
+        <div class="bc-form-row">
+          <label class="bc-label" for="fluxo-conc-fonte">Fonte financeira *</label>
+          <select id="fluxo-conc-fonte" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="fluxo-conc-meio">Meio de pagamento *</label>
+          <select id="fluxo-conc-meio" class="bc-input"></select>
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="fluxo-conc-data">Data da conciliação *</label>
+          <input type="date" id="fluxo-conc-data" class="bc-input">
+        </div>
+        <div class="bc-form-row">
+          <label class="bc-label" for="fluxo-conc-identificador">Identificador bancário</label>
+          <input type="text" id="fluxo-conc-identificador" class="bc-input" placeholder="NSU, ID bancario ou referencia">
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="fluxo-conc-comprovante">Comprovante / link</label>
+          <input type="text" id="fluxo-conc-comprovante" class="bc-input" placeholder="URL ou referencia do comprovante">
+        </div>
+        <div class="bc-form-row full">
+          <label class="bc-label" for="fluxo-conc-obs">Observação</label>
+          <textarea id="fluxo-conc-obs" class="bc-input" rows="3" placeholder="Observacao da conciliacao"></textarea>
+        </div>
+      </div>
+      <div id="fluxo-conc-status" class="status-msg"></div>
+      <div class="bc-modal-actions">
+        <button class="bc-btn sec" onclick="fluxoFecharModalConciliacao()">Cancelar</button>
+        <button class="bc-btn danger" id="fluxo-conc-btn-confirmar" onclick="fluxoConfirmarConciliacao()">Confirmar conciliação</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="tab-dre" class="tab-content" style="display:none">
 <div class="wrap">
 
@@ -2017,6 +2069,10 @@ var _fluxoFiltros     = { dataInicio: '', dataFim: '', centroCusto: '', status: 
 var _fluxoGerencialEventos = []; // CP/CR pendentes normalizadas para leitura gerencial
 var _fluxoGerencialCategorias = [];
 var _fluxoGerencialFiltros = { dataInicio: '', dataFim: '', tipo: '', status: '', categoria: '', busca: '' };
+var _fluxoConcMovimentoAtual = null;
+var _fluxoConcFontes = [];
+var _fluxoConcMeios = [];
+var _fluxoConcEnviando = false;
 
 // ── Contas a Pagar — estado ──────────────────────────────────
 var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
@@ -3036,6 +3092,11 @@ function _onTrocaEmpresa(dados) {
   _fluxoGerencialEventos = [];
   _fluxoGerencialCategorias = [];
   _fluxoGerencialLimparVisual();
+  _fluxoConcMovimentoAtual = null;
+  _fluxoConcFontes = [];
+  _fluxoConcMeios = [];
+  _fluxoConcEnviando = false;
+  try { fluxoFecharModalConciliacao(); } catch(e) {}
 
   // Limpar Contas a Pagar imediatamente
   _todasContasPagar = [];
@@ -6396,6 +6457,248 @@ function renderFluxoCards(movs) {
 }
 
 // ── Renderizar tabela de eventos ─────────────────────────────
+function _fluxoMovimentoRealizado(m) {
+  if (!m) return false;
+  var status = String(m.status || '').toLowerCase();
+  var natureza = String(m.natureza || '').toLowerCase();
+  return status === 'realizado' || natureza === 'realizado';
+}
+
+function _fluxoMovimentoConciliado(m) {
+  return !!(m && (m.conciliado === true || String(m.conciliado).toLowerCase() === 'true'));
+}
+
+function _fluxoPodeConciliar() {
+  return bcPodeEditar();
+}
+
+function _fluxoOpcaoConcHtml(id, label, selected) {
+  return '<option value="' + _esc(id || '') + '"' + (String(id || '') === String(selected || '') ? ' selected' : '') + '>' + _esc(label || '-') + '</option>';
+}
+
+function _fluxoMeioConciliacaoLabel(id) {
+  var m = (_fluxoConcMeios || []).find(function(x) { return String(x.id) === String(id); });
+  if (!m) return '-';
+  var tipo = m.tipo && typeof bcMeioTipoLabel === 'function' ? ' - ' + bcMeioTipoLabel(m.tipo) : '';
+  return (m.nome || 'Meio') + tipo;
+}
+
+function _fluxoFonteConciliacaoLabel(id) {
+  var f = (_fluxoConcFontes || []).find(function(x) { return String(x.id) === String(id); });
+  if (!f) return '-';
+  return f.nome || f.apelido || 'Fonte financeira';
+}
+
+function _fluxoSetStatusConciliacao(tipo, msg) {
+  var el = document.getElementById('fluxo-conc-status');
+  if (!el) return;
+  el.className = 'status-msg' + (tipo ? ' ' + tipo : '');
+  el.textContent = msg || '';
+}
+
+function _fluxoSetBotaoConciliacao(disabled) {
+  var btn = document.getElementById('fluxo-conc-btn-confirmar');
+  if (btn) btn.disabled = !!disabled;
+}
+
+function _fluxoResumoConciliacaoHtml(m) {
+  var tipo = m.tipo === 'entrada' ? 'Entrada' : 'Saida';
+  var valor = _n(m.valor_real);
+  return ''
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Movimento</div><div class="cp-pag-valor">' + _esc(m.id) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Tipo / origem</div><div class="cp-pag-valor">' + _esc(tipo) + ' / ' + _esc(_traduzirOrigem(m.origem)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Valor realizado</div><div class="cp-pag-valor">' + _fmtVal(valor) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Data real</div><div class="cp-pag-valor">' + (m.data_real ? _fmtDt(String(m.data_real).slice(0,10)) : '-') + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Descricao</div><div class="cp-pag-valor">' + _esc(_descricaoAmigavel(m)) + '</div></div>'
+    + '<div class="cp-pag-card"><div class="cp-pag-label">Referencia</div><div class="cp-pag-valor">' + _esc(m.referencia_id || '-') + '</div></div>';
+}
+
+async function _fluxoCarregarOpcoesConciliacao() {
+  var sf = _sf();
+  if (!sf || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras) {
+    throw new Error('Integracao de meios/fontes financeiras indisponivel.');
+  }
+  if (!_empresaAtivaId()) throw new Error('Empresa ativa nao identificada.');
+  var empresaConsulta = _empresaAtivaId();
+  var res = await Promise.all([
+    sf.listarMeiosPagamento(empresaConsulta),
+    sf.listarFontesFinanceiras(empresaConsulta)
+  ]);
+  if (empresaConsulta !== _empresaAtivaId()) throw new Error('Empresa ativa mudou durante o carregamento.');
+  _fluxoConcMeios = (res[0] || []).filter(function(m) {
+    return m.ativo !== false && (!m.empresa_id || String(m.empresa_id) === empresaConsulta);
+  });
+  _fluxoConcFontes = (res[1] || []).filter(function(f) {
+    return f.ativo !== false && (!f.empresa_id || String(f.empresa_id) === empresaConsulta);
+  });
+  return { meios: _fluxoConcMeios, fontes: _fluxoConcFontes };
+}
+
+function _fluxoPopularSelectsConciliacao(meioId, fonteId) {
+  var meio = document.getElementById('fluxo-conc-meio');
+  var fonte = document.getElementById('fluxo-conc-fonte');
+  if (meio) {
+    meio.innerHTML = _fluxoOpcaoConcHtml('', 'Selecionar meio...', meioId)
+      + (_fluxoConcMeios || []).map(function(m) {
+        return _fluxoOpcaoConcHtml(m.id, _fluxoMeioConciliacaoLabel(m.id), meioId);
+      }).join('');
+  }
+  if (fonte) {
+    fonte.innerHTML = _fluxoOpcaoConcHtml('', 'Selecionar fonte...', fonteId)
+      + (_fluxoConcFontes || []).map(function(f) {
+        return _fluxoOpcaoConcHtml(f.id, _fluxoFonteConciliacaoLabel(f.id), fonteId);
+      }).join('');
+  }
+}
+
+function _fluxoConciliacaoHtml(m) {
+  if (!_fluxoMovimentoRealizado(m)) {
+    return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-na">Nao aplicavel</span></div>';
+  }
+  if (_fluxoMovimentoConciliado(m)) {
+    return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-ok">Conciliado</span></div>';
+  }
+  var btn = _fluxoPodeConciliar()
+    ? '<button class="bc-btn sec" type="button" onclick="fluxoAbrirModalConciliacao(' + bcJsArg(m.id) + ')">Conciliar</button>'
+    : '';
+  return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-pendente">Nao conciliado</span>' + btn + '</div>';
+}
+
+async function fluxoAbrirModalConciliacao(movimentoId) {
+  var m = (_todosMovimentos || []).find(function(x) { return String(x.id) === String(movimentoId); });
+  if (!m || !_mesmaEmpresaRegistro(m)) {
+    alert('Movimento ignorado por seguranca. A empresa ativa mudou; recarregue o Fluxo.');
+    return;
+  }
+  if (!_fluxoPodeConciliar()) {
+    alert('Acesso negado para conciliar movimento nesta empresa.');
+    return;
+  }
+  if (!_fluxoMovimentoRealizado(m)) {
+    alert('Somente movimentos realizados podem ser conciliados.');
+    return;
+  }
+  if (_fluxoMovimentoConciliado(m)) {
+    alert('Este movimento ja esta conciliado.');
+    return;
+  }
+
+  _fluxoConcMovimentoAtual = m;
+  _fluxoConcEnviando = false;
+  var modal = document.getElementById('fluxo-conc-modal');
+  var resumo = document.getElementById('fluxo-conc-resumo');
+  var alerta = document.getElementById('fluxo-conc-alerta');
+  var data = document.getElementById('fluxo-conc-data');
+  if (resumo) resumo.innerHTML = _fluxoResumoConciliacaoHtml(m);
+  if (alerta) {
+    alerta.className = 'cp-pag-alerta';
+    alerta.innerHTML = 'Carregando meios e fontes financeiras da empresa ativa...';
+  }
+  ['fluxo-conc-identificador', 'fluxo-conc-comprovante', 'fluxo-conc-obs'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (data) data.value = _hoje();
+  _fluxoSetStatusConciliacao('', '');
+  _fluxoSetBotaoConciliacao(true);
+  if (modal) modal.classList.add('on');
+
+  try {
+    await _fluxoCarregarOpcoesConciliacao();
+    _fluxoPopularSelectsConciliacao('', '');
+    var avisos = [];
+    if (!_fluxoConcFontes.length) avisos.push('Nenhuma fonte financeira ativa cadastrada.');
+    if (!_fluxoConcMeios.length) avisos.push('Nenhum meio de pagamento ativo cadastrado.');
+    if (alerta) {
+      alerta.className = avisos.length ? 'cp-pag-alerta err' : 'cp-pag-alerta';
+      alerta.innerHTML = avisos.length
+        ? avisos.join(' ')
+        : 'Esta acao marca o movimento realizado como conciliado pela RPC. Valor, origem, referencia, CP, CR e DRE permanecem inalterados.';
+    }
+    _fluxoSetBotaoConciliacao(!!avisos.length);
+  } catch(e) {
+    if (alerta) {
+      alerta.className = 'cp-pag-alerta err';
+      alerta.textContent = 'Erro ao carregar meios/fontes: ' + (e.message || e);
+    }
+    _fluxoSetBotaoConciliacao(true);
+  }
+}
+
+function fluxoFecharModalConciliacao() {
+  var modal = document.getElementById('fluxo-conc-modal');
+  if (modal) modal.classList.remove('on');
+  _fluxoConcMovimentoAtual = null;
+  _fluxoConcEnviando = false;
+  _fluxoSetStatusConciliacao('', '');
+  _fluxoSetBotaoConciliacao(false);
+}
+
+async function fluxoConfirmarConciliacao() {
+  if (_fluxoConcEnviando) return;
+  var m = _fluxoConcMovimentoAtual;
+  var sf = _sf();
+  if (!m || !sf || !sf.conciliarMovimentoCaixa) {
+    _fluxoSetStatusConciliacao('err', 'RPC de conciliacao indisponivel nesta versao.');
+    return;
+  }
+  if (!_mesmaEmpresaRegistro(m)) {
+    _fluxoSetStatusConciliacao('err', 'Empresa ativa nao confere com o movimento selecionado.');
+    return;
+  }
+  if (!_fluxoMovimentoRealizado(m)) return _fluxoSetStatusConciliacao('err', 'Somente movimento realizado pode ser conciliado.');
+  if (_fluxoMovimentoConciliado(m)) return _fluxoSetStatusConciliacao('err', 'Movimento ja esta conciliado.');
+
+  var data = bcValor('fluxo-conc-data');
+  var meioId = bcValor('fluxo-conc-meio');
+  var fonteId = bcValor('fluxo-conc-fonte');
+  var meio = (_fluxoConcMeios || []).find(function(x) { return String(x.id) === String(meioId) && (!x.empresa_id || String(x.empresa_id) === _empresaAtivaId()); });
+  var fonte = (_fluxoConcFontes || []).find(function(x) { return String(x.id) === String(fonteId) && (!x.empresa_id || String(x.empresa_id) === _empresaAtivaId()); });
+
+  if (!data) return _fluxoSetStatusConciliacao('err', 'Data da conciliacao e obrigatoria.');
+  if (!_fluxoConcFontes.length) return _fluxoSetStatusConciliacao('err', 'Cadastre uma fonte financeira ativa antes de conciliar.');
+  if (!_fluxoConcMeios.length) return _fluxoSetStatusConciliacao('err', 'Cadastre um meio de pagamento ativo antes de conciliar.');
+  if (!fonte) return _fluxoSetStatusConciliacao('err', 'Selecione uma fonte financeira da empresa ativa.');
+  if (!meio) return _fluxoSetStatusConciliacao('err', 'Selecione um meio de pagamento da empresa ativa.');
+
+  var msg = 'Esta acao vai marcar o movimento realizado como conciliado e criar a trilha de conciliacao. Deseja continuar?\n\n'
+    + 'Origem: ' + _traduzirOrigem(m.origem) + '\n'
+    + 'Valor realizado: ' + _fmtVal(_n(m.valor_real)) + '\n'
+    + 'Data real: ' + (m.data_real ? _fmtDt(String(m.data_real).slice(0,10)) : '-') + '\n'
+    + 'Fonte: ' + _fluxoFonteConciliacaoLabel(fonte.id) + '\n'
+    + 'Meio: ' + _fluxoMeioConciliacaoLabel(meio.id) + '\n\n'
+    + 'Esta acao nao altera CP, CR, DRE, valor, origem ou referencia do movimento.';
+  if (!confirm(msg)) return;
+
+  var payload = {
+    empresa_id: _empresaAtiva.id,
+    movimento_caixa_id: m.id,
+    fonte_financeira_id: fonte.id,
+    meio_pagamento_id: meio.id,
+    data_conciliacao: data,
+    observacao: bcNull(bcValor('fluxo-conc-obs')),
+    comprovante_url: bcNull(bcValor('fluxo-conc-comprovante')),
+    identificador_bancario: bcNull(bcValor('fluxo-conc-identificador'))
+  };
+
+  try {
+    _fluxoConcEnviando = true;
+    _fluxoSetBotaoConciliacao(true);
+    _fluxoSetStatusConciliacao('loading', 'Conciliando movimento pela RPC transacional...');
+    var resultado = await sf.conciliarMovimentoCaixa(payload);
+    if (!_mesmaEmpresaRegistro(m)) return;
+    _fluxoSetStatusConciliacao('ok', 'Movimento conciliado. Atualizando Fluxo de Caixa...');
+    fluxoFecharModalConciliacao();
+    await carregarFluxoCaixa(_empresaAtivaId());
+    console.log('[F3.12-C] conciliacao manual efetivada', resultado);
+  } catch(e) {
+    _fluxoSetStatusConciliacao('err', 'Erro ao conciliar movimento: ' + (e.message || e));
+  } finally {
+    _fluxoConcEnviando = false;
+    _fluxoSetBotaoConciliacao(false);
+  }
+}
+
 function renderFluxoTabela(movs) {
   var wrap   = document.getElementById('fluxo-table-wrap');
   var estado = document.getElementById('fluxo-estado');
@@ -6453,6 +6756,7 @@ function renderFluxoTabela(movs) {
       '<td class="col-valor">' + _fmtVal(vPrev) + '</td>' +
       '<td class="col-valor' + (isReal ? ' verde' : '') + '">' + (isReal ? _fmtVal(vReal) : '—') + '</td>' +
       '<td>'                   + stsBdg + '</td>' +
+      '<td>'                   + _fluxoConciliacaoHtml(m) + '</td>' +
       '<td class="col-valor ' + acumCls + '" style="font-weight:700" title="Projetado: realizados usam valor real, previstos usam valor previsto">' + _fmtVal(saldoAcum) + '</td>' +
     '</tr>';
   }).join('');

@@ -768,6 +768,26 @@
     return r.data;
   }
 
+  async function sbConciliarMovimentoCaixa(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.12-C] empresa_id obrigatorio.');
+    if (!dados.movimento_caixa_id) throw new Error('[Financeiro F3.12-C] movimento_caixa_id obrigatorio.');
+    if (!dados.data_conciliacao) throw new Error('[Financeiro F3.12-C] data_conciliacao obrigatoria.');
+
+    var r = await client().rpc('financeiro_conciliar_movimento_caixa', {
+      p_empresa_id: dados.empresa_id,
+      p_movimento_caixa_id: dados.movimento_caixa_id,
+      p_fonte_financeira_id: dados.fonte_financeira_id || null,
+      p_meio_pagamento_id: dados.meio_pagamento_id || null,
+      p_data_conciliacao: dados.data_conciliacao,
+      p_observacao: dados.observacao || null,
+      p_comprovante_url: dados.comprovante_url || null,
+      p_identificador_bancario: dados.identificador_bancario || null
+    });
+
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
 
   /**
    * Lista contas a receber da empresa filtradas por data_vencimento.
@@ -1461,6 +1481,7 @@
     listarMovimentosCaixa:           sbListarMovimentosCaixa,
     listarMovimentosDREGerencial:    sbListarMovimentosDREGerencial,
     criarMovimentoCaixa:             sbCriarMovimentoCaixa,
+    conciliarMovimentoCaixa:         sbConciliarMovimentoCaixa,
 
     // Saldos de caixa
     buscarSaldoCaixaAtual:           sbBuscarSaldoCaixaAtual,
