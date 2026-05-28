@@ -50,6 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* ── PAGE HEADER ──────────────────────────────────────────────── */
 .page-header{margin-bottom:1.1rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.6rem}
 .page-header-left{}
+.page-header-actions{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;justify-content:flex-end}
 .page-title{font-size:1.25rem;font-weight:700;color:var(--text);margin-bottom:.15rem}
 .page-sub{font-size:.78rem;color:var(--text2)}
 .empresa-badge{
@@ -1300,9 +1301,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="page-sub">Entradas e saídas consolidadas — somente leitura</div>
       <div id="fluxo-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
     </div>
-    <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
-      🔄 Atualizar
-    </button>
+    <div class="page-header-actions">
+      <button class="btn-refresh" id="fluxo-btn-exportar-csv" onclick="fluxoExportarCSV()" title="Exportar CSV do fluxo filtrado">
+        Exportar CSV
+      </button>
+      <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
+        🔄 Atualizar
+      </button>
+    </div>
   </div>
 
   <!-- Aviso: saldo não configurado -->
@@ -6198,8 +6204,8 @@ function fluxoGerencialLimparFiltros() {
   renderFluxoGerencial();
 }
 
-function renderFluxoGerencial() {
-  var eventos = (_fluxoGerencialEventos || []).filter(function(ev) {
+function _fluxoGerencialEventosFiltrados() {
+  return (_fluxoGerencialEventos || []).filter(function(ev) {
     var data = ev.data_prevista || '';
     if (_fluxoGerencialFiltros.dataInicio && data < _fluxoGerencialFiltros.dataInicio) return false;
     if (_fluxoGerencialFiltros.dataFim && data > _fluxoGerencialFiltros.dataFim) return false;
@@ -6219,6 +6225,10 @@ function renderFluxoGerencial() {
     }
     return true;
   });
+}
+
+function renderFluxoGerencial() {
+  var eventos = _fluxoGerencialEventosFiltrados();
 
   var count = document.getElementById('fg-count');
   if (count) {
@@ -6327,8 +6337,8 @@ function fluxoAtualizarFiltros() {
 }
 
 // ── Filtro client-side ───────────────────────────────────────
-function filtrarFluxo() {
-  var movs = _todosMovimentos.filter(function(m) {
+function _fluxoMovimentosFiltrados() {
+  return (_todosMovimentos || []).filter(function(m) {
     var dataRef = _bestDate(m) || '';
     if (_fluxoFiltros.dataInicio && dataRef < _fluxoFiltros.dataInicio) return false;
     if (_fluxoFiltros.dataFim    && dataRef > _fluxoFiltros.dataFim)    return false;
@@ -6336,11 +6346,163 @@ function filtrarFluxo() {
     if (_fluxoFiltros.status      && m.status        !== _fluxoFiltros.status)      return false;
     return true;
   });
+}
+
+function filtrarFluxo() {
+  var movs = _fluxoMovimentosFiltrados();
   renderFluxoCards(movs);
   renderFluxoTabela(movs);
   renderFluxoPVR(movs);
   var cnt = document.getElementById('fluxo-count');
   if (cnt) cnt.textContent = movs.length + ' evento(s)';
+}
+
+function _fluxoCsvEscape(v) {
+  var s = v == null ? '' : String(v);
+  s = s.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""');
+  return '"' + s + '"';
+}
+
+function _fluxoCsvLinha(cols) {
+  return cols.map(_fluxoCsvEscape).join(';');
+}
+
+function _fluxoCsvPeriodoLabel(inicio, fim) {
+  if (inicio && fim) return _fmtDt(inicio) + ' a ' + _fmtDt(fim);
+  if (inicio) return 'A partir de ' + _fmtDt(inicio);
+  if (fim) return 'Ate ' + _fmtDt(fim);
+  return 'Todos os periodos';
+}
+
+function _fluxoCsvPeriodoArquivo(inicio, fim) {
+  if (inicio && fim && inicio.slice(0, 7) === fim.slice(0, 7)) return inicio.slice(0, 7);
+  if (inicio && fim) return inicio + '_a_' + fim;
+  if (inicio) return 'desde_' + inicio;
+  if (fim) return 'ate_' + fim;
+  return 'todos-periodos';
+}
+
+function _fluxoCsvSlug(s) {
+  return String(s || 'empresa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'empresa';
+}
+
+function _fluxoCsvMoeda(v) {
+  return _fmtVal(_n(v));
+}
+
+function _fluxoConciliacaoTexto(m) {
+  if (!_fluxoMovimentoRealizado(m)) return 'Nao aplicavel';
+  return _fluxoMovimentoConciliado(m) ? 'Conciliado' : 'Nao conciliado';
+}
+
+function _fluxoCsvMovimentosRows(movs) {
+  var periodo = _fluxoCsvPeriodoLabel(_fluxoFiltros.dataInicio, _fluxoFiltros.dataFim);
+  var empresa = (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
+  var saldoAcum = _saldoCaixaAtual
+    ? _n(_saldoCaixaAtual.saldo_atual != null ? _saldoCaixaAtual.saldo_atual : _saldoCaixaAtual.saldo_inicial)
+    : 0;
+  return (movs || []).slice().sort(function(a, b) {
+    var da = _bestDate(a) || '';
+    var db = _bestDate(b) || '';
+    return da < db ? -1 : da > db ? 1 : 0;
+  }).map(function(m) {
+    var isEnt = m.tipo === 'entrada';
+    var isReal = m.status === 'realizado';
+    var vPrev = _n(m.valor_previsto);
+    var vReal = _n(m.valor_real);
+    var delta = isReal ? vReal : vPrev;
+    saldoAcum += isEnt ? delta : -delta;
+    return [
+      empresa,
+      periodo,
+      _fmtDt(_bestDate(m)),
+      isEnt ? 'Entrada' : 'Saida',
+      _traduzirOrigem(m.origem),
+      m.cliente_nome || '-',
+      _descricaoAmigavel(m),
+      m.centro_custo || '-',
+      _fluxoGerencialCategoriaLabel(m.categoria_gerencial_id),
+      _fluxoCsvMoeda(vPrev),
+      isReal ? _fluxoCsvMoeda(vReal) : '',
+      m.status || '',
+      _fluxoConciliacaoTexto(m),
+      _fluxoCsvMoeda(saldoAcum)
+    ];
+  });
+}
+
+function _fluxoCsvGerencialRows(eventos) {
+  var periodo = _fluxoCsvPeriodoLabel(_fluxoGerencialFiltros.dataInicio, _fluxoGerencialFiltros.dataFim);
+  var empresa = (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
+  return (eventos || []).slice().sort(function(a, b) {
+    var da = a.data_prevista || '';
+    var db = b.data_prevista || '';
+    return da < db ? -1 : da > db ? 1 : 0;
+  }).map(function(ev) {
+    return [
+      empresa,
+      periodo,
+      _fmtDt(ev.data_prevista),
+      ev.tipo === 'entrada' ? 'Entrada' : 'Saida',
+      ev.origem_label || ev.origem || '',
+      ev.cliente_fornecedor || '-',
+      ev.descricao || '-',
+      ev.centro_custo || '-',
+      _fluxoGerencialCategoriaLabel(ev.categoria_gerencial_id),
+      _fluxoCsvMoeda(ev.valor_pendente),
+      '',
+      _fluxoGerencialStatusLabel(ev),
+      'Nao aplicavel',
+      ''
+    ];
+  });
+}
+
+function _fluxoCsvMontarConteudo() {
+  var header = [
+    'Empresa',
+    'Periodo',
+    'Data',
+    'Tipo',
+    'Origem',
+    'Cliente/Fornecedor',
+    'Descricao',
+    'Centro de custo',
+    'Categoria gerencial',
+    'Previsto',
+    'Realizado',
+    'Status',
+    'Conciliacao',
+    'Saldo projetado'
+  ];
+  var linhas = [header];
+  linhas = linhas.concat(_fluxoCsvMovimentosRows(_fluxoMovimentosFiltrados()));
+  linhas = linhas.concat(_fluxoCsvGerencialRows(_fluxoGerencialEventosFiltrados()));
+  return '\uFEFF' + linhas.map(_fluxoCsvLinha).join('\r\n');
+}
+
+function fluxoExportarCSV() {
+  if (!_empresaAtivaId()) {
+    alert('Empresa ativa nao identificada. Recarregue o Financeiro antes de exportar.');
+    return;
+  }
+  var csv = _fluxoCsvMontarConteudo();
+  var empresa = _fluxoCsvSlug((_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'empresa');
+  var periodo = _fluxoCsvPeriodoArquivo(_fluxoFiltros.dataInicio, _fluxoFiltros.dataFim);
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'fluxo-caixa-' + empresa + '-' + periodo + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 500);
 }
 
 // ── Renderizar KPI cards (visão CFO) ─────────────────────────
