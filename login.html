@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Sistema de Propostas</title>
+  <title>Login - Portal de Gestão Empresarial</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial,sans-serif;background:#0d1117;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
@@ -41,13 +41,13 @@
     <div class="logo">
       <div class="logo-mk">EE</div>
       <div>
-        <div class="logo-text">Eng. Elivandro</div>
-        <div class="logo-sub">Sistema de Propostas</div>
+        <div class="logo-text">Eng. Elivandro,</div>
+        <div class="logo-sub">Portal de Gestão Empresarial</div>
       </div>
     </div>
-    <h2>Bem-vindo</h2>
-    <p>Gerencie propostas, análises e pipeline da sua empresa em um único sistema.</p>
-    <p style="margin-top:16px;font-size:13px;color:#6e7681">Acesso disponível para gestores, donos e prestadores de serviço.</p>
+    <h2>Bem vindo</h2>
+    <p>Fortex Tecnologia Industrial, fluxo de gestão empresarial em um único lugar.</p>
+    <p style="margin-top:16px;font-size:13px;color:#6e7681">Acesso disponível para Dono de empresa, Gestores, Colaboradores e Prestadores de serviços.</p>
   </div>
 
   <div class="right">
@@ -59,6 +59,17 @@
       <button class="btn btn-blue" id="btnLogin">Entrar</button>
       <button class="btn btn-secondary" id="btnReset" style="margin-top:8px">Esqueci minha senha</button>
       <div id="msg"></div>
+    </div>
+
+    <!-- Redefinicao de senha apos link de recuperacao -->
+    <div id="formNovaSenha" style="display:none">
+      <h1>Redefinir senha</h1>
+      <p style="font-size:13px;color:#8b949e;line-height:1.5;margin:0 0 14px">Digite uma nova senha para este usuario. Nao precisa informar a senha antiga.</p>
+      <input type="password" id="novaSenha" placeholder="Nova senha" autocomplete="new-password" />
+      <input type="password" id="novaSenha2" placeholder="Confirmar nova senha" autocomplete="new-password" />
+      <button class="btn btn-blue" id="btnSalvarNovaSenha">Salvar nova senha</button>
+      <button class="btn btn-secondary" id="btnCancelarNovaSenha" style="margin-top:8px">Voltar ao login</button>
+      <div id="msgNovaSenha"></div>
     </div>
 
     <!-- Seletor de perfil (aparece após login quando usuário tem duplo papel) -->
@@ -97,12 +108,47 @@
   const msg        = document.getElementById("msg");
   const formLogin  = document.getElementById("formLogin");
   const rolePicker = document.getElementById("rolePicker");
+  const formNovaSenha = document.getElementById("formNovaSenha");
+  const msgNovaSenha  = document.getElementById("msgNovaSenha");
+  const RESET_REDIRECT_URL = montarUrlLogin();
 
   function mostrarErro(t){ msg.style.color="#ff7b72"; msg.textContent=t; }
   function mostrarSucesso(t){ msg.style.color="#3fb950"; msg.textContent=t; }
+  function mostrarErroNovaSenha(t){ msgNovaSenha.style.color="#ff7b72"; msgNovaSenha.textContent=t; }
+  function mostrarSucessoNovaSenha(t){ msgNovaSenha.style.color="#3fb950"; msgNovaSenha.textContent=t; }
+
+  function rotaLogin() {
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1" ? "/login.html" : "/login";
+  }
+
+  function montarUrlLogin() {
+    return window.location.origin + rotaLogin();
+  }
+
+  function urlIndicaRedefinicaoSenha() {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const query = new URLSearchParams(window.location.search);
+    return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code");
+  }
+
+  function abrirFormNovaSenha() {
+    formLogin.style.display = "none";
+    rolePicker.style.display = "none";
+    formNovaSenha.style.display = "block";
+    msgNovaSenha.textContent = "";
+  }
+
+  function voltarLoginLimpo() {
+    window.location.href = rotaLogin();
+  }
 
   // Verificar se tem sessão ativa ao carregar
   async function verificarSessao() {
+    if (urlIndicaRedefinicaoSenha()) {
+      abrirFormNovaSenha();
+      return;
+    }
     const { data } = await supabase.auth.getUser();
     if (data?.user) await decidirDestino(data.user);
   }
@@ -187,10 +233,37 @@
     const email = document.getElementById("email").value.trim();
     if (!email) { mostrarErro("Digite seu email primeiro."); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://sistemas-propostas.vercel.app/login.html"
+      redirectTo: RESET_REDIRECT_URL
     });
     if (error) { mostrarErro(error.message); return; }
-    mostrarSucesso("Link de redefinição enviado!");
+    mostrarSucesso("Link de redefinicao enviado. Abra o email para criar uma nova senha.");
+  });
+
+  // Salvar nova senha apos recuperar acesso
+  document.getElementById("btnSalvarNovaSenha").addEventListener("click", async () => {
+    msgNovaSenha.textContent = "";
+    const nova = document.getElementById("novaSenha").value.trim();
+    const conf = document.getElementById("novaSenha2").value.trim();
+    if (nova.length < 6) { mostrarErroNovaSenha("A nova senha deve ter pelo menos 6 caracteres."); return; }
+    if (nova !== conf) { mostrarErroNovaSenha("As senhas nao conferem."); return; }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      mostrarErroNovaSenha("Link expirado ou invalido. Solicite uma nova redefinicao de senha.");
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: nova });
+    if (error) { mostrarErroNovaSenha(error.message); return; }
+
+    mostrarSucessoNovaSenha("Senha redefinida com sucesso. Entre novamente.");
+    await supabase.auth.signOut();
+    setTimeout(voltarLoginLimpo, 1200);
+  });
+
+  document.getElementById("btnCancelarNovaSenha").addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    voltarLoginLimpo();
   });
 
   // Enter para login

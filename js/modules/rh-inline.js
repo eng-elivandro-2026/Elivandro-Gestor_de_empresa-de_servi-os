@@ -481,7 +481,7 @@ async function gerarAlertas() {
         + linhas
         + '\n\n——————————————————\n'
         + 'Esse é um alerta automático do Sistema de Gestão Elivandro.\n'
-        + 'Acesse o sistema para mais detalhes: https://sistemas-propostas.vercel.app';
+        + 'Acesse o sistema para mais detalhes: ' + window.location.origin;
       try {
         await Promise.all(emails.map(function(email) {
           return fetch('https://formsubmit.co/ajax/' + email, {
