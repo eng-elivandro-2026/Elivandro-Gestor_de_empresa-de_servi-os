@@ -415,7 +415,7 @@ body{
       <div class="help-step">
         <h4>Perfil</h4>
         <p>Aqui ficam seus dados básicos.</p>
-        <p>Se você trabalha em mais de uma empresa, use Trocar empresa para mudar de Fortex para Tecfusion ou ao contrário.</p>
+        <p id="ajudaEmpresasPerfil">Se você trabalha em mais de uma empresa, use Trocar empresa para mudar entre as empresas vinculadas ao seu acesso.</p>
       </div>
       <div class="help-step">
         <h4>Quando chamar ajuda</h4>
@@ -855,9 +855,36 @@ function atualizarTrocaEmpresaUI() {
   var btn = document.getElementById('btnTrocarEmpresaPerfil');
   if (btn) btn.style.display = ((window._empresasColab || []).length > 1) ? 'flex' : 'none';
 }
+function corEmpresaColab(empresa) {
+  var base = empresa ? String(empresa.id || empresa.nome_curto || empresa.nome || '') : '';
+  var cores = ['#F05A1A', '#f0a500', '#2dd4bf', '#60a5fa', '#a78bfa', '#34d399'];
+  var hash = 0;
+  for (var i = 0; i < base.length; i++) hash = ((hash << 5) - hash) + base.charCodeAt(i);
+  return cores[Math.abs(hash) % cores.length];
+}
+function formatarListaEmpresasColab(nomes) {
+  if (nomes.length <= 1) return nomes[0] || '';
+  if (nomes.length === 2) return nomes[0] + ' e ' + nomes[1];
+  return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
+}
+function atualizarTextoAjudaEmpresas() {
+  var el = document.getElementById('ajudaEmpresasPerfil');
+  if (!el) return;
+  var nomes = (window._empresasColab || [])
+    .map(function(e){ return e && (e.nome || e.nome_curto); })
+    .filter(Boolean);
+  if (nomes.length > 1) {
+    el.textContent = 'Se você trabalha em mais de uma empresa, use Trocar empresa para mudar entre ' + formatarListaEmpresasColab(nomes) + '.';
+  } else if (nomes.length === 1) {
+    el.textContent = 'Seu acesso está vinculado à empresa ' + nomes[0] + '.';
+  } else {
+    el.textContent = 'Se você trabalha em mais de uma empresa, use Trocar empresa para mudar entre as empresas vinculadas ao seu acesso.';
+  }
+}
 
 // ══ NAVEGAÇÃO ════════════════════════════════════════════════
 function abrirAjudaColab() {
+  atualizarTextoAjudaEmpresas();
   var modal = document.getElementById('mAjudaColab');
   if (modal) modal.classList.add('on');
 }
@@ -974,6 +1001,7 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
     var empresasColab = (vinculos||[]).map(function(v){ return v.empresas; }).filter(Boolean);
     window._empresasColab = empresasColab;
     window._empIds = empresasColab.map(function(e){ return e.id; });
+    atualizarTextoAjudaEmpresas();
 
     // Se mais de uma empresa — mostrar seletor antes de entrar
     if (empresasColab.length > 1) {
@@ -1013,7 +1041,7 @@ function mostrarSeletorEmpresaColab() {
     + '<div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem">Voce esta vinculado a mais de uma empresa.<br>Escolha em qual empresa vai trabalhar agora:</div>'
     + '<div style="display:flex;flex-direction:column;gap:.75rem;max-width:320px;margin:0 auto">'
     + empresasColab.map(function(e) {
-        var cor = e.nome_curto==='Fortex' ? '#F05A1A' : '#f0a500';
+        var cor = corEmpresaColab(e);
         return '<button onclick="selecionarEmpresaColab(\'' + e.id + '\')" '
           + 'style="padding:1rem;background:var(--bg3);border:2px solid var(--border);border-radius:10px;'
           + 'color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;'
@@ -1044,12 +1072,12 @@ window.trocarEmpresaColab = function() {
 function atualizarHeaders() {
   if (!_colab || !_empresa) return;
   var ini = iniciais(_colab.nome);
-  var empNome = _empresa.nome_curto;
+  var empNome = _empresa.nome_curto || _empresa.nome || 'Empresa';
   var empMk = empNome.slice(0,2).toUpperCase();
 
   ['hdrMk','hdrMk2','hdrMk3','hdrMk4','hdrMk5'].forEach(function(id){
     var el = document.getElementById(id);
-    if (el) { el.textContent = empMk; el.style.background = empNome==='Fortex'?'#F05A1A':'#f0a500'; }
+    if (el) { el.textContent = empMk; el.style.background = corEmpresaColab(_empresa); }
   });
   ['hdrEmpresa'].forEach(function(id){
     var el = document.getElementById(id);
