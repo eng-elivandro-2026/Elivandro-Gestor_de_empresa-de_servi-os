@@ -79,6 +79,43 @@ function toggleValoresRH() {
 function perfilRHPermitido(perfil) {
   return ['dono','gestor','admin','super_admin','socio','sócio'].includes(String(perfil||'').toLowerCase());
 }
+function perfilRHMaster(perfil) {
+  return ['dono','super_admin'].includes(String(perfil||'').toLowerCase());
+}
+function normalizarEmailRH(email) {
+  return String(email || '').trim().toLowerCase();
+}
+async function buscarVinculoRHAdministrativo(usuarioId, empresaId) {
+  if (!usuarioId || !empresaId) return null;
+  var { data } = await sb.from('usuario_empresas')
+    .select('empresa_id,perfil_empresa,ativo')
+    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
+    .eq('ativo', true)
+    .maybeSingle();
+  return data || null;
+}
+async function usuarioEhColaboradorRH(authUser) {
+  if (!authUser) return false;
+  if (authUser.id) {
+    var porAuth = await sb.from('colaboradores')
+      .select('id')
+      .eq('auth_id', authUser.id)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (porAuth && porAuth.data) return true;
+  }
+  var email = normalizarEmailRH(authUser.email);
+  if (email) {
+    var porEmail = await sb.from('colaboradores')
+      .select('id')
+      .eq('email', email)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (porEmail && porEmail.data) return true;
+  }
+  return false;
+}
 function bloquearAcessoRH() {
   var root = document.getElementById('rhRoot') || document.body;
   root.innerHTML = '<div style="min-height:360px;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:system-ui;padding:2rem;text-align:center">'
@@ -91,17 +128,29 @@ async function validarAcessoRHAdministrativo() {
     window.location.href = '/login';
     return false;
   }
+  var authEmail = normalizarEmailRH(authData.user.email);
   var { data: usr, error } = await sb.from('usuarios')
     .select('id,nome,email,perfil,ativo')
     .eq('auth_id', authData.user.id)
     .maybeSingle();
-  if (error || !usr || usr.ativo === false || !perfilRHPermitido(usr.perfil)) {
+  var usuarioEmail = normalizarEmailRH(usr && usr.email);
+  if (error || !usr || usr.ativo === false || !usuarioEmail || usuarioEmail !== authEmail) {
+    bloquearAcessoRH();
+    return false;
+  }
+  var empId = await getEmpresaId();
+  var vinculo = await buscarVinculoRHAdministrativo(usr.id, empId);
+  var perfilEmpresa = vinculo && vinculo.perfil_empresa ? String(vinculo.perfil_empresa).toLowerCase() : '';
+  var perfilGlobal = String(usr.perfil || '').toLowerCase();
+  var perfilEfetivo = perfilEmpresa || perfilGlobal;
+  var ehColaborador = await usuarioEhColaboradorRH(authData.user);
+  if (!empId || !vinculo || !perfilRHPermitido(perfilEfetivo) || (ehColaborador && !perfilRHMaster(perfilEfetivo) && perfilEfetivo !== 'gestor' && perfilEfetivo !== 'socio' && perfilEfetivo !== 'sócio' && perfilEfetivo !== 'admin')) {
     bloquearAcessoRH();
     return false;
   }
   _usuarioRH = usr;
-  _rhPerfil = String(usr.perfil || '').toLowerCase();
-  if (_rhPerfil === 'dono' || authData.user.email === 'nascimento.gaube@gmail.com') {
+  _rhPerfil = perfilEfetivo;
+  if (perfilRHMaster(_rhPerfil) || authEmail === 'nascimento.gaube@gmail.com') {
     document.body.classList.add('master-admin');
   } else {
     document.body.classList.remove('master-admin');
