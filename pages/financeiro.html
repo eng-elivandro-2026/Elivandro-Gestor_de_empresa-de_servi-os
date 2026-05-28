@@ -1994,7 +1994,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="section-title">DRE Gerencial Realizada por Plano Gerencial</div>
         <div class="section-sub">Somente movimentos realizados, por data real e categorias que impactam DRE.</div>
       </div>
-      <span class="filtro-count" id="dre-plano-count"></span>
+      <div class="page-header-actions">
+        <button class="btn-refresh" id="dre-plano-btn-exportar-csv" onclick="drePlanoExportarCSV()" title="Exportar CSV da DRE Gerencial filtrada">
+          Exportar CSV
+        </button>
+        <span class="filtro-count" id="dre-plano-count"></span>
+      </div>
     </div>
 
     <div class="kpi-row" id="dre-plano-kpi-row" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))"></div>
@@ -2128,6 +2133,7 @@ var _dreLoadToken   = 0;      // race condition guard próprio da DRE
 var _dreCarregando  = false;
 var _drePeriodo     = { dataInicio: '', dataFim: '', preset: 'mes' };
 var _drePlanoLinhas = [];
+var _drePlanoResultado = null;
 
 // NF Fornecedor - isolamento visual multiempresa
 var _nffLoadToken = 0;        // race condition guard para troca de empresa
@@ -10066,6 +10072,7 @@ function _renderDRECards(r) {
 // ── Carregar DRE ──────────────────────────────────────────────
 function _drePlanoLimpar() {
   _drePlanoLinhas = [];
+  _drePlanoResultado = null;
   var sec = document.getElementById('dre-plano-section');
   var row = document.getElementById('dre-plano-kpi-row');
   var tbody = document.getElementById('dre-plano-tbody');
@@ -10233,6 +10240,7 @@ function _drePlanoRender(resultado) {
   var r = resultado && resultado.resumo ? resultado.resumo : {};
   var linhas = resultado && resultado.linhas ? resultado.linhas : [];
   _drePlanoLinhas = linhas;
+  _drePlanoResultado = { resumo: r, linhas: linhas };
   sec.style.display = '';
   if (count) count.textContent = (r.movimentosTotal || 0) + ((r.movimentosTotal || 0) === 1 ? ' movimento' : ' movimentos');
 
@@ -10316,6 +10324,160 @@ function _drePlanoRender(resultado) {
       (r.movimentosSemCategoria || 0) + ' movimento(s) sem categoria gerencial; ' +
       (r.movimentosForaDre || 0) + ' movimento(s) fora da DRE.</td></tr>';
   }
+}
+
+function _dreCsvPeriodoLabel() {
+  return _fluxoCsvPeriodoLabel(_drePeriodo.dataInicio, _drePeriodo.dataFim);
+}
+
+function _dreCsvPeriodoArquivo() {
+  return _fluxoCsvPeriodoArquivo(_drePeriodo.dataInicio, _drePeriodo.dataFim);
+}
+
+function _dreCsvEmpresaNome() {
+  return (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
+}
+
+function _dreCsvPct(v) {
+  return _drePlanoPct(v);
+}
+
+function _dreCsvMoeda(v) {
+  return _fluxoCsvMoeda(v);
+}
+
+function _dreCsvClassificacao(bloco) {
+  if (bloco === 'Sem categoria gerencial') return 'Sem categoria';
+  if (bloco === 'Fora da DRE') return 'Fora da DRE';
+  return 'DRE';
+}
+
+function _dreCsvResumoRows(r) {
+  var empresa = _dreCsvEmpresaNome();
+  var periodo = _dreCsvPeriodoLabel();
+  return [
+    [
+      'Empresa',
+      'Periodo',
+      'Receita Operacional',
+      'Custos Diretos',
+      'Lucro Bruto',
+      'Margem Bruta',
+      'Despesas Operacionais',
+      'Resultado Operacional',
+      'Margem Operacional',
+      'Resultado Financeiro',
+      'Impostos',
+      'Resultado Antes dos Impostos',
+      'Resultado Final Apos Impostos',
+      'Resultado Gerencial',
+      'Margem Liquida Gerencial',
+      'Movimentos Sem Categoria',
+      'Movimentos Fora da DRE',
+      'Total de Movimentos'
+    ],
+    [
+      empresa,
+      periodo,
+      _dreCsvMoeda(r.receitaOperacional || 0),
+      _dreCsvMoeda(r.custosDiretos || 0),
+      _dreCsvMoeda(r.lucroBruto || 0),
+      _dreCsvPct(r.margemBruta),
+      _dreCsvMoeda(r.despesasOperacionais || 0),
+      _dreCsvMoeda(r.resultadoOperacional || 0),
+      _dreCsvPct(r.margemOperacional),
+      _dreCsvMoeda(r.resultadoFinanceiro || 0),
+      _dreCsvMoeda(r.impostos || 0),
+      _dreCsvMoeda(r.resultadoAntesImpostos || 0),
+      _dreCsvMoeda(r.resultadoFinalAposImpostos || 0),
+      _dreCsvMoeda(r.resultadoGerencial || 0),
+      _dreCsvPct(r.margemLiquidaGerencial),
+      String(r.movimentosSemCategoria || 0),
+      String(r.movimentosForaDre || 0),
+      String(r.movimentosTotal || 0)
+    ]
+  ];
+}
+
+function _dreCsvDetalheRows(linhas, r) {
+  var empresa = _dreCsvEmpresaNome();
+  var periodo = _dreCsvPeriodoLabel();
+  var baseDre = r.totalDreAbs || 0;
+  var baseGeral = r.totalGeralAbs || 0;
+  var rows = [[
+    'Empresa',
+    'Periodo',
+    'Bloco',
+    'Grupo',
+    'Subgrupo',
+    'Codigo da categoria',
+    'Categoria gerencial',
+    'Entrada',
+    'Saida',
+    'Saldo',
+    'Participacao',
+    'Movimentos',
+    'Classificacao'
+  ]];
+  (linhas || []).forEach(function(l) {
+    var saldo = (l.entradas || 0) - (l.saidas || 0);
+    var valorAbs = (l.entradas || 0) + (l.saidas || 0);
+    var basePart = (l.bloco === 'Fora da DRE' || l.bloco === 'Sem categoria gerencial') ? baseGeral : baseDre;
+    rows.push([
+      empresa,
+      periodo,
+      l.bloco || '',
+      l.grupo || '',
+      l.subgrupo || '',
+      l.codigo || '',
+      l.nome || '',
+      _dreCsvMoeda(l.entradas || 0),
+      _dreCsvMoeda(l.saidas || 0),
+      _dreCsvMoeda(saldo),
+      _drePlanoPart(valorAbs, basePart),
+      String(l.movimentos || 0),
+      _dreCsvClassificacao(l.bloco)
+    ]);
+  });
+  return rows;
+}
+
+function _dreCsvMontarConteudo() {
+  var resultado = _drePlanoResultado || { resumo: {}, linhas: [] };
+  var r = resultado.resumo || {};
+  var linhas = resultado.linhas || [];
+  var rows = [
+    ['DRE Gerencial Realizada por Plano Gerencial'],
+    ['Observacao', 'Esta DRE e gerencial realizada por caixa, baseada em movimentos financeiros realizados. Nao substitui a DRE contabil por competencia.'],
+    [],
+    ['Resumo/Indicadores']
+  ];
+  rows = rows.concat(_dreCsvResumoRows(r));
+  rows.push([]);
+  rows.push(['Detalhamento por Plano Gerencial']);
+  rows = rows.concat(_dreCsvDetalheRows(linhas, r));
+  return '\uFEFF' + rows.map(_fluxoCsvLinha).join('\r\n');
+}
+
+function drePlanoExportarCSV() {
+  if (!_empresaAtivaId()) {
+    alert('Empresa ativa nao identificada. Recarregue o Financeiro antes de exportar.');
+    return;
+  }
+  var csv = _dreCsvMontarConteudo();
+  var empresa = _fluxoCsvSlug(_dreCsvEmpresaNome());
+  var periodo = _dreCsvPeriodoArquivo();
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'dre-gerencial-' + empresa + '-' + periodo + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 500);
 }
 
 async function carregarDRE(empresaId) {
