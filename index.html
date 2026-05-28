@@ -10424,15 +10424,15 @@ async function _carregarListaUsuarios() {
       acoes = '<div style="display:flex;gap:.3rem">'
         + '<button class="nb" title="Reativar na empresa" onclick="_reativarDaEmpresa(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\')" '
         +   'style="font-size:.78rem;padding:.2rem .55rem;border:1px solid rgba(34,197,94,.3);border-radius:5px;color:#22c55e;cursor:pointer;background:rgba(34,197,94,.07)">🔄 Reativar</button>'
-        + '<button class="nb" title="Enviar link para redefinir senha" onclick="_enviarRedefinicaoSenhaUsuario(\'' + email + '\',\'' + nome + '\')" '
-        +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Redefinir senha">Senha</button>'
+        + '<button class="nb" title="Envia um link para o usuario criar ou redefinir a senha" onclick="_enviarRedefinicaoSenhaUsuario(\'' + email + '\',\'' + nome + '\')" '
+        +   'style="font-size:.76rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Reenviar acesso">Reenviar acesso</button>'
         + '</div>';
     } else {
       acoes = '<div style="display:flex;gap:.3rem">'
         + '<button class="nb" title="Editar usuário" onclick="_abrirEditarUsuario(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\',\'' + email + '\',\'' + nomeEmp + '\',\'' + ativoStr + '\',\'' + obs + '\')" '
         +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Editar">✏️</button>'
-        + '<button class="nb" title="Enviar link para redefinir senha" onclick="_enviarRedefinicaoSenhaUsuario(\'' + email + '\',\'' + nome + '\')" '
-        +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Redefinir senha">Senha</button>'
+        + '<button class="nb" title="Envia um link para o usuario criar ou redefinir a senha" onclick="_enviarRedefinicaoSenhaUsuario(\'' + email + '\',\'' + nome + '\')" '
+        +   'style="font-size:.76rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Reenviar acesso">Reenviar acesso</button>'
         + '<button class="nb" title="Desativar da empresa" onclick="_removerDaEmpresa(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\')" '
         +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:#ef4444;cursor:pointer;background:var(--bg2)" aria-label="Desativar">🚫</button>'
         + '</div>';
@@ -10463,25 +10463,26 @@ function _portalLoginUrl() {
 
 async function _enviarRedefinicaoSenhaUsuario(email, nome) {
   if (!_podeGerenciarUsuarios()) {
-    toast('Acesso negado. Apenas Dono ou Admin podem redefinir senha.', 'err');
+    toast('Acesso negado. Apenas perfis autorizados podem reenviar acesso.', 'err');
     return;
   }
   email = String(email || '').trim().toLowerCase();
   nome = String(nome || email || 'usuario');
   if (!email || !email.includes('@')) {
-    toast('Usuario sem email valido para redefinir senha.', 'err');
+    toast('Usuario sem email valido para reenviar acesso.', 'err');
     return;
   }
-  if (!confirm('Enviar link de redefinicao de senha para ' + nome + ' (' + email + ')?')) return;
+  var urlAcesso = _portalLoginUrl();
+  if (!confirm('Reenviar link de acesso para ' + nome + ' (' + email + ')?\n\nO usuario recebera um link para criar ou redefinir a senha.\nDestino: ' + urlAcesso)) return;
 
   var { error } = await window.sbClient.auth.resetPasswordForEmail(email, {
-    redirectTo: _portalLoginUrl()
+    redirectTo: urlAcesso
   });
   if (error) {
-    toast('Erro ao enviar redefinicao: ' + error.message, 'err');
+    toast('Erro ao reenviar acesso: ' + error.message, 'err');
     return;
   }
-  toast('Link de redefinicao enviado para ' + email + '.', 'ok');
+  toast('Link de acesso enviado para ' + email + '.', 'ok');
 }
 
 async function convidarUsuario() {
@@ -10500,7 +10501,7 @@ async function convidarUsuario() {
   if (!empId) { alert('Selecione a empresa.'); return; }
 
   var btn = document.getElementById('btnConvidar');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Preparando...'; }
 
   try {
     var emailLower = email.trim().toLowerCase();
@@ -10511,8 +10512,8 @@ async function convidarUsuario() {
 
     if (!novoUserId) {
       throw new Error(
-        'Usuário não encontrado. Se já acessa outra empresa, use "Vincular à Empresa". ' +
-        'Para usuário novo, peça que ele entre no portal uma vez antes.'
+        'Usuario nao encontrado no portal. Este fluxo nao cria login novo. ' +
+        'Para usuario novo, gere o primeiro acesso fora do portal e depois use "Reenviar acesso".'
       );
     }
 
@@ -10525,7 +10526,7 @@ async function convidarUsuario() {
     }, { onConflict: 'usuario_id,empresa_id' });
     if (insEmp.error) throw new Error('Erro ao vincular empresa: ' + insEmp.error.message);
 
-    document.getElementById('invResultado').innerHTML = _vinMsg('✅ ' + nome.trim() + ' (' + email + ') configurado com sucesso!', 'ok');
+    document.getElementById('invResultado').innerHTML = _vinMsg('✅ ' + nome.trim() + ' (' + email + ') preparado com sucesso. Use "Reenviar acesso" para enviar o link de senha.', 'ok');
     _carregarListaUsuarios();
     document.getElementById('invNome').value  = '';
     document.getElementById('invEmail').value = '';
@@ -10533,7 +10534,7 @@ async function convidarUsuario() {
   } catch(e) {
     document.getElementById('invResultado').innerHTML = _vinMsg('❌ ' + e.message, 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Configurar Acesso'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Preparar acesso'; }
   }
 }
 
@@ -10819,7 +10820,7 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
         <!-- Abas internas -->
         <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:.85rem">
           <button id="guTabVin"  class="nb" onclick="_guTab('vin')"  style="border:none;border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">🔗 Vincular Existente</button>
-          <button id="guTabConv" class="nb" onclick="_guTab('conv')" style="border:none;border-bottom:2px solid transparent;color:var(--text3);background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">📋 Configurar Convidado</button>
+          <button id="guTabConv" class="nb" onclick="_guTab('conv')" style="border:none;border-bottom:2px solid transparent;color:var(--text3);background:none;cursor:pointer;padding:.35rem .85rem;font-size:.78rem">📋 Preparar Acesso</button>
         </div>
 
         <!-- Painel: vincular usuário existente -->
@@ -10856,7 +10857,7 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
         <!-- Painel: configurar convidado -->
         <div id="guPainelConv" style="display:none">
           <div style="font-size:.72rem;color:var(--text3);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:.4rem .6rem;margin-bottom:.7rem;line-height:1.4">
-            📋 Use apenas para usuários que <strong>já acessaram o portal ao menos uma vez</strong>. Para cadastrados em outra empresa, use "Vincular Existente".
+            📋 Este fluxo prepara empresa e perfil para usuario ja existente no portal. Ele nao cria login novo no Supabase. Para usuario totalmente novo, gere o primeiro acesso fora do portal e depois use "Reenviar acesso".
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.55rem">
             <div>
@@ -10887,7 +10888,7 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
               <select id="invEmpresa" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-size:.78rem"></select>
             </div>
           </div>
-          <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">✅ Configurar Acesso</button>
+          <button id="btnConvidar" class="nb" onclick="convidarUsuario()" style="width:100%;background:var(--blue);color:#fff;border-radius:7px;padding:.45rem;font-size:.8rem;font-weight:700;border:none;cursor:pointer">✅ Preparar acesso</button>
           <div id="invResultado"></div>
         </div>
 
