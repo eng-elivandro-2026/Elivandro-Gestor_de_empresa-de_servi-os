@@ -575,9 +575,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="page-sub">Dados oficiais por empresa — tabela <code>financeiro_contas_receber</code></div>
       <div id="empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
     </div>
-    <button class="btn-refresh" id="btn-refresh" onclick="recarregarContas()" title="Recarregar dados">
+    <div class="page-header-actions">
+      <button class="btn-refresh" id="cr-btn-exportar-csv" onclick="crExportarCSV()" title="Exportar CSV de Contas a Receber filtradas">
+        Exportar CSV CR
+      </button>
+      <button class="btn-refresh" id="btn-refresh" onclick="recarregarContas()" title="Recarregar dados">
       🔄 Atualizar
     </button>
+    </div>
   </div>
 
   <!-- KPI cards -->
@@ -1472,9 +1477,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="page-sub">Obrigações financeiras da empresa — tabela <code>financeiro_contas_pagar</code></div>
       <div id="cp-empresa-badge" class="empresa-badge" style="display:none">🏢 —</div>
     </div>
-    <button class="btn-refresh" id="cp-btn-refresh" onclick="recarregarCp()" title="Recarregar dados">
+    <div class="page-header-actions">
+      <button class="btn-refresh" id="cp-btn-exportar-csv" onclick="cpExportarCSV()" title="Exportar CSV de Contas a Pagar filtradas">
+        Exportar CSV CP
+      </button>
+      <button class="btn-refresh" id="cp-btn-refresh" onclick="recarregarCp()" title="Recarregar dados">
       🔄 Atualizar
     </button>
+  </div>
+
   </div>
 
   <!-- KPI Cards -->
@@ -6512,6 +6523,371 @@ function fluxoExportarCSV() {
 }
 
 // ── Renderizar KPI cards (visão CFO) ─────────────────────────
+function _csvEmpresaNomeAtiva() {
+  return (_empresaAtiva && (_empresaAtiva.nome_curto || _empresaAtiva.nome)) || 'Empresa ativa';
+}
+
+function _csvBaixarArquivo(conteudo, nomeArquivo) {
+  var blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 500);
+}
+
+function _csvData(v) {
+  return v ? _fmtDt(v) : '';
+}
+
+function _csvMoeda(v) {
+  return _fluxoCsvMoeda(v);
+}
+
+function _csvJuntar(lista) {
+  return (lista || []).filter(function(v) { return v !== null && v !== undefined && String(v).trim() !== ''; }).join(' | ');
+}
+
+function _csvFiltroLabel(partes) {
+  var itens = (partes || []).filter(function(v) { return v && String(v).trim(); });
+  return itens.length ? itens.join(' | ') : 'Todos os filtros';
+}
+
+function _csvResumoVinculos(registros, campoValor, campoData) {
+  return _csvJuntar((registros || []).map(function(r) {
+    return _csvJuntar([
+      r.id || '',
+      _csvData(r[campoData]),
+      _csvMoeda(r[campoValor]),
+      r.status || ''
+    ]);
+  }));
+}
+
+function _csvMovimentoIds(registros) {
+  var ids = {};
+  (registros || []).forEach(function(r) {
+    if (r && r.movimento_caixa_id) ids[String(r.movimento_caixa_id)] = true;
+  });
+  return Object.keys(ids);
+}
+
+function _csvConciliacaoTexto(movimentoIds, concMap) {
+  if (!movimentoIds || !movimentoIds.length) return 'Nao aplicavel';
+  return movimentoIds.map(function(id) {
+    var c = concMap && concMap[id];
+    return c ? 'Conciliado ' + (c.id || '') : 'Nao conciliado ' + id;
+  }).join(' | ');
+}
+
+async function _csvConciliacoesPorMovimento(empresaId, movimentoIds) {
+  var sf = _sf();
+  var mapa = {};
+  if (!sf || !sf.listarConciliacaoMovimento || !movimentoIds || !movimentoIds.length) return mapa;
+  await Promise.all(movimentoIds.map(function(id) {
+    return sf.listarConciliacaoMovimento({
+      empresa_id: empresaId,
+      movimento_caixa_id: id
+    }).then(function(c) {
+      if (c && String(c.empresa_id) === String(empresaId) && String(c.movimento_caixa_id) === String(id)) mapa[id] = c;
+    }).catch(function() {});
+  }));
+  return mapa;
+}
+
+function _crContasExportacaoFiltradas() {
+  var buscaEl = document.getElementById('filtro-busca');
+  var statusEl = document.getElementById('filtro-status');
+  var vencEl = document.getElementById('filtro-venc');
+  var busca = ((buscaEl && buscaEl.value) || '').toLowerCase().trim();
+  var status = (statusEl && statusEl.value) || '';
+  var venc = (vencEl && vencEl.value) || '';
+  var hoje = _hoje();
+
+  return (_todasContas || []).filter(function(c) {
+    if (!_mesmaEmpresaRegistro(c)) return false;
+    if (busca) {
+      var txt = [c.cliente_nome, c.titulo, c.proposta_app_id, c.obra_id, c.centro_custo]
+        .map(function(v){ return (v||'').toLowerCase(); }).join(' ');
+      if (txt.indexOf(busca) < 0) return false;
+    }
+    if (status && c.status !== status) return false;
+    if (venc) {
+      var dv = c.data_vencimento ? c.data_vencimento.slice(0,10) : null;
+      if (venc === 'vencida')  { if (!_isVencida(c)) return false; }
+      if (venc === 'hoje')     { if (!dv || dv !== hoje) return false; }
+      if (venc === '7d')       { if (!_isAVencer(c, 7)) return false; }
+      if (venc === '30d')      { if (!_isAVencer(c, 30)) return false; }
+      if (venc === 'sem_venc') { if (dv) return false; }
+    }
+    return true;
+  });
+}
+
+function _crCsvFiltroLabel() {
+  var busca = (document.getElementById('filtro-busca') || {}).value || '';
+  var status = (document.getElementById('filtro-status') || {}).value || '';
+  var venc = (document.getElementById('filtro-venc') || {}).value || '';
+  var vencLabel = { vencida: 'Vencidas', hoje: 'Vencem hoje', '7d': 'Prox. 7 dias', '30d': 'Prox. 30 dias', sem_venc: 'Sem data' };
+  return _csvFiltroLabel([
+    busca ? 'Busca: ' + busca : '',
+    status ? 'Status: ' + (_STATUS_LABEL[status] || status) : '',
+    venc ? 'Vencimento: ' + (vencLabel[venc] || venc) : ''
+  ]);
+}
+
+function _crCsvPeriodoArquivo() {
+  var venc = (document.getElementById('filtro-venc') || {}).value || 'todos';
+  return _fluxoCsvSlug(venc || 'todos');
+}
+
+async function _crCsvRecebimentosPorConta(contas, empresaId) {
+  var sf = _sf();
+  var mapa = {};
+  if (!sf || !sf.listarRecebimentosConta) return mapa;
+  await Promise.all((contas || []).map(function(c) {
+    return sf.listarRecebimentosConta(empresaId, c.id).then(function(lista) {
+      mapa[c.id] = (lista || []).filter(function(r) {
+        return r && String(r.empresa_id) === String(empresaId);
+      });
+    }).catch(function() { mapa[c.id] = []; });
+  }));
+  return mapa;
+}
+
+function _crCsvMontarConteudo(contas, recebimentosPorConta, concMap) {
+  var empresa = _csvEmpresaNomeAtiva();
+  var filtro = _crCsvFiltroLabel();
+  var linhas = [[
+    'Empresa',
+    'Periodo/Filtro',
+    'Cliente',
+    'Documento/NF/Proposta',
+    'Referencia',
+    'Data de emissao',
+    'Data de vencimento',
+    'Valor previsto',
+    'Valor recebido',
+    'Valor pendente',
+    'Status',
+    'Categoria gerencial',
+    'Centro de custo',
+    'Origem',
+    'Movimento de caixa vinculado',
+    'Recebimento vinculado',
+    'Conciliacao',
+    'Observacao/Descricao'
+  ]];
+
+  (contas || []).forEach(function(c) {
+    var recs = recebimentosPorConta[c.id] || [];
+    var movIds = _csvMovimentoIds(recs);
+    linhas.push([
+      empresa,
+      filtro,
+      c.cliente_nome || '',
+      c.numero_nf || c.documento || c.proposta_app_id || c.obra_id || '',
+      c.referencia_id || c.proposta_app_id || c.obra_id || '',
+      _csvData(c.data_emissao || c.data_emissao_nf),
+      _csvData(c.data_vencimento),
+      _csvMoeda(c.valor_previsto),
+      _csvMoeda(c.valor_recebido),
+      _csvMoeda(c.valor_pendente),
+      _STATUS_LABEL[c.status] || c.status || '',
+      catGerencialLabel(c.categoria_gerencial_id),
+      c.centro_custo || '',
+      c.origem || '',
+      _csvJuntar(movIds),
+      _csvResumoVinculos(recs, 'valor_recebido', 'data_recebimento'),
+      _csvConciliacaoTexto(movIds, concMap),
+      c.observacoes || c.observacao || c.titulo || ''
+    ]);
+  });
+
+  return '\uFEFF' + linhas.map(_fluxoCsvLinha).join('\r\n');
+}
+
+async function crExportarCSV() {
+  var empresaConsulta = _empresaAtivaId();
+  if (!empresaConsulta) {
+    alert('Empresa ativa nao identificada. Recarregue o Financeiro antes de exportar.');
+    return;
+  }
+  var btn = document.getElementById('cr-btn-exportar-csv');
+  if (btn) btn.disabled = true;
+  try {
+    var contas = _crContasExportacaoFiltradas();
+    var recebimentos = await _crCsvRecebimentosPorConta(contas, empresaConsulta);
+    var movimentoIds = [];
+    Object.keys(recebimentos).forEach(function(id) {
+      movimentoIds = movimentoIds.concat(_csvMovimentoIds(recebimentos[id]));
+    });
+    var concs = await _csvConciliacoesPorMovimento(empresaConsulta, movimentoIds);
+    if (empresaConsulta !== _empresaAtivaId()) {
+      alert('Empresa ativa mudou durante a exportacao. Recarregue a lista e tente novamente.');
+      return;
+    }
+    var csv = _crCsvMontarConteudo(contas, recebimentos, concs);
+    var empresa = _fluxoCsvSlug(_csvEmpresaNomeAtiva());
+    var periodo = _crCsvPeriodoArquivo();
+    _csvBaixarArquivo(csv, 'contas-receber-' + empresa + '-' + periodo + '.csv');
+  } catch(e) {
+    console.warn('[Financeiro F3.13-G] erro ao exportar CR:', e);
+    alert('Erro ao exportar CSV de Contas a Receber: ' + (e.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _cpContasExportacaoFiltradas() {
+  var busca = (document.getElementById('cp-filtro-busca') || {}).value || '';
+  var status = (document.getElementById('cp-filtro-status') || {}).value || '';
+  var cat = (document.getElementById('cp-filtro-categoria') || {}).value || '';
+  var cc = (document.getElementById('cp-filtro-cc') || {}).value || '';
+  var vencIni = (document.getElementById('cp-filtro-venc-ini') || {}).value || '';
+  var vencFim = (document.getElementById('cp-filtro-venc-fim') || {}).value || '';
+  var buscaLow = busca.toLowerCase();
+
+  return (_todasContasPagar || []).filter(function(c) {
+    if (!_mesmaEmpresaRegistro(c)) return false;
+    if (buscaLow) {
+      var hay = ((c.fornecedor_nome || '') + ' ' + (c.descricao || '') + ' ' + (c.referencia_id || '')).toLowerCase();
+      if (hay.indexOf(buscaLow) === -1) return false;
+    }
+    if (status && c.status !== status) return false;
+    if (cat && c.categoria !== cat) return false;
+    if (cc && c.centro_custo !== cc) return false;
+    if (vencIni && c.data_vencimento && c.data_vencimento.slice(0,10) < vencIni) return false;
+    if (vencFim && c.data_vencimento && c.data_vencimento.slice(0,10) > vencFim) return false;
+    return true;
+  });
+}
+
+function _cpCsvFiltroLabel() {
+  var busca = (document.getElementById('cp-filtro-busca') || {}).value || '';
+  var status = (document.getElementById('cp-filtro-status') || {}).value || '';
+  var cat = (document.getElementById('cp-filtro-categoria') || {}).value || '';
+  var cc = (document.getElementById('cp-filtro-cc') || {}).value || '';
+  var vencIni = (document.getElementById('cp-filtro-venc-ini') || {}).value || '';
+  var vencFim = (document.getElementById('cp-filtro-venc-fim') || {}).value || '';
+  return _csvFiltroLabel([
+    busca ? 'Busca: ' + busca : '',
+    status ? 'Status: ' + _cpStatusLabel(status) : '',
+    cat ? 'Categoria: ' + _cpCatLabel(cat) : '',
+    cc ? 'Centro de custo: ' + cc : '',
+    (vencIni || vencFim) ? 'Vencimento: ' + _fluxoCsvPeriodoLabel(vencIni, vencFim) : ''
+  ]);
+}
+
+function _cpCsvPeriodoArquivo() {
+  var vencIni = (document.getElementById('cp-filtro-venc-ini') || {}).value || '';
+  var vencFim = (document.getElementById('cp-filtro-venc-fim') || {}).value || '';
+  return _fluxoCsvPeriodoArquivo(vencIni, vencFim);
+}
+
+async function _cpCsvPagamentosPorConta(contas, empresaId) {
+  var sf = _sf();
+  var mapa = {};
+  if (!sf || !sf.listarPagamentosContaPagar) return mapa;
+  await Promise.all((contas || []).map(function(c) {
+    return sf.listarPagamentosContaPagar(empresaId, c.id).then(function(lista) {
+      mapa[c.id] = (lista || []).filter(function(p) {
+        return p && String(p.empresa_id) === String(empresaId);
+      });
+    }).catch(function() { mapa[c.id] = []; });
+  }));
+  return mapa;
+}
+
+function _cpCsvMontarConteudo(contas, pagamentosPorConta, concMap) {
+  var empresa = _csvEmpresaNomeAtiva();
+  var filtro = _cpCsvFiltroLabel();
+  var linhas = [[
+    'Empresa',
+    'Periodo/Filtro',
+    'Fornecedor',
+    'Documento/NF',
+    'Referencia',
+    'Data de emissao',
+    'Data de vencimento',
+    'Valor previsto',
+    'Valor pago',
+    'Valor pendente',
+    'Status',
+    'Categoria gerencial',
+    'Centro de custo',
+    'Origem',
+    'Movimento de caixa vinculado',
+    'Pagamento vinculado',
+    'Conciliacao',
+    'Observacao/Descricao'
+  ]];
+
+  (contas || []).forEach(function(c) {
+    var pagamentos = pagamentosPorConta[c.id] || [];
+    var movIds = _csvMovimentoIds(pagamentos);
+    linhas.push([
+      empresa,
+      filtro,
+      c.fornecedor_nome || '',
+      c.numero_nf || c.documento || c.nf_numero || c.nf || '',
+      c.referencia_id || '',
+      _csvData(c.data_emissao || c.data_emissao_nf),
+      _csvData(c.data_vencimento),
+      _csvMoeda(c.valor_previsto),
+      _csvMoeda(c.valor_pago),
+      _csvMoeda(c.valor_pendente),
+      _cpStatusLabel(c.status),
+      catGerencialLabel(c.categoria_gerencial_id),
+      c.centro_custo || '',
+      c.origem || '',
+      _csvJuntar(movIds),
+      _csvResumoVinculos(pagamentos, 'valor_pago', 'data_pagamento'),
+      _csvConciliacaoTexto(movIds, concMap),
+      c.observacao || c.observacoes || c.descricao || ''
+    ]);
+  });
+
+  return '\uFEFF' + linhas.map(_fluxoCsvLinha).join('\r\n');
+}
+
+async function cpExportarCSV() {
+  var empresaConsulta = _empresaAtivaId();
+  if (!empresaConsulta) {
+    alert('Empresa ativa nao identificada. Recarregue o Financeiro antes de exportar.');
+    return;
+  }
+  var btn = document.getElementById('cp-btn-exportar-csv');
+  if (btn) btn.disabled = true;
+  try {
+    var contas = _cpContasExportacaoFiltradas();
+    var pagamentos = await _cpCsvPagamentosPorConta(contas, empresaConsulta);
+    var movimentoIds = [];
+    Object.keys(pagamentos).forEach(function(id) {
+      movimentoIds = movimentoIds.concat(_csvMovimentoIds(pagamentos[id]));
+    });
+    var concs = await _csvConciliacoesPorMovimento(empresaConsulta, movimentoIds);
+    if (empresaConsulta !== _empresaAtivaId()) {
+      alert('Empresa ativa mudou durante a exportacao. Recarregue a lista e tente novamente.');
+      return;
+    }
+    var csv = _cpCsvMontarConteudo(contas, pagamentos, concs);
+    var empresa = _fluxoCsvSlug(_csvEmpresaNomeAtiva());
+    var periodo = _cpCsvPeriodoArquivo();
+    _csvBaixarArquivo(csv, 'contas-pagar-' + empresa + '-' + periodo + '.csv');
+  } catch(e) {
+    console.warn('[Financeiro F3.13-G] erro ao exportar CP:', e);
+    alert('Erro ao exportar CSV de Contas a Pagar: ' + (e.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function renderFluxoCards(movs) {
   var row = document.getElementById('fluxo-kpi-row');
   if (!row) return;
