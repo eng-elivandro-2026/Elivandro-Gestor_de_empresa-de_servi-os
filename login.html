@@ -100,10 +100,15 @@
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js";
+  const RECOVERY_PARAMS = lerParametrosRecoveryDaUrl();
+  const MODO_RECOVERY = RECOVERY_PARAMS.ehRecovery;
   const supabase = createClient(
     "https://ojuuzojwnyxdsavdosif.supabase.co",
-    "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u"
+    "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u",
+    { auth: { detectSessionInUrl: false } }
   );
+  let recoverySessionAtiva = false;
+  let recoveryPreparando = false;
 
   const msg        = document.getElementById("msg");
   const formLogin  = document.getElementById("formLogin");
@@ -117,6 +122,19 @@
   function mostrarErroNovaSenha(t){ msgNovaSenha.style.color="#ff7b72"; msgNovaSenha.textContent=t; }
   function mostrarSucessoNovaSenha(t){ msgNovaSenha.style.color="#3fb950"; msgNovaSenha.textContent=t; }
 
+  function lerParametrosRecoveryDaUrl() {
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const type = query.get("type") || hash.get("type") || "";
+    const code = query.get("code") || hash.get("code") || "";
+    const tokenHash = query.get("token_hash") || hash.get("token_hash") || "";
+    const accessToken = query.get("access_token") || hash.get("access_token") || "";
+    const refreshToken = query.get("refresh_token") || hash.get("refresh_token") || "";
+    const error = query.get("error_description") || hash.get("error_description") || query.get("error") || hash.get("error") || "";
+    const ehRecovery = type === "recovery" || !!code || !!tokenHash || (!!accessToken && !!refreshToken);
+    return { query, hash, type, code, tokenHash, accessToken, refreshToken, error, ehRecovery };
+  }
+
   function rotaLogin() {
     const host = window.location.hostname;
     return host === "localhost" || host === "127.0.0.1" ? "/login.html" : "/login";
@@ -127,27 +145,95 @@
   }
 
   function urlIndicaRedefinicaoSenha() {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const query = new URLSearchParams(window.location.search);
-    return hash.get("type") === "recovery" || query.get("type") === "recovery" || query.has("code");
+    return MODO_RECOVERY;
+  }
+
+  function urlIndicaSenhaRedefinida() {
+    return new URLSearchParams(window.location.search).get("senha_redefinida") === "1";
   }
 
   function abrirFormNovaSenha() {
+    document.getElementById("email").value = "";
+    document.getElementById("senha").value = "";
+    document.getElementById("email").disabled = true;
+    document.getElementById("senha").disabled = true;
+    document.getElementById("btnLogin").disabled = true;
     formLogin.style.display = "none";
     rolePicker.style.display = "none";
     formNovaSenha.style.display = "block";
     msgNovaSenha.textContent = "";
   }
 
-  function voltarLoginLimpo() {
-    window.location.href = rotaLogin();
+  function limparUrlRecovery() {
+    window.history.replaceState({}, document.title, rotaLogin() + "?reset=1");
+  }
+
+  function limparSessaoSupabaseLocal() {
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith("sb-") || k.toLowerCase().includes("supabase")) localStorage.removeItem(k);
+      });
+    } catch(e) {}
+    try {
+      Object.keys(sessionStorage).forEach(k => {
+        if (k.startsWith("sb-") || k.toLowerCase().includes("supabase")) sessionStorage.removeItem(k);
+      });
+    } catch(e) {}
+  }
+
+  function voltarLoginLimpo(senhaRedefinida = false) {
+    window.location.href = rotaLogin() + (senhaRedefinida ? "?senha_redefinida=1" : "");
+  }
+
+  async function prepararSessaoRecovery() {
+    if (recoveryPreparando) return;
+    recoveryPreparando = true;
+    abrirFormNovaSenha();
+    mostrarSucessoNovaSenha("Validando link de redefinicao...");
+
+    if (RECOVERY_PARAMS.error) {
+      recoverySessionAtiva = false;
+      mostrarErroNovaSenha("Link de redefinicao invalido ou expirado. Solicite uma nova redefinicao de senha.");
+      return;
+    }
+
+    try {
+      if (RECOVERY_PARAMS.code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(RECOVERY_PARAMS.code);
+        if (error) throw error;
+      } else if (RECOVERY_PARAMS.tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: RECOVERY_PARAMS.tokenHash,
+          type: "recovery"
+        });
+        if (error) throw error;
+      } else if (RECOVERY_PARAMS.accessToken && RECOVERY_PARAMS.refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: RECOVERY_PARAMS.accessToken,
+          refresh_token: RECOVERY_PARAMS.refreshToken
+        });
+        if (error) throw error;
+      } else {
+        throw new Error("Link sem credenciais de recuperacao.");
+      }
+      recoverySessionAtiva = true;
+      limparUrlRecovery();
+      mostrarSucessoNovaSenha("Digite e confirme sua nova senha.");
+    } catch(e) {
+      recoverySessionAtiva = false;
+      mostrarErroNovaSenha("Link de redefinicao invalido ou expirado. Solicite uma nova redefinicao de senha.");
+    }
   }
 
   // Verificar se tem sessão ativa ao carregar
   async function verificarSessao() {
     if (urlIndicaRedefinicaoSenha()) {
-      abrirFormNovaSenha();
+      await prepararSessaoRecovery();
       return;
+    }
+    if (urlIndicaSenhaRedefinida()) {
+      mostrarSucesso("Senha redefinida. Entre novamente com a nova senha.");
+      window.history.replaceState({}, document.title, rotaLogin());
     }
     const { data } = await supabase.auth.getUser();
     if (data?.user) await decidirDestino(data.user);
@@ -244,8 +330,12 @@
     msgNovaSenha.textContent = "";
     const nova = document.getElementById("novaSenha").value.trim();
     const conf = document.getElementById("novaSenha2").value.trim();
-    if (nova.length < 6) { mostrarErroNovaSenha("A nova senha deve ter pelo menos 6 caracteres."); return; }
+    if (nova.length < 8) { mostrarErroNovaSenha("A nova senha deve ter pelo menos 8 caracteres."); return; }
     if (nova !== conf) { mostrarErroNovaSenha("As senhas nao conferem."); return; }
+    if (!MODO_RECOVERY || !recoverySessionAtiva) {
+      mostrarErroNovaSenha("Link de redefinicao ainda nao validado ou expirado. Solicite uma nova redefinicao de senha.");
+      return;
+    }
 
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session) {
@@ -256,20 +346,29 @@
     const { error } = await supabase.auth.updateUser({ password: nova });
     if (error) { mostrarErroNovaSenha(error.message); return; }
 
-    mostrarSucessoNovaSenha("Senha redefinida com sucesso. Entre novamente.");
-    await supabase.auth.signOut();
-    setTimeout(voltarLoginLimpo, 1200);
+    mostrarSucessoNovaSenha("Senha redefinida. Entre novamente com a nova senha.");
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
+    if (signOutError) await supabase.auth.signOut();
+    limparSessaoSupabaseLocal();
+    setTimeout(() => voltarLoginLimpo(true), 1400);
   });
 
   document.getElementById("btnCancelarNovaSenha").addEventListener("click", async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "global" });
+    limparSessaoSupabaseLocal();
     voltarLoginLimpo();
   });
 
   // Enter para login
   ["email","senha"].forEach(id => {
     document.getElementById(id).addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("btnLogin").click();
+      if (e.key === "Enter" && !MODO_RECOVERY) document.getElementById("btnLogin").click();
+    });
+  });
+
+  ["novaSenha","novaSenha2"].forEach(id => {
+    document.getElementById(id).addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("btnSalvarNovaSenha").click();
     });
   });
 
