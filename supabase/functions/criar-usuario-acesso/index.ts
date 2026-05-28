@@ -29,6 +29,35 @@ type VinculoEmpresa = {
   permissoes_json: JsonRecord | null;
 };
 
+type ColaboradorOperacional = {
+  id: string;
+  auth_id: string | null;
+  nome: string;
+  email: string | null;
+  tipo: string | null;
+  ativo: boolean | null;
+};
+
+type VinculoColaboradorEmpresa = {
+  id: string;
+  colaborador_id: string | null;
+  empresa_id: string | null;
+  tipo: string | null;
+  email: string | null;
+  nome: string | null;
+  ativo: boolean | null;
+};
+
+type ResultadoVinculoOperacional = {
+  aplicavel: boolean;
+  colaborador_id?: string;
+  colaborador_criado: boolean;
+  colaborador_atualizado: boolean;
+  vinculo_id?: string;
+  vinculo_criado: boolean;
+  vinculo_atualizado: boolean;
+};
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -124,6 +153,152 @@ async function inserirAuditoria(
 ): Promise<void> {
   const { error } = await admin.from("usuarios_convites_acesso").insert(campos);
   if (error) throw new Error("Falha ao registrar auditoria.");
+}
+
+function deveCriarVinculoOperacional(perfilEmpresa: string): boolean {
+  return perfilEmpresa === "colaborador" || perfilEmpresa === "prestador";
+}
+
+async function buscarColaboradorOperacional(
+  admin: SupabaseClient,
+  authId: string,
+  email: string,
+): Promise<ColaboradorOperacional | null> {
+  const { data: porAuth, error: erroAuth } = await admin
+    .from("colaboradores")
+    .select("id, auth_id, nome, email, tipo, ativo")
+    .eq("auth_id", authId)
+    .maybeSingle();
+  if (erroAuth) throw new Error("Falha ao consultar colaborador operacional.");
+  if (porAuth) return porAuth as ColaboradorOperacional;
+
+  const { data: porEmail, error: erroEmail } = await admin
+    .from("colaboradores")
+    .select("id, auth_id, nome, email, tipo, ativo")
+    .eq("email", email)
+    .maybeSingle();
+  if (erroEmail) throw new Error("Falha ao consultar colaborador operacional.");
+  return (porEmail || null) as ColaboradorOperacional | null;
+}
+
+async function garantirVinculoOperacional(
+  admin: SupabaseClient,
+  params: {
+    nome: string;
+    email: string;
+    authId: string;
+    empresaId: string;
+    perfilEmpresa: string;
+  },
+): Promise<ResultadoVinculoOperacional> {
+  if (!deveCriarVinculoOperacional(params.perfilEmpresa)) {
+    return {
+      aplicavel: false,
+      colaborador_criado: false,
+      colaborador_atualizado: false,
+      vinculo_criado: false,
+      vinculo_atualizado: false,
+    };
+  }
+
+  let colaborador = await buscarColaboradorOperacional(admin, params.authId, params.email);
+  let colaboradorCriado = false;
+  let colaboradorAtualizado = false;
+
+  if (!colaborador) {
+    const { data, error } = await admin
+      .from("colaboradores")
+      .insert({
+        auth_id: params.authId,
+        nome: params.nome,
+        tipo: params.perfilEmpresa,
+        email: params.email,
+        ativo: true,
+      })
+      .select("id, auth_id, nome, email, tipo, ativo")
+      .single();
+    if (error || !data) throw new Error("Falha ao criar colaborador operacional.");
+    colaborador = data as ColaboradorOperacional;
+    colaboradorCriado = true;
+  } else {
+    const patch: JsonRecord = {};
+    if (!colaborador.auth_id) patch.auth_id = params.authId;
+    if (!colaborador.email) patch.email = params.email;
+    if (!colaborador.nome) patch.nome = params.nome;
+    if (!colaborador.tipo) patch.tipo = params.perfilEmpresa;
+    if (colaborador.ativo === false) patch.ativo = true;
+
+    if (Object.keys(patch).length > 0) {
+      const { data, error } = await admin
+        .from("colaboradores")
+        .update(patch)
+        .eq("id", colaborador.id)
+        .select("id, auth_id, nome, email, tipo, ativo")
+        .single();
+      if (error || !data) throw new Error("Falha ao atualizar colaborador operacional.");
+      colaborador = data as ColaboradorOperacional;
+      colaboradorAtualizado = true;
+    }
+  }
+
+  const { data: vinculoExistenteData, error: vinculoBuscaError } = await admin
+    .from("colaborador_empresas")
+    .select("id, colaborador_id, empresa_id, tipo, email, nome, ativo")
+    .eq("colaborador_id", colaborador.id)
+    .eq("empresa_id", params.empresaId)
+    .maybeSingle();
+  if (vinculoBuscaError) throw new Error("Falha ao consultar vinculo operacional.");
+
+  const vinculoExistente = vinculoExistenteData as VinculoColaboradorEmpresa | null;
+  let vinculoId = vinculoExistente?.id || "";
+  let vinculoCriado = false;
+  let vinculoAtualizado = false;
+
+  if (!vinculoExistente) {
+    const { data, error } = await admin
+      .from("colaborador_empresas")
+      .insert({
+        colaborador_id: colaborador.id,
+        empresa_id: params.empresaId,
+        ativo: true,
+        tipo: params.perfilEmpresa,
+        email: params.email,
+        nome: params.nome,
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error("Falha ao criar vinculo operacional.");
+    vinculoId = data.id;
+    vinculoCriado = true;
+  } else {
+    const patch: JsonRecord = {};
+    if (vinculoExistente.ativo === false) patch.ativo = true;
+    if (!vinculoExistente.tipo) patch.tipo = params.perfilEmpresa;
+    if (!vinculoExistente.email) patch.email = params.email;
+    if (!vinculoExistente.nome) patch.nome = params.nome;
+
+    if (Object.keys(patch).length > 0) {
+      const { data, error } = await admin
+        .from("colaborador_empresas")
+        .update(patch)
+        .eq("id", vinculoExistente.id)
+        .select("id")
+        .single();
+      if (error || !data) throw new Error("Falha ao atualizar vinculo operacional.");
+      vinculoId = data.id;
+      vinculoAtualizado = true;
+    }
+  }
+
+  return {
+    aplicavel: true,
+    colaborador_id: colaborador.id,
+    colaborador_criado: colaboradorCriado,
+    colaborador_atualizado: colaboradorAtualizado,
+    vinculo_id: vinculoId,
+    vinculo_criado: vinculoCriado,
+    vinculo_atualizado: vinculoAtualizado,
+  };
 }
 
 serve(async (req: Request) => {
@@ -270,6 +445,7 @@ serve(async (req: Request) => {
         empresa_id: empresaId,
         email,
         perfil_empresa: perfilEmpresa,
+        vinculo_operacional_previsto: deveCriarVinculoOperacional(perfilEmpresa),
         redirect_to: redirectTo,
       });
     }
@@ -351,12 +527,24 @@ serve(async (req: Request) => {
 
     if (vinculoUpsertError) throw new Error("Falha ao vincular usuario a empresa.");
 
+    const vinculoOperacional = await garantirVinculoOperacional(admin, {
+      nome,
+      email,
+      authId: authUser.id,
+      empresaId,
+      perfilEmpresa,
+    });
+
     await inserirAuditoria(admin, {
       ...auditBase,
       usuario_id: usuarioId,
       auth_id: authUser.id,
       status: "concluido",
       auth_criado: authCriado,
+      metadata: {
+        ...(auditBase.metadata as JsonRecord),
+        vinculo_operacional: vinculoOperacional,
+      },
     });
 
     return json(200, {
@@ -369,6 +557,7 @@ serve(async (req: Request) => {
       perfil_global_preservado: perfilGlobalPreservado,
       empresa_id: empresaId,
       perfil_empresa: perfilEmpresa,
+      vinculo_operacional: vinculoOperacional,
       redirect_to: redirectTo,
     });
   } catch (error) {
