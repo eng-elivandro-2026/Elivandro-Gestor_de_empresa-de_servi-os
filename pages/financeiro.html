@@ -1917,6 +1917,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<div class="bc-modal" id="fluxo-conc-detalhe-modal" onclick="if(event.target===this)fluxoFecharDetalheConciliacao()">
+  <div class="bc-modal-box">
+    <div class="bc-modal-hdr">
+      <div class="bc-modal-title">Detalhe da conciliacao</div>
+      <button class="btn-fechar" onclick="fluxoFecharDetalheConciliacao()">x</button>
+    </div>
+    <div class="bc-modal-body">
+      <div id="fluxo-conc-detalhe-resumo" class="cp-pag-resumo"></div>
+      <div id="fluxo-conc-detalhe-status" class="status-msg"></div>
+      <div class="bc-modal-actions">
+        <button class="bc-btn sec" onclick="fluxoFecharDetalheConciliacao()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="tab-dre" class="tab-content" style="display:none">
 <div class="wrap">
 
@@ -2073,6 +2089,7 @@ var _fluxoConcMovimentoAtual = null;
 var _fluxoConcFontes = [];
 var _fluxoConcMeios = [];
 var _fluxoConcEnviando = false;
+var _fluxoConcDetalheAtual = null;
 
 // ── Contas a Pagar — estado ──────────────────────────────────
 var _todasContasPagar = [];   // financeiro_contas_pagar da empresa ativa
@@ -3096,7 +3113,9 @@ function _onTrocaEmpresa(dados) {
   _fluxoConcFontes = [];
   _fluxoConcMeios = [];
   _fluxoConcEnviando = false;
+  _fluxoConcDetalheAtual = null;
   try { fluxoFecharModalConciliacao(); } catch(e) {}
+  try { fluxoFecharDetalheConciliacao(); } catch(e) {}
 
   // Limpar Contas a Pagar imediatamente
   _todasContasPagar = [];
@@ -6513,6 +6532,68 @@ function _fluxoResumoConciliacaoHtml(m) {
     + '<div class="cp-pag-card"><div class="cp-pag-label">Referencia</div><div class="cp-pag-valor">' + _esc(m.referencia_id || '-') + '</div></div>';
 }
 
+function _fluxoSetStatusDetalheConciliacao(tipo, msg) {
+  var el = document.getElementById('fluxo-conc-detalhe-status');
+  if (!el) return;
+  el.className = 'status-msg' + (tipo ? ' ' + tipo : '');
+  el.textContent = msg || '';
+}
+
+function _fluxoConcDetalheVazio(v) {
+  if (v === 0) return '0';
+  return v ? String(v) : 'Nao informado';
+}
+
+function _fluxoConcDetalheDataHora(v) {
+  if (!v) return 'Nao informado';
+  var d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleString('pt-BR');
+}
+
+function _fluxoConcDetalheFonteLabel(c) {
+  var f = c && c.fonte_financeira;
+  return f && f.nome ? f.nome : _fluxoConcDetalheVazio(c && c.fonte_financeira_id);
+}
+
+function _fluxoConcDetalheMeioLabel(c) {
+  var m = c && c.meio_pagamento;
+  if (!m) return _fluxoConcDetalheVazio(c && c.meio_pagamento_id);
+  var tipo = m.tipo && typeof bcMeioTipoLabel === 'function' ? ' - ' + bcMeioTipoLabel(m.tipo) : '';
+  return (m.nome || 'Meio de pagamento') + tipo;
+}
+
+function _fluxoConcDetalheComprovanteHtml(url) {
+  var txt = String(url || '').trim();
+  if (!txt) return _esc('Nao informado');
+  if (/^https?:\/\//i.test(txt)) {
+    return '<a href="' + _esc(txt) + '" target="_blank" rel="noopener noreferrer">Abrir comprovante</a>';
+  }
+  return _esc(txt);
+}
+
+function _fluxoConcDetalheCard(label, html) {
+  return '<div class="cp-pag-card"><div class="cp-pag-label">' + _esc(label) + '</div><div class="cp-pag-valor">' + html + '</div></div>';
+}
+
+function _fluxoDetalheConciliacaoHtml(c, m) {
+  var status = c && c.status ? c.status : 'conciliado';
+  return ''
+    + _fluxoConcDetalheCard('Status', '<span class="bdg bdg-conc-ok">' + _esc(status) + '</span>')
+    + _fluxoConcDetalheCard('Data da conciliacao', _esc(c && c.data_conciliacao ? _fmtDt(String(c.data_conciliacao).slice(0,10)) : 'Nao informado'))
+    + _fluxoConcDetalheCard('Fonte financeira', _esc(_fluxoConcDetalheFonteLabel(c)))
+    + _fluxoConcDetalheCard('Meio de pagamento', _esc(_fluxoConcDetalheMeioLabel(c)))
+    + _fluxoConcDetalheCard('Identificador bancario', _esc(_fluxoConcDetalheVazio(c && c.identificador_bancario)))
+    + _fluxoConcDetalheCard('Comprovante / link', _fluxoConcDetalheComprovanteHtml(c && c.comprovante_url))
+    + _fluxoConcDetalheCard('Observacao', _esc(_fluxoConcDetalheVazio(c && c.observacao)))
+    + _fluxoConcDetalheCard('Criado por', _esc(_fluxoConcDetalheVazio(c && c.created_by)))
+    + _fluxoConcDetalheCard('Criado em', _esc(_fluxoConcDetalheDataHora(c && c.created_at)))
+    + _fluxoConcDetalheCard('Atualizado em', _esc(_fluxoConcDetalheDataHora(c && c.updated_at)))
+    + _fluxoConcDetalheCard('ID da conciliacao', _esc(_fluxoConcDetalheVazio(c && c.id)))
+    + _fluxoConcDetalheCard('ID do movimento', _esc(_fluxoConcDetalheVazio((c && c.movimento_caixa_id) || (m && m.id))))
+    + _fluxoConcDetalheCard('Movimento', _esc(_traduzirOrigem(m && m.origem)) + ' / ' + _fmtVal(_n(m && m.valor_real)));
+}
+
 async function _fluxoCarregarOpcoesConciliacao() {
   var sf = _sf();
   if (!sf || !sf.listarMeiosPagamento || !sf.listarFontesFinanceiras) {
@@ -6556,12 +6637,72 @@ function _fluxoConciliacaoHtml(m) {
     return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-na">Nao aplicavel</span></div>';
   }
   if (_fluxoMovimentoConciliado(m)) {
-    return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-ok">Conciliado</span></div>';
+    return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-ok">Conciliado</span><button class="bc-btn sec" type="button" onclick="fluxoAbrirDetalheConciliacao(' + bcJsArg(m.id) + ')">Ver conciliacao</button></div>';
   }
   var btn = _fluxoPodeConciliar()
     ? '<button class="bc-btn sec" type="button" onclick="fluxoAbrirModalConciliacao(' + bcJsArg(m.id) + ')">Conciliar</button>'
     : '';
   return '<div class="fluxo-conc-cell"><span class="bdg bdg-conc-pendente">Nao conciliado</span>' + btn + '</div>';
+}
+
+async function fluxoAbrirDetalheConciliacao(movimentoId) {
+  var m = (_todosMovimentos || []).find(function(x) { return String(x.id) === String(movimentoId); });
+  if (!m || !_mesmaEmpresaRegistro(m)) {
+    alert('Movimento ignorado por seguranca. A empresa ativa mudou; recarregue o Fluxo.');
+    return;
+  }
+  if (!_fluxoMovimentoRealizado(m)) {
+    alert('Somente movimentos realizados podem ter detalhe de conciliacao.');
+    return;
+  }
+  if (!_fluxoMovimentoConciliado(m)) {
+    alert('Este movimento ainda nao esta conciliado.');
+    return;
+  }
+
+  var sf = _sf();
+  if (!sf || !sf.listarConciliacaoMovimento) {
+    alert('Consulta de conciliacao indisponivel nesta versao.');
+    return;
+  }
+
+  var empresaConsulta = _empresaAtivaId();
+  var modal = document.getElementById('fluxo-conc-detalhe-modal');
+  var resumo = document.getElementById('fluxo-conc-detalhe-resumo');
+  _fluxoConcDetalheAtual = null;
+  if (resumo) resumo.innerHTML = _fluxoResumoConciliacaoHtml(m);
+  _fluxoSetStatusDetalheConciliacao('loading', 'Carregando detalhe da conciliacao...');
+  if (modal) modal.classList.add('on');
+
+  try {
+    var conc = await sf.listarConciliacaoMovimento({
+      empresa_id: empresaConsulta,
+      movimento_caixa_id: m.id
+    });
+    if (empresaConsulta !== _empresaAtivaId()) return;
+    if (!conc) {
+      _fluxoSetStatusDetalheConciliacao('warn', 'Movimento marcado como conciliado, mas nenhum detalhe foi localizado para a empresa ativa.');
+      return;
+    }
+    if (String(conc.empresa_id) !== empresaConsulta || String(conc.movimento_caixa_id) !== String(m.id)) {
+      _fluxoSetStatusDetalheConciliacao('err', 'Conciliacao ignorada por divergencia de empresa ou movimento.');
+      return;
+    }
+    _fluxoConcDetalheAtual = conc;
+    if (resumo) resumo.innerHTML = _fluxoDetalheConciliacaoHtml(conc, m);
+    _fluxoSetStatusDetalheConciliacao('', '');
+  } catch(e) {
+    _fluxoSetStatusDetalheConciliacao('err', 'Erro ao carregar conciliacao: ' + (e.message || e));
+  }
+}
+
+function fluxoFecharDetalheConciliacao() {
+  var modal = document.getElementById('fluxo-conc-detalhe-modal');
+  if (modal) modal.classList.remove('on');
+  var resumo = document.getElementById('fluxo-conc-detalhe-resumo');
+  if (resumo) resumo.innerHTML = '';
+  _fluxoConcDetalheAtual = null;
+  _fluxoSetStatusDetalheConciliacao('', '');
 }
 
 async function fluxoAbrirModalConciliacao(movimentoId) {

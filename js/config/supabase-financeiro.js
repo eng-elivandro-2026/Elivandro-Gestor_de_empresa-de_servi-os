@@ -788,6 +788,47 @@
     return r.data;
   }
 
+  async function sbListarConciliacaoMovimento(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro F3.12-G] empresa_id obrigatorio.');
+    if (!dados.movimento_caixa_id) throw new Error('[Financeiro F3.12-G] movimento_caixa_id obrigatorio.');
+
+    var r = await client()
+      .from('financeiro_conciliacoes_movimentos')
+      .select('id, empresa_id, movimento_caixa_id, fonte_financeira_id, meio_pagamento_id, data_conciliacao, observacao, comprovante_url, identificador_bancario, status, created_by, created_at, updated_at')
+      .eq('empresa_id', dados.empresa_id)
+      .eq('movimento_caixa_id', dados.movimento_caixa_id)
+      .maybeSingle();
+
+    if (r.error) throw r.error;
+    if (!r.data) return null;
+
+    var conc = r.data;
+    var consultas = [];
+    consultas.push(conc.fonte_financeira_id
+      ? client()
+        .from('financeiro_fontes_financeiras')
+        .select('id, empresa_id, nome, tipo, ativo')
+        .eq('empresa_id', dados.empresa_id)
+        .eq('id', conc.fonte_financeira_id)
+        .maybeSingle()
+      : Promise.resolve({ data: null, error: null }));
+    consultas.push(conc.meio_pagamento_id
+      ? client()
+        .from('financeiro_meios_pagamento')
+        .select('id, empresa_id, nome, tipo, natureza, ativo')
+        .eq('empresa_id', dados.empresa_id)
+        .eq('id', conc.meio_pagamento_id)
+        .maybeSingle()
+      : Promise.resolve({ data: null, error: null }));
+
+    var extras = await Promise.all(consultas);
+    if (extras[0] && extras[0].error) throw extras[0].error;
+    if (extras[1] && extras[1].error) throw extras[1].error;
+    conc.fonte_financeira = extras[0] ? extras[0].data : null;
+    conc.meio_pagamento = extras[1] ? extras[1].data : null;
+    return conc;
+  }
+
 
   /**
    * Lista contas a receber da empresa filtradas por data_vencimento.
@@ -1482,6 +1523,7 @@
     listarMovimentosDREGerencial:    sbListarMovimentosDREGerencial,
     criarMovimentoCaixa:             sbCriarMovimentoCaixa,
     conciliarMovimentoCaixa:         sbConciliarMovimentoCaixa,
+    listarConciliacaoMovimento:      sbListarConciliacaoMovimento,
 
     // Saldos de caixa
     buscarSaldoCaixaAtual:           sbBuscarSaldoCaixaAtual,
