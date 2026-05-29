@@ -840,16 +840,26 @@ function valorHoraAtual() {
   }
   return _colab ? (Number(_colab.valor_hora) || 0) : 0;
 }
+function faseProjetoAprovada(fase) {
+  return String(fase || '').trim().toLowerCase() === 'aprovado';
+}
 async function carregarPropostasEmpresaAtual() {
   var empId = empresaAtualId();
   _propostas = [];
   if (!empId) return;
-  var { data } = await sb.from('propostas')
+  var { data, error } = await sb.from('propostas')
     .select('app_id,numero_proposta,titulo,cliente,fase,empresa_id')
     .eq('empresa_id', empId)
-    .not('fase','in','("em_elaboracao","perdido","perdido_valor_alto","perdido_concorrente","perdido_cliente_decidiu_nao_fazer","perdido_fazer_no_futuro","virou_budget")')
+    .ilike('fase', 'aprovado')
     .order('numero_proposta', {ascending:false});
-  _propostas = data || [];
+  if (error) {
+    console.warn('Falha ao carregar projetos aprovados:', error);
+    _propostas = [];
+    return;
+  }
+  _propostas = (data || []).filter(function(p){
+    return p.empresa_id === empId && faseProjetoAprovada(p.fase);
+  });
 }
 function atualizarTrocaEmpresaUI() {
   var btn = document.getElementById('btnTrocarEmpresaPerfil');
@@ -1188,7 +1198,15 @@ function prepararNovoApt() {
   // Preencher select de propostas
   var sel = document.getElementById('nProposta');
   sel.innerHTML = '<option value="">Selecione o projeto...</option>';
-  _propostas.filter(function(p){ return !empId || p.empresa_id === empId; }).forEach(function(p){
+  sel.disabled = false;
+  var projetosAprovados = _propostas.filter(function(p){
+    return (!empId || p.empresa_id === empId) && faseProjetoAprovada(p.fase);
+  });
+  if (!projetosAprovados.length) {
+    sel.innerHTML = '<option value="">Nenhum projeto aprovado disponível para apontamento.</option>';
+    sel.disabled = true;
+  }
+  projetosAprovados.forEach(function(p){
     sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.cliente||'') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
   });
 
@@ -1261,9 +1279,11 @@ async function salvarNovoApt() {
   if (!propostaId||!data||!entrada||!saida||!desc) {
     toast('Preencha todos os campos obrigatórios.','err'); return;
   }
-  var propostaSelecionada = _propostas.find(function(x){ return x.app_id === propostaId && x.empresa_id === empId; });
+  var propostaSelecionada = _propostas.find(function(x){
+    return x.app_id === propostaId && x.empresa_id === empId && faseProjetoAprovada(x.fase);
+  });
   if (!propostaSelecionada) {
-    toast('Projeto nao pertence a empresa selecionada.','err'); return;
+    toast('Selecione um projeto aprovado da empresa atual.','err'); return;
   }
 
   var jIni='08:00', jFim='18:00';
