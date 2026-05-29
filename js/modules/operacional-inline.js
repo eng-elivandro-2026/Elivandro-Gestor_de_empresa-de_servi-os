@@ -1522,7 +1522,7 @@
   }
 
   function renderTotaisApontamentosHtml(t) {
-    return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem;margin-top:.75rem">'
+    return '<div class="op-report-hours-totals" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem;margin-top:.75rem">'
       + cabecalhoCampo('Total pendente', Number(t.pendente || 0).toFixed(1) + 'h')
       + cabecalhoCampo('Total aprovado', Number(t.aprovado || 0).toFixed(1) + 'h')
       + cabecalhoCampo('Total geral', Number(t.geral || 0).toFixed(1) + 'h')
@@ -1530,11 +1530,11 @@
   }
 
   function assinaturaBoxHtml(titulo, nomeId) {
-    return '<div style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.85rem;min-width:0">'
+    return '<div class="op-signature-card" style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.85rem;min-width:0">'
       + '<div style="font-size:.78rem;color:#0f172a;font-weight:900;text-transform:uppercase;margin-bottom:.55rem">' + esc(titulo) + '</div>'
       + '<label style="display:flex;flex-direction:column;gap:.25rem;font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase">Nome'
       + '<input id="' + nomeId + '" type="text" placeholder="Nome do responsavel" style="border:1px solid #cbd5e1;border-radius:6px;padding:.55rem .65rem;color:#0f172a;background:#fff"></label>'
-      + '<div style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;height:86px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:.82rem;font-weight:800">Assinar na tela - prototipo visual</div>'
+      + '<div class="op-signature-pad" style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;height:86px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:.82rem;font-weight:800">Assinar na tela - prototipo visual</div>'
       + '</div>';
   }
 
@@ -1552,17 +1552,37 @@
       + '.op-doc-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.12);}'
       + '.op-doc-section-title{font-size:.82rem;color:#0f172a;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .65rem;}'
       + '.op-doc-actions .btn{border-radius:7px!important;}'
+      + '.op-report-notice{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem;}'
       + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
+      + '@page{size:A4;margin:12mm;}'
+      + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;}'
+      + 'body *{visibility:hidden!important;}'
+      + '#opObraPanel,#opObraPanel *{visibility:visible!important;}'
+      + '#opObraPanel{position:static!important;inset:auto!important;display:block!important;overflow:visible!important;background:#fff!important;color:#0f172a!important;padding:0!important;}'
+      + '#opObraDialog{display:block!important;min-height:auto!important;background:#fff!important;}'
+      + '#opObraBody{display:block!important;overflow:visible!important;padding:0!important;}'
+      + '.op-panel-header,.no-print,.op-doc-actions{display:none!important;visibility:hidden!important;}'
+      + '.op-doc-paper{max-width:none!important;width:auto!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;}'
+      + '.op-doc-print-section,.op-report-hours-section,.op-signatures-section,.op-signature-card{break-inside:avoid;page-break-inside:avoid;}'
+      + '#opObraPanel[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
+      + '.op-report-hours-section table{width:100%!important;min-width:0!important;font-size:8.5pt!important;}'
+      + '.op-report-hours-section th,.op-report-hours-section td{padding:.28rem .32rem!important;}'
+      + '#opGestaoDiario{min-height:92mm!important;height:auto!important;border:1px solid #94a3b8!important;border-radius:4px!important;resize:none!important;overflow:visible!important;background:#fff!important;}'
+      + '.op-signatures-section{margin-top:9mm!important;}'
+      + '.op-signature-card{border-color:#94a3b8!important;}'
+      + '.op-signature-pad{height:27mm!important;background:#fff!important;border-color:#64748b!important;}'
+      + '}'
       + '</style>'
-      + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
+      + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" data-report-mode="cliente" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
       + '<div id="opObraDialog" class="op-panel-shell" style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9">'
-      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem">'
+      + '<div class="op-panel-header no-print" style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem">'
       + '<div><div style="font-size:.72rem;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.08em">Operacional</div>'
       + '<div style="font-size:1.05rem;color:#0f172a;font-weight:900;line-height:1.25">Gestao do Negocio</div></div>'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px;background:#f8fafc!important;color:#0f172a!important;border-color:#cbd5e1!important">Fechar</button></div>'
       + '<div id="opObraBody" class="op-panel-body" style="overflow:auto;padding:1rem">'
       + '<article class="op-doc-paper" style="max-width:960px;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:1.2rem;box-sizing:border-box">'
-      + '<section style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
+      + '<div class="op-report-notice no-print">Relatorio para cliente: horas ocultas por padrao.</div>'
+      + '<section class="op-doc-print-section" style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem">'
       + cabecalhoCampo('Nome do Cliente', valorSnapshot(s, ['cli']) || o.cliente_nome)
       + cabecalhoCampo('CNPJ Cliente', valorSnapshot(s, ['cnpj']) || o.cliente_cnpj)
@@ -1577,26 +1597,26 @@
       + cabecalhoCampo('Area/Local', areaLocal)
       + cabecalhoCampo('Status operacional', labelFaseNegocio(o.status_operacional))
       + '</div></section>'
-      + '<section style="text-align:center;margin:1.2rem 0 1rem">'
+      + '<section class="op-doc-print-section" style="text-align:center;margin:1.2rem 0 1rem">'
       + '<div style="font-size:.86rem;color:#334155;font-weight:900;letter-spacing:.08em;text-transform:uppercase">Proposta Tecnica e Comercial</div>'
       + '<h1 class="op-doc-title" style="margin:.3rem 0 .18rem;font-size:1.65rem;line-height:1.12;color:#0f172a;text-transform:uppercase">' + esc(titulo) + '</h1>'
       + '<div style="font-size:.92rem;color:#475569;font-weight:800">N&ordm; ' + esc(numero) + (cidade ? ' | ' + esc(cidade) : '') + (dataProp ? ', ' + esc(dataProp) : '') + '</div>'
       + '</section>'
-      + '<section style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:1rem 0;margin:1rem 0">'
+      + '<section class="op-doc-print-section" style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:1rem 0;margin:1rem 0">'
       + '<h2 style="margin:0;color:#0f172a;font-size:1.35rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
       + '<div style="font-size:.82rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
-      + '<section style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
+      + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite. Nesta fase o conteudo nao e salvo." style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical"></textarea></section>'
-      + '<section style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
+      + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
       + '</section>'
-      + '<section style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
+      + '<section class="op-report-control no-print" style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
       + '<h3 class="op-doc-section-title">Controle do Relatorio</h3>'
       + '<div style="display:flex;gap:.75rem;flex-wrap:wrap;color:#0f172a;font-size:.88rem">'
-      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked> Cliente - ocultar apontamentos de horas</label>'
-      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno"> Interno - incluir apontamentos de horas</label>'
+      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
+      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno" onchange="opGestaoAtualizarModoRelatorio()"> Interno - incluir apontamentos de horas</label>'
       + '</div></section>'
-      + '<section style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
+      + '<section class="op-signatures-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">'
       + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome')
       + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome')
@@ -1978,12 +1998,21 @@
   }
 
   function gestaoImprimir() {
-    msg(relatorioIncluiHoras() ? 'Relatorio interno: horas incluidas.' : 'Relatorio para cliente: horas ocultas por padrao.');
-    window.print();
+    gestaoAtualizarModoRelatorio();
+    setTimeout(function () { window.print(); }, 50);
   }
 
   function gestaoPdf() {
-    msg('Use Imprimir e selecione Salvar como PDF. Exportacao PDF dedicada fica para a proxima fase.');
+    gestaoImprimir();
+  }
+
+  function modoRelatorioGestao() {
+    return relatorioIncluiHoras() ? 'interno' : 'cliente';
+  }
+
+  function gestaoAtualizarModoRelatorio() {
+    var panel = $('opObraPanel');
+    if (panel) panel.setAttribute('data-report-mode', modoRelatorioGestao());
   }
 
   async function carregarDiariosObra() {
@@ -2719,6 +2748,7 @@
   window.opGestaoPdf = gestaoPdf;
   window.opGestaoTexto = gestaoExportarTexto;
   window.opGestaoImprimir = gestaoImprimir;
+  window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
 
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
