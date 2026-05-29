@@ -95,6 +95,39 @@
     return window.PERMISSOES_PADRAO[modulo] || null;
   }
 
+  function _isGrant(valor) {
+    return valor === true || valor === 1 || valor === 'true' || valor === '1';
+  }
+
+  function _temPermissaoIndividual(modulo, acao) {
+    var emp = window._empresaAtiva;
+    var perms = emp && emp.permissoes_json;
+    if (!perms || typeof perms !== 'object') return false;
+
+    var chave = modulo + '.' + acao;
+    if (_isGrant(perms[chave])) return true;
+
+    var mod = perms[modulo];
+    if (!mod) return false;
+
+    if (Array.isArray(mod)) {
+      return mod.indexOf(acao) >= 0 || (acao === 'ver' && mod.indexOf('acesso') >= 0);
+    }
+
+    if (typeof mod === 'object') {
+      if (_isGrant(mod[acao])) return true;
+      if (acao === 'ver' && _isGrant(mod.acesso)) return true;
+      if (Array.isArray(mod.acoes)) {
+        return mod.acoes.indexOf(acao) >= 0 || (acao === 'ver' && mod.acoes.indexOf('acesso') >= 0);
+      }
+      if (mod.acoes && typeof mod.acoes === 'object') {
+        return _isGrant(mod.acoes[acao]) || (acao === 'ver' && _isGrant(mod.acoes.acesso));
+      }
+    }
+
+    return false;
+  }
+
   // ── API pública ──────────────────────────────────────────
 
   // Verifica se o perfil atual pode acessar um módulo (ação 'ver' / 'acesso')
@@ -103,6 +136,7 @@
     var perfil = _getPerfil();
     if (!perfil) return false;
     if (perfil === 'dono') return true;
+    if (_temPermissaoIndividual(modulo, 'ver') || _temPermissaoIndividual(modulo, 'acesso')) return true;
     var mat = _getMatrizMod(modulo);
     if (!mat) return false;
     var permitidos = mat.ver || mat.acesso || [];
@@ -115,6 +149,7 @@
     var perfil = _getPerfil();
     if (!perfil) return false;
     if (perfil === 'dono') return true;
+    if (_temPermissaoIndividual(modulo, acao)) return true;
     var mat = _getMatrizMod(modulo);
     if (!mat) return false;
     var permitidos = mat[acao] || [];

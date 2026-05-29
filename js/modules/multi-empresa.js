@@ -38,7 +38,7 @@
       // Buscar empresas vinculadas com perfil_empresa (migration 020)
       var { data: vinculos, error: errV } = await window.sbClient
         .from('usuario_empresas')
-        .select('empresa_id, perfil_empresa')
+        .select('empresa_id, perfil_empresa, permissoes_json')
         .eq('usuario_id', usuario.id)
         .eq('ativo', true);
 
@@ -48,8 +48,13 @@
       }
 
       // Mapear perfil_empresa por empresa_id
-      var perfilMap = {};
-      vinculos.forEach(function(v) { perfilMap[v.empresa_id] = v.perfil_empresa || null; });
+      var vinculoMap = {};
+      vinculos.forEach(function(v) {
+        vinculoMap[v.empresa_id] = {
+          perfil_empresa: v.perfil_empresa || null,
+          permissoes_json: v.permissoes_json || null
+        };
+      });
 
       var ids = vinculos.map(function(v){ return v.empresa_id; });
 
@@ -62,8 +67,10 @@
 
       // Mesclar perfil_empresa em cada objeto de empresa
       window._empresasUsuario = (empresas || []).map(function(emp) {
+        var vinculo = vinculoMap[emp.id] || {};
         return Object.assign({}, emp, {
-          perfil_empresa: perfilMap[emp.id] || usuario.perfil // fallback para global
+          perfil_empresa: vinculo.perfil_empresa || usuario.perfil, // fallback para global
+          permissoes_json: vinculo.permissoes_json || null
         });
       });
       console.log('%c[multi-empresa] ' + (empresas||[]).length + ' empresa(s) carregada(s) para ' + usuario.nome, 'color:#f0a500');
@@ -390,8 +397,12 @@
     var perfilEmpresaAtual = window._empresaAtiva && window._empresaAtiva.id === empresaAtualizada.id
       ? (window._empresaAtiva.perfil_empresa || null)
       : null;
+    var permissoesIndividuaisAtuais = window._empresaAtiva && window._empresaAtiva.id === empresaAtualizada.id
+      ? (window._empresaAtiva.permissoes_json || null)
+      : null;
     var empresaCompleta = Object.assign({}, empresaAtualizada, {
-      perfil_empresa: perfilEmpresaAtual
+      perfil_empresa: perfilEmpresaAtual,
+      permissoes_json: permissoesIndividuaisAtuais
     });
 
     // Atualizar no array global
