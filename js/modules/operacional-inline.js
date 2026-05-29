@@ -1569,6 +1569,22 @@
       + '</div>';
   }
 
+  function acoesGestaoHtml(bloqueado, extraClasse) {
+    var cls = 'op-doc-actions no-print' + (extraClasse ? ' ' + extraClasse : '');
+    var html = '<div class="' + cls + '">';
+    if (bloqueado) {
+      html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
+    } else {
+      html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
+        + '<button type="button" class="btn bs op-primary-action" onclick="opGestaoFinalizar()">Finalizar e Assinar Relatorio</button>';
+    }
+    html += '<button type="button" class="btn bg" onclick="opGestaoPdf()">Exportar PDF</button>'
+      + '<button type="button" class="btn bg" onclick="opGestaoTexto()">Exportar Texto</button>'
+      + '<button type="button" class="btn ba" onclick="opGestaoImprimir()">Imprimir</button>'
+      + '</div>';
+    return html;
+  }
+
   function renderGestaoNegocio(el, o) {
     var s = o.snapshot_proposta_json || {};
     var titulo = textoLimpo(o.titulo || s.tit || 'Negocio operacional');
@@ -1588,21 +1604,23 @@
       + '.op-doc-shell{background:#f1f5f9!important;color:#0f172a!important;}'
       + '.op-doc-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.12);}'
       + '.op-doc-section-title{font-size:.82rem;color:#0f172a;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .65rem;}'
-      + '.op-doc-actions .btn{border-radius:7px!important;}'
+      + '.op-doc-actions{display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}'
+      + '.op-doc-actions .btn{border-radius:7px!important;min-height:42px;}'
+      + '.op-doc-actions-top{position:sticky;top:74px;z-index:4;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:.65rem;margin:0 0 1rem;box-shadow:0 8px 22px rgba(15,23,42,.08)}'
+      + '.op-primary-action{font-weight:900!important;}'
+      + '.op-doc-action-status{margin-right:auto;align-self:center;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;padding:.48rem .75rem;font-size:.82rem;font-weight:900}'
       + '.op-report-notice{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem;}'
       + '.op-signature-canvas{touch-action:none;user-select:none;-webkit-user-select:none;}'
-      + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
+      + '#opGestaoPrintRoot{display:none;}'
+      + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important;justify-content:stretch!important}.op-doc-actions .btn{width:100%;font-size:.92rem!important}.op-doc-actions-top{top:58px;margin:-.1rem 0 1rem}.op-doc-action-status{margin-right:0;text-align:center}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
       + '@page{size:A4;margin:12mm;}'
-      + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;}'
-      + 'body *{visibility:hidden!important;}'
-      + '#opObraPanel,#opObraPanel *{visibility:visible!important;}'
-      + '#opObraPanel{position:static!important;inset:auto!important;display:block!important;overflow:visible!important;background:#fff!important;color:#0f172a!important;padding:0!important;}'
-      + '#opObraDialog{display:block!important;min-height:auto!important;background:#fff!important;}'
-      + '#opObraBody{display:block!important;overflow:visible!important;padding:0!important;}'
-      + '.op-panel-header,.no-print,.op-doc-actions{display:none!important;visibility:hidden!important;}'
-      + '.op-doc-paper{max-width:none!important;width:auto!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;}'
+      + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important;}'
+      + 'body.op-gestao-printing > *:not(#opGestaoPrintRoot){display:none!important;}'
+      + '#opGestaoPrintRoot{display:block!important;background:#fff!important;color:#0f172a!important;width:100%!important;min-height:auto!important;overflow:visible!important;}'
+      + '#opGestaoPrintRoot .op-print-paper{display:block!important;max-width:none!important;width:auto!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;}'
+      + '#opGestaoPrintRoot .no-print,#opGestaoPrintRoot .op-doc-actions,#opGestaoPrintRoot .op-report-control,#opGestaoPrintRoot .op-report-notice{display:none!important;visibility:hidden!important;}'
       + '.op-doc-print-section,.op-report-hours-section,.op-signatures-section,.op-signature-card{break-inside:avoid;page-break-inside:avoid;}'
-      + '#opObraPanel[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
+      + '#opGestaoPrintRoot[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
       + '.op-report-hours-section table{width:100%!important;min-width:0!important;font-size:8.5pt!important;}'
       + '.op-report-hours-section th,.op-report-hours-section td{padding:.28rem .32rem!important;}'
       + '#opGestaoDiario{min-height:92mm!important;height:auto!important;border:1px solid #94a3b8!important;border-radius:4px!important;resize:none!important;overflow:visible!important;background:#fff!important;}'
@@ -1624,6 +1642,7 @@
       + documentoCarregando
       + documentoErro
       + '<div class="op-doc-lock-notice no-print" style="border:1px solid ' + (bloqueado ? '#fde68a' : '#bfdbfe') + ';background:' + (bloqueado ? '#fffbeb' : '#eff6ff') + ';color:' + (bloqueado ? '#92400e' : '#1d4ed8') + ';border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:900;margin:0 0 1rem">' + esc(statusDoc) + '</div>'
+      + acoesGestaoHtml(bloqueado, 'op-doc-actions-top')
       + '<section class="op-doc-print-section" style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem">'
       + cabecalhoCampo('Nome do Cliente', valorSnapshot(s, ['cli']) || o.cliente_nome)
@@ -1649,9 +1668,7 @@
       + '<div style="font-size:.82rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
       + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
-      + '<div class="no-print" style="display:' + (bloqueado ? 'none' : 'flex') + ';justify-content:flex-end;margin-top:.65rem;gap:.55rem;flex-wrap:wrap">'
-      + '<button type="button" class="btn bg" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
-      + '</div></section>'
+      + '</section>'
       + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
       + '</section>'
@@ -1666,12 +1683,7 @@
       + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome', 'cliente')
       + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome', 'empresa')
       + '</div></section>'
-      + '<div class="op-doc-actions" style="display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem">'
-      + '<button type="button" class="btn bs no-print" onclick="opGestaoFinalizar()" style="display:' + (bloqueado ? 'none' : '') + '">Finalizar e Assinar Relatorio</button>'
-      + '<button type="button" class="btn bg" onclick="opGestaoPdf()">Exportar PDF</button>'
-      + '<button type="button" class="btn bg" onclick="opGestaoTexto()">Exportar Texto</button>'
-      + '<button type="button" class="btn ba" onclick="opGestaoImprimir()">Imprimir</button>'
-      + '</div>'
+      + acoesGestaoHtml(bloqueado, 'op-doc-actions-bottom')
       + '</article></div></div></div>';
     setTimeout(function () {
       ajustarTextareas(el);
@@ -2288,9 +2300,73 @@
     w.document.close();
   }
 
-  function gestaoImprimir() {
+  function removerDocumentoImpressaoGestao() {
+    var antigo = document.getElementById('opGestaoPrintRoot');
+    if (antigo && antigo.parentNode) antigo.parentNode.removeChild(antigo);
+    document.body.classList.remove('op-gestao-printing');
+  }
+
+  function prepararDocumentoImpressaoGestao() {
+    removerDocumentoImpressaoGestao();
     gestaoAtualizarModoRelatorio();
-    setTimeout(function () { window.print(); }, 50);
+    var origem = document.querySelector('#opObraPanel .op-doc-paper');
+    if (!origem) throw new Error('Documento da Gestao do Negocio nao encontrado para impressao.');
+
+    var modo = modoRelatorioGestao();
+    var root = document.createElement('div');
+    root.id = 'opGestaoPrintRoot';
+    root.setAttribute('data-report-mode', modo);
+
+    var clone = origem.cloneNode(true);
+    clone.classList.add('op-print-paper');
+    Array.prototype.forEach.call(clone.querySelectorAll('.no-print,.op-doc-actions,.op-report-control,.op-report-notice'), function (el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    });
+    if (modo === 'cliente') {
+      Array.prototype.forEach.call(clone.querySelectorAll('.op-report-hours-section'), function (el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
+    Array.prototype.forEach.call(clone.querySelectorAll('textarea'), function (ta) {
+      var original = document.getElementById(ta.id);
+      var div = document.createElement('div');
+      div.className = ta.className;
+      div.style.cssText = ta.getAttribute('style') || '';
+      div.style.whiteSpace = 'pre-wrap';
+      div.style.minHeight = '92mm';
+      div.textContent = original ? original.value : ta.value;
+      ta.parentNode.replaceChild(div, ta);
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll('input[type="text"]'), function (input) {
+      var original = document.getElementById(input.id);
+      input.setAttribute('value', original ? original.value : input.value);
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll('canvas.op-signature-canvas'), function (canvasClone) {
+      var original = document.getElementById(canvasClone.id);
+      var img = document.createElement('img');
+      img.alt = canvasClone.getAttribute('aria-label') || 'Assinatura';
+      img.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#fff';
+      try {
+        img.src = original ? original.toDataURL('image/png') : canvasClone.toDataURL('image/png');
+      } catch (e) {
+        img.src = '';
+      }
+      canvasClone.parentNode.replaceChild(img, canvasClone);
+    });
+    root.appendChild(clone);
+    document.body.appendChild(root);
+    document.body.classList.add('op-gestao-printing');
+    return root;
+  }
+
+  function gestaoImprimir() {
+    try {
+      prepararDocumentoImpressaoGestao();
+      setTimeout(function () { window.print(); }, 80);
+      setTimeout(removerDocumentoImpressaoGestao, 2000);
+    } catch (e) {
+      msg(e.message || 'Nao foi possivel preparar a impressao.', 'err');
+    }
   }
 
   function gestaoPdf() {
@@ -3044,6 +3120,7 @@
   window.opGestaoSalvarRascunho = salvarRascunhoGestao;
   window.opGestaoFinalizar = finalizarGestao;
 
+  window.addEventListener('afterprint', removerDocumentoImpressaoGestao);
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
   document.addEventListener('input', onOperacionalInput, true);
