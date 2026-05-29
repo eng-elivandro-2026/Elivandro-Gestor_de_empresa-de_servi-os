@@ -12,6 +12,10 @@
     cliente: '',
     busca: '',
     obraAtual: null,
+    apontamentosNegocio: [],
+    apontamentosNegocioLoaded: false,
+    apontamentosNegocioCarregando: false,
+    apontamentosNegocioErro: '',
     diarios: [],
     diariosLoaded: false,
     diarioCarregando: false,
@@ -50,6 +54,17 @@
     'faturado',
     'recebido',
     'finalizado',
+    'atrasado',
+    'em_pausa_falta_material',
+    'em_pausa_aguardando_cliente',
+    'em_pausa_aguardando_terceiro'
+  ];
+
+  var FASES_GESTAO_NEGOCIO = [
+    'aprovado',
+    'andamento',
+    'taf',
+    'sat',
     'atrasado',
     'em_pausa_falta_material',
     'em_pausa_aguardando_cliente',
@@ -302,6 +317,12 @@
     var lista = window.OP_STATUS_OPERACIONAL || [];
     return lista.map(function (st) {
       return '<option value="' + esc(st) + '"' + (st === valor ? ' selected' : '') + '>' + esc(labelStatus(st)) + '</option>';
+    }).join('');
+  }
+
+  function faseOptions(valor) {
+    return FASES_GESTAO_NEGOCIO.map(function (st) {
+      return '<option value="' + esc(st) + '"' + (st === valor ? ' selected' : '') + '>' + esc(labelFaseNegocio(st)) + '</option>';
     }).join('');
   }
 
@@ -999,6 +1020,107 @@
     return window._empresaAtiva && window._empresaAtiva.id ? window._empresaAtiva.id : '';
   }
 
+  function textoLimpo(v) {
+    return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  }
+
+  function valorSnapshot(s, chaves) {
+    s = s || {};
+    for (var i = 0; i < chaves.length; i++) {
+      var v = s[chaves[i]];
+      if (v != null && String(v).trim()) return textoLimpo(v);
+    }
+    return '';
+  }
+
+  function faseOperacionalNegocio(fase) {
+    return FASES_GESTAO_NEGOCIO.indexOf(String(fase || '').trim().toLowerCase()) >= 0;
+  }
+
+  function labelFaseNegocio(fase) {
+    try {
+      if (typeof FASE !== 'undefined' && FASE[fase]) {
+        return textoLimpo(((FASE[fase].i || '') + ' ' + (FASE[fase].n || fase)).trim());
+      }
+    } catch (e) {}
+    return labelStatus(fase);
+  }
+
+  function dataCabecalhoNegocio(o) {
+    var s = o && o.snapshot_proposta_json ? o.snapshot_proposta_json : {};
+    return dataInput(valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']) || o.data_aprovacao || o.created_at || o.updated_at);
+  }
+
+  function normalizarNegocioOperacional(p) {
+    p = p || {};
+    var s = p.dados_json || {};
+    var appId = textoLimpo(p.app_id || p.id);
+    var numero = textoLimpo(p.numero_proposta || s.num || appId);
+    var titulo = textoLimpo(p.titulo || s.tit || s.titulo || numero);
+    var clienteNome = textoLimpo(p.cliente || s.cli || s.loc || '');
+    return {
+      __gestaoNegocio: true,
+      id: appId || textoLimpo(p.id),
+      empresa_id: p.empresa_id || '',
+      proposta_app_id: appId,
+      codigo_obra: numero,
+      proposta_numero: numero,
+      proposta_revisao: textoLimpo(s.revAtual || s.rev || ''),
+      cliente_nome: clienteNome,
+      cliente_cnpj: textoLimpo(s.cnpj || s.locCnpj || ''),
+      cliente_cidade: textoLimpo(s.cid || s.csvc || ''),
+      cliente_local: textoLimpo(s.loc || ''),
+      titulo: titulo,
+      status_operacional: textoLimpo(p.fase || s.fas || ''),
+      valor_vendido: Number(p.valor_total || s.val || 0) || 0,
+      data_aprovacao: valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']),
+      snapshot_proposta_json: s,
+      observacoes: ''
+    };
+  }
+
+  async function listarNegociosOperacionais(empresaId) {
+    if (!window.sbClient) throw new Error('Supabase nao esta conectado.');
+    empresaId = empresaId || getEmpresaId();
+    if (!empresaId) throw new Error('Empresa ativa nao encontrada.');
+    var res = await window.sbClient
+      .from('propostas')
+      .select('id, app_id, numero_proposta, titulo, cliente, valor_total, fase, dados_json, created_at, updated_at, empresa_id')
+      .eq('empresa_id', empresaId)
+      .in('fase', FASES_GESTAO_NEGOCIO)
+      .order('updated_at', { ascending: false });
+    if (res.error) throw res.error;
+    return (res.data || [])
+      .filter(function (p) { return p && p.empresa_id === empresaId && faseOperacionalNegocio(p.fase); })
+      .map(normalizarNegocioOperacional);
+  }
+
+  function resetarContextoNegocio() {
+    state.diarioForm = null;
+    state.diarioEditId = '';
+    state.diarios = [];
+    state.diariosLoaded = false;
+    state.diarioErro = '';
+    state.recursos = [];
+    state.recursosLoaded = false;
+    state.recursosErro = '';
+    state.recursoForm = null;
+    state.recursoEditId = '';
+    state.recursoExcluir = null;
+    state.recursosPadraoPicker = false;
+    state.mobilizacaoEquipe = [];
+    state.mobilizacaoLoaded = false;
+    state.mobilizacaoErro = '';
+    state.mobilizacaoForm = null;
+    state.mobilizacaoEditId = '';
+    state.mobilizacaoExcluir = null;
+    state.apontamentosNegocio = [];
+    state.apontamentosNegocioLoaded = false;
+    state.apontamentosNegocioCarregando = false;
+    state.apontamentosNegocioErro = '';
+    state.accordionOpen = {};
+  }
+
   function propsLista() {
     try {
       if (Array.isArray(window.props)) return window.props;
@@ -1038,15 +1160,15 @@
       + '<div id="opShell" style="max-width:1180px;width:100%;box-sizing:border-box;margin:0 auto;padding:1rem;overflow-x:hidden">'
       + '<div class="op-main-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem;min-width:0">'
       + '<div><h2 style="margin:0;color:var(--text);font-size:1.35rem">Operacional</h2>'
-      + '<div style="color:var(--text3);font-size:.82rem;margin-top:.15rem">Obras criadas a partir de propostas aprovadas.</div></div>'
+      + '<div style="color:var(--text3);font-size:.82rem;margin-top:.15rem">Negocios em fase operacional com gestao simples por documento.</div></div>'
       + '<button class="btn bg op-main-refresh" onclick="opCarregarObras()">Atualizar</button>'
       + '</div>'
       + '<div class="card op-filter-card" style="margin-bottom:1rem;max-width:100%;box-sizing:border-box;overflow:hidden">'
       + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr auto;gap:.65rem;align-items:end;min-width:0">'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Busca'
-      + '<input id="opBusca" placeholder="Codigo, proposta ou titulo" value="' + esc(state.busca) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
-      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Status'
-      + '<select id="opStatus" onchange="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"><option value="">Todos</option>' + statusOptions(state.status) + '</select></label>'
+      + '<input id="opBusca" placeholder="Codigo, proposta, titulo ou cliente" value="' + esc(state.busca) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Fase'
+      + '<select id="opStatus" onchange="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"><option value="">Todas</option>' + faseOptions(state.status) + '</select></label>'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Cliente'
       + '<input id="opCliente" placeholder="Filtrar cliente" value="' + esc(state.cliente) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
       + '<button class="btn bg op-filter-clear" onclick="opLimparFiltros()">Limpar</button>'
@@ -1113,7 +1235,7 @@
     var el = $('opLista');
     if (!el) return;
     if (state.carregando) {
-      el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando dados operacionais da empresa selecionada...</div>';
+      el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando negocios operacionais da empresa selecionada...</div>';
       return;
     }
     if (state.erro) {
@@ -1122,7 +1244,7 @@
     }
     var list = obrasFiltradas();
     if (!list.length) {
-      el.innerHTML = '<div class="card" style="color:var(--text3)">Nenhuma obra encontrada.</div>';
+      el.innerHTML = '<div class="card" style="color:var(--text3)">Nenhum negocio em fase operacional encontrado para a empresa ativa.</div>';
       return;
     }
     el.innerHTML = '<div class="op-obra-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem">'
@@ -1131,15 +1253,15 @@
           + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;min-width:0;flex-wrap:wrap">'
           + '<div style="min-width:0;flex:1"><div style="font-size:.78rem;color:var(--text3);font-weight:700">' + esc(o.codigo_obra || 'Obra sem codigo') + '</div>'
           + '<div style="font-size:1rem;color:var(--text);font-weight:800;margin-top:.1rem">' + esc(o.titulo || o.proposta_numero || '-') + '</div></div>'
-          + '<span class="bdg b-info">' + esc(labelStatus(o.status_operacional)) + '</span></div>'
+          + '<span class="bdg b-info">' + esc(labelFaseNegocio(o.status_operacional)) + '</span></div>'
           + '<div style="font-size:.82rem;color:var(--text2);line-height:1.45">'
           + '<strong>' + esc(o.cliente_nome || '-') + '</strong><br>'
           + 'Proposta: ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' Rev. ' + esc(o.proposta_revisao) : '') + '<br>'
           + 'Valor vendido: <strong style="color:var(--green)">' + money(o.valor_vendido) + '</strong><br>'
-          + 'Avanco: ' + esc(o.percentual_avanco || 0) + '%'
+          + 'Documento de gestao com diario, horas, aceite e assinaturas.'
           + '</div>'
           + '<div style="display:flex;justify-content:flex-end;margin-top:auto;min-width:0">'
-          + '<button class="btn ba" onclick="opAbrirObra(\'' + esc(o.id) + '\')">Abrir Obra</button>'
+          + '<button class="btn ba" onclick="opAbrirObra(\'' + esc(o.id) + '\')">Abrir Gestao</button>'
           + '</div>'
           + '</div>';
       }).join('')
@@ -1342,12 +1464,162 @@
     }, 60);
   }
 
+  function cabecalhoCampo(label, valor) {
+    return '<div style="border:1px solid rgba(15,23,42,.12);border-radius:7px;background:#f8fafc;padding:.55rem .65rem;min-width:0">'
+      + '<div style="font-size:.62rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.18rem">' + esc(label) + '</div>'
+      + '<div style="font-size:.82rem;color:#0f172a;font-weight:700;line-height:1.35;overflow-wrap:anywhere">' + esc(valor || '-') + '</div></div>';
+  }
+
+  function totaisApontamentosNegocio() {
+    var out = { pendente: 0, aprovado: 0, geral: 0 };
+    (state.apontamentosNegocio || []).forEach(function (a) {
+      var h = Number(a.horas_total || 0) || 0;
+      if (a.status === 'pendente') out.pendente += h;
+      if (a.status === 'aprovado') out.aprovado += h;
+      if (a.status !== 'cancelado') out.geral += h;
+    });
+    return out;
+  }
+
+  function renderApontamentosNegocioHtml() {
+    if (state.apontamentosNegocioCarregando) {
+      return '<div style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:.75rem;color:#1d4ed8;font-size:.85rem;font-weight:700">Carregando apontamentos de horas...</div>';
+    }
+    if (state.apontamentosNegocioErro) {
+      return '<div style="border:1px solid #fecaca;background:#fef2f2;border-radius:8px;padding:.75rem;color:#991b1b;font-size:.85rem;font-weight:700">' + esc(state.apontamentosNegocioErro) + '</div>';
+    }
+    var lista = state.apontamentosNegocio || [];
+    var totais = totaisApontamentosNegocio();
+    if (!lista.length) {
+      return '<div style="border:1px dashed #cbd5e1;background:#f8fafc;border-radius:8px;padding:.85rem;color:#64748b;font-size:.85rem">Nenhum apontamento encontrado para este negocio.</div>'
+        + renderTotaisApontamentosHtml(totais);
+    }
+    return '<div style="overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff">'
+      + '<table style="width:100%;border-collapse:collapse;min-width:720px;font-size:.82rem;color:#0f172a">'
+      + '<thead><tr style="background:#f8fafc;color:#475569;text-transform:uppercase;font-size:.68rem;letter-spacing:.04em">'
+      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Data</th>'
+      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Nome</th>'
+      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Tipo</th>'
+      + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Horas</th>'
+      + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Status</th>'
+      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Descricao</th>'
+      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Boletim</th>'
+      + '</tr></thead><tbody>'
+      + lista.map(function (a) {
+        var nome = a.colaboradores && a.colaboradores.nome ? a.colaboradores.nome : (a.criado_por_nome || '-');
+        return '<tr>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;white-space:nowrap">' + esc(dataInput(a.data) || '-') + '</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;font-weight:700">' + esc(nome) + '</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7">' + esc(a.tipo_colaborador || a.tipo_dia || '-') + '</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center;font-weight:800">' + Number(a.horas_total || 0).toFixed(1) + 'h</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center">' + esc(a.status || '-') + '</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;min-width:220px">' + esc(a.descricao || '-') + '</td>'
+          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7">' + esc(a.boletim_numero || (a.boletim_id ? 'Vinculado' : '-')) + '</td>'
+          + '</tr>';
+      }).join('')
+      + '</tbody></table></div>'
+      + renderTotaisApontamentosHtml(totais);
+  }
+
+  function renderTotaisApontamentosHtml(t) {
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem;margin-top:.75rem">'
+      + cabecalhoCampo('Total pendente', Number(t.pendente || 0).toFixed(1) + 'h')
+      + cabecalhoCampo('Total aprovado', Number(t.aprovado || 0).toFixed(1) + 'h')
+      + cabecalhoCampo('Total geral', Number(t.geral || 0).toFixed(1) + 'h')
+      + '</div>';
+  }
+
+  function assinaturaBoxHtml(titulo, nomeId) {
+    return '<div style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.85rem;min-width:0">'
+      + '<div style="font-size:.78rem;color:#0f172a;font-weight:900;text-transform:uppercase;margin-bottom:.55rem">' + esc(titulo) + '</div>'
+      + '<label style="display:flex;flex-direction:column;gap:.25rem;font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase">Nome'
+      + '<input id="' + nomeId + '" type="text" placeholder="Nome do responsavel" style="border:1px solid #cbd5e1;border-radius:6px;padding:.55rem .65rem;color:#0f172a;background:#fff"></label>'
+      + '<div style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;height:86px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:.82rem;font-weight:800">Assinar na tela - prototipo visual</div>'
+      + '</div>';
+  }
+
+  function renderGestaoNegocio(el, o) {
+    var s = o.snapshot_proposta_json || {};
+    var titulo = textoLimpo(o.titulo || s.tit || 'Negocio operacional');
+    var numero = textoLimpo(o.proposta_numero || s.num || o.proposta_app_id || '-');
+    var cidade = textoLimpo(s.csvc || s.cid || o.cliente_cidade || '');
+    var dataProp = dataCabecalhoNegocio(o);
+    var areaLocal = valorSnapshot(s, ['area_local', 'area', 'local_area', 'loc']) || o.cliente_local || '';
+    var contato = valorSnapshot(s, ['ac', 'contato', 'nome_contato_1']);
+    el.innerHTML = ajusteResponsivoHtml()
+      + '<style id="opGestaoStyles">'
+      + '.op-doc-shell{background:#f1f5f9!important;color:#0f172a!important;}'
+      + '.op-doc-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.12);}'
+      + '.op-doc-section-title{font-size:.82rem;color:#0f172a;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .65rem;}'
+      + '.op-doc-actions .btn{border-radius:7px!important;}'
+      + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
+      + '</style>'
+      + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
+      + '<div id="opObraDialog" class="op-panel-shell" style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9">'
+      + '<div class="op-panel-header" style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem">'
+      + '<div><div style="font-size:.72rem;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.08em">Operacional</div>'
+      + '<div style="font-size:1.05rem;color:#0f172a;font-weight:900;line-height:1.25">Gestao do Negocio</div></div>'
+      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px;background:#f8fafc!important;color:#0f172a!important;border-color:#cbd5e1!important">Fechar</button></div>'
+      + '<div id="opObraBody" class="op-panel-body" style="overflow:auto;padding:1rem">'
+      + '<article class="op-doc-paper" style="max-width:960px;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:1.2rem;box-sizing:border-box">'
+      + '<section style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem">'
+      + cabecalhoCampo('Nome do Cliente', valorSnapshot(s, ['cli']) || o.cliente_nome)
+      + cabecalhoCampo('CNPJ Cliente', valorSnapshot(s, ['cnpj']) || o.cliente_cnpj)
+      + cabecalhoCampo('Cidade do Cliente', valorSnapshot(s, ['cid']) || o.cliente_cidade)
+      + cabecalhoCampo('Nome Contato 1', contato)
+      + cabecalhoCampo('Depto. Contato 1', valorSnapshot(s, ['dep']))
+      + cabecalhoCampo('E-mail Contato 1', valorSnapshot(s, ['mail']))
+      + cabecalhoCampo('Tel/Cel Contato 1', valorSnapshot(s, ['tel']))
+      + cabecalhoCampo('Cliente do Servico', valorSnapshot(s, ['loc']) || o.cliente_local || o.cliente_nome)
+      + cabecalhoCampo('CNPJ do Local', valorSnapshot(s, ['locCnpj']) || o.cliente_cnpj)
+      + cabecalhoCampo('Cidade do Servico', valorSnapshot(s, ['csvc']) || o.cliente_cidade)
+      + cabecalhoCampo('Area/Local', areaLocal)
+      + cabecalhoCampo('Status operacional', labelFaseNegocio(o.status_operacional))
+      + '</div></section>'
+      + '<section style="text-align:center;margin:1.2rem 0 1rem">'
+      + '<div style="font-size:.86rem;color:#334155;font-weight:900;letter-spacing:.08em;text-transform:uppercase">Proposta Tecnica e Comercial</div>'
+      + '<h1 class="op-doc-title" style="margin:.3rem 0 .18rem;font-size:1.65rem;line-height:1.12;color:#0f172a;text-transform:uppercase">' + esc(titulo) + '</h1>'
+      + '<div style="font-size:.92rem;color:#475569;font-weight:800">N&ordm; ' + esc(numero) + (cidade ? ' | ' + esc(cidade) : '') + (dataProp ? ', ' + esc(dataProp) : '') + '</div>'
+      + '</section>'
+      + '<section style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:1rem 0;margin:1rem 0">'
+      + '<h2 style="margin:0;color:#0f172a;font-size:1.35rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
+      + '<div style="font-size:.82rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
+      + '<section style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
+      + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite. Nesta fase o conteudo nao e salvo." style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical"></textarea></section>'
+      + '<section style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
+      + renderApontamentosNegocioHtml()
+      + '</section>'
+      + '<section style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
+      + '<h3 class="op-doc-section-title">Controle do Relatorio</h3>'
+      + '<div style="display:flex;gap:.75rem;flex-wrap:wrap;color:#0f172a;font-size:.88rem">'
+      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked> Cliente - ocultar apontamentos de horas</label>'
+      + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno"> Interno - incluir apontamentos de horas</label>'
+      + '</div></section>'
+      + '<section style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">'
+      + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome')
+      + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome')
+      + '</div></section>'
+      + '<div class="op-doc-actions" style="display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem">'
+      + '<button type="button" class="btn bg" onclick="opGestaoPdf()">Exportar PDF</button>'
+      + '<button type="button" class="btn bg" onclick="opGestaoTexto()">Exportar Texto</button>'
+      + '<button type="button" class="btn ba" onclick="opGestaoImprimir()">Imprimir</button>'
+      + '</div>'
+      + '</article></div></div></div>';
+    setTimeout(function () { ajustarTextareas(el); }, 30);
+  }
+
   function renderDetalhe() {
     var el = $('opDetalhe');
     if (!el) return;
     var o = state.obraAtual;
     if (!o) {
       el.innerHTML = '';
+      return;
+    }
+    if (o.__gestaoNegocio) {
+      renderGestaoNegocio(el, o);
       return;
     }
     var centroCustoAuto = o.centro_custo || o.codigo_obra || '';
@@ -1429,7 +1701,7 @@
     renderLista();
 
     try {
-      var obras = await window.sbListarObras(empresaId);
+      var obras = await listarNegociosOperacionais(empresaId);
 
       // Race condition: descarta se empresa ou token mudou enquanto aguardávamos
       if (token !== _opLoadToken) return;
@@ -1474,27 +1746,13 @@
       var cached = (state.obras || []).find(function (o) { return o.id === id; });
       if (cached) {
         state.obraAtual = cached;
-        state.diarioForm = null;
-        state.diarioEditId = '';
-        state.diarios = [];
-        state.diariosLoaded = false;
-        state.diarioErro = '';
-        state.recursos = [];
-        state.recursosLoaded = false;
-        state.recursosErro = '';
-        state.recursoForm = null;
-        state.recursoEditId = '';
-        state.recursoExcluir = null;
-        state.recursosPadraoPicker = false;
-        state.mobilizacaoEquipe = [];
-        state.mobilizacaoLoaded = false;
-        state.mobilizacaoErro = '';
-        state.mobilizacaoForm = null;
-        state.mobilizacaoEditId = '';
-        state.mobilizacaoExcluir = null;
-        state.accordionOpen = {};
+        resetarContextoNegocio();
         renderDetalhe();
         focarPainelObra();
+        if (cached.__gestaoNegocio) {
+          await carregarApontamentosNegocio(cached);
+          return;
+        }
       }
       var detalhe = $('opDetalhe');
       if (detalhe && !cached) detalhe.innerHTML = loadingObraHtml();
@@ -1628,6 +1886,104 @@
       console.error('[Operacional] Erro tecnico ao salvar obra:', e);
       msg('Não foi possível salvar a obra. Verifique os dados e tente novamente.', 'err');
     }
+  }
+
+  async function carregarApontamentosNegocio(negocio) {
+    negocio = negocio || state.obraAtual;
+    if (!negocio || !negocio.__gestaoNegocio || !negocio.proposta_app_id) return;
+    var empresaId = getEmpresaId();
+    state.apontamentosNegocioCarregando = true;
+    state.apontamentosNegocioErro = '';
+    renderDetalhe();
+    try {
+      var res = await window.sbClient
+        .from('apontamentos')
+        .select('id, data, tipo_dia, horas_total, descricao, status, boletim_id, boletim_numero, criado_por_nome, colaboradores(nome)')
+        .eq('empresa_id', empresaId)
+        .eq('proposta_id', negocio.proposta_app_id)
+        .neq('status', 'cancelado')
+        .order('data', { ascending: false });
+      if (res.error) throw res.error;
+      if (!state.obraAtual || state.obraAtual.proposta_app_id !== negocio.proposta_app_id || getEmpresaId() !== empresaId) return;
+      state.apontamentosNegocio = res.data || [];
+      state.apontamentosNegocioLoaded = true;
+    } catch (e) {
+      state.apontamentosNegocioErro = e.message || String(e);
+    } finally {
+      state.apontamentosNegocioCarregando = false;
+      renderDetalhe();
+    }
+  }
+
+  function relatorioIncluiHoras() {
+    var checked = document.querySelector('input[name="opRelHoras"]:checked');
+    return checked && checked.value === 'interno';
+  }
+
+  function textoGestaoNegocio() {
+    var o = state.obraAtual || {};
+    var s = o.snapshot_proposta_json || {};
+    var linhas = [];
+    linhas.push('GESTAO DO NEGOCIO');
+    linhas.push((o.proposta_numero || '-') + ' - ' + (o.titulo || '-'));
+    linhas.push('Cliente: ' + (valorSnapshot(s, ['cli']) || o.cliente_nome || '-'));
+    linhas.push('Cidade: ' + (valorSnapshot(s, ['csvc', 'cid']) || o.cliente_cidade || '-'));
+    linhas.push('Contato: ' + (valorSnapshot(s, ['ac']) || '-'));
+    linhas.push('');
+    linhas.push('DIARIO DE BORDO / ENTREGAS / ACEITE');
+    linhas.push(($('opGestaoDiario') || {}).value || '');
+    if (relatorioIncluiHoras()) {
+      linhas.push('');
+      linhas.push('APONTAMENTOS DE HORAS');
+      (state.apontamentosNegocio || []).forEach(function (a) {
+        var nome = a.colaboradores && a.colaboradores.nome ? a.colaboradores.nome : (a.criado_por_nome || '-');
+        linhas.push([dataInput(a.data) || '-', nome, (a.tipo_colaborador || a.tipo_dia || '-'), Number(a.horas_total || 0).toFixed(1) + 'h', (a.status || '-'), (a.descricao || '-')].join(' | '));
+      });
+      var t = totaisApontamentosNegocio();
+      linhas.push('Total pendente: ' + Number(t.pendente || 0).toFixed(1) + 'h');
+      linhas.push('Total aprovado: ' + Number(t.aprovado || 0).toFixed(1) + 'h');
+      linhas.push('Total geral: ' + Number(t.geral || 0).toFixed(1) + 'h');
+    } else {
+      linhas.push('');
+      linhas.push('Apontamentos de horas ocultos para relatorio de cliente.');
+    }
+    linhas.push('');
+    linhas.push('Responsavel Cliente: ' + (($('opAssClienteNome') || {}).value || ''));
+    linhas.push('Responsavel Empresa: ' + (($('opAssEmpresaNome') || {}).value || ''));
+    return linhas.join('\n');
+  }
+
+  function gestaoExportarTexto() {
+    try {
+      var texto = textoGestaoNegocio();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function () {
+          msg('Texto do relatorio copiado para a area de transferencia.');
+        }).catch(function () {
+          abrirTextoGestao(texto);
+        });
+      } else {
+        abrirTextoGestao(texto);
+      }
+    } catch (e) {
+      msg('Nao foi possivel gerar o texto do relatorio.', 'err');
+    }
+  }
+
+  function abrirTextoGestao(texto) {
+    var w = window.open('', '_blank');
+    if (!w) return msg('O navegador bloqueou a janela de texto.', 'err');
+    w.document.write('<pre style="white-space:pre-wrap;font-family:Calibri,Arial,sans-serif;font-size:12pt;line-height:1.45">' + esc(texto) + '</pre>');
+    w.document.close();
+  }
+
+  function gestaoImprimir() {
+    msg(relatorioIncluiHoras() ? 'Relatorio interno: horas incluidas.' : 'Relatorio para cliente: horas ocultas por padrao.');
+    window.print();
+  }
+
+  function gestaoPdf() {
+    msg('Use Imprimir e selecione Salvar como PDF. Exportacao PDF dedicada fica para a proxima fase.');
   }
 
   async function carregarDiariosObra() {
@@ -2360,6 +2716,9 @@
   window.opRenderActionBar = renderActionBar;
   window.opLimparActionBar = limparActionBar;
   window.opCarregarRecursosMobilizacaoObra = carregarRecursosMobilizacaoObra;
+  window.opGestaoPdf = gestaoPdf;
+  window.opGestaoTexto = gestaoExportarTexto;
+  window.opGestaoImprimir = gestaoImprimir;
 
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
