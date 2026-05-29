@@ -16,6 +16,10 @@
     apontamentosNegocioLoaded: false,
     apontamentosNegocioCarregando: false,
     apontamentosNegocioErro: '',
+    gestaoDocumento: null,
+    gestaoDocumentoLoaded: false,
+    gestaoDocumentoCarregando: false,
+    gestaoDocumentoErro: '',
     diarios: [],
     diariosLoaded: false,
     diarioCarregando: false,
@@ -40,6 +44,10 @@
     mobilizacaoForm: null,
     mobilizacaoEditId: '',
     mobilizacaoExcluir: null,
+    gestaoAssinaturas: {
+      cliente: { dataUrl: '', assinada: false },
+      empresa: { dataUrl: '', assinada: false }
+    },
     accordionOpen: {}
   };
 
@@ -1118,6 +1126,14 @@
     state.apontamentosNegocioLoaded = false;
     state.apontamentosNegocioCarregando = false;
     state.apontamentosNegocioErro = '';
+    state.gestaoDocumento = null;
+    state.gestaoDocumentoLoaded = false;
+    state.gestaoDocumentoCarregando = false;
+    state.gestaoDocumentoErro = '';
+    state.gestaoAssinaturas = {
+      cliente: { dataUrl: '', assinada: false },
+      empresa: { dataUrl: '', assinada: false }
+    };
     state.accordionOpen = {};
   }
 
@@ -1529,12 +1545,27 @@
       + '</div>';
   }
 
-  function assinaturaBoxHtml(titulo, nomeId) {
+  function gestaoDocumentoBloqueado() {
+    var doc = state.gestaoDocumento || {};
+    return !!doc.bloqueado || doc.status_documento === 'assinado';
+  }
+
+  function assinaturaBoxHtml(titulo, nomeId, assinaturaKey) {
+    var canvasId = 'opAssCanvas_' + assinaturaKey;
+    var doc = state.gestaoDocumento || {};
+    var bloqueado = gestaoDocumentoBloqueado();
+    var nomeSalvo = assinaturaKey === 'cliente' ? doc.responsavel_cliente_nome : doc.responsavel_empresa_nome;
     return '<div class="op-signature-card" style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.85rem;min-width:0">'
       + '<div style="font-size:.78rem;color:#0f172a;font-weight:900;text-transform:uppercase;margin-bottom:.55rem">' + esc(titulo) + '</div>'
       + '<label style="display:flex;flex-direction:column;gap:.25rem;font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase">Nome'
-      + '<input id="' + nomeId + '" type="text" placeholder="Nome do responsavel" style="border:1px solid #cbd5e1;border-radius:6px;padding:.55rem .65rem;color:#0f172a;background:#fff"></label>'
-      + '<div class="op-signature-pad" style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;height:86px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:.82rem;font-weight:800">Assinar na tela - prototipo visual</div>'
+      + '<input id="' + nomeId + '" type="text" placeholder="Nome do responsavel" value="' + esc(nomeSalvo || '') + '"' + (bloqueado ? ' disabled' : '') + ' style="border:1px solid #cbd5e1;border-radius:6px;padding:.55rem .65rem;color:#0f172a;background:#fff"></label>'
+      + '<div class="op-signature-pad" style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#fff;height:110px;position:relative;overflow:hidden;color:#64748b;font-size:.82rem;font-weight:800">'
+      + '<canvas id="' + canvasId + '" class="op-signature-canvas" data-assinatura-key="' + esc(assinaturaKey) + '" data-bloqueado="' + (bloqueado ? '1' : '0') + '" aria-label="Assinatura ' + esc(titulo) + '" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (bloqueado ? 'default' : 'crosshair') + ';background:#fff"></canvas>'
+      + '<div class="op-signature-hint no-print" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#94a3b8;font-size:.8rem;font-weight:800">Assine aqui</div>'
+      + '</div>'
+      + '<div class="no-print" style="display:' + (bloqueado ? 'none' : 'flex') + ';justify-content:flex-end;margin-top:.55rem">'
+      + '<button type="button" class="btn bg" onclick="opGestaoLimparAssinatura(\'' + esc(assinaturaKey) + '\')" style="min-height:34px;padding:.38rem .7rem;font-size:.78rem">Limpar assinatura</button>'
+      + '</div>'
       + '</div>';
   }
 
@@ -1546,6 +1577,12 @@
     var dataProp = dataCabecalhoNegocio(o);
     var areaLocal = valorSnapshot(s, ['area_local', 'area', 'local_area', 'loc']) || o.cliente_local || '';
     var contato = valorSnapshot(s, ['ac', 'contato', 'nome_contato_1']);
+    var doc = state.gestaoDocumento || {};
+    var bloqueado = gestaoDocumentoBloqueado();
+    var statusDoc = bloqueado ? 'Relatorio assinado e bloqueado para edicao.' : 'Rascunho editavel. Salve antes de finalizar.';
+    var diarioTexto = doc.diario_texto || '';
+    var documentoErro = state.gestaoDocumentoErro ? '<div class="no-print" style="border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem">' + esc(state.gestaoDocumentoErro) + '</div>' : '';
+    var documentoCarregando = state.gestaoDocumentoCarregando ? '<div class="no-print" style="border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem">Carregando documento salvo...</div>' : '';
     el.innerHTML = ajusteResponsivoHtml()
       + '<style id="opGestaoStyles">'
       + '.op-doc-shell{background:#f1f5f9!important;color:#0f172a!important;}'
@@ -1553,6 +1590,7 @@
       + '.op-doc-section-title{font-size:.82rem;color:#0f172a;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .65rem;}'
       + '.op-doc-actions .btn{border-radius:7px!important;}'
       + '.op-report-notice{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem;}'
+      + '.op-signature-canvas{touch-action:none;user-select:none;-webkit-user-select:none;}'
       + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
       + '@page{size:A4;margin:12mm;}'
       + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;}'
@@ -1571,6 +1609,7 @@
       + '.op-signatures-section{margin-top:9mm!important;}'
       + '.op-signature-card{border-color:#94a3b8!important;}'
       + '.op-signature-pad{height:27mm!important;background:#fff!important;border-color:#64748b!important;}'
+      + '.op-signature-canvas{width:100%!important;height:100%!important;background:#fff!important;}'
       + '}'
       + '</style>'
       + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" data-report-mode="cliente" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
@@ -1582,6 +1621,9 @@
       + '<div id="opObraBody" class="op-panel-body" style="overflow:auto;padding:1rem">'
       + '<article class="op-doc-paper" style="max-width:960px;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:1.2rem;box-sizing:border-box">'
       + '<div class="op-report-notice no-print">Relatorio para cliente: horas ocultas por padrao.</div>'
+      + documentoCarregando
+      + documentoErro
+      + '<div class="op-doc-lock-notice no-print" style="border:1px solid ' + (bloqueado ? '#fde68a' : '#bfdbfe') + ';background:' + (bloqueado ? '#fffbeb' : '#eff6ff') + ';color:' + (bloqueado ? '#92400e' : '#1d4ed8') + ';border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:900;margin:0 0 1rem">' + esc(statusDoc) + '</div>'
       + '<section class="op-doc-print-section" style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem">'
       + cabecalhoCampo('Nome do Cliente', valorSnapshot(s, ['cli']) || o.cliente_nome)
@@ -1606,7 +1648,10 @@
       + '<h2 style="margin:0;color:#0f172a;font-size:1.35rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
       + '<div style="font-size:.82rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
       + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
-      + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite. Nesta fase o conteudo nao e salvo." style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical"></textarea></section>'
+      + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
+      + '<div class="no-print" style="display:' + (bloqueado ? 'none' : 'flex') + ';justify-content:flex-end;margin-top:.65rem;gap:.55rem;flex-wrap:wrap">'
+      + '<button type="button" class="btn bg" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
+      + '</div></section>'
       + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
       + '</section>'
@@ -1618,16 +1663,145 @@
       + '</div></section>'
       + '<section class="op-signatures-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">'
-      + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome')
-      + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome')
+      + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome', 'cliente')
+      + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome', 'empresa')
       + '</div></section>'
       + '<div class="op-doc-actions" style="display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem">'
+      + '<button type="button" class="btn bs no-print" onclick="opGestaoFinalizar()" style="display:' + (bloqueado ? 'none' : '') + '">Finalizar e Assinar Relatorio</button>'
       + '<button type="button" class="btn bg" onclick="opGestaoPdf()">Exportar PDF</button>'
       + '<button type="button" class="btn bg" onclick="opGestaoTexto()">Exportar Texto</button>'
       + '<button type="button" class="btn ba" onclick="opGestaoImprimir()">Imprimir</button>'
       + '</div>'
       + '</article></div></div></div>';
-    setTimeout(function () { ajustarTextareas(el); }, 30);
+    setTimeout(function () {
+      ajustarTextareas(el);
+      inicializarAssinaturasGestao(el);
+    }, 30);
+  }
+
+  function assinaturaGestaoEstado(key) {
+    if (!state.gestaoAssinaturas) state.gestaoAssinaturas = {};
+    if (!state.gestaoAssinaturas[key]) state.gestaoAssinaturas[key] = { dataUrl: '', assinada: false };
+    return state.gestaoAssinaturas[key];
+  }
+
+  function atualizarHintAssinatura(canvas, assinada) {
+    var pad = canvas && canvas.parentElement;
+    var hint = pad ? pad.querySelector('.op-signature-hint') : null;
+    if (hint) hint.style.display = assinada ? 'none' : 'flex';
+  }
+
+  function prepararCanvasAssinatura(canvas, limpar) {
+    if (!canvas) return null;
+    var rect = canvas.getBoundingClientRect();
+    var ratio = Math.max(window.devicePixelRatio || 1, 1);
+    var width = Math.max(Math.round(rect.width * ratio), 1);
+    var height = Math.max(Math.round(rect.height * ratio), 1);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = '#0f172a';
+    if (limpar !== false) ctx.clearRect(0, 0, rect.width, rect.height);
+    return ctx;
+  }
+
+  function restaurarAssinaturaCanvas(canvas, dataUrl) {
+    var ctx = prepararCanvasAssinatura(canvas, true);
+    if (!ctx || !dataUrl) return;
+    var img = new Image();
+    img.onload = function () {
+      var rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    };
+    img.src = dataUrl;
+  }
+
+  function pontoAssinatura(canvas, ev) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(rect.width, ev.clientX - rect.left)),
+      y: Math.max(0, Math.min(rect.height, ev.clientY - rect.top))
+    };
+  }
+
+  function salvarAssinaturaCanvas(key, canvas) {
+    var estado = assinaturaGestaoEstado(key);
+    estado.dataUrl = canvas.toDataURL('image/png');
+    estado.assinada = true;
+    atualizarHintAssinatura(canvas, true);
+  }
+
+  function inicializarAssinaturasGestao(root) {
+    root = root || document;
+    Array.prototype.forEach.call(root.querySelectorAll('.op-signature-canvas'), function (canvas) {
+      var key = canvas.getAttribute('data-assinatura-key') || '';
+      var estado = assinaturaGestaoEstado(key);
+      restaurarAssinaturaCanvas(canvas, estado.dataUrl);
+      atualizarHintAssinatura(canvas, !!estado.assinada);
+      var drawing = false;
+      var last = null;
+      var ctx = canvas.getContext('2d');
+
+      function down(ev) {
+        if (gestaoDocumentoBloqueado() || canvas.getAttribute('data-bloqueado') === '1') return;
+        if (ev.cancelable) ev.preventDefault();
+        ctx = prepararCanvasAssinatura(canvas, false) || ctx;
+        drawing = true;
+        last = pontoAssinatura(canvas, ev);
+        atualizarHintAssinatura(canvas, true);
+        if (canvas.setPointerCapture && ev.pointerId != null) {
+          try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+        }
+      }
+
+      function move(ev) {
+        if (!drawing) return;
+        if (ev.cancelable) ev.preventDefault();
+        var p = pontoAssinatura(canvas, ev);
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        last = p;
+      }
+
+      function up(ev) {
+        if (!drawing) return;
+        if (ev && ev.cancelable) ev.preventDefault();
+        drawing = false;
+        salvarAssinaturaCanvas(key, canvas);
+      }
+
+      canvas.addEventListener('pointerdown', down, { passive: false });
+      canvas.addEventListener('pointermove', move, { passive: false });
+      canvas.addEventListener('pointerup', up, { passive: false });
+      canvas.addEventListener('pointercancel', up, { passive: false });
+      canvas.addEventListener('pointerleave', up, { passive: false });
+    });
+  }
+
+  function limparAssinaturaGestao(key) {
+    if (gestaoDocumentoBloqueado()) {
+      msg('Relatorio assinado e bloqueado para edicao.', 'err');
+      return;
+    }
+    var estado = assinaturaGestaoEstado(key);
+    estado.dataUrl = '';
+    estado.assinada = false;
+    var canvas = document.querySelector('.op-signature-canvas[data-assinatura-key="' + key + '"]');
+    var ctx = prepararCanvasAssinatura(canvas, true);
+    if (ctx && canvas) {
+      var rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      atualizarHintAssinatura(canvas, false);
+    }
   }
 
   function renderDetalhe() {
@@ -1770,7 +1944,10 @@
         renderDetalhe();
         focarPainelObra();
         if (cached.__gestaoNegocio) {
-          await carregarApontamentosNegocio(cached);
+          await Promise.all([
+            carregarDocumentoGestao(cached),
+            carregarApontamentosNegocio(cached)
+          ]);
           return;
         }
       }
@@ -1935,6 +2112,118 @@
     }
   }
 
+  function aplicarDocumentoGestao(doc) {
+    doc = doc || null;
+    state.gestaoDocumento = doc;
+    state.gestaoAssinaturas = {
+      cliente: { dataUrl: doc && doc.assinatura_cliente ? doc.assinatura_cliente : '', assinada: !!(doc && doc.assinatura_cliente) },
+      empresa: { dataUrl: doc && doc.assinatura_empresa ? doc.assinatura_empresa : '', assinada: !!(doc && doc.assinatura_empresa) }
+    };
+  }
+
+  async function carregarDocumentoGestao(negocio) {
+    negocio = negocio || state.obraAtual;
+    if (!negocio || !negocio.__gestaoNegocio || !negocio.proposta_app_id) return;
+    if (!window.sbClient) {
+      state.gestaoDocumentoErro = 'Supabase nao esta conectado.';
+      return;
+    }
+    var empresaId = getEmpresaId();
+    state.gestaoDocumentoCarregando = true;
+    state.gestaoDocumentoErro = '';
+    renderDetalhe();
+    try {
+      var res = await window.sbClient
+        .from('gestao_negocio')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('proposta_id', negocio.proposta_app_id)
+        .maybeSingle();
+      if (res.error) throw res.error;
+      if (!state.obraAtual || state.obraAtual.proposta_app_id !== negocio.proposta_app_id || getEmpresaId() !== empresaId) return;
+      aplicarDocumentoGestao(res.data || null);
+      state.gestaoDocumentoLoaded = true;
+    } catch (e) {
+      state.gestaoDocumentoErro = e.code === '42P01'
+        ? 'Tabela gestao_negocio ainda nao aplicada. A migration 030 precisa ser autorizada antes de salvar.'
+        : (e.message || String(e));
+    } finally {
+      state.gestaoDocumentoCarregando = false;
+      renderDetalhe();
+    }
+  }
+
+  function montarPayloadGestao(assinar) {
+    var negocio = state.obraAtual || {};
+    var empresaId = getEmpresaId();
+    var cliente = assinaturaGestaoEstado('cliente');
+    var empresa = assinaturaGestaoEstado('empresa');
+    return {
+      empresa_id: empresaId,
+      proposta_id: negocio.proposta_app_id,
+      diario_texto: (($('opGestaoDiario') || {}).value || '').trim(),
+      entregas_texto: '',
+      aceite_texto: '',
+      responsavel_cliente_nome: (($('opAssClienteNome') || {}).value || '').trim(),
+      responsavel_empresa_nome: (($('opAssEmpresaNome') || {}).value || '').trim(),
+      assinatura_cliente: cliente.dataUrl || '',
+      assinatura_empresa: empresa.dataUrl || '',
+      status_documento: assinar ? 'assinado' : 'rascunho',
+      bloqueado: !!assinar,
+      assinado_em: assinar ? new Date().toISOString() : null,
+      metadata: {
+        origem: 'operacional_gestao_negocio',
+        modo_relatorio: modoRelatorioGestao()
+      }
+    };
+  }
+
+  function validarGestaoParaFinalizar(row) {
+    if (!row.responsavel_cliente_nome) throw new Error('Informe o responsavel do cliente.');
+    if (!row.responsavel_empresa_nome) throw new Error('Informe o responsavel da empresa.');
+    if (!row.assinatura_cliente) throw new Error('Colete a assinatura do responsavel do cliente.');
+    if (!row.assinatura_empresa) throw new Error('Colete a assinatura do responsavel da empresa.');
+    if (!row.diario_texto && !window.confirm('O texto do Diario/Entregas/Aceite esta vazio. Deseja finalizar mesmo assim?')) {
+      throw new Error('Finalizacao cancelada.');
+    }
+  }
+
+  async function salvarDocumentoGestao(assinar) {
+    var atual = state.gestaoDocumento || {};
+    if (gestaoDocumentoBloqueado()) throw new Error('Relatorio ja assinado e bloqueado para edicao.');
+    var row = montarPayloadGestao(assinar);
+    if (!row.empresa_id || !row.proposta_id) throw new Error('Empresa ou proposta nao encontrada.');
+    if (assinar) validarGestaoParaFinalizar(row);
+    var res = await window.sbClient
+      .from('gestao_negocio')
+      .upsert(row, { onConflict: 'empresa_id,proposta_id' })
+      .select('*')
+      .single();
+    if (res.error) throw res.error;
+    aplicarDocumentoGestao(res.data || Object.assign({}, atual, row));
+    state.gestaoDocumentoLoaded = true;
+    renderDetalhe();
+    return state.gestaoDocumento;
+  }
+
+  async function salvarRascunhoGestao() {
+    try {
+      await salvarDocumentoGestao(false);
+      msg('Rascunho da Gestao do Negocio salvo.');
+    } catch (e) {
+      msg(e.message || 'Nao foi possivel salvar o rascunho.', 'err');
+    }
+  }
+
+  async function finalizarGestao() {
+    try {
+      await salvarDocumentoGestao(true);
+      msg('Relatorio assinado e bloqueado para edicao.');
+    } catch (e) {
+      if ((e.message || '') !== 'Finalizacao cancelada.') msg(e.message || 'Nao foi possivel finalizar o relatorio.', 'err');
+    }
+  }
+
   function relatorioIncluiHoras() {
     var checked = document.querySelector('input[name="opRelHoras"]:checked');
     return checked && checked.value === 'interno';
@@ -1970,6 +2259,8 @@
     linhas.push('');
     linhas.push('Responsavel Cliente: ' + (($('opAssClienteNome') || {}).value || ''));
     linhas.push('Responsavel Empresa: ' + (($('opAssEmpresaNome') || {}).value || ''));
+    if (assinaturaGestaoEstado('cliente').assinada) linhas.push('Assinatura cliente: coletada na tela');
+    if (assinaturaGestaoEstado('empresa').assinada) linhas.push('Assinatura empresa: coletada na tela');
     return linhas.join('\n');
   }
 
@@ -2749,6 +3040,9 @@
   window.opGestaoTexto = gestaoExportarTexto;
   window.opGestaoImprimir = gestaoImprimir;
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
+  window.opGestaoLimparAssinatura = limparAssinaturaGestao;
+  window.opGestaoSalvarRascunho = salvarRascunhoGestao;
+  window.opGestaoFinalizar = finalizarGestao;
 
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
