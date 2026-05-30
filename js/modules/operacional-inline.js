@@ -1693,7 +1693,7 @@
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.85rem">'
       + '<div class="f"><label>Data de Início de Execução</label><input type="date" id="opGestaoExecInicio"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
       + '<div class="f"><label>Data de Término do Trabalho</label><input type="date" id="opGestaoExecTermino"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
-      + '<div class="f"><label>Data de Aceite / Entrega ao Cliente</label><input type="date" id="opGestaoExecAceite"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
+      + '<div class="f"><label>Data de Aceite / Entrega ao Cliente</label><input type="date" id="opGestaoExecAceite" disabled style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:.88rem;cursor:not-allowed" title="Preenchida automaticamente ao assinar"></div>'
       + '</div></section>'
       + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
