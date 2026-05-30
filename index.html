@@ -11593,7 +11593,8 @@ async function salvarLogo() {
     if (uploadErr) throw new Error('Upload falhou: ' + uploadErr.message);
 
     // 3. Obter URL pública
-    var { data: { publicUrl } } = window.sbClient.storage.from('logos').getPublicUrl(path);
+    var urlData = window.sbClient.storage.from('logos').getPublicUrl(path);
+    var publicUrl = urlData.data.publicUrl;
 
     // 4. Salvar no banco
     var { error: updateErr } = await window.sbClient.from('empresas').update({ logo_url: publicUrl, logo_storage_path: path }).eq('id', emp.id);
