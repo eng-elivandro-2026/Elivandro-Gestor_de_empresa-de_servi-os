@@ -1238,7 +1238,7 @@ function prepararNovoApt() {
   }
   projetosAtivos.forEach(function(p){
     var codigo = p.numero_proposta || '—';
-    var descricao = [p.cliente, p.titulo].filter(Boolean).join(' | ');
+    var descricao = p.titulo || '';
     sel.innerHTML += '<option value="' + p.app_id + '">' + codigo + (descricao ? ' — ' + descricao : '') + '</option>';
   });
 
