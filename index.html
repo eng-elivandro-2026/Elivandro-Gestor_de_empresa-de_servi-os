@@ -11859,10 +11859,9 @@ window.abrirPermissoes = function() {
     if (ai) ai.scrollTop = 0;
   };
 
-  // Wrapper público: garante Fase 1 + expand timeline + scroll topo
+  // Wrapper público: garante Fase 1 + scroll topo (timeline agora recolhe por padrão)
   window.abrirEditorPropostaNaFaseDados = function() {
     if (typeof step === 'function') step(1);
-    window._uxFase1();
   };
 
   // Wrapper público: navega Comercial direto para Propostas
