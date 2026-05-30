@@ -847,19 +847,49 @@ async function carregarPropostasEmpresaAtual() {
   var empId = empresaAtualId();
   _propostas = [];
   if (!empId) return;
-  var { data, error } = await sb.from('propostas')
+
+  var STATUS_OPERACIONAL_ATIVOS = [
+    'aprovado','andamento','taf','sat','atrasado',
+    'em_pausa_falta_material','em_pausa_aguardando_cliente',
+    'em_pausa_aguardando_terceiro'
+  ];
+
+  var resProps = await sb.from('propostas')
     .select('app_id,numero_proposta,titulo,cliente,fase,empresa_id')
     .eq('empresa_id', empId)
     .ilike('fase', 'aprovado')
     .order('numero_proposta', {ascending:false});
-  if (error) {
-    console.warn('Falha ao carregar projetos aprovados:', error);
-    _propostas = [];
-    return;
-  }
-  _propostas = (data || []).filter(function(p){
-    return p.empresa_id === empId && faseProjetoAprovada(p.fase);
-  });
+  if (resProps.error) console.warn('Falha ao carregar propostas:', resProps.error);
+
+  var listaProps = ((resProps.data) || [])
+    .filter(function(p){ return p.empresa_id === empId && faseProjetoAprovada(p.fase); })
+    .map(function(p){
+      return { app_id: p.app_id, numero_proposta: p.numero_proposta,
+               titulo: p.titulo, cliente: p.cliente, empresa_id: p.empresa_id, _fonte: 'proposta' };
+    });
+
+  var resObras = await sb.from('obras')
+    .select('proposta_app_id,codigo_obra,proposta_numero,titulo,cliente_nome,empresa_id,status_operacional')
+    .eq('empresa_id', empId)
+    .in('status_operacional', STATUS_OPERACIONAL_ATIVOS)
+    .not('proposta_app_id', 'is', null)
+    .order('proposta_numero', {ascending:false});
+  if (resObras.error) console.warn('Falha ao carregar obras operacionais:', resObras.error);
+
+  var listaObras = ((resObras.data) || [])
+    .filter(function(o){ return o.empresa_id === empId && o.proposta_app_id; })
+    .map(function(o){
+      return { app_id: o.proposta_app_id, numero_proposta: o.proposta_numero || o.codigo_obra,
+               titulo: o.titulo, cliente: o.cliente_nome, empresa_id: o.empresa_id, _fonte: 'obra' };
+    });
+
+  // Obras têm precedência — sobrescrevem proposta de mesmo app_id
+  var mapa = {};
+  listaProps.forEach(function(p){ if (p.app_id) mapa[p.app_id] = p; });
+  listaObras.forEach(function(o){ if (o.app_id) mapa[o.app_id] = o; });
+
+  _propostas = Object.keys(mapa).map(function(k){ return mapa[k]; })
+    .sort(function(a, b){ return (b.numero_proposta||'').localeCompare(a.numero_proposta||''); });
 }
 function atualizarTrocaEmpresaUI() {
   var btn = document.getElementById('btnTrocarEmpresaPerfil');
@@ -1199,15 +1229,17 @@ function prepararNovoApt() {
   var sel = document.getElementById('nProposta');
   sel.innerHTML = '<option value="">Selecione o projeto...</option>';
   sel.disabled = false;
-  var projetosAprovados = _propostas.filter(function(p){
-    return (!empId || p.empresa_id === empId) && faseProjetoAprovada(p.fase);
+  var projetosAtivos = _propostas.filter(function(p){
+    return !empId || p.empresa_id === empId;
   });
-  if (!projetosAprovados.length) {
-    sel.innerHTML = '<option value="">Nenhum projeto aprovado disponível para apontamento.</option>';
+  if (!projetosAtivos.length) {
+    sel.innerHTML = '<option value="">Nenhum projeto disponível para apontamento.</option>';
     sel.disabled = true;
   }
-  projetosAprovados.forEach(function(p){
-    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.cliente||'') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
+  projetosAtivos.forEach(function(p){
+    var codigo = p.numero_proposta || '—';
+    var descricao = [p.cliente, p.titulo].filter(Boolean).join(' | ');
+    sel.innerHTML += '<option value="' + p.app_id + '">' + codigo + (descricao ? ' — ' + descricao : '') + '</option>';
   });
 
   // Data de hoje
@@ -1280,10 +1312,10 @@ async function salvarNovoApt() {
     toast('Preencha todos os campos obrigatórios.','err'); return;
   }
   var propostaSelecionada = _propostas.find(function(x){
-    return x.app_id === propostaId && x.empresa_id === empId && faseProjetoAprovada(x.fase);
+    return x.app_id === propostaId && x.empresa_id === empId;
   });
   if (!propostaSelecionada) {
-    toast('Selecione um projeto aprovado da empresa atual.','err'); return;
+    toast('Selecione um projeto da empresa atual.','err'); return;
   }
 
   var jIni='08:00', jFim='18:00';
