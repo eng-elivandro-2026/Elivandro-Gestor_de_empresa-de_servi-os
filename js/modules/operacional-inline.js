@@ -3172,21 +3172,34 @@
     if (!confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
 
     try {
+      console.log('Deletando assinaturas do documento:', doc.id);
+
       var res = await window.sbClient
         .from('gestao_negocio')
         .update({
-          assinatura_cliente: null,
-          assinatura_empresa: null,
-          responsavel_cliente_nome: null,
-          responsavel_empresa_nome: null,
+          assinatura_cliente: '',
+          assinatura_empresa: '',
+          responsavel_cliente_nome: '',
+          responsavel_empresa_nome: '',
           assinado_cliente_em: null,
-          assinado_empresa_em: null
+          assinado_empresa_em: null,
+          bloqueado: false,
+          status_documento: 'rascunho'
         })
-        .eq('id', doc.id);
-      if (res.error) throw res.error;
-      msg('✅ Assinaturas deletadas do banco!');
-      location.reload();
+        .eq('id', doc.id)
+        .eq('empresa_id', doc.empresa_id);
+
+      console.log('Resposta do UPDATE:', res);
+      if (res.error) {
+        console.error('Erro no UPDATE:', res.error);
+        throw res.error;
+      }
+
+      console.log('✅ Update OK, recarregando...');
+      msg('✅ Assinaturas deletadas! Recarregando...');
+      setTimeout(function() { location.reload(); }, 500);
     } catch (e) {
+      console.error('ERRO:', e);
       msg('❌ Erro: ' + e.message, 'err');
     }
   };
