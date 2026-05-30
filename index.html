@@ -11516,6 +11516,12 @@ async function salvarPermissoes() {
 }
 
 // ══ LOGO DE EMPRESA ══════════════════════════════════════════
+function esc(v) {
+  if (!v) return '';
+  var m = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(v).replace(/[&<>"']/g, function(c) { return m[c]; });
+}
+
 function mudarAba(aba) {
   // Atualizar botões
   document.getElementById('abaLogoBtn').style.borderBottomColor = aba === 'logo' ? 'var(--blue)' : 'transparent';
@@ -11558,10 +11564,10 @@ async function _carregarLogoAtual() {
 
 async function salvarLogo() {
   var file = document.getElementById('inputLogoEmpresa').files[0];
-  if (!file) { mostrarToast('Selecione um arquivo de imagem', 'err'); return; }
+  if (!file) { toast('Selecione um arquivo de imagem', 'err'); return; }
 
   var emp = window._empresaAtiva;
-  if (!emp || !emp.id) { mostrarToast('Nenhuma empresa ativa', 'err'); return; }
+  if (!emp || !emp.id) { toast('Nenhuma empresa ativa', 'err'); return; }
 
   var btnSalvar = document.getElementById('btnSalvarLogo');
   btnSalvar.disabled = true;
@@ -11579,18 +11585,18 @@ async function salvarLogo() {
 
     // 1. Remover logo anterior se existir
     if (emp.logo_storage_path) {
-      await window.sb.storage.from('logos').remove([emp.logo_storage_path]);
+      await window.sbClient.storage.from('logos').remove([emp.logo_storage_path]);
     }
 
     // 2. Upload novo
-    var { error: uploadErr } = await window.sb.storage.from('logos').upload(path, file, { upsert: true, contentType: file.type });
+    var { error: uploadErr } = await window.sbClient.storage.from('logos').upload(path, file, { upsert: true, contentType: file.type });
     if (uploadErr) throw new Error('Upload falhou: ' + uploadErr.message);
 
     // 3. Obter URL pública
-    var { data: { publicUrl } } = window.sb.storage.from('logos').getPublicUrl(path);
+    var { data: { publicUrl } } = window.sbClient.storage.from('logos').getPublicUrl(path);
 
     // 4. Salvar no banco
-    var { error: updateErr } = await window.sb.from('empresas').update({ logo_url: publicUrl, logo_storage_path: path }).eq('id', emp.id);
+    var { error: updateErr } = await window.sbClient.from('empresas').update({ logo_url: publicUrl, logo_storage_path: path }).eq('id', emp.id);
     if (updateErr) throw new Error('Falha ao salvar: ' + updateErr.message);
 
     // 5. Atualizar empresa ativa em memória
@@ -11603,10 +11609,10 @@ async function salvarLogo() {
     }
 
     document.getElementById('inputLogoEmpresa').value = '';
-    mostrarToast('Logo salvo com sucesso!', 'ok');
+    toast('Logo salvo com sucesso!', 'ok');
     await _carregarLogoAtual();
   } catch (e) {
-    mostrarToast('❌ ' + e.message, 'err');
+    toast('❌ ' + e.message, 'err');
   } finally {
     btnSalvar.disabled = false;
     btnSalvar.textContent = '💾 Salvar Logo';
@@ -11615,7 +11621,7 @@ async function salvarLogo() {
 
 async function excluirLogo() {
   var emp = window._empresaAtiva;
-  if (!emp || !emp.id) { mostrarToast('Nenhuma empresa ativa', 'err'); return; }
+  if (!emp || !emp.id) { toast('Nenhuma empresa ativa', 'err'); return; }
 
   if (!confirm('Excluir o logo desta empresa? Esta ação não pode ser desfeita.')) return;
 
@@ -11626,11 +11632,11 @@ async function excluirLogo() {
   try {
     // Remover arquivo do storage
     if (emp.logo_storage_path) {
-      await window.sb.storage.from('logos').remove([emp.logo_storage_path]);
+      await window.sbClient.storage.from('logos').remove([emp.logo_storage_path]);
     }
 
     // Limpar no banco
-    var { error } = await window.sb.from('empresas').update({ logo_url: null, logo_storage_path: null }).eq('id', emp.id);
+    var { error } = await window.sbClient.from('empresas').update({ logo_url: null, logo_storage_path: null }).eq('id', emp.id);
     if (error) throw new Error('Falha ao excluir: ' + error.message);
 
     // Atualizar empresa ativa
@@ -11638,10 +11644,10 @@ async function excluirLogo() {
     var idx = (window._empresasUsuario || []).findIndex(function (e) { return e.id === emp.id; });
     if (idx >= 0) { window._empresasUsuario[idx].logo_url = null; window._empresasUsuario[idx].logo_storage_path = null; }
 
-    mostrarToast('Logo excluído.', 'ok');
+    toast('Logo excluído.', 'ok');
     await _carregarLogoAtual();
   } catch (e) {
-    mostrarToast('❌ ' + e.message, 'err');
+    toast('❌ ' + e.message, 'err');
   } finally {
     btnExcluir.disabled = false;
     btnExcluir.textContent = '🗑️ Excluir';
