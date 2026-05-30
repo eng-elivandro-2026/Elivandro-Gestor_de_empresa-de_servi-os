@@ -799,8 +799,8 @@
     // pCli e pAC são gerenciados por app-core.js (bindAutoInput) — não aplicar acSetup aqui
     // para evitar dois dropdowns simultâneos.
 
-    // Contato 2
-    if (g('pAC2') && !g('pAC2')._acDone) acSetup(g('pAC2'), 'contato', function(c) {
+    // Contato 2 — se bindAutoInput já cuidou, não duplicar
+    if (g('pAC2') && !g('pAC2')._acDone && !g('pAC2').__autoBound) acSetup(g('pAC2'), 'contato', function(c) {
       if (c.email    && g('pMail2') && !g('pMail2').value) g('pMail2').value = c.email;
       if (c.telefone && g('pTel2')  && !g('pTel2').value)  g('pTel2').value  = c.telefone;
       if (g('pDep2') && !g('pDep2').value && typeof window.lookupContact === 'function') {

@@ -7996,6 +7996,27 @@ function applyContactSelection(rec){
   if(Q('pCid') && !Q('pCid').value && rec.cidade) Q('pCid').value=rec.cidade;
   hideAutoBox();
 }
+function applyContactSelection2(rec){
+  if(!rec) return;
+  var nome=rec.nome||'';
+  var dept=rec.departamento||'';
+  var email=rec.email||'';
+  var tel=rec.tel||'';
+  // Enriquece com cadastro RH (ctsGetAll)
+  if(typeof window.ctsGetAll==='function'){
+    var cadCt=window.ctsGetAll().find(function(c){ return normTxt(c.nome)===normTxt(nome); });
+    if(cadCt){
+      if(cadCt.email)       email=cadCt.email;
+      if(cadCt.telefone)    tel=cadCt.telefone;
+      if(cadCt.departamento) dept=cadCt.departamento;
+    }
+  }
+  if(Q('pAC2'))  Q('pAC2').value=nome;
+  if(Q('pDep2')) Q('pDep2').value=dept;
+  if(Q('pMail2'))Q('pMail2').value=email;
+  if(Q('pTel2')) Q('pTel2').value=tel;
+  hideAutoBox();
+}
 // Expõe busca de contato no histórico para módulos externos (ex: wirePropForm no cadastro.js)
 window.lookupContact=function(nome){
   var dir=buildClientDirectory();
@@ -8031,6 +8052,7 @@ function pickAutoItem(idx){
   if(it.kind==='company') applyCompanySelection(it.raw);
   if(it.kind==='loc_company') applyLocCompanySelection(it.raw);
   if(it.kind==='contact') applyContactSelection(it.raw);
+  if(it.kind==='contact2') applyContactSelection2(it.raw);
   if(it.kind==='itemdesc') applyItemDescSelection(it.raw);
 }
 function moveAutoSelection(dir){
@@ -8049,7 +8071,7 @@ function bindAutoInput(input, kind){
   input.__autoBound=true;
   input.setAttribute('autocomplete','off');
   function openNow(){
-    var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
+    var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' || kind==='contact2' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
     renderAutoItems(input, items, kind);
   }
   input.addEventListener('focus', openNow);
@@ -8074,6 +8096,7 @@ function initClientAutoComplete(){
   bindAutoInput(Q('pCli'),'company');
   bindAutoInput(Q('pLoc'),'loc_company');
   bindAutoInput(Q('pAC'),'contact');
+  bindAutoInput(Q('pAC2'),'contact2');
   bindAutoInput(Q('iDesc'),'itemdesc');
   window.addEventListener('resize', function(){
     if(autoState.input) placeAutoBox(autoState.input);
@@ -8084,7 +8107,7 @@ function initClientAutoComplete(){
   document.addEventListener('click', function(ev){
     var box=ensureAutoBox();
     if(box.contains(ev.target)) return;
-    if(ev.target===Q('pCli') || ev.target===Q('pLoc') || ev.target===Q('pAC') || ev.target===Q('iDesc')) return;
+    if(ev.target===Q('pCli') || ev.target===Q('pLoc') || ev.target===Q('pAC') || ev.target===Q('pAC2') || ev.target===Q('iDesc')) return;
     hideAutoBox();
   });
 }
