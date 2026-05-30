@@ -1563,10 +1563,13 @@
     var doc = state.gestaoDocumento || {};
     var bloqueado = gestaoDocumentoBloqueado();
     var nomeSalvo = assinaturaKey === 'cliente' ? doc.responsavel_cliente_nome : doc.responsavel_empresa_nome;
+    var dataSalva = assinaturaKey === 'cliente' ? doc.assinado_cliente_em : doc.assinado_empresa_em;
+    var dataFormatada = dataSalva ? new Date(dataSalva).toLocaleString('pt-BR') : '';
     return '<div class="op-signature-card" style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.85rem;min-width:0">'
       + '<div style="font-size:.78rem;color:#0f172a;font-weight:900;text-transform:uppercase;margin-bottom:.55rem">' + esc(titulo) + '</div>'
       + '<label style="display:flex;flex-direction:column;gap:.25rem;font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase">Nome'
       + '<input id="' + nomeId + '" type="text" placeholder="Nome do responsavel" value="' + esc(nomeSalvo || '') + '"' + (bloqueado ? ' disabled' : '') + ' style="border:1px solid #cbd5e1;border-radius:6px;padding:.55rem .65rem;color:#0f172a;background:#fff"></label>'
+      + (dataFormatada ? '<div style="font-size:.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-top:.35rem">Assinado em: ' + esc(dataFormatada) + '</div>' : '')
       + '<div class="op-signature-pad" style="margin-top:.75rem;border:1px dashed #94a3b8;border-radius:8px;background:#fff;height:110px;position:relative;overflow:hidden;color:#64748b;font-size:.82rem;font-weight:800">'
       + '<canvas id="' + canvasId + '" class="op-signature-canvas" data-assinatura-key="' + esc(assinaturaKey) + '" data-bloqueado="' + (bloqueado ? '1' : '0') + '" aria-label="Assinatura ' + esc(titulo) + '" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (bloqueado ? 'default' : 'crosshair') + ';background:#fff"></canvas>'
       + '<div class="op-signature-hint no-print" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#94a3b8;font-size:.8rem;font-weight:800">Assine aqui</div>'
@@ -2193,6 +2196,8 @@
       responsavel_empresa_nome: (($('opAssEmpresaNome') || {}).value || '').trim(),
       assinatura_cliente: cliente.dataUrl || '',
       assinatura_empresa: empresa.dataUrl || '',
+      assinado_cliente_em: cliente.dataUrl ? new Date().toISOString() : null,
+      assinado_empresa_em: empresa.dataUrl ? new Date().toISOString() : null,
       status_documento: assinar ? 'assinado' : 'rascunho',
       bloqueado: !!assinar,
       assinado_em: assinar ? new Date().toISOString() : null,
