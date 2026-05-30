@@ -1548,8 +1548,6 @@
 
   function renderTotaisApontamentosHtml(t) {
     return '<div class="op-report-hours-totals" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem;margin-top:.75rem">'
-      + cabecalhoCampo('Total pendente', Number(t.pendente || 0).toFixed(1) + 'h')
-      + cabecalhoCampo('Total aprovado', Number(t.aprovado || 0).toFixed(1) + 'h')
       + cabecalhoCampo('Total geral', Number(t.geral || 0).toFixed(1) + 'h')
       + '</div>';
   }
@@ -2320,8 +2318,6 @@
         linhas.push([dataInput(a.data) || '-', nome, (a.tipo_colaborador || a.tipo_dia || '-'), Number(a.horas_total || 0).toFixed(1) + 'h', (a.status || '-'), (a.descricao || '-')].join(' | '));
       });
       var t = totaisApontamentosNegocio();
-      linhas.push('Total pendente: ' + Number(t.pendente || 0).toFixed(1) + 'h');
-      linhas.push('Total aprovado: ' + Number(t.aprovado || 0).toFixed(1) + 'h');
       linhas.push('Total geral: ' + Number(t.geral || 0).toFixed(1) + 'h');
     } else {
       linhas.push('');
