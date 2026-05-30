@@ -3165,6 +3165,32 @@
   window.opGestaoTexto = gestaoExportarTexto;
   window.opGestaoImprimir = gestaoImprimir;
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
+  // Função simples: limpar assinaturas do banco direto (sem desbloquear)
+  window.opGestaoLimparAssinaturasCompleto = async function() {
+    var doc = state.gestaoDocumento || {};
+    if (!doc.id) { msg('Nenhum documento.', 'err'); return; }
+    if (!confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
+
+    try {
+      var res = await window.sbClient
+        .from('gestao_negocio')
+        .update({
+          assinatura_cliente: null,
+          assinatura_empresa: null,
+          responsavel_cliente_nome: null,
+          responsavel_empresa_nome: null,
+          assinado_cliente_em: null,
+          assinado_empresa_em: null
+        })
+        .eq('id', doc.id);
+      if (res.error) throw res.error;
+      msg('✅ Assinaturas deletadas do banco!');
+      location.reload();
+    } catch (e) {
+      msg('❌ Erro: ' + e.message, 'err');
+    }
+  };
+
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
   window.opGestaoSalvarRascunho = salvarRascunhoGestao;
   window.opGestaoFinalizar = finalizarGestao;
