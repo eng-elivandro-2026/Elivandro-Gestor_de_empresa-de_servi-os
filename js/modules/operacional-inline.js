@@ -1550,6 +1550,39 @@
       + '</div>';
   }
 
+  function renderEscopoGestaoHtml(snapshot) {
+    snapshot = snapshot || {};
+    var escopos = snapshot.esc || [];
+    if (!Array.isArray(escopos) || escopos.length === 0) {
+      return '<div style="color:#6b7280;font-size:.88rem;font-style:italic">Nenhum escopo registrado.</div>';
+    }
+    var html = '<div style="display:flex;flex-direction:column;gap:1rem">';
+    escopos.forEach(function(sec, idx) {
+      if (!sec) return;
+      var titulo = sec.titulo || 'Seção ' + (idx + 1);
+      var desc = sec.desc || '';
+      var subs = sec.subs || [];
+      html += '<div style="border:1px solid #e2e8f0;border-radius:6px;padding:.75rem">'
+        + '<div style="font-weight:700;color:#0f172a;margin-bottom:.5rem">' + esc(titulo) + '</div>'
+        + '<div style="color:#475569;font-size:.87rem;line-height:1.5;margin-bottom:.5rem;white-space:pre-wrap">' + esc(desc) + '</div>';
+      if (subs.length > 0) {
+        html += '<ul style="margin:.5rem 0 0;padding-left:1.5rem;color:#475569;font-size:.87rem">';
+        subs.forEach(function(sub) {
+          if (!sub) return;
+          var nome = sub.nome || sub.titulo || '';
+          var subDesc = sub.desc || '';
+          html += '<li style="margin-bottom:.3rem"><strong>' + esc(nome) + '</strong>';
+          if (subDesc) html += ': ' + esc(subDesc);
+          html += '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
   function gestaoDocumentoBloqueado() {
     var doc = state.gestaoDocumento || {};
     return !!doc.bloqueado || doc.status_documento === 'assinado';
@@ -1700,6 +1733,9 @@
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno" onchange="opGestaoAtualizarModoRelatorio()"> Interno - incluir apontamentos de horas</label>'
       + '</div></section>'
+      + '<section class="op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Escopo</h3>'
+      + renderEscopoGestaoHtml(s)
+      + '</section>'
       + '<section class="op-signatures-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">'
       + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome', 'cliente')
