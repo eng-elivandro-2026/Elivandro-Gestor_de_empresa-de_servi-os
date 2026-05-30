@@ -1675,7 +1675,6 @@
       + '#opGestaoPrintRoot{display:block!important;background:#fff!important;color:#0f172a!important;width:100%!important;min-height:auto!important;overflow:visible!important;}'
       + '#opGestaoPrintRoot .op-print-paper{display:block!important;max-width:none!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;}'
       + '#opGestaoPrintRoot .no-print,#opGestaoPrintRoot .op-doc-actions,#opGestaoPrintRoot .op-report-control,#opGestaoPrintRoot .op-report-notice{display:none!important;visibility:hidden!important;}'
-      + '.op-doc-print-section,.op-report-hours-section,.op-signatures-section,.op-signature-card{break-inside:avoid;page-break-inside:avoid;}'
       + '#opGestaoPrintRoot[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
       + '#opObraPanel .no-print,#opObraPanel .op-doc-actions,#opObraPanel .op-report-control,#opObraPanel .op-report-notice{display:none!important;visibility:hidden!important;}'
       + '#opObraPanel[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
