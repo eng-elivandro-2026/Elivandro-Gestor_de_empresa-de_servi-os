@@ -1588,7 +1588,8 @@
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
       if (ehAdminDono) {
-        html += '<button type="button" class="btn ba" onclick="opGestaoDesbloquear()" style="margin-left:.55rem">🔓 Desbloquear para Edicao</button>';
+        html += '<button type="button" class="btn ba" onclick="opGestaoDesbloquear(false)" style="margin-left:.55rem">🔓 Desbloquear</button>'
+          + '<button type="button" class="btn ba" onclick="opGestaoDesbloquear(true)" style="margin-left:.25rem">🔄 Desbloquear e Limpar (Teste)</button>';
       }
     } else {
       html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
@@ -2264,18 +2265,14 @@
     }
   }
 
-  async function desbloquearGestao() {
+  async function desbloquearGestao(limparAssinaturas) {
     var atual = state.gestaoDocumento || {};
     if (!atual.id) { msg('Nenhum documento para desbloquear.', 'err'); return; }
     if (!gestaoDocumentoBloqueado()) { msg('Relatorio ja esta em edicao.', 'err'); return; }
 
-    // Dialog simples
-    var resposta = window.prompt('Desbloquear relatório?\n\nDigite: S = desbloquear\nDigite: SC = desbloquear e limpar assinaturas (teste)');
-    if (!resposta) return; // Cancelou
-
     var atualizacao = { bloqueado: false, status_documento: 'rascunho', atualizado_em: new Date().toISOString() };
 
-    if (resposta.toUpperCase() === 'SC') {
+    if (limparAssinaturas === true) {
       // Limpar assinaturas
       atualizacao.responsavel_cliente_nome = '';
       atualizacao.responsavel_empresa_nome = '';
@@ -2283,9 +2280,6 @@
       atualizacao.assinatura_empresa = '';
       atualizacao.assinado_cliente_em = null;
       atualizacao.assinado_empresa_em = null;
-    } else if (resposta.toUpperCase() !== 'S') {
-      msg('Operacao cancelada.', 'err');
-      return;
     }
 
     try {
