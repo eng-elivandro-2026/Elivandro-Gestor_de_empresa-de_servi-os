@@ -267,7 +267,7 @@
         }
         var isSubitem = item.label.indexOf('↳') === 0;
         var labelClean = isSubitem ? item.label.slice(2) : item.label;
-        return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this);fecharSidebar()">' +
+        return '<button class="nb nav-item' + (isSubitem ? ' subitem' : '') + '" onclick="' + item.action + ';Router._setNavAtivo(this);setTimeout(fecharSidebar,100)">' +
             '<span>' + item.icon + '</span> ' + labelClean +
             '</button>';
       }).join('');
