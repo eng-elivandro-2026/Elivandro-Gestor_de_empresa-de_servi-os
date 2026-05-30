@@ -3165,42 +3165,46 @@
   window.opGestaoTexto = gestaoExportarTexto;
   window.opGestaoImprimir = gestaoImprimir;
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
-  // Função simples: limpar assinaturas do banco direto (sem desbloquear)
+  // Função simples: limpar assinaturas do banco direto via RPC
   window.opGestaoLimparAssinaturasCompleto = async function() {
     var doc = state.gestaoDocumento || {};
     if (!doc.id) { msg('Nenhum documento.', 'err'); return; }
+    if (!doc.empresa_id) { msg('Empresa não identificada.', 'err'); return; }
     if (!confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
 
     try {
-      console.log('Deletando assinaturas do documento:', doc.id);
+      console.log('🗑️ Deletando assinaturas:', { doc_id: doc.id, empresa_id: doc.empresa_id });
 
-      var res = await window.sbClient
-        .from('gestao_negocio')
-        .update({
-          assinatura_cliente: '',
-          assinatura_empresa: '',
-          responsavel_cliente_nome: '',
-          responsavel_empresa_nome: '',
-          assinado_cliente_em: null,
-          assinado_empresa_em: null,
-          bloqueado: false,
-          status_documento: 'rascunho'
-        })
-        .eq('id', doc.id)
-        .eq('empresa_id', doc.empresa_id);
+      var res = await window.sbClient.rpc('limpar_assinaturas_gestao', {
+        p_doc_id: doc.id,
+        p_empresa_id: doc.empresa_id
+      });
 
-      console.log('Resposta do UPDATE:', res);
+      console.log('📋 Resposta RPC:', res);
       if (res.error) {
-        console.error('Erro no UPDATE:', res.error);
+        console.error('❌ Erro na RPC:', res.error);
         throw res.error;
       }
 
-      console.log('✅ Update OK, recarregando...');
-      msg('✅ Assinaturas deletadas! Recarregando...');
-      setTimeout(function() { location.reload(); }, 500);
+      console.log('✅ RPC executada com sucesso:', res.data);
+      msg('✅ ' + (res.data && res.data.message ? res.data.message : 'Assinaturas deletadas'));
+
+      // Atualizar estado em memória
+      state.gestaoDocumento.assinatura_cliente = '';
+      state.gestaoDocumento.assinatura_empresa = '';
+      state.gestaoDocumento.responsavel_cliente_nome = '';
+      state.gestaoDocumento.responsavel_empresa_nome = '';
+      state.gestaoDocumento.assinado_cliente_em = null;
+      state.gestaoDocumento.assinado_empresa_em = null;
+
+      // Recarregar após 1s
+      setTimeout(function() {
+        console.log('🔄 Recarregando página...');
+        location.reload();
+      }, 1000);
     } catch (e) {
-      console.error('ERRO:', e);
-      msg('❌ Erro: ' + e.message, 'err');
+      console.error('💥 ERRO:', e);
+      msg('❌ Erro: ' + (e.message || JSON.stringify(e)), 'err');
     }
   };
 
