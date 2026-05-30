@@ -11228,36 +11228,71 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
   </div>
 </div>
 
-<!-- Modal Permissões por Perfil (G4B) -->
+<!-- Modal Configurações Gerais (Abas: Logo, Permissões) -->
 <div id="modalPermissoes" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10001;align-items:center;justify-content:center;padding:1rem">
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:920px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
 
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0">
       <div>
-        <div style="font-size:.92rem;font-weight:800;color:var(--text)">⚙️ Permissões por Perfil</div>
-        <div id="permSubtitulo" style="font-size:.7rem;color:var(--text3);margin-top:.15rem">Configure quais módulos e ações cada perfil pode acessar nesta empresa.</div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--text)">⚙️ Configurações Gerais</div>
+        <div id="permSubtitulo" style="font-size:.7rem;color:var(--text3);margin-top:.15rem" id="configSubtitulo">Gerencie as configurações da empresa</div>
       </div>
       <button class="nb" onclick="fecharPermissoes()" style="font-size:.85rem;color:var(--text3);padding:.2rem .5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3)">✕</button>
     </div>
 
-    <!-- Aviso -->
-    <div style="flex-shrink:0;padding:.55rem 1.25rem;background:rgba(245,158,11,.07);border-bottom:1px solid rgba(245,158,11,.2)">
-      <span style="font-size:.72rem;color:#f59e0b">⚠️ Cuidado: alterar permissões pode ocultar módulos para usuários desta empresa. Perfil <strong>dono</strong> sempre mantém acesso total e não pode ser removido das ações críticas.</span>
+    <!-- Abas -->
+    <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg3)">
+      <button class="nb" id="abaLogoBtn" onclick="mudarAba('logo')" style="padding:.65rem 1rem;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:.82rem;font-weight:700;border-bottom:3px solid transparent;transition:all .2s" data-aba="logo">🖼️ Logo</button>
+      <button class="nb" id="abaPermBtn" onclick="mudarAba('permissoes')" style="padding:.65rem 1rem;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:.82rem;font-weight:700;border-bottom:3px solid transparent;transition:all .2s" data-aba="permissoes">🔐 Permissões</button>
     </div>
 
-    <!-- Tabela -->
-    <div style="flex:1;overflow:auto;padding:.85rem 1rem">
-      <div id="permTabelaContainer"></div>
+    <!-- Conteúdo das Abas -->
+    <div style="flex:1;overflow:auto;padding:.85rem 1.25rem">
+
+      <!-- Aba Logo -->
+      <div id="abaLogoContent" style="display:none">
+        <div style="padding:.5rem 0">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.75rem">Logo Atual</div>
+          <div id="logoPreview" style="border:1px dashed var(--border);border-radius:8px;padding:1.5rem;text-align:center;background:var(--bg3);min-height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem">
+            <span style="color:var(--text3);font-size:.82rem">Sem logo cadastrado</span>
+          </div>
+
+          <div style="margin:1.2rem 0">
+            <label style="display:block;margin-bottom:.5rem;font-size:.78rem;color:var(--text2);text-transform:uppercase;font-weight:700;letter-spacing:.03em">Selecionar arquivo</label>
+            <input type="file" id="inputLogoEmpresa" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="width:100%;padding:.55rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);font-size:.82rem;box-sizing:border-box">
+            <div style="font-size:.7rem;color:var(--text3);margin-top:.35rem">PNG, JPG, WebP ou SVG • Máximo 2MB</div>
+          </div>
+
+          <div style="display:flex;gap:.6rem;margin-top:1.5rem">
+            <button class="nb" id="btnSalvarLogo" onclick="salvarLogo()" style="padding:.5rem 1rem;background:var(--green);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer;flex:1">💾 Salvar Logo</button>
+            <button class="nb" id="btnExcluirLogo" onclick="excluirLogo()" style="padding:.5rem 1rem;background:var(--red);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer;flex:1;display:none">🗑️ Excluir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba Permissões -->
+      <div id="abaPermissõesContent" style="display:flex;flex-direction:column;height:100%">
+        <!-- Aviso -->
+        <div style="padding:.55rem 0;background:transparent;margin-bottom:.75rem">
+          <span style="font-size:.72rem;color:#f59e0b">⚠️ Cuidado: alterar permissões pode ocultar módulos para usuários desta empresa. Perfil <strong>dono</strong> sempre mantém acesso total.</span>
+        </div>
+
+        <!-- Tabela -->
+        <div style="flex:1;overflow:auto">
+          <div id="permTabelaContainer"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Resultado + Footer -->
     <div id="permResultado" style="flex-shrink:0;padding:0 1.25rem"></div>
     <div style="flex-shrink:0;padding:.8rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.6rem">
-      <span style="font-size:.68rem;color:var(--text3)">Salvo em <code style="background:var(--bg3);padding:.1rem .3rem;border-radius:3px">empresas.config_json.permissoes</code></span>
+      <span id="footerText" style="font-size:.68rem;color:var(--text3)">Salvo em <code style="background:var(--bg3);padding:.1rem .3rem;border-radius:3px">empresas.config_json.permissoes</code></span>
       <div style="display:flex;gap:.6rem">
         <button class="nb" onclick="fecharPermissoes()" style="padding:.42rem .9rem;border:1px solid var(--border);border-radius:7px;font-size:.82rem;cursor:pointer;background:var(--bg3);color:var(--text2)">Cancelar</button>
-        <button id="btnSalvarPermissoes" class="nb" onclick="salvarPermissoes()" style="padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer">💾 Salvar Permissões</button>
+        <button id="btnSalvarPermissoes" class="nb" onclick="salvarPermissoes()" style="padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer;display:none">💾 Salvar Permissões</button>
       </div>
     </div>
 
@@ -11479,6 +11514,146 @@ async function salvarPermissoes() {
     btnS.textContent = '💾 Salvar Permissões';
   }
 }
+
+// ══ LOGO DE EMPRESA ══════════════════════════════════════════
+function mudarAba(aba) {
+  // Atualizar botões
+  document.getElementById('abaLogoBtn').style.borderBottomColor = aba === 'logo' ? 'var(--blue)' : 'transparent';
+  document.getElementById('abaLogoBtn').style.color = aba === 'logo' ? 'var(--text)' : 'var(--text2)';
+  document.getElementById('abaPermBtn').style.borderBottomColor = aba === 'permissoes' ? 'var(--blue)' : 'transparent';
+  document.getElementById('abaPermBtn').style.color = aba === 'permissoes' ? 'var(--text)' : 'var(--text2)';
+
+  // Mostrar/esconder conteúdo
+  document.getElementById('abaLogoContent').style.display = aba === 'logo' ? 'block' : 'none';
+  document.getElementById('abaPermissõesContent').style.display = aba === 'permissoes' ? 'flex' : 'none';
+
+  // Mostrar/esconder botão de salvar (diferente para cada aba)
+  document.getElementById('btnSalvarPermissoes').style.display = aba === 'permissoes' ? 'block' : 'none';
+
+  // Atualizar footer
+  var footerEl = document.getElementById('footerText');
+  if (aba === 'logo') {
+    footerEl.innerHTML = 'Formatos: PNG, JPG, WebP, SVG • Máximo 2MB';
+  } else {
+    footerEl.innerHTML = 'Salvo em <code style="background:var(--bg3);padding:.1rem .3rem;border-radius:3px">empresas.config_json.permissoes</code>';
+  }
+
+  // Carregar preview do logo ao abrir aba
+  if (aba === 'logo') _carregarLogoAtual();
+}
+
+async function _carregarLogoAtual() {
+  var emp = window._empresaAtiva;
+  if (!emp || !emp.id) return;
+
+  var preview = document.getElementById('logoPreview');
+  if (emp.logo_url) {
+    preview.innerHTML = '<img src="' + esc(emp.logo_url) + '" style="max-height:100px;max-width:180px;object-fit:contain" alt="Logo">';
+    document.getElementById('btnExcluirLogo').style.display = 'block';
+  } else {
+    preview.innerHTML = '<span style="color:var(--text3);font-size:.82rem">Sem logo cadastrado</span>';
+    document.getElementById('btnExcluirLogo').style.display = 'none';
+  }
+}
+
+async function salvarLogo() {
+  var file = document.getElementById('inputLogoEmpresa').files[0];
+  if (!file) { mostrarToast('Selecione um arquivo de imagem', 'err'); return; }
+
+  var emp = window._empresaAtiva;
+  if (!emp || !emp.id) { mostrarToast('Nenhuma empresa ativa', 'err'); return; }
+
+  var btnSalvar = document.getElementById('btnSalvarLogo');
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = 'Enviando...';
+
+  try {
+    // Validar tipo e tamanho
+    if (!['image/png','image/jpeg','image/webp','image/svg+xml'].includes(file.type)) {
+      throw new Error('Formato não suportado. Use PNG, JPG, WebP ou SVG.');
+    }
+    if (file.size > 2097152) throw new Error('Arquivo maior que 2MB');
+
+    var ext = file.name.split('.').pop().toLowerCase();
+    var path = 'empresas/' + emp.id + '/logo.' + ext;
+
+    // 1. Remover logo anterior se existir
+    if (emp.logo_storage_path) {
+      await window.sb.storage.from('logos').remove([emp.logo_storage_path]);
+    }
+
+    // 2. Upload novo
+    var { error: uploadErr } = await window.sb.storage.from('logos').upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadErr) throw new Error('Upload falhou: ' + uploadErr.message);
+
+    // 3. Obter URL pública
+    var { data: { publicUrl } } = window.sb.storage.from('logos').getPublicUrl(path);
+
+    // 4. Salvar no banco
+    var { error: updateErr } = await window.sb.from('empresas').update({ logo_url: publicUrl, logo_storage_path: path }).eq('id', emp.id);
+    if (updateErr) throw new Error('Falha ao salvar: ' + updateErr.message);
+
+    // 5. Atualizar empresa ativa em memória
+    if (window._empresaAtiva) window._empresaAtiva.logo_url = publicUrl;
+    if (window._empresaAtiva) window._empresaAtiva.logo_storage_path = path;
+    var idx = (window._empresasUsuario || []).findIndex(function (e) { return e.id === emp.id; });
+    if (idx >= 0) {
+      window._empresasUsuario[idx].logo_url = publicUrl;
+      window._empresasUsuario[idx].logo_storage_path = path;
+    }
+
+    document.getElementById('inputLogoEmpresa').value = '';
+    mostrarToast('Logo salvo com sucesso!', 'ok');
+    await _carregarLogoAtual();
+  } catch (e) {
+    mostrarToast('❌ ' + e.message, 'err');
+  } finally {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = '💾 Salvar Logo';
+  }
+}
+
+async function excluirLogo() {
+  var emp = window._empresaAtiva;
+  if (!emp || !emp.id) { mostrarToast('Nenhuma empresa ativa', 'err'); return; }
+
+  if (!confirm('Excluir o logo desta empresa? Esta ação não pode ser desfeita.')) return;
+
+  var btnExcluir = document.getElementById('btnExcluirLogo');
+  btnExcluir.disabled = true;
+  btnExcluir.textContent = 'Excluindo...';
+
+  try {
+    // Remover arquivo do storage
+    if (emp.logo_storage_path) {
+      await window.sb.storage.from('logos').remove([emp.logo_storage_path]);
+    }
+
+    // Limpar no banco
+    var { error } = await window.sb.from('empresas').update({ logo_url: null, logo_storage_path: null }).eq('id', emp.id);
+    if (error) throw new Error('Falha ao excluir: ' + error.message);
+
+    // Atualizar empresa ativa
+    if (window._empresaAtiva) { window._empresaAtiva.logo_url = null; window._empresaAtiva.logo_storage_path = null; }
+    var idx = (window._empresasUsuario || []).findIndex(function (e) { return e.id === emp.id; });
+    if (idx >= 0) { window._empresasUsuario[idx].logo_url = null; window._empresasUsuario[idx].logo_storage_path = null; }
+
+    mostrarToast('Logo excluído.', 'ok');
+    await _carregarLogoAtual();
+  } catch (e) {
+    mostrarToast('❌ ' + e.message, 'err');
+  } finally {
+    btnExcluir.disabled = false;
+    btnExcluir.textContent = '🗑️ Excluir';
+  }
+}
+
+// Inicializar aba ao abrir modal (padrão: Logo)
+var _abrirPermissõesOriginal = window.abrirPermissoes;
+window.abrirPermissoes = function() {
+  _abrirPermissõesOriginal.apply(this, arguments);
+  mudarAba('logo');
+};
 </script>
 
 <!-- ══ MODAIS GLOBAIS: NOVO CONTATO / NOVO CLIENTE ══ -->

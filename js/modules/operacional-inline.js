@@ -1213,6 +1213,7 @@
       + '#opShell .btn.bsm,#opDetalhe .btn.bsm{min-height:36px!important;padding:.4rem .62rem!important;font-size:.78rem!important;}'
       + '#opShell .btn.ba,#opDetalhe .btn.ba{background:#e87500!important;border-color:#e87500!important;color:#111827!important;}'
       + '#opShell .btn.bg,#opDetalhe .btn.bg{background:rgba(148,163,184,.14)!important;border-color:var(--border)!important;color:var(--text)!important;}'
+      + '#opObraPanel .btn.bg{background:#d5dce6!important;border-color:var(--border)!important;color:#000!important;font-weight:700!important}'
       + '#opShell .btn.bd,#opDetalhe .btn.bd{background:rgba(239,68,68,.12)!important;border-color:rgba(239,68,68,.42)!important;color:#ef4444!important;}'
       + '#opShell .btn.b-ok,#opDetalhe .btn.b-ok{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important;}'
       + '#opShell .btn.b-info,#opDetalhe .btn.b-info{background:rgba(88,166,255,.16)!important;border-color:rgba(88,166,255,.42)!important;color:var(--blue)!important;}'
@@ -1486,6 +1487,13 @@
       + '<div style="font-size:.82rem;color:#0f172a;font-weight:700;line-height:1.35;overflow-wrap:anywhere">' + esc(valor || '-') + '</div></div>';
   }
 
+  function cabecalhoCampoTabela(label, valor) {
+    return '<tr style="border-bottom:1px solid #e2e8f0">'
+      + '<td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:35%;border-right:1px solid #e2e8f0">' + esc(label) + '</td>'
+      + '<td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;line-height:1.35;overflow-wrap:anywhere">' + esc(valor || '-') + '</td>'
+      + '</tr>';
+  }
+
   function totaisApontamentosNegocio() {
     var out = { pendente: 0, aprovado: 0, geral: 0 };
     (state.apontamentosNegocio || []).forEach(function (a) {
@@ -1601,6 +1609,13 @@
     var documentoCarregando = state.gestaoDocumentoCarregando ? '<div class="no-print" style="border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem">Carregando documento salvo...</div>' : '';
     el.innerHTML = ajusteResponsivoHtml()
       + '<style id="opGestaoStyles">'
+      + ':root{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;--border2:#484f58;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--accent:#f0a500;--green:#3fb950;--blue:#58a6ff;--red:#f85149;--r:8px;--r2:6px}'
+      + 'body.light{--bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;--border:#d5dce6;--border2:#bfc9d7;--text:#111827;--text2:#4b5563;--text3:#6b7280;--accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626}'
+      + '.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.42rem .85rem;border:none;border-radius:var(--r2);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}'
+      + '.btn:active{transform:translateY(1px)}'
+      + '.bs{background:var(--green);color:#000}.bs:hover{background:#56d364}'
+      + '.ba{background:var(--accent);color:#000}.ba:hover{background:#f8c840}'
+      + '.bg{background:#555!important;color:#000!important;border:1px solid var(--border)!important;font-weight:700!important}.bg:hover{border-color:var(--border2)!important;background:#666!important;color:#000!important}'
       + '.op-doc-shell{background:#f1f5f9!important;color:#0f172a!important;}'
       + '.op-doc-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.12);}'
       + '.op-doc-section-title{font-size:.82rem;color:#0f172a;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .65rem;}'
@@ -1613,7 +1628,8 @@
       + '.op-signature-canvas{touch-action:none;user-select:none;-webkit-user-select:none;}'
       + '#opGestaoPrintRoot{display:none;}'
       + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important;justify-content:stretch!important}.op-doc-actions .btn{width:100%;font-size:.92rem!important}.op-doc-actions-top{display:none!important}.op-doc-action-status{margin-right:0;text-align:center}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
-      + '@page{size:A4;margin:12mm;}'
+      + '#opObraPanel .op-doc-actions-top{display:none!important;}'
+      + '@page{size:A4;margin:12mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font-size:8pt;color:#64748b;font-family:inherit;}}'
       + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important;}'
       + 'body.op-gestao-printing > *:not(#opGestaoPrintRoot){display:none!important;}'
       + '#opGestaoPrintRoot{display:block!important;background:#fff!important;color:#0f172a!important;width:100%!important;min-height:auto!important;overflow:visible!important;}'
@@ -1621,6 +1637,8 @@
       + '#opGestaoPrintRoot .no-print,#opGestaoPrintRoot .op-doc-actions,#opGestaoPrintRoot .op-report-control,#opGestaoPrintRoot .op-report-notice{display:none!important;visibility:hidden!important;}'
       + '.op-doc-print-section,.op-report-hours-section,.op-signatures-section,.op-signature-card{break-inside:avoid;page-break-inside:avoid;}'
       + '#opGestaoPrintRoot[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
+      + '#opObraPanel .no-print,#opObraPanel .op-doc-actions,#opObraPanel .op-report-control,#opObraPanel .op-report-notice{display:none!important;visibility:hidden!important;}'
+      + '#opObraPanel[data-report-mode="cliente"] .op-report-hours-section{display:none!important;visibility:hidden!important;}'
       + '.op-report-hours-section table{width:100%!important;min-width:0!important;font-size:8.5pt!important;}'
       + '.op-report-hours-section th,.op-report-hours-section td{padding:.28rem .32rem!important;}'
       + '#opGestaoDiario{min-height:92mm!important;height:auto!important;border:1px solid #94a3b8!important;border-radius:4px!important;resize:none!important;overflow:visible!important;background:#fff!important;}'
@@ -1643,29 +1661,23 @@
       + documentoErro
       + '<div class="op-doc-lock-notice no-print" style="border:1px solid ' + (bloqueado ? '#fde68a' : '#bfdbfe') + ';background:' + (bloqueado ? '#fffbeb' : '#eff6ff') + ';color:' + (bloqueado ? '#92400e' : '#1d4ed8') + ';border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:900;margin:0 0 1rem">' + esc(statusDoc) + '</div>'
       + acoesGestaoHtml(bloqueado, 'op-doc-actions-top')
+      + (window._empresaAtiva && window._empresaAtiva.logo_url ? '<section class="op-doc-print-section" style="text-align:center;margin-bottom:1rem"><img src="' + esc(window._empresaAtiva.logo_url) + '" style="max-height:70px;max-width:240px;object-fit:contain" alt="Logo da Empresa"></section>' : '')
       + '<section class="op-doc-print-section" style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.55rem">'
-      + cabecalhoCampo('Nome do Cliente', valorSnapshot(s, ['cli']) || o.cliente_nome)
-      + cabecalhoCampo('CNPJ Cliente', valorSnapshot(s, ['cnpj']) || o.cliente_cnpj)
-      + cabecalhoCampo('Cidade do Cliente', valorSnapshot(s, ['cid']) || o.cliente_cidade)
-      + cabecalhoCampo('Nome Contato 1', contato)
-      + cabecalhoCampo('Depto. Contato 1', valorSnapshot(s, ['dep']))
-      + cabecalhoCampo('E-mail Contato 1', valorSnapshot(s, ['mail']))
-      + cabecalhoCampo('Tel/Cel Contato 1', valorSnapshot(s, ['tel']))
-      + cabecalhoCampo('Cliente do Servico', valorSnapshot(s, ['loc']) || o.cliente_local || o.cliente_nome)
-      + cabecalhoCampo('CNPJ do Local', valorSnapshot(s, ['locCnpj']) || o.cliente_cnpj)
-      + cabecalhoCampo('Cidade do Servico', valorSnapshot(s, ['csvc']) || o.cliente_cidade)
-      + cabecalhoCampo('Area/Local', areaLocal)
-      + cabecalhoCampo('Status operacional', labelFaseNegocio(o.status_operacional))
-      + '</div></section>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Nome do Cliente</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['cli']) || o.cliente_nome || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">CNPJ Cliente</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['cnpj']) || o.cliente_cnpj || '-') + '</td></tr>'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Cidade do Cliente</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['cid']) || o.cliente_cidade || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Nome Contato 1</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(contato || '-') + '</td></tr>'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Depto. Contato 1</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['dep']) || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">E-mail Contato 1</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['mail']) || '-') + '</td></tr>'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Tel/Cel Contato 1</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['tel']) || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Cliente do Servico</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['loc']) || o.cliente_local || o.cliente_nome || '-') + '</td></tr>'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">CNPJ do Local</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['locCnpj']) || o.cliente_cnpj || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Cidade do Servico</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['csvc']) || o.cliente_cidade || '-') + '</td></tr>'
+      + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Area/Local</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(areaLocal || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Status operacional</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(labelFaseNegocio(o.status_operacional) || '-') + '</td></tr>'
+      + '</table></section>'
       + '<section class="op-doc-print-section" style="text-align:center;margin:1.2rem 0 1rem">'
-      + '<div style="font-size:.86rem;color:#334155;font-weight:900;letter-spacing:.08em;text-transform:uppercase">Proposta Tecnica e Comercial</div>'
-      + '<h1 class="op-doc-title" style="margin:.3rem 0 .18rem;font-size:1.65rem;line-height:1.12;color:#0f172a;text-transform:uppercase">' + esc(titulo) + '</h1>'
+      + '<h1 class="op-doc-title" style="margin:.3rem 0 .18rem;font-size:1.25rem;line-height:1.12;color:#0f172a;text-transform:uppercase">' + esc(titulo) + '</h1>'
       + '<div style="font-size:.92rem;color:#475569;font-weight:800">N&ordm; ' + esc(numero) + (cidade ? ' | ' + esc(cidade) : '') + (dataProp ? ', ' + esc(dataProp) : '') + '</div>'
       + '</section>'
       + '<section class="op-doc-print-section" style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:1rem 0;margin:1rem 0">'
-      + '<h2 style="margin:0;color:#0f172a;font-size:1.35rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
-      + '<div style="font-size:.82rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
+      + '<h2 style="margin:0;color:#0f172a;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
+      + '<div style="font-size:.75rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
       + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
       + '</section>'
@@ -2371,6 +2383,21 @@
     root.appendChild(clone);
     document.body.appendChild(root);
     document.body.classList.add('op-gestao-printing');
+    (function () {
+      try {
+        var paper = root.querySelector('.op-print-paper');
+        if (!paper) return;
+        var prevCss = root.style.cssText;
+        root.style.cssText = 'display:block!important;visibility:hidden!important;position:fixed!important;top:-9999px!important;left:0!important;z-index:-1!important;pointer-events:none!important;';
+        var contentH = paper.scrollHeight;
+        root.style.cssText = prevCss;
+        if (contentH <= 0) return;
+        var a4Px = Math.round(273 * 96 / 25.4);
+        if (contentH > a4Px) {
+          paper.style.zoom = (a4Px / contentH).toFixed(4);
+        }
+      } catch (e) { }
+    })();
     return root;
   }
 
