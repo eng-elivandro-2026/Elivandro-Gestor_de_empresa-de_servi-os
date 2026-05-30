@@ -1277,7 +1277,8 @@
           + 'Valor vendido: <strong style="color:var(--green)">' + money(o.valor_vendido) + '</strong><br>'
           + 'Documento de gestao com diario, horas, aceite e assinaturas.'
           + '</div>'
-          + '<div style="display:flex;justify-content:flex-end;margin-top:auto;min-width:0">'
+          + '<div style="display:flex;justify-content:flex-end;gap:.4rem;margin-top:auto;min-width:0;flex-wrap:wrap">'
+          + (o.proposta_app_id ? '<button class="btn bs" onclick="fmAbrirProposta(\'' + esc(o.proposta_app_id) + '\');event.stopPropagation()">📄 Ir para Proposta</button>' : '')
           + '<button class="btn ba" onclick="opAbrirObra(\'' + esc(o.id) + '\')">Abrir Gestao</button>'
           + '</div>'
           + '</div>';
