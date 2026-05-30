@@ -2281,6 +2281,15 @@
       atualizacao.assinatura_empresa = '';
       atualizacao.assinado_cliente_em = null;
       atualizacao.assinado_empresa_em = null;
+
+      // Limpar também o estado local das assinaturas
+      state.gestaoAssinaturas = {
+        cliente: { dataUrl: '', assinada: false },
+        empresa: { dataUrl: '', assinada: false }
+      };
+      document.getElementById('inputLogoEmpresa') && (document.getElementById('inputLogoEmpresa').value = '');
+      document.getElementById('opAssClienteNome') && (document.getElementById('opAssClienteNome').value = '');
+      document.getElementById('opAssEmpresaNome') && (document.getElementById('opAssEmpresaNome').value = '');
     }
 
     console.log('[Desbloquear] Payload:', atualizacao);
