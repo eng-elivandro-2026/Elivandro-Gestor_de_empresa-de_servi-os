@@ -2307,9 +2307,17 @@
 
       aplicarDocumentoGestao(reloadRes.data);
       state.gestaoDocumentoLoaded = true;
-      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
-      renderDetalhe();
+      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas! Recarregando...' : ''));
       console.log('[Desbloquear] Sucesso!');
+
+      // Recarregar a página para garantir sincronização visual
+      setTimeout(function() {
+        if (limparAssinaturas === true) {
+          window.location.reload();
+        } else {
+          renderDetalhe();
+        }
+      }, 500);
     } catch (e) {
       console.log('[Desbloquear] ERRO:', e);
       msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
