@@ -3123,6 +3123,18 @@
     }
     holder.setAttribute('data-op-prop-id', p.id);
     renderBotaoProposta(holder, p);
+
+    // Navegação entre obras (◀ Anterior | ▶ Próximo)
+    var navHolder = $('opNavHolder');
+    if (!navHolder) {
+      navHolder = document.createElement('span');
+      navHolder.id = 'opNavHolder';
+      navHolder.style.cssText = 'display:inline-flex;gap:.25rem;margin-right:.35rem';
+      actions.insertBefore(navHolder, actions.firstChild);
+    }
+    navHolder.innerHTML =
+      '<button class="btn bg bsm" onclick="opNavObra(-1)" title="Obra anterior">◀</button>'
+      + '<button class="btn bg bsm" onclick="opNavObra(+1)" title="Próxima obra">▶</button>';
   }
 
   function limparActionBar() {
@@ -3212,6 +3224,16 @@
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
   window.opGestaoSalvarRascunho = salvarRascunhoGestao;
   window.opGestaoFinalizar = finalizarGestao;
+
+  // Navegação entre obras (◀ Anterior | ▶ Próximo)
+  window.opNavObra = function(dir) {
+    if (!state.obraAtual) return;
+    var lista = obrasFiltradas();
+    var idx = lista.findIndex(function(o) { return o.id === state.obraAtual.id; });
+    if (idx < 0) return;
+    var next = lista[idx + dir];
+    if (next) abrirObra(next.id);
+  };
 
   window.addEventListener('afterprint', removerDocumentoImpressaoGestao);
   document.addEventListener('click', onFase1cClick, true);

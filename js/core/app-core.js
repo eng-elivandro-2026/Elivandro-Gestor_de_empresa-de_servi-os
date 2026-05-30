@@ -12497,6 +12497,10 @@ function fmAbrirProposta(id){
   go('proposta-detalhe', null);
 
   window.scrollTo({top:0, behavior:'smooth'});
+
+  if (typeof window._atualizarNavProposta === 'function') {
+    setTimeout(window._atualizarNavProposta, 50);
+  }
 }
 
 
