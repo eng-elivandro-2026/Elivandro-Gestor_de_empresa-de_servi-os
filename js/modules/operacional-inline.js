@@ -2317,16 +2317,17 @@
       if (reloadRes.error) throw reloadRes.error;
       console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
 
-      // Fechar o detalhe e reabrir para forçar reload completo
-      console.log('[Desbloquear] Fechando e reabrindo detalhe...');
-      state.gestaoDocumento = null;
-      state.gestaoDocumentoLoaded = false;
-      renderDetalhe(); // Renderizar vazio
+      // Atualizar o documento em memória com os dados limpados
+      console.log('[Desbloquear] Atualizando estado local...');
+      Object.assign(state.gestaoDocumento, atualizacao);
 
-      setTimeout(function() {
-        msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
-        console.log('[Desbloquear] Sucesso total!');
-      }, 200);
+      // Limpar também os inputs de nome
+      document.getElementById('opAssClienteNome') && (document.getElementById('opAssClienteNome').value = '');
+      document.getElementById('opAssEmpresaNome') && (document.getElementById('opAssEmpresaNome').value = '');
+
+      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
+      console.log('[Desbloquear] Sucesso total!');
+      renderDetalhe();
     } catch (e) {
       console.log('[Desbloquear] ERRO:', e);
       msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
