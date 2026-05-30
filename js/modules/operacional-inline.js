@@ -1587,10 +1587,6 @@
     var ehAdminDono = ['dono', 'admin'].includes(perfil);
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
-      if (ehAdminDono) {
-        html += '<button type="button" class="btn ba" onclick="opGestaoDesbloquear(false)" style="margin-left:.55rem">🔓 Desbloquear</button>'
-          + '<button type="button" class="btn ba" onclick="opGestaoDesbloquear(true)" style="margin-left:.25rem">🔄 Desbloquear e Limpar (Teste)</button>';
-      }
     } else {
       html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
         + '<button type="button" class="btn bs op-primary-action" onclick="opGestaoFinalizar()">Finalizar e Assinar Relatorio</button>';
@@ -2262,116 +2258,6 @@
       msg('Rascunho da Gestao do Negocio salvo.');
     } catch (e) {
       msg(e.message || 'Nao foi possivel salvar o rascunho.', 'err');
-    }
-  }
-
-  async function desbloquearGestao(limparAssinaturas) {
-    console.log('[Desbloquear] Iniciando... limparAssinaturas=' + limparAssinaturas);
-    var atual = state.gestaoDocumento || {};
-    if (!atual.id) { msg('Nenhum documento para desbloquear.', 'err'); return; }
-    if (!gestaoDocumentoBloqueado()) { msg('Relatorio ja esta em edicao.', 'err'); return; }
-
-    var atualizacao = { bloqueado: false, status_documento: 'rascunho', atualizado_em: new Date().toISOString() };
-
-    if (limparAssinaturas === true) {
-      console.log('[Desbloquear] LIMPANDO assinaturas...');
-      atualizacao.responsavel_cliente_nome = '';
-      atualizacao.responsavel_empresa_nome = '';
-      atualizacao.assinatura_cliente = '';
-      atualizacao.assinatura_empresa = '';
-      atualizacao.assinado_cliente_em = null;
-      atualizacao.assinado_empresa_em = null;
-
-      // Limpar também o estado local das assinaturas
-      state.gestaoAssinaturas = {
-        cliente: { dataUrl: '', assinada: false },
-        empresa: { dataUrl: '', assinada: false }
-      };
-      document.getElementById('inputLogoEmpresa') && (document.getElementById('inputLogoEmpresa').value = '');
-      document.getElementById('opAssClienteNome') && (document.getElementById('opAssClienteNome').value = '');
-      document.getElementById('opAssEmpresaNome') && (document.getElementById('opAssEmpresaNome').value = '');
-    }
-
-    console.log('[Desbloquear] Payload:', atualizacao);
-
-    try {
-      console.log('[Desbloquear] Atualizando banco...', atualizacao);
-      var res = await window.sbClient
-        .from('gestao_negocio')
-        .update(atualizacao)
-        .eq('id', atual.id)
-        .eq('empresa_id', atual.empresa_id);
-      if (res.error) {
-        console.log('[Desbloquear] ERRO no update:', res.error);
-        throw res.error;
-      }
-      console.log('[Desbloquear] Update OK, resposta:', res);
-
-      console.log('[Desbloquear] Recarregando do banco...');
-      var reloadRes = await window.sbClient
-        .from('gestao_negocio')
-        .select('*')
-        .eq('id', atual.id)
-        .eq('empresa_id', atual.empresa_id)
-        .single();
-      if (reloadRes.error) throw reloadRes.error;
-      console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
-      console.log('[Desbloquear] assinatura_cliente no banco:', reloadRes.data.assinatura_cliente);
-
-      // Se ainda houver assinatura no banco, fazer UPDATE com NULL explícito
-      if (reloadRes.data.assinatura_cliente && limparAssinaturas === true) {
-        console.log('[Desbloquear] AVISO: Assinatura ainda existe! Forçando DELETE...');
-        var res2 = await window.sbClient
-          .from('gestao_negocio')
-          .update({
-            assinatura_cliente: null,
-            assinatura_empresa: null,
-            responsavel_cliente_nome: null,
-            responsavel_empresa_nome: null,
-            assinado_cliente_em: null,
-            assinado_empresa_em: null
-          })
-          .eq('id', atual.id)
-          .eq('empresa_id', atual.empresa_id);
-        if (res2.error) throw res2.error;
-        console.log('[Desbloquear] UPDATE FORÇADO com NULL executado');
-      }
-
-      // RESET COMPLETO: limpar tudo em memória
-      console.log('[Desbloquear] RESET TOTAL DO ESTADO...');
-
-      // Limpar documento
-      state.gestaoDocumento = null;
-      state.gestaoDocumentoLoaded = false;
-      state.gestaoDocumentoCarregando = false;
-
-      // Limpar assinaturas
-      state.gestaoAssinaturas = {
-        cliente: { dataUrl: '', assinada: false },
-        empresa: { dataUrl: '', assinada: false }
-      };
-
-      // Limpar inputs
-      if (document.getElementById('opAssClienteNome')) document.getElementById('opAssClienteNome').value = '';
-      if (document.getElementById('opAssEmpresaNome')) document.getElementById('opAssEmpresaNome').value = '';
-
-      // Limpar canvases
-      var canvas1 = document.getElementById('opAssCanvas_cliente');
-      var canvas2 = document.getElementById('opAssCanvas_empresa');
-      if (canvas1) {
-        var ctx1 = canvas1.getContext('2d');
-        ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
-      }
-      if (canvas2) {
-        var ctx2 = canvas2.getContext('2d');
-        ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
-      }
-
-      msg('✅ Relatorio completamente limpo! Feche e abra novamente.');
-      console.log('[Desbloquear] Sucesso total!');
-    } catch (e) {
-      console.log('[Desbloquear] ERRO:', e);
-      msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
     }
   }
 
@@ -3282,7 +3168,6 @@
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
   window.opGestaoSalvarRascunho = salvarRascunhoGestao;
   window.opGestaoFinalizar = finalizarGestao;
-  window.opGestaoDesbloquear = desbloquearGestao;
 
   window.addEventListener('afterprint', removerDocumentoImpressaoGestao);
   document.addEventListener('click', onFase1cClick, true);
