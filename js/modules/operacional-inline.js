@@ -2305,19 +2305,15 @@
       if (reloadRes.error) throw reloadRes.error;
       console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
 
-      aplicarDocumentoGestao(reloadRes.data);
+      // Garantir que tudo foi atualizado
+      Object.assign(state.gestaoDocumento, reloadRes.data);
       state.gestaoDocumentoLoaded = true;
-      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas! Recarregando...' : ''));
+
+      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
       console.log('[Desbloquear] Sucesso!');
 
-      // Recarregar a página para garantir sincronização visual
-      setTimeout(function() {
-        if (limparAssinaturas === true) {
-          window.location.reload();
-        } else {
-          renderDetalhe();
-        }
-      }, 500);
+      // Re-renderizar para atualizar a exibição
+      renderDetalhe();
     } catch (e) {
       console.log('[Desbloquear] ERRO:', e);
       msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
