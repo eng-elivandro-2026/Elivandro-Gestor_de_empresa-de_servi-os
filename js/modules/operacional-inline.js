@@ -2305,15 +2305,33 @@
       if (reloadRes.error) throw reloadRes.error;
       console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
 
-      // Garantir que tudo foi atualizado
-      Object.assign(state.gestaoDocumento, reloadRes.data);
-      state.gestaoDocumentoLoaded = true;
+      // Limpar e recarregar o documento completamente
+      state.gestaoDocumento = null;
+      state.gestaoDocumentoLoaded = false;
 
-      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
-      console.log('[Desbloquear] Sucesso!');
+      setTimeout(async function() {
+        try {
+          // Recarregar do banco
+          var empresaId = getEmpresaId();
+          var negocio = state.obraAtual || {};
+          var reload2 = await window.sbClient
+            .from('gestao_negocio')
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .eq('proposta_id', negocio.proposta_app_id)
+            .eq('arquivado', false)
+            .maybeSingle();
+          if (reload2.error) throw reload2.error;
 
-      // Re-renderizar para atualizar a exibição
-      renderDetalhe();
+          aplicarDocumentoGestao(reload2.data || null);
+          state.gestaoDocumentoLoaded = true;
+          msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
+          console.log('[Desbloquear] Sucesso total!');
+          renderDetalhe();
+        } catch (e2) {
+          console.log('[Desbloquear] Erro no reload2:', e2);
+        }
+      }, 100);
     } catch (e) {
       console.log('[Desbloquear] ERRO:', e);
       msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
