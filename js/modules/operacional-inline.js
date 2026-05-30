@@ -2272,13 +2272,14 @@
     try {
       var res = await window.sbClient
         .from('gestao_negocio')
-        .update({ bloqueado: false, status_documento: 'rascunho' })
+        .update({ bloqueado: false, status_documento: 'rascunho', atualizado_em: new Date().toISOString() })
         .eq('id', atual.id)
-        .eq('empresa_id', atual.empresa_id)
-        .select('*')
-        .single();
+        .eq('empresa_id', atual.empresa_id);
       if (res.error) throw res.error;
-      aplicarDocumentoGestao(res.data || atual);
+      // Atualizar documento local
+      atual.bloqueado = false;
+      atual.status_documento = 'rascunho';
+      aplicarDocumentoGestao(atual);
       msg('Relatorio desbloqueado para edicao.');
       renderDetalhe();
     } catch (e) {
