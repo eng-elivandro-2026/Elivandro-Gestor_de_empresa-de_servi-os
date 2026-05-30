@@ -3080,6 +3080,11 @@ async function salvarApontamento() {
   var percPerig = perig ? (colab.perc_periculosidade || 30) : null;
   var basePerig = perig ? (colab.periculosidade_base || 'normal') : null;
 
+  if (vh === 0 && colab) {
+    mostrarToast('Atenção: ' + (colab.nome || 'Colaborador') + ' sem valor/hora cadastrado. Salvando com valor zero.', 'warning');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
   var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
 
   var row = Object.assign({

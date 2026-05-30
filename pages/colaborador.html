@@ -508,6 +508,9 @@ body{
     </div>
   </div>
   <div class="content">
+    <div id="avisoSemValorHora" style="display:none;background:#fef9c3;border-left:4px solid #eab308;color:#713f12;padding:.75rem 1rem;margin:0 0 1rem;border-radius:6px;font-size:.85rem;font-weight:600">
+      ⚠️ Nenhum valor/hora cadastrado para você nesta empresa. O apontamento será salvo sem valor calculado. Avise o gestor/RH.
+    </div>
     <div class="card">
       <div class="card-tit">📅 Dados do Apontamento</div>
 
@@ -1248,6 +1251,9 @@ function prepararNovoApt() {
   aplicarJornadaN();
   document.getElementById('nDesc').value = '';
   document.getElementById('calcBox').classList.remove('on');
+
+  var avisoEl = document.getElementById('avisoSemValorHora');
+  if (avisoEl) avisoEl.style.display = valorHoraAtual() === 0 ? 'block' : 'none';
 }
 
 function detectarTipoDia() {
@@ -1323,6 +1329,12 @@ async function salvarNovoApt() {
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
 
   var vh = valorHoraAtual();
+
+  if (vh === 0) {
+    mostrarToast('Atenção: apontamento sem valor/hora. Avise o gestor.', 'warning');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
   var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
 
   var row = Object.assign({
