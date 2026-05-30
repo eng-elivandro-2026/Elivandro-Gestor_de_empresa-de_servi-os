@@ -8072,6 +8072,10 @@ function bindAutoInput(input, kind){
   input.setAttribute('autocomplete','off');
   function openNow(){
     var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' || kind==='contact2' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
+    // Se é contact2, atualizar kind dos items para contact2
+    if(kind==='contact2' && items){
+      items.forEach(function(it){ it.kind='contact2'; });
+    }
     renderAutoItems(input, items, kind);
   }
   input.addEventListener('focus', openNow);
