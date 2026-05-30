@@ -1528,7 +1528,6 @@
       + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Horas</th>'
       + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Status</th>'
       + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Descricao</th>'
-      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Boletim</th>'
       + '</tr></thead><tbody>'
       + lista.map(function (a) {
         var nome = a.colaboradores && a.colaboradores.nome ? a.colaboradores.nome : (a.criado_por_nome || '-');
@@ -1539,7 +1538,6 @@
           + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center;font-weight:800">' + Number(a.horas_total || 0).toFixed(1) + 'h</td>'
           + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center">' + esc(a.status || '-') + '</td>'
           + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;min-width:220px">' + esc(a.descricao || '-') + '</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7">' + esc(a.boletim_numero || (a.boletim_id ? 'Vinculado' : '-')) + '</td>'
           + '</tr>';
       }).join('')
       + '</tbody></table></div>'
