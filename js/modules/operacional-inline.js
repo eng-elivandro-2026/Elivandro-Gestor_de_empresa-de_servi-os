@@ -2292,9 +2292,18 @@
         .eq('id', atual.id)
         .eq('empresa_id', atual.empresa_id);
       if (res.error) throw res.error;
-      // Atualizar documento local
-      Object.assign(atual, atualizacao);
-      aplicarDocumentoGestao(atual);
+
+      // Recarregar do banco para garantir sincronização
+      var reloadRes = await window.sbClient
+        .from('gestao_negocio')
+        .select('*')
+        .eq('id', atual.id)
+        .eq('empresa_id', atual.empresa_id)
+        .single();
+      if (reloadRes.error) throw reloadRes.error;
+
+      aplicarDocumentoGestao(reloadRes.data);
+      state.gestaoDocumentoLoaded = true;
       msg('Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas para novo teste.' : ''));
       renderDetalhe();
     } catch (e) {
