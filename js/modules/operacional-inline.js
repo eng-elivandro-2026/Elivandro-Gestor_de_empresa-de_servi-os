@@ -2316,6 +2316,26 @@
         .single();
       if (reloadRes.error) throw reloadRes.error;
       console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
+      console.log('[Desbloquear] assinatura_cliente no banco:', reloadRes.data.assinatura_cliente);
+
+      // Se ainda houver assinatura no banco, fazer UPDATE com NULL explícito
+      if (reloadRes.data.assinatura_cliente && limparAssinaturas === true) {
+        console.log('[Desbloquear] AVISO: Assinatura ainda existe! Forçando DELETE...');
+        var res2 = await window.sbClient
+          .from('gestao_negocio')
+          .update({
+            assinatura_cliente: null,
+            assinatura_empresa: null,
+            responsavel_cliente_nome: null,
+            responsavel_empresa_nome: null,
+            assinado_cliente_em: null,
+            assinado_empresa_em: null
+          })
+          .eq('id', atual.id)
+          .eq('empresa_id', atual.empresa_id);
+        if (res2.error) throw res2.error;
+        console.log('[Desbloquear] UPDATE FORÇADO com NULL executado');
+      }
 
       // RESET COMPLETO: limpar tudo em memória
       console.log('[Desbloquear] RESET TOTAL DO ESTADO...');
