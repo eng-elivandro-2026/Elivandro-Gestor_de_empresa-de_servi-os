@@ -1583,8 +1583,12 @@
   function acoesGestaoHtml(bloqueado, extraClasse) {
     var cls = 'op-doc-actions no-print' + (extraClasse ? ' ' + extraClasse : '');
     var html = '<div class="' + cls + '">';
+    var ehAdminDono = window._usuarioAtivo && ['dono', 'admin'].includes(window._usuarioAtivo.perfil);
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
+      if (ehAdminDono) {
+        html += '<button type="button" class="btn ba" onclick="opGestaoDesbloquear()" style="margin-left:.55rem">🔓 Desbloquear para Edicao</button>';
+      }
     } else {
       html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
         + '<button type="button" class="btn bs op-primary-action" onclick="opGestaoFinalizar()">Finalizar e Assinar Relatorio</button>';
@@ -2256,6 +2260,28 @@
       msg('Rascunho da Gestao do Negocio salvo.');
     } catch (e) {
       msg(e.message || 'Nao foi possivel salvar o rascunho.', 'err');
+    }
+  }
+
+  async function desbloquearGestao() {
+    var atual = state.gestaoDocumento || {};
+    if (!atual.id) { msg('Nenhum documento para desbloquear.', 'err'); return; }
+    if (!gestaoDocumentoBloqueado()) { msg('Relatorio ja esta em edicao.', 'err'); return; }
+    if (!confirm('Desbloquear o relatorio? Sera possivel editar e modificar as assinaturas.')) return;
+    try {
+      var res = await window.sbClient
+        .from('gestao_negocio')
+        .update({ bloqueado: false, status_documento: 'rascunho' })
+        .eq('id', atual.id)
+        .eq('empresa_id', atual.empresa_id)
+        .select('*')
+        .single();
+      if (res.error) throw res.error;
+      aplicarDocumentoGestao(res.data || atual);
+      msg('Relatorio desbloqueado para edicao.');
+      renderDetalhe();
+    } catch (e) {
+      msg('Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
     }
   }
 
@@ -3166,6 +3192,7 @@
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
   window.opGestaoSalvarRascunho = salvarRascunhoGestao;
   window.opGestaoFinalizar = finalizarGestao;
+  window.opGestaoDesbloquear = desbloquearGestao;
 
   window.addEventListener('afterprint', removerDocumentoImpressaoGestao);
   document.addEventListener('click', onFase1cClick, true);
