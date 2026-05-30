@@ -1556,10 +1556,14 @@
     if (!Array.isArray(escopos) || escopos.length === 0) {
       return '<div style="color:#6b7280;font-size:.88rem;font-style:italic">Nenhum escopo registrado.</div>';
     }
+    // Campos que não devem aparecer em relatório
+    var camposOcultos = ['VALOR', 'Impostos', 'Condições de Pagamento', 'Condição de Fornecimento'];
     var html = '<div style="display:flex;flex-direction:column;gap:1rem">';
     escopos.forEach(function(sec, idx) {
       if (!sec) return;
       var titulo = sec.titulo || 'Seção ' + (idx + 1);
+      // Pular seções que devem ser ocultadas
+      if (camposOcultos.indexOf(titulo) !== -1) return;
       var desc = sec.desc || '';
       var subs = sec.subs || [];
       html += '<div style="border:1px solid #e2e8f0;border-radius:6px;padding:.75rem">'
