@@ -2317,17 +2317,38 @@
       if (reloadRes.error) throw reloadRes.error;
       console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
 
-      // Atualizar o documento em memória com os dados limpados
-      console.log('[Desbloquear] Atualizando estado local...');
-      Object.assign(state.gestaoDocumento, atualizacao);
+      // RESET COMPLETO: limpar tudo em memória
+      console.log('[Desbloquear] RESET TOTAL DO ESTADO...');
 
-      // Limpar também os inputs de nome
-      document.getElementById('opAssClienteNome') && (document.getElementById('opAssClienteNome').value = '');
-      document.getElementById('opAssEmpresaNome') && (document.getElementById('opAssEmpresaNome').value = '');
+      // Limpar documento
+      state.gestaoDocumento = null;
+      state.gestaoDocumentoLoaded = false;
+      state.gestaoDocumentoCarregando = false;
 
-      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
+      // Limpar assinaturas
+      state.gestaoAssinaturas = {
+        cliente: { dataUrl: '', assinada: false },
+        empresa: { dataUrl: '', assinada: false }
+      };
+
+      // Limpar inputs
+      if (document.getElementById('opAssClienteNome')) document.getElementById('opAssClienteNome').value = '';
+      if (document.getElementById('opAssEmpresaNome')) document.getElementById('opAssEmpresaNome').value = '';
+
+      // Limpar canvases
+      var canvas1 = document.getElementById('opAssCanvas_cliente');
+      var canvas2 = document.getElementById('opAssCanvas_empresa');
+      if (canvas1) {
+        var ctx1 = canvas1.getContext('2d');
+        ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+      }
+      if (canvas2) {
+        var ctx2 = canvas2.getContext('2d');
+        ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+      }
+
+      msg('✅ Relatorio completamente limpo! Feche e abra novamente.');
       console.log('[Desbloquear] Sucesso total!');
-      renderDetalhe();
     } catch (e) {
       console.log('[Desbloquear] ERRO:', e);
       msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
