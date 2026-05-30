@@ -1689,6 +1689,12 @@
       + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
       + '</section>'
+      + '<section class="op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">🟢 Ciclo de Execução</h3>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.85rem">'
+      + '<div class="f"><label>Data de Início de Execução</label><input type="date" id="opGestaoExecInicio"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
+      + '<div class="f"><label>Data de Término do Trabalho</label><input type="date" id="opGestaoExecTermino"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
+      + '<div class="f"><label>Data de Aceite / Entrega ao Cliente</label><input type="date" id="opGestaoExecAceite"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
+      + '</div></section>'
       + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
       + '</section>'
@@ -1708,6 +1714,11 @@
     setTimeout(function () {
       ajustarTextareas(el);
       inicializarAssinaturasGestao(el);
+      // Preencher campos de Ciclo de Execução
+      var doc = state.gestaoDocumento || {};
+      if (Q('opGestaoExecInicio')) Q('opGestaoExecInicio').value = doc.data_exec_inicio || '';
+      if (Q('opGestaoExecTermino')) Q('opGestaoExecTermino').value = doc.data_exec_termino || '';
+      if (Q('opGestaoExecAceite')) Q('opGestaoExecAceite').value = doc.data_exec_aceite || '';
     }, 30);
   }
 
@@ -2195,6 +2206,9 @@
       empresa_id: empresaId,
       proposta_id: negocio.proposta_app_id,
       diario_texto: (($('opGestaoDiario') || {}).value || '').trim(),
+      data_exec_inicio: (($('opGestaoExecInicio') || {}).value || '').trim() || null,
+      data_exec_termino: (($('opGestaoExecTermino') || {}).value || '').trim() || null,
+      data_exec_aceite: (($('opGestaoExecAceite') || {}).value || '').trim() || null,
       entregas_texto: '',
       aceite_texto: '',
       responsavel_cliente_nome: (($('opAssClienteNome') || {}).value || '').trim(),
