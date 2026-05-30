@@ -8074,7 +8074,9 @@ function bindAutoInput(input, kind){
     var items = kind==='company' ? getCompanySuggestions(input.value) : kind==='loc_company' ? getLocCompanySuggestions(input.value) : (kind==='contact' || kind==='contact2' ? getContactSuggestions(input.value) : getItemDescSuggestions(input.value));
     // Se é contact2, atualizar kind dos items para contact2
     if(kind==='contact2' && items){
+      console.log('🔧 Atualizando kind para contact2. Items:', items.length);
       items.forEach(function(it){ it.kind='contact2'; });
+      console.log('✅ Kind atualizado. Item[0].kind=', items[0] ? items[0].kind : 'sem items');
     }
     renderAutoItems(input, items, kind);
   }
