@@ -1779,6 +1779,14 @@
     estado.dataUrl = canvas.toDataURL('image/png');
     estado.assinada = true;
     atualizarHintAssinatura(canvas, true);
+    // Quando cliente assina, preencher data de aceite com data atual
+    if (key === 'cliente') {
+      var hoje = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
+      var campoAceite = Q('opGestaoExecAceite');
+      if (campoAceite && !campoAceite.value) {
+        campoAceite.value = hoje;
+      }
+    }
   }
 
   function inicializarAssinaturasGestao(root) {
