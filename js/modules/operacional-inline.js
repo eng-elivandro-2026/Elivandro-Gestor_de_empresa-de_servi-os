@@ -2266,6 +2266,7 @@
   }
 
   async function desbloquearGestao(limparAssinaturas) {
+    console.log('[Desbloquear] Iniciando... limparAssinaturas=' + limparAssinaturas);
     var atual = state.gestaoDocumento || {};
     if (!atual.id) { msg('Nenhum documento para desbloquear.', 'err'); return; }
     if (!gestaoDocumentoBloqueado()) { msg('Relatorio ja esta em edicao.', 'err'); return; }
@@ -2273,7 +2274,7 @@
     var atualizacao = { bloqueado: false, status_documento: 'rascunho', atualizado_em: new Date().toISOString() };
 
     if (limparAssinaturas === true) {
-      // Limpar assinaturas
+      console.log('[Desbloquear] LIMPANDO assinaturas...');
       atualizacao.responsavel_cliente_nome = '';
       atualizacao.responsavel_empresa_nome = '';
       atualizacao.assinatura_cliente = '';
@@ -2282,15 +2283,19 @@
       atualizacao.assinado_empresa_em = null;
     }
 
+    console.log('[Desbloquear] Payload:', atualizacao);
+
     try {
+      console.log('[Desbloquear] Atualizando banco...');
       var res = await window.sbClient
         .from('gestao_negocio')
         .update(atualizacao)
         .eq('id', atual.id)
         .eq('empresa_id', atual.empresa_id);
       if (res.error) throw res.error;
+      console.log('[Desbloquear] Update OK');
 
-      // Recarregar do banco para garantir sincronização
+      console.log('[Desbloquear] Recarregando do banco...');
       var reloadRes = await window.sbClient
         .from('gestao_negocio')
         .select('*')
@@ -2298,13 +2303,16 @@
         .eq('empresa_id', atual.empresa_id)
         .single();
       if (reloadRes.error) throw reloadRes.error;
+      console.log('[Desbloquear] Reload OK, dados:', reloadRes.data);
 
       aplicarDocumentoGestao(reloadRes.data);
       state.gestaoDocumentoLoaded = true;
-      msg('Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas para novo teste.' : ''));
+      msg('✅ Relatorio desbloqueado para edicao.' + (atualizacao.assinatura_cliente === '' ? ' Assinaturas limpas!' : ''));
       renderDetalhe();
+      console.log('[Desbloquear] Sucesso!');
     } catch (e) {
-      msg('Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
+      console.log('[Desbloquear] ERRO:', e);
+      msg('❌ Erro ao desbloquear: ' + (e.message || 'Falha desconhecida'), 'err');
     }
   }
 
