@@ -2295,14 +2295,17 @@
     console.log('[Desbloquear] Payload:', atualizacao);
 
     try {
-      console.log('[Desbloquear] Atualizando banco...');
+      console.log('[Desbloquear] Atualizando banco...', atualizacao);
       var res = await window.sbClient
         .from('gestao_negocio')
         .update(atualizacao)
         .eq('id', atual.id)
         .eq('empresa_id', atual.empresa_id);
-      if (res.error) throw res.error;
-      console.log('[Desbloquear] Update OK');
+      if (res.error) {
+        console.log('[Desbloquear] ERRO no update:', res.error);
+        throw res.error;
+      }
+      console.log('[Desbloquear] Update OK, resposta:', res);
 
       console.log('[Desbloquear] Recarregando do banco...');
       var reloadRes = await window.sbClient
