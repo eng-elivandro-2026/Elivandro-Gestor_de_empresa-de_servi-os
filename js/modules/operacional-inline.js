@@ -1583,7 +1583,8 @@
   function acoesGestaoHtml(bloqueado, extraClasse) {
     var cls = 'op-doc-actions no-print' + (extraClasse ? ' ' + extraClasse : '');
     var html = '<div class="' + cls + '">';
-    var ehAdminDono = window._usuarioAtivo && ['dono', 'admin'].includes(window._usuarioAtivo.perfil);
+    var perfil = typeof window.getPerfilUsuario === 'function' ? window.getPerfilUsuario() : '';
+    var ehAdminDono = ['dono', 'admin'].includes(perfil);
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
       if (ehAdminDono) {
