@@ -2150,6 +2150,7 @@
         .select('*')
         .eq('empresa_id', empresaId)
         .eq('proposta_id', negocio.proposta_app_id)
+        .eq('arquivado', false)
         .maybeSingle();
       if (res.error) throw res.error;
       if (!state.obraAtual || state.obraAtual.proposta_app_id !== negocio.proposta_app_id || getEmpresaId() !== empresaId) return;
@@ -2157,7 +2158,7 @@
       state.gestaoDocumentoLoaded = true;
     } catch (e) {
       state.gestaoDocumentoErro = e.code === '42P01'
-        ? 'Tabela gestao_negocio ainda nao aplicada. A migration 030 precisa ser autorizada antes de salvar.'
+        ? 'Tabela gestao_negocio ainda nao aplicada. As migrations 030 e 031 precisam ser autorizadas antes de salvar.'
         : (e.message || String(e));
     } finally {
       state.gestaoDocumentoCarregando = false;
@@ -2206,11 +2207,25 @@
     var row = montarPayloadGestao(assinar);
     if (!row.empresa_id || !row.proposta_id) throw new Error('Empresa ou proposta nao encontrada.');
     if (assinar) validarGestaoParaFinalizar(row);
-    var res = await window.sbClient
-      .from('gestao_negocio')
-      .upsert(row, { onConflict: 'empresa_id,proposta_id' })
-      .select('*')
-      .single();
+    var res;
+    if (atual.id) {
+      // Atualiza o documento ativo existente pelo ID — garante que so toca o registro ativo
+      res = await window.sbClient
+        .from('gestao_negocio')
+        .update(row)
+        .eq('id', atual.id)
+        .eq('empresa_id', row.empresa_id)
+        .eq('arquivado', false)
+        .select('*')
+        .single();
+    } else {
+      // Insere novo documento ativo — arquivado = false por DEFAULT na coluna
+      res = await window.sbClient
+        .from('gestao_negocio')
+        .insert(row)
+        .select('*')
+        .single();
+    }
     if (res.error) throw res.error;
     aplicarDocumentoGestao(res.data || Object.assign({}, atual, row));
     state.gestaoDocumentoLoaded = true;
