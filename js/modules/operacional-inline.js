@@ -2269,19 +2269,22 @@
     if (!atual.id) { msg('Nenhum documento para desbloquear.', 'err'); return; }
     if (!gestaoDocumentoBloqueado()) { msg('Relatorio ja esta em edicao.', 'err'); return; }
 
-    var limparAssin = confirm('Desbloquear o relatorio?\n\nClique OK para desbloquear\nClique Cancelar para desbloquear E limpar assinaturas/datas (modo teste)');
+    // Dialog simples
+    var resposta = window.prompt('Desbloquear relatório?\n\nDigite: S = desbloquear\nDigite: SC = desbloquear e limpar assinaturas (teste)');
+    if (!resposta) return; // Cancelou
+
     var atualizacao = { bloqueado: false, status_documento: 'rascunho', atualizado_em: new Date().toISOString() };
 
-    if (limparAssin === false) {
-      // Cancelou = quer limpar assinaturas
+    if (resposta.toUpperCase() === 'SC') {
+      // Limpar assinaturas
       atualizacao.responsavel_cliente_nome = '';
       atualizacao.responsavel_empresa_nome = '';
       atualizacao.assinatura_cliente = '';
       atualizacao.assinatura_empresa = '';
       atualizacao.assinado_cliente_em = null;
       atualizacao.assinado_empresa_em = null;
-    } else if (limparAssin !== true) {
-      // Clicou X ou ESC = cancelar operacao
+    } else if (resposta.toUpperCase() !== 'S') {
+      msg('Operacao cancelada.', 'err');
       return;
     }
 
