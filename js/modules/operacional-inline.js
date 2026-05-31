@@ -2625,8 +2625,8 @@
     document.addEventListener('mousemove', function(e) {
       if (!_draggingBreak) return;
       var deltaY = e.clientY - _draggingBreak.startY;
-      var minY = _draggingBreak.breakIndex * _draggingBreak.pageHeight - 100;
-      var maxY = _draggingBreak.breakIndex * _draggingBreak.pageHeight + 100;
+      var minY = (_draggingBreak.breakIndex - 1) * _draggingBreak.pageHeight;
+      var maxY = (_draggingBreak.breakIndex + 1) * _draggingBreak.pageHeight;
       var newTop = Math.max(minY, Math.min(maxY, _draggingBreak.startTop + deltaY));
       _draggingBreak.element.style.top = newTop + 'px';
       atualizarPreviewGestao(200);
