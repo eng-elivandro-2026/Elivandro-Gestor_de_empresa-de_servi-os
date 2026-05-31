@@ -2133,6 +2133,12 @@ function _normalizarTextoNF(texto) {
   return t;
 }
 
+// Formata valor em reais brasileiros
+function _formatarReais(valor) {
+  var num = parseFloat(valor) || 0;
+  return 'R$ ' + num.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
 function _nfArquivoSelecionado(file) {
   if (!file) return;
   if (file.name.endsWith('.xml')) {
@@ -2146,8 +2152,11 @@ function _nfArquivoSelecionado(file) {
                   xmlDoc.getElementsByTagName('Numero')[0]?.textContent || '';
         var dhEmi = xmlDoc.getElementsByTagName('dhEmi')[0]?.textContent?.substring(0,10) ||
                     xmlDoc.getElementsByTagName('DataEmissao')[0]?.textContent?.substring(0,10) || '';
-        var vNF = parseFloat(xmlDoc.getElementsByTagName('vNF')[0]?.textContent ||
-                             xmlDoc.getElementsByTagName('ValorLiquidoNfse')[0]?.textContent || 0) / 100;
+
+        // NFS-e vem em reais, NF-e em centavos
+        var vNFse = parseFloat(xmlDoc.getElementsByTagName('ValorLiquidoNfse')[0]?.textContent || 0);
+        var vNFe = parseFloat(xmlDoc.getElementsByTagName('vNF')[0]?.textContent || 0) / 100;
+        var vNF = vNFse > 0 ? vNFse : vNFe;
 
         // Extrai prestador/empresa
         var prestador = _normalizarTextoNF(xmlDoc.getElementsByTagName('RazaoSocial')[0]?.textContent || '');
@@ -2274,7 +2283,7 @@ function _nfMostrarTabela() {
         '<div style="font-weight:700;margin-bottom:0.5rem;color:#78350f;font-size:0.95rem">🔧 Serviço</div>' +
         '<div style="display:grid;gap:0.5rem;font-size:0.9rem">' +
           '<div><strong>' + item.descricao.substring(0, 100) + '</strong></div>' +
-          '<div>Base: R$ ' + item.baseCalculo.toFixed(2).replace('.', ',') + '</div>' +
+          '<div>Base: ' + _formatarReais(item.baseCalculo) + '</div>' +
           '<div>Alíquota: ' + item.aliquota + '%</div>' +
         '</div>' +
       '</div>' +
