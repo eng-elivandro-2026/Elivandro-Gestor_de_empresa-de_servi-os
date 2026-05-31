@@ -10,7 +10,9 @@
     orientation: 'portrait',
     scale: 100,
     fitWidth: true,
-    margin: 'normal'
+    margin: 'normal',
+    escopoNovaPage: false,
+    assinaturasNovaPage: false
   };
 
   // Preview em split screen
@@ -1788,6 +1790,15 @@
       + '</div></div>'
       + '</div>'
       + '<div style="border-top:1px solid #e2e8f0;padding-top:.75rem;margin-top:.75rem">'
+      + '<div style="margin-bottom:.75rem"><label style="font-weight:700;color:#0f172a;font-size:.88rem;display:block;margin-bottom:.4rem">Quebras de Página</label>'
+      + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem;margin-bottom:.35rem">'
+      + '<input type="checkbox" id="opPrintEscopoNovaPage" onchange="opGestaoAtualizarPrintConfig()">'
+      + '<span>Escopo em nova página</span>'
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem">'
+      + '<input type="checkbox" id="opPrintAssinaturasNovaPage" onchange="opGestaoAtualizarPrintConfig()">'
+      + '<span>Assinaturas em nova página</span>'
+      + '</label></div>'
       + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem">'
       + '<input type="checkbox" id="opPrintFitWidth" checked onchange="opGestaoAtualizarPrintConfig()">'
       + '<span>Ajustar largura à folha (altura automática)</span>'
@@ -1799,7 +1810,7 @@
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno" onchange="opGestaoAtualizarModoRelatorio()"> Interno - incluir apontamentos de horas</label>'
       + '</div></section>'
-      + '<section class="op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Escopo</h3>'
+      + '<section class="op-doc-print-section op-escopo-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Escopo</h3>'
       + renderEscopoGestaoHtml(s)
       + '</section>'
       + '<section class="op-signatures-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
@@ -2476,6 +2487,12 @@
     if (cfg.fitWidth) {
       css += '\n#opGestaoPrintRoot .op-print-paper { width: 100% !important; max-width: none !important; }';
     }
+    if (cfg.escopoNovaPage) {
+      css += '\n#opGestaoPrintRoot .op-escopo-section { page-break-before: always !important; }';
+    }
+    if (cfg.assinaturaNovaPage) {
+      css += '\n#opGestaoPrintRoot .op-signatures-section { page-break-before: always !important; }';
+    }
     var el = document.createElement('style');
     el.id = 'opPrintDynamicStyle';
     el.textContent = css;
@@ -2546,6 +2563,19 @@
       var content = document.getElementById('opGestaoPreviewContent');
       if (!content || !_opPreviewAtivo) return;
       content.innerHTML = renderPreviewHtml();
+      var cfg = _opPrintConfig;
+      var styleId = 'opPreviewDynamicStyle';
+      var oldStyle = document.getElementById(styleId);
+      if (oldStyle) oldStyle.parentNode.removeChild(oldStyle);
+      var css = '';
+      if (cfg.escopoNovaPage) css += '.op-escopo-section { page-break-before: always !important; break-before: page !important; }';
+      if (cfg.assinaturaNovaPage) css += '.op-signatures-section { page-break-before: always !important; break-before: page !important; }';
+      if (css) {
+        var style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
       inserirIndicadoresQuebra(content);
     }, delay !== undefined ? delay : 600);
   }
@@ -3383,13 +3413,18 @@
     var size = $('opPrintSize');
     var scale = $('opPrintScale');
     var fitW = $('opPrintFitWidth');
+    var escopoNP = $('opPrintEscopoNovaPage');
+    var assinNP = $('opPrintAssinaturasNovaPage');
     _opPrintConfig.size = size ? size.value : 'a4';
     _opPrintConfig.scale = scale ? Number(scale.value) : 100;
     _opPrintConfig.fitWidth = fitW ? fitW.checked : true;
+    _opPrintConfig.escopoNovaPage = escopoNP ? escopoNP.checked : false;
+    _opPrintConfig.assinaturaNovaPage = assinNP ? assinNP.checked : false;
     var ori = document.querySelector('input[name="opPrintOrientation"]:checked');
     _opPrintConfig.orientation = ori ? ori.value : 'portrait';
     var mar = document.querySelector('input[name="opPrintMargin"]:checked');
     _opPrintConfig.margin = mar ? mar.value : 'normal';
+    atualizarPreviewGestao(0);
   }
 
   window.rOperacional = rOperacional;
