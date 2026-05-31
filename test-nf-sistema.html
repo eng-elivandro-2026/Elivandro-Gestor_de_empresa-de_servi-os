@@ -147,24 +147,31 @@
       var t = String(texto).trim();
       if (t.normalize) t = t.normalize('NFD').normalize('NFC');
 
-      // DIRETO: Substitui palavras quebradas pelas corretas
-      t = t.replace(/adequao/gi, 'adequação');
-      t = t.replace(/adequa[çc]ao/gi, 'adequação');
-      t = t.replace(/eletrico/gi, 'elétrico');
-      t = t.replace(/el[eé]trico/gi, 'elétrico');
-      t = t.replace(/pneumatico/gi, 'pneumático');
-      t = t.replace(/pneum[aá]tico/gi, 'pneumático');
-      t = t.replace(/comercializacao/gi, 'comercialização');
-      t = t.replace(/comercializa[çc]ao/gi, 'comercialização');
-      t = t.replace(/cafes/gi, 'cafés');
-      t = t.replace(/instalacao/gi, 'instalação');
-      t = t.replace(/instala[çc]ao/gi, 'instalação');
-      t = t.replace(/servico/gi, 'serviço');
-      t = t.replace(/servi[çc]o/gi, 'serviço');
-      t = t.replace(/codigo/gi, 'código');
-      t = t.replace(/c[oó]digo/gi, 'código');
+      // PRIMEIRA: Substitui ? por acentos
+      t = t.replace(/\?{2}o\b/gi, 'ão');
+      t = t.replace(/\?o\b/gi, 'ão');
 
-      // Ordinais se sobrarem
+      t = t.replace(/adequa\?{2}o/gi, 'adequação');
+      t = t.replace(/adequa\?o/gi, 'adequação');
+      t = t.replace(/el\?trico/gi, 'elétrico');
+      t = t.replace(/pneum\?tico/gi, 'pneumático');
+      t = t.replace(/comercializa\?ao/gi, 'comercialização');
+      t = t.replace(/instala\?ao/gi, 'instalação');
+      t = t.replace(/servi\?o/gi, 'serviço');
+      t = t.replace(/c\?digo/gi, 'código');
+      t = t.replace(/cafe\?s/gi, 'cafés');
+
+      // SEGUNDA: Variações sem ?
+      t = t.replace(/adequao/gi, 'adequação');
+      t = t.replace(/eletrico/gi, 'elétrico');
+      t = t.replace(/pneumatico/gi, 'pneumático');
+      t = t.replace(/comercializacao/gi, 'comercialização');
+      t = t.replace(/instalacao/gi, 'instalação');
+      t = t.replace(/servico/gi, 'serviço');
+      t = t.replace(/codigo/gi, 'código');
+      t = t.replace(/cafes/gi, 'cafés');
+
+      // TERCEIRA: Ordinais
       t = t.replace(/ª/g, 'á');
       t = t.replace(/º/g, 'é');
 
