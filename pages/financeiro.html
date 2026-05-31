@@ -2105,6 +2105,12 @@ function _normalizarTextoNF(texto) {
 
   var t = String(texto).trim();
 
+  // DEBUG: Mostra caracteres problemáticos
+  if (t.includes('dequa') || t.includes('lectrico') || t.includes('neumatico')) {
+    console.log('🔍 ANTES normalizar:', t.substring(0, 50));
+    console.log('📊 Codes:', t.substring(0, 50).split('').map(c => c + '(' + c.charCodeAt(0) + ')').join(' | '));
+  }
+
   // Normaliza para NFC
   if (t.normalize) {
     t = t.normalize('NFD').normalize('NFC');
