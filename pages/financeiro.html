@@ -2150,6 +2150,11 @@ function _normalizarTextoNF(texto) {
   t = t.replace(/caffs/gi, 'cafés');
   t = t.replace(/cafo?s/gi, 'cafés');
 
+  // QUINTA: Captura variações finais de adequação
+  t = t.replace(/adequ[aáã]?[oó]?[àáâãäaã]?o\b/gi, 'adequação');
+  t = t.replace(/adequaão/gi, 'adequação');
+  t = t.replace(/adequao/gi, 'adequação');
+
   return t;
 }
 

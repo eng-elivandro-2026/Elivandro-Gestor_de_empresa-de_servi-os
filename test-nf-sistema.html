@@ -179,6 +179,11 @@
       t = t.replace(/caffs/gi, 'cafés');
       t = t.replace(/cafo?s/gi, 'cafés');
 
+      // QUINTA: Variações de adequação
+      t = t.replace(/adequ[aáã]?[oó]?[àáâãäaã]?o\b/gi, 'adequação');
+      t = t.replace(/adequaão/gi, 'adequação');
+      t = t.replace(/adequao/gi, 'adequação');
+
       return t;
     }
 
