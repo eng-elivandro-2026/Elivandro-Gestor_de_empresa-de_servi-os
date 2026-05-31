@@ -11,13 +11,13 @@
     scale: 100,
     fitWidth: true,
     margin: 'normal',
-    escopoNovaPage: false,
-    assinaturasNovaPage: false
+    customBreaks: []  // array de posições Y onde quebrar: [{y: 1011}, {y: 2022}]
   };
 
   // Preview em split screen
   var _opPreviewAtivo = false;
   var _previewDebounce = null;
+  var _draggingBreak = null;  // quebra sendo arrastada
 
   var state = {
     obras: [],
@@ -1708,8 +1708,10 @@
       + '#opObraBody{transition:flex .2s;}'
       + '#opGestaoPreviewPane{display:none;flex-direction:column;width:50%;min-width:0;overflow-y:auto;background:#e2e8f0;border-left:2px solid #cbd5e1;}'
       + '#opGestaoPreviewContent{background:#fff;width:210mm;min-height:297mm;padding:15mm;margin:0 auto 20px;box-shadow:0 6px 24px rgba(15,23,42,.18);position:relative;box-sizing:border-box;font-size:11pt;line-height:1.6;color:#0f172a;}'
-      + '.op-preview-page-break{position:absolute;left:-15mm;right:-15mm;border-top:2px dashed #94a3b8;pointer-events:none;z-index:10;}'
-      + '.op-preview-page-label{position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;}'
+      + '.op-preview-page-break{position:absolute;left:-15mm;right:-15mm;border-top:2px dashed #94a3b8;pointer-events:auto;z-index:10;cursor:grab;user-select:none;padding:4px 0;margin:-4px 0;transition:border-color .2s;}'
+      + '.op-preview-page-break:hover{border-top-color:#64748b;}'
+      + '.op-preview-page-break.dragging{border-top-color:#2563eb;cursor:grabbing;}'
+      + '.op-preview-page-label{position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;pointer-events:none;}'
       + '</style>'
       + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" data-report-mode="cliente" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
       + '<div id="opObraDialog" class="op-panel-shell" style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9">'
@@ -1790,19 +1792,12 @@
       + '</div></div>'
       + '</div>'
       + '<div style="border-top:1px solid #e2e8f0;padding-top:.75rem;margin-top:.75rem">'
-      + '<div style="margin-bottom:.75rem"><label style="font-weight:700;color:#0f172a;font-size:.88rem;display:block;margin-bottom:.4rem">Quebras de Página</label>'
-      + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem;margin-bottom:.35rem">'
-      + '<input type="checkbox" id="opPrintEscopoNovaPage" onchange="opGestaoAtualizarPrintConfig()">'
-      + '<span>Escopo em nova página</span>'
-      + '</label>'
-      + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem">'
-      + '<input type="checkbox" id="opPrintAssinaturasNovaPage" onchange="opGestaoAtualizarPrintConfig()">'
-      + '<span>Assinaturas em nova página</span>'
-      + '</label></div>'
       + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem">'
       + '<input type="checkbox" id="opPrintFitWidth" checked onchange="opGestaoAtualizarPrintConfig()">'
       + '<span>Ajustar largura à folha (altura automática)</span>'
-      + '</label></div>'
+      + '</label>'
+      + '<p style="color:#94a3b8;font-size:.75rem;margin-top:.6rem;margin-bottom:0">💡 Dica: Arraste as linhas no preview para ajustar quebras de página!</p>'
+      + '</div>'
       + '</section>'
       + '<section class="op-report-control no-print" style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
       + '<h3 class="op-doc-section-title">Controle do Relatorio</h3>'
@@ -2487,11 +2482,17 @@
     if (cfg.fitWidth) {
       css += '\n#opGestaoPrintRoot .op-print-paper { width: 100% !important; max-width: none !important; }';
     }
-    if (cfg.escopoNovaPage) {
-      css += '\n#opGestaoPrintRoot .op-escopo-section { page-break-before: always !important; }';
-    }
-    if (cfg.assinaturaNovaPage) {
-      css += '\n#opGestaoPrintRoot .op-signatures-section { page-break-before: always !important; }';
+    if (cfg.customBreaks && cfg.customBreaks.length > 0) {
+      cfg.customBreaks.forEach(function(br, idx) {
+        if (br && br.y) {
+          var mmToPx = 96 / 25.4;
+          var pageHeightMm = 267;
+          var pageHeightPx = Math.round(pageHeightMm * mmToPx);
+          var pageNum = Math.floor(br.y / pageHeightPx) + 1;
+          css += '\n/* Quebra customizada na página ' + (pageNum + 1) + ' */';
+          css += '\n#opGestaoPrintRoot [data-custom-break-' + (idx + 1) + '] { page-break-before: always !important; }';
+        }
+      });
     }
     var el = document.createElement('style');
     el.id = 'opPrintDynamicStyle';
@@ -2563,57 +2564,8 @@
       var content = document.getElementById('opGestaoPreviewContent');
       if (!content || !_opPreviewAtivo) return;
       content.innerHTML = renderPreviewHtml();
-      var cfg = _opPrintConfig;
-      var styleId = 'opPreviewDynamicStyle';
-      var oldStyle = document.getElementById(styleId);
-      if (oldStyle) oldStyle.parentNode.removeChild(oldStyle);
-      var css = '';
-      if (cfg.escopoNovaPage) css += '.op-escopo-section { page-break-before: always !important; break-before: page !important; }';
-      if (cfg.assinaturaNovaPage) css += '.op-signatures-section { page-break-before: always !important; break-before: page !important; }';
-      if (css) {
-        var style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
-      forcarQuebrasPaginaPreview(content, cfg);
       inserirIndicadoresQuebra(content);
     }, delay !== undefined ? delay : 600);
-  }
-
-  function forcarQuebrasPaginaPreview(content, cfg) {
-    if (!content) return;
-    var mmToPx = 96 / 25.4;
-    var pageHeightPx = Math.round(267 * mmToPx);
-    if (cfg.escopoNovaPage) {
-      var escopo = content.querySelector('.op-escopo-section');
-      if (escopo) {
-        var rect = escopo.getBoundingClientRect();
-        var offsetTop = escopo.offsetTop;
-        var pageIndex = Math.floor(offsetTop / pageHeightPx);
-        var pageStart = pageIndex * pageHeightPx;
-        var spaceUsed = offsetTop - pageStart;
-        if (spaceUsed > 0) {
-          var spacer = document.createElement('div');
-          spacer.style.cssText = 'height:' + (pageHeightPx - spaceUsed) + 'px;visibility:hidden;pointer-events:none';
-          escopo.parentNode.insertBefore(spacer, escopo);
-        }
-      }
-    }
-    if (cfg.assinaturaNovaPage) {
-      var assinaturas = content.querySelector('.op-signatures-section');
-      if (assinaturas) {
-        var offsetTop = assinaturas.offsetTop;
-        var pageIndex = Math.floor(offsetTop / pageHeightPx);
-        var pageStart = pageIndex * pageHeightPx;
-        var spaceUsed = offsetTop - pageStart;
-        if (spaceUsed > 0) {
-          var spacer = document.createElement('div');
-          spacer.style.cssText = 'height:' + (pageHeightPx - spaceUsed) + 'px;visibility:hidden;pointer-events:none';
-          assinaturas.parentNode.insertBefore(spacer, assinaturas);
-        }
-      }
-    }
   }
 
   function inserirIndicadoresQuebra(root) {
@@ -2622,18 +2574,54 @@
     var pageHeightPx = Math.round(267 * mmToPx);
     var totalHeight = root.scrollHeight;
     var numPages = Math.ceil(totalHeight / pageHeightPx);
+    var cfg = _opPrintConfig;
+    var customBreaks = cfg.customBreaks || [];
+
     if (numPages <= 1) return;
+
     for (var p = 1; p < numPages; p++) {
       var yPos = p * pageHeightPx;
       var sep = document.createElement('div');
       sep.className = 'op-preview-page-break';
       sep.style.top = yPos + 'px';
+      sep.setAttribute('data-break-index', p);
+      sep.setAttribute('data-page-height', pageHeightPx);
+
       var label = document.createElement('span');
       label.className = 'op-preview-page-label';
       label.textContent = 'Página ' + (p + 1);
       sep.appendChild(label);
+
+      sep.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        _draggingBreak = {
+          element: this,
+          startY: e.clientY,
+          startTop: parseInt(this.style.top),
+          pageHeight: parseInt(this.getAttribute('data-page-height')),
+          breakIndex: parseInt(this.getAttribute('data-break-index'))
+        };
+        this.classList.add('dragging');
+      });
+
       root.appendChild(sep);
     }
+
+    document.addEventListener('mousemove', function(e) {
+      if (!_draggingBreak) return;
+      var deltaY = e.clientY - _draggingBreak.startY;
+      var newTop = Math.max(_draggingBreak.breakIndex * _draggingBreak.pageHeight - 50, _draggingBreak.startTop + deltaY);
+      _draggingBreak.element.style.top = newTop + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!_draggingBreak) return;
+      var newY = parseInt(_draggingBreak.element.style.top);
+      _draggingBreak.element.classList.remove('dragging');
+      cfg.customBreaks = cfg.customBreaks || [];
+      cfg.customBreaks[_draggingBreak.breakIndex - 1] = { y: newY };
+      _draggingBreak = null;
+    });
   }
 
   function removerDocumentoImpressaoGestao() {
@@ -3449,13 +3437,9 @@
     var size = $('opPrintSize');
     var scale = $('opPrintScale');
     var fitW = $('opPrintFitWidth');
-    var escopoNP = $('opPrintEscopoNovaPage');
-    var assinNP = $('opPrintAssinaturasNovaPage');
     _opPrintConfig.size = size ? size.value : 'a4';
     _opPrintConfig.scale = scale ? Number(scale.value) : 100;
     _opPrintConfig.fitWidth = fitW ? fitW.checked : true;
-    _opPrintConfig.escopoNovaPage = escopoNP ? escopoNP.checked : false;
-    _opPrintConfig.assinaturaNovaPage = assinNP ? assinNP.checked : false;
     var ori = document.querySelector('input[name="opPrintOrientation"]:checked');
     _opPrintConfig.orientation = ori ? ori.value : 'portrait';
     var mar = document.querySelector('input[name="opPrintMargin"]:checked');
