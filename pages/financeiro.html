@@ -2768,7 +2768,9 @@ async function carregarContas(empresaId) {
     await carregarCategoriasGerenciaisClassificacao(empresaId);
     if (token !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
 
-    _todasContas = contas || [];
+    // PO não é faturamento: ocultar contas a receber criadas apenas como
+    // referência de Pedido de Compra (origem='po').
+    _todasContas = (contas || []).filter(function(c) { return c && c.origem !== 'po'; });
     _carregando  = false;
     document.getElementById('btn-refresh').disabled = false;
 
@@ -2943,7 +2945,8 @@ async function abrirDetalhe(contaId) {
     if (tokenDetalhe !== _loadToken || empresaConsulta !== _empresaAtivaId()) return;
     if (!_contaDetalhe || _contaDetalhe.id !== contaId) return;
 
-    var notas        = results[0] || [];
+    // PO não é NF de faturamento: excluir tipo_nf='po' da listagem e dos totais.
+    var notas        = (results[0] || []).filter(function(n) { return n && n.tipo_nf !== 'po'; });
     var recebimentos = results[1] || [];
     document.getElementById('detalhe-corpo').innerHTML =
       _renderDetalheBasico(conta) +

@@ -264,7 +264,11 @@
         (dados.observacoes?.comprador_nome || 'Cliente'),
       data_vencimento: dados.data_emissao || new Date().toISOString().slice(0, 10),
       valor_previsto: dados.valor_po || 0,
-      status: 'aberta'
+      // PO NÃO é faturamento: este registro existe apenas porque
+      // financeiro_notas_fiscais.conta_receber_id é NOT NULL.
+      // origem='po' permite excluí-lo das telas/totais de Contas a Receber.
+      origem: 'po',
+      status: 'cancelado'
     };
 
     var contaResult = await client()
