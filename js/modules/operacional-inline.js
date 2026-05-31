@@ -2518,7 +2518,13 @@
       btn.textContent = _opPreviewAtivo ? '⊠ Fechar Preview' : '⊞ Preview';
       btn.style.background = _opPreviewAtivo ? '#bbf7d0!important' : '#dbeafe!important';
     }
-    if (_opPreviewAtivo) atualizarPreviewGestao(0);
+    if (_opPreviewAtivo) {
+      atualizarPreviewGestao(0);
+      inserirIndicadoresQuebraNoEditor();
+    } else {
+      var breaks = document.querySelectorAll('.op-editor-page-break');
+      breaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
+    }
   }
 
   function renderPreviewHtml() {
@@ -2564,33 +2570,40 @@
       var content = document.getElementById('opGestaoPreviewContent');
       if (!content || !_opPreviewAtivo) return;
       content.innerHTML = renderPreviewHtml();
-      inserirIndicadoresQuebra(content);
+      inserirIndicadoresQuebraNoEditor();
     }, delay !== undefined ? delay : 600);
   }
 
-  function inserirIndicadoresQuebra(root) {
-    if (!root) return;
+  function inserirIndicadoresQuebraNoEditor() {
+    var paper = document.querySelector('#opObraPanel .op-doc-paper');
+    if (!paper) return;
+
     var mmToPx = 96 / 25.4;
     var pageHeightPx = Math.round(267 * mmToPx);
-    var totalHeight = root.scrollHeight;
+    var totalHeight = paper.scrollHeight;
     var numPages = Math.ceil(totalHeight / pageHeightPx);
     var cfg = _opPrintConfig;
-    var customBreaks = cfg.customBreaks || [];
 
     if (numPages <= 1) return;
+
+    var existingBreaks = document.querySelectorAll('.op-editor-page-break');
+    existingBreaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
 
     for (var p = 1; p < numPages; p++) {
       var yPos = p * pageHeightPx;
       var sep = document.createElement('div');
-      sep.className = 'op-preview-page-break';
-      sep.style.top = yPos + 'px';
+      sep.className = 'op-editor-page-break';
+      sep.style.cssText = 'position:absolute;left:0;right:0;border-top:2px dashed #94a3b8;cursor:grab;user-select:none;padding:4px 0;margin:-4px 0;transition:border-color .2s;z-index:100;pointer-events:auto;top:' + yPos + 'px';
       sep.setAttribute('data-break-index', p);
       sep.setAttribute('data-page-height', pageHeightPx);
 
       var label = document.createElement('span');
-      label.className = 'op-preview-page-label';
+      label.style.cssText = 'position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;pointer-events:none;white-space:nowrap';
       label.textContent = 'Página ' + (p + 1);
       sep.appendChild(label);
+
+      sep.addEventListener('mouseenter', function() { this.style.borderTopColor = '#64748b'; });
+      sep.addEventListener('mouseleave', function() { if (!_draggingBreak) this.style.borderTopColor = '#94a3b8'; });
 
       sep.addEventListener('mousedown', function(e) {
         e.preventDefault();
@@ -2601,26 +2614,33 @@
           pageHeight: parseInt(this.getAttribute('data-page-height')),
           breakIndex: parseInt(this.getAttribute('data-break-index'))
         };
-        this.classList.add('dragging');
+        this.style.borderTopColor = '#2563eb';
+        this.style.cursor = 'grabbing';
       });
 
-      root.appendChild(sep);
+      paper.style.position = 'relative';
+      paper.appendChild(sep);
     }
 
     document.addEventListener('mousemove', function(e) {
       if (!_draggingBreak) return;
       var deltaY = e.clientY - _draggingBreak.startY;
-      var newTop = Math.max(_draggingBreak.breakIndex * _draggingBreak.pageHeight - 50, _draggingBreak.startTop + deltaY);
+      var minY = _draggingBreak.breakIndex * _draggingBreak.pageHeight - 100;
+      var maxY = _draggingBreak.breakIndex * _draggingBreak.pageHeight + 100;
+      var newTop = Math.max(minY, Math.min(maxY, _draggingBreak.startTop + deltaY));
       _draggingBreak.element.style.top = newTop + 'px';
+      atualizarPreviewGestao(200);
     });
 
     document.addEventListener('mouseup', function() {
       if (!_draggingBreak) return;
       var newY = parseInt(_draggingBreak.element.style.top);
-      _draggingBreak.element.classList.remove('dragging');
+      _draggingBreak.element.style.borderTopColor = '#94a3b8';
+      _draggingBreak.element.style.cursor = 'grab';
       cfg.customBreaks = cfg.customBreaks || [];
       cfg.customBreaks[_draggingBreak.breakIndex - 1] = { y: newY };
       _draggingBreak = null;
+      atualizarPreviewGestao(0);
     });
   }
 
