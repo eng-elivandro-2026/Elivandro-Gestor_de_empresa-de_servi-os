@@ -2110,8 +2110,21 @@ function _normalizarTextoNF(texto) {
     t = t.normalize('NFD').normalize('NFC');
   }
 
+  // PRIMEIRO: Trata padrões comuns de ordinais (º) mal usados
+  // ºo → ão (adequação, alteração, etc)
+  t = t.replace(/ºo/g, 'ão');
+  // ººo → ão (caso de múltiplos ordinais)
+  t = t.replace(/ººo/g, 'ão');
+
+  // Padrões de ordinais em posições específicas
+  t = t.replace(/el(º|ó)trico/gi, 'elétrico');
+  t = t.replace(/pneum(º|ó)tico/gi, 'pneumático');
+  t = t.replace(/servi(º|ó)(s|)/gi, 'serviço');
+
+  // º em geral tende a ser é em contexto português
+  t = t.replace(/º/g, 'é');
+
   // Substitui caracteres comuns mal encodificados
-  // Casos: ?, ??, ?, ?? (vários padrões de erro)
   var mapa = {
     // Minúsculas com til
     '?': 'ã', '??': 'ã', '~': 'ã',
@@ -2148,12 +2161,10 @@ function _normalizarTextoNF(texto) {
     '?': 'Ê', '??': 'Ê',
     '?': 'Ô', '??': 'Ô',
     // Caracteres especiais
-    '?': 'ª',
-    '?': 'º'
+    '?': 'ª'
   };
 
   for (var char in mapa) {
-    // Substitui todos os casos do caractere quebrado
     var regex = new RegExp(char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     t = t.replace(regex, mapa[char]);
   }
