@@ -2110,18 +2110,23 @@ function _normalizarTextoNF(texto) {
     t = t.normalize('NFD').normalize('NFC');
   }
 
-  // PRIMEIRO: Trata padrões comuns de ordinais (º) mal usados
-  // ºo → ão (adequação, alteração, etc)
+  // PRIMEIRO: Trata padrões comuns de ordinais (º e ª) mal usados
+
+  // ªªo / ºo / ªo → ão (adequação, alteração, etc)
+  t = t.replace(/ªªo/g, 'ão');
+  t = t.replace(/ªo/g, 'ão');
   t = t.replace(/ºo/g, 'ão');
-  // ººo → ão (caso de múltiplos ordinais)
   t = t.replace(/ººo/g, 'ão');
 
   // Padrões de ordinais em posições específicas
-  t = t.replace(/el(º|ó)trico/gi, 'elétrico');
-  t = t.replace(/pneum(º|ó)tico/gi, 'pneumático');
-  t = t.replace(/servi(º|ó)(s|)/gi, 'serviço');
+  t = t.replace(/el(º|ª|ó)trico/gi, 'elétrico');
+  t = t.replace(/pneum(º|ª|ó)tico/gi, 'pneumático');
+  t = t.replace(/servi(º|ª|ó)(s|)/gi, 'serviço');
+  t = t.replace(/c(º|ª)digo/gi, 'código');
+  t = t.replace(/instala(º|ª)(ã|a)(o|)/gi, 'instalação');
 
-  // º em geral tende a ser é em contexto português
+  // º e ª em geral tendem a ser é/ã em contexto português
+  t = t.replace(/ª/g, 'á');
   t = t.replace(/º/g, 'é');
 
   // Substitui caracteres comuns mal encodificados
