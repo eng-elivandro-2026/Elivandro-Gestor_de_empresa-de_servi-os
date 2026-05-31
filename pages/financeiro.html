@@ -13779,6 +13779,62 @@ function parsearDadosPO(texto) {
   return dados;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// QUANDO ARQUIVO É SELECIONADO - PROCESSAR E EXTRAIR DADOS
+// ══════════════════════════════════════════════════════════════════
+
+async function poArquivoSelecionado(file) {
+  if (!file) {
+    alert('❌ Nenhum arquivo selecionado');
+    return;
+  }
+
+  var ehPDF = file.name.endsWith('.pdf');
+  var ehTXT = file.name.endsWith('.txt');
+
+  if (!ehPDF && !ehTXT) {
+    alert('❌ Por favor, selecione um arquivo PDF ou TXT');
+    return;
+  }
+
+  try {
+    console.log('📄 Lendo arquivo:', file.name);
+    var texto = '';
+
+    if (ehTXT) {
+      // Ler arquivo TXT
+      texto = await new Promise((resolve, reject) => {
+        var reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(new Error('Erro ao ler arquivo TXT'));
+        reader.readAsText(file, 'UTF-8');
+      });
+    } else {
+      // Ler arquivo PDF
+      texto = await extrairTextoPDF(file);
+    }
+
+    console.log('✅ Arquivo lido, primeiro 200 caracteres:', texto.substring(0, 200));
+
+    var dados = parsearDadosPO(texto);
+    console.log('📊 Dados parseados:', dados);
+
+    if (!dados.numero_po) {
+      console.warn('⚠️ Nenhum número PO encontrado nos dados');
+    }
+
+    _poArquivosCarregados.push(dados);
+    console.log('✅ PO adicionado ao array. Total:', _poArquivosCarregados.length);
+
+    poMostrarTabela();
+
+    alert('✅ Arquivo lido com sucesso! Revise os dados e clique em Salvar.');
+  } catch(err) {
+    console.error('❌ Erro ao processar arquivo:', err);
+    alert('❌ Erro: ' + err.message);
+  }
+}
+
 // Carregar POs ao iniciar
 setTimeout(() => {
   if (document.getElementById('po-lista-container')) {
