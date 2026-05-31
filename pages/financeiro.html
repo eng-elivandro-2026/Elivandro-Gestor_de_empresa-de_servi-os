@@ -2110,24 +2110,25 @@ function _normalizarTextoNF(texto) {
     t = t.normalize('NFD').normalize('NFC');
   }
 
-  // PRIMEIRO: Trata padrões comuns de ordinais (º e ª) mal usados
+  // Substitui ordinais (ª=170, º=186) por acentos corretos
+  // String.fromCharCode(170) = 'ª', String.fromCharCode(186) = 'º'
 
-  // ªªo / ºo / ªo → ão (adequação, alteração, etc)
-  t = t.replace(/ªªo/g, 'ão');
-  t = t.replace(/ªo/g, 'ão');
-  t = t.replace(/ºo/g, 'ão');
-  t = t.replace(/ººo/g, 'ão');
+  // Primeira passada: padrões comuns
+  while (t.includes('ªªo') || t.includes('ªo') || t.includes('ºo')) {
+    t = t.replace(/ªªo/g, 'ão');
+    t = t.replace(/ªo/g, 'ão');
+    t = t.replace(/ºo/g, 'ão');
+  }
 
-  // Padrões de ordinais em posições específicas
-  t = t.replace(/el(º|ª|ó)trico/gi, 'elétrico');
-  t = t.replace(/pneum(º|ª|ó)tico/gi, 'pneumático');
-  t = t.replace(/servi(º|ª|ó)(s|)/gi, 'serviço');
-  t = t.replace(/c(º|ª)digo/gi, 'código');
-  t = t.replace(/instala(º|ª)(ã|a)(o|)/gi, 'instalação');
+  // Palavras específicas
+  t = t.replace(/[aªº]d(e|[aªº])qu(a|[aªº])[çc][aªº][oº]/gi, 'adequação');
+  t = t.replace(/el[eé(aªº)ó][tç]rico/gi, 'elétrico');
+  t = t.replace(/pneum[aªº](t|)ico/gi, 'pneumático');
+  t = t.replace(/servi[çc][aªº]o/gi, 'serviço');
 
-  // º e ª em geral tendem a ser é/ã em contexto português
-  t = t.replace(/ª/g, 'á');
-  t = t.replace(/º/g, 'é');
+  // Substitui caracteres ordinais individuais
+  t = t.split(String.fromCharCode(170)).join('á'); // ª → á
+  t = t.split(String.fromCharCode(186)).join('é'); // º → é
 
   // Substitui caracteres comuns mal encodificados
   var mapa = {
