@@ -1,0 +1,23 @@
+PEDIDO DE COMPRA
+
+Número: PO-001234
+Data de Criação: 25.05.2026
+Data Atual: 31.05.2026
+
+COMPRADOR:
+JACOBS DOUWE EGBERTS BR
+CNPJ: 02333707003675
+
+VENDEDOR:
+FORNECEDOR ABC LTDA
+CNPJ: 23624491000147
+
+Descrição: Equipamento industrial e peças
+Valor Total: R$ 25.000,00
+
+Condições de Pagamento: À vista
+Data de Entrega: 10.06.2026
+
+Contato do Comprador: João Silva
+Telefone: (11) 99999-8888
+Email: joao@jacobs.com

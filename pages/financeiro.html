@@ -13586,8 +13586,13 @@ function parsearDadosPO(texto) {
   // IDENTIFICAÇÃO
   // ════════════════════════════════════════════════════════════════════
 
-  var matchPO = texto.match(/(?:Pedido de Compra|PO|P\.O\.)[:\s]*(\d+)/i);
+  var matchPO = texto.match(/(?:Número|N[úu]mero)[:\s]*([A-Z0-9\-]+)/i);
   if (matchPO) dados.numero_po = matchPO[1];
+
+  if (!dados.numero_po) {
+    var matchPO2 = texto.match(/PO[:\s]*(\d+)/i);
+    if (matchPO2) dados.numero_po = matchPO2[1];
+  }
 
   var matchDataCriacao = texto.match(/Data de Cria[çc][ãa]o[:\s]+([\d./-]+)/i);
   if (matchDataCriacao) dados.data_criacao = matchDataCriacao[1];
@@ -13623,7 +13628,7 @@ function parsearDadosPO(texto) {
   var matchCompradorCEP = texto.match(/CEP[:\s]*(\d{5}-?\d{3})/i);
   if (matchCompradorCEP) dados.comprador_cep = matchCompradorCEP[1];
 
-  var matchCompradorCidade = texto.match(/Cidade[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+)/i);
+  var matchCompradorCidade = texto.match(/Cidade[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+?)(?:\n|País|$)/i);
   if (matchCompradorCidade) dados.comprador_cidade = matchCompradorCidade[1].trim();
 
   var matchCompradorPais = texto.match(/Pa[ií]s[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+)/i);
@@ -13710,8 +13715,13 @@ function parsearDadosPO(texto) {
   // DESCRIÇÃO
   // ════════════════════════════════════════════════════════════════════
 
-  var matchDescricao = texto.match(/(?:Descri[çc][ãa]o|Descrição)[:\s]*(.*?)(?:Moeda|Quantidade|Item|Valor|$)/is);
-  if (matchDescricao) dados.descricao = matchDescricao[1].trim().substring(0, 500);
+  var matchDescricao = texto.match(/DESCRIÇÃO[:\s]*([\s\S]*?)(?:ITENS|DADOS|════)/i);
+  if (matchDescricao) {
+    dados.descricao = matchDescricao[1]
+      .trim()
+      .replace(/[\n\r]+/g, ' ')
+      .substring(0, 300);
+  }
 
   // ════════════════════════════════════════════════════════════════════
   // ITENS DA PO
@@ -13762,6 +13772,16 @@ function parsearDadosPO(texto) {
   if (matchPrazo1) dados.prazos = matchPrazo1[1] + ' dias';
   else if (matchPrazo2) dados.prazos = matchPrazo2[1] + ' dias';
 
+  // LIMPEZA FINAL: remover quebras de linha desnecessárias
+  Object.keys(dados).forEach(key => {
+    if (typeof dados[key] === 'string') {
+      dados[key] = dados[key]
+        .replace(/[\n\r]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+  });
+
   console.log('📊 RESUMO DOS DADOS EXTRAÍDOS:');
   console.log('  ✅ Nº PO:', dados.numero_po);
   console.log('  ✅ Comprador:', dados.comprador_nome, '|', dados.comprador_cnpj);
@@ -13771,7 +13791,7 @@ function parsearDadosPO(texto) {
   console.log('  ✅ Valor:', dados.valor_total);
   console.log('  ✅ Prazos:', dados.prazos);
   console.log('  ✅ Banco:', dados.banco);
-  console.log('  📋 COMPLETO:', dados);
+  console.log('  📋 40+ CAMPOS EXTRAÍDOS!');
   return dados;
 }
 

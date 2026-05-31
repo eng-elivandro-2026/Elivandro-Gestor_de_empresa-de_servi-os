@@ -1,0 +1,70 @@
+PEDIDO DE COMPRA
+
+Número: PO-5401150125
+Data de Criação: 01.08.2026
+Data Atual: 31.05.2026
+
+════════════════════════════════════════════════════════════════
+
+COMPRADOR:
+JACOBS DOUWE EGBERTS BR COMERCIALIZAÇÃO DE CAFÉS LTDA
+CNPJ: 02333707003675
+Inscrição Estadual: 051345327
+Rua do Luxemburgo, 500
+CEP: 41230-130
+Cidade: Salvador
+País: Brasil
+
+════════════════════════════════════════════════════════════════
+
+VENDEDOR:
+Adriano Rodrigues & Cia Ltda
+CNPJ: 23624491000147
+Inscrição Estadual: 087654321
+CPF: 12345678900
+Avenida Armenio Ladeira, 250
+CEP: 13218-310
+Cidade: São Paulo
+País: Brasil
+Número do Fornecedor: 5401150125
+
+════════════════════════════════════════════════════════════════
+
+DADOS BANCÁRIOS:
+Nome do Banco: Banco do Brasil
+Código Banco: 001
+Conta: 1234567-8
+Agência: 0001-X
+
+════════════════════════════════════════════════════════════════
+
+CONTATO DO COMPRADOR:
+Nome: João Silva Santos
+Telefone: (11) 99999-8888
+Email: joao.silva@jacobs.com
+
+════════════════════════════════════════════════════════════════
+
+DESCRIÇÃO:
+Adequação projeto eletrico e pneumatico para linha de producao
+Modernização de instalações industriais com componentes de qualidade superior.
+
+════════════════════════════════════════════════════════════════
+
+ITENS DA PO:
+Item: 1
+Material: Componentes Eletrônicos Industriais
+Quantidade: 50
+Unidade: UN
+Preço Bruto: 300,00
+
+════════════════════════════════════════════════════════════════
+
+DADOS COMERCIAIS:
+Valor Total Bruto: R$ 20.000,00
+Moeda: BRL
+Condições de Pagamento: À vista
+Data de Entrega: 10.06.2026
+Prazo: 10 dias
+
+════════════════════════════════════════════════════════════════

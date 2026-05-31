@@ -244,6 +244,104 @@
   }
 
   /**
+   * Cria um novo Pedido de Compra (PO).
+   * Cria automaticamente uma Conta a Receber dummy para rastrear.
+   * Salva como tipo_nf='po' para diferenciação.
+   */
+  async function sbCriarPedidoCompra(dados) {
+    if (!dados.empresa_id) throw new Error('[Financeiro] empresa_id obrigatório.');
+
+    // 1. Criar Conta a Receber para rastrear a PO
+    var contaPayload = {
+      empresa_id: dados.empresa_id,
+      titulo: 'PO ' + (dados.numero_po || 'sem número') + ' — ' + (dados.observacoes ?
+        (typeof dados.observacoes === 'string' ?
+          JSON.parse(dados.observacoes).vendedor_nome :
+          dados.observacoes.vendedor_nome) || 'Fornecedor'
+        : 'Fornecedor'),
+      cliente_nome: typeof dados.observacoes === 'string' ?
+        JSON.parse(dados.observacoes).comprador_nome || 'Cliente' :
+        (dados.observacoes?.comprador_nome || 'Cliente'),
+      data_vencimento: dados.data_emissao || new Date().toISOString().slice(0, 10),
+      valor_previsto: dados.valor_po || 0,
+      status: 'aberta'
+    };
+
+    var contaResult = await client()
+      .from('financeiro_contas_receber')
+      .insert(contaPayload)
+      .select()
+      .single();
+
+    if (contaResult.error) throw contaResult.error;
+
+    // 2. Criar NF vinculada à Conta a Receber
+    var nfPayload = Object.assign({
+      tipo_nf: 'po',
+      status: 'ativa',
+      valor_nf: dados.valor_po || 0,
+      numero_nf: dados.numero_po || null,
+      conta_receber_id: contaResult.data.id
+    }, dados);
+
+    // Remover campos de PO específicos
+    delete nfPayload.valor_po;
+    delete nfPayload.numero_po;
+
+    var nfResult = await client()
+      .from('financeiro_notas_fiscais')
+      .insert(nfPayload)
+      .select()
+      .single();
+
+    if (nfResult.error) throw nfResult.error;
+
+    return {
+      nf: nfResult.data,
+      conta_receber: contaResult.data
+    };
+  }
+
+  /**
+   * Deleta uma PO (Pedido de Compra).
+   * Remove tanto a NF quanto a Conta a Receber associada.
+   */
+  async function sbDeletarPedidoCompra(poId) {
+    if (!poId) throw new Error('[Financeiro] poId obrigatório.');
+
+    // 1. Encontrar a NF para pegar a conta_receber_id
+    var nfResult = await client()
+      .from('financeiro_notas_fiscais')
+      .select('conta_receber_id')
+      .eq('id', poId)
+      .single();
+
+    if (nfResult.error) throw nfResult.error;
+
+    var contaReceberId = nfResult.data?.conta_receber_id;
+
+    // 2. Deletar a NF
+    var delNF = await client()
+      .from('financeiro_notas_fiscais')
+      .delete()
+      .eq('id', poId);
+
+    if (delNF.error) throw delNF.error;
+
+    // 3. Deletar a Conta a Receber se existir
+    if (contaReceberId) {
+      var delConta = await client()
+        .from('financeiro_contas_receber')
+        .delete()
+        .eq('id', contaReceberId);
+
+      if (delConta.error) console.warn('⚠️ Erro ao deletar conta a receber:', delConta.error);
+    }
+
+    return { deletado: true, poId: poId };
+  }
+
+  /**
    * Atualiza campos de uma nota fiscal existente.
    * id: uuid da NF
    * dados: campos a atualizar (nunca altera empresa_id nem conta_receber_id)
@@ -1592,6 +1690,8 @@
     listarNotasFiscaisConta:         sbListarNotasFiscaisConta,
     criarNotaFiscal:                 sbCriarNotaFiscal,
     atualizarNotaFiscal:             sbAtualizarNotaFiscal,
+    criarPedidoCompra:               sbCriarPedidoCompra,
+    deletarPedidoCompra:             sbDeletarPedidoCompra,
 
     // Recebimentos
     listarRecebimentosEmpresa:       sbListarRecebimentosEmpresa,
