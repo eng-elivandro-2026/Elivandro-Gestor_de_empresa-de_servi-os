@@ -4,6 +4,15 @@
 (function (window, document) {
   'use strict';
 
+  // Configuração de impressão
+  var _opPrintConfig = {
+    size: 'a4',
+    orientation: 'portrait',
+    scale: 100,
+    fitWidth: true,
+    margin: 'normal'
+  };
+
   var state = {
     obras: [],
     carregando: false,
@@ -1734,6 +1743,43 @@
       + renderApontamentosNegocioHtml()
       + '</section>'
       + '<section class="op-report-control no-print" style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
+      + '<h3 class="op-doc-section-title">Configurações de Impressão</h3>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;color:#0f172a;font-size:.88rem">'
+      + '<div style="display:flex;flex-direction:column;gap:.4rem">'
+      + '<label style="font-weight:700">Tamanho da Página</label>'
+      + '<select id="opPrintSize" style="padding:.4rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff" onchange="opGestaoAtualizarPrintConfig()">'
+      + '<option value="a4">A4</option>'
+      + '<option value="letter">Carta</option>'
+      + '</select></div>'
+      + '<div style="display:flex;flex-direction:column;gap:.4rem">'
+      + '<label style="font-weight:700">Orientação</label>'
+      + '<div style="display:flex;gap:.5rem">'
+      + '<label style="display:flex;align-items:center;gap:.3rem"><input type="radio" name="opPrintOrientation" value="portrait" checked onchange="opGestaoAtualizarPrintConfig()"> Retrato</label>'
+      + '<label style="display:flex;align-items:center;gap:.3rem"><input type="radio" name="opPrintOrientation" value="landscape" onchange="opGestaoAtualizarPrintConfig()"> Paisagem</label>'
+      + '</div></div>'
+      + '<div style="display:flex;flex-direction:column;gap:.4rem">'
+      + '<label style="font-weight:700">Escala</label>'
+      + '<select id="opPrintScale" style="padding:.4rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff" onchange="opGestaoAtualizarPrintConfig()">'
+      + '<option value="100">100%</option>'
+      + '<option value="95">95%</option>'
+      + '<option value="90">90%</option>'
+      + '<option value="85">85%</option>'
+      + '<option value="80">80%</option>'
+      + '</select></div>'
+      + '<div style="display:flex;flex-direction:column;gap:.4rem">'
+      + '<label style="font-weight:700">Margens</label>'
+      + '<div style="display:flex;gap:.5rem">'
+      + '<label style="display:flex;align-items:center;gap:.3rem"><input type="radio" name="opPrintMargin" value="normal" checked onchange="opGestaoAtualizarPrintConfig()"> Normal</label>'
+      + '<label style="display:flex;align-items:center;gap:.3rem"><input type="radio" name="opPrintMargin" value="narrow" onchange="opGestaoAtualizarPrintConfig()"> Estreita</label>'
+      + '</div></div>'
+      + '</div>'
+      + '<div style="border-top:1px solid #e2e8f0;padding-top:.75rem;margin-top:.75rem">'
+      + '<label style="display:flex;align-items:center;gap:.4rem;color:#0f172a;font-size:.88rem">'
+      + '<input type="checkbox" id="opPrintFitWidth" checked onchange="opGestaoAtualizarPrintConfig()">'
+      + '<span>Ajustar largura à folha (altura automática)</span>'
+      + '</label></div>'
+      + '</section>'
+      + '<section class="op-report-control no-print" style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
       + '<h3 class="op-doc-section-title">Controle do Relatorio</h3>'
       + '<div style="display:flex;gap:.75rem;flex-wrap:wrap;color:#0f172a;font-size:.88rem">'
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
@@ -2395,10 +2441,31 @@
     w.document.close();
   }
 
+  function aplicarCssPrint() {
+    var cfg = _opPrintConfig;
+    var marginVal = cfg.margin === 'narrow' ? '8mm' : '15mm';
+    var sizeVal = cfg.size === 'letter' ? 'letter' : 'A4';
+    var orientVal = cfg.orientation === 'landscape' ? 'landscape' : 'portrait';
+    var css = '@page { size: ' + sizeVal + ' ' + orientVal + '; margin: ' + marginVal + '; }';
+    if (cfg.fitWidth) {
+      css += '\n#opGestaoPrintRoot .op-print-paper { width: 100% !important; max-width: none !important; }';
+    }
+    var el = document.createElement('style');
+    el.id = 'opPrintDynamicStyle';
+    el.textContent = css;
+    document.head.appendChild(el);
+  }
+
+  function removerCssPrint() {
+    var el = document.getElementById('opPrintDynamicStyle');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
   function removerDocumentoImpressaoGestao() {
     var antigo = document.getElementById('opGestaoPrintRoot');
     if (antigo && antigo.parentNode) antigo.parentNode.removeChild(antigo);
     document.body.classList.remove('op-gestao-printing');
+    removerCssPrint();
   }
 
   function prepararDocumentoImpressaoGestao() {
@@ -2451,27 +2518,18 @@
     root.appendChild(clone);
     document.body.appendChild(root);
     document.body.classList.add('op-gestao-printing');
-    (function () {
-      try {
-        var paper = root.querySelector('.op-print-paper');
-        if (!paper) return;
-        var prevCss = root.style.cssText;
-        root.style.cssText = 'display:block!important;visibility:hidden!important;position:fixed!important;top:-9999px!important;left:0!important;z-index:-1!important;pointer-events:none!important;';
-        var contentH = paper.scrollHeight;
-        root.style.cssText = prevCss;
-        if (contentH <= 0) return;
-        var a4Px = Math.round(273 * 96 / 25.4);
-        if (contentH > a4Px) {
-          paper.style.zoom = (a4Px / contentH).toFixed(4);
-        }
-      } catch (e) { }
-    })();
+    // Aplicar escala configurada pelo usuário (não forçar tudo em 1 página)
+    var escala = (_opPrintConfig.scale || 100) / 100;
+    if (escala !== 1) {
+      clone.style.zoom = String(escala);
+    }
     return root;
   }
 
   function gestaoImprimir() {
     try {
       prepararDocumentoImpressaoGestao();
+      aplicarCssPrint();
       setTimeout(function () { window.print(); }, 80);
       setTimeout(removerDocumentoImpressaoGestao, 2000);
     } catch (e) {
@@ -3212,6 +3270,19 @@
     }, 80);
   }
 
+  function gestaoAtualizarPrintConfig() {
+    var size = $('opPrintSize');
+    var scale = $('opPrintScale');
+    var fitW = $('opPrintFitWidth');
+    _opPrintConfig.size = size ? size.value : 'a4';
+    _opPrintConfig.scale = scale ? Number(scale.value) : 100;
+    _opPrintConfig.fitWidth = fitW ? fitW.checked : true;
+    var ori = document.querySelector('input[name="opPrintOrientation"]:checked');
+    _opPrintConfig.orientation = ori ? ori.value : 'portrait';
+    var mar = document.querySelector('input[name="opPrintMargin"]:checked');
+    _opPrintConfig.margin = mar ? mar.value : 'normal';
+  }
+
   window.rOperacional = rOperacional;
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
@@ -3238,6 +3309,7 @@
   window.opGestaoTexto = gestaoExportarTexto;
   window.opGestaoImprimir = gestaoImprimir;
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
+  window.opGestaoAtualizarPrintConfig = gestaoAtualizarPrintConfig;
   // Função simples: limpar assinaturas do banco direto via RPC
   window.opGestaoLimparAssinaturasCompleto = async function() {
     var doc = state.gestaoDocumento || {};
