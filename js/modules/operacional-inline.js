@@ -10,14 +10,13 @@
     orientation: 'portrait',
     scale: 100,
     fitWidth: true,
-    margin: 'normal',
-    customBreaks: []  // array de posições Y onde quebrar: [{y: 1011}, {y: 2022}]
+    margin: 'normal'
   };
 
   // Preview em split screen
   var _opPreviewAtivo = false;
   var _previewDebounce = null;
-  var _draggingBreak = null;  // quebra sendo arrastada
+  var _opSectionBreaks = {};  // rastreia quais seções têm quebra de página
 
   var state = {
     obras: [],
@@ -1581,8 +1580,9 @@
       if (camposOcultos.indexOf(titulo) !== -1) return;
       var desc = sec.desc || '';
       var subs = sec.subs || [];
-      html += '<div style="border:1px solid #e2e8f0;border-radius:6px;padding:.75rem">'
-        + '<div style="font-weight:700;color:#0f172a;margin-bottom:.5rem">' + esc(titulo) + '</div>'
+      var sectionId = 'escopo-titulo-' + idx;
+      html += '<div style="border:1px solid #e2e8f0;border-radius:6px;padding:.75rem" data-section-break="' + sectionId + '">'
+        + '<div style="font-weight:700;color:#0f172a;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'' + sectionId + '\')" title="Forçar quebra de página" style="margin-right:.3rem">⌗</span>' + esc(titulo) + '</div>'
         + '<div style="color:#475569;font-size:.87rem;line-height:1.5;margin-bottom:.5rem;white-space:pre-wrap">' + esc(desc) + '</div>';
       if (subs.length > 0) {
         html += '<ul style="margin:.5rem 0 0;padding-left:1.5rem;color:#475569;font-size:.87rem">';
@@ -1683,7 +1683,7 @@
       + '.op-signature-canvas{touch-action:none;user-select:none;-webkit-user-select:none;}'
       + '#opGestaoPrintRoot{display:none;}'
       + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important;justify-content:stretch!important}.op-doc-actions .btn{width:100%;font-size:.92rem!important}.op-doc-actions-top{display:none!important}.op-doc-action-status{margin-right:0;text-align:center}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
-      + '#opObraPanel .op-doc-actions-top{display:none!important;}'
+      + '#opObraPanel .op-doc-actions-top{display:flex!important;}'
       + '@page{size:A4;margin:15mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font-size:9pt;color:#64748b;font-family:inherit;}}'
       + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important;}'
       + 'body.op-gestao-printing > *:not(#opGestaoPrintRoot){display:none!important;}'
@@ -1704,14 +1704,26 @@
       + '.op-signature-pad{height:27mm!important;background:#fff!important;border-color:#64748b!important;}'
       + '.op-signature-canvas{width:100%!important;height:100%!important;background:#fff!important;}'
       + '}'
-      + '#opSplitWrapper{display:flex;flex:1;min-height:0;overflow:hidden;}'
-      + '#opObraBody{transition:flex .2s;}'
-      + '#opGestaoPreviewPane{display:none;flex-direction:column;width:50%;min-width:0;overflow-y:auto;background:#e2e8f0;border-left:2px solid #cbd5e1;}'
+      + '#opSplitWrapper{display:flex;flex:1;min-height:0;overflow:hidden;width:100%;}'
+      + '#opObraBody{transition:flex .2s;flex:1;width:100%;}'
+      + '#opGestaoPreviewPane{display:none!important;flex-direction:column;width:50%;min-width:0;overflow-y:auto;background:#e2e8f0;border-left:2px solid #cbd5e1;}'
       + '#opGestaoPreviewContent{background:#fff;width:210mm;min-height:297mm;padding:15mm;margin:0 auto 20px;box-shadow:0 6px 24px rgba(15,23,42,.18);position:relative;box-sizing:border-box;font-size:11pt;line-height:1.6;color:#0f172a;}'
+      + '#opGestaoPreviewContent input[type="text"],#opGestaoPreviewContent input[type="date"],#opGestaoPreviewContent textarea{border:none;background:none;padding:0;font-family:inherit;font-size:inherit;}'
+      + '#opGestaoPreviewContent .no-print{display:none!important;}'
+      + '#opGestaoPreviewContent h1,#opGestaoPreviewContent h2,#opGestaoPreviewContent h3{margin-top:.5rem;margin-bottom:.35rem;}'
+      + '#opGestaoPreviewContent p{margin:0 0 .5rem 0;}'
+      + '#opGestaoPreviewContent ul,#opGestaoPreviewContent ol{margin:.25rem 0;padding-left:1.2rem;}'
+      + '#opGestaoPreviewContent li{margin:.1rem 0;}'
       + '.op-preview-page-break{position:absolute;left:-15mm;right:-15mm;border-top:2px dashed #94a3b8;pointer-events:auto;z-index:10;cursor:grab;user-select:none;padding:4px 0;margin:-4px 0;transition:border-color .2s;}'
       + '.op-preview-page-break:hover{border-top-color:#64748b;}'
       + '.op-preview-page-break.dragging{border-top-color:#2563eb;cursor:grabbing;}'
       + '.op-preview-page-label{position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;pointer-events:none;}'
+      + '.op-section-break-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-right:.5rem;border:1px solid #e2e8f0;border-radius:4px;background:#f8fafc;color:#94a3b8;cursor:pointer;font-size:.9rem;transition:all .2s;user-select:none;vertical-align:middle}'
+      + '.op-section-break-btn:hover{background:#e2e8f0;border-color:#cbd5e1;color:#64748b}'
+      + '.op-section-break-btn.active{background:#dbeafe;border-color:#bfdbfe;color:#1d4ed8}'
+      + '[data-section-break].op-has-page-break{page-break-before:always!important;border-top:3px solid #3b82f6!important;padding-top:.75rem!important;margin-top:.5rem!important;}'
+      + '[data-section-break].op-has-page-break .op-doc-section-title{display:flex;align-items:center;gap:.5rem;}'
+      + '@media print{[data-section-break].op-has-page-break{border-top:none!important;padding-top:0!important;margin-top:0!important;}}'
       + '</style>'
       + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" data-report-mode="cliente" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
       + '<div id="opObraDialog" class="op-panel-shell" style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9">'
@@ -1719,12 +1731,12 @@
       + '<div><div style="font-size:.72rem;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.08em">Operacional</div>'
       + '<div style="font-size:1.05rem;color:#0f172a;font-weight:900;line-height:1.25">Gestao do Negocio</div></div>'
       + '<div style="display:flex;gap:.5rem">'
-      + '<button type="button" id="opBtnPreview" class="btn bg" onclick="opTogglePreviewGestao()" style="min-height:40px;background:#dbeafe!important;color:#1d4ed8!important;border-color:#bfdbfe!important">⊞ Preview</button>'
+      + '<button type="button" id="opBtnPreview" class="btn bg" onclick="opTogglePreviewGestao()" style="min-height:40px;background:#dbeafe!important;color:#1d4ed8!important;border-color:#bfdbfe!important;display:none">⊞ Preview</button>'
       + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px;background:#f8fafc!important;color:#0f172a!important;border-color:#cbd5e1!important">Fechar</button>'
       + '</div></div>'
       + '<div id="opSplitWrapper">'
       + '<div id="opObraBody" class="op-panel-body" style="flex:1;overflow-y:auto;padding:1rem">'
-      + '<article class="op-doc-paper" style="max-width:960px;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:1.2rem;box-sizing:border-box">'
+      + '<article class="op-doc-paper" style="width:210mm;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:15mm;box-sizing:border-box">'
       + '<div class="op-report-notice no-print">Relatorio para cliente: horas ocultas por padrao.</div>'
       + documentoCarregando
       + documentoErro
@@ -1748,16 +1760,16 @@
       + '<section class="op-doc-print-section" style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:1rem 0;margin:1rem 0">'
       + '<h2 style="margin:0;color:#0f172a;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase">Gestao de Negocios</h2>'
       + '<div style="font-size:.75rem;color:#475569;font-weight:900;margin-top:.25rem;text-transform:uppercase">Diario de Bordo / Entregas / Aceite</div></section>'
-      + '<section class="op-doc-print-section" style="margin:1rem 0"><h3 class="op-doc-section-title">Diario de Bordo / Entregas / Aceite</h3>'
+      + '<section class="op-doc-print-section" data-section-break="diario-bordo" style="margin:1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'diario-bordo\')" title="Forçar quebra de página">⌗</span>Diario de Bordo / Entregas / Aceite</h3>'
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
       + '</section>'
-      + '<section class="op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">🟢 Ciclo de Execução</h3>'
+      + '<section class="op-doc-print-section" data-section-break="ciclo-execucao" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'ciclo-execucao\')" title="Forçar quebra de página">⌗</span>🟢 Ciclo de Execução</h3>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.85rem">'
       + '<div class="f"><label>Data de Início de Execução</label><input type="date" id="opGestaoExecInicio"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
       + '<div class="f"><label>Data de Término do Trabalho</label><input type="date" id="opGestaoExecTermino"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
       + '<div class="f"><label>Data de Aceite / Entrega ao Cliente</label><input type="date" id="opGestaoExecAceite" disabled style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:.88rem;cursor:not-allowed" title="Preenchida automaticamente ao assinar"></div>'
       + '</div></section>'
-      + '<section class="op-report-hours-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Apontamentos de Horas</h3>'
+      + '<section class="op-report-hours-section op-doc-print-section" data-section-break="apontamentos-horas" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'apontamentos-horas\')" title="Forçar quebra de página">⌗</span>Apontamentos de Horas</h3>'
       + renderApontamentosNegocioHtml()
       + '</section>'
       + '<section class="op-report-control no-print" style="margin:1.1rem 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:.85rem">'
@@ -1805,15 +1817,14 @@
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno" onchange="opGestaoAtualizarModoRelatorio()"> Interno - incluir apontamentos de horas</label>'
       + '</div></section>'
-      + '<section class="op-doc-print-section op-escopo-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Escopo</h3>'
+      + '<section class="op-doc-print-section op-escopo-section" data-section-break="escopo" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'escopo\')" title="Forçar quebra de página">⌗</span>Escopo</h3>'
       + renderEscopoGestaoHtml(s)
       + '</section>'
-      + '<section class="op-signatures-section op-doc-print-section" style="margin:1.1rem 0"><h3 class="op-doc-section-title">Assinaturas</h3>'
+      + '<section class="op-signatures-section op-doc-print-section" data-section-break="assinaturas" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'assinaturas\')" title="Forçar quebra de página">⌗</span>Assinaturas</h3>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">'
       + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome', 'cliente')
       + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome', 'empresa')
       + '</div></section>'
-      + acoesGestaoHtml(bloqueado, 'op-doc-actions-bottom')
       + '</article>'
       + '</div>'  // fecha opObraBody
       + '<div id="opGestaoPreviewPane">'
@@ -2482,18 +2493,6 @@
     if (cfg.fitWidth) {
       css += '\n#opGestaoPrintRoot .op-print-paper { width: 100% !important; max-width: none !important; }';
     }
-    if (cfg.customBreaks && cfg.customBreaks.length > 0) {
-      cfg.customBreaks.forEach(function(br, idx) {
-        if (br && br.y) {
-          var mmToPx = 96 / 25.4;
-          var pageHeightMm = 267;
-          var pageHeightPx = Math.round(pageHeightMm * mmToPx);
-          var pageNum = Math.floor(br.y / pageHeightPx) + 1;
-          css += '\n/* Quebra customizada na página ' + (pageNum + 1) + ' */';
-          css += '\n#opGestaoPrintRoot [data-custom-break-' + (idx + 1) + '] { page-break-before: always !important; }';
-        }
-      });
-    }
     var el = document.createElement('style');
     el.id = 'opPrintDynamicStyle';
     el.textContent = css;
@@ -2519,49 +2518,67 @@
       btn.style.background = _opPreviewAtivo ? '#bbf7d0!important' : '#dbeafe!important';
     }
     if (_opPreviewAtivo) {
-      adicionarListenersDrag();
       atualizarPreviewGestao(0);
-      inserirIndicadoresQuebraNoEditor();
-    } else {
-      var breaks = document.querySelectorAll('.op-editor-page-break');
-      breaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
     }
   }
 
   function renderPreviewHtml() {
+    // Usa a MESMA lógica de prepararDocumentoImpressaoGestao
     var origem = document.querySelector('#opObraPanel .op-doc-paper');
     if (!origem) return '<p style="color:#94a3b8;text-align:center;margin-top:2rem">Conteúdo não disponível.</p>';
+
+    var modo = modoRelatorioGestao();
     var clone = origem.cloneNode(true);
+
+    // Remove elementos que não devem aparecer na impressão
     Array.prototype.forEach.call(clone.querySelectorAll('.no-print,.op-doc-actions,.op-report-control,.op-report-notice'), function(el) {
       if (el && el.parentNode) el.parentNode.removeChild(el);
     });
-    if (modoRelatorioGestao() === 'cliente') {
+
+    if (modo === 'cliente') {
       Array.prototype.forEach.call(clone.querySelectorAll('.op-report-hours-section'), function(el) {
         if (el && el.parentNode) el.parentNode.removeChild(el);
       });
     }
+
+    // Converte textareas em divs (igual prepararDocumentoImpressaoGestao)
     Array.prototype.forEach.call(clone.querySelectorAll('textarea'), function(ta) {
-      var orig = document.getElementById(ta.id);
+      var original = document.getElementById(ta.id);
       var div = document.createElement('div');
       div.className = ta.className;
       div.style.cssText = ta.getAttribute('style') || '';
       div.style.whiteSpace = 'pre-wrap';
-      div.style.minHeight = '0';
-      div.textContent = orig ? orig.value : ta.value;
+      div.style.minHeight = '92mm';  // Mesmo tamanho da impressão
+      div.textContent = original ? original.value : ta.value;
       ta.parentNode.replaceChild(div, ta);
     });
-    Array.prototype.forEach.call(clone.querySelectorAll('input[type="text"],input[type="date"]'), function(input) {
-      var orig = document.getElementById(input.id);
-      if (orig) input.setAttribute('value', orig.value);
+
+    // Sincroniza inputs de text
+    Array.prototype.forEach.call(clone.querySelectorAll('input[type="text"]'), function(input) {
+      var original = document.getElementById(input.id);
+      input.setAttribute('value', original ? original.value : input.value);
     });
-    Array.prototype.forEach.call(clone.querySelectorAll('canvas.op-signature-canvas'), function(c) {
-      var orig = document.getElementById(c.id);
+
+    // Sincroniza inputs de date
+    Array.prototype.forEach.call(clone.querySelectorAll('input[type="date"]'), function(input) {
+      var original = document.getElementById(input.id);
+      if (original) input.setAttribute('value', original.value);
+    });
+
+    // Converte canvas de assinatura em imagens (igual prepararDocumentoImpressaoGestao)
+    Array.prototype.forEach.call(clone.querySelectorAll('canvas.op-signature-canvas'), function(canvasClone) {
+      var original = document.getElementById(canvasClone.id);
       var img = document.createElement('img');
-      img.alt = 'Assinatura';
+      img.alt = canvasClone.getAttribute('aria-label') || 'Assinatura';
       img.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#fff';
-      try { img.src = orig ? orig.toDataURL('image/png') : ''; } catch(e) { img.src = ''; }
-      c.parentNode.replaceChild(img, c);
+      try {
+        img.src = original ? original.toDataURL('image/png') : canvasClone.toDataURL('image/png');
+      } catch(e) {
+        img.src = '';
+      }
+      canvasClone.parentNode.replaceChild(img, canvasClone);
     });
+
     return clone.innerHTML;
   }
 
@@ -2571,123 +2588,84 @@
       var content = document.getElementById('opGestaoPreviewContent');
       if (!content || !_opPreviewAtivo) return;
       content.innerHTML = renderPreviewHtml();
+
+      // Reaplicar classes de quebra de página
+      Object.keys(_opSectionBreaks).forEach(function(sectionId) {
+        if (_opSectionBreaks[sectionId]) {
+          var section = content.querySelector('[data-section-break="' + sectionId + '"]');
+          if (section) {
+            section.classList.add('op-has-page-break');
+          }
+        }
+      });
+
       inserirLinhasQuebraPreview(content);
-      inserirIndicadoresQuebraNoEditor();
     }, delay !== undefined ? delay : 600);
   }
 
   function inserirLinhasQuebraPreview(root) {
     if (!root) return;
-    var mmToPx = 96 / 25.4;
-    var pageHeightPx = Math.round(267 * mmToPx);
-    var totalHeight = root.scrollHeight;
-    var numPages = Math.ceil(totalHeight / pageHeightPx);
-    var cfg = _opPrintConfig;
 
-    if (numPages <= 1) return;
-
+    // Remove linhas antigas
     var existingBreaks = root.querySelectorAll('.op-preview-page-divider');
     existingBreaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
 
-    for (var p = 1; p < numPages; p++) {
-      var yPos = p * pageHeightPx;
-      if (cfg.customBreaks && cfg.customBreaks[p - 1] && cfg.customBreaks[p - 1].y) {
-        yPos = cfg.customBreaks[p - 1].y;
-      }
+    root.style.position = 'relative';
+
+    // Calcula altura da página em pixels (A4 = 210mm x 297mm, menos margem de 15mm = 267mm altura útil)
+    var mmToPx = 96 / 25.4;
+    var pageHeightMm = 267;  // 297mm - 15mm margem superior - 15mm margem inferior
+    var pageHeightPx = Math.round(pageHeightMm * mmToPx);
+
+    // Páginas começam em 0, 267mm, 534mm, etc
+    var pageNum = 1;
+    for (var page = 1; page < 15; page++) {
+      var breakY = page * pageHeightPx;
 
       var divider = document.createElement('div');
       divider.className = 'op-preview-page-divider';
-      divider.style.cssText = 'position:absolute;left:0;right:0;border-top:3px solid #e0e7ff;pointer-events:none;top:' + yPos + 'px;background:linear-gradient(90deg,#e0e7ff 0%,#e0e7ff 50%,transparent 50%,transparent 100%) no-repeat;background-size:20px 3px';
+      divider.style.cssText = 'position:absolute;left:0;right:0;border-top:2px dashed #cbd5e1;pointer-events:none;top:' + Math.round(breakY) + 'px;z-index:5';
 
       var label = document.createElement('span');
-      label.style.cssText = 'position:absolute;right:0;top:-22px;font-size:.65rem;color:#6366f1;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;white-space:nowrap;box-shadow:0 -1px 2px rgba(99,102,241,.1)';
-      label.textContent = 'Página ' + (p + 1);
+      label.style.cssText = 'position:absolute;right:0;top:-18px;font-size:.6rem;color:#cbd5e1;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none';
+      label.textContent = 'Página ' + (page + 1);
       divider.appendChild(label);
 
-      root.style.position = 'relative';
       root.appendChild(divider);
     }
+
+    // Também adiciona indicadores VISUAIS nas seções com quebra forçada
+    var forcedBreakSections = root.querySelectorAll('[data-section-break].op-has-page-break');
+    forcedBreakSections.forEach(function(section) {
+      var indicator = document.createElement('div');
+      indicator.style.cssText = 'position:absolute;left:-25px;top:0;width:20px;height:20px;background:#3b82f6;border-radius:50%;z-index:10;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff;font-weight:bold;';
+      indicator.textContent = '✓';
+      indicator.title = 'Quebra forçada nesta seção';
+      section.style.position = 'relative';
+      section.parentNode.insertBefore(indicator, section);
+    });
   }
 
-  function inserirIndicadoresQuebraNoEditor() {
-    var paper = document.querySelector('#opObraPanel .op-doc-paper');
-    if (!paper) return;
-
-    var mmToPx = 96 / 25.4;
-    var pageHeightPx = Math.round(267 * mmToPx);
-    var totalHeight = paper.scrollHeight;
-    var numPages = Math.ceil(totalHeight / pageHeightPx);
-    var cfg = _opPrintConfig;
-
-    if (numPages <= 1) return;
-
-    var existingBreaks = document.querySelectorAll('.op-editor-page-break');
-    existingBreaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
-
-    for (var p = 1; p < numPages; p++) {
-      var yPos = p * pageHeightPx;
-      if (cfg.customBreaks && cfg.customBreaks[p - 1] && cfg.customBreaks[p - 1].y) {
-        yPos = cfg.customBreaks[p - 1].y;
+  function toggleSectionBreak(sectionId) {
+    _opSectionBreaks[sectionId] = !_opSectionBreaks[sectionId];
+    var section = document.querySelector('[data-section-break="' + sectionId + '"]');
+    if (section) {
+      if (_opSectionBreaks[sectionId]) {
+        section.classList.add('op-has-page-break');
+      } else {
+        section.classList.remove('op-has-page-break');
       }
-
-      var sep = document.createElement('div');
-      sep.className = 'op-editor-page-break';
-      sep.style.cssText = 'position:absolute;left:0;right:0;border-top:2px dashed #94a3b8;cursor:grab;user-select:none;padding:4px 0;margin:-4px 0;transition:border-color .2s;z-index:100;pointer-events:auto;top:' + yPos + 'px';
-      sep.setAttribute('data-break-index', p);
-      sep.setAttribute('data-page-height', pageHeightPx);
-
-      var label = document.createElement('span');
-      label.style.cssText = 'position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;pointer-events:none;white-space:nowrap';
-      label.textContent = 'Página ' + (p + 1);
-      sep.appendChild(label);
-
-      sep.addEventListener('mouseenter', function() { this.style.borderTopColor = '#64748b'; });
-      sep.addEventListener('mouseleave', function() { if (!_draggingBreak) this.style.borderTopColor = '#94a3b8'; });
-
-      sep.addEventListener('mousedown', function(e) {
-        e.preventDefault();
-        _draggingBreak = {
-          element: this,
-          startY: e.clientY,
-          startTop: parseInt(this.style.top),
-          pageHeight: parseInt(this.getAttribute('data-page-height')),
-          breakIndex: parseInt(this.getAttribute('data-break-index'))
-        };
-        this.style.borderTopColor = '#2563eb';
-        this.style.cursor = 'grabbing';
-      });
-
-      paper.style.position = 'relative';
-      paper.appendChild(sep);
+      // Também atualiza o visual do botão
+      var btn = section.querySelector('.op-section-break-btn');
+      if (btn) {
+        if (_opSectionBreaks[sectionId]) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }
     }
-  }
-
-  var _dragListenersAdded = false;
-  function adicionarListenersDrag() {
-    if (_dragListenersAdded) return;
-    _dragListenersAdded = true;
-
-    document.addEventListener('mousemove', function(e) {
-      if (!_draggingBreak) return;
-      var deltaY = e.clientY - _draggingBreak.startY;
-      var minY = (_draggingBreak.breakIndex - 1) * _draggingBreak.pageHeight;
-      var maxY = (_draggingBreak.breakIndex + 1) * _draggingBreak.pageHeight;
-      var newTop = Math.max(minY, Math.min(maxY, _draggingBreak.startTop + deltaY));
-      _draggingBreak.element.style.top = newTop + 'px';
-      atualizarPreviewGestao(200);
-    });
-
-    document.addEventListener('mouseup', function() {
-      if (!_draggingBreak) return;
-      var newY = parseInt(_draggingBreak.element.style.top);
-      _draggingBreak.element.style.borderTopColor = '#94a3b8';
-      _draggingBreak.element.style.cursor = 'grab';
-      var cfg = _opPrintConfig;
-      cfg.customBreaks = cfg.customBreaks || [];
-      cfg.customBreaks[_draggingBreak.breakIndex - 1] = { y: newY };
-      _draggingBreak = null;
-      atualizarPreviewGestao(0);
-    });
+    atualizarPreviewGestao(200);
   }
 
   function removerDocumentoImpressaoGestao() {
@@ -2747,7 +2725,6 @@
     root.appendChild(clone);
     document.body.appendChild(root);
     document.body.classList.add('op-gestao-printing');
-    // Aplicar escala configurada pelo usuário (não forçar tudo em 1 página)
     var escala = (_opPrintConfig.scale || 100) / 100;
     if (escala !== 1) {
       clone.style.zoom = String(escala);
@@ -3541,6 +3518,7 @@
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
   window.opGestaoAtualizarPrintConfig = gestaoAtualizarPrintConfig;
   window.opTogglePreviewGestao = togglePreviewGestao;
+  window.opToggleSectionBreak = toggleSectionBreak;
   // Função simples: limpar assinaturas do banco direto via RPC
   window.opGestaoLimparAssinaturasCompleto = async function() {
     var doc = state.gestaoDocumento || {};
