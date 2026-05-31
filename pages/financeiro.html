@@ -2107,27 +2107,55 @@ function _normalizarTextoNF(texto) {
 
   // Normaliza para NFC (forma composta)
   if (t.normalize) {
-    t = t.normalize('NFC');
+    t = t.normalize('NFD').normalize('NFC');
   }
 
   // Substitui caracteres comuns mal encodificados
+  // Casos: ?, ??, ?, ?? (vários padrões de erro)
   var mapa = {
-    '?': 'ã', '??': 'ã', '?': 'á', '??': 'á',
-    '?': 'é', '??': 'é', '?': 'í', '??': 'í',
-    '?': 'ó', '??': 'ó', '?': 'ú', '??': 'ú',
-    '?': 'ç', '??': 'ç', '?': 'ñ', '??': 'ñ',
-    '?': 'â', '??': 'â', '?': 'ê', '??': 'ê',
-    '?': 'ô', '??': 'ô', '?': 'à', '??': 'à',
-    '?': 'Ã', '??': 'Ã', '?': 'Á', '??': 'Á',
-    '?': 'É', '??': 'É', '?': 'Í', '??': 'Í',
-    '?': 'Ó', '??': 'Ó', '?': 'Ú', '??': 'Ú',
-    '?': 'Ç', '??': 'Ç', '?': 'Ñ', '??': 'Ñ',
-    '?': 'Â', '??': 'Â', '?': 'Ê', '??': 'Ê',
-    '?': 'Ô', '??': 'Ô'
+    // Minúsculas com til
+    '?': 'ã', '??': 'ã', '~': 'ã',
+    '?': 'õ', '??': 'õ',
+    // Minúsculas com agudo
+    '?': 'á', '??': 'á',
+    '?': 'é', '??': 'é',
+    '?': 'í', '??': 'í',
+    '?': 'ó', '??': 'ó',
+    '?': 'ú', '??': 'ú',
+    // Minúsculas com cedilha
+    '?': 'ç', '??': 'ç',
+    // Minúsculas com til (maiúsculas)
+    '?': 'ñ', '??': 'ñ',
+    // Minúsculas com circunflexo
+    '?': 'â', '??': 'â',
+    '?': 'ê', '??': 'ê',
+    '?': 'ô', '??': 'ô',
+    // Minúsculas com grave
+    '?': 'à', '??': 'à',
+    // MAIÚSCULAS com til
+    '?': 'Ã', '??': 'Ã',
+    '?': 'Õ', '??': 'Õ',
+    // MAIÚSCULAS com agudo
+    '?': 'Á', '??': 'Á',
+    '?': 'É', '??': 'É',
+    '?': 'Í', '??': 'Í',
+    '?': 'Ó', '??': 'Ó',
+    '?': 'Ú', '??': 'Ú',
+    // MAIÚSCULAS com cedilha
+    '?': 'Ç', '??': 'Ç',
+    // MAIÚSCULAS com circunflexo
+    '?': 'Â', '??': 'Â',
+    '?': 'Ê', '??': 'Ê',
+    '?': 'Ô', '??': 'Ô',
+    // Caracteres especiais
+    '?': 'ª',
+    '?': 'º'
   };
 
   for (var char in mapa) {
-    t = t.split(char).join(mapa[char]);
+    // Substitui todos os casos do caractere quebrado
+    var regex = new RegExp(char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    t = t.replace(regex, mapa[char]);
   }
 
   return t;
