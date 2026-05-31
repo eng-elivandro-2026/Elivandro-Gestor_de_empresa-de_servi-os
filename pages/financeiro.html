@@ -2390,7 +2390,8 @@ async function nfSalvarTodosArquivos() {
     statusEl.textContent = '✅ ' + _nfArquivosCarregados.length + ' NF(s) + Conta(s) a Receber criada(s)!';
     _nfArquivosCarregados = [];
     _nfMostrarTabela();
-    setTimeout(function() { recarregarNFs && recarregarNFs(); }, 1500);
+    // Nota: recarregarNFs será chamado automaticamente pelos listeners do Supabase
+    console.log('✅ NF(s) salva(s) com sucesso!');
   } catch(err) {
     statusEl.className = 'status-msg err';
     statusEl.textContent = '❌ Erro: ' + err.message;
