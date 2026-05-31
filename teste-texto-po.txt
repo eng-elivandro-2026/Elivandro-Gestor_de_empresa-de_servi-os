@@ -1,0 +1,98 @@
+Pedido de Compra 5401150125
+
+Por favor, mencione esta referência em todos os seus documentos.
+
+Page 1/1
+
+Verifique todas as informações do pedido de compras e assegure-se de que a Nota Fiscal está de acordo com o PO. Não serão aceitas Notas Fiscais com dados divergentes.
+
+Antes do faturamento solicitar ao requisitante a liberação da emissão da Nota Fiscal.
+
+Em caso de dúvidas, entre em contato imediatamente com o requisitante/comprador antes de emitir a Nota Fiscal.
+
+ATENÇÃO: O não cumprimento das regras abaixo resultará na REJEIÇÃO da sua Nota Fiscal, independentemente da data de emissão.
+
+1. Forma de Pagamento:
+· Somente depósito bancário: Não aceitamos boletos.
+· Confirme os dados bancários no cabeçalho do pedido de compras.
+
+2. Pedido de Compras:
+· Obrigatório: Toda Nota Fiscal deve estar vinculada a um pedido de compras.
+· Conformidade: A Nota Fiscal deve corresponder exatamente ao pedido de compras (NCM, itens, etc.).
+· Identificação: Indique ao lado de cada item da Nota Fiscal a qual linha do pedido ele se refere.
+
+3. Envio da Nota Fiscal:
+· Destinatários: Envie a Nota Fiscal para os responsáveis indicados email do pedido de compras.
+· Cobranças: Notas Fiscais não enviadas aos responsáveis não serão pagas.
+· Novas Notas Fiscais: Caso seja necessário emitir uma nova Nota Fiscal, o prazo de pagamento será contado a partir da nova data de emissão.
+
+4. Serviços de Reparo:
+· Documentos: Ao retornar o equipamento após o reparo, inclua as notas fiscais de retorno, materiais utilizados e serviços realizados.
+
+Recebimento de Mercadorias: De segunda a sexta-feira, das 9h às 16h.
+
+Importante:
+· Sem pedido de compras, sem pagamento: É obrigatório ter um pedido de compras para todos os serviços e materiais.
+· Pedido de Compra: Sempre consultar as informações no corpo do email do Pedido de Compra.
+· Código de Conduta: Leia atentamente o Código de Conduta da JDE disponível no site www.jacobsdouweegberts.com. O descumprimento do código pode resultar na rescisão do contrato.
+
+Comprador
+JACOBS DOUWE EGBERTS BR COMERCIALIZACAO DE CAFÉS LTDA.
+Brazil, 41230-130, Salvador
+Rua do Luxemburgo, 586
+CNPJ: 02333707003675
+Inscrição Estadual: 051345327
+
+Vendedor
+Avenida Armenio Ladeira 245
+13218-310 Jundiai
+Brazil
+Adriano Rodrigues 21786807807
+CNPJ 23624491000147
+Inscrição Estadual 407537226119
+Nome do banco BANCO ITAU S/A
+Conta 49898
+Banco 34170026
+Número do Fornecedor 199439
+
+Por favor enviar todos os documentos eletrônicos e arquivo XML para:
+
+Solicitamos o envio de todos os documentos eletrônicos, incluindo o arquivo XML, para os seguintes destinatários:
+· Email NFe: nfe.entrada@JDEcoffee.com
+· Requisitante: Conforme indicado no e-mail e no pedido de compra.
+
+Atenção:
+É fundamental que a Nota Fiscal contenha as seguintes informações:
+· Código do material
+· Item do pedido de compra
+· No descritivo da NF informar:
+· Número do pedido de compras
+· Número do fornecedor
+· Número da NF
+
+Data de Criação 08.01.2026
+Data Atual 12.01.2026
+
+Contato do Comprador Jessica Fratantonio
+Telefone 11989263010
+E-mail Jessica.Fratantonio@JDEcoffee.com
+
+Por favor entregar em:
+JDE Brazil - Salvador (OPS)
+Rua do Luxemburgo 586
+41230-130 Salvador
+Brazil
+
+Adequação no projeto elétrico e pneumático da empacotadora 8
+Proposta: T26.01.110A
+Requisitante: Bianca Cortegoso
+
+Condições de pagamento 120 Days from invoice date
+
+Item Material Quantidade Unidade Preço Bruto Preço Bruto Total Data de entrega
+10 1,00 Activ.unit 20.000,00/1 20.000,00 08.01.2026
+
+Descrição Adequação projeto eletrico e pneumatico
+
+Moeda Valor Total Bruto
+BRL 0,00

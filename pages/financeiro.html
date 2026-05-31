@@ -13523,15 +13523,12 @@ async function extrairTextoPDF(file) {
 
 // Função para fazer parse dos dados da PO - COMPLETA
 function parsearDadosPO(texto) {
-  console.log('🔍 Parseando dados da PO - EXTRAINDO TODOS OS 40+ CAMPOS...');
+  console.log('🔍 PARSEANDO PO - NOVO PARSER OTIMIZADO PARA FORMATO JDE...');
 
   var dados = {
-    // Identificação
     numero_po: '',
     data_criacao: '',
     data_atual: '',
-
-    // Comprador
     comprador_nome: '',
     comprador_cnpj: '',
     comprador_ie: '',
@@ -13540,8 +13537,6 @@ function parsearDadosPO(texto) {
     comprador_cep: '',
     comprador_cidade: '',
     comprador_pais: '',
-
-    // Vendedor
     vendedor_nome: '',
     vendedor_cnpj: '',
     vendedor_ie: '',
@@ -13556,55 +13551,39 @@ function parsearDadosPO(texto) {
     banco_codigo: '',
     conta: '',
     agencia: '',
-
-    // Contato
     contato_nome: '',
     contato_telefone: '',
     contato_email: '',
-
-    // Condições
     condicoes_pagamento: '',
     prazos: '',
-
-    // Item
     item_numero: '',
     item_tipo: '',
     descricao: '',
     item_quantidade: '',
     item_unidade: '',
     item_preco_unitario: '',
-
-    // Datas
     data_entrega: '',
-
-    // Totais
     valor_total: '',
-    moeda: 'BRL'
+    moeda: 'BRL',
+    requisitante: '',
+    proposta: ''
   };
 
   // ════════════════════════════════════════════════════════════════════
   // IDENTIFICAÇÃO
   // ════════════════════════════════════════════════════════════════════
 
-  // Procurar "Pedido de Compra" seguido do número
-  var matchPO = texto.match(/Pedido de Compra\s+(\d+)/i);
+  // ════════════════════════════════════════════════════════════════════
+  // IDENTIFICAÇÃO - PARSE EXATO DO FORMATO JDE
+  // ════════════════════════════════════════════════════════════════════
+
+  var matchPO = texto.match(/Pedido de Compra\s+(\d+)/);
   if (matchPO) dados.numero_po = matchPO[1];
 
-  // Se não encontrar, tenta outras variações
-  if (!dados.numero_po) {
-    var matchPO2 = texto.match(/Número[:\s]*([A-Z0-9\-]+)/i);
-    if (matchPO2) dados.numero_po = matchPO2[1];
-  }
-
-  if (!dados.numero_po) {
-    var matchPO3 = texto.match(/PO[:\s]*(\d+)/i);
-    if (matchPO3) dados.numero_po = matchPO3[1];
-  }
-
-  var matchDataCriacao = texto.match(/Data de Cria[çc][ãa]o[:\s]+([\d./-]+)/i);
+  var matchDataCriacao = texto.match(/Data de Cria[çc][ãa]o\s+([\d.]+)/);
   if (matchDataCriacao) dados.data_criacao = matchDataCriacao[1];
 
-  var matchDataAtual = texto.match(/Data Atual[:\s]+([\d./-]+)/i);
+  var matchDataAtual = texto.match(/Data Atual\s+([\d.]+)/);
   if (matchDataAtual) dados.data_atual = matchDataAtual[1];
 
   // ════════════════════════════════════════════════════════════════════
