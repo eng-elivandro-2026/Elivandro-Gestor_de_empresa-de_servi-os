@@ -3473,7 +3473,8 @@ function _onTrocaEmpresa(dados) {
 
   // Recarregar todas as tabs
   carregarContas(_empresaAtiva.id);
-  carregarNFs(_empresaAtiva.id);
+  // TEMP: comentado para teste de importação (carregarNFs está travando)
+  // carregarNFs(_empresaAtiva.id);
   carregarNFsFornecedor(_empresaAtiva.id);
   carregarRec(_empresaAtiva.id);
   _fluxoInicializarFiltros();
