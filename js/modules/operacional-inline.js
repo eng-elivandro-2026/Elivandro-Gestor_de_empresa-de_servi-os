@@ -2576,8 +2576,44 @@
         style.textContent = css;
         document.head.appendChild(style);
       }
+      forcarQuebrasPaginaPreview(content, cfg);
       inserirIndicadoresQuebra(content);
     }, delay !== undefined ? delay : 600);
+  }
+
+  function forcarQuebrasPaginaPreview(content, cfg) {
+    if (!content) return;
+    var mmToPx = 96 / 25.4;
+    var pageHeightPx = Math.round(267 * mmToPx);
+    if (cfg.escopoNovaPage) {
+      var escopo = content.querySelector('.op-escopo-section');
+      if (escopo) {
+        var rect = escopo.getBoundingClientRect();
+        var offsetTop = escopo.offsetTop;
+        var pageIndex = Math.floor(offsetTop / pageHeightPx);
+        var pageStart = pageIndex * pageHeightPx;
+        var spaceUsed = offsetTop - pageStart;
+        if (spaceUsed > 0) {
+          var spacer = document.createElement('div');
+          spacer.style.cssText = 'height:' + (pageHeightPx - spaceUsed) + 'px;visibility:hidden;pointer-events:none';
+          escopo.parentNode.insertBefore(spacer, escopo);
+        }
+      }
+    }
+    if (cfg.assinaturaNovaPage) {
+      var assinaturas = content.querySelector('.op-signatures-section');
+      if (assinaturas) {
+        var offsetTop = assinaturas.offsetTop;
+        var pageIndex = Math.floor(offsetTop / pageHeightPx);
+        var pageStart = pageIndex * pageHeightPx;
+        var spaceUsed = offsetTop - pageStart;
+        if (spaceUsed > 0) {
+          var spacer = document.createElement('div');
+          spacer.style.cssText = 'height:' + (pageHeightPx - spaceUsed) + 'px;visibility:hidden;pointer-events:none';
+          assinaturas.parentNode.insertBefore(spacer, assinaturas);
+        }
+      }
+    }
   }
 
   function inserirIndicadoresQuebra(root) {
