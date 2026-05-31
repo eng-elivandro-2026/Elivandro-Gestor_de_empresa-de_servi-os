@@ -2335,7 +2335,8 @@ async function nfSalvarTodosArquivos() {
         baseCalculo: item.baseCalculo
       };
 
-      await sf.criarNotaFiscal({
+      // 1. Cria a NF
+      var nfCriada = await sf.criarNotaFiscal({
         empresa_id: _empresaAtiva.id,
         numero_nf: item.nf || null,
         tipo_nf: 'servico',
@@ -2344,9 +2345,28 @@ async function nfSalvarTodosArquivos() {
         status: 'emitida',
         observacoes: JSON.stringify(dadosExtraidos)
       });
+
+      // 2. Calcula data de vencimento (30 dias após emissão)
+      var dataEmissao = new Date(item.data || new Date());
+      var dataVencimento = new Date(dataEmissao);
+      dataVencimento.setDate(dataVencimento.getDate() + 30);
+      var vencimentoStr = dataVencimento.toISOString().slice(0, 10);
+
+      // 3. Cria conta a receber
+      await sf.criarContaReceber({
+        empresa_id: _empresaAtiva.id,
+        nf_id: nfCriada.id,
+        titulo: 'NF ' + (item.nf || '---') + ' — ' + (item.tomador || 'Cliente'),
+        valor: item.valor,
+        data_vencimento: vencimentoStr,
+        cliente_nome: item.tomador,
+        cliente_cnpj: item.cnpjTomador,
+        status: 'aberta',
+        tipo: 'servico'
+      });
     }
     statusEl.className = 'status-msg ok';
-    statusEl.textContent = '✅ ' + _nfArquivosCarregados.length + ' NF(s) salva(s)!';
+    statusEl.textContent = '✅ ' + _nfArquivosCarregados.length + ' NF(s) + Conta(s) a Receber criada(s)!';
     _nfArquivosCarregados = [];
     _nfMostrarTabela();
     setTimeout(function() { recarregarNFs && recarregarNFs(); }, 1500);
