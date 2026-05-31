@@ -11206,10 +11206,32 @@ function _nfArquivoSelecionado(file) {
     };
     reader.readAsText(file);
   } else {
-    // PDF ou imagem: apenas exibe nome
+    // PDF ou imagem: criar preview com link para download/visualizar
     preview.style.display = 'block';
-    preview.innerHTML = '📎 ' + file.name + ' (' + file.type + ')';
-    label.textContent = '📎 ' + file.name;
+    var blobUrl = URL.createObjectURL(file);
+    var isPDF = file.type.includes('pdf') || file.name.endsWith('.pdf');
+    var isImage = file.type.startsWith('image/');
+
+    var previewHTML = '<div style="padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc">';
+    previewHTML += '<div style="font-weight:600;margin-bottom:.35rem">📎 ' + file.name + '</div>';
+
+    if (isImage) {
+      previewHTML += '<img src="' + blobUrl + '" style="max-width:200px;max-height:200px;border-radius:4px;margin-bottom:.35rem">';
+    }
+
+    previewHTML += '<div style="display:flex;gap:.5rem;margin-top:.35rem">';
+    previewHTML += '<a href="' + blobUrl + '" download="' + file.name + '" style="padding:.35rem .75rem;background:#3b82f6;color:white;border-radius:4px;text-decoration:none;font-size:.82rem;display:inline-block">⬇️ Baixar</a>';
+
+    if (isPDF) {
+      previewHTML += '<a href="' + blobUrl + '" target="_blank" style="padding:.35rem .75rem;background:#10b981;color:white;border-radius:4px;text-decoration:none;font-size:.82rem;display:inline-block">👁️ Visualizar</a>';
+    }
+
+    previewHTML += '</div>';
+    previewHTML += '<div style="margin-top:.35rem;font-size:.75rem;color:var(--text2)">Leia os dados do arquivo e preencha os campos abaixo</div>';
+    previewHTML += '</div>';
+
+    preview.innerHTML = previewHTML;
+    label.textContent = '📎 ' + file.name + ' ✓';
   }
 }
 
@@ -11217,7 +11239,9 @@ async function _nfFazerUploadArquivo(empresaId, nfId) {
   if (!_nfArquivoPendente) return null;
 
   try {
-    var path = empresaId + '/' + Date.now() + '_' + _nfArquivoPendente.name;
+    var fileName = _nfArquivoPendente.name;
+    var fileType = fileName.split('.').pop().toLowerCase();
+    var path = empresaId + '/' + Date.now() + '_' + fileName;
     var upErr = null;
 
     // Upload para Supabase Storage
@@ -11235,8 +11259,8 @@ async function _nfFazerUploadArquivo(empresaId, nfId) {
     _nfArquivoPendente = null; // Limpa após upload
     return {
       arquivo_url: urlData.publicUrl,
-      arquivo_nome: _nfArquivoPendente.name,
-      arquivo_tipo: _nfArquivoPendente.name.split('.').pop().toLowerCase()
+      arquivo_nome: fileName,
+      arquivo_tipo: fileType
     };
   } catch (err) {
     console.error('Erro ao fazer upload:', err);
