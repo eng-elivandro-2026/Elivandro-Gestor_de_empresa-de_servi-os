@@ -2328,21 +2328,31 @@ function _nfRemover(idx) {
 }
 
 async function nfSalvarTodosArquivos() {
+  console.log('🔵 nfSalvarTodosArquivos chamado!');
+  console.log('📊 Arquivos carregados:', _nfArquivosCarregados.length);
+
   if (_nfArquivosCarregados.length === 0) {
     alert('Carregue um arquivo primeiro');
+    console.log('❌ Nenhum arquivo carregado');
     return;
   }
+
   var sf = _sf();
+  console.log('🔍 sf =', sf ? 'encontrado' : 'NÃO ENCONTRADO');
   if (!sf) {
     alert('Módulo financeiro não disponível');
+    console.log('❌ sbFinanceiro não disponível');
     return;
   }
+
   var statusEl = document.getElementById('nf-form-status');
+  console.log('📍 statusEl =', statusEl ? 'encontrado' : 'NÃO ENCONTRADO');
   statusEl.className = 'status-msg loading';
   statusEl.textContent = '⏳ Salvando...';
   try {
     for (var i = 0; i < _nfArquivosCarregados.length; i++) {
       var item = _nfArquivosCarregados[i];
+      console.log('📝 Processando NF #' + (i+1) + ':', item.nf);
 
       // Prepara todos os dados extraídos
       var dadosExtraidos = {
@@ -2367,14 +2377,17 @@ async function nfSalvarTodosArquivos() {
       var vencimentoStr = dataVencimento.toISOString().slice(0, 10);
 
       // 1. Cria conta a receber PRIMEIRO (apenas campos obrigatórios)
+      console.log('💾 Criando conta a receber...');
       var contaCriada = await sf.criarContaReceber({
         empresa_id: _empresaAtiva.id,
         titulo: 'NF ' + (item.nf || '---') + ' — ' + (item.tomador || 'Cliente'),
         data_vencimento: vencimentoStr,
         status: 'aberta'
       });
+      console.log('✅ Conta criada:', contaCriada?.id);
 
       // 2. Cria a NF vinculada à conta a receber
+      console.log('💾 Criando NF...');
       await sf.criarNotaFiscal({
         empresa_id: _empresaAtiva.id,
         numero_nf: item.nf || null,
@@ -2386,13 +2399,17 @@ async function nfSalvarTodosArquivos() {
         observacoes: JSON.stringify(dadosExtraidos)
       });
     }
+    console.log('✅ TODAS as NFs salvas com sucesso!');
     statusEl.className = 'status-msg ok';
     statusEl.textContent = '✅ ' + _nfArquivosCarregados.length + ' NF(s) + Conta(s) a Receber criada(s)!';
     _nfArquivosCarregados = [];
     _nfMostrarTabela();
     // Nota: recarregarNFs será chamado automaticamente pelos listeners do Supabase
-    console.log('✅ NF(s) salva(s) com sucesso!');
   } catch(err) {
+    console.log('❌ ERRO AO SALVAR!');
+    console.error('Erro completo:', err);
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
     statusEl.className = 'status-msg err';
     statusEl.textContent = '❌ Erro: ' + err.message;
     console.error('Erro ao salvar NF:', err);
