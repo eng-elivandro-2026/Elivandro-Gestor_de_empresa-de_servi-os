@@ -783,6 +783,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div id="nf-arquivo-preview" style="display:none;margin-top:.5rem;font-size:.82rem;color:#0f172a"></div>
     </div>
 
+    <!-- Dados extraídos do arquivo - mostra quando PDF/XML é lido -->
+    <div id="nf-dados-extraidos-container" style="display:none;margin-top:1rem">
+      <div style="padding:1rem;background:#ecfdf5;border:2px solid #10b981;border-radius:8px">
+        <div style="font-weight:600;margin-bottom:.75rem;color:#047857">✅ Dados Extraídos do Arquivo</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.5rem" id="nf-dados-extraidos-grid">
+          <!-- Preenchido dinamicamente -->
+        </div>
+        <div style="font-size:.75rem;color:#059669;margin-top:.5rem">Revise os dados e confirme antes de preencher os campos abaixo</div>
+      </div>
+    </div>
+
     <!-- Dados da NF - sempre visível -->
     <div class="cp-form-secao">2️⃣ Dados da Nota Fiscal</div>
     <div class="cp-form-grid">
@@ -11191,8 +11202,43 @@ function _nfArquivoSelecionado(file) {
           document.getElementById('nf-novo-data').value = dhEmi.substring(0, 10);
         }
         if (vNF) {
-          document.getElementById('nf-calc-valor').value = (parseFloat(vNF) / 100).toFixed(2);
-          nfCalcValorParaPct();
+          document.getElementById('nf-novo-valor').value = (parseFloat(vNF) / 100).toFixed(2);
+        }
+
+        // Exibir seção de dados extraídos
+        var containerExtract = document.getElementById('nf-dados-extraidos-container');
+        var gridExtract = document.getElementById('nf-dados-extraidos-grid');
+
+        if (containerExtract && gridExtract) {
+          var html = '';
+          var vNFFormatado = vNF ? parseFloat(vNF / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A';
+          var dataFormatada = dhEmi ? dhEmi.substring(8, 10) + '/' + dhEmi.substring(5, 7) + '/' + dhEmi.substring(0, 4) : 'N/A';
+
+          if (nNF) {
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">NF</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">' + nNF + '</div>' +
+                   '</div>';
+          }
+
+          if (dhEmi) {
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">Data</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">' + dataFormatada + '</div>' +
+                   '</div>';
+          }
+
+          if (vNF) {
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">Valor</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">R$ ' + vNFFormatado + '</div>' +
+                   '</div>';
+          }
+
+          if (html) {
+            gridExtract.innerHTML = html;
+            containerExtract.style.display = 'block';
+          }
         }
 
         preview.style.display = 'block';
@@ -11275,35 +11321,54 @@ async function _nfLerDadosPDF() {
         var dataStr = dataMatch ? (dataMatch[3] + '-' + dataMatch[2] + '-' + dataMatch[1]) : '';
         var valor = valorMatch ? valorMatch[1].replace(',', '.') : '';
 
-        // Preencher campos com destaque visual
+        // Exibir seção de dados extraídos
+        var containerExtract = document.getElementById('nf-dados-extraidos-container');
+        var gridExtract = document.getElementById('nf-dados-extraidos-grid');
+
+        if (containerExtract && gridExtract) {
+          var html = '';
+
+          if (nfNum) {
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">NF</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">' + nfNum + '</div>' +
+                   '</div>';
+          }
+
+          if (dataStr) {
+            var dataParts = dataStr.split('-');
+            var dataFormatada = dataParts[2] + '/' + dataParts[1] + '/' + dataParts[0];
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">Data</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">' + dataFormatada + '</div>' +
+                   '</div>';
+          }
+
+          if (valor) {
+            html += '<div style="padding:.75rem;background:white;border-radius:6px;border-left:4px solid #10b981">' +
+                   '<div style="font-size:.7rem;color:#6b7280;margin-bottom:.25rem">Valor</div>' +
+                   '<div style="font-size:1.2rem;font-weight:700;color:#047857">R$ ' + parseFloat(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div>' +
+                   '</div>';
+          }
+
+          if (html) {
+            gridExtract.innerHTML = html;
+            containerExtract.style.display = 'block';
+            containerExtract.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+
+        // Preencher campos invisíveis
         var nfEl = document.getElementById('nf-novo-numero');
         var dataEl = document.getElementById('nf-novo-data');
         var valorEl = document.getElementById('nf-novo-valor');
 
-        var highlightField = function(el) {
-          if (!el) return;
-          el.style.background = '#fef08a';
-          el.style.borderColor = '#eab308';
-          setTimeout(function() {
-            el.style.background = '';
-            el.style.borderColor = '';
-          }, 2000);
-        };
-
-        if (nfNum && nfEl) { nfEl.value = nfNum; highlightField(nfEl); }
-        if (dataStr && dataEl) { dataEl.value = dataStr; highlightField(dataEl); }
-        if (valor && valorEl) { valorEl.value = valor; highlightField(valorEl); }
+        if (nfNum && nfEl) nfEl.value = nfNum;
+        if (dataStr && dataEl) dataEl.value = dataStr;
+        if (valor && valorEl) valorEl.value = valor;
 
         if (statusEl) {
-          statusEl.innerHTML = '✅ PDF lido! ' + (nfNum ? 'NF: ' + nfNum : '') + (dataStr ? ' | Data: ' + dataStr : '') + (valor ? ' | Valor: R$ ' + valor : '') + ' <small style="color:#6b7280">(campos destacados em amarelo)</small>';
-        }
-
-        // Rolar para mostrar os campos preenchidos
-        var firstField = nfEl || dataEl || valorEl;
-        if (firstField) {
-          setTimeout(function() {
-            firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 300);
+          statusEl.innerHTML = '✅ PDF lido com sucesso! Revise os dados acima e preencha os campos restantes.';
         }
       } catch (err) {
         console.error('Erro ao ler PDF:', err);
