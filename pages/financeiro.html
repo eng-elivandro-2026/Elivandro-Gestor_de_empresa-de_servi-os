@@ -2366,14 +2366,11 @@ async function nfSalvarTodosArquivos() {
       dataVencimento.setDate(dataVencimento.getDate() + 30);
       var vencimentoStr = dataVencimento.toISOString().slice(0, 10);
 
-      // 1. Cria conta a receber PRIMEIRO
+      // 1. Cria conta a receber PRIMEIRO (apenas campos obrigatórios)
       var contaCriada = await sf.criarContaReceber({
         empresa_id: _empresaAtiva.id,
         titulo: 'NF ' + (item.nf || '---') + ' — ' + (item.tomador || 'Cliente'),
-        valor: item.valor,
         data_vencimento: vencimentoStr,
-        cliente_nome: item.tomador,
-        cliente_cnpj: item.cnpjTomador,
         status: 'aberta'
       });
 
