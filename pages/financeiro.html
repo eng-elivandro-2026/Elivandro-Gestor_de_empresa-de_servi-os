@@ -11275,13 +11275,35 @@ async function _nfLerDadosPDF() {
         var dataStr = dataMatch ? (dataMatch[3] + '-' + dataMatch[2] + '-' + dataMatch[1]) : '';
         var valor = valorMatch ? valorMatch[1].replace(',', '.') : '';
 
-        // Preencher campos
-        if (nfNum) document.getElementById('nf-novo-numero').value = nfNum;
-        if (dataStr) document.getElementById('nf-novo-data').value = dataStr;
-        if (valor) document.getElementById('nf-novo-valor').value = valor;
+        // Preencher campos com destaque visual
+        var nfEl = document.getElementById('nf-novo-numero');
+        var dataEl = document.getElementById('nf-novo-data');
+        var valorEl = document.getElementById('nf-novo-valor');
+
+        var highlightField = function(el) {
+          if (!el) return;
+          el.style.background = '#fef08a';
+          el.style.borderColor = '#eab308';
+          setTimeout(function() {
+            el.style.background = '';
+            el.style.borderColor = '';
+          }, 2000);
+        };
+
+        if (nfNum && nfEl) { nfEl.value = nfNum; highlightField(nfEl); }
+        if (dataStr && dataEl) { dataEl.value = dataStr; highlightField(dataEl); }
+        if (valor && valorEl) { valorEl.value = valor; highlightField(valorEl); }
 
         if (statusEl) {
-          statusEl.innerHTML = '✅ PDF lido! ' + (nfNum ? 'NF: ' + nfNum : '') + (dataStr ? ' | Data: ' + dataStr : '') + (valor ? ' | Valor: R$ ' + valor : '');
+          statusEl.innerHTML = '✅ PDF lido! ' + (nfNum ? 'NF: ' + nfNum : '') + (dataStr ? ' | Data: ' + dataStr : '') + (valor ? ' | Valor: R$ ' + valor : '') + ' <small style="color:#6b7280">(campos destacados em amarelo)</small>';
+        }
+
+        // Rolar para mostrar os campos preenchidos
+        var firstField = nfEl || dataEl || valorEl;
+        if (firstField) {
+          setTimeout(function() {
+            firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
         }
       } catch (err) {
         console.error('Erro ao ler PDF:', err);
