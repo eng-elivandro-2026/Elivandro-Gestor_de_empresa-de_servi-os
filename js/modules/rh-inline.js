@@ -29,7 +29,7 @@ var _modoApt = 'equipe'; // 'equipe' | 'meus'
 var _colabProprio = null; // null=não verificado, false=não é colab, objeto=é colab
 var _usuarioRH = null;
 var _rhPerfil = null;
-var _rhValoresVisiveis = false;
+var _rhValoresVisiveis = true;
 var _docTipo = 'doc'; // 'doc' | 'aso' | 'nr' | 'epi'
 var _empresaId = (typeof getEmpresaAtivaId === "function") ? getEmpresaAtivaId() : null;
 var _propostas = [];
@@ -45,8 +45,12 @@ function fmtData(d) {
   var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0];
 }
 function fmtMoeda(v) {
-  if (!_rhValoresVisiveis) return '••••';
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+// Controla SOMENTE a visibilidade do valor_hora (R$/h) na lista de colaboradores/prestadores.
+function fmtValorHoraRH(v) {
+  if (!_rhValoresVisiveis) return 'R$ •••••/h';
+  return fmtMoeda(v) + '/h';
 }
 function garantirBotaoValoresRH() {
   if (document.getElementById('btnToggleValoresRH')) return;
@@ -70,11 +74,6 @@ function toggleValoresRH() {
   _rhValoresVisiveis = !_rhValoresVisiveis;
   atualizarBotaoValoresRH();
   carregarColabs();
-  carregarKpiApt();
-  if (document.getElementById('sec-apontamentos')?.classList.contains('on')) carregarApontamentos();
-  if (document.getElementById('sec-boletins')?.classList.contains('on')) carregarBoletins();
-  if (document.getElementById('sec-despesas')?.classList.contains('on')) carregarDespesas();
-  if (_colabAtivo && document.getElementById('sec-detalhe')?.classList.contains('on')) abrirDetalhe(_colabAtivo.id);
 }
 function perfilRHPermitido(perfil) {
   return ['dono','gestor','admin','super_admin','socio','sócio'].includes(String(perfil||'').toLowerCase());
@@ -416,7 +415,7 @@ function renderColabs(lista) {
         + '<div class="colab-badges">'
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (inativo ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>')
-          + (c.valor_hora ? '<span class="bdg bdg-gray">' + fmtMoeda(c.valor_hora) + '/h</span>' : '')
+          + (c.valor_hora ? '<span class="bdg bdg-gray">' + fmtValorHoraRH(c.valor_hora) + '</span>' : '')
           + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '%</span>' : '')
         + '</div>'
       + '</div>'
