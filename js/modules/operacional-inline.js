@@ -2519,6 +2519,7 @@
       btn.style.background = _opPreviewAtivo ? '#bbf7d0!important' : '#dbeafe!important';
     }
     if (_opPreviewAtivo) {
+      adicionarListenersDrag();
       atualizarPreviewGestao(0);
       inserirIndicadoresQuebraNoEditor();
     } else {
@@ -2591,6 +2592,10 @@
 
     for (var p = 1; p < numPages; p++) {
       var yPos = p * pageHeightPx;
+      if (cfg.customBreaks && cfg.customBreaks[p - 1] && cfg.customBreaks[p - 1].y) {
+        yPos = cfg.customBreaks[p - 1].y;
+      }
+
       var sep = document.createElement('div');
       sep.className = 'op-editor-page-break';
       sep.style.cssText = 'position:absolute;left:0;right:0;border-top:2px dashed #94a3b8;cursor:grab;user-select:none;padding:4px 0;margin:-4px 0;transition:border-color .2s;z-index:100;pointer-events:auto;top:' + yPos + 'px';
@@ -2621,6 +2626,12 @@
       paper.style.position = 'relative';
       paper.appendChild(sep);
     }
+  }
+
+  var _dragListenersAdded = false;
+  function adicionarListenersDrag() {
+    if (_dragListenersAdded) return;
+    _dragListenersAdded = true;
 
     document.addEventListener('mousemove', function(e) {
       if (!_draggingBreak) return;
@@ -2637,6 +2648,7 @@
       var newY = parseInt(_draggingBreak.element.style.top);
       _draggingBreak.element.style.borderTopColor = '#94a3b8';
       _draggingBreak.element.style.cursor = 'grab';
+      var cfg = _opPrintConfig;
       cfg.customBreaks = cfg.customBreaks || [];
       cfg.customBreaks[_draggingBreak.breakIndex - 1] = { y: newY };
       _draggingBreak = null;
