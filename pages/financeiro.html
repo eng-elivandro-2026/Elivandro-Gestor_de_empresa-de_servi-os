@@ -14146,7 +14146,7 @@ async function poEditar(poId) {
     // Criar modal de edição com TODOS os 40+ campos
     var html = `
       <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999" id="po-modal-overlay" onclick="if(event.target.id==='po-modal-overlay')document.getElementById('po-modal-overlay').remove()">
-        <div style="background:white;border-radius:12px;padding:2rem;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px rgba(0,0,0,0.15)">
+        <div style="background:white;border-radius:12px;padding:2rem;max-width:1200px;width:98%;max-height:95vh;overflow-y:auto;box-shadow:0 20px 25px rgba(0,0,0,0.15)">
           <h2 style="margin-bottom:2rem;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:1rem">✏️ Editar PO #${po.numero_nf || 'N/A'}</h2>
 
           <!-- SEÇÃO: INFORMAÇÕES BÁSICAS -->
