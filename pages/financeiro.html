@@ -765,133 +765,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- ── Formulário Nova NF vinculada à proposta (Fase C) ── -->
   <div class="cp-form-wrap" id="nf-form-wrap" style="display:none">
-    <div class="cp-form-titulo">📄 Nova Nota Fiscal</div>
-
-    <p class="cp-aviso">
-      Cadastre a NF aqui. Você pode vincular a uma proposta agora ou depois. O Financeiro é o único responsável pelo lançamento de NFs.
-      Nenhum dado é gravado no Comercial.
-    </p>
-
-    <!-- Upload de arquivo - sempre visível -->
-    <div class="cp-form-secao">1️⃣ Arquivo da NF (Opcional)</div>
-    <div class="cp-form-group">
-      <label class="cp-form-label">XML, PDF ou Imagem</label>
-      <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;background:#f8fafc;margin-top:.35rem">
+    <!-- UPLOAD AREA -->
+    <div style="margin-bottom:2rem;padding:1.5rem;background:#f8fafc;border-radius:8px">
+      <div style="font-weight:700;font-size:1.1rem;margin-bottom:1rem">📄 Importar Nota Fiscal</div>
+      <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:2rem;text-align:center;cursor:pointer;background:white">
         <input type="file" id="nf-arquivo-input" accept=".xml,.pdf,.png,.jpg,.jpeg" style="display:none">
-        <span id="nf-upload-label" style="font-size:.88rem">📎 Clique ou arraste XML, PDF ou Imagem</span>
+        <div style="font-size:2rem;margin-bottom:.5rem">📎</div>
+        <span id="nf-upload-label" style="font-size:.95rem;color:#6b7280">Clique ou arraste XML, PDF ou Imagem</span>
       </div>
-      <div id="nf-arquivo-preview" style="display:none;margin-top:.5rem;font-size:.82rem;color:#0f172a"></div>
+      <div id="nf-arquivo-preview" style="display:none;margin-top:.75rem;font-size:.82rem"></div>
     </div>
 
-    <!-- Dados extraídos do arquivo - mostra quando PDF/XML é lido -->
-    <div id="nf-dados-extraidos-container" style="display:none;margin-top:1rem">
-      <div style="padding:1rem;background:#ecfdf5;border:2px solid #10b981;border-radius:8px">
-        <div style="font-weight:600;margin-bottom:.75rem;color:#047857">✅ Dados Extraídos do Arquivo</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.5rem" id="nf-dados-extraidos-grid">
-          <!-- Preenchido dinamicamente -->
-        </div>
-        <div style="font-size:.75rem;color:#059669;margin-top:.5rem">Revise os dados e confirme antes de preencher os campos abaixo</div>
+    <!-- TABELA DE DADOS LIDOS -->
+    <div id="nf-tabela-container" style="display:none">
+      <div style="font-weight:700;font-size:1.1rem;margin-bottom:1rem">📊 Dados Lidos</div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">NF</th>
+              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Data</th>
+              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Valor</th>
+              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Cliente</th>
+              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Tipo</th>
+              <th style="padding:1rem;text-align:center;font-weight:600;color:#374151">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="nf-tabela-body">
+            <!-- Preenchido dinamicamente -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:1rem">
+        <button id="nf-btn-salvar-todos" onclick="nfSalvarTodos()" style="padding:.75rem 1.5rem;background:#10b981;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.95rem">
+          💾 Salvar Todos
+        </button>
+        <div class="status-msg" id="nf-form-status" style="margin-top:.5rem"></div>
       </div>
     </div>
-
-    <!-- Dados da NF - sempre visível -->
-    <div class="cp-form-secao">2️⃣ Dados da Nota Fiscal</div>
-    <div class="cp-form-grid">
-      <div class="cp-form-row">
-        <label class="cp-form-label" for="nf-novo-numero">Nº da NF</label>
-        <input type="text" id="nf-novo-numero" class="cp-form-input" placeholder="Ex: 000123">
-      </div>
-      <div class="cp-form-row">
-        <label class="cp-form-label" for="nf-novo-tipo">Tipo</label>
-        <select id="nf-novo-tipo" class="cp-form-input">
-          <option value="servico">Serviço</option>
-          <option value="material">Material</option>
-        </select>
-      </div>
-      <div class="cp-form-row">
-        <label class="cp-form-label" for="nf-novo-data">Data de Emissão</label>
-        <input type="date" id="nf-novo-data" class="cp-form-input">
-      </div>
-      <div class="cp-form-row">
-        <label class="cp-form-label" for="nf-novo-cliente">Cliente *</label>
-        <input type="text" id="nf-novo-cliente" class="cp-form-input" placeholder="Nome do cliente">
-      </div>
-    </div>
-
-    <div class="cp-form-row" style="margin-top:.3rem">
-      <label class="cp-form-label" for="nf-novo-valor">Valor da NF (R$) *</label>
-      <input type="number" id="nf-novo-valor" class="cp-form-input" min="0" step="0.01" placeholder="0,00" style="text-align:right">
-    </div>
-
-    <div class="cp-form-row">
-      <label class="cp-form-label" for="nf-novo-obs">Observações</label>
-      <input type="text" id="nf-novo-obs" class="cp-form-input"
-        placeholder="Observação opcional (referência, nota, etc.)">
-    </div>
-
-    <!-- Vínculo com Proposta - Opcional -->
-    <div class="cp-form-secao">3️⃣ Vínculo com Proposta (Opcional)</div>
-    <div class="cp-form-row">
-      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600">
-        <input type="checkbox" id="nf-vincular-proposta" onchange="nfTogglePropostaOpcoes()" style="width:18px;height:18px">
-        Vincular a uma Proposta Aprovada?
-      </label>
-    </div>
-
-    <!-- Opções de proposta - aparecem só se checkbox marcado -->
-    <div id="nf-opcoes-proposta" style="display:none">
-      <div class="cp-form-row">
-        <label class="cp-form-label" for="nf-sel-proposta">Selecione a Proposta</label>
-        <select id="nf-sel-proposta" class="cp-form-input" onchange="nfOnProposta(this.value)">
-          <option value="">-- Selecione uma proposta aprovada --</option>
-        </select>
-      </div>
-
-      <!-- Painel somente leitura: dados da proposta -->
-      <div id="nf-dados-proposta" style="display:none">
-        <div class="cp-form-readonly" id="nf-info-proposta"></div>
-
-        <!-- Calculadora bidirecional -->
-        <div class="cp-form-secao" style="margin-top:.75rem">Calculadora de Faturamento</div>
-        <div class="cp-form-grid">
-          <div class="cp-form-row">
-            <label class="cp-form-label">% desta NF sobre o valor vendido</label>
-            <div style="display:flex;align-items:center;gap:.35rem">
-              <input type="number" id="nf-calc-pct" class="cp-form-input" min="0" max="999" step="0.01"
-                placeholder="0,00" oninput="nfCalcPctParaValor()" style="text-align:right">
-              <span style="font-size:.82rem;color:var(--text2);white-space:nowrap">%</span>
-            </div>
-          </div>
-          <div class="cp-form-row">
-            <label class="cp-form-label">Valor desta NF (R$)</label>
-            <input type="number" id="nf-calc-valor" class="cp-form-input" min="0" step="0.01"
-              placeholder="0,00" oninput="nfCalcValorParaPct()" style="text-align:right">
-          </div>
-        </div>
-
-        <!-- Painel de resumo / saldo -->
-        <div id="nf-resumo-saldo"></div>
-
-        <!-- Alertas de excedente -->
-        <div id="nf-alerta-excedente"></div>
-
-        <!-- Justificativa (aparece só quando > 100%) -->
-        <div id="nf-row-justificativa" style="display:none">
-          <div class="cp-form-row">
-            <label class="cp-form-label">Justificativa para exceder 100% do valor vendido *</label>
-            <input type="text" id="nf-justificativa" class="cp-form-input"
-              placeholder="Ex: Reajuste contratual aprovado, complemento de escopo...">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Botão Salvar -->
-    <button class="btn-criar-cp" id="nf-btn-salvar" onclick="nfFaseCsalvar()"
-      style="margin-top:.9rem">
-      💾 Salvar NF no Financeiro
-    </button>
-    <div class="status-msg" id="nf-form-status"></div>
   </div>
   <!-- /Fase C: Nova NF -->
 
