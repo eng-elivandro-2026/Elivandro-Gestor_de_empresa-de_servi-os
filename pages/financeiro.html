@@ -765,43 +765,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- ── Formulário Nova NF vinculada à proposta (Fase C) ── -->
   <div class="cp-form-wrap" id="nf-form-wrap" style="display:none">
-    <!-- UPLOAD AREA -->
     <div style="margin-bottom:2rem;padding:1.5rem;background:#f8fafc;border-radius:8px">
       <div style="font-weight:700;font-size:1.1rem;margin-bottom:1rem">📄 Importar Nota Fiscal</div>
       <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:2rem;text-align:center;cursor:pointer;background:white">
         <input type="file" id="nf-arquivo-input" accept=".xml,.pdf,.png,.jpg,.jpeg" style="display:none">
         <div style="font-size:2rem;margin-bottom:.5rem">📎</div>
-        <span id="nf-upload-label" style="font-size:.95rem;color:#6b7280">Clique ou arraste XML, PDF ou Imagem</span>
+        <div style="font-size:.95rem;color:#6b7280">Clique ou arraste XML, PDF ou Imagem</div>
+        <div style="font-size:.8rem;color:#9ca3af;margin-top:.5rem">Será lido automaticamente</div>
       </div>
-      <div id="nf-arquivo-preview" style="display:none;margin-top:.75rem;font-size:.82rem"></div>
     </div>
 
-    <!-- TABELA DE DADOS LIDOS -->
-    <div id="nf-tabela-container" style="display:none">
+    <div id="nf-tabela-container" style="display:none;margin-bottom:1.5rem">
       <div style="font-weight:700;font-size:1.1rem;margin-bottom:1rem">📊 Dados Lidos</div>
-      <div style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb">
-        <table style="width:100%;border-collapse:collapse">
+      <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px">
+        <table style="width:100%;border-collapse:collapse;background:white">
           <thead>
-            <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+            <tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
               <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">NF</th>
               <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Data</th>
-              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Valor</th>
+              <th style="padding:1rem;text-align:right;font-weight:600;color:#374151">Valor</th>
               <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Cliente</th>
               <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Tipo</th>
-              <th style="padding:1rem;text-align:center;font-weight:600;color:#374151">Ações</th>
+              <th style="padding:1rem;text-align:center;font-weight:600;color:#374151">X</th>
             </tr>
           </thead>
-          <tbody id="nf-tabela-body">
-            <!-- Preenchido dinamicamente -->
-          </tbody>
+          <tbody id="nf-tabela-body"></tbody>
         </table>
       </div>
 
-      <div style="margin-top:1rem">
-        <button id="nf-btn-salvar-todos" onclick="nfSalvarTodos()" style="padding:.75rem 1.5rem;background:#10b981;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.95rem">
-          💾 Salvar Todos
+      <div style="margin-top:1rem;display:flex;gap:1rem;align-items:center">
+        <button onclick="nfSalvarTodosArquivos()" style="padding:.75rem 1.5rem;background:#10b981;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.95rem">
+          💾 Salvar <span id="nf-count"></span>
         </button>
-        <div class="status-msg" id="nf-form-status" style="margin-top:.5rem"></div>
+        <div id="nf-form-status" class="status-msg"></div>
       </div>
     </div>
   </div>
@@ -2101,6 +2097,89 @@ var _drePlanoResultado = null;
 var _nffLoadToken = 0;        // race condition guard para troca de empresa
 var _nfArquivoPendente = null; // File selecionado para NF antes de salvar
 var _nfArquivosCarregados = []; // Array de NFs carregadas
+
+// ====== NOVO SISTEMA NF ======
+function _nfArquivoSelecionado(file) {
+  if (!file) return;
+  if (file.name.endsWith('.xml')) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var xmlDoc = new DOMParser().parseFromString(e.target.result, 'text/xml');
+        var nNF = xmlDoc.getElementsByTagName('nNF')[0]?.textContent || '';
+        var dhEmi = xmlDoc.getElementsByTagName('dhEmi')[0]?.textContent?.substring(0,10) || '';
+        var vNF = parseFloat(xmlDoc.getElementsByTagName('vNF')[0]?.textContent || 0) / 100;
+        _nfAdicionarArquivo(nNF, dhEmi, vNF, '', 'servico');
+      } catch(err) {
+        alert('❌ Erro ao ler XML');
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    _nfAdicionarArquivo('', '', 0, '', 'servico');
+  }
+}
+
+function _nfAdicionarArquivo(nf, data, valor, cliente, tipo) {
+  _nfArquivosCarregados.push({nf:nf, data:data, valor:valor, cliente:cliente, tipo:tipo});
+  _nfMostrarTabela();
+}
+
+function _nfMostrarTabela() {
+  var tbody = document.getElementById('nf-tabela-body');
+  var container = document.getElementById('nf-tabela-container');
+  if (!tbody || !container) return;
+  tbody.innerHTML = '';
+  _nfArquivosCarregados.forEach(function(item, idx) {
+    var row = tbody.insertRow();
+    row.style.borderBottom = '1px solid #e5e7eb';
+    row.innerHTML = '<td style="padding:1rem">' + item.nf + '</td><td style="padding:1rem">' + item.data + '</td><td style="padding:1rem;text-align:right">R$ ' + item.valor.toFixed(2) + '</td><td style="padding:1rem"><input type="text" value="' + item.cliente + '" style="width:100%;padding:.5rem;border:1px solid #d1d5db;border-radius:4px" onchange="_nfArquivosCarregados[' + idx + '].cliente = this.value"></td><td style="padding:1rem"><select style="width:100%;padding:.5rem;border:1px solid #d1d5db;border-radius:4px" onchange="_nfArquivosCarregados[' + idx + '].tipo = this.value"><option value="servico">Serviço</option><option value="material">Material</option></select></td><td style="padding:1rem;text-align:center"><button onclick="_nfRemover(' + idx + ')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer">🗑️</button></td>';
+  });
+  container.style.display = _nfArquivosCarregados.length > 0 ? 'block' : 'none';
+  document.getElementById('nf-count').textContent = _nfArquivosCarregados.length > 0 ? '(' + _nfArquivosCarregados.length + ')' : '';
+}
+
+function _nfRemover(idx) {
+  _nfArquivosCarregados.splice(idx, 1);
+  _nfMostrarTabela();
+}
+
+async function nfSalvarTodosArquivos() {
+  if (_nfArquivosCarregados.length === 0) {
+    alert('Carregue um arquivo primeiro');
+    return;
+  }
+  var sf = _sf();
+  if (!sf) {
+    alert('Módulo financeiro não disponível');
+    return;
+  }
+  var statusEl = document.getElementById('nf-form-status');
+  statusEl.className = 'status-msg loading';
+  statusEl.textContent = '⏳ Salvando...';
+  try {
+    for (var i = 0; i < _nfArquivosCarregados.length; i++) {
+      var item = _nfArquivosCarregados[i];
+      await sf.criarNotaFiscal({
+        empresa_id: _empresaAtiva.id,
+        numero_nf: item.nf || null,
+        tipo_nf: item.tipo,
+        data_emissao: item.data || new Date().toISOString().slice(0,10),
+        valor_nf: item.valor,
+        status: 'emitida',
+        observacoes: JSON.stringify({texto: ''})
+      });
+    }
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = '✅ ' + _nfArquivosCarregados.length + ' NF(s) salva(s)!';
+    _nfArquivosCarregados = [];
+    _nfMostrarTabela();
+    setTimeout(function() { recarregarNFs && recarregarNFs(); }, 1500);
+  } catch(err) {
+    statusEl.className = 'status-msg err';
+    statusEl.textContent = '❌ Erro: ' + err.message;
+  }
+}
 
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {

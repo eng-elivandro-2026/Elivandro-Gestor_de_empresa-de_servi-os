@@ -6,7 +6,11 @@
       "Bash(git merge *)",
       "Bash(git reset *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'redesign: formulário NF super simples - upload + tabela *)"
+      "Bash(git commit -m 'redesign: formulário NF super simples - upload + tabela *)",
+      "Bash(git commit -m 'feat: sistema NF completo e funcional *)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }
