@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teste Parser NF</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    .ok { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Teste de Extração NF do XML</h1>
+  <div id="result"></div>
+
+  <script>
+    // Lê o XML
+    fetch('C:\Users\eliva\Downloads\370.xml')
+      .then(r => r.text())
+      .then(xml => {
+        const xmlDoc = new DOMParser().parseFromString(xml, 'text/xml');
+        
+        const dados = {
+          nf: xmlDoc.getElementsByTagName('Numero')[0]?.textContent || '',
+          data: xmlDoc.getElementsByTagName('DataEmissao')[0]?.textContent?.substring(0,10) || '',
+          valor: parseFloat(xmlDoc.getElementsByTagName('ValorLiquidoNfse')[0]?.textContent || 0),
+          prestador: xmlDoc.getElementsByTagName('RazaoSocial')[0]?.textContent || '',
+          cnpjPrestador: xmlDoc.getElementsByTagName('Cnpj')[0]?.textContent || '',
+          enderecoPrestador: xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Endereco')[0]?.textContent || '',
+          numeroPrestador: xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Numero')[0]?.textContent || '',
+          bairroPrestador: xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Bairro')[0]?.textContent || '',
+          cepPrestador: xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Cep')[0]?.textContent || '',
+          emailPrestador: xmlDoc.getElementsByTagName('Email')[0]?.textContent || '',
+          telefonePrestador: xmlDoc.getElementsByTagName('Telefone')[0]?.textContent || '',
+          tomador: xmlDoc.getElementsByTagName('RazaoSocial')[1]?.textContent || '',
+          cnpjTomador: xmlDoc.getElementsByTagName('CpfCnpj')[1]?.getElementsByTagName('Cnpj')[0]?.textContent || '',
+          descricao: xmlDoc.getElementsByTagName('Discriminacao')[0]?.textContent || '',
+          aliquota: xmlDoc.getElementsByTagName('Aliquota')[0]?.textContent || '',
+          baseCalculo: xmlDoc.getElementsByTagName('BaseCalculo')[0]?.textContent || dados.valor
+        };
+
+        document.getElementById('result').innerHTML = 
+          '<p class="ok">✅ Extração bem-sucedida!</p>' +
+          '<pre>' + JSON.stringify(dados, null, 2) + '</pre>';
+      })
+      .catch(err => {
+        document.getElementById('result').innerHTML = '<p style="color:red">❌ Erro: ' + err.message + '</p>';
+      });
+  </script>
+</body>
+</html>

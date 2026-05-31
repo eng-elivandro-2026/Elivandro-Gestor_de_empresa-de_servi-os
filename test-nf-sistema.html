@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Sistema NF - Extração Completa</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f3f4f6;
+      padding: 2rem;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-bottom: 2rem;
+      color: #111827;
+    }
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #f8fafc;
+    }
+    .upload-area:hover {
+      border-color: #0ea5e9;
+      background: #f0f9ff;
+    }
+    .upload-area input {
+      display: none;
+    }
+    .result-box {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 8px;
+      border-left: 4px solid #22c55e;
+    }
+    .error-box {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      border-left: 4px solid #ef4444;
+      color: #991b1b;
+    }
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .data-card {
+      padding: 1rem;
+      border-radius: 6px;
+      border-left: 4px solid;
+    }
+    .card-prestador {
+      background: #f0f9ff;
+      border-left-color: #0ea5e9;
+    }
+    .card-tomador {
+      background: #f0fdf4;
+      border-left-color: #10b981;
+    }
+    .card-servico {
+      background: #fef3c7;
+      border-left-color: #f59e0b;
+    }
+    .card-title {
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .card-content {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .card-content strong {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .card-content div {
+      margin-bottom: 0.4rem;
+    }
+    .card-content .label {
+      color: #6b7280;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    pre {
+      background: #1f2937;
+      color: #10b981;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Teste - Sistema de Extração NF</h1>
+
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('xmlFile').click()">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+      <div style="font-weight: 600;">Clique para selecionar um arquivo XML</div>
+      <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">Ou arraste e solte aqui</div>
+      <input type="file" id="xmlFile" accept=".xml" onchange="processarArquivo(this.files[0])">
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    // Normaliza texto com acentuação quebrada (português brasileiro)
+    function normalizarTexto(texto) {
+      if (!texto) return '';
+      var t = String(texto).trim();
+      if (t.normalize) t = t.normalize('NFC');
+
+      var mapa = {
+        '?': 'ã', '??': 'ã', '?': 'á', '??': 'á',
+        '?': 'é', '??': 'é', '?': 'í', '??': 'í',
+        '?': 'ó', '??': 'ó', '?': 'ú', '??': 'ú',
+        '?': 'ç', '??': 'ç', '?': 'ñ', '??': 'ñ',
+        '?': 'â', '??': 'â', '?': 'ê', '??': 'ê',
+        '?': 'ô', '??': 'ô', '?': 'à', '??': 'à',
+        '?': 'Ã', '??': 'Ã', '?': 'Á', '??': 'Á',
+        '?': 'É', '??': 'É', '?': 'Í', '??': 'Í',
+        '?': 'Ó', '??': 'Ó', '?': 'Ú', '??': 'Ú',
+        '?': 'Ç', '??': 'Ç', '?': 'Ñ', '??': 'Ñ',
+        '?': 'Â', '??': 'Â', '?': 'Ê', '??': 'Ê',
+        '?': 'Ô', '??': 'Ô'
+      };
+
+      for (var char in mapa) {
+        t = t.split(char).join(mapa[char]);
+      }
+      return t;
+    }
+
+    var uploadArea = document.getElementById('uploadArea');
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#0ea5e9';
+      uploadArea.style.background = '#f0f9ff';
+    });
+
+    uploadArea.addEventListener('dragleave', function() {
+      uploadArea.style.borderColor = '#cbd5e1';
+      uploadArea.style.background = '#f8fafc';
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#cbd5e1';
+      uploadArea.style.background = '#f8fafc';
+      processarArquivo(e.dataTransfer.files[0]);
+    });
+
+    function processarArquivo(file) {
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var xmlDoc = new DOMParser().parseFromString(e.target.result, 'text/xml');
+
+          // Verifica se houve erro ao fazer parse
+          if (xmlDoc.documentElement.tagName == "parsererror") {
+            throw new Error("XML inválido");
+          }
+
+          // Extrai NF
+          var nNF = xmlDoc.getElementsByTagName('Numero')[0]?.textContent ||
+                    xmlDoc.getElementsByTagName('nNF')[0]?.textContent || '';
+          var dhEmi = xmlDoc.getElementsByTagName('DataEmissao')[0]?.textContent?.substring(0,10) ||
+                      xmlDoc.getElementsByTagName('dhEmi')[0]?.textContent?.substring(0,10) || '';
+          var vNF = parseFloat(xmlDoc.getElementsByTagName('ValorLiquidoNfse')[0]?.textContent ||
+                               xmlDoc.getElementsByTagName('vNF')[0]?.textContent || 0);
+
+          // Extrai prestador
+          var prestador = normalizarTexto(xmlDoc.getElementsByTagName('RazaoSocial')[0]?.textContent || '');
+          var cnpjPrestador = xmlDoc.getElementsByTagName('Cnpj')[0]?.textContent || '';
+          var enderecoPrestador = normalizarTexto(xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Endereco')[0]?.textContent || '');
+          var numeroPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Numero')[0]?.textContent || '';
+          var bairroPrestador = normalizarTexto(xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Bairro')[0]?.textContent || '');
+          var cepPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Cep')[0]?.textContent || '';
+          var emailPrestador = xmlDoc.getElementsByTagName('Email')[0]?.textContent || '';
+          var telefonePrestador = xmlDoc.getElementsByTagName('Telefone')[0]?.textContent || '';
+
+          // Extrai tomador
+          var allRazoes = xmlDoc.getElementsByTagName('RazaoSocial');
+          var tomador = allRazoes.length > 1 ? normalizarTexto(allRazoes[1].textContent) : '';
+          var cnpjTomador = xmlDoc.getElementsByTagName('CpfCnpj')[1]?.getElementsByTagName('Cnpj')[0]?.textContent || '';
+
+          // Extrai serviço
+          var descricao = normalizarTexto(xmlDoc.getElementsByTagName('Discriminacao')[0]?.textContent || '');
+          var aliquota = xmlDoc.getElementsByTagName('Aliquota')[0]?.textContent || '';
+          var baseCalculo = xmlDoc.getElementsByTagName('BaseCalculo')[0]?.textContent || vNF;
+
+          var html = `
+            <div class="result-box">
+              <h2>✅ Dados Extraídos com Sucesso!</h2>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; padding: 1rem; background: white; border-radius: 6px;">
+                <div>
+                  <div class="label">NF</div>
+                  <strong>${nNF}</strong>
+                </div>
+                <div>
+                  <div class="label">Data</div>
+                  <strong>${dhEmi}</strong>
+                </div>
+                <div>
+                  <div class="label">Valor</div>
+                  <strong>R$ ${vNF.toFixed(2).replace('.', ',')}</strong>
+                </div>
+              </div>
+
+              <div class="data-grid">
+                <div class="data-card card-prestador">
+                  <div class="card-title">📋 Prestador (Fornecedor)</div>
+                  <div class="card-content">
+                    <strong>${prestador}</strong>
+                    <div><span class="label">CNPJ:</span> ${cnpjPrestador}</div>
+                    <div><span class="label">Endereço:</span> ${enderecoPrestador}, ${numeroPrestador}</div>
+                    <div><span class="label">Bairro:</span> ${bairroPrestador}</div>
+                    <div><span class="label">CEP:</span> ${cepPrestador}</div>
+                    <div><span class="label">Email:</span> ${emailPrestador}</div>
+                    <div><span class="label">Telefone:</span> ${telefonePrestador}</div>
+                  </div>
+                </div>
+
+                <div class="data-card card-tomador">
+                  <div class="card-title">👤 Tomador (Cliente)</div>
+                  <div class="card-content">
+                    <strong>${tomador}</strong>
+                    <div><span class="label">CNPJ:</span> ${cnpjTomador}</div>
+                  </div>
+                </div>
+
+                <div class="data-card card-servico">
+                  <div class="card-title">🔧 Serviço</div>
+                  <div class="card-content">
+                    <div><strong>${descricao.substring(0, 80)}${descricao.length > 80 ? '...' : ''}</strong></div>
+                    <div><span class="label">Base:</span> R$ ${parseFloat(baseCalculo).toFixed(2).replace('.', ',')}</div>
+                    <div><span class="label">Alíquota:</span> ${aliquota}%</div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 style="margin-top: 2rem; margin-bottom: 1rem;">📋 JSON de Dados (para salvar)</h3>
+              <pre>${JSON.stringify({
+                nf: nNF,
+                data: dhEmi,
+                valor: vNF,
+                prestador: prestador,
+                cnpjPrestador: cnpjPrestador,
+                enderecoPrestador: enderecoPrestador + ', ' + numeroPrestador,
+                bairroPrestador: bairroPrestador,
+                cepPrestador: cepPrestador,
+                emailPrestador: emailPrestador,
+                telefonePrestador: telefonePrestador,
+                tomador: tomador,
+                cnpjTomador: cnpjTomador,
+                descricao: descricao.substring(0, 100),
+                aliquota: aliquota,
+                baseCalculo: parseFloat(baseCalculo)
+              }, null, 2)}</pre>
+
+              <button onclick="document.getElementById('xmlFile').click()">Carregar outro arquivo</button>
+            </div>
+          `;
+
+          document.getElementById('result').innerHTML = html;
+        } catch(err) {
+          document.getElementById('result').innerHTML = `
+            <div class="error-box">
+              <strong>❌ Erro ao processar XML:</strong>
+              <div style="margin-top: 0.5rem;">${err.message}</div>
+              <button onclick="document.getElementById('xmlFile').click()">Tentar outro arquivo</button>
+            </div>
+          `;
+          console.error('Erro:', err);
+        }
+      };
+
+      reader.onerror = function() {
+        document.getElementById('result').innerHTML = `
+          <div class="error-box">
+            <strong>❌ Erro ao ler arquivo</strong>
+            <button onclick="document.getElementById('xmlFile').click()">Tentar novamente</button>
+          </div>
+        `;
+      };
+
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>

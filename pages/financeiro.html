@@ -2099,6 +2099,40 @@ var _nfArquivoPendente = null; // File selecionado para NF antes de salvar
 var _nfArquivosCarregados = []; // Array de NFs carregadas
 
 // ====== NOVO SISTEMA NF ======
+// Normaliza texto com acentuação quebrada (português brasileiro)
+function _normalizarTextoNF(texto) {
+  if (!texto) return '';
+
+  var t = String(texto).trim();
+
+  // Normaliza para NFC (forma composta)
+  if (t.normalize) {
+    t = t.normalize('NFC');
+  }
+
+  // Substitui caracteres comuns mal encodificados
+  var mapa = {
+    '?': 'ã', '??': 'ã', '?': 'á', '??': 'á',
+    '?': 'é', '??': 'é', '?': 'í', '??': 'í',
+    '?': 'ó', '??': 'ó', '?': 'ú', '??': 'ú',
+    '?': 'ç', '??': 'ç', '?': 'ñ', '??': 'ñ',
+    '?': 'â', '??': 'â', '?': 'ê', '??': 'ê',
+    '?': 'ô', '??': 'ô', '?': 'à', '??': 'à',
+    '?': 'Ã', '??': 'Ã', '?': 'Á', '??': 'Á',
+    '?': 'É', '??': 'É', '?': 'Í', '??': 'Í',
+    '?': 'Ó', '??': 'Ó', '?': 'Ú', '??': 'Ú',
+    '?': 'Ç', '??': 'Ç', '?': 'Ñ', '??': 'Ñ',
+    '?': 'Â', '??': 'Â', '?': 'Ê', '??': 'Ê',
+    '?': 'Ô', '??': 'Ô'
+  };
+
+  for (var char in mapa) {
+    t = t.split(char).join(mapa[char]);
+  }
+
+  return t;
+}
+
 function _nfArquivoSelecionado(file) {
   if (!file) return;
   if (file.name.endsWith('.xml')) {
@@ -2116,22 +2150,22 @@ function _nfArquivoSelecionado(file) {
                              xmlDoc.getElementsByTagName('ValorLiquidoNfse')[0]?.textContent || 0) / 100;
 
         // Extrai prestador/empresa
-        var prestador = xmlDoc.getElementsByTagName('RazaoSocial')[0]?.textContent || '';
+        var prestador = _normalizarTextoNF(xmlDoc.getElementsByTagName('RazaoSocial')[0]?.textContent || '');
         var cnpjPrestador = xmlDoc.getElementsByTagName('Cnpj')[0]?.textContent || '';
-        var enderecoPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Endereco')[0]?.textContent || '';
+        var enderecoPrestador = _normalizarTextoNF(xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Endereco')[0]?.textContent || '');
         var numeroPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Numero')[0]?.textContent || '';
-        var bairroPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Bairro')[0]?.textContent || '';
+        var bairroPrestador = _normalizarTextoNF(xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Bairro')[0]?.textContent || '');
         var cepPrestador = xmlDoc.getElementsByTagName('Endereco')[0]?.getElementsByTagName('Cep')[0]?.textContent || '';
         var emailPrestador = xmlDoc.getElementsByTagName('Email')[0]?.textContent || '';
         var telefonePrestador = xmlDoc.getElementsByTagName('Telefone')[0]?.textContent || '';
 
         // Extrai tomador/cliente (segunda ocorrência de RazaoSocial)
         var allRazoes = xmlDoc.getElementsByTagName('RazaoSocial');
-        var tomador = allRazoes.length > 1 ? allRazoes[1].textContent : '';
+        var tomador = allRazoes.length > 1 ? _normalizarTextoNF(allRazoes[1].textContent) : '';
         var cnpjTomador = xmlDoc.getElementsByTagName('CpfCnpj')[1]?.getElementsByTagName('Cnpj')[0]?.textContent || '';
 
         // Extrai serviço/descrição
-        var descricao = xmlDoc.getElementsByTagName('Discriminacao')[0]?.textContent || '';
+        var descricao = _normalizarTextoNF(xmlDoc.getElementsByTagName('Discriminacao')[0]?.textContent || '');
         var aliquota = xmlDoc.getElementsByTagName('Aliquota')[0]?.textContent || '';
         var baseCalculo = xmlDoc.getElementsByTagName('BaseCalculo')[0]?.textContent || vNF;
 
@@ -2141,7 +2175,7 @@ function _nfArquivoSelecionado(file) {
           valor: vNF,
           prestador: prestador,
           cnpjPrestador: cnpjPrestador,
-          enderecoPrestador: enderecoPrestador + ', ' + numeroPrestador,
+          enderecoPrestador: _normalizarTextoNF(enderecoPrestador + ', ' + numeroPrestador),
           bairroPrestador: bairroPrestador,
           cepPrestador: cepPrestador,
           emailPrestador: emailPrestador,
