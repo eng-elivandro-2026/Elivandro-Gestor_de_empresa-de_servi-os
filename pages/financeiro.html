@@ -12550,6 +12550,9 @@ function _meditAtualizarAlertasFinanceiros() {
 
 // ── Carregar PO vinculada na edição ────────────────────────────
 async function _meditCarregarPOVinculada(nf) {
+  // Resetar painel de detalhes (evita exibir dados de uma edição anterior)
+  var _detBox = document.getElementById('medit-po-detalhes');
+  if (_detBox) { _detBox.innerHTML = ''; _detBox.style.display = 'none'; }
   try {
     // Procurar se há PO vinculada nas observações
     var obsObj = {};
@@ -12558,8 +12561,12 @@ async function _meditCarregarPOVinculada(nf) {
     }
 
     var poVinculadaId = obsObj.po_vinculada;
-    if (!poVinculadaId) {
-      console.log('ℹ️ Nenhuma PO vinculada');
+    // Número do PO informado nesta NF (de fase_c.po ou do próprio campo do modal)
+    var poNumeroNF = (obsObj.fase_c && obsObj.fase_c.po && obsObj.fase_c.po.numero) ||
+      ((document.getElementById('medit-po-numero') || {}).value || '').trim();
+
+    if (!poVinculadaId && !poNumeroNF) {
+      console.log('ℹ️ Nenhuma PO vinculada nem número de PO informado');
       return;
     }
 
@@ -12568,10 +12575,16 @@ async function _meditCarregarPOVinculada(nf) {
     if (!sf) return;
 
     var todasNFs = await sf.listarNotasFiscaisEmpresa(_empresaAtiva.id);
-    var poData = todasNFs.find(n => n.id === poVinculadaId && n.tipo_nf === 'po');
+    var poData = poVinculadaId
+      ? todasNFs.find(n => n.id === poVinculadaId && n.tipo_nf === 'po')
+      : null;
+    // Fallback: localizar PO registrado pelo número quando não há vínculo explícito
+    if (!poData && poNumeroNF) {
+      poData = todasNFs.find(n => n.tipo_nf === 'po' && String(n.numero_nf) === String(poNumeroNF));
+    }
 
     if (!poData) {
-      console.warn('⚠️ PO não encontrada');
+      console.warn('⚠️ PO não encontrada (id=' + poVinculadaId + ', numero=' + poNumeroNF + ')');
       return;
     }
 
@@ -12600,10 +12613,61 @@ async function _meditCarregarPOVinculada(nf) {
     var prazosEl = document.getElementById('medit-po-prazos');
     if (prazosEl) prazosEl.value = poObs.dias_prazo || '';
 
+    // Preencher também os campos básicos editáveis (condição/prazo) caso vazios
+    var condicaoEl2 = document.getElementById('medit-po-condicao');
+    if (condicaoEl2 && !condicaoEl2.value) condicaoEl2.value = poObs.condicoes_pagamento || '';
+    var prazoEl2 = document.getElementById('medit-po-prazo');
+    if (prazoEl2 && !prazoEl2.value) prazoEl2.value = poObs.prazos || '';
+
+    // Painel de detalhes completos (somente leitura)
+    _meditRenderPODetalhes(poObs);
+
     console.log('✅ PO carregada:', poData.numero_nf);
   } catch(err) {
     console.error('⚠️ Erro ao carregar PO:', err);
   }
+}
+
+// ── Renderizar detalhes completos do PO (somente leitura) ──────
+function _meditRenderPODetalhes(obs) {
+  var box = document.getElementById('medit-po-detalhes');
+  if (!box) return;
+  obs = obs || {};
+  function v(x) { return (x === undefined || x === null || String(x).trim() === '') ? '—' : String(x); }
+  function campo(label, val) {
+    return '<div class="medit-ro-item">' +
+      '<div class="medit-ro-label">' + label + '</div>' +
+      '<div class="medit-ro-val">' + v(val) + '</div></div>';
+  }
+  // Monta endereço do comprador a partir das partes
+  var compEndereco = [
+    [obs.comprador_rua, obs.comprador_numero].filter(Boolean).join(', '),
+    [obs.comprador_cep, obs.comprador_cidade].filter(Boolean).join(' '),
+    obs.comprador_pais
+  ].filter(function(s){ return s && String(s).trim(); }).join(' — ');
+
+  var html =
+    '<div class="medit-secao-titulo" style="margin-top:.2rem">🧾 Detalhes do PO vinculado</div>' +
+    '<div class="medit-ro" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .9rem">' +
+      campo('Comprador', obs.comprador_nome) +
+      campo('CNPJ comprador', obs.comprador_cnpj) +
+      campo('Inscrição Estadual', obs.comprador_ie) +
+      campo('Endereço comprador', compEndereco) +
+      campo('Proposta', obs.proposta) +
+      campo('Requisitante', obs.requisitante) +
+      campo('Data de criação', obs.data_criacao) +
+      campo('Data atual', obs.data_atual) +
+      campo('Contato', obs.contato_nome || obs.contato_comprador) +
+      campo('Telefone', obs.contato_telefone || obs.telefone_comprador) +
+      campo('E-mail', obs.contato_email || obs.email_comprador) +
+      campo('Condições de pagamento', obs.condicoes_pagamento) +
+    '</div>' +
+    '<div class="medit-ro-item" style="margin-top:.5rem">' +
+      '<div class="medit-ro-label">Descrição</div>' +
+      '<div class="medit-ro-val">' + v(obs.descricao_geral || obs.descricao) + '</div></div>';
+
+  box.innerHTML = html;
+  box.style.display = '';
 }
 
 // ── Abrir modal ───────────────────────────────────────────────
@@ -13268,6 +13332,9 @@ console.log('[Editar NF] módulo carregado e funções registradas');
       <div class="medit-label">Observações do PO</div>
       <input type="text" id="medit-po-obs" class="modal-input" placeholder="Observações do pedido de compra">
     </div>
+
+    <!-- Detalhes completos do PO vinculado (somente leitura) -->
+    <div id="medit-po-detalhes" class="medit-secao" style="display:none"></div>
 
     <!-- Proposta vinculada -->
     <div class="medit-secao">
