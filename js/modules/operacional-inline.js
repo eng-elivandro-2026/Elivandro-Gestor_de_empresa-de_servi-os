@@ -2571,8 +2571,42 @@
       var content = document.getElementById('opGestaoPreviewContent');
       if (!content || !_opPreviewAtivo) return;
       content.innerHTML = renderPreviewHtml();
+      inserirLinhasQuebraPreview(content);
       inserirIndicadoresQuebraNoEditor();
     }, delay !== undefined ? delay : 600);
+  }
+
+  function inserirLinhasQuebraPreview(root) {
+    if (!root) return;
+    var mmToPx = 96 / 25.4;
+    var pageHeightPx = Math.round(267 * mmToPx);
+    var totalHeight = root.scrollHeight;
+    var numPages = Math.ceil(totalHeight / pageHeightPx);
+    var cfg = _opPrintConfig;
+
+    if (numPages <= 1) return;
+
+    var existingBreaks = root.querySelectorAll('.op-preview-page-divider');
+    existingBreaks.forEach(function(el) { if (el.parentNode) el.parentNode.removeChild(el); });
+
+    for (var p = 1; p < numPages; p++) {
+      var yPos = p * pageHeightPx;
+      if (cfg.customBreaks && cfg.customBreaks[p - 1] && cfg.customBreaks[p - 1].y) {
+        yPos = cfg.customBreaks[p - 1].y;
+      }
+
+      var divider = document.createElement('div');
+      divider.className = 'op-preview-page-divider';
+      divider.style.cssText = 'position:absolute;left:0;right:0;border-top:3px solid #e0e7ff;pointer-events:none;top:' + yPos + 'px;background:linear-gradient(90deg,#e0e7ff 0%,#e0e7ff 50%,transparent 50%,transparent 100%) no-repeat;background-size:20px 3px';
+
+      var label = document.createElement('span');
+      label.style.cssText = 'position:absolute;right:0;top:-22px;font-size:.65rem;color:#6366f1;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;white-space:nowrap;box-shadow:0 -1px 2px rgba(99,102,241,.1)';
+      label.textContent = 'Página ' + (p + 1);
+      divider.appendChild(label);
+
+      root.style.position = 'relative';
+      root.appendChild(divider);
+    }
   }
 
   function inserirIndicadoresQuebraNoEditor() {
