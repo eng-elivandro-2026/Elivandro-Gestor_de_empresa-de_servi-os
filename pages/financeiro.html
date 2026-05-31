@@ -4783,42 +4783,11 @@ function _atualizarBadgeNF(emp) {
 
 // ── Carregar NFs ──────────────────────────────────────────────
 async function carregarNFs(empresaId) {
-  var sf = _sf();
-  var empresaConsulta = String(empresaId || '');
-  if (!sf || !sf.listarNotasFiscaisEmpresa) {
-    _nfMostrarErro('sbFinanceiro.listarNotasFiscaisEmpresa não disponível. Recarregue o portal.');
-    return;
-  }
-  if (!empresaId) {
-    _nfMostrarVazio('Empresa não identificada.');
-    return;
-  }
-
-  _nfCarregando = true;
-  var token = ++_nfLoadToken;
-  fecharDetalheNF();
-  _nfMostrarLoading();
-  document.getElementById('nf-btn-refresh').disabled = true;
-
-  try {
-    var nfs = await sf.listarNotasFiscaisEmpresa(empresaId);
-
-    if (token !== _nfLoadToken || empresaConsulta !== _empresaAtivaId()) return; // empresa mudou durante o await
-
-    _todasNFs     = nfs || [];
-    _nfCarregando = false;
-    document.getElementById('nf-btn-refresh').disabled = false;
-
-    _renderKpisNF(_todasNFs);
-    aplicarFiltrosNF();
-
-  } catch(e) {
-    if (token !== _nfLoadToken || empresaConsulta !== _empresaAtivaId()) return;
-    _nfCarregando = false;
-    document.getElementById('nf-btn-refresh').disabled = false;
-    console.error('[Financeiro F2C] erro ao carregar NFs:', e);
-    _nfMostrarErro('Erro ao consultar o banco: ' + (e.message || e));
-  }
+  // TEMP: Desabilitado para teste de importação
+  // A listagem será restaurada após resolver o travamento
+  console.log('📋 carregarNFs desabilitado temporariamente');
+  _nfMostrarVazio('Carregamento desabilitado. Use "Importar Nota Fiscal" para adicionar NFs.');
+  _todasNFs = [];
 }
 
 function recarregarNFs() {
