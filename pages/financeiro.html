@@ -2335,27 +2335,15 @@ async function nfSalvarTodosArquivos() {
         baseCalculo: item.baseCalculo
       };
 
-      // 1. Cria a NF
-      var nfCriada = await sf.criarNotaFiscal({
-        empresa_id: _empresaAtiva.id,
-        numero_nf: item.nf || null,
-        tipo_nf: 'servico',
-        data_emissao: item.data || new Date().toISOString().slice(0,10),
-        valor_nf: item.valor,
-        status: 'emitida',
-        observacoes: JSON.stringify(dadosExtraidos)
-      });
-
-      // 2. Calcula data de vencimento (30 dias após emissão)
+      // Calcula data de vencimento (30 dias após emissão)
       var dataEmissao = new Date(item.data || new Date());
       var dataVencimento = new Date(dataEmissao);
       dataVencimento.setDate(dataVencimento.getDate() + 30);
       var vencimentoStr = dataVencimento.toISOString().slice(0, 10);
 
-      // 3. Cria conta a receber
-      await sf.criarContaReceber({
+      // 1. Cria conta a receber PRIMEIRO
+      var contaCriada = await sf.criarContaReceber({
         empresa_id: _empresaAtiva.id,
-        nf_id: nfCriada.id,
         titulo: 'NF ' + (item.nf || '---') + ' — ' + (item.tomador || 'Cliente'),
         valor: item.valor,
         data_vencimento: vencimentoStr,
@@ -2363,6 +2351,18 @@ async function nfSalvarTodosArquivos() {
         cliente_cnpj: item.cnpjTomador,
         status: 'aberta',
         tipo: 'servico'
+      });
+
+      // 2. Cria a NF vinculada à conta a receber
+      await sf.criarNotaFiscal({
+        empresa_id: _empresaAtiva.id,
+        numero_nf: item.nf || null,
+        tipo_nf: 'servico',
+        data_emissao: item.data || new Date().toISOString().slice(0,10),
+        valor_nf: item.valor,
+        status: 'emitida',
+        conta_receber_id: contaCriada.id,
+        observacoes: JSON.stringify(dadosExtraidos)
       });
     }
     statusEl.className = 'status-msg ok';
