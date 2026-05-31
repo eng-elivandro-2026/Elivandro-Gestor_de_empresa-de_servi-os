@@ -13,6 +13,10 @@
     margin: 'normal'
   };
 
+  // Preview em split screen
+  var _opPreviewAtivo = false;
+  var _previewDebounce = null;
+
   var state = {
     obras: [],
     carregando: false,
@@ -1698,14 +1702,24 @@
       + '.op-signature-pad{height:27mm!important;background:#fff!important;border-color:#64748b!important;}'
       + '.op-signature-canvas{width:100%!important;height:100%!important;background:#fff!important;}'
       + '}'
+      + '#opSplitWrapper{display:flex;flex:1;min-height:0;overflow:hidden;}'
+      + '#opObraBody{transition:flex .2s;}'
+      + '#opGestaoPreviewPane{display:none;flex-direction:column;width:50%;min-width:0;overflow-y:auto;background:#e2e8f0;border-left:2px solid #cbd5e1;}'
+      + '#opGestaoPreviewContent{background:#fff;width:210mm;min-height:297mm;padding:15mm;margin:0 auto 20px;box-shadow:0 6px 24px rgba(15,23,42,.18);position:relative;box-sizing:border-box;font-size:11pt;line-height:1.6;color:#0f172a;}'
+      + '.op-preview-page-break{position:absolute;left:-15mm;right:-15mm;border-top:2px dashed #94a3b8;pointer-events:none;z-index:10;}'
+      + '.op-preview-page-label{position:absolute;right:0;top:-18px;font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#fff;padding:2px 6px;border-radius:3px 3px 0 0;}'
       + '</style>'
       + '<div id="opObraPanel" class="op-panel-overlay op-doc-shell" data-report-mode="cliente" style="position:fixed;inset:0;z-index:880;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:auto">'
       + '<div id="opObraDialog" class="op-panel-shell" style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9">'
       + '<div class="op-panel-header no-print" style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem">'
       + '<div><div style="font-size:.72rem;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.08em">Operacional</div>'
       + '<div style="font-size:1.05rem;color:#0f172a;font-weight:900;line-height:1.25">Gestao do Negocio</div></div>'
-      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px;background:#f8fafc!important;color:#0f172a!important;border-color:#cbd5e1!important">Fechar</button></div>'
-      + '<div id="opObraBody" class="op-panel-body" style="overflow:auto;padding:1rem">'
+      + '<div style="display:flex;gap:.5rem">'
+      + '<button type="button" id="opBtnPreview" class="btn bg" onclick="opTogglePreviewGestao()" style="min-height:40px;background:#dbeafe!important;color:#1d4ed8!important;border-color:#bfdbfe!important">⊞ Preview</button>'
+      + '<button type="button" class="btn bg" onclick="opFecharDetalhe()" style="min-height:40px;background:#f8fafc!important;color:#0f172a!important;border-color:#cbd5e1!important">Fechar</button>'
+      + '</div></div>'
+      + '<div id="opSplitWrapper">'
+      + '<div id="opObraBody" class="op-panel-body" style="flex:1;overflow-y:auto;padding:1rem">'
       + '<article class="op-doc-paper" style="max-width:960px;margin:0 auto 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 18px 50px rgba(15,23,42,.14);padding:1.2rem;box-sizing:border-box">'
       + '<div class="op-report-notice no-print">Relatorio para cliente: horas ocultas por padrao.</div>'
       + documentoCarregando
@@ -1794,7 +1808,19 @@
       + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome', 'empresa')
       + '</div></section>'
       + acoesGestaoHtml(bloqueado, 'op-doc-actions-bottom')
-      + '</article></div></div></div>';
+      + '</article>'
+      + '</div>'  // fecha opObraBody
+      + '<div id="opGestaoPreviewPane">'
+      + '<div style="position:sticky;top:0;z-index:5;background:#e2e8f0;padding:.75rem 1rem;border-bottom:1px solid #cbd5e1">'
+      + '<span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#475569;font-weight:700">⊞ Preview de Impressão — A4</span>'
+      + '</div>'
+      + '<div style="padding:1rem">'
+      + '<div id="opGestaoPreviewContent"></div>'
+      + '</div>'
+      + '</div>'  // fecha opGestaoPreviewPane
+      + '</div>'  // fecha opSplitWrapper
+      + '</div>'  // fecha opObraDialog
+      + '</div>';  // fecha opObraPanel
     setTimeout(function () {
       ajustarTextareas(el);
       inicializarAssinaturasGestao(el);
@@ -2459,6 +2485,89 @@
   function removerCssPrint() {
     var el = document.getElementById('opPrintDynamicStyle');
     if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function togglePreviewGestao() {
+    var pane = document.getElementById('opGestaoPreviewPane');
+    var body = document.getElementById('opObraBody');
+    var btn = document.getElementById('opBtnPreview');
+    if (!pane || !body) return;
+    _opPreviewAtivo = !_opPreviewAtivo;
+    pane.style.display = _opPreviewAtivo ? 'flex' : 'none';
+    body.style.flex = _opPreviewAtivo ? '0 0 50%' : '1';
+    body.style.maxWidth = _opPreviewAtivo ? '50%' : '';
+    if (btn) {
+      btn.textContent = _opPreviewAtivo ? '⊠ Fechar Preview' : '⊞ Preview';
+      btn.style.background = _opPreviewAtivo ? '#bbf7d0!important' : '#dbeafe!important';
+    }
+    if (_opPreviewAtivo) atualizarPreviewGestao(0);
+  }
+
+  function renderPreviewHtml() {
+    var origem = document.querySelector('#opObraPanel .op-doc-paper');
+    if (!origem) return '<p style="color:#94a3b8;text-align:center;margin-top:2rem">Conteúdo não disponível.</p>';
+    var clone = origem.cloneNode(true);
+    Array.prototype.forEach.call(clone.querySelectorAll('.no-print,.op-doc-actions,.op-report-control,.op-report-notice'), function(el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    });
+    if (modoRelatorioGestao() === 'cliente') {
+      Array.prototype.forEach.call(clone.querySelectorAll('.op-report-hours-section'), function(el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
+    Array.prototype.forEach.call(clone.querySelectorAll('textarea'), function(ta) {
+      var orig = document.getElementById(ta.id);
+      var div = document.createElement('div');
+      div.className = ta.className;
+      div.style.cssText = ta.getAttribute('style') || '';
+      div.style.whiteSpace = 'pre-wrap';
+      div.style.minHeight = '0';
+      div.textContent = orig ? orig.value : ta.value;
+      ta.parentNode.replaceChild(div, ta);
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll('input[type="text"],input[type="date"]'), function(input) {
+      var orig = document.getElementById(input.id);
+      if (orig) input.setAttribute('value', orig.value);
+    });
+    Array.prototype.forEach.call(clone.querySelectorAll('canvas.op-signature-canvas'), function(c) {
+      var orig = document.getElementById(c.id);
+      var img = document.createElement('img');
+      img.alt = 'Assinatura';
+      img.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#fff';
+      try { img.src = orig ? orig.toDataURL('image/png') : ''; } catch(e) { img.src = ''; }
+      c.parentNode.replaceChild(img, c);
+    });
+    return clone.innerHTML;
+  }
+
+  function atualizarPreviewGestao(delay) {
+    clearTimeout(_previewDebounce);
+    _previewDebounce = setTimeout(function() {
+      var content = document.getElementById('opGestaoPreviewContent');
+      if (!content || !_opPreviewAtivo) return;
+      content.innerHTML = renderPreviewHtml();
+      inserirIndicadoresQuebra(content);
+    }, delay !== undefined ? delay : 600);
+  }
+
+  function inserirIndicadoresQuebra(root) {
+    if (!root) return;
+    var mmToPx = 96 / 25.4;
+    var pageHeightPx = Math.round(267 * mmToPx);
+    var totalHeight = root.scrollHeight;
+    var numPages = Math.ceil(totalHeight / pageHeightPx);
+    if (numPages <= 1) return;
+    for (var p = 1; p < numPages; p++) {
+      var yPos = p * pageHeightPx;
+      var sep = document.createElement('div');
+      sep.className = 'op-preview-page-break';
+      sep.style.top = yPos + 'px';
+      var label = document.createElement('span');
+      label.className = 'op-preview-page-label';
+      label.textContent = 'Página ' + (p + 1);
+      sep.appendChild(label);
+      root.appendChild(sep);
+    }
   }
 
   function removerDocumentoImpressaoGestao() {
@@ -3310,6 +3419,7 @@
   window.opGestaoImprimir = gestaoImprimir;
   window.opGestaoAtualizarModoRelatorio = gestaoAtualizarModoRelatorio;
   window.opGestaoAtualizarPrintConfig = gestaoAtualizarPrintConfig;
+  window.opTogglePreviewGestao = togglePreviewGestao;
   // Função simples: limpar assinaturas do banco direto via RPC
   window.opGestaoLimparAssinaturasCompleto = async function() {
     var doc = state.gestaoDocumento || {};
@@ -3371,6 +3481,13 @@
   document.addEventListener('click', onFase1cClick, true);
   document.addEventListener('click', onDiarioClick, true);
   document.addEventListener('input', onOperacionalInput, true);
+
+  // ── Listener: atualizar preview em tempo real ───────────────────────────
+  document.addEventListener('input', function(e) {
+    if (_opPreviewAtivo && e.target && e.target.closest && e.target.closest('#opObraPanel')) {
+      atualizarPreviewGestao();
+    }
+  }, true);
 
   // ── Listener: troca de empresa ───────────────────────────
   // Disparado por multi-empresa.js via CustomEvent('empresa:changed')
