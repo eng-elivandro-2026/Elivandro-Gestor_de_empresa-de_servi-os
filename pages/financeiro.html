@@ -14000,13 +14000,21 @@ async function salvarPOsArquivos() {
         status: 'ativa'
       };
 
-      await sf.criarPedidoCompra({
-        empresa_id: _empresaAtiva.id,
-        numero_po: po.numero_po,
-        valor_po: numeroValor,
-        data_emissao: po.data_criacao || new Date().toISOString().slice(0, 10),
-        observacoes: JSON.stringify(poData)
-      });
+      // Salvar PO diretamente no Supabase
+      const { data: insertResult, error: insertError } = await sf.supabase
+        .from('financeiro_pedidos_compra')
+        .insert([{
+          empresa_id: _empresaAtiva.id,
+          numero_po: po.numero_po,
+          valor_po: numeroValor,
+          data_criacao: po.data_criacao || new Date().toISOString().slice(0, 10),
+          dados_completos: poData,
+          status: 'ativa'
+        }]);
+
+      if (insertError) {
+        throw new Error('Erro ao inserir PO: ' + insertError.message);
+      }
       console.log('✅ PO salva com sucesso:', po.numero_po);
     }
 
