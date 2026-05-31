@@ -759,112 +759,128 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <!-- ── Botão Nova NF (Fase C) ── -->
   <div style="display:flex;justify-content:flex-end;margin:.6rem 0">
     <button class="btn-toggle-nf" id="btn-toggle-nf-form" onclick="nfToggleForm()">
-      ➕ Nova NF Vinculada
+      ➕ Nova NF
     </button>
   </div>
 
   <!-- ── Formulário Nova NF vinculada à proposta (Fase C) ── -->
   <div class="cp-form-wrap" id="nf-form-wrap" style="display:none">
-    <div class="cp-form-titulo">📄 Nova Nota Fiscal — Vinculada à Proposta Aprovada</div>
+    <div class="cp-form-titulo">📄 Nova Nota Fiscal</div>
 
     <p class="cp-aviso">
-      Selecione uma proposta aprovada/fechada. O Financeiro é o único responsável pelo lançamento de NFs.
+      Cadastre a NF aqui. Você pode vincular a uma proposta agora ou depois. O Financeiro é o único responsável pelo lançamento de NFs.
       Nenhum dado é gravado no Comercial.
     </p>
 
-    <!-- Seletor de proposta -->
-    <div class="cp-form-secao">Vínculo com Proposta</div>
-    <div class="cp-form-row">
-      <label class="cp-form-label" for="nf-sel-proposta">Proposta Aprovada *</label>
-      <select id="nf-sel-proposta" class="cp-form-input" onchange="nfOnProposta(this.value)">
-        <option value="">-- Selecione uma proposta aprovada --</option>
-      </select>
+    <!-- Upload de arquivo - sempre visível -->
+    <div class="cp-form-secao">1️⃣ Arquivo da NF (Opcional)</div>
+    <div class="cp-form-group">
+      <label class="cp-form-label">XML, PDF ou Imagem</label>
+      <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;background:#f8fafc;margin-top:.35rem">
+        <input type="file" id="nf-arquivo-input" accept=".xml,.pdf,.png,.jpg,.jpeg" style="display:none">
+        <span id="nf-upload-label" style="font-size:.88rem">📎 Clique ou arraste XML, PDF ou Imagem</span>
+      </div>
+      <div id="nf-arquivo-preview" style="display:none;margin-top:.5rem;font-size:.82rem;color:#0f172a"></div>
     </div>
 
-    <!-- Painel somente leitura: dados da proposta -->
-    <div id="nf-dados-proposta" style="display:none">
-      <div class="cp-form-secao">Dados da Proposta Selecionada</div>
-      <div class="cp-form-readonly" id="nf-info-proposta"></div>
+    <!-- Dados da NF - sempre visível -->
+    <div class="cp-form-secao">2️⃣ Dados da Nota Fiscal</div>
+    <div class="cp-form-grid">
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="nf-novo-numero">Nº da NF</label>
+        <input type="text" id="nf-novo-numero" class="cp-form-input" placeholder="Ex: 000123">
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="nf-novo-tipo">Tipo</label>
+        <select id="nf-novo-tipo" class="cp-form-input">
+          <option value="servico">Serviço</option>
+          <option value="material">Material</option>
+        </select>
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="nf-novo-data">Data de Emissão</label>
+        <input type="date" id="nf-novo-data" class="cp-form-input">
+      </div>
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="nf-novo-cliente">Cliente *</label>
+        <input type="text" id="nf-novo-cliente" class="cp-form-input" placeholder="Nome do cliente">
+      </div>
+    </div>
 
-      <!-- Calculadora bidirecional -->
-      <div class="cp-form-secao">Calculadora de Faturamento</div>
-      <div class="cp-form-grid">
-        <div class="cp-form-row">
-          <label class="cp-form-label">% desta NF sobre o valor vendido</label>
-          <div style="display:flex;align-items:center;gap:.35rem">
-            <input type="number" id="nf-calc-pct" class="cp-form-input" min="0" max="999" step="0.01"
-              placeholder="0,00" oninput="nfCalcPctParaValor()" style="text-align:right">
-            <span style="font-size:.82rem;color:var(--text2);white-space:nowrap">%</span>
+    <div class="cp-form-row" style="margin-top:.3rem">
+      <label class="cp-form-label" for="nf-novo-valor">Valor da NF (R$) *</label>
+      <input type="number" id="nf-novo-valor" class="cp-form-input" min="0" step="0.01" placeholder="0,00" style="text-align:right">
+    </div>
+
+    <div class="cp-form-row">
+      <label class="cp-form-label" for="nf-novo-obs">Observações</label>
+      <input type="text" id="nf-novo-obs" class="cp-form-input"
+        placeholder="Observação opcional (referência, nota, etc.)">
+    </div>
+
+    <!-- Vínculo com Proposta - Opcional -->
+    <div class="cp-form-secao">3️⃣ Vínculo com Proposta (Opcional)</div>
+    <div class="cp-form-row">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="nf-vincular-proposta" onchange="nfTogglePropostaOpcoes()" style="width:18px;height:18px">
+        Vincular a uma Proposta Aprovada?
+      </label>
+    </div>
+
+    <!-- Opções de proposta - aparecem só se checkbox marcado -->
+    <div id="nf-opcoes-proposta" style="display:none">
+      <div class="cp-form-row">
+        <label class="cp-form-label" for="nf-sel-proposta">Selecione a Proposta</label>
+        <select id="nf-sel-proposta" class="cp-form-input" onchange="nfOnProposta(this.value)">
+          <option value="">-- Selecione uma proposta aprovada --</option>
+        </select>
+      </div>
+
+      <!-- Painel somente leitura: dados da proposta -->
+      <div id="nf-dados-proposta" style="display:none">
+        <div class="cp-form-readonly" id="nf-info-proposta"></div>
+
+        <!-- Calculadora bidirecional -->
+        <div class="cp-form-secao" style="margin-top:.75rem">Calculadora de Faturamento</div>
+        <div class="cp-form-grid">
+          <div class="cp-form-row">
+            <label class="cp-form-label">% desta NF sobre o valor vendido</label>
+            <div style="display:flex;align-items:center;gap:.35rem">
+              <input type="number" id="nf-calc-pct" class="cp-form-input" min="0" max="999" step="0.01"
+                placeholder="0,00" oninput="nfCalcPctParaValor()" style="text-align:right">
+              <span style="font-size:.82rem;color:var(--text2);white-space:nowrap">%</span>
+            </div>
+          </div>
+          <div class="cp-form-row">
+            <label class="cp-form-label">Valor desta NF (R$)</label>
+            <input type="number" id="nf-calc-valor" class="cp-form-input" min="0" step="0.01"
+              placeholder="0,00" oninput="nfCalcValorParaPct()" style="text-align:right">
           </div>
         </div>
-        <div class="cp-form-row">
-          <label class="cp-form-label">Valor desta NF (R$)</label>
-          <input type="number" id="nf-calc-valor" class="cp-form-input" min="0" step="0.01"
-            placeholder="0,00" oninput="nfCalcValorParaPct()" style="text-align:right">
-        </div>
-      </div>
 
-      <!-- Painel de resumo / saldo -->
-      <div id="nf-resumo-saldo"></div>
+        <!-- Painel de resumo / saldo -->
+        <div id="nf-resumo-saldo"></div>
 
-      <!-- Alertas de excedente -->
-      <div id="nf-alerta-excedente"></div>
+        <!-- Alertas de excedente -->
+        <div id="nf-alerta-excedente"></div>
 
-      <!-- Justificativa (aparece só quando > 100%) -->
-      <div id="nf-row-justificativa" style="display:none">
-        <div class="cp-form-row">
-          <label class="cp-form-label">Justificativa para exceder 100% do valor vendido *</label>
-          <input type="text" id="nf-justificativa" class="cp-form-input"
-            placeholder="Ex: Reajuste contratual aprovado, complemento de escopo...">
+        <!-- Justificativa (aparece só quando > 100%) -->
+        <div id="nf-row-justificativa" style="display:none">
+          <div class="cp-form-row">
+            <label class="cp-form-label">Justificativa para exceder 100% do valor vendido *</label>
+            <input type="text" id="nf-justificativa" class="cp-form-input"
+              placeholder="Ex: Reajuste contratual aprovado, complemento de escopo...">
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Campos da NF -->
-    <div id="nf-form-campos" style="display:none">
-      <div class="cp-form-secao">Dados da Nota Fiscal</div>
-      <div class="cp-form-grid">
-        <div class="cp-form-row">
-          <label class="cp-form-label" for="nf-novo-numero">Nº da NF</label>
-          <input type="text" id="nf-novo-numero" class="cp-form-input" placeholder="Ex: 000123">
-        </div>
-        <div class="cp-form-row">
-          <label class="cp-form-label" for="nf-novo-tipo">Tipo</label>
-          <select id="nf-novo-tipo" class="cp-form-input">
-            <option value="servico">Serviço</option>
-            <option value="material">Material</option>
-          </select>
-        </div>
-        <div class="cp-form-row">
-          <label class="cp-form-label" for="nf-novo-data">Data de Emissão</label>
-          <input type="date" id="nf-novo-data" class="cp-form-input">
-        </div>
-        <div class="cp-form-row">
-          <label class="cp-form-label" for="nf-novo-po">Nº PO / Pedido de Compra</label>
-          <input type="text" id="nf-novo-po" class="cp-form-input" placeholder="Ex: PC-2025-001">
-        </div>
-      </div>
-      <div class="cp-form-row" style="margin-top:.3rem">
-        <label class="cp-form-label" for="nf-novo-obs">Observações</label>
-        <input type="text" id="nf-novo-obs" class="cp-form-input"
-          placeholder="Observação opcional (referência, nota, etc.)">
-      </div>
-
-      <div class="cp-form-group">
-        <label class="cp-form-label">Arquivo da NF (XML, PDF ou Imagem)</label>
-        <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;background:#f8fafc;margin-top:.35rem">
-          <input type="file" id="nf-arquivo-input" accept=".xml,.pdf,.png,.jpg,.jpeg" style="display:none">
-          <span id="nf-upload-label" style="font-size:.88rem">📎 Clique ou arraste XML, PDF ou Imagem</span>
-        </div>
-        <div id="nf-arquivo-preview" style="display:none;margin-top:.5rem;font-size:.82rem;color:#0f172a"></div>
-      </div>
-
-      <button class="btn-criar-cp" id="nf-btn-salvar" onclick="nfFaseCsalvar()"
-        style="margin-top:.9rem">
-        💾 Salvar NF no Financeiro
-      </button>
-      <div class="status-msg" id="nf-form-status"></div>
-    </div>
+    <!-- Botão Salvar -->
+    <button class="btn-criar-cp" id="nf-btn-salvar" onclick="nfFaseCsalvar()"
+      style="margin-top:.9rem">
+      💾 Salvar NF no Financeiro
+    </button>
+    <div class="status-msg" id="nf-form-status"></div>
   </div>
   <!-- /Fase C: Nova NF -->
 
@@ -4438,19 +4454,21 @@ function _nfStatusComputado(nf) {
 }
 
 var _NF_STATUS_LABEL = {
-  recebida:  'Recebida',
-  parcial:   'Parcial',
-  emitida:   'Em Aberto',
-  vencida:   'Vencida',
-  cancelada: 'Cancelada'
+  recebida:       'Recebida',
+  parcial:        'Parcial',
+  emitida:        'Em Aberto',
+  vencida:        'Vencida',
+  cancelada:      'Cancelada',
+  nao_vinculada:  'Não Vinculada'
 };
 
 var _NF_STATUS_CLASS = {
-  recebida:  'bdg-recebido',
-  parcial:   'bdg-parcialmente_recebido',
-  emitida:   'bdg-a_faturar',
-  vencida:   'bdg-vencida',
-  cancelada: 'bdg-cancelado'
+  recebida:       'bdg-recebido',
+  parcial:        'bdg-parcialmente_recebido',
+  emitida:        'bdg-a_faturar',
+  vencida:        'bdg-vencida',
+  cancelada:      'bdg-cancelado',
+  nao_vinculada:  'bdg-previsto'
 };
 
 function _nfBadge(nf) {
@@ -11226,6 +11244,28 @@ async function _nfFazerUploadArquivo(empresaId, nfId) {
   }
 }
 
+// ── Toggle de opções de proposta ──────────────────────────────
+function nfTogglePropostaOpcoes() {
+  var checkbox = document.getElementById('nf-vincular-proposta');
+  var opcoes = document.getElementById('nf-opcoes-proposta');
+  var valor = document.getElementById('nf-novo-valor');
+
+  if (!checkbox || !opcoes || !valor) return;
+
+  if (checkbox.checked) {
+    opcoes.style.display = '';
+    _nfCarregarPropostas();
+  } else {
+    opcoes.style.display = 'none';
+    // Limpa dados de proposta
+    var sel = document.getElementById('nf-sel-proposta');
+    if (sel) sel.value = '';
+    document.getElementById('nf-dados-proposta').style.display = 'none';
+    _nfPropostaAtual = null;
+    _nfNFsExistentes = [];
+  }
+}
+
 // ── Toggle do formulário ──────────────────────────────────────
 function nfToggleForm() {
   _nfFormAberto = !_nfFormAberto;
@@ -11241,7 +11281,7 @@ function nfToggleForm() {
     if (dataEl && !dataEl.value) dataEl.value = new Date().toISOString().slice(0, 10);
   } else {
     wrap.style.display = 'none';
-    btn.textContent    = '➕ Nova NF Vinculada';
+    btn.textContent    = '➕ Nova NF';
     _nfResetarForm();
   }
 }
@@ -11461,44 +11501,68 @@ async function nfFaseCsalvar() {
 
   // Validações básicas
   var p = _nfPropostaAtual;
-  if (!p)             return _err('❌ Selecione uma proposta aprovada.');
   if (!_empresaAtiva || !_empresaAtiva.id) return _err('❌ Empresa não identificada.');
 
-  var valor = parseFloat((document.getElementById('nf-calc-valor') || {}).value) || 0;
-  if (valor <= 0)     return _err('❌ Informe o valor da NF (% ou R$).');
+  // Se com proposta, validações de proposta; se sem, validações simplificadas
+  var temProposta = p != null;
+  if (temProposta && (!p.val || p.val <= 0)) return _err('❌ Valor vendido da proposta está vazio — não é possível calcular.');
 
-  if (!p.val || p.val <= 0) return _err('❌ Valor vendido da proposta está vazio — não é possível calcular.');
+  // Ler valor de acordo com se tem proposta ou não
+  var valor;
+  if (temProposta) {
+    valor = parseFloat((document.getElementById('nf-calc-valor') || {}).value) || 0;
+  } else {
+    valor = parseFloat((document.getElementById('nf-novo-valor') || {}).value) || 0;
+  }
+  if (valor <= 0) return _err('❌ Informe o valor da NF.');
+
+  if (!temProposta) {
+    var cliente = ((document.getElementById('nf-novo-cliente') || {}).value || '').trim();
+    if (!cliente) return _err('❌ Informe o nome do cliente.');
+  }
 
   var sf = _sf();
   if (!sf) return _err('❌ Módulo Financeiro não disponível. Recarregue o portal.');
 
   var empId = _empresaAtiva.id;
 
-  // Verificar justificativa se ultrapassar muito
-  var jaFaturado   = _nfNFsExistentes.reduce(function(s, nf) { return s + (parseFloat(nf.valor_nf) || 0); }, 0);
-  var totalComNF   = jaFaturado + valor;
-  var excedeGrande = totalComNF > p.val * 1.001;
-  var saldo100     = (jaFaturado >= p.val - 0.005);
-  var precisaJust  = excedeGrande || saldo100;
+  // Verificar justificativa se ultrapassar muito (só com proposta)
+  var precisaJust = false;
+  if (temProposta) {
+    var jaFaturado   = _nfNFsExistentes.reduce(function(s, nf) { return s + (parseFloat(nf.valor_nf) || 0); }, 0);
+    var totalComNF   = jaFaturado + valor;
+    var excedeGrande = totalComNF > p.val * 1.001;
+    var saldo100     = (jaFaturado >= p.val - 0.005);
+    precisaJust      = excedeGrande || saldo100;
 
-  if (precisaJust) {
-    var just = ((document.getElementById('nf-justificativa') || {}).value || '').trim();
-    if (!just) return _err('❌ Justificativa obrigatória quando NF excede ou completa 100% do valor vendido.');
+    if (precisaJust) {
+      var just = ((document.getElementById('nf-justificativa') || {}).value || '').trim();
+      if (!just) return _err('❌ Justificativa obrigatória quando NF excede ou completa 100% do valor vendido.');
+    }
   }
 
   btnSalvar.disabled = true;
   _loading('⏳ Salvando NF…');
 
   try {
-    // 1. Montar metadados (feito primeiro — reutilizado na conta e na NF)
-    // Formato estruturado: { texto, fase_c: { campos nomeados } }
-    var pct      = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
-    var pctRS    = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+    // 1. Montar metadados
     var obsUsuario = ((document.getElementById('nf-novo-obs') || {}).value || '').trim();
-    var _poNrNovo  = ((document.getElementById('nf-novo-po') || {}).value || '').trim();
-    var obsPayload = {
-      texto: obsUsuario,
-      fase_c: {
+    var nfNumero   = ((document.getElementById('nf-novo-numero') || {}).value || '').trim();
+    var dataEmissao = (document.getElementById('nf-novo-data') || {}).value
+      || new Date().toISOString().slice(0, 10);
+
+    var obsPayload = { texto: obsUsuario };
+    var nfStatus   = 'emitida';
+    var clienteNome;
+    var tituloConta;
+    var dtVenc;
+
+    if (temProposta) {
+      // COM PROPOSTA: lógica original
+      var pct      = parseFloat((document.getElementById('nf-calc-pct') || {}).value) || 0;
+      var pctRS    = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+      var _poNrNovo  = ((document.getElementById('nf-novo-po') || {}).value || '').trim();
+      obsPayload.fase_c = {
         percentual_faturamento:    parseFloat(pct.toFixed(4)),
         valor_vendido_proposta:    p.val || 0,
         percentual_rs_considerado: parseFloat((pctRS * 100).toFixed(4)),
@@ -11507,45 +11571,47 @@ async function nfFaseCsalvar() {
           ? ((document.getElementById('nf-justificativa') || {}).value || '').trim()
           : '',
         po: _poNrNovo ? { numero: _poNrNovo, status: 'pendente' } : undefined
-      }
-    };
+      };
+      clienteNome = p.cli || '';
+      dtVenc = (p.tl && p.tl.prazoPgto && /^\d{4}-\d{2}-\d{2}$/.test(p.tl.prazoPgto))
+        ? p.tl.prazoPgto : null;
+      var labelNF = nfNumero ? ('NF ' + nfNumero) : 'NF s/n';
+      tituloConta = (p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(valor);
+    } else {
+      // SEM PROPOSTA: simplificado
+      clienteNome = ((document.getElementById('nf-novo-cliente') || {}).value || '').trim();
+      dtVenc = null;
+      var labelNF = nfNumero ? ('NF ' + nfNumero) : 'NF s/n';
+      tituloConta = labelNF + ' — ' + clienteNome + ' — ' + _nfMoney(valor);
+      nfStatus = 'nao_vinculada';
+    }
+
     var obsFinal = JSON.stringify(obsPayload);
 
-    // 2. Criar conta_receber própria para ESTA NF (modelo N NFs → N contas)
-    //    proposta_app_id preenchido nos dois registros para rastreabilidade completa.
-    //    data_vencimento derivada de p.tl.prazoPgto quando disponível.
-    var nfNumero   = ((document.getElementById('nf-novo-numero') || {}).value || '').trim();
-    var dtVenc     = (p.tl && p.tl.prazoPgto && /^\d{4}-\d{2}-\d{2}$/.test(p.tl.prazoPgto))
-      ? p.tl.prazoPgto : null;
-    var labelNF    = nfNumero ? ('NF ' + nfNumero) : 'NF s/n';
-    var tituloConta = (p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(valor);
-
+    // 2. Criar conta_receber própria para ESTA NF
     var novaConta = await sf.criarContaReceber({
       empresa_id:      empId,
       titulo:          tituloConta,
-      cliente_nome:    p.cli  || '',
-      proposta_app_id: p.id,
+      cliente_nome:    clienteNome,
+      proposta_app_id: temProposta ? p.id : null,
       valor_previsto:  valor,
       data_vencimento: dtVenc,
-      status:          'a_faturar',
+      status:          temProposta ? 'a_faturar' : 'a_faturar',
       observacoes:     obsFinal
     });
     var contaId = novaConta.id;
-    console.log('[NF FaseC] Conta a receber própria criada:', contaId, '— NF:', labelNF);
+    console.log('[NF FaseC] Conta a receber criada:', contaId, '—', tituloConta);
 
-    // 3. Criar a NF apontando para a conta desta NF (nunca escreve em prop.tl.nfs[])
-    var dataEmissao = (document.getElementById('nf-novo-data') || {}).value
-      || new Date().toISOString().slice(0, 10);
-
+    // 3. Criar a NF apontando para a conta desta NF
     var novaNF = await sf.criarNotaFiscal({
       empresa_id:       empId,
       conta_receber_id: contaId,
-      proposta_app_id:  p.id,
+      proposta_app_id:  temProposta ? p.id : null,
       numero_nf:        nfNumero || null,
       tipo_nf:          (document.getElementById('nf-novo-tipo') || {}).value || 'servico',
       data_emissao:     dataEmissao,
       valor_nf:         valor,
-      status:           'emitida',
+      status:           nfStatus,
       observacoes:      obsFinal
     });
     var nfId = novaNF.id;
@@ -11580,7 +11646,7 @@ async function nfFaseCsalvar() {
       var wrap = document.getElementById('nf-form-wrap');
       var btn  = document.getElementById('btn-toggle-nf-form');
       if (wrap) wrap.style.display = 'none';
-      if (btn)  btn.textContent    = '➕ Nova NF Vinculada';
+      if (btn)  btn.textContent    = '➕ Nova NF';
       _nfResetarForm();
       recarregarNFs();
     }, 1600);
@@ -11600,10 +11666,12 @@ function _nfResetarForm() {
 
   var sel = document.getElementById('nf-sel-proposta');
   if (sel) sel.value = '';
-  ['nf-dados-proposta','nf-form-campos'].forEach(function(id) {
+  ['nf-dados-proposta','nf-opcoes-proposta'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
-  ['nf-calc-pct','nf-calc-valor','nf-novo-numero','nf-novo-po','nf-novo-obs','nf-justificativa'].forEach(function(id) {
+  var checkbox = document.getElementById('nf-vincular-proposta');
+  if (checkbox) checkbox.checked = false;
+  ['nf-calc-pct','nf-calc-valor','nf-novo-numero','nf-novo-data','nf-novo-cliente','nf-novo-valor','nf-novo-tipo','nf-novo-po','nf-novo-obs','nf-justificativa'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
 
@@ -11645,7 +11713,7 @@ window.addEventListener('message', function(e) {
       var wrap = document.getElementById('nf-form-wrap');
       var btn  = document.getElementById('btn-toggle-nf-form');
       if (wrap) wrap.style.display = 'none';
-      if (btn)  btn.textContent    = '➕ Nova NF Vinculada';
+      if (btn)  btn.textContent    = '➕ Nova NF';
       _nfResetarForm();
     }
   }
@@ -12295,32 +12363,40 @@ async function salvarEditarNF() {
   // Validações
   if (novoValor <= 0) { _meditStatus('err', '❌ Valor da NF deve ser maior que zero.'); return; }
   if (!novaEmissao)   { _meditStatus('err', '❌ Data de emissão é obrigatória.'); return; }
-  if (!novaPropId)    { _meditStatus('err', '❌ Selecione uma proposta vinculada.'); return; }
 
-  if (!p) { _meditStatus('err', '❌ Proposta não encontrada no cache. Feche e reabra o modal.'); return; }
-  if (!p.val || p.val <= 0) { _meditStatus('err', '❌ Proposta selecionada não tem valor vendido.'); return; }
+  // Determinar se é vinculada ou não
+  var temPropostaAgora = novaPropId && novaPropId.length > 0;
+  var temPropostaAntes = _meditPropostaOrigId && _meditPropostaOrigId.length > 0;
 
-  // Troca de proposta exige motivo
-  var trocouProposta = (novaPropId !== _meditPropostaOrigId);
-  if (trocouProposta && !novoMotivo) {
-    _meditStatus('err', '❌ Informe o motivo da troca de proposta.'); return;
-  }
-  if (_meditTemRecebimento && trocouProposta) {
-    _meditStatus('err', '❌ Troca de proposta bloqueada: esta conta já possui recebimentos.'); return;
-  }
-  if (_meditTemRecebimento && Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
-    _meditStatus('err', '❌ Alteração de valor bloqueada: esta conta já possui recebimentos.'); return;
-  }
+  if (temPropostaAgora) {
+    if (!p) { _meditStatus('err', '❌ Proposta não encontrada no cache. Feche e reabra o modal.'); return; }
+    if (!p.val || p.val <= 0) { _meditStatus('err', '❌ Proposta selecionada não tem valor vendido.'); return; }
 
-  // Justificativa se excede saldo
-  var jaFaturado = (_todasNFs || []).filter(function(n) {
-    return n.proposta_app_id === novaPropId && n.status !== 'cancelada' && n.id !== nf.id;
-  }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
-  var totalComEsta = jaFaturado + novoValor;
-  var excede = totalComEsta > p.val * 1.001;
-  var saldo100 = (jaFaturado >= p.val - 0.005);
-  if ((excede || saldo100) && !novaJust) {
-    _meditStatus('err', '❌ Justificativa obrigatória quando valor excede ou completa 100% do saldo.'); return;
+    // Troca de proposta exige motivo
+    var trocouProposta = (novaPropId !== _meditPropostaOrigId);
+    if (trocouProposta && !novoMotivo) {
+      _meditStatus('err', '❌ Informe o motivo da troca de proposta.'); return;
+    }
+    if (_meditTemRecebimento && trocouProposta) {
+      _meditStatus('err', '❌ Troca de proposta bloqueada: esta conta já possui recebimentos.'); return;
+    }
+    if (_meditTemRecebimento && Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
+      _meditStatus('err', '❌ Alteração de valor bloqueada: esta conta já possui recebimentos.'); return;
+    }
+
+    // Justificativa se excede saldo
+    var jaFaturado = (_todasNFs || []).filter(function(n) {
+      return n.proposta_app_id === novaPropId && n.status !== 'cancelada' && n.id !== nf.id;
+    }).reduce(function(s, n) { return s + (parseFloat(n.valor_nf) || 0); }, 0);
+    var totalComEsta = jaFaturado + novoValor;
+    var excede = totalComEsta > p.val * 1.001;
+    var saldo100 = (jaFaturado >= p.val - 0.005);
+    if ((excede || saldo100) && !novaJust) {
+      _meditStatus('err', '❌ Justificativa obrigatória quando valor excede ou completa 100% do saldo.'); return;
+    }
+  } else if (temPropostaAntes && _meditTemRecebimento) {
+    // Se tinha proposta e agora vai desvinculada, bloqueia se tem recebimento
+    _meditStatus('err', '❌ Desvinculação de proposta bloqueada: esta conta já possui recebimentos.'); return;
   }
 
   // Bloquear duplo clique
@@ -12329,7 +12405,8 @@ async function salvarEditarNF() {
   _meditStatus('loading', '⏳ Salvando edição…');
 
   try {
-    var pctRS = (p.aliq && p.aliq.rS != null) ? p.aliq.rS : 0;
+    var pctRS = temPropostaAgora && p.aliq && p.aliq.rS != null ? p.aliq.rS : 0;
+    var excede = false, saldo100 = false;
 
     // Montar observacoes: preservar fase_c existente, atualizar campos, append historico
     var _bfRes2  = _meditResolveBackfill(nf);
@@ -12371,15 +12448,12 @@ async function salvarEditarNF() {
     if (arCom  > 0) aliqReaisPayload.comissao_real_pct          = parseFloat(arCom.toFixed(4));
     if (arDesc > 0) aliqReaisPayload.desconto_financeiro_real_pct = parseFloat(arDesc.toFixed(4));
     if (arObs)      aliqReaisPayload.observacao                 = arObs;
-    obsObj.fase_c = Object.assign(obsObj.fase_c || {}, {
-      percentual_faturamento:    parseFloat(novoPct.toFixed(4)),
-      valor_vendido_proposta:    p.val,
-      percentual_rs_considerado: parseFloat((pctRS * 100).toFixed(4)),
-      valor_rs_considerado:      parseFloat((novoValor * pctRS).toFixed(2)),
-      justificativa_excedente:   (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || ''),
-      vencimento_modo:           _meditVencModo,
-      prazo_vencimento_dias:     novoDias > 0 ? novoDias : (obsObj.fase_c.prazo_vencimento_dias || null),
-      aliquotas_reais:           Object.keys(aliqReaisPayload).length ? aliqReaisPayload : (obsObj.fase_c.aliquotas_reais || null),
+
+    // Atualizar metadados condicional à proposta
+    var faseC = Object.assign(obsObj.fase_c || {}, {
+      vencimento_modo:       _meditVencModo,
+      prazo_vencimento_dias: novoDias > 0 ? novoDias : (obsObj.fase_c.prazo_vencimento_dias || null),
+      aliquotas_reais:       Object.keys(aliqReaisPayload).length ? aliqReaisPayload : (obsObj.fase_c.aliquotas_reais || null),
       po: (_poNumero || _poDataPO || _poValor || _poCondicao || _poPrazo || _poStatus || _poObsStr)
         ? Object.assign(obsObj.fase_c.po || {}, {
             numero:             _poNumero,
@@ -12393,7 +12467,19 @@ async function salvarEditarNF() {
         : (obsObj.fase_c.po || null)
     });
 
+    // Campos específicos de proposta
+    if (temPropostaAgora) {
+      faseC.percentual_faturamento    = parseFloat(novoPct.toFixed(4));
+      faseC.valor_vendido_proposta    = p.val;
+      faseC.percentual_rs_considerado = parseFloat((pctRS * 100).toFixed(4));
+      faseC.valor_rs_considerado      = parseFloat((novoValor * pctRS).toFixed(2));
+      faseC.justificativa_excedente   = (excede || saldo100) ? novaJust : (obsObj.fase_c.justificativa_excedente || '');
+    }
+
+    obsObj.fase_c = faseC;
+
     // Registrar histórico de correções se houver mudanças relevantes
+    var trocouProposta = temPropostaAgora && (novaPropId !== _meditPropostaOrigId);
     if (trocouProposta || Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
       var hist = obsObj.fase_c.historico_correcoes;
       if (!Array.isArray(hist)) hist = [];
@@ -12414,7 +12500,16 @@ async function salvarEditarNF() {
 
     // Regenerar título da conta
     var labelNF     = novoNumero ? ('NF ' + novoNumero) : 'NF s/n';
-    var tituloConta = (p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(novoValor);
+    var tituloConta = temPropostaAgora ? ((p.num || '') + ' — ' + labelNF + ' — ' + _nfMoney(novoValor))
+                                       : (labelNF + ' — ' + (conta.cliente_nome || '???') + ' — ' + _nfMoney(novoValor));
+
+    // Determinar novo status da NF
+    var novoStatusNFCalc = novoStatusNF;
+    if (temPropostaAgora && nf.status === 'nao_vinculada') {
+      novoStatusNFCalc = 'emitida'; // Se estava não vinculada e agora tem proposta, muda para emitida
+    } else if (!temPropostaAgora && nf.proposta_app_id) {
+      novoStatusNFCalc = 'nao_vinculada'; // Se está desvinculando, muda para não vinculada
+    }
 
     // Atualizar NF
     var nfPayload = {
@@ -12423,10 +12518,12 @@ async function salvarEditarNF() {
       tipo_nf:         novoTipo,
       data_emissao:    novaEmissao,
       valor_nf:        novoValor,
-      status:          novoStatusNF,
+      status:          novoStatusNFCalc,
       observacoes:     obsFinal
     };
-    if (trocouProposta) nfPayload.proposta_app_id = novaPropId;
+    if (novaPropId !== (_meditPropostaOrigId || '')) {
+      nfPayload.proposta_app_id = novaPropId || null;
+    }
     await sf.atualizarNotaFiscal(nf.id, nfPayload);
 
     // Upload do arquivo se existir (modal de edição pode ter arquivo novo)
@@ -12460,9 +12557,9 @@ async function salvarEditarNF() {
       status:          novoStConta,
       observacoes:     obsFinal
     };
-    if (trocouProposta) {
-      contaPayload.proposta_app_id = novaPropId;
-      contaPayload.cliente_nome    = p.cli || '';
+    if (novaPropId !== (_meditPropostaOrigId || '')) {
+      contaPayload.proposta_app_id = novaPropId || null;
+      contaPayload.cliente_nome    = temPropostaAgora ? (p.cli || '') : conta.cliente_nome;
     }
     await sf.atualizarContaReceber(nf.conta_receber_id, contaPayload);
 
