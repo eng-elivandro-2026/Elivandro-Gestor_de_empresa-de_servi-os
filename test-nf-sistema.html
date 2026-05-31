@@ -147,64 +147,34 @@
       var t = String(texto).trim();
       if (t.normalize) t = t.normalize('NFD').normalize('NFC');
 
-      // Substitui ordinais (ª=170, º=186) por acentos corretos
-      while (t.includes('ªªo') || t.includes('ªo') || t.includes('ºo')) {
-        t = t.replace(/ªªo/g, 'ão');
-        t = t.replace(/ªo/g, 'ão');
-        t = t.replace(/ºo/g, 'ão');
+      // Mapa de substituição por código de caractere
+      var charMap = {};
+      charMap[String.fromCharCode(170)] = 'á';  // ª
+      charMap[String.fromCharCode(186)] = 'é';  // º
+      charMap[String.fromCharCode(63)] = '';    // ?
+
+      for (var charCode in charMap) {
+        var char = charCode;
+        var replacement = charMap[charCode];
+        var parts = t.split(char);
+        t = parts.join(replacement);
       }
 
-      t = t.replace(/[aªº]d(e|[aªº])qu(a|[aªº])[çc][aªº][oº]/gi, 'adequação');
-      t = t.replace(/el[eé(aªº)ó][tç]rico/gi, 'elétrico');
-      t = t.replace(/pneum[aªº](t|)ico/gi, 'pneumático');
-      t = t.replace(/servi[çc][aªº]o/gi, 'serviço');
+      // Corrige padrões
+      t = t.replace(/ááo/g, 'ão');
+      t = t.replace(/áo/g, 'ão');
+      t = t.replace(/éo/g, 'ão');
 
-      t = t.split(String.fromCharCode(170)).join('á');
-      t = t.split(String.fromCharCode(186)).join('é');
+      // Palavras específicas
+      t = t.replace(/adaquação/gi, 'adequação');
+      t = t.replace(/adapação/gi, 'adequação');
+      t = t.replace(/eletrico/gi, 'elétrico');
+      t = t.replace(/elétrico/gi, 'elétrico');
+      t = t.replace(/pneumatico/gi, 'pneumático');
+      t = t.replace(/pneumático/gi, 'pneumático');
+      t = t.replace(/comercializacao/gi, 'comercialização');
+      t = t.replace(/cafes/gi, 'cafés');
 
-      var mapa = {
-        // Minúsculas com til
-        '?': 'ã', '??': 'ã', '~': 'ã',
-        '?': 'õ', '??': 'õ',
-        // Minúsculas com agudo
-        '?': 'á', '??': 'á',
-        '?': 'é', '??': 'é',
-        '?': 'í', '??': 'í',
-        '?': 'ó', '??': 'ó',
-        '?': 'ú', '??': 'ú',
-        // Minúsculas com cedilha
-        '?': 'ç', '??': 'ç',
-        // Minúsculas com til (maiúsculas)
-        '?': 'ñ', '??': 'ñ',
-        // Minúsculas com circunflexo
-        '?': 'â', '??': 'â',
-        '?': 'ê', '??': 'ê',
-        '?': 'ô', '??': 'ô',
-        // Minúsculas com grave
-        '?': 'à', '??': 'à',
-        // MAIÚSCULAS com til
-        '?': 'Ã', '??': 'Ã',
-        '?': 'Õ', '??': 'Õ',
-        // MAIÚSCULAS com agudo
-        '?': 'Á', '??': 'Á',
-        '?': 'É', '??': 'É',
-        '?': 'Í', '??': 'Í',
-        '?': 'Ó', '??': 'Ó',
-        '?': 'Ú', '??': 'Ú',
-        // MAIÚSCULAS com cedilha
-        '?': 'Ç', '??': 'Ç',
-        // MAIÚSCULAS com circunflexo
-        '?': 'Â', '??': 'Â',
-        '?': 'Ê', '??': 'Ê',
-        '?': 'Ô', '??': 'Ô',
-        // Caracteres especiais
-        '?': 'ª'
-      };
-
-      for (var char in mapa) {
-        var regex = new RegExp(char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        t = t.replace(regex, mapa[char]);
-      }
       return t;
     }
 
