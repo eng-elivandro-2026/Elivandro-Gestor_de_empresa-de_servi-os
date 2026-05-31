@@ -175,6 +175,10 @@
       t = t.replace(/ª/g, 'á');
       t = t.replace(/º/g, 'é');
 
+      // QUARTA: Casos específicos
+      t = t.replace(/caffs/gi, 'cafés');
+      t = t.replace(/cafo?s/gi, 'cafés');
+
       return t;
     }
 
@@ -241,7 +245,7 @@
 
           // Extrai tomador
           var allRazoes = xmlDoc.getElementsByTagName('RazaoSocial');
-          var tomador = allRazoes.length > 1 ? normalizarTexto(allRazoes[1].textContent) : '';
+          var tomador = allRazoes.length > 1 ? normalizarTexto(allRazoes[1].textContent).toUpperCase() : '';
           var cnpjTomador = xmlDoc.getElementsByTagName('CpfCnpj')[1]?.getElementsByTagName('Cnpj')[0]?.textContent || '';
 
           // Extrai serviço

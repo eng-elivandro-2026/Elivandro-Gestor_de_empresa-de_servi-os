@@ -2146,6 +2146,10 @@ function _normalizarTextoNF(texto) {
   t = t.replace(/ª/g, 'á');
   t = t.replace(/º/g, 'é');
 
+  // QUARTA: Corrige casos específicos que ainda ficam errados
+  t = t.replace(/caffs/gi, 'cafés');
+  t = t.replace(/cafo?s/gi, 'cafés');
+
   return t;
 }
 
@@ -2186,7 +2190,7 @@ function _nfArquivoSelecionado(file) {
 
         // Extrai tomador/cliente (segunda ocorrência de RazaoSocial)
         var allRazoes = xmlDoc.getElementsByTagName('RazaoSocial');
-        var tomador = allRazoes.length > 1 ? _normalizarTextoNF(allRazoes[1].textContent) : '';
+        var tomador = allRazoes.length > 1 ? _normalizarTextoNF(allRazoes[1].textContent).toUpperCase() : '';
         var cnpjTomador = xmlDoc.getElementsByTagName('CpfCnpj')[1]?.getElementsByTagName('Cnpj')[0]?.textContent || '';
 
         // Extrai serviço/descrição
