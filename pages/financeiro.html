@@ -850,6 +850,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           placeholder="Observação opcional (referência, nota, etc.)">
       </div>
 
+      <div class="cp-form-group">
+        <label class="cp-form-label">Arquivo da NF (XML, PDF ou Imagem)</label>
+        <div id="nf-upload-area" style="border:2px dashed #cbd5e1;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;background:#f8fafc;margin-top:.35rem">
+          <input type="file" id="nf-arquivo-input" accept=".xml,.pdf,.png,.jpg,.jpeg" style="display:none">
+          <span id="nf-upload-label" style="font-size:.88rem">📎 Clique ou arraste XML, PDF ou Imagem</span>
+        </div>
+        <div id="nf-arquivo-preview" style="display:none;margin-top:.5rem;font-size:.82rem;color:#0f172a"></div>
+      </div>
+
       <button class="btn-criar-cp" id="nf-btn-salvar" onclick="nfFaseCsalvar()"
         style="margin-top:.9rem">
         💾 Salvar NF no Financeiro
@@ -2151,6 +2160,7 @@ var _drePlanoResultado = null;
 
 // NF Fornecedor - isolamento visual multiempresa
 var _nffLoadToken = 0;        // race condition guard para troca de empresa
+var _nfArquivoPendente = null; // File selecionado para NF antes de salvar
 
 // ── Helpers de acesso ao portal pai ──────────────────────────
 function _sf() {
@@ -4823,6 +4833,14 @@ function _renderNFBasico(nf, obsObj) {
       ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.45rem;padding:.38rem .5rem;background:var(--bg3);border-radius:4px;border-left:2px solid var(--border)">' +
         '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.15rem">Observações</div>' +
         _esc(obsTexto) + '</div>'
+      : '') +
+    (obs.arquivo_url && obs.arquivo_nome
+      ? '<div style="font-size:.72rem;color:var(--text2);margin-top:.45rem;padding:.38rem .5rem;background:var(--bg3);border-radius:4px;border-left:2px solid #10b981">' +
+        '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.15rem">📎 Arquivo Anexado</div>' +
+        '<a href="' + _esc(obs.arquivo_url) + '" target="_blank" style="color:#3b82f6;text-decoration:none;font-weight:600;word-break:break-all">' +
+        _esc(obs.arquivo_nome) + '</a>' +
+        (obs.arquivo_tipo ? ' <span style="font-size:.6rem;color:var(--text3);margin-left:.3rem">(' + _esc(obs.arquivo_tipo.toUpperCase()) + ')</span>' : '') +
+        '</div>'
       : '') +
   '</div>';
 }
@@ -11114,6 +11132,100 @@ var _NF_FASES_FATURAVEL = [
   'em_pausa_aguardando_terceiro','taf','sat','finalizado','atrasado'
 ];
 
+// ── Upload de Arquivo NF ──────────────────────────────────────
+function _nfArquivoSelecionado(file) {
+  if (!file) return;
+  _nfArquivoPendente = file;
+
+  var preview = document.getElementById('nf-arquivo-preview');
+  var label = document.getElementById('nf-upload-label');
+
+  // Se XML, tenta parsear
+  if (file.name.endsWith('.xml')) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var xmlStr = e.target.result;
+        var parser = new DOMParser();
+        var xmlDoc = parser.parseFromString(xmlStr, 'text/xml');
+
+        // Helpers para extrair tags XML (compatível com namespace NF-e)
+        var getTag = function(tagName) {
+          for (var i = 0; i < xmlDoc.getElementsByTagName(tagName).length; i++) {
+            return xmlDoc.getElementsByTagName(tagName)[i];
+          }
+          return null;
+        };
+        var getText = function(tag) {
+          return tag && tag.textContent ? tag.textContent.trim() : '';
+        };
+
+        // Extrai dados da NF
+        var idEl = getTag('ide');
+        var nNF = getText(getTag('nNF'));
+        var dhEmi = getText(getTag('dhEmi'));
+        var vNF = getText(getTag('vNF'));
+
+        // Preenche campos
+        if (nNF) document.getElementById('nf-novo-numero').value = nNF;
+        if (dhEmi) {
+          var data = dhEmi.substring(0, 10).split('-').reverse().join('/');
+          document.getElementById('nf-novo-data').value = dhEmi.substring(0, 10);
+        }
+        if (vNF) {
+          document.getElementById('nf-calc-valor').value = (parseFloat(vNF) / 100).toFixed(2);
+          nfCalcValorParaPct();
+        }
+
+        preview.style.display = 'block';
+        preview.innerHTML = '✅ XML lido: NF ' + nNF + ' de ' + (dhEmi ? dhEmi.substring(0, 10) : 'N/A') + ' - R$ ' + (vNF ? (parseFloat(vNF) / 100).toFixed(2) : 'N/A');
+        label.textContent = '📎 ' + file.name;
+      } catch (err) {
+        preview.style.display = 'block';
+        preview.innerHTML = '⚠️ Erro ao ler XML: ' + err.message;
+        label.textContent = '📎 ' + file.name;
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    // PDF ou imagem: apenas exibe nome
+    preview.style.display = 'block';
+    preview.innerHTML = '📎 ' + file.name + ' (' + file.type + ')';
+    label.textContent = '📎 ' + file.name;
+  }
+}
+
+async function _nfFazerUploadArquivo(empresaId, nfId) {
+  if (!_nfArquivoPendente) return null;
+
+  try {
+    var path = empresaId + '/' + Date.now() + '_' + _nfArquivoPendente.name;
+    var upErr = null;
+
+    // Upload para Supabase Storage
+    try {
+      await window.sbClient.storage.from('nfs-emitidas').upload(path, _nfArquivoPendente, { upsert: true });
+    } catch (e) {
+      // Se bucket não existe, tenta criar (no Supabase é automático no upload)
+      upErr = e;
+      console.warn('Erro ao upload (tentando novamente):', e);
+      await window.sbClient.storage.from('nfs-emitidas').upload(path, _nfArquivoPendente, { upsert: true });
+    }
+
+    var { data: urlData } = window.sbClient.storage.from('nfs-emitidas').getPublicUrl(path);
+
+    _nfArquivoPendente = null; // Limpa após upload
+    return {
+      arquivo_url: urlData.publicUrl,
+      arquivo_nome: _nfArquivoPendente.name,
+      arquivo_tipo: _nfArquivoPendente.name.split('.').pop().toLowerCase()
+    };
+  } catch (err) {
+    console.error('Erro ao fazer upload:', err);
+    throw err;
+  }
+}
+
 // ── Toggle do formulário ──────────────────────────────────────
 function nfToggleForm() {
   _nfFormAberto = !_nfFormAberto;
@@ -11425,7 +11537,7 @@ async function nfFaseCsalvar() {
     var dataEmissao = (document.getElementById('nf-novo-data') || {}).value
       || new Date().toISOString().slice(0, 10);
 
-    await sf.criarNotaFiscal({
+    var novaNF = await sf.criarNotaFiscal({
       empresa_id:       empId,
       conta_receber_id: contaId,
       proposta_app_id:  p.id,
@@ -11436,6 +11548,29 @@ async function nfFaseCsalvar() {
       status:           'emitida',
       observacoes:      obsFinal
     });
+    var nfId = novaNF.id;
+
+    // 4. Upload do arquivo se existir
+    if (_nfArquivoPendente) {
+      _loading('⏳ Enviando arquivo da NF…');
+      try {
+        var arquivoData = await _nfFazerUploadArquivo(empId, nfId);
+        if (arquivoData) {
+          // Atualiza observações com dados do arquivo
+          var obsObj = JSON.parse(obsFinal);
+          obsObj.arquivo_url = arquivoData.arquivo_url;
+          obsObj.arquivo_nome = arquivoData.arquivo_nome;
+          obsObj.arquivo_tipo = arquivoData.arquivo_tipo;
+          var obsAtualizada = JSON.stringify(obsObj);
+
+          // Atualiza NF no banco com nova observação
+          await sf.atualizarNotaFiscal(nfId, { observacoes: obsAtualizada });
+          console.log('[NF FaseC] Arquivo enviado e NF atualizada:', arquivoData.arquivo_nome);
+        }
+      } catch (uploadErr) {
+        console.warn('[NF FaseC] Erro ao enviar arquivo, mas NF foi salva:', uploadErr);
+      }
+    }
 
     _okMsg('✅ NF salva com sucesso! Recarregando lista…');
 
@@ -11461,6 +11596,8 @@ async function nfFaseCsalvar() {
 function _nfResetarForm() {
   _nfPropostaAtual = null;
   _nfNFsExistentes = [];
+  _nfArquivoPendente = null; // Limpa arquivo
+
   var sel = document.getElementById('nf-sel-proposta');
   if (sel) sel.value = '';
   ['nf-dados-proposta','nf-form-campos'].forEach(function(id) {
@@ -11469,6 +11606,15 @@ function _nfResetarForm() {
   ['nf-calc-pct','nf-calc-valor','nf-novo-numero','nf-novo-po','nf-novo-obs','nf-justificativa'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
+
+  // Limpa preview e upload
+  var fileInput = document.getElementById('nf-arquivo-input');
+  if (fileInput) fileInput.value = '';
+  var preview = document.getElementById('nf-arquivo-preview');
+  if (preview) preview.style.display = 'none';
+  var label = document.getElementById('nf-upload-label');
+  if (label) label.textContent = '📎 Clique ou arraste XML, PDF ou Imagem';
+
   var st = document.getElementById('nf-form-status');
   if (st) { st.className = 'status-msg'; st.textContent = ''; }
   var resumoEl = document.getElementById('nf-resumo-saldo');
@@ -12283,6 +12429,28 @@ async function salvarEditarNF() {
     if (trocouProposta) nfPayload.proposta_app_id = novaPropId;
     await sf.atualizarNotaFiscal(nf.id, nfPayload);
 
+    // Upload do arquivo se existir (modal de edição pode ter arquivo novo)
+    if (_nfArquivoPendente) {
+      try {
+        _meditStatus('loading', '⏳ Enviando arquivo da NF…');
+        var arquivoData = await _nfFazerUploadArquivo(empId, nf.id);
+        if (arquivoData) {
+          // Atualiza observações com dados do arquivo
+          var obsObjAtualized = JSON.parse(obsFinal);
+          obsObjAtualized.arquivo_url = arquivoData.arquivo_url;
+          obsObjAtualized.arquivo_nome = arquivoData.arquivo_nome;
+          obsObjAtualized.arquivo_tipo = arquivoData.arquivo_tipo;
+          var obsAtualizada = JSON.stringify(obsObjAtualized);
+
+          // Atualiza NF novamente com arquivo
+          await sf.atualizarNotaFiscal(nf.id, { observacoes: obsAtualizada });
+          console.log('[EditarNF] Arquivo enviado:', arquivoData.arquivo_nome);
+        }
+      } catch (uploadErr) {
+        console.warn('[EditarNF] Erro ao enviar arquivo, mas NF foi atualizada:', uploadErr);
+      }
+    }
+
     // Atualizar Conta a Receber
     var contaPayload = {
       empresa_id:      empId,
@@ -12594,6 +12762,55 @@ console.log('[Editar NF] módulo carregado e funções registradas');
     </div>
   </div>
 </div>
+
+<script>
+// Event listeners para upload de NF
+(function() {
+  var uploadArea = document.getElementById('nf-upload-area');
+  var fileInput = document.getElementById('nf-arquivo-input');
+
+  if (!uploadArea || !fileInput) return;
+
+  // Click para abrir seletor
+  uploadArea.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  // Change quando arquivo é selecionado
+  fileInput.addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+      _nfArquivoSelecionado(e.target.files[0]);
+    }
+  });
+
+  // Drag and drop
+  uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.background = '#dbeafe';
+    uploadArea.style.borderColor = '#3b82f6';
+  });
+
+  uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.background = '#f8fafc';
+    uploadArea.style.borderColor = '#cbd5e1';
+  });
+
+  uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.background = '#f8fafc';
+    uploadArea.style.borderColor = '#cbd5e1';
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      fileInput.files = e.dataTransfer.files;
+      _nfArquivoSelecionado(e.dataTransfer.files[0]);
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
