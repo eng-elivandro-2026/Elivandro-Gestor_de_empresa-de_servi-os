@@ -13835,6 +13835,203 @@ async function poArquivoSelecionado(file) {
   }
 }
 
+// Função para mostrar tabela de POs
+function poMostrarTabela() {
+  var container = document.getElementById('po-tabela-container');
+  if (!container) return;
+
+  var tbody = document.getElementById('po-tabela-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  _poArquivosCarregados.forEach(function(po, idx) {
+    var row = tbody.insertRow();
+    row.style.borderBottom = '1px solid #e5e7eb;font-size:.85rem';
+
+    var html = '<td style="padding:.75rem">' + (po.numero_po || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.data_criacao || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.comprador_nome ? po.comprador_nome.substring(0, 20) : '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.comprador_cnpj || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.vendedor_nome ? po.vendedor_nome.substring(0, 20) : '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.vendedor_cnpj || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.contato_nome || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.contato_email ? po.contato_email.substring(0, 20) : '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.contato_telefone || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.descricao ? po.descricao.substring(0, 25) : '-') + '</td>' +
+               '<td style="padding:.75rem;text-align:right;font-weight:600">' + 'R$ ' + (po.valor_total || '0') + '</td>' +
+               '<td style="padding:.75rem">' + (po.prazos || '-') + '</td>' +
+               '<td style="padding:.75rem">' + (po.banco || '-') + '</td>' +
+               '<td style="padding:.75rem;text-align:center"><button onclick="poRemover(' + idx + ')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer">🗑️</button></td>';
+
+    row.innerHTML = html;
+  });
+
+  container.style.display = _poArquivosCarregados.length > 0 ? 'block' : 'none';
+  document.getElementById('po-count').textContent = _poArquivosCarregados.length > 0 ? '(' + _poArquivosCarregados.length + ')' : '';
+
+  if (_poArquivosCarregados.length > 0) {
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Função para remover PO
+function poRemover(idx) {
+  _poArquivosCarregados.splice(idx, 1);
+  poMostrarTabela();
+}
+
+// Função para salvar POs
+async function salvarPOsArquivos() {
+  if (_poArquivosCarregados.length === 0) {
+    alert('Carregue um arquivo PDF primeiro');
+    return;
+  }
+
+  if (_poSalvando) {
+    console.log('⚠️ Já estou salvando...');
+    return;
+  }
+  _poSalvando = true;
+
+  var sf = _sf();
+  if (!sf) {
+    alert('Módulo não disponível');
+    _poSalvando = false;
+    return;
+  }
+
+  var statusEl = document.getElementById('po-form-status');
+  statusEl.className = 'status-msg loading';
+  statusEl.textContent = '⏳ Salvando...';
+
+  try {
+    for (var po of _poArquivosCarregados) {
+      console.log('💾 Salvando PO:', po.numero_po);
+
+      var valorStr = String(po.valor_total || '0');
+      var numeroValor = parseFloat(
+        valorStr.replace(/\./g, '').replace(',', '.')
+      ) || 0;
+
+      var poData = {
+        numero_po: po.numero_po || null,
+        data_criacao: po.data_criacao || new Date().toISOString().slice(0, 10),
+        data_atual: po.data_atual || new Date().toISOString().slice(0, 10),
+        comprador_nome: po.comprador_nome || '',
+        comprador_cnpj: po.comprador_cnpj || '',
+        comprador_ie: po.comprador_ie || '',
+        comprador_rua: po.comprador_rua || '',
+        comprador_numero: po.comprador_numero || '',
+        comprador_cep: po.comprador_cep || '',
+        comprador_cidade: po.comprador_cidade || '',
+        comprador_pais: po.comprador_pais || 'Brasil',
+        vendedor_nome: po.vendedor_nome || 'Vendedor',
+        vendedor_cnpj: po.vendedor_cnpj || '',
+        vendedor_ie: po.vendedor_ie || '',
+        vendedor_cpf: po.vendedor_cpf || '',
+        vendedor_rua: po.vendedor_rua || '',
+        vendedor_numero: po.vendedor_numero || '',
+        vendedor_cep: po.vendedor_cep || '',
+        vendedor_cidade: po.vendedor_cidade || '',
+        vendedor_pais: po.vendedor_pais || 'Brasil',
+        vendedor_numero_fornecedor: po.vendedor_numero_fornecedor || '',
+        banco: po.banco || '',
+        banco_codigo: po.banco_codigo || '',
+        conta: po.conta || '',
+        agencia: po.agencia || '',
+        contato_nome: po.contato_nome || '',
+        contato_email: po.contato_email || '',
+        contato_telefone: po.contato_telefone || '',
+        item_numero: po.item_numero || '',
+        item_tipo: po.item_tipo || '',
+        descricao: po.descricao || po.item_descricao || '',
+        item_quantidade: po.item_quantidade || '',
+        item_unidade: po.item_unidade || '',
+        item_preco_unitario: po.item_preco_unitario || '',
+        valor_po: numeroValor,
+        condicoes_pagamento: po.condicoes_pagamento || '',
+        prazos: po.prazos || '',
+        data_entrega: po.data_entrega || '',
+        moeda: po.moeda || 'BRL',
+        status: 'ativa'
+      };
+
+      await sf.criarPedidoCompra({
+        empresa_id: _empresaAtiva.id,
+        numero_po: po.numero_po,
+        valor_po: numeroValor,
+        data_emissao: po.data_criacao || new Date().toISOString().slice(0, 10),
+        observacoes: JSON.stringify(poData)
+      });
+      console.log('✅ PO salva com sucesso:', po.numero_po);
+    }
+
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = '✅ ' + _poArquivosCarregados.length + ' PO(s) processada(s)! Dados extraídos e prontos.';
+    _poArquivosCarregados = [];
+    poMostrarTabela();
+    poCarregarRegistradas();
+
+    console.log('✅ POs prontas para vincular com NFs');
+  } catch(err) {
+    console.error('❌ Erro ao salvar PO:', err);
+    statusEl.className = 'status-msg err';
+    statusEl.textContent = '❌ Erro: ' + (err.message || 'desconhecido');
+  } finally {
+    _poSalvando = false;
+  }
+}
+
+// Função para carregar e exibir POs registradas
+async function poCarregarRegistradas() {
+  var container = document.getElementById('po-lista-container');
+  if (!container) return;
+
+  try {
+    var sf = _sf();
+    if (!sf) return;
+
+    var todasNFs = await sf.listarNotasFiscaisEmpresa(_empresaAtiva.id);
+    var pos = todasNFs.filter(nf => nf.tipo_nf === 'po');
+
+    if (pos.length === 0) {
+      container.innerHTML = '<p>As POs salvas aparecem aqui após importação</p>';
+      return;
+    }
+
+    var html = '<div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px"><table style="width:100%;border-collapse:collapse;background:white"><thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb"><th style="padding:1rem;text-align:left;font-weight:600">N° PO</th><th style="padding:1rem;text-align:left;font-weight:600">Data</th><th style="padding:1rem;text-align:right;font-weight:600">Valor</th><th style="padding:1rem;text-align:left;font-weight:600">Status</th><th style="padding:1rem;text-align:center;font-weight:600">Ações</th></tr></thead><tbody>';
+
+    pos.forEach(po => {
+      html += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:1rem;font-weight:600">' + (po.numero_nf || 'N/A') + '</td><td style="padding:1rem">' + (po.data_emissao || '-') + '</td><td style="padding:1rem;text-align:right;font-weight:600">R$ ' + (po.valor_nf || 0).toFixed(2) + '</td><td style="padding:1rem"><span style="background:#dbeafe;color:#0c4a6e;padding:.25rem .75rem;border-radius:4px;font-size:.85rem">' + (po.status || 'Ativa') + '</span></td><td style="padding:1rem;text-align:center"><button onclick="poEditar(\'' + po.id + '\')" style="background:#3b82f6;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem;margin-right:.25rem">✏️</button><button onclick="poDeletar(\'' + po.id + '\')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem">🗑️</button></td></tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch(err) {
+    console.error('❌ Erro ao carregar POs:', err);
+    container.innerHTML = '<p style="color:#dc2626">❌ Erro ao carregar POs registradas</p>';
+  }
+}
+
+// Função para deletar PO
+async function poDeletar(poId) {
+  if (!confirm('Tem certeza que deseja deletar esta PO?')) return;
+
+  try {
+    var sf = _sf();
+    if (!sf || !sf.deletarPedidoCompra) throw new Error('Módulo não disponível');
+
+    await sf.deletarPedidoCompra(poId);
+    console.log('✅ PO deletada:', poId);
+    alert('✅ PO deletada com sucesso');
+    poCarregarRegistradas();
+  } catch(err) {
+    console.error('❌ Erro ao deletar PO:', err);
+    alert('❌ Erro: ' + (err.message || 'Desconhecido'));
+  }
+}
+
 // Carregar POs ao iniciar
 setTimeout(() => {
   if (document.getElementById('po-lista-container')) {
