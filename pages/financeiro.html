@@ -11921,7 +11921,8 @@ async function nfFaseCsalvar() {
       if (wrap) wrap.style.display = 'none';
       if (btn)  btn.textContent    = '➕ Nova NF';
       _nfResetarForm();
-      recarregarNFs();
+      // TEMP: comentado para evitar travamento - recarregarNFs();
+      console.log('✅ NF salva! Recarregamento desabilitado temporariamente');
     }, 1600);
 
   } catch(e) {
@@ -12836,12 +12837,13 @@ async function salvarEditarNF() {
     }
     await sf.atualizarContaReceber(nf.conta_receber_id, contaPayload);
 
-    _meditStatus('ok', '✅ NF atualizada com sucesso! Recarregando…');
+    _meditStatus('ok', '✅ NF atualizada com sucesso!');
     setTimeout(function() {
       fecharModalEditarNF();
-      recarregarNFs();
+      // TEMP: comentado para evitar travamento - recarregarNFs();
       var tabContas = document.getElementById('tab-contas');
       if (tabContas && tabContas.style.display !== 'none') recarregarContas();
+      console.log('✅ Modal fechado');
     }, 1300);
 
   } catch(e) {
