@@ -11219,19 +11219,79 @@ function _nfArquivoSelecionado(file) {
       previewHTML += '<img src="' + blobUrl + '" style="max-width:200px;max-height:200px;border-radius:4px;margin-bottom:.35rem">';
     }
 
-    previewHTML += '<div style="display:flex;gap:.5rem;margin-top:.35rem">';
+    previewHTML += '<div style="display:flex;gap:.5rem;margin-top:.35rem;flex-wrap:wrap">';
     previewHTML += '<a href="' + blobUrl + '" download="' + file.name + '" style="padding:.35rem .75rem;background:#3b82f6;color:white;border-radius:4px;text-decoration:none;font-size:.82rem;display:inline-block">⬇️ Baixar</a>';
 
     if (isPDF) {
       previewHTML += '<a href="' + blobUrl + '" target="_blank" style="padding:.35rem .75rem;background:#10b981;color:white;border-radius:4px;text-decoration:none;font-size:.82rem;display:inline-block">👁️ Visualizar</a>';
+      previewHTML += '<button onclick="_nfLerDadosPDF(' + (window._nfArquivoIndex || 0) + ')" style="padding:.35rem .75rem;background:#8b5cf6;color:white;border:none;border-radius:4px;cursor:pointer;font-size:.82rem">🔍 Ler Dados</button>';
     }
 
     previewHTML += '</div>';
-    previewHTML += '<div style="margin-top:.35rem;font-size:.75rem;color:var(--text2)">Leia os dados do arquivo e preencha os campos abaixo</div>';
+    previewHTML += '<div id="nf-leitura-status" style="margin-top:.35rem;font-size:.75rem;color:var(--text2)">Leia os dados do arquivo e preencha os campos abaixo</div>';
     previewHTML += '</div>';
 
     preview.innerHTML = previewHTML;
     label.textContent = '📎 ' + file.name + ' ✓';
+  }
+}
+
+// ── Ler dados do PDF ──────────────────────────────────────────────
+async function _nfLerDadosPDF() {
+  if (!_nfArquivoPendente || !_nfArquivoPendente.type.includes('pdf')) {
+    alert('❌ Carregue um arquivo PDF primeiro');
+    return;
+  }
+
+  var statusEl = document.getElementById('nf-leitura-status');
+  if (statusEl) statusEl.innerHTML = '⏳ Lendo PDF...';
+
+  try {
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('PDF.js não carregado. Recarregue a página.');
+    }
+
+    var fileReader = new FileReader();
+    fileReader.onload = async function(e) {
+      try {
+        var pdfData = new Uint8Array(e.target.result);
+        var pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        var allText = '';
+
+        // Ler todas as páginas
+        for (var i = 1; i <= pdf.numPages; i++) {
+          var page = await pdf.getPage(i);
+          var textContent = await page.getTextContent();
+          var pageText = textContent.items.map(function(item) { return item.str; }).join(' ');
+          allText += pageText + '\n';
+        }
+
+        // Extrair padrões comuns de NF
+        var nfMatch = allText.match(/NF\s*(?:de\s*)?(?:Servi[çc]o\s*)?(?:n[ºo]|#)?\s*(\d{4,10})/i);
+        var dataMatch = allText.match(/(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/);
+        var valorMatch = allText.match(/[Vv]alor\s*(?:total|da\s*nf)?[:\s]*(?:R\$\s*)?(\d+(?:[.,]\d{2})?)/);
+
+        var nfNum = nfMatch ? nfMatch[1] : '';
+        var dataStr = dataMatch ? (dataMatch[3] + '-' + dataMatch[2] + '-' + dataMatch[1]) : '';
+        var valor = valorMatch ? valorMatch[1].replace(',', '.') : '';
+
+        // Preencher campos
+        if (nfNum) document.getElementById('nf-novo-numero').value = nfNum;
+        if (dataStr) document.getElementById('nf-novo-data').value = dataStr;
+        if (valor) document.getElementById('nf-novo-valor').value = valor;
+
+        if (statusEl) {
+          statusEl.innerHTML = '✅ PDF lido! ' + (nfNum ? 'NF: ' + nfNum : '') + (dataStr ? ' | Data: ' + dataStr : '') + (valor ? ' | Valor: R$ ' + valor : '');
+        }
+      } catch (err) {
+        console.error('Erro ao ler PDF:', err);
+        if (statusEl) statusEl.innerHTML = '❌ Erro ao ler PDF: ' + err.message;
+      }
+    };
+    fileReader.readAsArrayBuffer(_nfArquivoPendente);
+  } catch (err) {
+    console.error('Erro:', err);
+    if (statusEl) statusEl.innerHTML = '❌ ' + err.message;
   }
 }
 
@@ -12931,6 +12991,14 @@ console.log('[Editar NF] módulo carregado e funções registradas');
     }
   });
 })();
+</script>
+
+<!-- PDF.js para leitura de PDFs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
 </script>
 
 </body>
