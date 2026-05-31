@@ -2105,39 +2105,32 @@ function _normalizarTextoNF(texto) {
 
   var t = String(texto).trim();
 
-  // Normaliza para NFC (forma composta)
+  // Normaliza para NFC
   if (t.normalize) {
     t = t.normalize('NFD').normalize('NFC');
   }
 
-  // Mapa de substituição por código de caractere
-  var charMap = {};
-  charMap[String.fromCharCode(170)] = 'á';  // ª (feminine ordinal)
-  charMap[String.fromCharCode(186)] = 'é';  // º (masculine ordinal)
-  charMap[String.fromCharCode(63)] = '';    // ? (unknown char)
-
-  // Aplica substituições de caracteres especiais
-  for (var charCode in charMap) {
-    var char = charCode; // Já é string
-    var replacement = charMap[charCode];
-    var parts = t.split(char);
-    t = parts.join(replacement);
-  }
-
-  // Corrige padrões conhecidos que ficam errados
-  t = t.replace(/ááo/g, 'ão');
-  t = t.replace(/áo/g, 'ão');
-  t = t.replace(/éo/g, 'ão');
-
-  // Palavras específicas
-  t = t.replace(/adaquação/gi, 'adequação');
-  t = t.replace(/adapação/gi, 'adequação');
+  // DIRETO: Substitui palavras quebradas pelas corretas
+  // Case-insensitive para cobrir maiúsculas também
+  t = t.replace(/adequao/gi, 'adequação');
+  t = t.replace(/adequa[çc]ao/gi, 'adequação');
   t = t.replace(/eletrico/gi, 'elétrico');
-  t = t.replace(/elétrico/gi, 'elétrico');
+  t = t.replace(/el[eé]trico/gi, 'elétrico');
   t = t.replace(/pneumatico/gi, 'pneumático');
-  t = t.replace(/pneumático/gi, 'pneumático');
+  t = t.replace(/pneum[aá]tico/gi, 'pneumático');
   t = t.replace(/comercializacao/gi, 'comercialização');
+  t = t.replace(/comercializa[çc]ao/gi, 'comercialização');
   t = t.replace(/cafes/gi, 'cafés');
+  t = t.replace(/instalacao/gi, 'instalação');
+  t = t.replace(/instala[çc]ao/gi, 'instalação');
+  t = t.replace(/servico/gi, 'serviço');
+  t = t.replace(/servi[çc]o/gi, 'serviço');
+  t = t.replace(/codigo/gi, 'código');
+  t = t.replace(/c[oó]digo/gi, 'código');
+
+  // Substitui ordinais individuais se sobrarem
+  t = t.replace(/ª/g, 'á');
+  t = t.replace(/º/g, 'é');
 
   return t;
 }
