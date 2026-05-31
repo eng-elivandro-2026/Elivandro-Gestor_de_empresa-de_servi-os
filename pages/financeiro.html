@@ -2202,7 +2202,7 @@ function _nfArquivoSelecionado(file) {
         alert('❌ Erro ao ler XML: ' + err.message);
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
   } else {
     _nfAdicionarArquivo({
       nf: '', data: '', valor: 0, prestador: '', cnpjPrestador: '',
