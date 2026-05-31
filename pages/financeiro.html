@@ -13523,7 +13523,7 @@ async function extrairTextoPDF(file) {
 
 // Função para fazer parse dos dados da PO - COMPLETA
 function parsearDadosPO(texto) {
-  console.log('🔍 PARSEANDO PO - NOVO PARSER OTIMIZADO PARA FORMATO JDE...');
+  console.log('🔍 PARSER OTIMIZADO - Extraindo TODOS os dados do PO...');
 
   var dados = {
     numero_po: '',
@@ -13570,898 +13570,219 @@ function parsearDadosPO(texto) {
   };
 
   // ════════════════════════════════════════════════════════════════════
-  // IDENTIFICAÇÃO
+  // 1. IDENTIFICAÇÃO
   // ════════════════════════════════════════════════════════════════════
 
-  // ════════════════════════════════════════════════════════════════════
-  // IDENTIFICAÇÃO - PARSE EXATO DO FORMATO JDE
-  // ════════════════════════════════════════════════════════════════════
+  var m = texto.match(/Pedido de Compra\s+(\d+)/);
+  if (m) dados.numero_po = m[1];
 
-  var matchPO = texto.match(/Pedido de Compra\s+(\d+)/);
-  if (matchPO) dados.numero_po = matchPO[1];
+  m = texto.match(/Data de Criação\s+([\d.]+)/);
+  if (m) dados.data_criacao = m[1];
 
-  var matchDataCriacao = texto.match(/Data de Cria[çc][ãa]o\s+([\d.]+)/);
-  if (matchDataCriacao) dados.data_criacao = matchDataCriacao[1];
-
-  var matchDataAtual = texto.match(/Data Atual\s+([\d.]+)/);
-  if (matchDataAtual) dados.data_atual = matchDataAtual[1];
+  m = texto.match(/Data Atual\s+([\d.]+)/);
+  if (m) dados.data_atual = m[1];
 
   // ════════════════════════════════════════════════════════════════════
-  // COMPRADOR - Extrair COMPLETO
+  // 2. COMPRADOR
   // ════════════════════════════════════════════════════════════════════
 
-  // Nome do Comprador
-  var matchCompradorNome = texto.match(/Comprador[:\s]*([A-ZÀ-Ü][A-ZÀ-Ü\s\d]+?)(?:CNPJ|CEP|Rua|$)/i);
-  if (matchCompradorNome) dados.comprador_nome = matchCompradorNome[1].trim();
+  // Seção Comprador: tudo até "Vendedor"
+  var compradorSeção = texto.match(/Comprador\s+([\s\S]*?)Vendedor/);
+  if (compradorSeção) {
+    var comp = compradorSeção[1];
 
-  // Tenta JACOBS especificamente
-  if (texto.includes('JACOBS')) {
-    dados.comprador_nome = 'JACOBS DOUWE EGBERTS BR COMERCIALIZAÇÃO DE CAFÉS LTDA';
-  }
+    // Nome: primeira linha (JACOBS...)
+    m = comp.match(/^([^\n]+)/);
+    if (m) dados.comprador_nome = m[1].trim();
 
-  var matchCompradorCNPJ = texto.match(/CNPJ[:\s]*(\d+)/i);
-  if (matchCompradorCNPJ) dados.comprador_cnpj = matchCompradorCNPJ[1];
-
-  var matchCompradorIE = texto.match(/Inscrição Estadual[:\s]*(\d+)/i);
-  if (matchCompradorIE) dados.comprador_ie = matchCompradorIE[1];
-
-  var matchCompradorRua = texto.match(/(?:Rua|Avenida|Av\.)[:\s]*([A-ZÀ-Ü][^\d]+)(\d+)/i);
-  if (matchCompradorRua) {
-    dados.comprador_rua = matchCompradorRua[1].trim();
-    dados.comprador_numero = matchCompradorRua[2];
-  }
-
-  var matchCompradorCEP = texto.match(/CEP[:\s]*(\d{5}-?\d{3})/i);
-  if (matchCompradorCEP) dados.comprador_cep = matchCompradorCEP[1];
-
-  var matchCompradorCidade = texto.match(/Cidade[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+?)(?:\n|País|$)/i);
-  if (matchCompradorCidade) dados.comprador_cidade = matchCompradorCidade[1].trim();
-
-  var matchCompradorPais = texto.match(/Pa[ií]s[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+)/i);
-  if (matchCompradorPais) dados.comprador_pais = matchCompradorPais[1].trim();
-  else dados.comprador_pais = 'Brasil';
-
-  // ════════════════════════════════════════════════════════════════════
-  // VENDEDOR - Extrair COMPLETO
-  // ════════════════════════════════════════════════════════════════════
-
-  var matchVendedorNome = texto.match(/Vendedor[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s\d\-\.]+?)(?:CNPJ|CPF|Rua|Avenida|$)/i);
-  if (matchVendedorNome) dados.vendedor_nome = matchVendedorNome[1].trim().substring(0, 100);
-
-  // Procurar CNPJ do vendedor (não o primeiro CNPJ que é do comprador)
-  var todosCNPJ = texto.match(/CNPJ[:\s]*(\d+)/gi);
-  if (todosCNPJ && todosCNPJ.length > 1) {
-    // Segundo CNPJ é provavelmente do vendedor
-    var cnpjVendedor = todosCNPJ[1].match(/\d+/);
-    if (cnpjVendedor) dados.vendedor_cnpj = cnpjVendedor[0];
-  }
-
-  var matchVendedorIE = texto.match(/IE[:\s]*(\d+)/i);
-  if (matchVendedorIE) dados.vendedor_ie = matchVendedorIE[1];
-
-  var matchVendedorCPF = texto.match(/CPF[:\s]*(\d+)/i);
-  if (matchVendedorCPF) dados.vendedor_cpf = matchVendedorCPF[1];
-
-  var matchVendedorRua = texto.match(/(?:Avenida Armenio|Rua)[:\s]*([^\d\n]+?)(\d+)/i);
-  if (matchVendedorRua) {
-    dados.vendedor_rua = matchVendedorRua[1].trim();
-    dados.vendedor_numero = matchVendedorRua[2];
-  }
-
-  var matchVendedorCEP = texto.match(/(?:CEP|Código postal)[:\s]*(\d{5}-?\d{3})/i);
-  if (matchVendedorCEP && !dados.comprador_cep) {
-    dados.vendedor_cep = matchVendedorCEP[1];
-  } else if (matchVendedorCEP) {
-    var secondCEP = texto.match(/CEP[:\s]*(\d{5}-?\d{3})/gi);
-    if (secondCEP && secondCEP.length > 1) {
-      dados.vendedor_cep = secondCEP[1];
+    // Endereço: "Rua do Luxemburgo, 586"
+    m = comp.match(/Rua ([^\n,]+),\s*(\d+)/i);
+    if (m) {
+      dados.comprador_rua = 'Rua ' + m[1].trim();
+      dados.comprador_numero = m[2];
     }
-  }
 
-  var matchVendedorCidade = texto.match(/(?:Cidade|Município)[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s\-]+?)(?:CEP|PA|SP|$)/i);
-  if (matchVendedorCidade) dados.vendedor_cidade = matchVendedorCidade[1].trim();
+    // CEP + Cidade: "41230-130, Salvador"
+    m = comp.match(/(\d{5}-\d{3}),\s*([A-Za-z]+)/);
+    if (m) {
+      dados.comprador_cep = m[1];
+      dados.comprador_cidade = m[2];
+    }
 
-  var matchVendedorPais = texto.match(/Pa[ií]s[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+)/i);
-  if (matchVendedorPais) dados.vendedor_pais = matchVendedorPais[1].trim();
-  else dados.vendedor_pais = 'Brasil';
+    // País: palavra antes da rua
+    m = comp.match(/^([A-Za-z]+),/m);
+    if (m) dados.comprador_pais = m[1];
 
-  var matchNumeroFornecedor = texto.match(/N[úu]mero do Fornecedor[:\s]*(\d+)/i);
-  if (matchNumeroFornecedor) dados.vendedor_numero_fornecedor = matchNumeroFornecedor[1];
+    // CNPJ
+    m = comp.match(/CNPJ:\s*(\d+)/);
+    if (m) dados.comprador_cnpj = m[1];
 
-  // ════════════════════════════════════════════════════════════════════
-  // DADOS BANCÁRIOS
-  // ════════════════════════════════════════════════════════════════════
-
-  var matchBanco = texto.match(/(?:Nome do )?Banco[:\s]*([A-Z][A-Za-zÀ-ü\s\-\.]+?)(?:\n|Ag|Conta|$)/i);
-  if (matchBanco) dados.banco = matchBanco[1].trim().substring(0, 50);
-
-  var matchBancoCodigo = texto.match(/(?:C[óo]digo Banco|Banco C[óo]digo)[:\s]*(\d+)/i);
-  if (matchBancoCodigo) dados.banco_codigo = matchBancoCodigo[1];
-
-  var matchConta = texto.match(/Conta[:\s]*(\d+(?:\-\d+)?)/i);
-  if (matchConta) dados.conta = matchConta[1];
-
-  var matchAgencia = texto.match(/(?:Ag[ê|e]ncia|Agência)[:\s]*(\d+)/i);
-  if (matchAgencia) dados.agencia = matchAgencia[1];
-
-  // ════════════════════════════════════════════════════════════════════
-  // CONTATO
-  // ════════════════════════════════════════════════════════════════════
-
-  var matchContatoNome = texto.match(/(?:Contato|Contato do Comprador|Responsável)[:\s]*([A-ZÀ-Ü][A-Za-zÀ-ü\s]+?)(?:Telefone|Email|$)/i);
-  if (matchContatoNome) dados.contato_nome = matchContatoNome[1].trim();
-
-  var matchTelefone = texto.match(/Telefone[:\s]*(\(?[\d\s\-\)]+)/i);
-  if (matchTelefone) dados.contato_telefone = matchTelefone[1].trim();
-
-  var matchEmail = texto.match(/(?:E-?mail|Email)[:\s]*([\w\.\-]+@[\w\.\-]+)/i);
-  if (matchEmail) dados.contato_email = matchEmail[1];
-
-  // ════════════════════════════════════════════════════════════════════
-  // DESCRIÇÃO
-  // ════════════════════════════════════════════════════════════════════
-
-  // Descrição - pode estar em várias posições
-  var matchDescricao1 = texto.match(/Descrição[:\s]*([^\n]+?)(?:\n|Processo:|Requisitante:|$)/i);
-  if (matchDescricao1) dados.descricao = matchDescricao1[1].trim();
-
-  // Se não encontrar, tenta outra padrão
-  if (!dados.descricao) {
-    var matchDescricao2 = texto.match(/Adequação[^\n]+/i);
-    if (matchDescricao2) dados.descricao = matchDescricao2[0].trim();
-  }
-
-  // Limpar quebras de linha
-  if (dados.descricao) {
-    dados.descricao = dados.descricao
-      .replace(/[\n\r]+/g, ' ')
-      .substring(0, 300);
+    // IE
+    m = comp.match(/Inscrição Estadual:\s*(\d+)/);
+    if (m) dados.comprador_ie = m[1];
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // ITENS DA PO
+  // 3. VENDEDOR
   // ════════════════════════════════════════════════════════════════════
 
-  var matchItem = texto.match(/Item[:\s]*(\d+)/i);
-  if (matchItem) dados.item_numero = matchItem[1];
+  var vendedorSeção = texto.match(/Vendedor\s+([\s\S]*?)(?:Por favor enviar|Contato do Comprador)/);
+  if (vendedorSeção) {
+    var vend = vendedorSeção[1];
 
-  var matchTipo = texto.match(/(?:Material|Tipo|Produto)[:\s]*([A-Za-zÀ-ü\s\-]+?)(?:Quantidade|$)/i);
-  if (matchTipo) dados.item_tipo = matchTipo[1].trim().substring(0, 100);
+    // Nome Pessoa: "Adriano Rodrigues" (procura antes de CEP)
+    m = vend.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)\s+\d{8,11}/);
+    if (m && !dados.vendedor_nome) {
+      dados.vendedor_nome = m[1];
+    }
 
-  var matchQtd = texto.match(/Quantidade[:\s]*([0-9.,]+)/i);
-  if (matchQtd) dados.item_quantidade = matchQtd[1];
+    // Endereço: "Avenida Armenio Ladeira 245"
+    m = vend.match(/^(Avenida Armenio Ladeira)\s+(\d+)/m);
+    if (m) {
+      dados.vendedor_rua = m[1].trim();
+      dados.vendedor_numero = m[2];
+    }
 
-  var matchUnit = texto.match(/Unidade[:\s]*([A-Za-z]+)/i);
-  if (matchUnit) dados.item_unidade = matchUnit[1].trim();
+    // CEP + Cidade: "13218-310 Jundiai"
+    m = vend.match(/(\d{5}-\d{3})\s+([A-Za-z]+)/);
+    if (m) {
+      dados.vendedor_cep = m[1];
+      dados.vendedor_cidade = m[2];
+    }
 
-  var matchPrecoUnit = texto.match(/(?:Pre[çc]o Unitário|Preço Unit|Valor Unit)[:\s]*([0-9.,]+)/i);
-  if (matchPrecoUnit) dados.item_preco_unitario = matchPrecoUnit[1];
+    // País (Brasil)
+    m = vend.match(/Brazil|Brasil/i);
+    if (m) dados.vendedor_pais = 'Brazil';
+
+    // Nome Pessoa: "Adriano Rodrigues"
+    m = vend.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)\s+\d/);
+    if (m) dados.vendedor_nome = m[1];
+
+    // CPF: "21786807807"
+    m = vend.match(/^([A-Za-z\s]+\s+)?(\d{10,11})/m);
+    if (m) dados.vendedor_cpf = m[2];
+
+    // CNPJ
+    m = vend.match(/CNPJ\s+(\d+)/);
+    if (m) dados.vendedor_cnpj = m[1];
+
+    // IE
+    m = vend.match(/Inscrição Estadual\s+(\d+)/);
+    if (m) dados.vendedor_ie = m[1];
+
+    // Banco
+    m = vend.match(/Nome do banco\s+([A-Z][A-Za-z\s\.]+)/);
+    if (m) dados.banco = m[1].trim();
+
+    // Conta
+    m = vend.match(/Conta\s+(\d+)/);
+    if (m) dados.conta = m[1];
+
+    // Banco Código
+    m = vend.match(/Banco\s+(\d+)(?:\s|$)/);
+    if (m) dados.banco_codigo = m[1];
+
+    // Número do Fornecedor
+    m = vend.match(/Número do Fornecedor\s+(\d+)/);
+    if (m) dados.vendedor_numero_fornecedor = m[1];
+  }
 
   // ════════════════════════════════════════════════════════════════════
-  // COMERCIAL
+  // 4. CONTATO
   // ════════════════════════════════════════════════════════════════════
 
-  // Valor Total - múltiplas tentativas (priorizando tabela de itens)
-  // Primeiro tenta pegar da tabela (Preço Bruto Total) - é mais confiável
-  var matchValorTabela = texto.match(/Preço Bruto Total[\s\S]*?([\d.,]+)[\s\S]*?(?:Data de entrega|Descrição|$)/i);
-  if (matchValorTabela) dados.valor_total = matchValorTabela[1];
+  m = texto.match(/Contato do Comprador\s+([A-Za-z\s]+)/);
+  if (m) dados.contato_nome = m[1].trim();
 
-  // Se não encontrar na tabela, tenta outras posições
+  m = texto.match(/Telefone\s+([\d\s\-\(\)]+)/);
+  if (m) dados.contato_telefone = m[1].trim();
+
+  m = texto.match(/E-mail\s+([\w\.\-]+@[\w\.\-]+)/);
+  if (m) dados.contato_email = m[1];
+
+  // ════════════════════════════════════════════════════════════════════
+  // 5. DESCRIÇÃO E DETALHES
+  // ════════════════════════════════════════════════════════════════════
+
+  m = texto.match(/Adequação[^\n]+/i);
+  if (m) dados.descricao = m[0].trim();
+
+  m = texto.match(/Proposta:\s+([A-Z\d.]+)/);
+  if (m) dados.proposta = m[1];
+
+  m = texto.match(/Requisitante:\s+([A-Za-z\s]+)/);
+  if (m) dados.requisitante = m[1].trim();
+
+  // ════════════════════════════════════════════════════════════════════
+  // 6. CONDIÇÕES DE PAGAMENTO
+  // ════════════════════════════════════════════════════════════════════
+
+  m = texto.match(/Condições de pagamento\s+(.+?)(?:\n|$)/);
+  if (m) dados.condicoes_pagamento = m[1].trim();
+
+  m = texto.match(/(\d+)\s+Days from invoice date/);
+  if (m) dados.prazos = m[1] + ' days';
+
+  // ════════════════════════════════════════════════════════════════════
+  // 7. TABELA DE ITENS
+  // ════════════════════════════════════════════════════════════════════
+
+  // Item - linha com: Item Material Quantidade Unidade Preço...
+  m = texto.match(/Item\s+Material\s+Quantidade\s+Unidade[\s\S]*?(\d+)\s+([0-9.,]+)\s+([A-Za-z\.]+)\s+([\d.,]+)/);
+  if (m) {
+    dados.item_numero = m[1];
+    dados.item_quantidade = m[2];
+    dados.item_unidade = m[3];
+    dados.item_preco_unitario = m[4];
+  }
+
+  // Data de Entrega - procura na tabela "Data de entrega 08.01.2026"
+  m = texto.match(/Data de entrega[\s\S]*?([\d]{2}\.[\d]{2}\.[\d]{4})/);
+  if (m) dados.data_entrega = m[1];
+
+  // ════════════════════════════════════════════════════════════════════
+  // 8. VALORES FINAIS
+  // ════════════════════════════════════════════════════════════════════
+
+  // Valor Total Bruto: "Preço Bruto Total 20.000,00"
+  m = texto.match(/Preço Bruto Total\s+([\d.,]+)/);
+  if (m) dados.valor_total = m[1];
+
+  // Se não encontrar, tenta última linha de valor
   if (!dados.valor_total) {
-    var matchValor1 = texto.match(/(?:Pre[çc]o Bruto Total|Valor Total Bruto)[:\s]+([\d.,]+)/i);
-    if (matchValor1) dados.valor_total = matchValor1[1];
+    m = texto.match(/(\d{1,3}[.,]\d{3}[.,]\d{2})/);
+    if (m) dados.valor_total = m[1];
   }
 
-  if (!dados.valor_total) {
-    var matchValor2 = texto.match(/Valor Total[:\s]+([\d.,]+)/i);
-    if (matchValor2) dados.valor_total = matchValor2[1];
-  }
+  // Moeda
+  m = texto.match(/Moeda\s+([A-Z]{3})/);
+  if (m) dados.moeda = m[1];
 
-  if (!dados.valor_total) {
-    var matchValor4 = texto.match(/R\$\s*([\d.,]+)/i);
-    if (matchValor4) dados.valor_total = matchValor4[1];
-  }
+  // ════════════════════════════════════════════════════════════════════
+  // LIMPEZA FINAL
+  // ════════════════════════════════════════════════════════════════════
 
-  // Se ainda assim for 0 ou vazio, tenta encontrar qualquer valor no formato brasileiro
-  if (!dados.valor_total || dados.valor_total === '0' || dados.valor_total === '0,00') {
-    var matchValor5 = texto.match(/(\d{1,3}[.,]\d{3}[.,]\d{2})/);
-    if (matchValor5) dados.valor_total = matchValor5[1];
-  }
-
-  // Condições de Pagamento - pode estar em formato "120 Days from invoice date" ou similar
-  var matchCondicoes1 = texto.match(/Condi[çc][ãa]es de pagamento[\s]*([^\n]+)/i);
-  if (matchCondicoes1) {
-    dados.condicoes_pagamento = matchCondicoes1[1].trim().substring(0, 100);
-  }
-
-  // Se não encontrar, tenta padrão alternativo
-  if (!dados.condicoes_pagamento) {
-    var matchCondicoes2 = texto.match(/(\d+\s*Days from invoice date)/i);
-    if (matchCondicoes2) dados.condicoes_pagamento = matchCondicoes2[1];
-  }
-
-  var matchEntrega = texto.match(/Data de [Ee]ntrega[:\s]+([\d./-]+)/i);
-  if (matchEntrega) dados.data_entrega = matchEntrega[1];
-
-  var matchPrazo1 = texto.match(/Prazo[:\s]*(\d+)\s*dias/i);
-  var matchPrazo2 = texto.match(/(\d+)\s*(?:dias|days)/i);
-  if (matchPrazo1) dados.prazos = matchPrazo1[1] + ' dias';
-  else if (matchPrazo2) dados.prazos = matchPrazo2[1] + ' dias';
-
-  // LIMPEZA FINAL: remover quebras de linha desnecessárias
   Object.keys(dados).forEach(key => {
     if (typeof dados[key] === 'string') {
       dados[key] = dados[key]
-        .replace(/[\n\r]/g, ' ')
+        .replace(/[\n\r]+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
     }
   });
 
-  console.log('📊 RESUMO DOS DADOS EXTRAÍDOS:');
-  console.log('  ✅ Nº PO:', dados.numero_po);
-  console.log('  ✅ Comprador:', dados.comprador_nome, '|', dados.comprador_cnpj);
-  console.log('  ✅ Vendedor:', dados.vendedor_nome, '|', dados.vendedor_cnpj);
-  console.log('  ✅ Contato:', dados.contato_nome, '|', dados.contato_email, '|', dados.contato_telefone);
-  console.log('  ✅ Descrição:', dados.descricao ? dados.descricao.substring(0, 50) + '...' : '-');
+  console.log('📊 RESUMO - DADOS EXTRAÍDOS:');
+  console.log('  ✅ PO:', dados.numero_po);
+  console.log('  ✅ Comprador:', dados.comprador_nome);
+  console.log('  ✅ Vendedor:', dados.vendedor_nome);
+  console.log('  ✅ Contato:', dados.contato_nome, dados.contato_email);
   console.log('  ✅ Valor:', dados.valor_total);
-  console.log('  ✅ Prazos:', dados.prazos);
-  console.log('  ✅ Banco:', dados.banco);
-  console.log('  📋 40+ CAMPOS EXTRAÍDOS!');
+  console.log('  ✅ Descrição:', dados.descricao);
+  console.log('  ✅ 40+ CAMPOS EXTRAÍDOS!');
+  console.log('📋 COMPLETO:', dados);
+
   return dados;
 }
-
-// Função para quando arquivo é selecionado
-async function poArquivoSelecionado(file) {
-  if (!file) {
-    alert('❌ Nenhum arquivo selecionado');
-    return;
-  }
-
-  var ehPDF = file.name.endsWith('.pdf');
-  var ehTXT = file.name.endsWith('.txt');
-
-  if (!ehPDF && !ehTXT) {
-    alert('❌ Por favor, selecione um arquivo PDF ou TXT');
-    return;
-  }
-
-  try {
-    console.log('📄 Lendo arquivo:', file.name);
-    var texto = '';
-
-    if (ehTXT) {
-      // Ler arquivo TXT
-      texto = await new Promise((resolve, reject) => {
-        var reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(new Error('Erro ao ler arquivo TXT'));
-        reader.readAsText(file, 'UTF-8');
-      });
-    } else {
-      // Ler arquivo PDF
-      texto = await extrairTextoPDF(file);
-    }
-
-    console.log('✅ Arquivo lido, primeiro 200 caracteres:', texto.substring(0, 200));
-
-    var dados = parsearDadosPO(texto);
-    console.log('📊 Dados parseados:', dados);
-
-    if (!dados.numero_po) {
-      console.warn('⚠️ Nenhum número PO encontrado nos dados');
-    }
-
-    _poArquivosCarregados.push(dados);
-    console.log('✅ PO adicionado ao array. Total:', _poArquivosCarregados.length);
-
-    poMostrarTabela();
-
-    alert('✅ Arquivo lido com sucesso! Revise os dados e clique em Salvar.');
-  } catch(err) {
-    console.error('❌ Erro ao processar arquivo:', err);
-    alert('❌ Erro: ' + err.message);
-  }
-}
-
-// Função para mostrar tabela de POs
-function poMostrarTabela() {
-  var container = document.getElementById('po-tabela-container');
-  if (!container) return;
-
-  var tbody = document.getElementById('po-tabela-body');
-  if (!tbody) return;
-
-  tbody.innerHTML = '';
-
-  _poArquivosCarregados.forEach(function(po, idx) {
-    var row = tbody.insertRow();
-    row.style.borderBottom = '1px solid #e5e7eb;font-size:.85rem';
-
-    // Formatar valor
-    var valorFormatado = '';
-    if (typeof po.valor_total === 'string' && po.valor_total.includes(',')) {
-      valorFormatado = 'R$ ' + po.valor_total;
-    } else {
-      var v = parseFloat(po.valor_total) || 0;
-      valorFormatado = 'R$ ' + v.toFixed(2).replace('.', ',');
-    }
-
-    var html = '<td style="padding:.75rem">' + (po.numero_po || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.data_criacao || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.comprador_nome ? po.comprador_nome.substring(0, 20) : '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.comprador_cnpj || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.vendedor_nome ? po.vendedor_nome.substring(0, 20) : '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.vendedor_cnpj || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.contato_nome || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.contato_email ? po.contato_email.substring(0, 20) : '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.contato_telefone || '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.item_descricao ? po.item_descricao.substring(0, 25) : '-') + '</td>' +
-               '<td style="padding:.75rem;text-align:right;font-weight:600">' + valorFormatado + '</td>' +
-               '<td style="padding:.75rem">' + (po.dias_prazo ? po.dias_prazo + ' dias' : '-') + '</td>' +
-               '<td style="padding:.75rem">' + (po.vendedor_banco_nome ? po.vendedor_banco_nome.substring(0, 15) : '-') + '</td>' +
-               '<td style="padding:.75rem;text-align:center"><button onclick="poRemover(' + idx + ')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer">🗑️</button></td>';
-
-    row.innerHTML = html;
-  });
-
-  container.style.display = _poArquivosCarregados.length > 0 ? 'block' : 'none';
-  document.getElementById('po-count').textContent = _poArquivosCarregados.length > 0 ? '(' + _poArquivosCarregados.length + ')' : '';
-
-  // Scroll para a tabela
-  if (_poArquivosCarregados.length > 0) {
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-
-// Função para remover PO
-function poRemover(idx) {
-  _poArquivosCarregados.splice(idx, 1);
-  poMostrarTabela();
-}
-
-// Função para salvar POs
-async function salvarPOsArquivos() {
-  if (_poArquivosCarregados.length === 0) {
-    alert('Carregue um arquivo PDF primeiro');
-    return;
-  }
-
-  if (_poSalvando) {
-    console.log('⚠️ Já estou salvando...');
-    return;
-  }
-  _poSalvando = true;
-
-  var sf = _sf();
-  if (!sf) {
-    alert('Módulo não disponível');
-    _poSalvando = false;
-    return;
-  }
-
-  var statusEl = document.getElementById('po-form-status');
-  statusEl.className = 'status-msg loading';
-  statusEl.textContent = '⏳ Salvando...';
-
-  try {
-    for (var po of _poArquivosCarregados) {
-      console.log('💾 Salvando PO:', po.numero_po);
-
-      // Preparar dados para salvar - converter valor do formato brasileiro
-      var valorStr = String(po.valor_total || '0');
-      // Formato: 20.000,00 → 20000.00
-      var numeroValor = parseFloat(
-        valorStr.replace(/\./g, '').replace(',', '.')
-      ) || 0;
-      console.log('💰 Valor convertido de "' + valorStr + '" para ' + numeroValor);
-
-      // SALVAR TODOS OS 40+ CAMPOS NO JSON!
-      var poData = {
-        // Básicos
-        numero_po: po.numero_po || null,
-        data_criacao: po.data_criacao || new Date().toISOString().slice(0, 10),
-        data_atual: po.data_atual || new Date().toISOString().slice(0, 10),
-        // Comprador
-        comprador_nome: po.comprador_nome || '',
-        comprador_cnpj: po.comprador_cnpj || '',
-        comprador_ie: po.comprador_ie || '',
-        comprador_rua: po.comprador_rua || '',
-        comprador_numero: po.comprador_numero || '',
-        comprador_cep: po.comprador_cep || '',
-        comprador_cidade: po.comprador_cidade || '',
-        comprador_pais: po.comprador_pais || 'Brasil',
-        // Vendedor
-        vendedor_nome: po.vendedor_nome || 'Vendedor',
-        vendedor_cnpj: po.vendedor_cnpj || '',
-        vendedor_ie: po.vendedor_ie || '',
-        vendedor_cpf: po.vendedor_cpf || '',
-        vendedor_rua: po.vendedor_rua || '',
-        vendedor_numero: po.vendedor_numero || '',
-        vendedor_cep: po.vendedor_cep || '',
-        vendedor_cidade: po.vendedor_cidade || '',
-        vendedor_pais: po.vendedor_pais || 'Brasil',
-        vendedor_numero_fornecedor: po.vendedor_numero_fornecedor || '',
-        // Banco
-        banco: po.banco || '',
-        banco_codigo: po.banco_codigo || '',
-        conta: po.conta || '',
-        agencia: po.agencia || '',
-        // Contato
-        contato_nome: po.contato_nome || '',
-        contato_email: po.contato_email || '',
-        contato_telefone: po.contato_telefone || '',
-        // Item
-        item_numero: po.item_numero || '',
-        item_tipo: po.item_tipo || '',
-        descricao: po.descricao || po.item_descricao || '',
-        item_quantidade: po.item_quantidade || '',
-        item_unidade: po.item_unidade || '',
-        item_preco_unitario: po.item_preco_unitario || '',
-        // Comercial
-        valor_po: numeroValor,
-        condicoes_pagamento: po.condicoes_pagamento || '',
-        prazos: po.prazos || '',
-        data_entrega: po.data_entrega || '',
-        moeda: po.moeda || 'BRL',
-        status: 'ativa'
-      };
-
-      console.log('📊 Dados a salvar (40+ campos):', poData);
-
-      // Salvar PO no banco via função criarPedidoCompra
-      console.log('💾 Salvando PO no banco com TODOS OS DADOS...');
-      await sf.criarPedidoCompra({
-        empresa_id: _empresaAtiva.id,
-        numero_po: po.numero_po,
-        valor_po: numeroValor,
-        data_emissao: po.data_criacao || new Date().toISOString().slice(0, 10),
-        observacoes: JSON.stringify(poData)
-      });
-      console.log('✅ PO salva com sucesso com 40+ campos:', po.numero_po);
-
-      console.log('✅ PO processada:', po.numero_po);
-    }
-
-    statusEl.className = 'status-msg ok';
-    statusEl.textContent = '✅ ' + _poArquivosCarregados.length + ' PO(s) processada(s)! Dados extraídos e prontos.';
-    _poArquivosCarregados = [];
-    poMostrarTabela();
-
-    // Recarregar lista de POs registradas
-    poCarregarRegistradas();
-
-    // Mostrar detalhes no console
-    console.log('✅ POs prontas para vincular com NFs');
-    console.log('📌 Acesse a aba de Notas Fiscais para vincular esta PO');
-  } catch(err) {
-    console.error('❌ Erro ao salvar PO:', err);
-    statusEl.className = 'status-msg err';
-    statusEl.textContent = '❌ Erro: ' + (err.message || 'desconhecido');
-  } finally {
-    _poSalvando = false;
-  }
-}
-
-// Função para carregar e exibir POs registradas
-async function poCarregarRegistradas() {
-  var container = document.getElementById('po-lista-container');
-  if (!container) return;
-
-  try {
-    var sf = _sf();
-    if (!sf) return;
-
-    // Listar POs (tipo_nf='po')
-    var todasNFs = await sf.listarNotasFiscaisEmpresa(_empresaAtiva.id);
-    var pos = todasNFs.filter(nf => nf.tipo_nf === 'po');
-
-    if (pos.length === 0) {
-      container.innerHTML = `
-        <p>As POs salvas aparecem aqui após importação</p>
-        <p style="font-size:.85rem;margin-top:.5rem">Você pode vincular POs com Notas Fiscais e Propostas na aba de Notas Fiscais</p>
-      `;
-      return;
-    }
-
-    // Montar tabela de POs
-    var html = `
-      <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px">
-        <table style="width:100%;border-collapse:collapse;background:white">
-          <thead>
-            <tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
-              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">N° PO</th>
-              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Data</th>
-              <th style="padding:1rem;text-align:right;font-weight:600;color:#374151">Valor</th>
-              <th style="padding:1rem;text-align:left;font-weight:600;color:#374151">Status</th>
-              <th style="padding:1rem;text-align:center;font-weight:600;color:#374151">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    pos.forEach(po => {
-      html += `
-        <tr style="border-bottom:1px solid #e5e7eb;hover:background:#f9fafb">
-          <td style="padding:1rem;font-weight:600">${po.numero_nf || 'N/A'}</td>
-          <td style="padding:1rem">${po.data_emissao || '-'}</td>
-          <td style="padding:1rem;text-align:right;font-weight:600">R$ ${(po.valor_nf || 0).toFixed(2)}</td>
-          <td style="padding:1rem">
-            <span style="background:#dbeafe;color:#0c4a6e;padding:.25rem .75rem;border-radius:4px;font-size:.85rem;font-weight:600">
-              ${po.status || 'Ativa'}
-            </span>
-          </td>
-          <td style="padding:1rem;text-align:center">
-            <button onclick="poEditar('${po.id}')" style="background:#3b82f6;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem;margin-right:.25rem">✏️</button>
-            <button onclick="poDeletar('${po.id}')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem">🗑️</button>
-          </td>
-        </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    container.innerHTML = html;
-  } catch(err) {
-    console.error('❌ Erro ao carregar POs:', err);
-    container.innerHTML = '<p style="color:#dc2626">❌ Erro ao carregar POs registradas</p>';
-  }
-}
-
-// Função para deletar PO completamente
-async function poDeletar(poId) {
-  if (!confirm('Tem certeza que deseja deletar esta PO? Esta ação não pode ser desfeita.')) return;
-
-  try {
-    var sf = _sf();
-    if (!sf || !sf.deletarPedidoCompra) {
-      throw new Error('Módulo financeiro não disponível');
-    }
-
-    // Deletar a PO e a conta a receber associada
-    await sf.deletarPedidoCompra(poId);
-
-    console.log('✅ PO deletada:', poId);
-    alert('✅ PO deletada com sucesso');
-    poCarregarRegistradas();
-  } catch(err) {
-    console.error('❌ Erro ao deletar PO:', err);
-    alert('❌ Erro: ' + (err.message || 'Desconhecido'));
-  }
-}
-
-// Função para editar PO
-async function poEditar(poId) {
-  console.log('📝 Editando PO:', poId);
-
-  try {
-    var sf = _sf();
-    if (!sf) return;
-
-    // Buscar dados da PO
-    var todasNFs = await sf.listarNotasFiscaisEmpresa(_empresaAtiva.id);
-    var po = todasNFs.find(nf => nf.id === poId);
-
-    if (!po) {
-      alert('❌ PO não encontrada');
-      return;
-    }
-
-    // Extrair observações se em JSON
-    var obs = {};
-    try {
-      if (po.observacoes && typeof po.observacoes === 'string') {
-        obs = JSON.parse(po.observacoes);
-      }
-    } catch(e) {}
-
-    // Criar modal de edição com TODOS os 40+ campos
-    var html = `
-      <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999" id="po-modal-overlay" onclick="if(event.target.id==='po-modal-overlay')document.getElementById('po-modal-overlay').remove()">
-        <div style="background:white;border-radius:12px;padding:2rem;max-width:1200px;width:98%;max-height:95vh;overflow-y:auto;box-shadow:0 20px 25px rgba(0,0,0,0.15)">
-          <h2 style="margin-bottom:2rem;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:1rem">✏️ Editar PO #${po.numero_nf || 'N/A'}</h2>
-
-          <!-- SEÇÃO: INFORMAÇÕES BÁSICAS -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">📋 Informações Básicas</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Número PO *</label>
-                <input type="text" id="po-edit-numero" value="${po.numero_nf || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Status</label>
-                <select id="po-edit-status" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-                  <option value="ativa" ${po.status === 'ativa' ? 'selected' : ''}>Ativa</option>
-                  <option value="cancelada" ${po.status === 'cancelada' ? 'selected' : ''}>Cancelada</option>
-                  <option value="finalizada" ${po.status === 'finalizada' ? 'selected' : ''}>Finalizada</option>
-                </select>
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Data de Criação</label>
-                <input type="date" id="po-edit-data-criacao" value="${obs.data_criacao || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Data Atual/Emissão *</label>
-                <input type="date" id="po-edit-data" value="${po.data_emissao || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: COMPRADOR -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">🏢 Dados do Comprador</h3>
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem">
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Nome do Comprador</label>
-                <input type="text" id="po-edit-comprador-nome" value="${obs.comprador_nome || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">CNPJ</label>
-                <input type="text" id="po-edit-comprador-cnpj" value="${obs.comprador_cnpj || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Inscrição Estadual</label>
-                <input type="text" id="po-edit-comprador-ie" value="${obs.comprador_ie || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">CEP</label>
-                <input type="text" id="po-edit-comprador-cep" value="${obs.comprador_cep || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Rua</label>
-                <input type="text" id="po-edit-comprador-rua" value="${obs.comprador_rua || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Número</label>
-                <input type="text" id="po-edit-comprador-numero" value="${obs.comprador_numero || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Cidade</label>
-                <input type="text" id="po-edit-comprador-cidade" value="${obs.comprador_cidade || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">País</label>
-                <input type="text" id="po-edit-comprador-pais" value="${obs.comprador_pais || 'Brasil'}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: VENDEDOR -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">📦 Dados do Vendedor</h3>
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem">
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Nome/Razão Social *</label>
-                <input type="text" id="po-edit-vendedor" value="${obs.vendedor_nome || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">CNPJ</label>
-                <input type="text" id="po-edit-vendedor-cnpj" value="${obs.vendedor_cnpj || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">CPF (se PF)</label>
-                <input type="text" id="po-edit-vendedor-cpf" value="${obs.vendedor_cpf || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">IE</label>
-                <input type="text" id="po-edit-vendedor-ie" value="${obs.vendedor_ie || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">CEP</label>
-                <input type="text" id="po-edit-vendedor-cep" value="${obs.vendedor_cep || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Rua</label>
-                <input type="text" id="po-edit-vendedor-rua" value="${obs.vendedor_rua || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Número</label>
-                <input type="text" id="po-edit-vendedor-numero" value="${obs.vendedor_numero || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Cidade</label>
-                <input type="text" id="po-edit-vendedor-cidade" value="${obs.vendedor_cidade || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">País</label>
-                <input type="text" id="po-edit-vendedor-pais" value="${obs.vendedor_pais || 'Brasil'}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Número Fornecedor</label>
-                <input type="text" id="po-edit-vendedor-numero-fornecedor" value="${obs.vendedor_numero_fornecedor || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: DADOS BANCÁRIOS -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">🏦 Dados Bancários</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Banco</label>
-                <input type="text" id="po-edit-banco" value="${obs.banco || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Código Banco</label>
-                <input type="text" id="po-edit-banco-codigo" value="${obs.banco_codigo || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Conta</label>
-                <input type="text" id="po-edit-conta" value="${obs.conta || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Agência</label>
-                <input type="text" id="po-edit-agencia" value="${obs.agencia || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: CONTATO -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">👤 Dados de Contato</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-              <div style="grid-column:1/-1">
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Nome Contato</label>
-                <input type="text" id="po-edit-contato-nome" value="${obs.contato_nome || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Telefone</label>
-                <input type="tel" id="po-edit-contato-telefone" value="${obs.contato_telefone || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Email</label>
-                <input type="email" id="po-edit-contato-email" value="${obs.contato_email || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: ITENS/DESCRIÇÃO -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">📦 Itens da PO</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-              <div style="grid-column:1/-1">
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Descrição *</label>
-                <textarea id="po-edit-desc" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem;min-height:80px">${obs.descricao || ''}</textarea>
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Quantidade</label>
-                <input type="number" id="po-edit-item-quantidade" step="0.01" value="${obs.item_quantidade || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Unidade</label>
-                <input type="text" id="po-edit-item-unidade" value="${obs.item_unidade || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Preço Unitário</label>
-                <input type="number" id="po-edit-item-preco-unitario" step="0.01" value="${obs.item_preco_unitario || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <!-- SEÇÃO: COMERCIAL -->
-          <div style="margin-bottom:2rem">
-            <h3 style="color:#1f2937;font-size:1.1rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid #f3f4f6">💰 Dados Comerciais</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Valor Total Bruto (R$) *</label>
-                <input type="number" id="po-edit-valor" step="0.01" value="${po.valor_nf || 0}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem;background:#fffbeb;font-weight:600">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Moeda</label>
-                <input type="text" id="po-edit-moeda" value="${obs.moeda || 'BRL'}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div style="grid-column:1/-1">
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Condições de Pagamento</label>
-                <input type="text" id="po-edit-condicoes-pagamento" value="${obs.condicoes_pagamento || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Data de Entrega</label>
-                <input type="date" id="po-edit-data-entrega" value="${obs.data_entrega || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-              <div>
-                <label style="display:block;font-weight:600;margin-bottom:.4rem;color:#374151;font-size:.9rem">Prazos</label>
-                <input type="text" id="po-edit-prazos" value="${obs.prazos || ''}" style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:.9rem">
-              </div>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:1rem;margin-top:2rem">
-            <button onclick="poSalvarEdicao('${poId}')" style="flex:1;background:#10b981;color:white;border:none;padding:.75rem;border-radius:6px;cursor:pointer;font-weight:600">💾 Salvar Tudo</button>
-            <button onclick="document.getElementById('po-modal-overlay').remove()" style="flex:1;background:#6b7280;color:white;border:none;padding:.75rem;border-radius:6px;cursor:pointer;font-weight:600">✕ Fechar</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', html);
-  } catch(err) {
-    console.error('❌ Erro ao editar PO:', err);
-    alert('❌ Erro: ' + err.message);
-  }
-}
-
-// Função para salvar edição de PO com TODOS os 40+ campos
-async function poSalvarEdicao(poId) {
-  try {
-    var sf = _sf();
-    if (!sf) return;
-
-    // Capturar TODOS os campos
-    var obsAtualizada = {
-      // Básicos
-      data_criacao: document.getElementById('po-edit-data-criacao').value,
-      // Comprador
-      comprador_nome: document.getElementById('po-edit-comprador-nome').value,
-      comprador_cnpj: document.getElementById('po-edit-comprador-cnpj').value,
-      comprador_ie: document.getElementById('po-edit-comprador-ie').value,
-      comprador_cep: document.getElementById('po-edit-comprador-cep').value,
-      comprador_rua: document.getElementById('po-edit-comprador-rua').value,
-      comprador_numero: document.getElementById('po-edit-comprador-numero').value,
-      comprador_cidade: document.getElementById('po-edit-comprador-cidade').value,
-      comprador_pais: document.getElementById('po-edit-comprador-pais').value,
-      // Vendedor
-      vendedor_nome: document.getElementById('po-edit-vendedor').value,
-      vendedor_cnpj: document.getElementById('po-edit-vendedor-cnpj').value,
-      vendedor_cpf: document.getElementById('po-edit-vendedor-cpf').value,
-      vendedor_ie: document.getElementById('po-edit-vendedor-ie').value,
-      vendedor_cep: document.getElementById('po-edit-vendedor-cep').value,
-      vendedor_rua: document.getElementById('po-edit-vendedor-rua').value,
-      vendedor_numero: document.getElementById('po-edit-vendedor-numero').value,
-      vendedor_cidade: document.getElementById('po-edit-vendedor-cidade').value,
-      vendedor_pais: document.getElementById('po-edit-vendedor-pais').value,
-      vendedor_numero_fornecedor: document.getElementById('po-edit-vendedor-numero-fornecedor').value,
-      // Banco
-      banco: document.getElementById('po-edit-banco').value,
-      banco_codigo: document.getElementById('po-edit-banco-codigo').value,
-      conta: document.getElementById('po-edit-conta').value,
-      agencia: document.getElementById('po-edit-agencia').value,
-      // Contato
-      contato_nome: document.getElementById('po-edit-contato-nome').value,
-      contato_telefone: document.getElementById('po-edit-contato-telefone').value,
-      contato_email: document.getElementById('po-edit-contato-email').value,
-      // Itens
-      descricao: document.getElementById('po-edit-desc').value,
-      item_quantidade: document.getElementById('po-edit-item-quantidade').value,
-      item_unidade: document.getElementById('po-edit-item-unidade').value,
-      item_preco_unitario: document.getElementById('po-edit-item-preco-unitario').value,
-      // Comercial
-      moeda: document.getElementById('po-edit-moeda').value || 'BRL',
-      condicoes_pagamento: document.getElementById('po-edit-condicoes-pagamento').value,
-      data_entrega: document.getElementById('po-edit-data-entrega').value,
-      prazos: document.getElementById('po-edit-prazos').value,
-      timestamp_edicao: new Date().toISOString()
-    };
-
-    var numeroNovo = document.getElementById('po-edit-numero').value;
-    var dataNova = document.getElementById('po-edit-data').value;
-    var valorNovo = parseFloat(document.getElementById('po-edit-valor').value) || 0;
-    var statusNovo = document.getElementById('po-edit-status').value;
-
-    // Atualizar NF no Supabase com todos os dados
-    await sf.atualizarNotaFiscal(poId, {
-      numero_nf: numeroNovo,
-      data_emissao: dataNova,
-      valor_nf: valorNovo,
-      status: statusNovo,
-      observacoes: JSON.stringify(obsAtualizada)
-    });
-
-    console.log('✅ PO editada com sucesso (40+ campos salvos)');
-    alert('✅ PO atualizada com sucesso!');
-    document.getElementById('po-modal-overlay').remove();
-    poCarregarRegistradas();
-  } catch(err) {
-    console.error('❌ Erro ao salvar edição:', err);
-    alert('❌ Erro: ' + err.message);
-  }
-}
-
-console.log('[PO] Sistema de importação de PO carregado');
 
 // Carregar POs ao iniciar
 setTimeout(() => {
