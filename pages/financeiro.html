@@ -13686,7 +13686,7 @@ function parsearDadosPO(texto) {
     m = vend.match(/Inscrição Estadual\s+(\d+)/);
     if (m) dados.vendedor_ie = m[1];
 
-    m = vend.match(/Nome do banco\s+([A-Z][A-Za-z\s\.]+?)(?:\n|Conta)/);
+    m = vend.match(/Nome do banco\s+([A-Z][A-Za-z\s\.\/&]+?)(?:\n|Conta)/);
     if (m) dados.banco = m[1].trim();
 
     m = vend.match(/Conta\s+(\d+)/);
@@ -13739,7 +13739,7 @@ function parsearDadosPO(texto) {
   // 7. CONDIÇÕES DE PAGAMENTO E PRAZOS
   // ════════════════════════════════════════════════════════════════════
 
-  m = texto.match(/Condi[çc][ãa]es de pagamento\s+(.+?)(?:\n|$)/);
+  m = texto.match(/Condi\S*es de pagamento\s+(.+?)(?:\n|$)/i);
   if (m) dados.condicoes_pagamento = m[1].trim();
 
   m = texto.match(/(\d+)\s+Days from invoice date/);
@@ -13761,7 +13761,7 @@ function parsearDadosPO(texto) {
   // 9. DESCRIÇÃO DO ITEM (SEPARADA)
   // ════════════════════════════════════════════════════════════════════
 
-  m = texto.match(/Descri[çc][ãa]o\s+([A-Za-z\s\-áéíóúâêô]+)/i);
+  m = texto.match(/Descri[çc][ãa]o\s+([A-Za-zÀ-ÿ \t\-]+)/i);
   if (m) dados.descricao_item = m[1].trim();
 
   // ════════════════════════════════════════════════════════════════════
@@ -13860,6 +13860,8 @@ async function poArquivoSelecionado(file) {
     console.log('✅ Arquivo lido, primeiro 200 caracteres:', texto.substring(0, 200));
 
     var dados = parsearDadosPO(texto);
+    // Preserva o texto bruto extraído do PDF/TXT para auditoria e reprocessamento
+    dados.texto_bruto = texto;
     console.log('📊 Dados parseados:', dados);
 
     if (!dados.numero_po) {
@@ -13952,69 +13954,57 @@ async function salvarPOsArquivos() {
     for (var po of _poArquivosCarregados) {
       console.log('💾 Salvando PO:', po.numero_po);
 
-      var valorStr = String(po.valor_total || '0');
-      var numeroValor = parseFloat(
-        valorStr.replace(/\./g, '').replace(',', '.')
-      ) || 0;
+      // O parser já normaliza valor_total para o formato "20000.00" (ponto = decimal).
+      // Por isso usamos parseFloat direto — NÃO reaplicar normalização brasileira aqui,
+      // senão o ponto decimal seria removido e o valor ficaria 100x maior.
+      var numeroValor = parseFloat(po.valor_total) || 0;
 
-      var poData = {
-        numero_po: po.numero_po || null,
-        data_criacao: po.data_criacao || new Date().toISOString().slice(0, 10),
-        data_atual: po.data_atual || new Date().toISOString().slice(0, 10),
-        comprador_nome: po.comprador_nome || '',
-        comprador_cnpj: po.comprador_cnpj || '',
-        comprador_ie: po.comprador_ie || '',
-        comprador_rua: po.comprador_rua || '',
-        comprador_numero: po.comprador_numero || '',
-        comprador_cep: po.comprador_cep || '',
-        comprador_cidade: po.comprador_cidade || '',
-        comprador_pais: po.comprador_pais || 'Brasil',
-        vendedor_nome: po.vendedor_nome || 'Vendedor',
-        vendedor_cnpj: po.vendedor_cnpj || '',
-        vendedor_ie: po.vendedor_ie || '',
-        vendedor_cpf: po.vendedor_cpf || '',
-        vendedor_rua: po.vendedor_rua || '',
-        vendedor_numero: po.vendedor_numero || '',
-        vendedor_cep: po.vendedor_cep || '',
-        vendedor_cidade: po.vendedor_cidade || '',
-        vendedor_pais: po.vendedor_pais || 'Brasil',
-        vendedor_numero_fornecedor: po.vendedor_numero_fornecedor || '',
-        banco: po.banco || '',
-        banco_codigo: po.banco_codigo || '',
-        conta: po.conta || '',
-        agencia: po.agencia || '',
-        contato_nome: po.contato_nome || '',
-        contato_email: po.contato_email || '',
-        contato_telefone: po.contato_telefone || '',
-        item_numero: po.item_numero || '',
-        item_tipo: po.item_tipo || '',
-        descricao: po.descricao || po.item_descricao || '',
-        item_quantidade: po.item_quantidade || '',
-        item_unidade: po.item_unidade || '',
-        item_preco_unitario: po.item_preco_unitario || '',
+      // observacoes recebe TODOS os dados extraídos do PDF (nada é descartado).
+      // Começa com tudo o que o parser produziu e acrescenta aliases/normalizações.
+      var poData = Object.assign({}, po);
+
+      // Valor total calculado/normalizado
+      poData.valor_total = numeroValor;
+      poData.valor_po = numeroValor;
+      poData.status = 'ativa';
+      poData.moeda = po.moeda || 'BRL';
+
+      // Aliases de banco solicitados
+      poData.banco_nome = po.banco || '';
+      poData.banco_conta = po.conta || '';
+      poData.banco_codigo = po.banco_codigo || '';
+      poData.numero_fornecedor = po.vendedor_numero_fornecedor || '';
+
+      // Aliases de contato do comprador
+      poData.contato_comprador = po.contato_nome || '';
+      poData.telefone_comprador = po.contato_telefone || '';
+      poData.email_comprador = po.contato_email || '';
+
+      // Local de entrega e descrição geral (aliases legíveis)
+      poData.local_entrega_nome = po.local_entrega || '';
+      poData.descricao_geral = po.descricao || '';
+
+      // Itens completos como array (estrutura preparada para múltiplos itens)
+      poData.itens = [{
+        numero: po.item_numero || '',
+        tipo: po.item_tipo || '',
+        descricao: po.descricao_item || po.descricao || '',
+        quantidade: po.item_quantidade || '',
+        unidade: po.item_unidade || '',
+        preco_unitario: po.item_preco_unitario || '',
+        preco_total: numeroValor
+      }];
+
+      // Salvar PO via wrapper sbFinanceiro (grava em financeiro_notas_fiscais com tipo_nf='po'
+      // e cria a conta a receber vinculada). Os detalhes vão em observacoes como JSON.
+      await sf.criarPedidoCompra({
+        empresa_id: _empresaAtiva.id,
+        numero_po: po.numero_po,
         valor_po: numeroValor,
-        condicoes_pagamento: po.condicoes_pagamento || '',
-        prazos: po.prazos || '',
-        data_entrega: po.data_entrega || '',
-        moeda: po.moeda || 'BRL',
-        status: 'ativa'
-      };
+        data_emissao: po.data_criacao || new Date().toISOString().slice(0, 10),
+        observacoes: JSON.stringify(poData)
+      });
 
-      // Salvar PO diretamente no Supabase
-      const { data: insertResult, error: insertError } = await sf.supabase
-        .from('financeiro_pedidos_compra')
-        .insert([{
-          empresa_id: _empresaAtiva.id,
-          numero_po: po.numero_po,
-          valor_po: numeroValor,
-          data_criacao: po.data_criacao || new Date().toISOString().slice(0, 10),
-          dados_completos: poData,
-          status: 'ativa'
-        }]);
-
-      if (insertError) {
-        throw new Error('Erro ao inserir PO: ' + insertError.message);
-      }
       console.log('✅ PO salva com sucesso:', po.numero_po);
     }
 
@@ -14051,10 +14041,23 @@ async function poCarregarRegistradas() {
       return;
     }
 
-    var html = '<div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px"><table style="width:100%;border-collapse:collapse;background:white"><thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb"><th style="padding:1rem;text-align:left;font-weight:600">N° PO</th><th style="padding:1rem;text-align:left;font-weight:600">Data</th><th style="padding:1rem;text-align:right;font-weight:600">Valor</th><th style="padding:1rem;text-align:left;font-weight:600">Status</th><th style="padding:1rem;text-align:center;font-weight:600">Ações</th></tr></thead><tbody>';
+    var html = '<div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px"><table style="width:100%;border-collapse:collapse;background:white"><thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb"><th style="padding:1rem;text-align:left;font-weight:600">N° PO</th><th style="padding:1rem;text-align:left;font-weight:600">Data</th><th style="padding:1rem;text-align:left;font-weight:600">Comprador</th><th style="padding:1rem;text-align:left;font-weight:600">Fornecedor</th><th style="padding:1rem;text-align:right;font-weight:600">Valor</th><th style="padding:1rem;text-align:left;font-weight:600">Status</th><th style="padding:1rem;text-align:center;font-weight:600">Ações</th></tr></thead><tbody>';
 
     pos.forEach(po => {
-      html += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:1rem;font-weight:600">' + (po.numero_nf || 'N/A') + '</td><td style="padding:1rem">' + (po.data_emissao || '-') + '</td><td style="padding:1rem;text-align:right;font-weight:600">R$ ' + (po.valor_nf || 0).toFixed(2) + '</td><td style="padding:1rem"><span style="background:#dbeafe;color:#0c4a6e;padding:.25rem .75rem;border-radius:4px;font-size:.85rem">' + (po.status || 'Ativa') + '</span></td><td style="padding:1rem;text-align:center"><button onclick="poEditar(\'' + po.id + '\')" style="background:#3b82f6;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem;margin-right:.25rem">✏️</button><button onclick="poDeletar(\'' + po.id + '\')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem">🗑️</button></td></tr>';
+      // Lê os dados completos gravados em observacoes (JSON) sem perder informação
+      var obs = {};
+      try {
+        if (po.observacoes && typeof po.observacoes === 'string') {
+          obs = JSON.parse(po.observacoes);
+        } else if (po.observacoes && typeof po.observacoes === 'object') {
+          obs = po.observacoes;
+        }
+      } catch(e) {}
+
+      var comprador = obs.comprador_nome || '-';
+      var fornecedor = obs.vendedor_nome || '-';
+
+      html += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:1rem;font-weight:600">' + (po.numero_nf || 'N/A') + '</td><td style="padding:1rem">' + (po.data_emissao || '-') + '</td><td style="padding:1rem">' + (comprador.length > 28 ? comprador.substring(0, 28) + '…' : comprador) + '</td><td style="padding:1rem">' + (fornecedor.length > 24 ? fornecedor.substring(0, 24) + '…' : fornecedor) + '</td><td style="padding:1rem;text-align:right;font-weight:600">R$ ' + (po.valor_nf || 0).toFixed(2) + '</td><td style="padding:1rem"><span style="background:#dbeafe;color:#0c4a6e;padding:.25rem .75rem;border-radius:4px;font-size:.85rem">' + (po.status || 'Ativa') + '</span></td><td style="padding:1rem;text-align:center"><button onclick="poEditar(\'' + po.id + '\')" style="background:#3b82f6;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem;margin-right:.25rem">✏️</button><button onclick="poDeletar(\'' + po.id + '\')" style="background:#ef4444;color:white;border:none;padding:.5rem;border-radius:4px;cursor:pointer;font-size:.85rem">🗑️</button></td></tr>';
     });
 
     html += '</tbody></table></div>';
@@ -14073,55 +14076,135 @@ async function poEditar(poId) {
     var sf = _sf();
     if (!sf) throw new Error('Módulo financeiro não disponível');
 
-    // Buscar dados da PO
-    const { data: po } = await sf.supabase
-      .from('financeiro_pedidos_compra')
-      .select('*')
-      .eq('id', poId)
-      .single();
+    // Buscar dados da PO (armazenada como NF tipo_nf='po')
+    var todasNFs = await sf.listarNotasFiscaisEmpresa(_empresaAtiva.id);
+    var po = (todasNFs || []).find(nf => nf.id === poId && nf.tipo_nf === 'po');
 
     if (!po) {
       alert('❌ PO não encontrada');
       return;
     }
 
-    // Criar modal de edição (simplificado)
+    // Detalhes da PO ficam em observacoes como JSON
+    var obs = {};
+    try {
+      if (po.observacoes && typeof po.observacoes === 'string') {
+        obs = JSON.parse(po.observacoes);
+      } else if (po.observacoes && typeof po.observacoes === 'object') {
+        obs = po.observacoes;
+      }
+    } catch(e) {}
+
+    // ── Helpers de exibição ──────────────────────────────────────────
+    var _v = function(x){ return (x === 0 || x) ? String(x) : '—'; };
+    var _campo = function(label, valor){
+      return '<div style="margin-bottom:.6rem">'
+        + '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;color:#6b7280;font-weight:600;margin-bottom:.1rem">' + label + '</div>'
+        + '<div style="font-size:.92rem;color:#111827;word-break:break-word">' + _v(valor) + '</div></div>';
+    };
+    var _secao = function(titulo, conteudo){
+      return '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1rem;background:#fafafa">'
+        + '<h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;color:#111827">' + titulo + '</h3>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem">' + conteudo + '</div></div>';
+    };
+
+    // Fallbacks: aceitam tanto os aliases novos quanto os campos originais do parser
+    var bancoNome   = obs.banco_nome || obs.banco;
+    var bancoConta  = obs.banco_conta || obs.conta;
+    var numForn     = obs.numero_fornecedor || obs.vendedor_numero_fornecedor;
+    var contatoNome = obs.contato_comprador || obs.contato_nome;
+    var contatoTel  = obs.telefone_comprador || obs.contato_telefone;
+    var contatoMail = obs.email_comprador || obs.contato_email;
+    var localEnt    = obs.local_entrega_nome || obs.local_entrega;
+    var descGeral   = obs.descricao_geral || obs.descricao;
+    var valorTotal  = (typeof po.valor_nf === 'number' ? po.valor_nf : (parseFloat(obs.valor_total) || 0));
+    var endComp     = [obs.comprador_rua, obs.comprador_numero].filter(Boolean).join(', ');
+    var endVend     = [obs.vendedor_rua, obs.vendedor_numero].filter(Boolean).join(', ');
+
+    // Itens
+    var itens = Array.isArray(obs.itens) ? obs.itens : [];
+    var itensHtml;
+    if (itens.length) {
+      itensHtml = '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
+        + '<thead><tr style="background:#f3f4f6"><th style="padding:.5rem;text-align:left">Item</th><th style="padding:.5rem;text-align:left">Descrição</th><th style="padding:.5rem;text-align:right">Qtd</th><th style="padding:.5rem;text-align:left">Un.</th><th style="padding:.5rem;text-align:right">Preço Unit.</th><th style="padding:.5rem;text-align:right">Total</th></tr></thead><tbody>';
+      itens.forEach(function(it){
+        itensHtml += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:.5rem">' + _v(it.numero) + '</td><td style="padding:.5rem">' + _v(it.descricao) + '</td><td style="padding:.5rem;text-align:right">' + _v(it.quantidade) + '</td><td style="padding:.5rem">' + _v(it.unidade) + '</td><td style="padding:.5rem;text-align:right">' + _v(it.preco_unitario) + '</td><td style="padding:.5rem;text-align:right">' + _v(it.preco_total) + '</td></tr>';
+      });
+      itensHtml += '</tbody></table>';
+    } else {
+      itensHtml = '<div style="color:#6b7280;font-size:.9rem">Nenhum item registrado</div>';
+    }
+
+    // Criar modal (visualização completa dos dados extraídos da PO)
     var modal = document.createElement('div');
     modal.id = 'modal-editar-po';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
 
-    modal.innerHTML = `
-      <div style="background:white;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;padding:2rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
-          <h2 style="margin:0;font-size:1.5rem;font-weight:700">✏️ Editar PO ${po.numero_po || poId}</h2>
-          <button onclick="document.getElementById('modal-editar-po').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer">✕</button>
-        </div>
+    modal.innerHTML = ''
+      + '<div style="background:white;border-radius:12px;max-width:960px;width:100%;max-height:90vh;overflow-y:auto;padding:2rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;position:sticky;top:-2rem;background:white;padding-top:.5rem">'
+          + '<h2 style="margin:0;font-size:1.4rem;font-weight:700">📋 PO ' + _v(po.numero_nf || poId) + '</h2>'
+          + '<button onclick="document.getElementById(\'modal-editar-po\').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer">✕</button>'
+        + '</div>'
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem">
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:0.5rem">Número PO</label>
-            <input type="text" id="edit-po-numero" value="${po.numero_po || ''}" style="width:100%;padding:0.75rem;border:1px solid #e5e7eb;border-radius:6px" readonly>
-          </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:0.5rem">Valor Total</label>
-            <input type="text" id="edit-po-valor" value="R$ ${(po.valor_total || 0).toFixed(2)}" style="width:100%;padding:0.75rem;border:1px solid #e5e7eb;border-radius:6px">
-          </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:0.5rem">Comprador</label>
-            <input type="text" id="edit-po-comprador" value="${po.comprador_nome || ''}" style="width:100%;padding:0.75rem;border:1px solid #e5e7eb;border-radius:6px">
-          </div>
-          <div>
-            <label style="display:block;font-weight:600;margin-bottom:0.5rem">Vendedor</label>
-            <input type="text" id="edit-po-vendedor" value="${po.vendedor_nome || ''}" style="width:100%;padding:0.75rem;border:1px solid #e5e7eb;border-radius:6px">
-          </div>
-        </div>
+        + _secao('🧾 Identificação',
+            _campo('Número PO', po.numero_nf)
+          + _campo('Status', po.status || obs.status)
+          + _campo('Data de Criação', obs.data_criacao || po.data_emissao)
+          + _campo('Data Atual', obs.data_atual)
+          + _campo('Moeda', obs.moeda)
+          + _campo('Valor Total', 'R$ ' + valorTotal.toFixed(2)))
 
-        <div style="display:flex;gap:1rem">
-          <button onclick="document.getElementById('modal-editar-po').remove()" style="flex:1;background:#6b7280;color:white;border:none;padding:0.75rem;border-radius:6px;cursor:pointer;font-weight:600">✕ Cancelar</button>
-          <button onclick="alert('Salvar editado: funcionalidade futura')" style="flex:1;background:#10b981;color:white;border:none;padding:0.75rem;border-radius:6px;cursor:pointer;font-weight:600">💾 Salvar</button>
-        </div>
-      </div>
-    `;
+        + _secao('🏢 Comprador',
+            _campo('Razão Social', obs.comprador_nome)
+          + _campo('CNPJ', obs.comprador_cnpj)
+          + _campo('Inscrição Estadual', obs.comprador_ie)
+          + _campo('Endereço', endComp)
+          + _campo('Cidade', obs.comprador_cidade)
+          + _campo('CEP', obs.comprador_cep)
+          + _campo('País', obs.comprador_pais))
+
+        + _secao('🚚 Vendedor / Fornecedor',
+            _campo('Nome', obs.vendedor_nome)
+          + _campo('CNPJ', obs.vendedor_cnpj)
+          + _campo('Inscrição Estadual', obs.vendedor_ie)
+          + _campo('CPF', obs.vendedor_cpf)
+          + _campo('Endereço', endVend)
+          + _campo('Cidade', obs.vendedor_cidade)
+          + _campo('CEP', obs.vendedor_cep)
+          + _campo('Nº do Fornecedor', numForn))
+
+        + _secao('🏦 Dados Bancários',
+            _campo('Banco', bancoNome)
+          + _campo('Código do Banco', obs.banco_codigo)
+          + _campo('Conta', bancoConta)
+          + _campo('Agência', obs.agencia))
+
+        + _secao('📞 Contato do Comprador',
+            _campo('Nome', contatoNome)
+          + _campo('Telefone', contatoTel)
+          + _campo('E-mail', contatoMail))
+
+        + _secao('📍 Entrega e Proposta',
+            _campo('Local de Entrega', localEnt)
+          + _campo('Proposta', obs.proposta)
+          + _campo('Requisitante', obs.requisitante)
+          + _campo('Condições de Pagamento', obs.condicoes_pagamento)
+          + _campo('Prazos', obs.prazos)
+          + _campo('Data de Entrega', obs.data_entrega))
+
+        + '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1rem;background:#fafafa">'
+          + '<h3 style="margin:0 0 .5rem;font-size:.95rem;font-weight:700;color:#111827">📝 Descrição Geral</h3>'
+          + '<div style="font-size:.92rem;color:#111827">' + _v(descGeral) + '</div></div>'
+
+        + '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1rem;background:#fafafa;overflow-x:auto">'
+          + '<h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;color:#111827">📦 Itens</h3>'
+          + itensHtml + '</div>'
+
+        + '<div style="display:flex;gap:1rem;margin-top:1rem">'
+          + '<button onclick="document.getElementById(\'modal-editar-po\').remove()" style="flex:1;background:#6b7280;color:white;border:none;padding:0.75rem;border-radius:6px;cursor:pointer;font-weight:600">✕ Fechar</button>'
+        + '</div>'
+      + '</div>';
     document.body.appendChild(modal);
     console.log('✅ Modal de edição aberto');
 
