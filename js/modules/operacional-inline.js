@@ -1285,7 +1285,7 @@
           + '<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;min-width:0;flex-wrap:wrap">'
           + '<div style="min-width:0;flex:1"><div style="font-size:.78rem;color:var(--text3);font-weight:700">' + esc(o.codigo_obra || 'Obra sem codigo') + '</div>'
           + '<div style="font-size:1rem;color:var(--text);font-weight:800;margin-top:.1rem">' + esc(o.titulo || o.proposta_numero || '-') + '</div></div>'
-          + '<span class="bdg b-info">' + esc(labelFaseNegocio(o.status_operacional)) + '</span></div>'
+          + '<select class="op-card-status" title="Alterar status operacional" onclick="event.stopPropagation()" onchange="opMudarStatusNegocio(\'' + esc(o.id) + '\',this.value);event.stopPropagation()" style="max-width:170px;font-size:.72rem;font-weight:800;border:1px solid var(--border);border-radius:999px;background:var(--bg3);color:var(--text);padding:.24rem .55rem;cursor:pointer;flex-shrink:0">' + faseOptions(o.status_operacional) + '</select></div>'
           + '<div style="font-size:.82rem;color:var(--text2);line-height:1.45">'
           + '<strong>' + esc(o.cliente_nome || '-') + '</strong><br>'
           + 'Proposta: ' + esc(o.proposta_numero || '-') + (o.proposta_revisao ? ' Rev. ' + esc(o.proposta_revisao) : '') + '<br>'
@@ -1299,6 +1299,47 @@
           + '</div>';
       }).join('')
       + '</div>';
+  }
+
+  // Edicao inline do status operacional direto no card.
+  // Persiste apenas a coluna `fase` da proposta (mesma coluna ja usada pelo
+  // sistema) — sem migration, sem RLS e sem alterar outras informacoes.
+  async function mudarStatusNegocio(id, novoStatus) {
+    novoStatus = String(novoStatus || '').trim();
+    if (FASES_GESTAO_NEGOCIO.indexOf(novoStatus) < 0) return;
+    var o = (state.obras || []).find(function (x) { return x.id === id; });
+    if (!o) return;
+    var anterior = o.status_operacional;
+    if (anterior === novoStatus) return;
+    if (!window.sbClient) { msg('Supabase nao esta conectado.', 'err'); return; }
+    var empresaId = o.empresa_id || getEmpresaId();
+    var appId = o.proposta_app_id || o.id;
+    // Atualizacao otimista: reflete imediatamente no card e nos filtros.
+    o.status_operacional = novoStatus;
+    renderLista();
+    try {
+      var res = await window.sbClient
+        .from('propostas')
+        .update({ fase: novoStatus, updated_at: new Date().toISOString() })
+        .eq('app_id', appId)
+        .eq('empresa_id', empresaId)
+        .select('app_id, fase')
+        .single();
+      if (res.error) throw res.error;
+      // Mantem o cache comercial em memoria coerente (mesma proposta), evitando
+      // que um saveAll() posterior do Comercial sobrescreva a fase recem-alterada.
+      try {
+        if (Array.isArray(window.props)) {
+          var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
+          if (pc) pc.fas = novoStatus;
+        }
+      } catch (e) {}
+      msg('Status operacional atualizado para "' + textoLimpo(labelFaseNegocio(novoStatus)) + '".');
+    } catch (e) {
+      o.status_operacional = anterior; // reverte em caso de falha
+      renderLista();
+      msg((e && e.message) || 'Nao foi possivel atualizar o status.', 'err');
+    }
   }
 
   function snapshotResumo(o) {
@@ -3506,6 +3547,7 @@
   window.rOperacional = rOperacional;
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
+  window.opMudarStatusNegocio = mudarStatusNegocio;
   window.opLimparFiltros = limparFiltros;
   window.opAbrirObra = abrirObra;
   window.opFecharDetalhe = fecharDetalhe;
