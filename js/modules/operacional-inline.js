@@ -94,6 +94,22 @@
     'em_pausa_aguardando_terceiro'
   ];
 
+  // Fases COMERCIAIS permitidas ao "Voltar para Comercial" (desfazer obra).
+  // Nunca inclui status operacionais nem faturado/recebido.
+  var FASES_RETORNO_COMERCIAL = [
+    'em_elaboracao',
+    'enviada',
+    'cliente_analisando',
+    'follow1',
+    'follow2',
+    'follow3',
+    'follow4',
+    'ganho',
+    'perdido',
+    'cancelada',
+    'virou_outra_proposta'
+  ];
+
   var DIARIO_LISTAS = {
     turno: {
       manha: 'Manha',
@@ -1146,6 +1162,8 @@
       if (!p || p.empresa_id !== empresaId) return;
       var fase = String(p.fase || '').trim().toLowerCase();
       var obra = obrasPorProp[String(p.app_id || p.id)] || null;
+      // Obra arquivada/desfeita (status 'cancelada') nao conta como obra ativa.
+      if (obra && String(obra.status_operacional || '').trim().toLowerCase() === 'cancelada') obra = null;
       if (fase === 'ganho') {
         if (!obra) return; // 'ganho' so entra no Operacional apos Criar Obra
         out.push(normalizarNegocioOperacional(p, obra));
@@ -1338,6 +1356,9 @@
           + '<div style="display:flex;justify-content:flex-end;gap:.4rem;margin-top:auto;min-width:0;flex-wrap:wrap">'
           + (o.proposta_app_id ? '<button class="btn bs" onclick="fmAbrirProposta(\'' + esc(o.proposta_app_id) + '\');event.stopPropagation()">📄 Ir para Proposta</button>' : '')
           + '<button class="btn ba" onclick="opAbrirObra(\'' + esc(o.id) + '\')">Abrir Gestao</button>'
+          + ((ehDono() && o.status_source === 'obra' && o.obra_id)
+              ? '<button class="btn bg" title="Somente DONO: devolve a proposta ao Comercial e arquiva a obra" onclick="opDesfazerObra(\'' + esc(o.id) + '\');event.stopPropagation()" style="border:1px solid #ef4444!important;color:#ef4444!important;background:transparent!important">↩ Voltar para Comercial</button>'
+              : '')
           + '</div>'
           + '</div>';
       }).join('')
@@ -1389,6 +1410,81 @@
       o.status_operacional = anterior; // reverte em caso de falha
       renderLista();
       msg((e && e.message) || 'Nao foi possivel atualizar o status.', 'err');
+    }
+  }
+
+  // ── Desfazer criacao de obra (somente DONO) ──────────────────────────────
+  function ehDono() {
+    var perfil = typeof window.getPerfilUsuario === 'function' ? window.getPerfilUsuario() : '';
+    return String(perfil || '').toLowerCase() === 'dono';
+  }
+
+  function fecharDesfazerObra() {
+    var ov = document.getElementById('opDesfazerOverlay');
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  }
+
+  function abrirDesfazerObra(id) {
+    if (!ehDono()) { msg('Apenas o perfil DONO pode desfazer a criacao de obra.', 'err'); return; }
+    var o = (state.obras || []).find(function (x) { return x.id === id; });
+    if (!o || o.status_source !== 'obra' || !o.obra_id) { msg('Este negocio nao pode ser desfeito por aqui.', 'err'); return; }
+    fecharDesfazerObra();
+    var opts = FASES_RETORNO_COMERCIAL.map(function (k) {
+      return '<option value="' + esc(k) + '"' + (k === 'ganho' ? ' selected' : '') + '>' + esc(labelFaseNegocio(k)) + '</option>';
+    }).join('');
+    var ov = document.createElement('div');
+    ov.id = 'opDesfazerOverlay';
+    ov.setAttribute('style', 'position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.76);display:flex;align-items:center;justify-content:center;padding:1rem');
+    ov.innerHTML = '<div style="width:min(460px,94vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.65);overflow:hidden">'
+      + '<div style="padding:1rem;border-bottom:1px solid var(--border)">'
+      + '<div style="font-size:1rem;font-weight:900;color:#ef4444;text-transform:uppercase">Voltar para Comercial</div>'
+      + '<div style="font-size:.86rem;color:var(--text2);line-height:1.45;margin-top:.55rem">Devolve a proposta <strong style="color:var(--text)">' + esc(o.proposta_numero || o.titulo || '-') + '</strong> ao Comercial e arquiva a obra (status "Cancelada"). A obra NAO e apagada.</div>'
+      + '<label style="display:block;font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;margin-top:.85rem;margin-bottom:.3rem">Fase comercial de retorno</label>'
+      + '<select id="opDesfazerFaseSelect" style="width:100%;padding:.5rem .65rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)">' + opts + '</select>'
+      + '</div>'
+      + '<div style="padding:.85rem 1rem calc(.85rem + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;gap:.55rem;background:var(--bg2)">'
+      + '<button type="button" class="btn bg" onclick="opFecharDesfazerObra()" style="min-height:42px">Cancelar</button>'
+      + '<button type="button" class="btn bd" onclick="opConfirmarDesfazerObra(\'' + esc(id) + '\')" style="min-height:42px">Confirmar</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+  }
+
+  async function confirmarDesfazerObra(id) {
+    if (!ehDono()) { msg('Apenas o perfil DONO pode desfazer a criacao de obra.', 'err'); return; }
+    var o = (state.obras || []).find(function (x) { return x.id === id; });
+    if (!o || o.status_source !== 'obra' || !o.obra_id) { msg('Este negocio nao pode ser desfeito por aqui.', 'err'); return; }
+    var sel = document.getElementById('opDesfazerFaseSelect');
+    var fase = sel ? String(sel.value || '').trim() : '';
+    if (FASES_RETORNO_COMERCIAL.indexOf(fase) < 0) { msg('Selecione uma fase comercial valida.', 'err'); return; }
+    if (!window.sbClient) { msg('Supabase nao esta conectado.', 'err'); return; }
+    var empresaId = o.empresa_id || getEmpresaId();
+    var appId = o.proposta_app_id || o.id;
+    try {
+      // 1) Proposta volta ao Comercial na fase escolhida
+      var res = await window.sbClient
+        .from('propostas')
+        .update({ fase: fase, updated_at: new Date().toISOString() })
+        .eq('app_id', appId)
+        .eq('empresa_id', empresaId)
+        .select('app_id, fase')
+        .single();
+      if (res.error) throw res.error;
+      // 2) Obra arquivada (status 'cancelada') — NAO e apagada fisicamente
+      if (typeof window.sbAtualizarObra === 'function') {
+        await window.sbAtualizarObra(o.obra_id, { status_operacional: 'cancelada' });
+      }
+      // 3) Mantem o cache comercial em memoria coerente
+      try {
+        if (Array.isArray(window.props)) {
+          var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
+          if (pc) pc.fas = fase;
+        }
+      } catch (e) {}
+      fecharDesfazerObra();
+      msg('Proposta devolvida ao Comercial como "' + textoLimpo(labelFaseNegocio(fase)) + '". Obra arquivada.');
+      await carregarObras();
+    } catch (e) {
+      msg((e && e.message) || 'Nao foi possivel desfazer a obra.', 'err');
     }
   }
 
@@ -3603,6 +3699,9 @@
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
   window.opMudarStatusNegocio = mudarStatusNegocio;
+  window.opDesfazerObra = abrirDesfazerObra;
+  window.opConfirmarDesfazerObra = confirmarDesfazerObra;
+  window.opFecharDesfazerObra = fecharDesfazerObra;
   window.opLimparFiltros = limparFiltros;
   window.opAbrirObra = abrirObra;
   window.opFecharDetalhe = fecharDetalhe;
