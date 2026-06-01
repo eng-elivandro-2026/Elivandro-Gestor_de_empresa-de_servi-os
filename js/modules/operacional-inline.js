@@ -1074,7 +1074,7 @@
     return dataInput(valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']) || o.data_aprovacao || o.created_at || o.updated_at);
   }
 
-  function normalizarNegocioOperacional(p) {
+  function normalizarNegocioOperacional(p, obra) {
     p = p || {};
     var s = p.dados_json || {};
     var appId = textoLimpo(p.app_id || p.id);
@@ -1094,7 +1094,13 @@
       cliente_cidade: textoLimpo(s.cid || s.csvc || ''),
       cliente_local: textoLimpo(s.loc || ''),
       titulo: titulo,
-      status_operacional: textoLimpo(p.fase || s.fas || ''),
+      // Negocio 'ganho' que ja virou obra: status vive em obras.status_operacional.
+      // Demais (fases operacionais legadas): status vem de propostas.fase.
+      status_operacional: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra)
+        ? textoLimpo(obra.status_operacional || 'aprovado')
+        : textoLimpo(p.fase || s.fas || ''),
+      obra_id: obra ? (obra.id || '') : '',
+      status_source: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra) ? 'obra' : 'fase',
       valor_vendido: Number(p.valor_total || s.val || 0) || 0,
       data_aprovacao: valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']),
       snapshot_proposta_json: s,
@@ -1106,16 +1112,39 @@
     if (!window.sbClient) throw new Error('Supabase nao esta conectado.');
     empresaId = empresaId || getEmpresaId();
     if (!empresaId) throw new Error('Empresa ativa nao encontrada.');
+    // Inclui tambem as propostas comerciais em 'ganho' (so aparecem no Operacional
+    // depois de "Criar Obra"); seu status operacional fica na tabela obras.
+    var fasesQuery = FASES_GESTAO_NEGOCIO.concat(['ganho']);
     var res = await window.sbClient
       .from('propostas')
       .select('id, app_id, numero_proposta, titulo, cliente, valor_total, fase, dados_json, created_at, updated_at, empresa_id')
       .eq('empresa_id', empresaId)
-      .in('fase', FASES_GESTAO_NEGOCIO)
+      .in('fase', fasesQuery)
       .order('updated_at', { ascending: false });
     if (res.error) throw res.error;
-    return (res.data || [])
-      .filter(function (p) { return p && p.empresa_id === empresaId && faseOperacionalNegocio(p.fase); })
-      .map(normalizarNegocioOperacional);
+    // Mapa de obras por proposta (para resolver o status dos negocios 'ganho').
+    var obrasPorProp = {};
+    try {
+      if (typeof window.sbListarObras === 'function') {
+        var obras = await window.sbListarObras(empresaId);
+        (obras || []).forEach(function (ob) {
+          if (ob && ob.proposta_app_id) obrasPorProp[String(ob.proposta_app_id)] = ob;
+        });
+      }
+    } catch (e) { /* sem obras: segue (negocios 'ganho' sem obra nao aparecem) */ }
+    var out = [];
+    (res.data || []).forEach(function (p) {
+      if (!p || p.empresa_id !== empresaId) return;
+      var fase = String(p.fase || '').trim().toLowerCase();
+      var obra = obrasPorProp[String(p.app_id || p.id)] || null;
+      if (fase === 'ganho') {
+        if (!obra) return; // 'ganho' so entra no Operacional apos Criar Obra
+        out.push(normalizarNegocioOperacional(p, obra));
+      } else if (faseOperacionalNegocio(fase)) {
+        out.push(normalizarNegocioOperacional(p, null));
+      }
+    });
+    return out;
   }
 
   function resetarContextoNegocio() {
@@ -1172,8 +1201,13 @@
     return p && p.fas === 'aprovado';
   }
 
+  // Status comercial que "ganhou" o negocio e libera a criacao da obra.
+  function isGanho(p) {
+    return p && p.fas === 'ganho';
+  }
+
   function canTerObra(p) {
-    return isAprovado(p) || isRetroativo(p);
+    return isGanho(p) || isAprovado(p) || isRetroativo(p);
   }
 
   function dataInput(v) {
@@ -1318,22 +1352,29 @@
     o.status_operacional = novoStatus;
     renderLista();
     try {
-      var res = await window.sbClient
-        .from('propostas')
-        .update({ fase: novoStatus, updated_at: new Date().toISOString() })
-        .eq('app_id', appId)
-        .eq('empresa_id', empresaId)
-        .select('app_id, fase')
-        .single();
-      if (res.error) throw res.error;
-      // Mantem o cache comercial em memoria coerente (mesma proposta), evitando
-      // que um saveAll() posterior do Comercial sobrescreva a fase recem-alterada.
-      try {
-        if (Array.isArray(window.props)) {
-          var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
-          if (pc) pc.fas = novoStatus;
-        }
-      } catch (e) {}
+      if (o.status_source === 'obra' && o.obra_id) {
+        // Negocio 'ganho' ja virou obra: status vive em obras.status_operacional.
+        // A proposta permanece 'ganho' no Comercial (nao alteramos propostas.fase).
+        if (typeof window.sbAtualizarObra !== 'function') throw new Error('Atualizacao de obra indisponivel.');
+        await window.sbAtualizarObra(o.obra_id, { status_operacional: novoStatus });
+      } else {
+        var res = await window.sbClient
+          .from('propostas')
+          .update({ fase: novoStatus, updated_at: new Date().toISOString() })
+          .eq('app_id', appId)
+          .eq('empresa_id', empresaId)
+          .select('app_id, fase')
+          .single();
+        if (res.error) throw res.error;
+        // Mantem o cache comercial em memoria coerente (mesma proposta), evitando
+        // que um saveAll() posterior do Comercial sobrescreva a fase recem-alterada.
+        try {
+          if (Array.isArray(window.props)) {
+            var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
+            if (pc) pc.fas = novoStatus;
+          }
+        } catch (e) {}
+      }
       msg('Status operacional atualizado para "' + textoLimpo(labelFaseNegocio(novoStatus)) + '".');
     } catch (e) {
       o.status_operacional = anterior; // reverte em caso de falha
@@ -3435,7 +3476,7 @@
       var obra = await window.sbBuscarObraPorProposta(getEmpresaId(), p.id);
       if (obra) {
         container.innerHTML = '<button type="button" style="padding:.28rem .5rem;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:.7rem;font-weight:800;cursor:pointer" onclick="event.stopPropagation();opAbrirObraComercial(\'' + esc(obra.id) + '\')">Abrir Obra</button>';
-      } else if (isAprovado(p)) {
+      } else if (isGanho(p) || isAprovado(p)) {
         container.innerHTML = '<button type="button" style="padding:.28rem .5rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#000;font-size:.7rem;font-weight:800;cursor:pointer" onclick="event.stopPropagation();opCriarObraDePropostaId(\'' + esc(p.id) + '\',false)">Criar Obra</button>';
       } else {
         container.innerHTML = '<button type="button" style="padding:.28rem .5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);font-size:.7rem;font-weight:800;cursor:pointer" onclick="event.stopPropagation();opCriarObraDePropostaId(\'' + esc(p.id) + '\',true)">Criar Obra Retroativa</button>';
@@ -3466,9 +3507,14 @@
     var p = propPorId(pid);
     if (!p) return msg('Proposta nao encontrada.', 'err');
     if (retro && !window.confirm('Criar obra retroativa para esta proposta?')) return;
-    if (!retro && p.fas !== 'aprovado') return msg('A obra automatica so pode ser criada para proposta aprovada.', 'err');
+    if (!retro && !(p.fas === 'ganho' || p.fas === 'aprovado')) return msg('A obra so pode ser criada para proposta com status comercial Ganho.', 'err');
     try {
       var res = await window.sbCriarObraDeProposta(p);
+      // Negocio fechado em 'ganho' inicia no Operacional como 'aprovado'
+      // (status guardado na obra; a proposta permanece 'ganho' no Comercial).
+      if (res && res.criada && res.obra && p.fas === 'ganho' && typeof window.sbAtualizarObra === 'function') {
+        try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); } catch (e) {}
+      }
       msg(res.criada ? 'Obra criada com sucesso.' : 'Esta proposta ja tinha uma obra.');
       hidratarAcoesPropostas([p]);
       if (window.Router && window.Router.getAtivo && window.Router.getAtivo() === 'operacional') {
