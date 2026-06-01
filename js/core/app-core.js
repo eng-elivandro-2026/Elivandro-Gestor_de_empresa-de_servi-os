@@ -312,6 +312,10 @@ var PHASE_ORDER=[
   'perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido',
   'cancelada','virou_outra_proposta'
 ];
+// Status OPERACIONAIS: permanecem em FASE apenas para exibicao/legado e sao
+// editaveis SOMENTE no modulo Operacional. NAO devem aparecer como opcao
+// comercial (cards, filtros e campo Fase de Dados/Identificacao).
+var FASES_OPERACIONAIS=['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','taf','sat','finalizado','atrasado'];
 // Fases consideradas "fechadas" (proposta convertida em negócio)
 // em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
 // atrasado = aprovada mas com atraso na execução → ainda é um fechamento
@@ -1753,7 +1757,7 @@ function rDash(rankTarget, sortBy){
   if(Q('analiseBody')&&Q('analiseBody').style.display!=='none') rAnaliseInt();
   var cFas={};
   props.forEach(function(p){cFas[p.fas]=(cFas[p.fas]||0)+1});
-  Q('phG').innerHTML=Object.keys(FASE).map(function(f){
+  Q('phG').innerHTML=commercialPhaseKeys().map(function(f){
     var v=props.filter(function(p){return p.fas===f}).reduce(function(s,p){return s+n2(p.val)},0);
     return '<div class="ph" onclick="flt(\''+f+'\',null)"><div class="ph-n">'+(cFas[f]||0)+'</div><div class="ph-v">'+money(v)+'</div><div class="ph-l">'+FASE[f].n+'</div></div>'
   }).join('');
@@ -2097,7 +2101,7 @@ function rProps(){
       +'</div>';
     return '<div class="pc" onclick="fmAbrirProposta(\''+p.id+'\')">'
       +'<div class="pc-act" onclick="event.stopPropagation()">'
-      +'<select onchange="chSt(\''+p.id+'\',this.value)">'+Object.keys(FASE).map(function(k){return'<option value="'+k+'"'+(p.fas===k?' selected':'')+'>'+FASE[k].n+'</option>'}).join('')+'</select>'
+      +'<select onchange="chSt(\''+p.id+'\',this.value)">'+comercialFaseOptions(p.fas)+'</select>'
       +'<button class="pc-del" style="background:#2563eb" title="Duplicar proposta" onclick="dupProp(\''+p.id+'\');event.stopPropagation();">⧉</button>'+'<button class="pc-del" onclick="delP(\''+p.id+'\')">×</button></div>'
       +'<div class="pc-top"><span class="pc-num">'+esc(p.num)+'</span>'+revBadge+'<span class="pc-date">'+p.dat+'</span></div>'
       +'<div class="pc-val">'+money(p.val)+'</div>'
@@ -2404,7 +2408,7 @@ function editP(id){
   if(Q('fu3dat'))Q('fu3dat').value=p.fu3dat||'';if(Q('fu3desc'))Q('fu3desc').value=p.fu3desc||'';
   if(Q('fu4dat'))Q('fu4dat').value=p.fu4dat||'';if(Q('fu4desc'))Q('fu4desc').value=p.fu4desc||'';
   if(typeof rFuBadge==='function') rFuBadge();
-  Q('pRes').value=p.res||'';Q('pFas').value=p.fas||'em_elaboracao';
+  Q('pRes').value=p.res||'';setComercialFaseSelect(Q('pFas'),p.fas||'em_elaboracao');
   Q('vS').value=p.vS||0;Q('vM').value=p.vM||0;Q('vD').value=p.vD||0;
   // Restaurar descontos separados por tipo
   if(Q('vDSval'))Q('vDSval').value=p.vDS?p.vDS.toFixed(2):'';
@@ -8215,10 +8219,36 @@ function phaseKeysOrdered(){
   Object.keys(FASE).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
   return keys;
 }
+// Fases visiveis no COMERCIAL: exclui os status operacionais (que so existem no Operacional).
+function commercialPhaseKeys(){
+  return phaseKeysOrdered().filter(function(k){ return FASES_OPERACIONAIS.indexOf(k)<0; });
+}
+// Monta as <option> de fase para o Comercial. Se o valor atual for um status
+// operacional/legado, preserva-o (marcado como legado) para NAO alterar o dado salvo.
+function comercialFaseOptions(current){
+  var keys=commercialPhaseKeys();
+  var html='';
+  if(current && keys.indexOf(current)<0){
+    var lbl=(FASE[current]&&FASE[current].n)||current;
+    html+='<option value="'+current+'" selected>'+lbl+' (legado)</option>';
+  }
+  html+=keys.map(function(k){
+    return '<option value="'+k+'"'+(current===k?' selected':'')+'>'+FASE[k].n+'</option>';
+  }).join('');
+  return html;
+}
+// Define com seguranca o valor do select de fase comercial, injetando a opcao
+// legado quando necessario para que propostas antigas nao percam a fase ao salvar.
+function setComercialFaseSelect(sel,value){
+  if(!sel) return;
+  value=value||'em_elaboracao';
+  sel.innerHTML=comercialFaseOptions(value);
+  sel.value=value;
+}
 function renderPhaseControls(){
   var sel=Q('pFas');
   if(sel){
-    sel.innerHTML=phaseKeysOrdered().map(function(k){
+    sel.innerHTML=commercialPhaseKeys().map(function(k){
       return '<option value="'+k+'">'+FASE[k].n+'</option>';
     }).join('');
     if(!sel.value || !FASE[sel.value]) sel.value='em_elaboracao';
@@ -8227,7 +8257,7 @@ function renderPhaseControls(){
   if(regFas){
     var cur=regFas.value;
     regFas.innerHTML='<option value="">Todas as fases</option>'
-      +phaseKeysOrdered().map(function(k){
+      +commercialPhaseKeys().map(function(k){
         return '<option value="'+k+'">'+FASE[k].n+'</option>';
       }).join('');
     if(cur) regFas.value=cur;
@@ -8235,7 +8265,7 @@ function renderPhaseControls(){
   var wrap=Q('phaseFilters');
   if(wrap){
     wrap.innerHTML='<span class="ftg on" data-phase="all" onclick="flt(\'all\',this)">Todas</span>'
-      + phaseKeysOrdered().map(function(k){
+      + commercialPhaseKeys().map(function(k){
           return '<span class="ftg" data-phase="'+k+'" onclick="flt(\''+k+'\',this)">'+esc(FASE[k].n)+'</span>';
         }).join('');
   }
