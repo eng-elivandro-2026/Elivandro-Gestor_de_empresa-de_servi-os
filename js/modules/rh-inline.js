@@ -99,6 +99,25 @@ function persistirValoresVisiveisBanco(eid, visivel) {
     }).catch(function () {});
   } catch (e) {}
 }
+// Lê o estado persistido (banco primeiro, depois localStorage) para _rhValoresVisiveis.
+// NÃO grava — apenas hidrata o estado em memória ao abrir o RH ou trocar de empresa,
+// para que um "Mostrar valores" (oculto) salvo não seja sobrescrito pelo default visível.
+function hidratarValoresVisiveisRH() {
+  try {
+    var emp = (typeof window.getEmpresaAtiva === 'function') ? window.getEmpresaAtiva() : window._empresaAtiva;
+    if (emp && emp.config_json && typeof emp.config_json.rh_valores_visiveis !== 'undefined') {
+      _rhValoresVisiveis = emp.config_json.rh_valores_visiveis === true;
+      return;
+    }
+    var eid = (typeof getEmpresaAtivaId === 'function') ? getEmpresaAtivaId() : _empresaId;
+    if (!eid && typeof window.getEmpresaAtivaId === 'function') eid = window.getEmpresaAtivaId();
+    if (eid) {
+      var ls = localStorage.getItem('rh_valores_visiveis_' + eid);
+      if (ls !== null) { _rhValoresVisiveis = ls === '1'; return; }
+    }
+    _rhValoresVisiveis = true; // default: visível
+  } catch (e) {}
+}
 function toggleValoresRH() {
   _rhValoresVisiveis = !_rhValoresVisiveis;
   atualizarBotaoValoresRH();
@@ -4863,6 +4882,9 @@ async function rejeitarDespesa(id) {
     // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
     if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
+    // Hidrata o estado salvo (banco/localStorage) ANTES de atualizar/propagar,
+    // para não sobrescrever um estado "oculto" com o default visível.
+    if(typeof hidratarValoresVisiveisRH === 'function') hidratarValoresVisiveisRH();
     // Propaga o estado visual de valores (visível/oculto) ao Portal do Colaborador.
     if(typeof atualizarBotaoValoresRH === 'function') atualizarBotaoValoresRH();
     if(typeof carregarColabs === 'function') carregarColabs();
@@ -4903,8 +4925,10 @@ async function rejeitarDespesa(id) {
     }
 
     // Se RH está ativo, recarregar imediatamente; senão, limpeza já é suficiente
-    // Atualiza o estado visual de valores para a nova empresa (chave do Portal).
-    if (typeof persistirValoresVisiveisRH === 'function') persistirValoresVisiveisRH();
+    // Lê o estado salvo da NOVA empresa (não sobrescreve com o estado da anterior)
+    // e reflete no botão; o Portal lê o mesmo estado por empresa.
+    if (typeof hidratarValoresVisiveisRH === 'function') hidratarValoresVisiveisRH();
+    if (typeof atualizarBotaoValoresRH === 'function') atualizarBotaoValoresRH();
     if (window.Router && window.Router.getAtivo() === 'rh') {
       // Navegar para aba de colaboradores e recarregar
       if (typeof rhShowSec === 'function') rhShowSec('colaboradores', null);

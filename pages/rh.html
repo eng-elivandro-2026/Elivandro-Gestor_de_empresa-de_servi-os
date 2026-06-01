@@ -1394,6 +1394,25 @@ function persistirValoresVisiveisBanco(eid, visivel) {
     }).catch(function () {});
   } catch (e) {}
 }
+// Lê o estado persistido (banco primeiro, depois localStorage) para _rhValoresVisiveis.
+// NÃO grava — apenas hidrata o estado em memória ao abrir o RH,
+// para que um "Mostrar valores" (oculto) salvo não seja sobrescrito pelo default visível.
+function hidratarValoresVisiveisRH() {
+  try {
+    var emp = (typeof window.getEmpresaAtiva === 'function') ? window.getEmpresaAtiva() : window._empresaAtiva;
+    if (emp && emp.config_json && typeof emp.config_json.rh_valores_visiveis !== 'undefined') {
+      _rhValoresVisiveis = emp.config_json.rh_valores_visiveis === true;
+      return;
+    }
+    var eid = (typeof getEmpresaAtivaId === 'function') ? getEmpresaAtivaId() : _empresaId;
+    if (!eid && typeof window.getEmpresaAtivaId === 'function') eid = window.getEmpresaAtivaId();
+    if (eid) {
+      var ls = localStorage.getItem('rh_valores_visiveis_' + eid);
+      if (ls !== null) { _rhValoresVisiveis = ls === '1'; return; }
+    }
+    _rhValoresVisiveis = true; // default: visível
+  } catch (e) {}
+}
 function toggleValoresRH() {
   _rhValoresVisiveis = !_rhValoresVisiveis;
   atualizarBotaoValoresRH();
@@ -1479,6 +1498,9 @@ async function validarAcessoRHAdministrativo() {
   } else {
     document.body.classList.remove('master-admin');
   }
+  // Hidrata o estado salvo (banco/localStorage) antes de refletir no botão,
+  // para não sobrescrever um estado "oculto" com o default visível.
+  if (typeof hidratarValoresVisiveisRH === 'function') hidratarValoresVisiveisRH();
   atualizarBotaoValoresRH();
   document.body.classList.remove('rh-guarding');
   return true;
