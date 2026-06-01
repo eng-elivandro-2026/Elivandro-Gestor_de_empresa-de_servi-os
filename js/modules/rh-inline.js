@@ -4843,6 +4843,8 @@ async function rejeitarDespesa(id) {
     // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
     if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
+    // Propaga o estado visual de valores (visível/oculto) ao Portal do Colaborador.
+    if(typeof atualizarBotaoValoresRH === 'function') atualizarBotaoValoresRH();
     if(typeof carregarColabs === 'function') carregarColabs();
     if(typeof gerarAlertas === 'function') gerarAlertas();
   };
@@ -4881,6 +4883,8 @@ async function rejeitarDespesa(id) {
     }
 
     // Se RH está ativo, recarregar imediatamente; senão, limpeza já é suficiente
+    // Atualiza o estado visual de valores para a nova empresa (chave do Portal).
+    if (typeof persistirValoresVisiveisRH === 'function') persistirValoresVisiveisRH();
     if (window.Router && window.Router.getAtivo() === 'rh') {
       // Navegar para aba de colaboradores e recarregar
       if (typeof rhShowSec === 'function') rhShowSec('colaboradores', null);
