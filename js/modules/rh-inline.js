@@ -69,6 +69,15 @@ function atualizarBotaoValoresRH() {
   garantirBotaoValoresRH();
   var btn = document.getElementById('btnToggleValoresRH');
   if (btn) btn.textContent = _rhValoresVisiveis ? 'Ocultar valores' : 'Mostrar valores';
+  persistirValoresVisiveisRH();
+}
+// Estado visual compartilhado com o Portal do Prestador (por empresa). Apenas visual.
+function persistirValoresVisiveisRH() {
+  try {
+    var eid = (typeof getEmpresaAtivaId === 'function') ? getEmpresaAtivaId() : _empresaId;
+    if (!eid && typeof window.getEmpresaAtivaId === 'function') eid = window.getEmpresaAtivaId();
+    if (eid) localStorage.setItem('rh_valores_visiveis_' + eid, _rhValoresVisiveis ? '1' : '0');
+  } catch (e) {}
 }
 function toggleValoresRH() {
   _rhValoresVisiveis = !_rhValoresVisiveis;

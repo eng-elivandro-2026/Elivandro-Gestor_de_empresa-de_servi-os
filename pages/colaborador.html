@@ -817,6 +817,19 @@ function fmtMoeda(v) {
 function fmtValorOculto() {
   return '••••';
 }
+// Lê o estado visual definido pelo RH (botão Ocultar/Mostrar valores), por empresa.
+// Ausência da chave => oculto (preserva privacidade padrão do Portal).
+function rhValoresVisiveisPortal() {
+  try {
+    var eid = empresaAtualId();
+    if (!eid) return false;
+    return localStorage.getItem('rh_valores_visiveis_' + eid) === '1';
+  } catch (e) { return false; }
+}
+// Mostra o valor real quando o RH está em "Mostrar valores"; caso contrário mascara.
+function fmtValorPortal(v) {
+  return rhValoresVisiveisPortal() ? fmtMoeda(v) : '••••';
+}
 function fmtHoras(h) {
   return Number(h||0).toFixed(1) + 'h';
 }
@@ -1167,7 +1180,7 @@ async function carregarInicio() {
   document.getElementById('kpiMes').innerHTML =
     kpi(fmtHoras(totalH),'Horas') +
     kpi(projs.size,'Projetos') +
-    kpi(fmtValorOculto(),'Valor R$');
+    kpi(fmtValorPortal(totalV),'Valor R$');
 
   // Alertas
   var alertasEl = document.getElementById('alertasColab');
@@ -1218,7 +1231,7 @@ function renderAptItem(a, mini) {
         + '<span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span>'
       + '</div>'
       + '<div class="apt-right">'
-        + '<div class="apt-valor">' + fmtValorOculto() + '</div>'
+        + '<div class="apt-valor">' + fmtValorPortal(a.valor_total) + '</div>'
         + '<div class="apt-horas">' + fmtHoras(a.horas_total) + '</div>'
       + '</div>'
     + '</div>'
@@ -1292,11 +1305,11 @@ function calcNovo() {
   var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
 
   document.getElementById('calcBox').classList.add('on');
-  document.getElementById('cNormal').textContent   = fmtHoras(r.horas_normal) + ' → ' + fmtValorOculto();
-  document.getElementById('cExtra50').textContent  = fmtHoras(r.horas_extra_50) + ' → ' + fmtValorOculto();
-  document.getElementById('cExtra100').textContent = fmtHoras(r.horas_extra_100) + ' → ' + fmtValorOculto();
-  document.getElementById('cNoturno').textContent  = fmtHoras(r.horas_noturno) + ' → ' + fmtValorOculto();
-  document.getElementById('cTotal').textContent    = fmtHoras(r.horas_total) + ' → ' + fmtValorOculto();
+  document.getElementById('cNormal').textContent   = fmtHoras(r.horas_normal) + ' → ' + fmtValorPortal(r.valor_normal);
+  document.getElementById('cExtra50').textContent  = fmtHoras(r.horas_extra_50) + ' → ' + fmtValorPortal(r.valor_extra_50);
+  document.getElementById('cExtra100').textContent = fmtHoras(r.horas_extra_100) + ' → ' + fmtValorPortal(r.valor_extra_100);
+  document.getElementById('cNoturno').textContent  = fmtHoras(r.horas_noturno) + ' → ' + fmtValorPortal(r.valor_noturno);
+  document.getElementById('cTotal').textContent    = fmtHoras(r.horas_total) + ' → ' + fmtValorPortal(r.valor_total);
 }
 
 async function salvarNovoApt() {
@@ -1401,7 +1414,7 @@ async function carregarHistorico() {
 
   document.getElementById('kHNormal').textContent = fmtHoras(totalN);
   document.getElementById('kHExtra').textContent  = fmtHoras(totalE);
-  document.getElementById('kHValor').textContent  = fmtValorOculto();
+  document.getElementById('kHValor').textContent  = fmtValorPortal(totalV);
 
   var el = document.getElementById('histList');
   if (!data || !data.length) {
@@ -1438,7 +1451,7 @@ async function carregarBoletins() {
         + '<span class="bdg ' + (sBdgs[b.status]||'bdg-blue') + '" style="margin-top:.3rem">' + (sLabels[b.status]||b.status) + '</span>'
       + '</div>'
       + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.35rem">'
-        + '<div class="bol-valor">' + fmtValorOculto() + '</div>'
+        + '<div class="bol-valor">' + fmtValorPortal(b.valor_total) + '</div>'
         + (podeAssinar ? '<span style="font-size:.65rem;background:var(--accent);color:#000;padding:.18rem .45rem;border-radius:4px;font-weight:700">✍️ Assinar</span>' : '')
       + '</div>'
     + '</div>';
@@ -1465,7 +1478,7 @@ async function carregarPerfil() {
     'CPF/CNPJ: ' + (_colab.documento||'—') + '<br>' +
     'E-mail: ' + (_colab.email||'—') + '<br>' +
     'Telefone: ' + (_colab.telefone||'—') + '<br>' +
-    'Valor/hora: ' + fmtValorOculto() + '<br>' +
+    'Valor/hora: ' + fmtValorPortal(valorHoraAtual()) + '<br>' +
     'Empresa: ' + (_empresa ? _empresa.nome : '—');
 
   // KPIs gerais
@@ -1483,7 +1496,7 @@ async function carregarPerfil() {
   });
   document.getElementById('kPHoras').textContent = fmtHoras(totalH);
   document.getElementById('kPProj').textContent  = projs.size;
-  document.getElementById('kPValor').textContent = fmtValorOculto();
+  document.getElementById('kPValor').textContent = fmtValorPortal(totalV);
   atualizarTrocaEmpresaUI();
 }
 
@@ -1604,19 +1617,21 @@ async function verBoletimColab(bolId, modoAssinar) {
   html += '<div style="font-size:15px;font-weight:700;color:#1e3a5f;margin-bottom:.25rem">' + docTitulo + '</div>';
   html += '<div style="font-size:11px;color:#6c757d;margin-bottom:.75rem">' + docSub + '</div>';
 
+  var totalBol = 0;
   (apts||[]).forEach(function(a){
+    totalBol += Number(a.valor_total||0);
     var p = mapaP[a.proposta_id]||{};
     html += '<div style="border:1px solid #dee2e6;border-radius:6px;padding:.6rem;margin-bottom:.5rem">';
     html += '<div style="font-weight:700;font-size:11px">' + fmtData(a.data) + ' · ' + (p.numero_proposta||a.proposta_id||'—') + '</div>';
     html += '<div style="font-size:10px;color:#6c757d">' + (p.cliente||'') + '</div>';
     html += '<div style="font-size:11px;margin-top:.25rem">' + (a.hora_entrada||'') + '–' + (a.hora_saida||'') + ' · Normal: ' + Number(a.horas_normal||0).toFixed(1) + 'h · Extra 50%: ' + Number(a.horas_extra_50||0).toFixed(1) + 'h</div>';
-    html += '<div style="font-size:11px;color:#198754;font-weight:600">' + fmtValorOculto() + '</div>';
+    html += '<div style="font-size:11px;color:#198754;font-weight:600">' + fmtValorPortal(a.valor_total) + '</div>';
     html += '<div style="font-size:10px;color:#6c757d;font-style:italic">' + a.descricao + '</div>';
     html += '</div>';
   });
 
   html += '<div style="background:#1e3a5f;color:white;padding:.6rem;border-radius:6px;text-align:center;margin:.75rem 0">';
-  html += '<div style="font-size:.8rem">TOTAL: <strong>' + fmtValorOculto() + '</strong> · ' + Number(bol.horas_total||0).toFixed(1) + 'h</div></div>';
+  html += '<div style="font-size:.8rem">TOTAL: <strong>' + fmtValorPortal(totalBol) + '</strong> · ' + Number(bol.horas_total||0).toFixed(1) + 'h</div></div>';
 
   // Status assinaturas
   html += '<div style="font-size:11px;border:1px solid #dee2e6;border-radius:6px;overflow:hidden">';
