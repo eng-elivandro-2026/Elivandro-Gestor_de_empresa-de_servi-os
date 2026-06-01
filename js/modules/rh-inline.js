@@ -76,7 +76,27 @@ function persistirValoresVisiveisRH() {
   try {
     var eid = (typeof getEmpresaAtivaId === 'function') ? getEmpresaAtivaId() : _empresaId;
     if (!eid && typeof window.getEmpresaAtivaId === 'function') eid = window.getEmpresaAtivaId();
-    if (eid) localStorage.setItem('rh_valores_visiveis_' + eid, _rhValoresVisiveis ? '1' : '0');
+    if (!eid) return;
+    // localStorage: rápido, mesmo navegador/perfil.
+    localStorage.setItem('rh_valores_visiveis_' + eid, _rhValoresVisiveis ? '1' : '0');
+    // Banco (empresas.config_json): compartilha entre sessões, perfis e janelas anônimas.
+    persistirValoresVisiveisBanco(eid, _rhValoresVisiveis);
+  } catch (e) {}
+}
+// Persiste o estado por empresa em empresas.config_json.rh_valores_visiveis,
+// preservando as demais chaves. Usa a infra existente (sbAtualizarEmpresa). Fire-and-forget.
+function persistirValoresVisiveisBanco(eid, visivel) {
+  try {
+    if (typeof window.sbAtualizarEmpresa !== 'function') return;
+    var emp = (typeof window.getEmpresaAtiva === 'function') ? window.getEmpresaAtiva() : window._empresaAtiva;
+    var cfg = Object.assign({}, (emp && emp.config_json) || {});
+    if (cfg.rh_valores_visiveis === visivel) return; // sem mudança real
+    cfg.rh_valores_visiveis = visivel;
+    window.sbAtualizarEmpresa(eid, { config_json: cfg }).then(function (r) {
+      if (r && r.error) return;
+      if (emp) emp.config_json = cfg;
+      if (window._empresaAtiva && window._empresaAtiva.id === eid) window._empresaAtiva.config_json = cfg;
+    }).catch(function () {});
   } catch (e) {}
 }
 function toggleValoresRH() {

@@ -818,13 +818,22 @@ function fmtValorOculto() {
   return '••••';
 }
 // Lê o estado visual definido pelo RH (botão Ocultar/Mostrar valores), por empresa.
-// Ausência da chave => oculto (preserva privacidade padrão do Portal).
+// Prioridade: estado salvo no banco (empresas.config_json) — compartilhado entre
+// sessões, perfis e janelas anônimas. Fallback: localStorage (mesmo navegador).
+// Sem nenhum dos dois => visível (comportamento histórico do Portal).
 function rhValoresVisiveisPortal() {
   try {
+    if (_empresa && _empresa.config_json
+        && typeof _empresa.config_json.rh_valores_visiveis !== 'undefined') {
+      return _empresa.config_json.rh_valores_visiveis === true;
+    }
     var eid = empresaAtualId();
-    if (!eid) return false;
-    return localStorage.getItem('rh_valores_visiveis_' + eid) === '1';
-  } catch (e) { return false; }
+    if (eid) {
+      var ls = localStorage.getItem('rh_valores_visiveis_' + eid);
+      if (ls !== null) return ls === '1';
+    }
+    return true;
+  } catch (e) { return true; }
 }
 // Mostra o valor real quando o RH está em "Mostrar valores"; caso contrário mascara.
 function fmtValorPortal(v) {
@@ -1050,7 +1059,7 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
 
     // Buscar TODAS as empresas do colaborador
     var { data: vinculos } = await sb.from('colaborador_empresas')
-      .select('empresa_id,tipo,valor_hora,empresas(id,nome,nome_curto)')
+      .select('empresa_id,tipo,valor_hora,empresas(id,nome,nome_curto,config_json)')
       .eq('colaborador_id', colab.id)
       .eq('ativo',true);
     window._vinculosColab = vinculos || [];
