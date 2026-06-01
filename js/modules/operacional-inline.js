@@ -87,6 +87,7 @@
     'andamento',
     'taf',
     'sat',
+    'finalizado',
     'atrasado',
     'em_pausa_falta_material',
     'em_pausa_aguardando_cliente',
