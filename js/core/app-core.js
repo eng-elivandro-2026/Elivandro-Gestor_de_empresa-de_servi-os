@@ -1018,12 +1018,105 @@ function resetProposalForm(){
   if(Q('escTplModal'))Q('escTplModal').style.display='none';
   setNextProposalNumber(true);
 }
-function newProposal(btn){
+// ── PROPOSTA RÁPIDA (Fase 1) ─────────────────────────────────
+// Nome da CONTRATADA: puxa empresa ativa se existir, senão [CONTRATADA].
+function nomeContratadaProposta(){
+  try{
+    var emp=(typeof window.getEmpresaAtiva==='function')?window.getEmpresaAtiva():window._empresaAtiva;
+    if(emp){
+      var n=emp.nome||emp.nome_curto||emp.razao_social||'';
+      if(n&&String(n).trim()) return String(n).trim();
+    }
+  }catch(e){}
+  return '[CONTRATADA]';
+}
+
+// Template de escopo mínimo (25 seções) — texto simples, sem type:'valor', sem hasGantt.
+// Placeholder [CONTRATADA] é substituído no seed pelo nome da empresa ativa (se houver).
+var ESCOPO_PADRAO_RAPIDO=[
+  {titulo:'Identificação da Proposta',desc:'Proposta nº: [preencher]\nData: [preencher]\nCONTRATADA: [CONTRATADA]\nCONTRATANTE: [preencher cliente]\nResponsável técnico: [preencher]\nContato: [preencher e-mail / telefone]'},
+  {titulo:'Objetivo',desc:'Esta proposta tem como objetivo a execução dos serviços descritos a seguir, assegurando o restabelecimento funcional com segurança e qualidade.\n\nTodos os trabalhos serão realizados por equipe técnica especializada, seguindo as normas vigentes.'},
+  {titulo:'Contexto da Demanda',desc:'Descreva aqui a situação atual, a necessidade do cliente e o problema a ser resolvido. [preencher]'},
+  {titulo:'Escopo Técnico',desc:'Descreva os serviços técnicos que serão executados, item a item. [preencher]\n• [serviço 1]\n• [serviço 2]\n• [serviço 3]'},
+  {titulo:'Entregas Previstas',desc:'Relacione o que será entregue ao final dos serviços. [preencher]\n• [entrega 1]\n• [entrega 2]'},
+  {titulo:'Premissas',desc:'• As informações fornecidas pela CONTRATANTE são verídicas e suficientes para a execução dos serviços.\n• As condições de acesso e infraestrutura estarão disponíveis conforme acordado.\n• Eventuais alterações nas premissas poderão impactar prazo e valor.'},
+  {titulo:'Exclusões',desc:'Não estão incluídos nesta proposta, salvo indicação expressa em contrário:\n• Fornecimento de materiais não especificados no escopo técnico.\n• Serviços de terceiros não previstos.\n• Obras civis, adequações estruturais e demais itens fora do escopo descrito.'},
+  {titulo:'Obrigações da Contratada',desc:'• Executar os serviços especificados no escopo técnico.\n• Fornecer a documentação legal e técnica aplicável (ART, certificações).\n• Disponibilizar ferramentas e equipamentos de medição.\n• Atender as normas de segurança do trabalho vigentes (NR-10, NR-12).\n• Realizar treinamento básico de operação quando aplicável.'},
+  {titulo:'Obrigações da Contratante',desc:'• Comunicar o início dos serviços com antecedência mínima acordada.\n• Liberar o acesso da equipe nas datas programadas.\n• Garantir a liberação da área de trabalho antes da chegada da equipe.\n• Fornecer documentação técnica necessária.\n• Disponibilizar infraestrutura básica (energia elétrica, acesso).\n• Indicar responsável para acompanhamento.'},
+  {titulo:'Condições de Execução',desc:'Os serviços serão executados conforme cronograma acordado, em horário comercial, salvo acordo específico. Quaisquer paralisações por motivos alheios à CONTRATADA poderão impactar prazo e valor.'},
+  {titulo:'Segurança e Normas',desc:'Todos os serviços serão executados em conformidade com:\n• NR-10 – Segurança em Instalações e Serviços em Eletricidade\n• NR-12 – Segurança no Trabalho em Máquinas e Equipamentos\n• NBR 5410 – Instalações Elétricas de Baixa Tensão\n• NBR IEC 60204-1 – Segurança de máquinas'},
+  {titulo:'Prazo e Cronograma',desc:'Prazo estimado de execução: [preencher] dias úteis após a liberação para início.\nDescreva as etapas e marcos principais. [preencher]'},
+  {titulo:'Condições de Fornecimento',desc:'Indique a responsabilidade pelo fornecimento de materiais e equipamentos. [preencher]\nMateriais fornecidos pela CONTRATADA seguem as garantias dos respectivos fabricantes.'},
+  {titulo:'Valor da Proposta',desc:'Valor total dos serviços: R$ [preencher]\nDescreva a composição do valor, se aplicável. [preencher]'},
+  {titulo:'Impostos e Encargos',desc:'Os valores apresentados consideram os impostos e encargos aplicáveis na data desta proposta. Alterações na legislação tributária poderão refletir nos valores.'},
+  {titulo:'Condições de Pagamento',desc:'Forma de pagamento: [preencher]\nCondição: [preencher, ex.: 50% na assinatura e 50% na entrega]'},
+  {titulo:'Atraso de Pagamento',desc:'Em caso de atraso no pagamento, incidirá multa de 2% (dois por cento) sobre o valor em atraso, acrescida de juros de 1% (um por cento) ao mês, calculados pro rata die até a efetiva quitação.'},
+  {titulo:'Termo de Aceite',desc:'Após a conclusão dos serviços, a CONTRATADA poderá emitir Termo de Aceite, Relatório de Entrega ou documento equivalente, com a finalidade de formalizar a entrega dos serviços executados conforme escopo aprovado. O documento de aceite será tratado separadamente desta proposta e poderá registrar a conclusão dos serviços, eventuais observações, ressalvas ou pendências pontuais identificadas no momento da entrega. A formalização do aceite, liberação para operação ou conclusão registrada dos serviços poderá ser utilizada como referência para faturamento final, encerramento técnico e início da contagem do prazo de garantia, quando aplicável.'},
+  {titulo:'Garantia dos Serviços',desc:'A CONTRATADA garante os serviços executados pelo prazo de 90 dias, contados a partir da conclusão dos serviços, entrega técnica, aceite da CONTRATANTE ou liberação para operação, o que ocorrer primeiro. A garantia aplica-se exclusivamente a falhas diretamente relacionadas à execução dos serviços realizados pela CONTRATADA, desde que comprovadas tecnicamente. Materiais, componentes ou equipamentos fornecidos pela CONTRATANTE ou por terceiros não são cobertos pela garantia da CONTRATADA. Materiais fornecidos pela CONTRATADA seguirão as condições legais aplicáveis e/ou garantias dos respectivos fabricantes.'},
+  {titulo:'Alterações de Escopo',desc:'Quaisquer alterações no escopo descrito nesta proposta deverão ser formalizadas previamente entre as partes e poderão impactar prazo e valor, mediante novo aceite.'},
+  {titulo:'Validade da Proposta',desc:'Esta proposta é válida por 15 (quinze) dias corridos a contar da data de sua emissão. Após esse prazo, os valores e condições estão sujeitos a revisão.'},
+  {titulo:'Condições para Início',desc:'O início dos serviços fica condicionado ao aceite formal desta proposta, à liberação da área de trabalho e ao atendimento das premissas e obrigações da CONTRATANTE.'},
+  {titulo:'Confidencialidade',desc:'As partes se comprometem a manter sigilo sobre as informações técnicas e comerciais trocadas em razão desta proposta, não as divulgando a terceiros sem autorização prévia.'},
+  {titulo:'Aceite da Proposta',desc:'O aceite desta proposta poderá ser formalizado por assinatura, ordem de compra, e-mail de aprovação ou documento equivalente, valendo como autorização para início dos serviços conforme as condições aqui descritas.'},
+  {titulo:'Assinaturas',desc:'CONTRATADA: [CONTRATADA]\nRazão Social: [Razão Social]\nResponsável: ____________________________\n\nCONTRATANTE: [preencher]\nResponsável: ____________________________\n\nLocal e data: ____________________________'}
+];
+
+// Semeia escSecs com o template, substituindo [CONTRATADA] pelo nome da empresa ativa (se houver).
+function seedEscopoPadraoRapido(){
+  var nome=nomeContratadaProposta();
+  escSecs=ESCOPO_PADRAO_RAPIDO.map(function(s){
+    return {
+      id:uid(),
+      num:'',
+      titulo:s.titulo,
+      desc:String(s.desc||'').replace(/\[CONTRATADA\]/g,nome),
+      subs:[]
+    };
+  });
+}
+
+// Abre/fecha o modal de escolha de tipo de proposta.
+function abrirModalTipoProposta(btn){
+  _tipoPropostaBtn=btn||null;
+  if(typeof abrirModal==='function') abrirModal('m-tipo-proposta');
+  else{var m=Q('m-tipo-proposta');if(m)m.classList.add('on');}
+}
+function fecharModalTipoProposta(){
+  if(typeof fecharModal==='function') fecharModal('m-tipo-proposta');
+  else{var m=Q('m-tipo-proposta');if(m)m.classList.remove('on');}
+}
+var _tipoPropostaBtn=null;
+
+// Proposta Completa: fluxo atual, inalterado.
+function novaPropostaCompleta(btn){
+  fecharModalTipoProposta();
   editId=null;
   hideActionBar();
   resetProposalForm();
-  go('nova',btn||null);
+  go('nova',btn||_tipoPropostaBtn||null);
   step(1);
+}
+
+// Proposta Rápida: nasce no passo Dados com o escopo padrão pré-preenchido.
+function novaPropostaRapida(btn){
+  fecharModalTipoProposta();
+  editId=null;
+  hideActionBar();
+  resetProposalForm();
+  seedEscopoPadraoRapido();
+  try{rEsc();}catch(e){}
+  go('nova',btn||_tipoPropostaBtn||null);
+  step(1);
+}
+
+// Atalho claro para o Preview (passo 5 do wizard).
+function irParaPreviewProposta(){
+  try{step(5);}catch(e){}
+}
+
+// "+ Nova" agora abre o modal de escolha (Rápida / Completa).
+function newProposal(btn){
+  abrirModalTipoProposta(btn);
 }
 function cancelEdit(){
   if(confirm('Cancelar edição? Alterações não salvas serão perdidas.')){
