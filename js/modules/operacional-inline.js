@@ -1677,13 +1677,25 @@
       + '.op-doc-actions{display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}'
       + '.op-doc-actions .btn{border-radius:7px!important;min-height:42px;}'
       + '.op-doc-actions-top{position:sticky;top:74px;z-index:4;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:.65rem;margin:0 0 1rem;box-shadow:0 8px 22px rgba(15,23,42,.08)}'
+      + '.op-doc-actions-bottom{border-top:1px solid #e2e8f0;padding-top:1rem;margin-top:1.75rem}'
       + '.op-primary-action{font-weight:900!important;}'
       + '.op-doc-action-status{margin-right:auto;align-self:center;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;padding:.48rem .75rem;font-size:.82rem;font-weight:900}'
       + '.op-report-notice{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:800;margin:0 0 1rem;}'
       + '.op-signature-canvas{touch-action:none;user-select:none;-webkit-user-select:none;}'
       + '#opGestaoPrintRoot{display:none;}'
-      + '@media(max-width:720px){.op-doc-actions{display:grid!important;grid-template-columns:1fr!important;justify-content:stretch!important}.op-doc-actions .btn{width:100%;font-size:.92rem!important}.op-doc-actions-top{display:none!important}.op-doc-action-status{margin-right:0;text-align:center}.op-doc-paper{padding:.9rem!important}.op-doc-title{font-size:1.35rem!important}}'
-      + '#opObraPanel .op-doc-actions-top{display:flex!important;}'
+      + '@media(max-width:720px){'
+      + '.op-doc-paper{width:100%!important;max-width:100%!important;margin:0 0 1rem!important;padding:.9rem!important}'
+      + '.op-doc-actions{display:grid!important;grid-template-columns:1fr!important;justify-content:stretch!important}'
+      + '.op-doc-actions .btn{width:100%;min-height:48px!important;font-size:.95rem!important}'
+      + '.op-doc-actions-top{display:none!important}'
+      + '.op-doc-actions-bottom{margin-top:1.25rem}'
+      + '.op-doc-action-status{margin-right:0;text-align:center}'
+      + '.op-doc-title{font-size:1.2rem!important}'
+      + '.op-ciclo-grid{grid-template-columns:1fr!important}'
+      + '.op-doc-paper table{table-layout:fixed;width:100%!important}'
+      + '.op-doc-paper table td,.op-doc-paper table th{white-space:normal!important;word-break:break-word;padding:.4rem .5rem!important;font-size:.72rem!important;width:auto!important}'
+      + '.op-report-hours-section table{table-layout:auto}'
+      + '}'
       + '@page{size:A4;margin:15mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font-size:9pt;color:#64748b;font-family:inherit;}}'
       + '@media print{html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important;}'
       + 'body.op-gestao-printing > *:not(#opGestaoPrintRoot){display:none!important;}'
@@ -1741,8 +1753,7 @@
       + documentoCarregando
       + documentoErro
       + '<div class="op-doc-lock-notice no-print" style="border:1px solid ' + (bloqueado ? '#fde68a' : '#bfdbfe') + ';background:' + (bloqueado ? '#fffbeb' : '#eff6ff') + ';color:' + (bloqueado ? '#92400e' : '#1d4ed8') + ';border-radius:8px;padding:.7rem .85rem;font-size:.84rem;font-weight:900;margin:0 0 1rem">' + esc(statusDoc) + '</div>'
-      + acoesGestaoHtml(bloqueado, 'op-doc-actions-top')
-      + (window._empresaAtiva && window._empresaAtiva.logo_url ? '<section class="op-doc-print-section" style="text-align:center;margin-bottom:1rem"><img src="' + esc(window._empresaAtiva.logo_url) + '" style="max-height:70px;max-width:240px;object-fit:contain" alt="Logo da Empresa"></section>' : '')
+      + (window._empresaAtiva && window._empresaAtiva.logo_url ? '<section class="op-doc-print-section" style="text-align:center;margin-bottom:1rem"><img src="' + esc(window._empresaAtiva.logo_url) + '" style="max-height:70px;max-width:100%;width:auto;object-fit:contain" alt="Logo da Empresa"></section>' : '')
       + '<section class="op-doc-print-section" style="border-bottom:2px solid #0f172a;padding-bottom:1rem;margin-bottom:1rem">'
       + '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
       + '<tr style="border-bottom:1px solid #e2e8f0"><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">Nome do Cliente</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['cli']) || o.cliente_nome || '-') + '</td><td style="font-size:.72rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.55rem .75rem;background:#f8fafc;white-space:nowrap;width:20%;border-right:1px solid #e2e8f0">CNPJ Cliente</td><td style="font-size:.82rem;color:#0f172a;font-weight:600;padding:.55rem .75rem;width:30%">' + esc(valorSnapshot(s, ['cnpj']) || o.cliente_cnpj || '-') + '</td></tr>'
@@ -1764,7 +1775,7 @@
       + '<textarea id="opGestaoDiario" placeholder="Escreva aqui o diario de bordo, entregas, pendencias e aceite."' + (bloqueado ? ' disabled' : '') + ' style="width:100%;box-sizing:border-box;min-height:430px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:.85rem;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.45;resize:vertical">' + esc(diarioTexto) + '</textarea>'
       + '</section>'
       + '<section class="op-doc-print-section" data-section-break="ciclo-execucao" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'ciclo-execucao\')" title="Forçar quebra de página">⌗</span>🟢 Ciclo de Execução</h3>'
-      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.85rem">'
+      + '<div class="op-ciclo-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.85rem">'
       + '<div class="f"><label>Data de Início de Execução</label><input type="date" id="opGestaoExecInicio"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
       + '<div class="f"><label>Data de Término do Trabalho</label><input type="date" id="opGestaoExecTermino"' + (bloqueado ? ' disabled' : '') + ' style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;font-size:.88rem"></div>'
       + '<div class="f"><label>Data de Aceite / Entrega ao Cliente</label><input type="date" id="opGestaoExecAceite" disabled style="width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#6b7280;font-size:.88rem;cursor:not-allowed" title="Preenchida automaticamente ao assinar"></div>'
@@ -1825,6 +1836,7 @@
       + assinaturaBoxHtml('Responsavel Cliente', 'opAssClienteNome', 'cliente')
       + assinaturaBoxHtml('Responsavel Empresa', 'opAssEmpresaNome', 'empresa')
       + '</div></section>'
+      + acoesGestaoHtml(bloqueado, 'op-doc-actions-bottom')
       + '</article>'
       + '</div>'  // fecha opObraBody
       + '<div id="opGestaoPreviewPane">'
