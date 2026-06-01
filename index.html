@@ -4020,48 +4020,6 @@ body.empresa-tema-fortex{
 
 
 
-<!-- Modal Tipo de Proposta (Rápida / Completa) -->
-
-<div class="modal-bg" id="m-tipo-proposta">
-
-  <div class="modal" style="width:min(560px,98vw)">
-
-    <div class="modal-hdr"><div class="modal-title">✏️ Nova Proposta</div><button class="modal-close" onclick="fecharModalTipoProposta()">✕</button></div>
-
-    <div class="modal-body">
-
-      <div style="font-size:.78rem;color:var(--text3);margin-bottom:.85rem">Escolha como deseja começar:</div>
-
-      <div style="display:flex;flex-direction:column;gap:.7rem">
-
-        <button onclick="novaPropostaRapida()" style="text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;cursor:pointer;color:var(--text)">
-
-          <div style="font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:.25rem">⚡ Proposta Rápida</div>
-
-          <div style="font-size:.74rem;color:var(--text3)">Nasce com um escopo padrão de 25 seções já preenchido. Edite o texto, ajuste valores e gere o preview em poucos passos.</div>
-
-        </button>
-
-        <button onclick="novaPropostaCompleta()" style="text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;cursor:pointer;color:var(--text)">
-
-          <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.25rem">📋 Proposta Completa</div>
-
-          <div style="font-size:.74rem;color:var(--text3)">Fluxo completo do assistente (Dados → Orçamento → Escopo → Valores → Preview), montando o escopo do zero ou a partir do banco de escopos.</div>
-
-        </button>
-
-      </div>
-
-    </div>
-
-    <div class="modal-footer"><button class="btn bg" onclick="fecharModalTipoProposta()">Cancelar</button></div>
-
-  </div>
-
-</div>
-
-
-
 <!-- Modal Backup -->
 
 <div class="modal-bg" id="m-backup">
@@ -12299,6 +12257,28 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
+
+<!-- Modal Tipo de Proposta (Rápida / Completa) — nível body, fora de #gestao -->
+<!-- Estilos inline próprios (overlay fixo) pois a regra .modal-bg de overlay é escopada a #gestao-wrap -->
+<div class="modal-bg" id="m-tipo-proposta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:5000;align-items:center;justify-content:center;padding:12px">
+  <div class="modal" style="width:min(560px,98vw)">
+    <div class="modal-hdr"><div class="modal-title">✏️ Nova Proposta</div><button class="modal-close" onclick="fecharModalTipoProposta()">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:.78rem;color:var(--text3);margin-bottom:.85rem">Escolha como deseja começar:</div>
+      <div style="display:flex;flex-direction:column;gap:.7rem">
+        <button onclick="novaPropostaRapida()" style="text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;cursor:pointer;color:var(--text)">
+          <div style="font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:.25rem">⚡ Proposta Rápida</div>
+          <div style="font-size:.74rem;color:var(--text3)">Nasce com um escopo padrão de 25 seções já preenchido. Edite o texto, ajuste valores e gere o preview em poucos passos.</div>
+        </button>
+        <button onclick="novaPropostaCompleta()" style="text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;cursor:pointer;color:var(--text)">
+          <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.25rem">📋 Proposta Completa</div>
+          <div style="font-size:.74rem;color:var(--text3)">Fluxo completo do assistente (Dados → Orçamento → Escopo → Valores → Preview), montando o escopo do zero ou a partir do banco de escopos.</div>
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn bg" onclick="fecharModalTipoProposta()">Cancelar</button></div>
+  </div>
+</div>
 
 </body>
 </html>

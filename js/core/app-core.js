@@ -1076,14 +1076,17 @@ function seedEscopoPadraoRapido(){
 }
 
 // Abre/fecha o modal de escolha de tipo de proposta.
+// O modal vive no nível <body> com estilos de overlay inline próprios
+// (a regra .modal-bg de overlay é escopada a #gestao-wrap e não vale aqui),
+// por isso alternamos display explicitamente, sem depender de CSS de classe.
 function abrirModalTipoProposta(btn){
   _tipoPropostaBtn=btn||null;
-  if(typeof abrirModal==='function') abrirModal('m-tipo-proposta');
-  else{var m=Q('m-tipo-proposta');if(m)m.classList.add('on');}
+  var m=Q('m-tipo-proposta');
+  if(m){ m.classList.add('on'); m.style.display='flex'; }
 }
 function fecharModalTipoProposta(){
-  if(typeof fecharModal==='function') fecharModal('m-tipo-proposta');
-  else{var m=Q('m-tipo-proposta');if(m)m.classList.remove('on');}
+  var m=Q('m-tipo-proposta');
+  if(m){ m.classList.remove('on'); m.style.display='none'; }
 }
 var _tipoPropostaBtn=null;
 
