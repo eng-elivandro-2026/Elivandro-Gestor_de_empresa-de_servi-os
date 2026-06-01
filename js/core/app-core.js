@@ -88,9 +88,6 @@ window._renderSbProps = function() {
     { k: 'enviada',           n: 'Enviada' },
     { k: 'cliente_analisando',n: 'Analisando' },
     { k: 'ganho',             n: 'Ganho' },
-    { k: 'aprovado',          n: 'Aprovado' },
-    { k: 'andamento',         n: 'Andamento' },
-    { k: 'finalizado',        n: 'Finalizado' },
     { k: 'perdido',           n: 'Perdido' },
   ];
 
