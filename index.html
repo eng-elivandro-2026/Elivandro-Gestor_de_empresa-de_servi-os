@@ -1430,8 +1430,9 @@ body.empresa-tema-fortex{
           </div>
         </div>
 
-        <!-- BLOCO EXECUÇÃO -->
-        <div style="margin-bottom:.9rem;border-top:1px solid var(--border);padding-top:.7rem">
+        <!-- BLOCO EXECUÇÃO — OCULTO no Comercial (datas reais de execução ficam no Operacional > Abrir Gestão).
+             Inputs mantidos no DOM (hidden) para preservar dados legados e nao quebrar load/save/KPIs. -->
+        <div id="tlBlocoExecucao" style="display:none;margin-bottom:.9rem;border-top:1px solid var(--border);padding-top:.7rem">
           <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">🟢 Ciclo de Execução</div>
           <div class="g ga">
             <div class="f"><label>Data de Início de Execução</label><input type="date" id="tlDtInicioExec" oninput="rCiclos()"></div>
