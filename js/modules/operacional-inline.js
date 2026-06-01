@@ -1727,28 +1727,29 @@
       return '<div style="border:1px dashed #cbd5e1;background:#f8fafc;border-radius:8px;padding:.85rem;color:#64748b;font-size:.85rem">Nenhum apontamento encontrado para este negocio.</div>'
         + renderTotaisApontamentosHtml(totais);
     }
-    return '<div style="overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff">'
-      + '<table style="width:100%;border-collapse:collapse;min-width:720px;font-size:.82rem;color:#0f172a">'
-      + '<thead><tr style="background:#f8fafc;color:#475569;text-transform:uppercase;font-size:.68rem;letter-spacing:.04em">'
-      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Data</th>'
-      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Nome</th>'
-      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Tipo</th>'
-      + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Horas</th>'
-      + '<th style="text-align:center;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Status</th>'
-      + '<th style="text-align:left;padding:.55rem .65rem;border-bottom:1px solid #e2e8f0">Descricao</th>'
-      + '</tr></thead><tbody>'
+    return '<div class="op-apont-lista" style="display:flex;flex-direction:column;gap:.6rem">'
       + lista.map(function (a) {
         var nome = a.colaboradores && a.colaboradores.nome ? a.colaboradores.nome : (a.criado_por_nome || '-');
-        return '<tr>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;white-space:nowrap">' + esc(dataInput(a.data) || '-') + '</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;font-weight:700">' + esc(nome) + '</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7">' + esc(a.tipo_colaborador || a.tipo_dia || '-') + '</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center;font-weight:800">' + Number(a.horas_total || 0).toFixed(1) + 'h</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;text-align:center">' + esc(a.status || '-') + '</td>'
-          + '<td style="padding:.55rem .65rem;border-bottom:1px solid #edf2f7;min-width:220px">' + esc(a.descricao || '-') + '</td>'
-          + '</tr>';
+        function par(rotulo, valor) {
+          return '<span style="display:inline-flex;gap:.3rem;align-items:baseline;min-width:0">'
+            + '<strong style="font-size:.64rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">' + rotulo + ':</strong>'
+            + '<span style="font-size:.84rem;color:#0f172a;word-break:break-word">' + valor + '</span></span>';
+        }
+        return '<div class="op-apont-card" style="border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:.7rem .85rem">'
+          + '<div style="display:flex;flex-wrap:wrap;gap:.35rem 1.4rem;margin-bottom:.5rem">'
+          + par('Data', esc(dataInput(a.data) || '-'))
+          + par('Nome', '<strong style="font-weight:700">' + esc(nome) + '</strong>')
+          + par('Tipo', esc(a.tipo_colaborador || a.tipo_dia || '-'))
+          + par('Horas', '<strong style="font-weight:800">' + Number(a.horas_total || 0).toFixed(1) + 'h</strong>')
+          + par('Status', esc(a.status || '-'))
+          + '</div>'
+          + '<div style="border-top:1px solid #edf2f7;padding-top:.45rem">'
+          + '<div style="font-size:.64rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.15rem">Descrição</div>'
+          + '<div style="font-size:.86rem;color:#0f172a;line-height:1.5;white-space:pre-wrap;word-break:break-word">' + esc(a.descricao || '-') + '</div>'
+          + '</div>'
+          + '</div>';
       }).join('')
-      + '</tbody></table></div>'
+      + '</div>'
       + renderTotaisApontamentosHtml(totais);
   }
 
