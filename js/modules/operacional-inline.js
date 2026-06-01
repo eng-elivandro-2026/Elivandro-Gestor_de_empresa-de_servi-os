@@ -1761,17 +1761,23 @@
   function renderEscopoGestaoHtml(snapshot) {
     snapshot = snapshot || {};
     var escopos = snapshot.esc || [];
+    var msgVazio = '<div style="color:#6b7280;font-size:.88rem;font-style:italic">Informacoes de escopo e exclusoes nao localizadas na proposta.</div>';
     if (!Array.isArray(escopos) || escopos.length === 0) {
-      return '<div style="color:#6b7280;font-size:.88rem;font-style:italic">Nenhum escopo registrado.</div>';
+      return msgVazio;
     }
-    // Campos que não devem aparecer em relatório
-    var camposOcultos = ['VALOR', 'Impostos', 'Condições de Pagamento', 'Condição de Fornecimento'];
+    // Na Gestao, exibir SOMENTE secoes de Escopo e Exclusoes (Informacoes da Proposta).
+    function soEscopoOuExclusao(titulo) {
+      var t = String(titulo || '').toLowerCase();
+      return t.indexOf('escopo') >= 0 || t.indexOf('exclus') >= 0;
+    }
     var html = '<div style="display:flex;flex-direction:column;gap:1rem">';
+    var qtd = 0;
     escopos.forEach(function(sec, idx) {
       if (!sec) return;
       var titulo = sec.titulo || 'Seção ' + (idx + 1);
-      // Pular seções que devem ser ocultadas
-      if (camposOcultos.indexOf(titulo) !== -1) return;
+      // Mostra apenas Escopo e Exclusoes; demais secoes da proposta sao omitidas aqui.
+      if (!soEscopoOuExclusao(titulo)) return;
+      qtd++;
       var desc = sec.desc || '';
       var subs = sec.subs || [];
       var sectionId = 'escopo-titulo-' + idx;
@@ -1793,6 +1799,7 @@
       html += '</div>';
     });
     html += '</div>';
+    if (qtd === 0) return msgVazio;
     return html;
   }
 
@@ -2022,7 +2029,7 @@
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="cliente" checked onchange="opGestaoAtualizarModoRelatorio()"> Cliente - ocultar apontamentos de horas</label>'
       + '<label style="display:flex;align-items:center;gap:.4rem"><input type="radio" name="opRelHoras" value="interno" onchange="opGestaoAtualizarModoRelatorio()"> Interno - incluir apontamentos de horas</label>'
       + '</div></section>'
-      + '<section class="op-doc-print-section op-escopo-section" data-section-break="escopo" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'escopo\')" title="Forçar quebra de página">⌗</span>Escopo</h3>'
+      + '<section class="op-doc-print-section op-escopo-section" data-section-break="escopo" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'escopo\')" title="Forçar quebra de página">⌗</span>Informações de Escopo e Exclusões (Informações da Proposta)</h3>'
       + renderEscopoGestaoHtml(s)
       + '</section>'
       + '<section class="op-signatures-section op-doc-print-section" data-section-break="assinaturas" style="margin:1.1rem 0"><h3 class="op-doc-section-title"><span class="op-section-break-btn no-print" onclick="opToggleSectionBreak(\'assinaturas\')" title="Forçar quebra de página">⌗</span>Assinaturas</h3>'
