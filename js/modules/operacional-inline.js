@@ -337,10 +337,19 @@
   }
 
   function statusOptions(valor) {
-    var lista = window.OP_STATUS_OPERACIONAL || [];
-    return lista.map(function (st) {
-      return '<option value="' + esc(st) + '"' + (st === valor ? ' selected' : '') + '>' + esc(labelStatus(st)) + '</option>';
+    // Detalhe da Obra usa o MESMO vocabulario dos cards: os 9 status operacionais.
+    // Se a obra tiver um status legado (vocabulario antigo aguardando_recebimento/em_execucao...),
+    // preserva-o como opcao selecionada para NAO sobrescreve-lo ao salvar.
+    valor = String(valor || '').trim();
+    var nove = FASES_GESTAO_NEGOCIO;
+    var html = '';
+    if (valor && nove.indexOf(valor) < 0) {
+      html += '<option value="' + esc(valor) + '" selected>' + esc(labelStatus(valor)) + ' (legado)</option>';
+    }
+    html += nove.map(function (st) {
+      return '<option value="' + esc(st) + '"' + (st === valor ? ' selected' : '') + '>' + esc(labelFaseNegocio(st)) + '</option>';
     }).join('');
+    return html;
   }
 
   function faseOptions(valor) {
@@ -2326,7 +2335,7 @@
   async function salvarObra() {
     if (!state.obraAtual) return;
     var dados = {
-      status_operacional: ($('opEdStatus') || {}).value || 'aguardando_recebimento',
+      status_operacional: ($('opEdStatus') || {}).value || (state.obraAtual && state.obraAtual.status_operacional) || 'aprovado',
       responsavel_operacional_nome: ($('opEdResp') || {}).value || '',
       centro_custo: state.obraAtual.centro_custo || state.obraAtual.codigo_obra || '',
       area_local: ($('opEdAreaLocal') || {}).value || '',
