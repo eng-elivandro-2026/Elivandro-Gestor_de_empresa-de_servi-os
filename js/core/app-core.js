@@ -319,6 +319,15 @@ var FASES_OPERACIONAIS=['aprovado','andamento','em_pausa_falta_material','em_pau
 // mas permanecem em FASE para exibir/preservar propostas antigas (legado) e para a
 // logica de Financeiro/Relatorios que ainda as referencia.
 var FASES_COMERCIAIS_LEGADO=['faturado','recebido'];
+// Datas OFICIAIS de execucao vem do Operacional (gestao_negocio), carregadas em
+// window._opExecDatasMap por operacional-inline.js. Os KPIs de execucao usam SOMENTE
+// estas datas (sem cair no legado de tl.*). Vazio quando nao ha Gestao Operacional.
+function execDatasOp(p){
+  var m = (typeof window!=='undefined' && window._opExecDatasMap) ? window._opExecDatasMap : {};
+  var key = p ? (p.id || p.app_id) : null;
+  var d = (key!=null && m[key]) ? m[key] : null;
+  return { ini:(d&&d.ini)||'', ter:(d&&d.ter)||'', ace:(d&&d.ace)||'' };
+}
 // Fases consideradas "fechadas" (proposta convertida em negócio)
 // em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
 // atrasado = aprovada mas com atraso na execução → ainda é um fechamento
@@ -1949,7 +1958,7 @@ function rDash(rankTarget, sortBy){
     // Em decisão travada
     if(FAS_DECISAO.indexOf(fas)>=0){ var dtRef=tl.dtEnvio||p.dat2||''; var d=dD(dtRef); if(d!==null){ if(d>60){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Decisão travada — '+d+' dias',nome+' — '+money(val)+' aguardando decisão há '+d+' dias.','Follow-up executivo urgente ou mover para Budget')}); criticos++; } else if(d>30){ alertasList.push({nivel:'atencao',html:deCard('atencao','⚠️ Decisão demorada — '+d+' dias',nome+' — '+money(val)+' aguardando há '+d+' dias.','Fazer follow-up esta semana')}); atencao++; } } }
     // Obra sem NF
-    if(FAS_EXEC.indexOf(fas)>=0){ var dtI=tl.dtInicioExec||''; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0){ alertasList.push({nivel:'critico',html:deCard('critico','⚠️ Obra sem NF — '+d+' dias',nome+' — obra iniciada há '+d+' dias sem NF emitida. Risco de caixa elevado.','Emitir NF imediatamente')}); criticos++; } }
+    if(FAS_EXEC.indexOf(fas)>=0){ var dtI=execDatasOp(p).ini; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0){ alertasList.push({nivel:'critico',html:deCard('critico','⚠️ Obra sem NF — '+d+' dias',nome+' — obra iniciada há '+d+' dias sem NF emitida. Risco de caixa elevado.','Emitir NF imediatamente')}); criticos++; } }
     // Execução atrasada
     if(fas==='atrasado'){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Execução Atrasada',nome+' — '+money(val)+' marcada como ATRASADA.','Reagendar com cliente ou acionar equipe')}); criticos++; }
   });
@@ -2013,7 +2022,7 @@ function _propAlerts(p){
 
   var fas=p.fas||'',tl=p.tl||{},tags='';
   var dtC=p.dat2||'',dtV=tl.dtVisita||'',dtE=tl.dtEnvio||'',dtF=p.dtFech||'';
-  var dtI=tl.dtInicioExec||'',dtT=tl.dtTermino||'',dtA=tl.dtAceite||'';
+  var _opd=execDatasOp(p); var dtI=_opd.ini,dtT=_opd.ter,dtA=_opd.ace;
   var nfs=tl.nfs||[];
 
   var FAS_DEC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];

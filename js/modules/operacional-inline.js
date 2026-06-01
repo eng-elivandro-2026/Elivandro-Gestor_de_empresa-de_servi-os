@@ -2277,6 +2277,39 @@
     }
   }
 
+  // ── Datas oficiais de execucao (fonte: Operacional/gestao_negocio) ───────────
+  // Carrega em lote as datas de execucao por proposta para alimentar os KPIs
+  // comerciais. Mapa exposto em window._opExecDatasMap[proposta_id] = {ini,ter,ace}.
+  async function carregarDatasExecucao(empresaId) {
+    empresaId = empresaId || getEmpresaId();
+    if (!window.sbClient || !empresaId) return;
+    try {
+      var res = await window.sbClient
+        .from('gestao_negocio')
+        .select('proposta_id, data_exec_inicio, data_exec_termino, data_exec_aceite')
+        .eq('empresa_id', empresaId)
+        .eq('arquivado', false);
+      if (res.error) throw res.error;
+      var m = {};
+      (res.data || []).forEach(function (r) {
+        if (!r || !r.proposta_id) return;
+        m[String(r.proposta_id)] = {
+          ini: r.data_exec_inicio || '',
+          ter: r.data_exec_termino || '',
+          ace: r.data_exec_aceite || ''
+        };
+      });
+      window._opExecDatasMap = m;
+      // Atualiza os KPIs comerciais que dependem dessas datas, se disponiveis.
+      if (typeof window.rDash === 'function') { try { window.rDash(); } catch (e) {} }
+      if (typeof window.rCiclos === 'function') { try { window.rCiclos(); } catch (e) {} }
+      return m;
+    } catch (e) {
+      // Silencioso: sem o mapa, os KPIs caem para vazio ("—"), sem quebrar.
+      return null;
+    }
+  }
+
   async function carregarObras() {
     // Captura empresa e token ANTES do await para detectar trocas durante a consulta
     var empresaId = getEmpresaId();
@@ -2615,6 +2648,8 @@
     aplicarDocumentoGestao(res.data || Object.assign({}, atual, row));
     state.gestaoDocumentoLoaded = true;
     renderDetalhe();
+    // Refresca as datas oficiais de execucao para os KPIs comerciais.
+    carregarDatasExecucao();
     return state.gestaoDocumento;
   }
 
@@ -3712,6 +3747,8 @@
   window.rOperacional = rOperacional;
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
+  window._opExecDatasMap = window._opExecDatasMap || {};
+  window.opCarregarDatasExecucao = carregarDatasExecucao;
   window.opMudarStatusNegocio = mudarStatusNegocio;
   window.opDesfazerObra = abrirDesfazerObra;
   window.opConfirmarDesfazerObra = confirmarDesfazerObra;
@@ -3845,10 +3882,17 @@
     state.mobilizacaoExcluir = null;
     state.accordionOpen = {};
 
+    // Atualiza as datas oficiais de execucao (KPIs comerciais) ao trocar de empresa.
+    window._opExecDatasMap = {};
+    carregarDatasExecucao();
+
     // Se o módulo Operacional está ativo, re-renderizar imediatamente
     if (window.Router && window.Router.getAtivo() === 'operacional') {
       rOperacional();
     }
   });
+
+  // Carga inicial das datas de execucao (apos sbClient/empresa estarem prontos).
+  setTimeout(function () { try { carregarDatasExecucao(); } catch (e) {} }, 1500);
 
 })(window, document);

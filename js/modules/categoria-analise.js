@@ -1171,9 +1171,11 @@ function rCiclos(){
   var dtVisita    = (Q('tlDtVisita')&&Q('tlDtVisita').value)||'';
   var dtEnvio     = (Q('tlDtEnvio')&&Q('tlDtEnvio').value)||'';
   var dtFech      = (Q('pDatFech')&&Q('pDatFech').value)||'';
-  var dtInicioExec= (Q('tlDtInicioExec')&&Q('tlDtInicioExec').value)||'';
-  var dtTermino   = (Q('tlDtTermino')&&Q('tlDtTermino').value)||'';
-  var dtAceite    = (Q('tlDtAceite')&&Q('tlDtAceite').value)||'';
+  // Datas de execucao: fonte oficial = Operacional (gestao_negocio) da proposta aberta.
+  var _opd = (typeof execDatasOp==='function') ? execDatasOp({ id: (typeof editId!=='undefined'?editId:null) }) : { ini:'', ter:'', ace:'' };
+  var dtInicioExec= _opd.ini;
+  var dtTermino   = _opd.ter;
+  var dtAceite    = _opd.ace;
   var dtRecebFinal= (Q('tlDtRecebFinal')&&Q('tlDtRecebFinal').value)||'';
   var valContrato = n2(Q('vS')&&Q('vS').value) + n2(Q('vM')&&Q('vM').value);
   var adiantPct   = parseFloat(Q('tlAdiantPct')&&Q('tlAdiantPct').value)||0;
@@ -3772,9 +3774,10 @@ function rCiclosDash(){
     var dtV =tl.dtVisita||'';
     var dtE =tl.dtEnvio||'';
     var dtF =p.dtFech||'';
-    var dtI =tl.dtInicioExec||'';
-    var dtT =tl.dtTermino||'';
-    var dtA =tl.dtAceite||'';
+    var _opd=(typeof execDatasOp==='function')?execDatasOp(p):{ini:'',ter:'',ace:''};
+    var dtI =_opd.ini;
+    var dtT =_opd.ter;
+    var dtA =_opd.ace;
     var dtRF=tl.dtRecebFinal||'';
     var nfs =tl.nfs||[];
     var adi =tl.adiantamentos||[];
@@ -3893,8 +3896,9 @@ function rExecTimeline(){
   var itens=[];
   props.forEach(function(p){
     var tl=p.tl||{};
-    var ini=tl.dtInicioExec||'';
-    var fim=tl.dtTermino||tl.dtAceite||'';
+    var _opd=(typeof execDatasOp==='function')?execDatasOp(p):{ini:'',ter:'',ace:''};
+    var ini=_opd.ini;
+    var fim=_opd.ter||_opd.ace||'';
     if(!ini) return;
     var dIni=new Date(ini+'T12:00:00');
     if(isNaN(dIni)) return;
