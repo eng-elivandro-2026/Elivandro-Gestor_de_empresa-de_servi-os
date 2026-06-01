@@ -87,9 +87,9 @@ window._renderSbProps = function() {
     { k: 'em_elaboracao',     n: 'Elaboração' },
     { k: 'enviada',           n: 'Enviada' },
     { k: 'cliente_analisando',n: 'Analisando' },
+    { k: 'ganho',             n: 'Ganho' },
     { k: 'aprovado',          n: 'Aprovado' },
     { k: 'andamento',         n: 'Andamento' },
-    { k: 'faturado',          n: 'Faturado' },
     { k: 'finalizado',        n: 'Finalizado' },
     { k: 'perdido',           n: 'Perdido' },
   ];
@@ -282,6 +282,7 @@ var FASE={
   follow2:{n:'Follow 2',c:'b-neg',i:'🔄'},
   follow3:{n:'Follow 3',c:'b-neg',i:'🔄'},
   follow4:{n:'Follow 4',c:'b-neg',i:'🔄'},
+  ganho:{n:'Ganho',c:'b-fin',i:'🏆'},
   aprovado:{n:'Aprovado',c:'b-apr',i:'✅'},
   andamento:{n:'Em Andamento',c:'b-and',i:'🔧'},
   faturado:{n:'Faturado',c:'b-apr',i:'🧾'},
@@ -305,6 +306,7 @@ var FASE={
 var PHASE_ORDER=[
   'em_elaboracao','enviada','cliente_analisando',
   'follow1','follow2','follow3','follow4',
+  'ganho',
   'aprovado','andamento','faturado','recebido',
   'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro',
   'taf','sat','finalizado','atrasado',
@@ -316,6 +318,10 @@ var PHASE_ORDER=[
 // editaveis SOMENTE no modulo Operacional. NAO devem aparecer como opcao
 // comercial (cards, filtros e campo Fase de Dados/Identificacao).
 var FASES_OPERACIONAIS=['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','taf','sat','finalizado','atrasado'];
+// Fases comerciais DESCONTINUADAS: nao aparecem mais como nova opcao no Comercial,
+// mas permanecem em FASE para exibir/preservar propostas antigas (legado) e para a
+// logica de Financeiro/Relatorios que ainda as referencia.
+var FASES_COMERCIAIS_LEGADO=['faturado','recebido'];
 // Fases consideradas "fechadas" (proposta convertida em negócio)
 // em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
 // atrasado = aprovada mas com atraso na execução → ainda é um fechamento
@@ -8219,9 +8225,10 @@ function phaseKeysOrdered(){
   Object.keys(FASE).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
   return keys;
 }
-// Fases visiveis no COMERCIAL: exclui os status operacionais (que so existem no Operacional).
+// Fases visiveis no COMERCIAL: exclui os status operacionais (so existem no Operacional)
+// e as fases comerciais descontinuadas (faturado/recebido — mantidas apenas como legado).
 function commercialPhaseKeys(){
-  return phaseKeysOrdered().filter(function(k){ return FASES_OPERACIONAIS.indexOf(k)<0; });
+  return phaseKeysOrdered().filter(function(k){ return FASES_OPERACIONAIS.indexOf(k)<0 && FASES_COMERCIAIS_LEGADO.indexOf(k)<0; });
 }
 // Monta as <option> de fase para o Comercial. Se o valor atual for um status
 // operacional/legado, preserva-o (marcado como legado) para NAO alterar o dado salvo.
