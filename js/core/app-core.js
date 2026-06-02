@@ -8175,11 +8175,38 @@ function tplPropAbrir(){
 }
 function tplPropFechar(){ var ov=document.getElementById('tplPropOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
 
+/* Aviso claro quando o usuario tenta adicionar um template sem proposta aberta */
+function tplPropAvisoSemProposta(){
+  tplPropAvisoFechar();
+  var ov=document.createElement('div'); ov.id='tplPropAvisoOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:980;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:1rem');
+  ov.onclick=function(e){ if(e.target===ov) tplPropAvisoFechar(); };
+  ov.innerHTML='<div style="width:min(460px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden">'
+    + '<div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-weight:900;color:var(--text)">📝 Nenhuma proposta aberta</span>'
+    + '<button class="btn bg bxs" onclick="tplPropAvisoFechar()">✕</button></div>'
+    + '<div style="padding:1rem;display:flex;flex-direction:column;gap:1rem">'
+    + '<div style="font-size:.86rem;color:var(--text);line-height:1.5">Para adicionar um template, é necessário <b>abrir ou criar uma proposta</b> primeiro.<br><br>Crie ou abra uma proposta e depois volte ao Banco de Escopos para adicionar o template normalmente.</div>'
+    + '<div style="display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap">'
+    + '<button class="btn bg" onclick="tplPropAvisoFechar()">Cancelar</button>'
+    + '<button class="btn bs" onclick="tplPropAvisoIrNovaProposta()">➕ Ir para Nova Proposta</button>'
+    + '</div></div></div>';
+  document.body.appendChild(ov);
+}
+function tplPropAvisoFechar(){ var ov=document.getElementById('tplPropAvisoOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+function tplPropAvisoIrNovaProposta(){
+  tplPropAvisoFechar();
+  tplPropFechar();
+  if(typeof newProposal==='function') newProposal();
+  else go('nova', null);
+}
+
 /* Adiciona os blocos ativos de um template na proposta atual (copias locais) */
 function tplPropAdicionar(tplCodigo){
   var t=tplPropPorCodigo(tplCodigo); if(!t) return;
   if(typeof editId==='undefined' || !editId){
-    if(confirm('Nenhuma proposta está aberta para edição.\n\nDeseja abrir a seção de Nova Proposta?')) go('nova', null);
+    // Sem proposta aberta: mensagem clara, sem aplicar o template automaticamente.
+    tplPropAvisoSemProposta();
     return;
   }
   var jaNaProposta={};
