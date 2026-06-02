@@ -5084,237 +5084,161 @@ function _populateMetaLLCat(){
   if(cur) sel.value=cur;
 }
 
-function simMetaLL(){
-  var llPctAlvo = n2(Q('metaLLPct').value) / 100;
-  var res = Q('metaLLResultado');
-  Q('metaLLAplicarBtn').style.display = 'none';
-  _metaLLResultado = null;
-
-  if(llPctAlvo <= 0 || llPctAlvo >= 1){
-    res.innerHTML = '<span style="color:#f85149">⚠ Informe um LL% entre 1 e 99.</span>'; return;
-  }
-
-  // Ler alíquotas da proposta atual
-  var cfg = getPrcAtual();
-  var nfS  = n2(Q('aNFS')&&Q('aNFS').value!==''?Q('aNFS').value:cfg.aliq.nfS*100)/100;
-  var nfM  = n2(Q('aNFM')&&Q('aNFM').value!==''?Q('aNFM').value:cfg.aliq.nfM*100)/100;
-  var rS   = n2(Q('aRS') &&Q('aRS').value!=='' ?Q('aRS').value :cfg.aliq.rS *100)/100;
-  var comS = n2(Q('aComS')&&Q('aComS').value!==''?Q('aComS').value:cfg.aliq.comS*100)/100;
-  var comM = n2(Q('aComM')&&Q('aComM').value!==''?Q('aComM').value:cfg.aliq.comM*100)/100;
-  var neg  = n2(cfg.aliq.neg); // reserva de negociação (embutida no FMF)
-
-  // Custos por tipo (apenas itens incluídos e não-terc ou terc que abate)
-  var custoS=0, custoM=0, custoTerc=0;
-  var pvSAtual=0, pvMAtual=0;
-  budg.forEach(function(it){
+// ── F: Meta de Lucro Após Reserva (LAR) — solver numérico consistente com updKpi ──
+// Lê as aliquotas efetivas da proposta (campos do form ou cfg) — mesma fonte do updKpi.
+function _metaLL_aliq(){
+  var cfg=getPrcAtual();
+  function g(id,fb){ var el=Q(id); return (el&&el.value!=='')?n2(el.value)/100:fb; }
+  return {
+    nfS:  g('aNFS', cfg.aliq.nfS),
+    nfM:  g('aNFM', cfg.aliq.nfM),
+    rs:   g('aRS',  cfg.aliq.rS),
+    comS: g('aComS',(cfg.aliq.comS!=null?cfg.aliq.comS:0.05)),
+    comM: g('aComM',(cfg.aliq.comM!=null?cfg.aliq.comM:0.03)),
+    neg:  g('aNeg', (cfg.aliq.neg!=null?cfg.aliq.neg:0.05))
+  };
+}
+// Calcula o Lucro Após Reserva (LAR) EXATAMENTE como o KPI (updKpi).
+// pvtFn(it) devolve o PV a usar para cada item (permite simular um ajuste de FMF).
+function _metaLL_larInfo(budgArr, al, desc, pvtFn){
+  var pvS=0, pvM=0, custoTerc=0;
+  (budgArr||[]).forEach(function(it){
     if(it.inc===false) return;
-    var c = n2(it.cu)*n2(it.mult);
-    if(it.t==='material'){ pvMAtual+=n2(it.pvt); if(it.terc) custoTerc+=c; else custoM+=c; }
-    else                 { pvSAtual+=n2(it.pvt); if(it.terc) custoTerc+=c; else custoS+=c; }
+    var pvt = pvtFn ? pvtFn(it) : n2(it.pvt);
+    if(it.t==='material') pvM+=pvt; else pvS+=pvt;
+    if(it.terc===true) custoTerc += n2(it.cu)*n2(it.mult);
   });
-  // custoTotal = apenas terceirizados (consistente com updKpi)
-  var custoTotal = custoTerc;
-  var pvAtual = pvSAtual + pvMAtual;
+  desc = n2(desc)||0;
+  var pvTot=(pvS+pvM)-desc;
+  if(pvTot<=0) return {pvTot:pvTot, pvS:pvS, pvM:pvM, custoTerc:custoTerc, ll:0, lar:0, larPct:-Infinity};
+  var totalDeduc = pvS*al.nfS + pvM*al.nfM + pvS*al.rs + pvS*al.comS + pvM*al.comM + desc;
+  var ll  = pvTot - custoTerc - totalDeduc;            // Lucro Líquido Total (sem reserva)
+  var lar = ll - pvTot*al.neg;                          // Lucro Após Reserva
+  return {pvTot:pvTot, pvS:pvS, pvM:pvM, custoTerc:custoTerc, totalDeduc:totalDeduc, ll:ll, lar:lar, larPct:(lar/pvTot)};
+}
+function _metaLL_isAdjGeral(it){ return !!it && it.terc!==true; } // itens próprios (não terceiros)
+function _metaLL_isAdjCat(catCod, catIsMat){
+  return function(it){ return !!it && it.cat===catCod && (catIsMat?(it.t==='material'):(it.t!=='material')); };
+}
+// LAR% atual do orçamento (sem simular nada) — idêntico ao número do KPI.
+function _metaLL_larAtualPct(){
+  return _metaLL_larInfo(budg, _metaLL_aliq(), (Q('vD')?n2(Q('vD').value):0), null).larPct*100;
+}
+// Bisseção em x>0 (LAR% cresce monotonicamente com x). larFn(x) -> LAR% (fração).
+function _metaLL_bisect(larFn, alvo){
+  var lo=1e-4, hi=1, flo=larFn(lo), fhi=larFn(hi), g=0;
+  while(fhi<alvo && hi<1e7 && g<400){ hi*=2; fhi=larFn(hi); g++; }
+  while(flo>alvo && lo>1e-9 && g<800){ lo/=2; flo=larFn(lo); g++; }
+  if(!isFinite(fhi)) return {ok:false, motivo:'calc'};
+  if(alvo>fhi) return {ok:false, motivo:'max', maxPct:fhi*100};
+  if(alvo<flo) return {ok:false, motivo:'min', minPct:flo*100};
+  for(var i=0;i<200;i++){ var mid=(lo+hi)/2, fm=larFn(mid); if(fm<alvo) lo=mid; else hi=mid; if(hi-lo<1e-10) break; }
+  var x=(lo+hi)/2;
+  return {ok:true, x:x, larPct:larFn(x)*100};
+}
 
+function simMetaLL(){
+  var alvoPct = n2(Q('metaLLPct').value)/100;
+  var res = Q('metaLLResultado');
+  Q('metaLLAplicarBtn').style.display='none';
+  _metaLLResultado=null;
+  if(alvoPct<=0 || alvoPct>=1){ res.innerHTML='<span style="color:#f85149">⚠ Informe um LAR% entre 1 e 99.</span>'; return; }
+  if(!budg || !budg.some(function(it){return it.inc!==false;})){ res.innerHTML='<span style="color:#f85149">⚠ Nenhum item no orçamento.</span>'; return; }
+
+  var al = _metaLL_aliq();
+  var desc = Q('vD')?n2(Q('vD').value):0;
+  var pvAtual = _metaLL_larInfo(budg, al, desc, null).pvTot;
   if(pvAtual<=0){ res.innerHTML='<span style="color:#f85149">⚠ Nenhum item no orçamento.</span>'; return; }
 
-  // Proporção S/M no PV atual
-  var fracS = pvAtual>0 ? pvSAtual/pvAtual : 0.5;
-  var fracM = 1 - fracS;
-
-  // Deduções como % do PV: depende de como pvS e pvM se dividem
-  // Para um PV novo = pvNovo, pvS_novo = pvNovo*fracS, pvM_novo = pvNovo*fracM
-  // totalDeduc = pvS_novo*nfS + pvM_novo*nfM + pvNovo*rS + pvS_novo*comS + pvM_novo*comM
-  // = pvNovo * (fracS*nfS + fracM*nfM + rS + fracS*comS + fracM*comM)
-  var taxaDeduc = fracS*nfS + fracM*nfM + rS + fracS*comS + fracM*comM;
-
-  // Lucro Após Reserva (LAR) = pvNovo - custoTotal - pvNovo*taxaDeduc - pvNovo*neg
-  // LAR = pvNovo*(1 - taxaDeduc - neg) - custoTotal
-  // LAR% = LAR / pvNovo = (1 - taxaDeduc - neg) - custoTotal/pvNovo
-  // → pvNovo = custoTotal / (1 - taxaDeduc - neg - llPctAlvo)
-  var denominador = 1 - taxaDeduc - neg - llPctAlvo;
-  if(denominador <= 0){
-    res.innerHTML='<span style="color:#f85149">⚠ LAR% impossível com as alíquotas atuais. Máximo teórico: '+(((1-taxaDeduc-neg)*100).toFixed(1))+'%.</span>'; return;
-  }
-
-  var pvNovo = custoTotal / denominador;
-  var pvNovoS = pvNovo * fracS;
-  var pvNovoM = pvNovo * fracM;
-
-  // FMFs novos (proporcional ao custo de cada grupo)
-  var fmfAtualS = pvSAtual>0&&custoS>0 ? pvSAtual/custoS : null;
-  var fmfAtualM = pvMAtual>0&&custoM>0 ? pvMAtual/custoM : null;
-  // custoTerc não tem FMF — o custo já está fixo
-  // Para o novo PV, ajustamos só os itens não-terc
-  var pvNaoTercS = pvSAtual - budg.filter(function(it){return it.inc!==false&&it.t!=='material'&&it.terc;}).reduce(function(s,it){return s+n2(it.pvt);},0);
-  var pvNaoTercM = pvMAtual - budg.filter(function(it){return it.inc!==false&&it.t==='material'&&it.terc;}).reduce(function(s,it){return s+n2(it.pvt);},0);
-  var custoTercS = budg.filter(function(it){return it.inc!==false&&it.t!=='material'&&it.terc;}).reduce(function(s,it){return s+n2(it.cu)*n2(it.mult);},0);
-  var custoTercM = budg.filter(function(it){return it.inc!==false&&it.t==='material'&&it.terc;}).reduce(function(s,it){return s+n2(it.cu)*n2(it.mult);},0);
-
-  var novoFmfS = custoS>0 ? (pvNovoS - pvNaoTercS + pvSAtual - pvNaoTercS === 0 ? (pvNovoS/custoS) : ((pvNovoS - custoTercS) / custoS)) : null;
-  var novoFmfM = custoM>0 ? ((pvNovoM - custoTercM) / custoM) : null;
-
-  // Simplificado: proporcional pelo fator de escala de cada grupo
-  var escalaS = pvSAtual>0 ? pvNovoS/pvSAtual : 1;
-  var escalaM = pvMAtual>0 ? pvNovoM/pvMAtual : 1;
-  novoFmfS = fmfAtualS !== null ? fmfAtualS * escalaS : null;
-  novoFmfM = fmfAtualM !== null ? fmfAtualM * escalaM : null;
-
-  // LAR real com pvNovo (Lucro Após Reserva)
-  var llReal = pvNovo - custoTotal - pvNovo*taxaDeduc;
-  var larReal = llReal - pvNovo*neg;
-  var llPctReal = pvNovo>0 ? (larReal/pvNovo*100) : 0; // llPctReal agora é LAR%
-
-  // ── MODO CATEGORIA ESPECÍFICA ────────────────────────────────────────
   var catSel = Q('metaLLCat') ? (Q('metaLLCat').value||'') : '';
+  var modo, catCod='', catIsMat=false, isAdj, larFn;
   if(catSel){
-    var _cp=catSel.split(':'), _catCod=_cp[0], _catTipo=_cp[1], _catIsMat=(_catTipo==='m');
-    var pvCatNT=0, custoCatNT=0, fmfCatAtual=null;
-    budg.forEach(function(it){
-      if(it.inc===false||!it.cat) return;
-      var inCat=it.cat===_catCod&&(_catIsMat?(it.t==='material'):(it.t!=='material'));
-      if(!inCat) return;
-      pvCatNT+=n2(it.pvt); custoCatNT+=n2(it.cu)*n2(it.mult);
-    });
-    if(custoCatNT<=0){
-      res.innerHTML='<span style="color:#f85149">⚠ '+_catCod+': nenhum item incluído encontrado nesta proposta.</span>'; return;
+    var cp=catSel.split(':'); catCod=cp[0]; catIsMat=(cp[1]==='m'); modo='cat';
+    isAdj=_metaLL_isAdjCat(catCod,catIsMat);
+    if(!budg.some(function(it){return it.inc!==false && isAdj(it);})){
+      res.innerHTML='<span style="color:#f85149">⚠ '+catCod+': nenhum item incluído encontrado nesta proposta.</span>'; return;
     }
-    fmfCatAtual = pvCatNT>0 ? pvCatNT/custoCatNT : null;
-    var pvOther = pvAtual - pvCatNT;
-    var pvCatNT_novo = pvNovo - pvOther;
-    if(pvCatNT_novo <= 0){
-      var larAtual = pvAtual>0 ? ((pvAtual*(1-taxaDeduc-neg)-custoTotal)/pvAtual*100) : 0;
-      res.innerHTML='<span style="color:#f85149">⚠ A LAR atual desta proposta já é <strong>'+larAtual.toFixed(1)+'%</strong>. Para aumentar a LAR ajustando só '+_catCod+', informe uma meta <strong>acima de '+larAtual.toFixed(1)+'%</strong>.</span>'; return;
-    }
-    var novoFmfCat = pvCatNT_novo / custoCatNT;
-    var escalaCat = fmfCatAtual ? novoFmfCat/fmfCatAtual : null;
-    // Converter FMF → margem % da categoria
-    var _aliq2=cfg.aliq;
-    var _aCat=_catIsMat
-      ? 1-(n2(_aliq2.nfM)+n2(_aliq2.rS)+n2(_aliq2.comM)+n2(_aliq2.neg))
-      : 1-(n2(_aliq2.nfS)+n2(_aliq2.rS)+n2(_aliq2.comS)+n2(_aliq2.neg));
-    var novaMargemCat=_catIsMat ? (novoFmfCat*_aCat-1) : (1-1/(novoFmfCat*_aCat));
-    var margemAtualCat=fmfCatAtual!==null?(_catIsMat?(fmfCatAtual*_aCat-1):(1-1/(fmfCatAtual*_aCat))):null;
-    _metaLLResultado={ catCod:_catCod, catTipo:_catTipo, catIsMat:_catIsMat,
-      novoFmfCat:novoFmfCat, fmfCatAtual:fmfCatAtual, escalaCat:escalaCat,
-      novaMargemCat:novaMargemCat, pvNovo:pvNovo, llPct:llPctReal };
-    var diff2=pvNovo-pvAtual, s2=diff2>0?'+':'', cor2=diff2>0?'#3fb950':'#f97316';
-    var corE=escalaCat>=1?'#3fb950':'#f97316';
-    var tipoLabel=_catIsMat?'Material':'Serviço';
-    function _card(label,val,cor){ return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px"><div style="font-size:.68rem;color:var(--text3)">'+label+'</div><div style="font-weight:700;color:'+(cor||'var(--text)')+'">'+val+'</div></div>'; }
-    var h='<div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;">';
-    h+=_card('PV atual',money(pvAtual));
-    h+=_card('PV necessário (total)',money(pvNovo),'#58a6ff');
-    h+=_card('Diferença',s2+money(Math.abs(diff2)),cor2);
-    h+=_card('LAR resultante',llPctReal.toFixed(1)+'%<br><span style="font-size:.66rem;color:var(--text3)">'+money(larReal)+'</span>','var(--green)');
-    h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:150px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">FMF '+_catCod+' ('+tipoLabel+')</div>'
-      +'<div style="font-weight:700;color:'+corE+'">'+novoFmfCat.toFixed(4)
-      +(fmfCatAtual!==null?' <span style="font-size:.67rem;color:var(--text3)">(era '+fmfCatAtual.toFixed(4)+')</span>':'')+'</div>'
-      +(escalaCat!==null?'<div style="font-size:.68rem;color:'+corE+'">'+(escalaCat>=1?'+':'')+((escalaCat-1)*100).toFixed(1)+'% escala</div>':'')
-      +'</div>';
-    var marNova=(novaMargemCat*100).toFixed(1);
-    var marAtual=margemAtualCat!==null?((margemAtualCat*100).toFixed(1)):'?';
-    var rotulo=_catIsMat?'Markup s/ custo':'Margem s/ PV';
-    h+='<div style="background:var(--bg);border:2px solid '+corE+';border-radius:6px;padding:.5rem .75rem;min-width:150px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">'+rotulo+' necessária — '+_catCod+'</div>'
-      +'<div style="font-weight:700;font-size:1.05rem;color:'+corE+'">'+marNova+'%</div>'
-      +'<div style="font-size:.66rem;color:var(--text3)">era '+marAtual+'%</div></div>';
-    h+='</div>';
-    res.innerHTML=h;
-    Q('metaLLAplicarBtn').style.display='inline-flex';
-    return;
+    // Modo categoria: FMF uniforme F nos itens da categoria (preserva persistência de margem)
+    larFn=function(F){ return _metaLL_larInfo(budg, al, desc, function(it){ return isAdj(it)? n2(it.cu)*F*n2(it.mult) : n2(it.pvt); }).larPct; };
+  } else {
+    modo='geral'; isAdj=_metaLL_isAdjGeral;
+    // Fallback: se não houver itens próprios (todos terceirizados), ajusta todos os itens incluídos
+    if(!budg.some(function(it){return it.inc!==false && isAdj(it);})){ isAdj=function(it){ return !!it && it.inc!==false; }; modo='geral-todos'; }
+    // Modo geral: multiplica os FMFs dos itens ajustáveis por um fator k (preserva diferenças entre itens)
+    larFn=function(k){ return _metaLL_larInfo(budg, al, desc, function(it){ return isAdj(it)? n2(it.cu)*(n2(it.fmf)*k)*n2(it.mult) : n2(it.pvt); }).larPct; };
   }
-  // ── FIM MODO CATEGORIA ───────────────────────────────────────────────
 
-  _metaLLResultado = { pvNovo:pvNovo, fmfS:novoFmfS, fmfM:novoFmfM, escalaS:escalaS, escalaM:escalaM, llPct:llPctReal };
-
-  var diff = pvNovo - pvAtual;
-  var sinal = diff>0?'+':'';
-  var corDiff = diff>0?'#3fb950':'#f97316';
-
-  var html='<div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;">';
-  html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">PV atual</div>'
-      +'<div style="font-weight:700;color:var(--text)">'+money(pvAtual)+'</div></div>';
-  html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">PV necessário</div>'
-      +'<div style="font-weight:700;color:#58a6ff">'+money(pvNovo)+'</div></div>';
-  html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">Diferença</div>'
-      +'<div style="font-weight:700;color:'+corDiff+'">'+sinal+money(Math.abs(diff))+'</div></div>';
-  html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px">'
-      +'<div style="font-size:.68rem;color:var(--text3)">LAR resultante</div>'
-      +'<div style="font-weight:700;color:var(--green)">'+llPctReal.toFixed(1)+'%</div>'
-      +'<div style="font-size:.66rem;color:var(--text3)">'+money(larReal)+'</div></div>';
-  if(novoFmfS!==null&&fmfAtualS!==null){
-    var varS=((escalaS-1)*100).toFixed(1);
-    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px">'
-        +'<div style="font-size:.68rem;color:var(--text3)">FMF Serviço/MO</div>'
-        +'<div style="font-weight:700;color:'+(escalaS>=1?'#3fb950':'#f97316')+'">'+novoFmfS.toFixed(4)
-        +' <span style="font-size:.67rem;color:var(--text3)">(era '+fmfAtualS.toFixed(4)+')</span></div>'
-        +'<div style="font-size:.68rem;color:'+(escalaS>=1?'#3fb950':'#f97316')+'">'+(varS>0?'+':'')+varS+'%</div></div>';
+  var sol=_metaLL_bisect(larFn, alvoPct);
+  if(!sol.ok){
+    var ondeTxt = catSel ? ('a categoria '+catCod) : 'os itens';
+    if(sol.motivo==='max'){ res.innerHTML='<span style="color:#f85149">⚠ Meta acima do máximo possível ajustando '+ondeTxt+'. LAR máx ≈ <strong>'+sol.maxPct.toFixed(1)+'%</strong>.</span>'; return; }
+    if(sol.motivo==='min'){ res.innerHTML='<span style="color:#f85149">⚠ Meta abaixo do mínimo possível ajustando '+ondeTxt+'. LAR mín ≈ <strong>'+sol.minPct.toFixed(1)+'%</strong>.</span>'; return; }
+    res.innerHTML='<span style="color:#f85149">⚠ Não foi possível calcular a meta com os dados atuais.</span>'; return;
   }
-  if(novoFmfM!==null&&fmfAtualM!==null){
-    var varM=((escalaM-1)*100).toFixed(1);
-    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:130px">'
-        +'<div style="font-size:.68rem;color:var(--text3)">FMF Material</div>'
-        +'<div style="font-weight:700;color:'+(escalaM>=1?'#3fb950':'#f97316')+'">'+novoFmfM.toFixed(4)
-        +' <span style="font-size:.67rem;color:var(--text3)">(era '+fmfAtualM.toFixed(4)+')</span></div>'
-        +'<div style="font-size:.68rem;color:'+(escalaM>=1?'#3fb950':'#f97316')+'">'+(varM>0?'+':'')+varM+'%</div></div>';
+
+  // Resultado real (k=1 -> aplica x na simulação) — mesmo número que aparecerá no KPI
+  var info, novaMargemCat=null;
+  if(modo==='cat'){
+    info=_metaLL_larInfo(budg, al, desc, function(it){ return isAdj(it)? n2(it.cu)*sol.x*n2(it.mult) : n2(it.pvt); });
+    var aCat = catIsMat ? 1-(al.nfM+al.rs+al.comM+al.neg) : 1-(al.nfS+al.rs+al.comS+al.neg);
+    novaMargemCat = catIsMat ? (sol.x*aCat-1) : (1-1/(sol.x*aCat));
+  } else {
+    info=_metaLL_larInfo(budg, al, desc, function(it){ return isAdj(it)? n2(it.cu)*(n2(it.fmf)*sol.x)*n2(it.mult) : n2(it.pvt); });
   }
-  html+='</div>';
-  res.innerHTML=html;
+  var pvNovo=info.pvTot, larPctReal=info.larPct*100, larValReal=info.lar;
+  _metaLLResultado={ modo:modo, x:sol.x, catCod:catCod, catIsMat:catIsMat, novaMargemCat:novaMargemCat,
+    pvNovo:pvNovo, larPct:larPctReal, larVal:larValReal };
+
+  var diff=pvNovo-pvAtual, sinal=diff>0?'+':'', corDiff=diff>0?'#3fb950':'#f97316';
+  function _card(label,val,cor,sub){ return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;min-width:120px"><div style="font-size:.68rem;color:var(--text3)">'+label+'</div><div style="font-weight:700;color:'+(cor||'var(--text)')+'">'+val+'</div>'+(sub?'<div style="font-size:.66rem;color:var(--text3)">'+sub+'</div>':'')+'</div>'; }
+  var h='<div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;">';
+  h+=_card('PV atual',money(pvAtual));
+  h+=_card('PV necessário',money(pvNovo),'#58a6ff',sinal+money(Math.abs(diff)));
+  h+=_card('Lucro Após Reserva ('+(al.neg*100).toFixed(0)+'%)', larPctReal.toFixed(1)+'%','var(--green)',money(larValReal));
+  if(modo==='cat'){
+    var corE=sol.x>=1?'#3fb950':'#f97316';
+    h+=_card('FMF '+catCod+' ('+(catIsMat?'Material':'Serviço')+')', sol.x.toFixed(4), corE, (catIsMat?'Markup s/ custo':'Margem s/ PV')+': '+(novaMargemCat*100).toFixed(1)+'%');
+  } else {
+    var escalaPct=(sol.x-1)*100, corE2=sol.x>=1?'#3fb950':'#f97316';
+    h+=_card('Ajuste nos FMFs',(escalaPct>=0?'+':'')+escalaPct.toFixed(1)+'%',corE2,(modo==='geral-todos'?'Todos os itens':'Itens próprios'));
+  }
+  h+='</div>';
+  h+='<div style="font-size:.7rem;color:var(--text3);margin-top:.4rem">A meta mira o <strong>Lucro Após Reserva</strong> (já descontada a reserva de '+(al.neg*100).toFixed(0)+'%). Clique em <strong>Aplicar FMFs</strong> para confirmar.</div>';
+  res.innerHTML=h;
   Q('metaLLAplicarBtn').style.display='inline-flex';
 }
 
 function aplicarMetaLL(){
   if(!_metaLLResultado){ alert('Rode o cálculo primeiro.'); return; }
+  var r=_metaLLResultado;
   _metaLLSnapshot = budg.map(function(it){return JSON.parse(JSON.stringify(it));});
-  var r = _metaLLResultado;
-  function _apItem(it){ it.fmf=r.novoFmfCat; it.pvu=n2(it.cu)*it.fmf; it.pvt=it.pvu*n2(it.mult); }
-  if(r.catCod){
-    // Modo categoria: mesma lógica de aplicarMargNaProposta (persiste em p.bi + savePrcAtual)
-    budg.forEach(function(it){
-      if(it.inc===false) return;
-      var inCat=it.cat===r.catCod&&(r.catIsMat?(it.t==='material'):(it.t!=='material'));
-      if(inCat) _apItem(it);
-    });
-    if(editId){
-      var _p=props.find(function(x){return x.id===editId;});
-      if(_p&&_p.bi){
-        _p.bi.forEach(function(it){
-          if(it.inc===false) return;
-          var inCat=it.cat===r.catCod&&(r.catIsMat?(it.t==='material'):(it.t!=='material'));
-          if(inCat) _apItem(it);
-        });
-      }
+  var isAdj;
+  if(r.modo==='cat') isAdj=_metaLL_isAdjCat(r.catCod, r.catIsMat);
+  else if(r.modo==='geral-todos') isAdj=function(it){ return !!it && it.inc!==false; };
+  else isAdj=_metaLL_isAdjGeral;
+  function _ap(it){
+    if(r.modo==='cat') it.fmf=r.x;            // FMF uniforme na categoria
+    else it.fmf=n2(it.fmf)*r.x;               // escala dos FMFs (não mexe em custos)
+    it.pvu=n2(it.cu)*n2(it.fmf); it.pvt=it.pvu*n2(it.mult);
+  }
+  budg.forEach(function(it){ if(it.inc===false) return; if(isAdj(it)) _ap(it); });
+  // Persistência no p.bi (e margem por categoria no cfg, mantendo o comportamento anterior)
+  if(editId){
+    var _p=props.find(function(x){return x.id===editId;});
+    if(_p&&_p.bi){ _p.bi.forEach(function(it){ if(it.inc===false) return; if(isAdj(it)) _ap(it); }); }
+    if(r.modo==='cat'){
       try{
         var _cfg=JSON.parse(JSON.stringify(getPrcAtual()));
-        if(r.catIsMat){
-          if(!_cfg.m)_cfg.m={}; if(!_cfg.m[r.catCod])_cfg.m[r.catCod]={n:r.catCod,mk:0,rMin:0,rMax:0};
-          _cfg.m[r.catCod].mk=r.novaMargemCat;
-        } else {
-          if(!_cfg.s)_cfg.s={}; if(!_cfg.s[r.catCod])_cfg.s[r.catCod]={n:r.catCod,m:0,rMin:0,rMax:0};
-          _cfg.s[r.catCod].m=r.novaMargemCat;
-        }
+        if(r.catIsMat){ if(!_cfg.m)_cfg.m={}; if(!_cfg.m[r.catCod])_cfg.m[r.catCod]={n:r.catCod,mk:0,rMin:0,rMax:0}; _cfg.m[r.catCod].mk=r.novaMargemCat; }
+        else { if(!_cfg.s)_cfg.s={}; if(!_cfg.s[r.catCod])_cfg.s[r.catCod]={n:r.catCod,m:0,rMin:0,rMax:0}; _cfg.s[r.catCod].m=r.novaMargemCat; }
         savePrcAtual(_cfg);
       }catch(e){ console.error('aplicarMetaLL savePrc err:',e); }
     }
-    Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ Margem '+(r.novaMargemCat*100).toFixed(1)+'% aplicada em '+r.catCod+'! LAR resultante: '+r.llPct.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
-  } else {
-    // Modo "proposta inteira": comportamento original (apenas budg)
-    budg.forEach(function(it){
-      if(it.inc===false) return;
-      if(it.t==='material' && r.fmfM!==null && !it.terc){
-        it.fmf=r.fmfM; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
-      } else if(it.t!=='material' && r.fmfS!==null && !it.terc){
-        it.fmf=r.fmfS; it.pvu=it.cu*it.fmf; it.pvt=it.pvu*n2(it.mult);
-      }
-    });
-    Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ FMFs aplicados! LAR resultante: '+r.llPct.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
   }
-  updBT(); rBudg(); cTot(); updKpi(); rMargens();
+  updBT(); rBudg(); cTot(); updKpi(); if(typeof rMargens==='function') rMargens();
+  // Mostra o LAR REAL recalculado do orçamento (idêntico ao KPI) — nunca um número inventado
+  var larFinal=_metaLL_larAtualPct();
+  Q('metaLLResultado').innerHTML='<span style="color:#3fb950">✔ FMFs aplicados! Lucro Após Reserva agora: '+larFinal.toFixed(1)+'%. Use ↩ Desfazer para voltar.</span>';
   _metaLLResultado=null;
   Q('metaLLAplicarBtn').style.display='none';
   Q('metaLLDesfazerBtn').style.display='inline-flex';
