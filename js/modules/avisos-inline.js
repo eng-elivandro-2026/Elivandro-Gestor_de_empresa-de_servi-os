@@ -11,6 +11,23 @@
   var PRIORIDADES = { normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
   var STATUSES = { aberto: 'Aberto', em_andamento: 'Em andamento', resolvido: 'Resolvido', arquivado: 'Arquivado' };
 
+  // Topicos prontos para inserir na descricao (botao "Inserir topico").
+  var TOPICOS_AVISO = [
+    'Proposta rapida pendente',
+    'Servico ja executado',
+    'Aguardando retorno do cliente',
+    'Comprar material',
+    'Verificar em campo',
+    'Faturamento pendente',
+    'Prioridade operacional',
+    'Alinhar com cliente',
+    'Aguardando definicao',
+    'Resolver com urgencia',
+    'Cliente solicitou retorno',
+    'Enviar proposta',
+    'Regularizar servico executado'
+  ];
+
   var state = {
     avisos: [],
     usuarios: [],
@@ -304,7 +321,18 @@
       + '<div style="flex:0 0 auto;padding:.65rem .9rem;border-bottom:1px solid var(--border);font-weight:900;color:var(--text)">' + (ehNovo ? '📌 Novo Aviso' : '✏️ Editar Aviso') + '</div>'
       + '<div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:.8rem .9rem;display:grid;gap:.55rem">'
       + campo('Assunto *', '<input id="avfAssunto" value="' + esc(f.assunto || '') + '" style="' + inp + '">')
-      + campo('Descricao', '<textarea id="avfDescricao" rows="2" style="' + inp + ';resize:vertical;min-height:48px">' + esc(f.descricao || '') + '</textarea>')
+      + ('<div style="display:flex;flex-direction:column;gap:.25rem">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">'
+          + '<span style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase">Descricao</span>'
+          + '<div style="position:relative">'
+          + '<button type="button" onclick="avToggleTopicos(event)" style="padding:.25rem .55rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">📌 Inserir topico</button>'
+          + '<div id="avTopicosMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:5;width:240px;max-height:230px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.45);padding:.25rem">'
+          + TOPICOS_AVISO.map(function (t, i) {
+              return '<div onclick="avInserirTopico(' + i + ')" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'transparent\'" style="padding:.4rem .5rem;border-radius:5px;cursor:pointer;font-size:.82rem;color:var(--text)">' + esc(t) + '</div>';
+            }).join('')
+          + '</div></div></div>'
+          + '<textarea id="avfDescricao" rows="6" style="' + inp + ';resize:vertical;min-height:150px">' + esc(f.descricao || '') + '</textarea>'
+          + '</div>')
       + '<div style="' + g2 + '">'
       + campo('Responsavel', '<select id="avfResp" style="' + inp + '">' + respOpts + '</select>')
       + campo('Prioridade', '<select id="avfPrio" style="' + inp + '">' + selObj(PRIORIDADES, f.prioridade || 'normal') + '</select>')
@@ -360,6 +388,36 @@
     render();
   }
   function fecharModal() { state.form = null; render(); }
+
+  function toggleTopicos(ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    var menu = document.getElementById('avTopicosMenu');
+    if (!menu) return;
+    var abrir = menu.style.display === 'none' || !menu.style.display;
+    menu.style.display = abrir ? 'block' : 'none';
+    if (abrir) {
+      // fecha ao clicar fora (uma vez)
+      setTimeout(function () {
+        document.addEventListener('click', function fechar(e) {
+          if (!menu.contains(e.target)) { menu.style.display = 'none'; document.removeEventListener('click', fechar, true); }
+        }, true);
+      }, 0);
+    }
+  }
+
+  // Insere o topico escolhido como item de lista na descricao, sem apagar o texto existente.
+  function inserirTopico(i) {
+    var ta = document.getElementById('avfDescricao');
+    if (!ta) return;
+    var t = TOPICOS_AVISO[i];
+    if (t == null) return;
+    var atual = ta.value || '';
+    var linha = '• ' + t; // "• topico"
+    ta.value = atual.replace(/\s+$/, '') === '' ? linha : (atual.replace(/\s+$/, '') + '\n' + linha);
+    ta.focus();
+    var menu = document.getElementById('avTopicosMenu');
+    if (menu) menu.style.display = 'none';
+  }
 
   function lerForm() {
     function v(id) { var el = document.getElementById(id); return el ? el.value : ''; }
@@ -445,6 +503,8 @@
   window.avNovo = novo;
   window.avEditar = editar;
   window.avFecharModal = fecharModal;
+  window.avToggleTopicos = toggleTopicos;
+  window.avInserirTopico = inserirTopico;
   window.avSalvar = salvar;
   window.avStatus = mudarStatus;
   window.avResolver = resolver;
