@@ -2062,10 +2062,33 @@ function _propAlerts(p){
 
   return tags?'<div style="margin-top:.38rem;display:flex;flex-wrap:wrap">'+tags+'</div>':'';
 }
+// F9 — normalizacao da busca de propostas (sem acento, minusculas, espacos colapsados)
+function _propBuscaNorm(s){
+  // reaproveita normTxt (NFD + remove acentos + minusculas + trim) e colapsa espacos internos
+  var t = (typeof normTxt==='function') ? normTxt(s) : String(s==null?'':s).toLowerCase().trim();
+  return t.replace(/\s+/g,' ');
+}
+// F9 — monta o texto pesquisavel de uma proposta a partir dos campos ja existentes (campos ausentes viram vazio)
+function _propTextoBusca(p){
+  if(!p) return '';
+  var partes=[ p.num, p.cod, p.codigo, p.tit, p.res, p.resumo,
+    p.cli, p.cliNome, p.cliente, p.ac, p.acNome, p.contato,
+    p.mail, p.email, p.tel, p.fone, p.telefone, p.dep, p.depto, p.departamento,
+    p.cid, p.csvc, p.loc, p.unidade, p.planta, p.cnpj, p.locCnpj ];
+  // status: codigo da fase + rotulo visivel
+  if(p.fas){ partes.push(p.fas); var fr=(typeof FASE!=='undefined'&&FASE[p.fas])?FASE[p.fas].n:''; if(fr)partes.push(fr); }
+  // escopo (titulos/descricoes das secoes e sub-itens)
+  (p.esc||[]).forEach(function(s){
+    if(!s) return;
+    partes.push(s.titulo); partes.push(s.desc);
+    (s.subs||[]).forEach(function(sb){ if(sb){ partes.push(sb.nome); partes.push(sb.desc); } });
+  });
+  return partes.filter(Boolean).join('  ');
+}
 function rProps(){
-  var q=(Q('srch').value||'').toLowerCase();
+  var q=_propBuscaNorm(Q('srch').value||'');
   var list=props;
-  if(q)list=list.filter(function(p){return (p.num||'').toLowerCase().indexOf(q)>=0||(p.cli||'').toLowerCase().indexOf(q)>=0||(p.tit||'').toLowerCase().indexOf(q)>=0});
+  if(q)list=list.filter(function(p){return _propBuscaNorm(_propTextoBusca(p)).indexOf(q)>=0});
   if(fltSt!=='all')list=list.filter(function(p){return p.fas===fltSt});
   var g=Q('pG');
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
