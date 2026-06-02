@@ -296,28 +296,30 @@
     function campo(label, inner) {
       return '<label style="display:flex;flex-direction:column;gap:.25rem;font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase">' + esc(label) + inner + '</label>';
     }
-    var inp = 'padding:.48rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);font-size:.88rem;font-weight:400;text-transform:none';
-    return '<div id="avModalOverlay" onclick="if(event.target===this)avFecharModal()" style="position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:1rem;overflow:auto">'
-      + '<div style="width:min(560px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);max-height:92vh;display:flex;flex-direction:column">'
-      + '<div style="padding:.9rem 1rem;border-bottom:1px solid var(--border);font-weight:900;color:var(--text)">' + (ehNovo ? '📌 Novo Aviso' : '✏️ Editar Aviso') + '</div>'
-      + '<div style="padding:1rem;overflow:auto;display:grid;gap:.7rem">'
+    var inp = 'padding:.42rem .55rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);font-size:.86rem;font-weight:400;text-transform:none;width:100%;box-sizing:border-box';
+    var g2 = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem';
+    var g3 = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem';
+    return '<div id="avModalOverlay" onclick="if(event.target===this)avFecharModal()" style="position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:.7rem;overflow:auto">'
+      + '<div style="width:min(600px,96vw);max-height:95vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);display:flex;flex-direction:column">'
+      + '<div style="flex:0 0 auto;padding:.65rem .9rem;border-bottom:1px solid var(--border);font-weight:900;color:var(--text)">' + (ehNovo ? '📌 Novo Aviso' : '✏️ Editar Aviso') + '</div>'
+      + '<div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:.8rem .9rem;display:grid;gap:.55rem">'
       + campo('Assunto *', '<input id="avfAssunto" value="' + esc(f.assunto || '') + '" style="' + inp + '">')
-      + campo('Descricao', '<textarea id="avfDescricao" rows="3" style="' + inp + ';resize:vertical">' + esc(f.descricao || '') + '</textarea>')
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem">'
+      + campo('Descricao', '<textarea id="avfDescricao" rows="2" style="' + inp + ';resize:vertical;min-height:48px">' + esc(f.descricao || '') + '</textarea>')
+      + '<div style="' + g2 + '">'
       + campo('Responsavel', '<select id="avfResp" style="' + inp + '">' + respOpts + '</select>')
       + campo('Prioridade', '<select id="avfPrio" style="' + inp + '">' + selObj(PRIORIDADES, f.prioridade || 'normal') + '</select>')
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem">'
+      + '<div style="' + g2 + '">'
       + campo('Status', '<select id="avfStatus" style="' + inp + '">' + selObj(STATUSES, f.status || 'aberto') + '</select>')
       + campo('Data final', '<input id="avfData" type="date" value="' + esc(f.data_final || '') + '" style="' + inp + '">')
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem">'
+      + '<div style="' + g3 + '">'
       + campo('Cliente (opcional)', '<input id="avfCliente" value="' + esc(f.cliente_ref || '') + '" style="' + inp + '">')
       + campo('Proposta (opcional)', '<input id="avfProposta" value="' + esc(f.proposta_ref || '') + '" style="' + inp + '">')
       + campo('Obra (opcional)', '<input id="avfObra" value="' + esc(f.obra_ref || '') + '" style="' + inp + '">')
       + '</div>'
       + '</div>'
-      + '<div style="padding:.85rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem">'
+      + '<div style="flex:0 0 auto;padding:.7rem .9rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem">'
       + '<button onclick="avFecharModal()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Cancelar</button>'
       + '<button onclick="avSalvar()" style="padding:.5rem 1.1rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:800;cursor:pointer">Salvar</button>'
       + '</div></div></div>';
