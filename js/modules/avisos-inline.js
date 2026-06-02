@@ -79,13 +79,16 @@
     try {
       var res = await window.sbClient
         .from('usuario_empresas')
-        .select('usuario_id, ativo, usuarios(nome, email)')
+        .select('usuario_id, ativo, perfil_empresa, usuarios(nome, email)')
         .eq('empresa_id', empId)
         .eq('ativo', true);
       if (res.error) throw res.error;
       var lista = [];
       (res.data || []).forEach(function (r) {
         var u = r && r.usuarios ? r.usuarios : null;
+        var perfil = String((r && r.perfil_empresa) || '').toLowerCase();
+        // Apenas usuarios com perfil dono ou gestor podem ser responsaveis.
+        if (perfil !== 'dono' && perfil !== 'gestor') return;
         if (u && u.email) lista.push({ nome: u.nome || u.email, email: String(u.email).toLowerCase() });
       });
       // ordena por nome
@@ -134,6 +137,13 @@
     var resolvidos = todos.filter(function (a) { return a.status === 'resolvido' || a.status === 'arquivado'; }).length;
 
     var html = '';
+    // Estilo post-it: dobrinha discreta no canto superior direito do card.
+    html += '<style id="avEstilos">'
+      + '.av-card::after{content:"";position:absolute;top:0;right:0;width:0;height:0;'
+      + 'border-style:solid;border-width:0 14px 14px 0;'
+      + 'border-color:transparent rgba(15,23,42,.14) transparent transparent;'
+      + 'border-top-right-radius:8px;}'
+      + '</style>';
     html += '<div style="padding:1rem;max-width:1200px;margin:0 auto">';
     // Cabecalho
     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.85rem">'
@@ -209,8 +219,19 @@
   function corStatus(st) {
     return st === 'em_andamento' ? '#2563eb' : st === 'resolvido' ? '#3fb950' : st === 'arquivado' ? 'var(--text3)' : 'var(--blue)';
   }
+  // Cor por prioridade: Normal=azul, Alta=laranja, Urgente=vermelho.
   function corPrio(p) {
-    return p === 'urgente' ? '#f85149' : p === 'alta' ? '#f97316' : 'var(--text3)';
+    return p === 'urgente' ? '#f85149' : p === 'alta' ? '#f97316' : '#2563eb';
+  }
+  function fundoPrio(p) {
+    return p === 'urgente' ? 'rgba(248,81,73,.06)' : p === 'alta' ? 'rgba(249,115,22,.06)' : 'rgba(37,99,235,.05)';
+  }
+  function dataHoraBR(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d)) return '';
+    function p2(n) { return (n < 10 ? '0' : '') + n; }
+    return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
   }
   function bdg(texto, cor) {
     return '<span style="display:inline-flex;align-items:center;background:' + cor + '22;border:1px solid ' + cor + '66;color:' + cor + ';border-radius:5px;padding:.08rem .42rem;font-size:.66rem;font-weight:800;white-space:nowrap">' + esc(texto) + '</span>';
@@ -218,10 +239,9 @@
 
   function cardAviso(a) {
     var vencido = estaVencido(a);
-    var urgente = a.prioridade === 'urgente';
-    var emand = a.status === 'em_andamento';
-    var borda = vencido ? '#f85149' : urgente ? '#f97316' : emand ? '#2563eb' : 'var(--border)';
-    var fundo = vencido ? 'rgba(248,81,73,.06)' : urgente ? 'rgba(249,115,22,.05)' : 'var(--bg2)';
+    // Cor do card pela PRIORIDADE (Normal=azul, Alta=laranja, Urgente=vermelho).
+    var borda = corPrio(a.prioridade);
+    var fundo = fundoPrio(a.prioridade);
     var resp = a.responsavel_email ? nomeUsuario(a.responsavel_email) : '';
     var refs = [];
     if (a.cliente_ref) refs.push('👤 ' + esc(a.cliente_ref));
@@ -238,18 +258,19 @@
       if (ehDono()) acoes += '<button onclick="avExcluir(\'' + esc(a.id) + '\')" style="' + btnMini('rgba(248,81,73,.12)', '#f85149') + '">🗑 Excluir</button>';
     }
 
-    return '<div style="border:1px solid ' + borda + ';border-left:4px solid ' + borda + ';border-radius:8px;background:' + fundo + ';padding:.7rem .8rem;display:flex;flex-direction:column;gap:.4rem">'
-      + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center">'
+    return '<div class="av-card" style="position:relative;border:1px solid ' + borda + ';border-left:4px solid ' + borda + ';border-radius:8px;background:' + fundo + ';padding:.7rem .8rem;display:flex;flex-direction:column;gap:.4rem;box-shadow:0 2px 6px rgba(15,23,42,.08)">'
+      + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;padding-right:1.1rem">'
       + bdg(STATUSES[a.status] || a.status, corStatus(a.status))
       + bdg(PRIORIDADES[a.prioridade] || a.prioridade, corPrio(a.prioridade))
       + (vencido ? bdg('VENCIDO', '#f85149') : '')
       + '</div>'
       + '<div style="font-weight:800;color:var(--text);font-size:.95rem;line-height:1.25">' + esc(a.assunto || '-') + '</div>'
-      + (a.descricao ? '<div style="font-size:.82rem;color:var(--text2);line-height:1.45;white-space:pre-wrap;word-break:break-word">' + esc(a.descricao) + '</div>' : '')
+      + (a.descricao ? '<div style="font-size:.95rem;font-weight:400;color:var(--text2);line-height:1.4;white-space:pre-wrap;word-break:break-word">' + esc(a.descricao) + '</div>' : '')
       + '<div style="font-size:.74rem;color:var(--text3);display:flex;flex-direction:column;gap:.15rem">'
       + (resp ? '<div>Responsavel: <strong style="color:var(--text2)">' + esc(resp) + '</strong></div>' : '')
       + (a.data_final ? '<div>Prazo: <strong style="color:' + (vencido ? '#f85149' : 'var(--text2)') + '">' + esc(dataBR(a.data_final)) + '</strong></div>' : '')
       + (a.criado_por_email ? '<div>Criado por: ' + esc(a.criado_por_email) + '</div>' : '')
+      + (a.criado_em ? '<div>Criado em: ' + esc(dataHoraBR(a.criado_em)) + '</div>' : '')
       + (refs.length ? '<div>' + refs.join(' &nbsp; ') + '</div>' : '')
       + '</div>'
       + (acoes ? '<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">' + acoes + '</div>' : '')
@@ -309,9 +330,14 @@
   }
   function setFiltro(chave, valor) {
     state[chave] = valor;
+    // Selecionar status "Resolvido"/"Arquivado" alterna para a pasta Resolvidos.
+    // Selecionar um status aberto volta para o quadro principal.
+    if (chave === 'fStatus') {
+      if (valor === 'resolvido' || valor === 'arquivado') state.verResolvidos = true;
+      else if (valor) state.verResolvidos = false;
+    }
     // re-render mantendo foco da busca
     if (chave === 'busca') {
-      var lista = document.getElementById('avisos-root');
       render();
       var b = document.getElementById('avBusca');
       if (b) { b.focus(); b.value = valor; b.setSelectionRange(valor.length, valor.length); }
