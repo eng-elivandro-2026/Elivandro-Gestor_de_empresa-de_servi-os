@@ -133,6 +133,11 @@
   // Verifica se o perfil atual pode acessar um módulo (ação 'ver' / 'acesso')
   window.podeAcessarModulo = function (modulo) {
     if (_isSuperadmin()) return true;
+    // Quadro de Avisos: acesso restrito a Dono e ao gestor Adriano (por e-mail).
+    if (modulo === 'avisos') {
+      if (_getPerfil() === 'dono') return true;
+      return !!(window._userEmail && String(window._userEmail).toLowerCase() === 'adriano@tecfusion.com.br');
+    }
     var perfil = _getPerfil();
     if (!perfil) return false;
     if (perfil === 'dono') return true;

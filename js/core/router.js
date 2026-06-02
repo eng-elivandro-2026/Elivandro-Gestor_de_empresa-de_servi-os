@@ -50,6 +50,18 @@
       ]
     },
     {
+      id: 'avisos',
+      label: 'Quadro de Avisos',
+      icon: '📌',
+      tipo: 'inline',
+      init: function () { go('avisos'); if (typeof rAvisos === 'function') rAvisos(); },
+      nav: [
+        { label: 'Quadro', icon: '📌', action: "go('avisos',this);avAbrirQuadro()" },
+        { separator: true, label: 'Visualizacao' },
+        { label: 'Resolvidos', icon: '✅', action: "go('avisos',this);avAbrirResolvidos()" },
+      ]
+    },
+    {
       id: 'historico',
       label: 'Relacionamento',
       icon: '💬',
