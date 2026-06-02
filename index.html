@@ -1975,34 +1975,83 @@ body.empresa-tema-fortex{
           <button class="btn bg bxs" id="beCancelarBtn" style="display:none" onclick="beCancelarEdicao()">✕ Cancelar</button>
         </div>
 
-        <div class="f" style="margin-bottom:.55rem">
-          <label>Grupo / Categoria</label>
-          <div style="display:flex;gap:.4rem">
-            <input type="text" id="beGrupo" placeholder="Ex: OBJETIVO, PROJETO ELÉTRICO…" list="beGrupoList" style="flex:1">
-            <datalist id="beGrupoList"></datalist>
+        <div style="display:grid;grid-template-columns:1fr 130px;gap:.6rem;margin-bottom:.55rem;align-items:end">
+          <div class="f">
+            <label>Código do bloco *</label>
+            <input type="text" id="beCodigo" placeholder="Ex: ED-05.001" style="font-weight:700;color:var(--accent)">
           </div>
-          <span class="hint">Digite um grupo existente ou crie um novo.</span>
+          <div class="f">
+            <label>Status</label>
+            <select id="beStatus">
+              <option value="Ativo">Ativo</option>
+              <option value="Rascunho">Rascunho</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+          </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:90px 1fr;gap:.6rem;margin-bottom:.55rem;align-items:end">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.55rem;align-items:end">
           <div class="f">
-            <label>Nº de Ordem</label>
+            <label>Família</label>
+            <input type="text" id="beFamilia" placeholder="Ex: ED" list="beFamiliaList">
+            <datalist id="beFamiliaList"></datalist>
+          </div>
+          <div class="f">
+            <label>Categoria</label>
+            <input type="text" id="beCategoria" placeholder="Ex: Serviços / Engenharia e Documentação" list="beCategoriaList">
+            <datalist id="beCategoriaList"></datalist>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 90px;gap:.6rem;margin-bottom:.55rem;align-items:end">
+          <div class="f">
+            <label>Tipo de bloco</label>
+            <select id="beTipo">
+              <option value="">—</option>
+              <option>Texto tecnico</option>
+              <option>Atividades principais</option>
+              <option>Premissa</option>
+              <option>Metodologia</option>
+              <option>Teste</option>
+              <option>Comissionamento</option>
+              <option>Identificacao</option>
+              <option>Material / Miscelanea</option>
+              <option>Obrigacao da contratada</option>
+              <option>Obrigacao da contratante</option>
+              <option>Exclusao</option>
+              <option>Entrega / Aceite</option>
+              <option>Condicao comercial</option>
+              <option>Garantia</option>
+              <option>Pagamento</option>
+              <option>Prazo</option>
+              <option>Valor</option>
+              <option>Resumo</option>
+            </select>
+          </div>
+          <div class="f">
+            <label>Ordem</label>
             <input type="number" id="beOrdem" placeholder="Ex: 1" min="0" step="1" style="text-align:center;font-weight:700;color:var(--accent)">
           </div>
-          <div class="f">
-            <label>Título</label>
-            <input type="text" id="beTitulo" placeholder="Ex: Melhorias em Painéis Elétricos">
-          </div>
         </div>
 
         <div class="f" style="margin-bottom:.55rem">
-          <label>Descrição <span style="font-size:.65rem;color:var(--text3)">(aparece como cabeçalho da seção)</span></label>
-          <input type="text" id="beDescricao" placeholder="Ex: OBJETIVO">
+          <label>Título *</label>
+          <input type="text" id="beTitulo" placeholder="Ex: ED-05.001 — Elaboração de Projeto Elétrico de Painel">
+        </div>
+
+        <div class="f" style="margin-bottom:.55rem">
+          <label>Descrição curta <span style="font-size:.65rem;color:var(--text3)">(resumo / cabeçalho da seção)</span></label>
+          <input type="text" id="beDescricao" placeholder="Ex: Elaboração de projeto elétrico de painel industrial.">
+        </div>
+
+        <div class="f" style="margin-bottom:.55rem">
+          <label>Conteúdo *</label>
+          <textarea id="beConteudo" style="min-height:130px;resize:vertical" placeholder="Texto completo do bloco (aceita quebras de linha e tópicos)…"></textarea>
         </div>
 
         <div class="f" style="margin-bottom:.7rem">
-          <label>Conteúdo</label>
-          <textarea id="beConteudo" style="min-height:130px;resize:vertical" placeholder="Texto completo do escopo…"></textarea>
+          <label>Observações internas <span style="font-size:.65rem;color:var(--text3)">(não entra na proposta)</span></label>
+          <input type="text" id="beObs" placeholder="Ex: Usar para projetos novos de painéis.">
         </div>
 
         <!-- SUBTÍTULOS -->
@@ -2032,12 +2081,13 @@ body.empresa-tema-fortex{
           </div>
         </div>
 
-        <!-- busca + filtro grupo -->
+        <!-- busca + filtros (familia / categoria / tipo / status) -->
         <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-          <input type="text" id="beBusca" placeholder="🔍 Buscar escopos..." oninput="beRenderLista()" style="flex:1;min-width:160px;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit">
-          <select id="beFiltroGrupo" onchange="beRenderLista()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:160px">
-            <option value="">— Todos os grupos —</option>
-          </select>
+          <input type="text" id="beBusca" placeholder="🔍 Buscar por código, título, conteúdo..." oninput="beRenderLista()" style="flex:1;min-width:160px;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit">
+          <select id="beFiltroFamilia" onchange="beRenderLista()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:150px"><option value="">— Todas as famílias —</option></select>
+          <select id="beFiltroCategoria" onchange="beRenderLista()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:150px"><option value="">— Todas as categorias —</option></select>
+          <select id="beFiltroTipo" onchange="beRenderLista()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:140px"><option value="">— Todos os tipos —</option></select>
+          <select id="beFiltroStatus" onchange="beRenderLista()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:120px"><option value="">— Todos os status —</option></select>
         </div>
 
         <!-- contador selecionados -->

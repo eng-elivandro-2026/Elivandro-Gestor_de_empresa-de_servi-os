@@ -7239,8 +7239,57 @@ function delS(){var tid=Q('eTS').value||'';if(!tid){alert('Selecione título.');
 var _beEscopos = [];
 var _beEditId  = null;
 
+// ── Biblioteca de blocos de proposta: familias, tipos e status ──────────────
+var BE_FAMILIAS = {
+  OBJ:'Objetivo', RES:'Resumo Executivo', IE:'Instalacoes Eletricas Industriais',
+  ED:'Engenharia e Documentacao', PE:'Paineis Eletricos', AC:'Automacao e Controle',
+  AP:'Acionamentos e Potencia', TC:'Testes e Comissionamento', ID:'Identificacao',
+  LEV:'Levantamento Tecnico', PRE:'Premissas', SSMA:'Seguranca / APR / PT / LOTO',
+  MAT:'Materiais / Miscelaneas', FDP:'Folha de Dados / Informacoes do Cliente',
+  LAY:'Layout Previo', OBR:'Obrigacoes', EXC:'Exclusoes', ENT:'Entrega e Aceite',
+  PRA:'Prazo / Cronograma', PAG:'Condicoes de Pagamento', IMP:'Impostos',
+  FOR:'Condicoes de Fornecimento', VALD:'Validade', GAR:'Garantia'
+};
+var BE_TIPOS = ['Texto tecnico','Atividades principais','Premissa','Metodologia','Teste',
+  'Comissionamento','Identificacao','Material / Miscelanea','Obrigacao da contratada',
+  'Obrigacao da contratante','Exclusao','Entrega / Aceite','Condicao comercial',
+  'Garantia','Pagamento','Prazo','Valor','Resumo'];
+var BE_STATUS = ['Ativo','Rascunho','Inativo'];
+
+// Normaliza um bloco garantindo os campos novos (sem remover dados existentes).
+function beNormalizarBloco(e){
+  if(!e || typeof e!=='object') return false;
+  var changed=false;
+  if(e.status==null || e.status===''){ e.status='Ativo'; changed=true; }
+  if(e.categoria==null){ e.categoria = e.grupo || ''; changed=true; }
+  if(e.codigo==null){
+    var m = String(e.titulo||'').match(/^\s*([A-Z]{2,5}-[0-9A-Za-z.]+)/);
+    e.codigo = m ? m[1] : '';
+    changed=true;
+  }
+  if(e.familia==null){
+    var fam='';
+    var cm = String(e.codigo||'').match(/^([A-Z]{2,5})/);
+    if(cm && BE_FAMILIAS[cm[1]]) fam=cm[1];
+    e.familia = fam;
+    changed=true;
+  }
+  if(e.tipo==null){ e.tipo=''; changed=true; }
+  if(e.obs==null){ e.obs=''; changed=true; }
+  return changed;
+}
+function beNormalizarTudo(){
+  var changed=false;
+  (_beEscopos||[]).forEach(function(e){ if(beNormalizarBloco(e)) changed=true; });
+  return changed;
+}
+function beFamiliaDe(e){ return (e && e.familia) || (e && e.grupo) || ''; }
+function beFamiliaLabel(f){ return f ? (BE_FAMILIAS[f] ? (f+' — '+BE_FAMILIAS[f]) : f) : '(Sem familia)'; }
+
 function beLoadDB(){
   _beEscopos = LSE('tf_bancoEscopos') || [];
+  // Normaliza blocos antigos (adiciona campos novos sem apagar dados existentes).
+  if(beNormalizarTudo()) beSaveDB();
 }
 function beSaveDB(){
   LSE('tf_bancoEscopos', _beEscopos);
@@ -7270,24 +7319,49 @@ function beAtualizarGrupos(){
   var dl = Q('beGrupoList');
   if(dl){ dl.innerHTML = grupos.map(function(g){return '<option value="'+esc(g)+'">'; }).join(''); }
 
-  // select de filtro
+  // select de filtro legado (grupo) — mantido por compat se existir no HTML
   var sf = Q('beFiltroGrupo');
   if(sf){
     var cur = sf.value;
     sf.innerHTML = '<option value="">— Todos os grupos —</option>' +
       grupos.map(function(g){return '<option value="'+esc(g)+'"'+(g===cur?' selected':'')+'>'+esc(g)+'</option>';}).join('');
   }
+
+  // ── Filtros novos: familia, categoria, tipo, status ──
+  function preencher(idSel, valores, labelTodos, labelFn){
+    var s=Q(idSel); if(!s) return;
+    var cur=s.value;
+    s.innerHTML = '<option value="">'+labelTodos+'</option>' +
+      valores.map(function(v){ return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(labelFn?labelFn(v):v)+'</option>'; }).join('');
+  }
+  // familias presentes nos dados (ordenadas)
+  var familias=[]; _beEscopos.forEach(function(e){ var f=beFamiliaDe(e); if(f && familias.indexOf(f)<0) familias.push(f); });
+  familias.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+  preencher('beFiltroFamilia', familias, '— Todas as famílias —', beFamiliaLabel);
+  // categorias presentes
+  var cats=[]; _beEscopos.forEach(function(e){ var c=e.categoria||e.grupo||''; if(c && cats.indexOf(c)<0) cats.push(c); });
+  cats.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+  preencher('beFiltroCategoria', cats, '— Todas as categorias —');
+  // tipos: catalogo fixo + os presentes
+  preencher('beFiltroTipo', BE_TIPOS, '— Todos os tipos —');
+  // status fixo
+  preencher('beFiltroStatus', BE_STATUS, '— Todos os status —');
+
+  // datalists do formulario (familia/categoria/tipo)
+  var dlf=Q('beFamiliaList'); if(dlf){ dlf.innerHTML = Object.keys(BE_FAMILIAS).map(function(k){return '<option value="'+esc(k)+'">'+esc(k+' — '+BE_FAMILIAS[k])+'</option>';}).join(''); }
+  var dlc=Q('beCategoriaList'); if(dlc){ dlc.innerHTML = cats.map(function(c){return '<option value="'+esc(c)+'">';}).join(''); }
 }
 
 /* Limpa o formulário de cadastro */
 function beLimparForm(){
   _beEditId = null;
-  Q('beCadTitulo').textContent = '➕ Cadastrar Escopo';
+  Q('beCadTitulo').textContent = '➕ Cadastrar Bloco';
   Q('beCancelarBtn').style.display = 'none';
   _beSubs = []; beRenderSubs();
-  ['beGrupo','beTitulo','beDescricao','beConteudo','beOrdem'].forEach(function(id){
+  ['beCodigo','beFamilia','beCategoria','beTipo','beObs','beGrupo','beTitulo','beDescricao','beConteudo','beOrdem'].forEach(function(id){
     var el=Q(id); if(el) el.value='';
   });
+  var st=Q('beStatus'); if(st) st.value='Ativo';
 }
 
 /* Cancela edição e volta ao modo cadastro */
@@ -7332,8 +7406,10 @@ function beInlineRender(){
   var busca   = ((Q('beInlineBusca')||{}).value||'').toLowerCase().trim();
   var filtroG = ((Q('beInlineFiltroGrupo')||{}).value||'');
   var visiveis = _beEscopos.filter(function(e){
+    if((e.status||'Ativo')!=='Ativo') return false; // inativos nao aparecem para adicionar na proposta
     var matchG = !filtroG || e.grupo===filtroG;
     var matchB = !busca ||
+      (e.codigo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.titulo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.grupo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.conteudo||'').toLowerCase().indexOf(busca)>=0 ||
@@ -7398,6 +7474,7 @@ function beInlineAdicionar(){
     var id = c.getAttribute('data-id');
     var e  = _beEscopos.find(function(x){return x.id===id});
     if(!e) return;
+    if((e.status||'Ativo')!=='Ativo') return; // so blocos ativos entram na proposta
     var subsForProp = (e.subs||[]).map(function(s){
       return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''};
     });
@@ -7406,7 +7483,10 @@ function beInlineAdicionar(){
       num:   '',
       titulo: e.titulo || '',
       desc:   e.conteudo || '',
-      subs:  subsForProp
+      subs:  subsForProp,
+      // Rastreabilidade (copia local; nao altera o bloco original da biblioteca):
+      codigoBloco: e.codigo || '',
+      origemBlocoId: e.id || ''
     });
     adicionados++;
   });
@@ -7475,16 +7555,34 @@ function beRenderSubs(){
 }
 
 /* Salva (novo ou edição) */
+function beVal(id){ var el=Q(id); return el ? (el.value||'').trim() : ''; }
 function beSalvar(){
-  var grupo    = (Q('beGrupo').value||'').trim();
-  var titulo   = (Q('beTitulo').value||'').trim();
-  var descricao= (Q('beDescricao').value||'').trim();
-  var conteudo = (Q('beConteudo').value||'').trim();
-  var ordemVal = Q('beOrdem').value.trim();
+  var codigo   = beVal('beCodigo');
+  var familia  = beVal('beFamilia');
+  var categoria= beVal('beCategoria') || beVal('beGrupo'); // beGrupo = legado
+  var tipo     = beVal('beTipo');
+  var statusB  = beVal('beStatus') || 'Ativo';
+  var obs      = beVal('beObs');
+  var titulo   = beVal('beTitulo');
+  var descricao= beVal('beDescricao');
+  var conteudo = beVal('beConteudo');
+  var ordemVal = beVal('beOrdem');
   var ordem    = ordemVal!=='' ? parseInt(ordemVal,10) : null;
 
-  if(!grupo){  alert('Informe o Grupo / Categoria.'); Q('beGrupo').focus(); return; }
-  if(!titulo){ alert('Informe o Título.'); Q('beTitulo').focus(); return; }
+  // Protecoes obrigatorias
+  if(!codigo){  alert('Informe o Código do bloco.'); var c=Q('beCodigo'); if(c)c.focus(); return; }
+  if(!titulo){  alert('Informe o Título.'); Q('beTitulo').focus(); return; }
+  if(!conteudo){alert('Informe o Conteúdo do bloco.'); Q('beConteudo').focus(); return; }
+
+  // Nao permitir dois blocos ATIVOS com o mesmo codigo
+  if(statusB==='Ativo'){
+    var dup = _beEscopos.find(function(x){
+      return x.id!==_beEditId && x.status==='Ativo' && x.codigo &&
+             String(x.codigo).toLowerCase()===codigo.toLowerCase();
+    });
+    if(dup){ alert('Já existe um bloco ATIVO com o código "'+codigo+'".\nUse outro código ou inative o bloco existente.'); return; }
+  }
+  var grupo = categoria; // compat: agrupamento legado usa grupo (espelha categoria)
 
   // Build subs from form
   var subs = _beSubs
@@ -7501,14 +7599,18 @@ function beSalvar(){
   if(_beEditId){
     var item = _beEscopos.find(function(e){return e.id===_beEditId});
     if(item){
+      item.codigo=codigo; item.familia=familia; item.categoria=categoria;
+      item.tipo=tipo; item.status=statusB; item.obs=obs;
       item.grupo=grupo; item.titulo=titulo;
       item.descricao=descricao; item.conteudo=conteudo;
       item.ordem=ordem; item.subs=subs;
     }
-    toast('✔ Escopo atualizado!','ok');
+    toast('✔ Bloco atualizado!','ok');
   } else {
-    _beEscopos.push({id:uid(), grupo:grupo, titulo:titulo, descricao:descricao, conteudo:conteudo, ordem:ordem, subs:subs});
-    toast('✔ Escopo salvo!','ok');
+    _beEscopos.push({id:uid(), codigo:codigo, familia:familia, categoria:categoria,
+      tipo:tipo, status:statusB, obs:obs, grupo:grupo, titulo:titulo,
+      descricao:descricao, conteudo:conteudo, ordem:ordem, subs:subs});
+    toast('✔ Bloco salvo!','ok');
   }
   beSaveDB();
   beLimparForm();
@@ -7521,7 +7623,14 @@ function beEditar(id){
   var item = _beEscopos.find(function(e){return e.id===id});
   if(!item) return;
   _beEditId = id;
-  Q('beGrupo').value     = item.grupo     || '';
+  function setv(idc, val){ var el=Q(idc); if(el) el.value = (val!=null?val:''); }
+  setv('beCodigo',  item.codigo);
+  setv('beFamilia', item.familia);
+  setv('beCategoria', item.categoria || item.grupo);
+  setv('beTipo',    item.tipo);
+  setv('beStatus',  item.status || 'Ativo');
+  setv('beObs',     item.obs);
+  Q('beGrupo') && (Q('beGrupo').value = item.grupo || item.categoria || '');
   Q('beTitulo').value    = item.titulo    || '';
   Q('beDescricao').value = item.descricao || '';
   Q('beConteudo').value  = item.conteudo  || '';
@@ -7541,64 +7650,108 @@ function beEditar(id){
 function beExcluir(id){
   var item = _beEscopos.find(function(e){return e.id===id});
   if(!item) return;
-  if(!confirm('Excluir o escopo "'+item.titulo+'"?')) return;
+  // Confirmacao forte para exclusao definitiva.
+  if(!confirm('EXCLUIR DEFINITIVAMENTE o bloco "'+(item.codigo?item.codigo+' — ':'')+item.titulo+'"?\n\nEsta acao NAO pode ser desfeita. Prefira "Inativar" para manter o bloco salvo.')) return;
   _beEscopos = _beEscopos.filter(function(e){return e.id!==id});
   beSaveDB();
   beAtualizarGrupos();
   beRenderLista();
-  toast('🗑 Escopo excluído.','ok');
+  toast('🗑 Bloco excluído.','ok');
+}
+
+/* Inativar bloco (mantem salvo; deixa de aparecer para adicionar na proposta) */
+function beInativar(id){
+  var item = _beEscopos.find(function(e){return e.id===id});
+  if(!item) return;
+  item.status='Inativo';
+  beSaveDB(); beAtualizarGrupos(); beRenderLista();
+  toast('🚫 Bloco inativado (continua salvo).','ok');
+}
+/* Reativar bloco */
+function beReativar(id){
+  var item = _beEscopos.find(function(e){return e.id===id});
+  if(!item) return;
+  // impede 2 ativos com mesmo codigo
+  if(item.codigo){
+    var dup=_beEscopos.find(function(x){return x.id!==id && x.status==='Ativo' && x.codigo && String(x.codigo).toLowerCase()===String(item.codigo).toLowerCase();});
+    if(dup){ alert('Já existe um bloco ATIVO com o código "'+item.codigo+'". Inative-o antes de reativar este.'); return; }
+  }
+  item.status='Ativo';
+  beSaveDB(); beAtualizarGrupos(); beRenderLista();
+  toast('↩ Bloco reativado.','ok');
 }
 
 /* Render da lista agrupada */
 function beRenderLista(){
   var busca  = ((Q('beBusca')||{}).value||'').toLowerCase().trim();
-  var filtroG= ((Q('beFiltroGrupo')||{}).value||'');
+  var filtroFam = ((Q('beFiltroFamilia')||{}).value||'');
+  var filtroCat = ((Q('beFiltroCategoria')||{}).value||'');
+  var filtroTipo= ((Q('beFiltroTipo')||{}).value||'');
+  var filtroSt  = ((Q('beFiltroStatus')||{}).value||'');
+  var filtroG   = ((Q('beFiltroGrupo')||{}).value||''); // legado (compat)
 
   var visiveis = _beEscopos.filter(function(e){
-    var matchG  = !filtroG || e.grupo===filtroG;
-    var matchB  = !busca   ||
+    if(filtroFam && beFamiliaDe(e)!==filtroFam) return false;
+    if(filtroCat && (e.categoria||e.grupo||'')!==filtroCat) return false;
+    if(filtroTipo && (e.tipo||'')!==filtroTipo) return false;
+    if(filtroSt && (e.status||'Ativo')!==filtroSt) return false;
+    if(filtroG && (e.grupo||'')!==filtroG) return false;
+    if(!busca) return true;
+    return (e.codigo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.titulo||'').toLowerCase().indexOf(busca)>=0 ||
-      (e.grupo||'').toLowerCase().indexOf(busca)>=0  ||
+      (e.familia||'').toLowerCase().indexOf(busca)>=0 ||
+      (e.categoria||e.grupo||'').toLowerCase().indexOf(busca)>=0 ||
+      (e.tipo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.conteudo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.descricao||'').toLowerCase().indexOf(busca)>=0;
-    return matchG && matchB;
   });
 
-  /* Agrupar */
+  /* Agrupar por FAMILIA */
   var grupos = {};
   visiveis.forEach(function(e){
-    if(!grupos[e.grupo]) grupos[e.grupo]=[];
-    grupos[e.grupo].push(e);
+    var k = beFamiliaDe(e) || '';
+    if(!grupos[k]) grupos[k]=[];
+    grupos[k].push(e);
   });
 
-  // Sort items within each group by "ordem" (nulls go to end), then by titulo
   Object.keys(grupos).forEach(function(g){
     grupos[g].sort(function(a,b){
       var oa = (a.ordem!=null && a.ordem!==undefined) ? a.ordem : 9999;
       var ob = (b.ordem!=null && b.ordem!==undefined) ? b.ordem : 9999;
       if(oa!==ob) return oa-ob;
-      return (a.titulo||'').localeCompare(b.titulo||'','pt-BR');
+      return (a.codigo||a.titulo||'').localeCompare(b.codigo||b.titulo||'','pt-BR');
     });
   });
 
   var keys = Object.keys(grupos).sort(function(a,b){return a.localeCompare(b,'pt-BR')});
+  var temFiltro = busca||filtroFam||filtroCat||filtroTipo||filtroSt||filtroG;
 
   var html = '';
   if(keys.length===0){
-    html = '<div class="emp" style="padding:2rem"><div class="emp-i">🗂️</div><p>Nenhum escopo encontrado.</p>'
-         + (busca||filtroG?'<p style="font-size:.76rem;margin-top:.3rem">Tente outros termos.</p>':'<p style="font-size:.76rem;margin-top:.3rem">Cadastre o primeiro escopo ao lado ←</p>')
+    html = '<div class="emp" style="padding:2rem"><div class="emp-i">🗂️</div><p>Nenhum bloco encontrado.</p>'
+         + (temFiltro?'<p style="font-size:.76rem;margin-top:.3rem">Tente outros termos/filtros.</p>':'<p style="font-size:.76rem;margin-top:.3rem">Cadastre o primeiro bloco ao lado ←</p>')
          + '</div>';
   } else {
     keys.forEach(function(g){
       html += '<div style="margin-bottom:.9rem">'
             + '<div style="font-size:.7rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;padding:.28rem .5rem;background:rgba(240,165,0,.08);border-radius:4px;border-left:3px solid var(--accent)">'
-            + esc(g)
+            + esc(beFamiliaLabel(g))
             + '</div>';
       grupos[g].forEach(function(e){
+        var st = e.status||'Ativo';
+        var ativo = st==='Ativo';
         var isChecked = document.querySelector('.beCheck[data-id="'+e.id+'"]')&&document.querySelector('.beCheck[data-id="'+e.id+'"]').checked;
-        html += '<div style="display:flex;align-items:flex-start;gap:.5rem;padding:.45rem .5rem;border-radius:5px;border:1px solid var(--border);background:var(--bg3);margin-bottom:.35rem;transition:background .15s" id="beItem_'+e.id+'">'
-              + '<input type="checkbox" class="beCheck" data-id="'+e.id+'" '+(isChecked?'checked':'')+' onchange="beContarSelecionados()" style="margin-top:3px;flex-shrink:0;cursor:pointer;width:15px;height:15px;accent-color:var(--green)">'
+        var stCor = st==='Ativo'?'#3fb950':st==='Rascunho'?'#d4a017':'var(--text3)';
+        html += '<div style="display:flex;align-items:flex-start;gap:.5rem;padding:.45rem .5rem;border-radius:5px;border:1px solid var(--border);background:var(--bg3);margin-bottom:.35rem;transition:background .15s;opacity:'+(ativo?'1':'.6')+'" id="beItem_'+e.id+'">'
+              + (ativo
+                  ? '<input type="checkbox" class="beCheck" data-id="'+e.id+'" '+(isChecked?'checked':'')+' onchange="beContarSelecionados()" style="margin-top:3px;flex-shrink:0;cursor:pointer;width:15px;height:15px;accent-color:var(--green)">'
+                  : '<span title="Apenas blocos Ativos podem ser adicionados a proposta" style="width:15px;flex-shrink:0"></span>')
               + '<div style="flex:1;min-width:0">'
+              + '<div style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;margin-bottom:.15rem">'
+              + (e.codigo?'<span style="font-size:.66rem;font-weight:800;color:var(--accent);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);border-radius:4px;padding:.04rem .35rem">'+esc(e.codigo)+'</span>':'')
+              + '<span style="font-size:.6rem;font-weight:800;color:'+stCor+';border:1px solid '+stCor+';border-radius:4px;padding:.02rem .3rem;text-transform:uppercase">'+esc(st)+'</span>'
+              + (e.tipo?'<span style="font-size:.62rem;color:var(--text3)">'+esc(e.tipo)+'</span>':'')
+              + '</div>'
               + '<div style="font-weight:700;font-size:.92rem;color:var(--text);line-height:1.3">'
               + (e.ordem!=null&&e.ordem!==undefined?'<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#000;font-size:.65rem;font-weight:800;margin-right:.35rem;flex-shrink:0">'+e.ordem+'</span>':'')
               + esc(e.titulo)+'</div>'
@@ -7616,7 +7769,10 @@ function beRenderLista(){
               + '</div>'
               + '<div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0">'
               + '<button class="btn bg bxs" onclick="beEditar(\''+e.id+'\')" title="Editar">✏️</button>'
-              + '<button class="btn bd bxs" onclick="beExcluir(\''+e.id+'\')" title="Excluir">🗑</button>'
+              + (ativo
+                  ? '<button class="btn bg bxs" onclick="beInativar(\''+e.id+'\')" title="Inativar (mantem salvo)">🚫</button>'
+                  : '<button class="btn bg bxs" onclick="beReativar(\''+e.id+'\')" title="Reativar">↩</button>')
+              + '<button class="btn bd bxs" onclick="beExcluir(\''+e.id+'\')" title="Excluir definitivamente">🗑</button>'
               + '</div>'
               + '</div>';
       });
@@ -7670,6 +7826,7 @@ function beAdicionarNaProposta(){
     var id = c.getAttribute('data-id');
     var e  = _beEscopos.find(function(x){return x.id===id});
     if(!e) return;
+    if((e.status||'Ativo')!=='Ativo') return; // so blocos ativos entram na proposta
     var subsForProp = (e.subs||[]).map(function(s){
       return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''};
     });
@@ -7678,7 +7835,10 @@ function beAdicionarNaProposta(){
       num:   '',
       titulo: e.titulo || '',
       desc:   e.conteudo || '',
-      subs:  subsForProp
+      subs:  subsForProp,
+      // Rastreabilidade (copia local; nao altera o bloco original da biblioteca):
+      codigoBloco: e.codigo || '',
+      origemBlocoId: e.id || ''
     });
     adicionados++;
   });
@@ -7719,20 +7879,26 @@ function beImportar(event){
       var op = confirm('Importar '+dados.length+' escopo(s)?\n\n'
         +'[OK] = SUBSTITUIR o banco atual\n'
         +'[Cancelar] = MESCLAR com o banco atual');
+      function codAtivo(cod){
+        if(!cod) return null;
+        return _beEscopos.find(function(x){ return x.status==='Ativo' && x.codigo && String(x.codigo).toLowerCase()===String(cod).toLowerCase(); });
+      }
+      var ignorados = 0;
       if(op){
-        _beEscopos = dados;
+        _beEscopos = dados.map(function(d){ d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d); return d; });
       } else {
-        // mesclar: não duplicar por id
+        // mesclar: nao duplicar por id nem por CODIGO ja ativo
         dados.forEach(function(d){
-          if(!_beEscopos.find(function(x){return x.id===d.id})){
-            _beEscopos.push(d);
-          }
+          d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d);
+          if(_beEscopos.find(function(x){return x.id===d.id})){ ignorados++; return; }
+          if(codAtivo(d.codigo)){ ignorados++; return; } // codigo ativo ja existe -> nao duplica
+          _beEscopos.push(d);
         });
       }
       beSaveDB();
       beAtualizarGrupos();
       beRenderLista();
-      toast('✔ Importação concluída! '+_beEscopos.length+' escopos no banco.','ok');
+      toast('✔ Importação concluída! '+_beEscopos.length+' blocos no banco'+(ignorados?(' ('+ignorados+' ignorado(s) por código/ID duplicado)'):'')+'.','ok');
     } catch(err){
       alert('Erro ao importar: '+err.message);
     }
