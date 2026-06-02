@@ -7867,7 +7867,88 @@ function beExportar(){
   toast('✔ Banco exportado!','ok');
 }
 
-/* Importar banco de JSON */
+/* ── Importação de blocos (F4): fluxo claro Mesclar / Substituir / Cancelar ── */
+var _bePendingImport = null; // { dados, origem }
+
+/* Valida que o conteudo e um array de blocos com os campos minimos */
+function beValidarBlocosArray(dados){
+  if(!Array.isArray(dados)) return 'O conteúdo não é uma lista (array) de blocos.';
+  if(dados.length===0) return 'A lista de blocos está vazia.';
+  for(var i=0;i<dados.length;i++){
+    var b=dados[i]||{};
+    if(!b.codigo || !b.titulo || !b.conteudo || !b.status){
+      return 'O bloco na posição '+(i+1)+' está incompleto (precisa de código, título, conteúdo e status).';
+    }
+  }
+  return null;
+}
+
+/* Aplica os blocos no banco. modo: 'mesclar' | 'substituir'. Retorna resumo. */
+function beAplicarBlocos(dados, modo){
+  function codAtivo(cod){
+    if(!cod) return null;
+    return _beEscopos.find(function(x){ return x.status==='Ativo' && x.codigo && String(x.codigo).toLowerCase()===String(cod).toLowerCase(); });
+  }
+  var total=dados.length, adicionados=0, ignorados=0;
+  if(modo==='substituir'){
+    _beEscopos = dados.map(function(d){ d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d); return d; });
+    adicionados=_beEscopos.length;
+  } else { // mesclar (preserva existentes; ignora id ou codigo ativo ja existente)
+    dados.forEach(function(d){
+      d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d);
+      if(_beEscopos.find(function(x){return x.id===d.id})){ ignorados++; return; }
+      if(codAtivo(d.codigo)){ ignorados++; return; }
+      _beEscopos.push(d); adicionados++;
+    });
+  }
+  beSaveDB(); beAtualizarGrupos(); beRenderLista();
+  return { total:total, adicionados:adicionados, ignorados:ignorados, final:_beEscopos.length };
+}
+
+/* Abre modal com escolha clara: Mesclar / Substituir / Cancelar */
+function beAbrirConfirmImport(dados, origem){
+  var err = beValidarBlocosArray(dados);
+  if(err){ alert('Não foi possível importar: '+err); return; }
+  _bePendingImport = { dados:dados, origem:origem||'arquivo' };
+  beFecharConfirmImport();
+  var ov=document.createElement('div'); ov.id='beImportOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:962;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:1rem;overflow:auto');
+  ov.onclick=function(e){ if(e.target===ov) beFecharConfirmImport(); };
+  ov.innerHTML='<div style="width:min(520px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden">'
+    + '<div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);font-weight:900;color:var(--text)">📦 Importar blocos — '+esc(origem)+'</div>'
+    + '<div style="padding:1rem;font-size:.86rem;color:var(--text2);line-height:1.5">'
+    + 'O arquivo contém <strong style="color:var(--text)">'+dados.length+'</strong> bloco(s). Banco atual: <strong style="color:var(--text)">'+_beEscopos.length+'</strong>.<br><br>'
+    + '<strong style="color:var(--text)">Mesclar</strong>: adiciona os blocos novos e <strong>preserva</strong> os atuais. Blocos com código já ativo são ignorados.<br>'
+    + '<strong style="color:var(--text)">Substituir</strong>: <strong style="color:#f85149">apaga</strong> os blocos atuais e fica só com os do arquivo (pede confirmação).'
+    + '</div>'
+    + '<div style="padding:.85rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap">'
+    + '<button class="btn bg" onclick="beFecharConfirmImport()" style="font-weight:700">Cancelar</button>'
+    + '<button class="btn bd" onclick="beImportConfirmar(\'substituir\')" style="font-weight:700">Substituir banco atual</button>'
+    + '<button class="btn bs" onclick="beImportConfirmar(\'mesclar\')" style="font-weight:800">Mesclar com banco atual</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+function beFecharConfirmImport(){ var ov=document.getElementById('beImportOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+
+/* Confirma a importacao no modo escolhido e mostra o resumo */
+function beImportConfirmar(modo){
+  if(!_bePendingImport) return;
+  var dados=_bePendingImport.dados;
+  if(modo==='substituir'){
+    if(!confirm('Esta ação substituirá todos os blocos atuais ('+_beEscopos.length+') pelos '+dados.length+' blocos importados. Esta ação não pode ser desfeita. Deseja continuar?')) return;
+  }
+  var r=beAplicarBlocos(dados, modo);
+  _bePendingImport=null;
+  beFecharConfirmImport();
+  toast('✔ Importação concluída. '+r.final+' blocos no banco.','ok');
+  alert('Importação concluída ('+(modo==='substituir'?'Substituir':'Mesclar')+'):\n\n'
+    +'• Blocos no arquivo: '+r.total+'\n'
+    +'• Adicionados: '+r.adicionados+'\n'
+    +'• Ignorados (código/ID já existente): '+r.ignorados+'\n'
+    +'• Total no banco agora: '+r.final);
+}
+
+/* Importar banco de um arquivo JSON (usa o modal claro) */
 function beImportar(event){
   var file = event.target.files[0];
   if(!file) return;
@@ -7875,36 +7956,25 @@ function beImportar(event){
   reader.onload = function(e){
     try{
       var dados = JSON.parse(e.target.result);
-      if(!Array.isArray(dados)) throw new Error('Formato inválido.');
-      var op = confirm('Importar '+dados.length+' escopo(s)?\n\n'
-        +'[OK] = SUBSTITUIR o banco atual\n'
-        +'[Cancelar] = MESCLAR com o banco atual');
-      function codAtivo(cod){
-        if(!cod) return null;
-        return _beEscopos.find(function(x){ return x.status==='Ativo' && x.codigo && String(x.codigo).toLowerCase()===String(cod).toLowerCase(); });
-      }
-      var ignorados = 0;
-      if(op){
-        _beEscopos = dados.map(function(d){ d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d); return d; });
-      } else {
-        // mesclar: nao duplicar por id nem por CODIGO ja ativo
-        dados.forEach(function(d){
-          d=d||{}; if(!d.id) d.id=uid(); beNormalizarBloco(d);
-          if(_beEscopos.find(function(x){return x.id===d.id})){ ignorados++; return; }
-          if(codAtivo(d.codigo)){ ignorados++; return; } // codigo ativo ja existe -> nao duplica
-          _beEscopos.push(d);
-        });
-      }
-      beSaveDB();
-      beAtualizarGrupos();
-      beRenderLista();
-      toast('✔ Importação concluída! '+_beEscopos.length+' blocos no banco'+(ignorados?(' ('+ignorados+' ignorado(s) por código/ID duplicado)'):'')+'.','ok');
+      beAbrirConfirmImport(dados, file.name || 'arquivo');
     } catch(err){
-      alert('Erro ao importar: '+err.message);
+      alert('Erro ao ler o arquivo JSON: '+err.message);
     }
     event.target.value='';
   };
   reader.readAsText(file);
+}
+
+/* Carrega os blocos iniciais do arquivo estatico, sem o usuario baixar nada */
+function beCarregarBlocosIniciais(){
+  var url='data/banco-blocos-proposta-inicial.json';
+  fetch(url, {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(dados){ beAbrirConfirmImport(dados, 'Carga inicial ('+(Array.isArray(dados)?dados.length:0)+' blocos)'); })
+    .catch(function(err){
+      alert('Não foi possível carregar os blocos iniciais automaticamente.\n\nDetalhe: '+(err&&err.message||err)
+        +'\n\nAlternativa: use o botão "⬇️ Importar" e selecione o arquivo data/banco-blocos-proposta-inicial.json.');
+    });
 }
 
 /* Limpar todo o banco */
