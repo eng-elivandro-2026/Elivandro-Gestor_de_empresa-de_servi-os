@@ -3363,6 +3363,47 @@ function escRestaurarOriginal(si){
   toast('↺ Texto original restaurado');
 }
 
+// ── F6: agrupamento VISUAL dos blocos da Etapa 3 por seção de proposta ──
+// Apenas rótulos visuais (cabeçalhos). Não altera escSecs nem a geração final.
+var ESC_GRUPOS = [
+  {n:'1. Objetivo / Resumo',                 fam:['OBJ','RES']},
+  {n:'2. Escopo Técnico / Engenharia',       fam:['IE','PE','AC','AP','ED','LEV','MAT','LAY','FDP','EP','ABT','NOR']},
+  {n:'3. Condições de Execução e Premissas', fam:['EXE','PRE','SSMA']},
+  {n:'4. Testes e Comissionamento',          fam:['TC']},
+  {n:'5. Identificação',                      fam:['ID']},
+  {n:'6. Obrigações',                         fam:['OBR']},
+  {n:'7. Exclusões de Escopo',                fam:['EXC']},
+  {n:'8. Entrega e Aceite',                   fam:['ENT']},
+  {n:'9. Condições Comerciais',               fam:['PRA','PAG','IMP','FOR','VALD','GAR']}
+];
+var ESC_GRUPO_MANUAL = 'Blocos Manuais';
+// Índice do grupo de uma seção pelo prefixo do código (sem código/prefixo não mapeado => Blocos Manuais).
+function escGrupoIndexDeSec(sec){
+  var fam = escFamiliaDeCodigo(sec && sec.codigoBloco);
+  if(!fam) return ESC_GRUPOS.length;
+  for(var i=0;i<ESC_GRUPOS.length;i++){ if(ESC_GRUPOS[i].fam.indexOf(fam)>=0) return i; }
+  return ESC_GRUPOS.length;
+}
+function escGrupoNome(idx){ return idx<ESC_GRUPOS.length ? ESC_GRUPOS[idx].n : ESC_GRUPO_MANUAL; }
+function escGrupoHeaderHTML(idx){
+  return '<div class="es-grupo" style="margin:.85rem 0 .35rem 0;padding:.4rem .65rem;background:var(--bg3);'
+    +'border-left:3px solid var(--accent);border-radius:var(--r2);font-weight:700;font-size:.8rem;'
+    +'color:var(--accent);letter-spacing:.02em">'+esc(escGrupoNome(idx))+'</div>';
+}
+// Botão opcional: reordena escSecs na ordem padrão de grupos (estável dentro de cada grupo). Pede confirmação.
+function escOrganizarPorSecoes(){
+  if(!escSecs.length){ toast('Não há seções para organizar'); return; }
+  if(!confirm('Reordenar os blocos agrupando-os por seção de proposta?\n\n'
+    +'Os blocos serão colocados na ordem padrão de grupos (Objetivo → Escopo Técnico → … → Condições Comerciais → Blocos Manuais). '
+    +'A ordem dentro de cada grupo é mantida e você pode reorganizar manualmente depois.')) return;
+  var comIdx = escSecs.map(function(s,i){ return {s:s, g:escGrupoIndexDeSec(s), i:i}; });
+  comIdx.sort(function(a,b){ return a.g!==b.g ? a.g-b.g : a.i-b.i; });
+  escSecs = comIdx.map(function(x){ return x.s; });
+  rEsc();
+  if(typeof scheduleDraftSave==='function')scheduleDraftSave();
+  toast('✅ Blocos organizados por seções');
+}
+
 function rEsc(){
   try{updBT();}catch(e){}
   try{cTot();}catch(e){}
@@ -3374,11 +3415,16 @@ function rEsc(){
   // Migra seções antigas: marca hasGantt pelo título para que editar o título não apague o gantt
   escSecs.forEach(function(s,i){s.num=String(i+1);if(!s.hasGantt){var t=String(s.titulo||'').trim().toUpperCase();if(t==='PRAZO / CRONOGRAMA'||t==='PRAZO'||t==='CRONOGRAMA'||t==='PRAZO/CRONOGRAMA')s.hasGantt=true;}});
   var tot=escSecs.length;
+  var _grpAnterior=null; // F6: cabeçalho de grupo só quando o grupo muda na ordem atual
   el.innerHTML=escSecs.map(function(sec,si){
     var isFirst=si===0,isLast=si===tot-1;
     var totSubs=(sec.subs||[]).length;
     var isValor=isValorSec(sec);
-    return '<div class="es" data-sid="'+sec.id+'" data-si="'+si+'">'
+    var _gi=escGrupoIndexDeSec(sec);
+    var _hdr=(_gi!==_grpAnterior)?escGrupoHeaderHTML(_gi):'';
+    _grpAnterior=_gi;
+    return _hdr
+      +'<div class="es" data-sid="'+sec.id+'" data-si="'+si+'">'
       +'<div class="es-hd">'
       +'<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-right:3px">'
       +'<button class="btn bg bxs es-up" data-si="'+si+'" title="Mover para cima" style="padding:.1rem .3rem;line-height:1;opacity:'+(isFirst?'0.2':'1')+'" '+(isFirst?'disabled':'')+'>▲</button>'
