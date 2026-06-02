@@ -329,11 +329,22 @@ function execDatasOp(p){
   var d = (key!=null && m[key]) ? m[key] : null;
   return { ini:(d&&d.ini)||'', ter:(d&&d.ter)||'', ace:(d&&d.ace)||'' };
 }
-// Fases consideradas "fechadas" (proposta convertida em negócio)
+// Fases consideradas "fechadas" (proposta convertida em negócio = ganha/aprovada)
+// 'ganho' = status comercial de venda aprovada (substituiu o antigo 'aprovado' comercial).
+// Os demais são status OPERACIONAIS de propostas que já foram ganhas e migraram para execução
+// (aprovado/andamento/taf/sat/atrasado/em_pausa_*/finalizado). 'faturado'/'recebido' = legado.
 // em_pausa_* = negócio ganho, execução temporariamente parada → conta no faturamento
 // atrasado = aprovada mas com atraso na execução → ainda é um fechamento
-var FAS_FECHADO=['aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado',
+var FAS_FECHADO=['ganho','aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado',
   'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+// Predicado central: proposta GANHA/APROVADA para fins de KPI estratégico/executivo.
+// Considera o status comercial 'ganho' e os status operacionais (proposta que virou obra).
+// Tolera p.fas (Comercial/memória) e p.fase (eventual campo do banco).
+function isPropostaGanhaOuAprovada(p){
+  if(!p) return false;
+  return FAS_FECHADO.indexOf(p.fas||p.fase||'') >= 0;
+}
+if(typeof window!=='undefined') window.isPropostaGanhaOuAprovada = isPropostaGanhaOuAprovada;
 
 var SEQ=[  {k:'ESCOPO_FORNECIMENTO',t:'ESCOPO DE FORNECIMENTO'},
   {k:'OBJETIVO',t:'OBJETIVO DO SERVIÇO'},
