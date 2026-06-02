@@ -7926,6 +7926,114 @@ function beInit(){
 }
 
 // ============================================================
+// TEMPLATES DE PROPOSTA (F3) — listas ordenadas de CÓDIGOS de blocos.
+// Adicionam copias locais editaveis na proposta (nao alteram a biblioteca).
+// Fonte: constante interna (espelhada em data/templates-proposta-inicial.json).
+// ============================================================
+var TEMPLATES_PROPOSTA = [
+  { codigo:'TPL-IE-CHAVE-GERAL', nome:'Instalação de Caixa com Chave Geral Tripolar',
+    blocos:['OBJ-001','IE-03.001','EXE-001','TC-01.001','ID-001','EXC-001','EXC-002','ENT-001','PAG-001','IMP-001','VALD-001','GAR-001'] },
+  { codigo:'TPL-ED-PROJETO-PAINEL', nome:'Projeto Elétrico de Painel',
+    blocos:['OBJ-001','ED-05.001','NOR-001','LAY-001','FDP-001','EP-001','ABT-001','OBR-001','OBR-002','EXC-ED-001','PRA-001','PAG-001','IMP-001','VALD-001','GAR-001'] },
+  { codigo:'TPL-ED-DIAGRAMA-UNIFILAR', nome:'Diagrama Unifilar Geral',
+    blocos:['OBJ-001','ED-06.001','LEV-001','ID-002','ENT-ED-001','OBR-001','OBR-002','EXC-ED-002','PRA-001','PAG-001','IMP-001','FOR-001','VALD-001','GAR-001'] },
+  { codigo:'TPL-PE-MONTAGEM-OFICINA', nome:'Montagem de Painel Elétrico em Oficina',
+    blocos:['OBJ-001','PE-08.001','LAY-PE-001','ID-003','FDP-001','MAT-PE-001','TC-PE-001','OBR-001','OBR-002','EXC-PE-001','PRA-001','PAG-001','IMP-001','VALD-001','GAR-001'] },
+  { codigo:'TPL-ED-DOCUMENTACAO-TECNICA', nome:'Documentação Técnica / Entrega de Projeto',
+    blocos:['OBJ-001','LEV-001','ENT-ED-001','OBR-001','OBR-002','EXC-ED-001','PRA-001','PAG-001','IMP-001','VALD-001','GAR-001'] }
+];
+
+function tplPropPorCodigo(cod){ return TEMPLATES_PROPOSTA.find(function(t){return t.codigo===cod;}) || null; }
+function tplPropBlocoAtivo(cod){
+  cod=String(cod||'').toLowerCase();
+  return _beEscopos.find(function(e){ return ((e.status||'Ativo')==='Ativo') && String(e.codigo||'').toLowerCase()===cod; }) || null;
+}
+function tplPropBlocoQualquer(cod){
+  cod=String(cod||'').toLowerCase();
+  return _beEscopos.find(function(e){ return String(e.codigo||'').toLowerCase()===cod; }) || null;
+}
+
+/* Abre a area "Templates de Proposta" (modal com os templates e seus codigos) */
+function tplPropAbrir(){
+  beLoadDB(); // garante a biblioteca carregada para indicar disponibilidade
+  tplPropFechar();
+  var cards = TEMPLATES_PROPOSTA.map(function(t){
+    var nAtivos = t.blocos.filter(function(c){return tplPropBlocoAtivo(c);}).length;
+    var chips = t.blocos.map(function(c){
+      var ativo=tplPropBlocoAtivo(c), existe=tplPropBlocoQualquer(c);
+      var cor = ativo?'#3fb950':(existe?'#d4a017':'#f85149');
+      var sufixo = ativo?'':(existe?' (inativo)':' (ausente)');
+      return '<span style="display:inline-flex;align-items:center;font-size:.66rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:.04rem .35rem">'+esc(c)+esc(sufixo)+'</span>';
+    }).join(' ');
+    return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.7rem .8rem;display:flex;flex-direction:column;gap:.45rem">'
+      + '<div><div style="font-weight:800;color:var(--text);font-size:.95rem">'+esc(t.nome)+'</div>'
+      + '<div style="font-size:.7rem;color:var(--accent);font-weight:700">'+esc(t.codigo)+' — '+nAtivos+'/'+t.blocos.length+' bloco(s) ativo(s) na biblioteca</div></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+chips+'</div>'
+      + '<div style="display:flex;justify-content:flex-end"><button class="btn bs" onclick="tplPropAdicionar(\''+esc(t.codigo)+'\')">✅ Adicionar Template na Proposta</button></div>'
+      + '</div>';
+  }).join('');
+  var ov=document.createElement('div'); ov.id='tplPropOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:961;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow:auto');
+  ov.onclick=function(e){ if(e.target===ov) tplPropFechar(); };
+  ov.innerHTML='<div style="width:min(660px,96vw);max-height:92vh;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6)">'
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-weight:900;color:var(--text)">🧩 Templates de Proposta</span>'
+    + '<button class="btn bg bxs" onclick="tplPropFechar()">✕</button></div>'
+    + '<div style="flex:1 1 auto;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem">'
+    + '<div style="font-size:.78rem;color:var(--text2)">Cada template adiciona um conjunto de blocos na proposta atual, como cópias editáveis. Verde = disponível; amarelo = inativo; vermelho = ausente.</div>'
+    + cards
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+function tplPropFechar(){ var ov=document.getElementById('tplPropOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+
+/* Adiciona os blocos ativos de um template na proposta atual (copias locais) */
+function tplPropAdicionar(tplCodigo){
+  var t=tplPropPorCodigo(tplCodigo); if(!t) return;
+  if(typeof editId==='undefined' || !editId){
+    if(confirm('Nenhuma proposta está aberta para edição.\n\nDeseja abrir a seção de Nova Proposta?')) go('nova', null);
+    return;
+  }
+  var jaNaProposta={};
+  (escSecs||[]).forEach(function(s){ if(s.codigoBloco) jaNaProposta[String(s.codigoBloco).toLowerCase()]=true; });
+
+  var paraAdicionar=[], naoEncontrados=[], inativos=[], duplicados=[];
+  t.blocos.forEach(function(cod){
+    var b=tplPropBlocoAtivo(cod);
+    if(!b){ if(tplPropBlocoQualquer(cod)) inativos.push(cod); else naoEncontrados.push(cod); return; }
+    if(jaNaProposta[String(cod).toLowerCase()]){ duplicados.push(b); return; }
+    paraAdicionar.push(b);
+  });
+
+  // Duplicados: por padrao NAO adiciona; oferece confirmacao para duplicar.
+  if(duplicados.length){
+    var addDup=confirm(duplicados.length+' bloco(s) deste template já está(ão) na proposta:\n• '
+      + duplicados.map(function(b){return b.codigo;}).join('\n• ')
+      + '\n\n[OK] = adicionar mesmo assim (duplicar)\n[Cancelar] = ignorar os duplicados');
+    if(addDup){ duplicados.forEach(function(b){ paraAdicionar.push(b); }); }
+  }
+
+  var adicionados=0;
+  paraAdicionar.forEach(function(e){
+    var subsForProp=(e.subs||[]).map(function(s){ return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''}; });
+    escSecs.push({ id:uid(), num:'', titulo:e.titulo||'', desc:e.conteudo||'', subs:subsForProp,
+      codigoBloco:e.codigo||'', origemBlocoId:e.id||'' });
+    adicionados++;
+  });
+
+  tplPropFechar();
+  if(adicionados>0){ go('nova', null); step(3); rEsc(); }
+  toast(adicionados>0 ? ('✔ Template "'+t.nome+'": '+adicionados+' bloco(s) adicionado(s) à proposta.') : 'Nenhum bloco do template foi adicionado.', adicionados>0?'ok':'err');
+
+  if(naoEncontrados.length || inativos.length){
+    alert('Atenção — blocos do template NÃO adicionados:\n'
+      + (naoEncontrados.length ? ('\nNão encontrados na biblioteca:\n• '+naoEncontrados.join('\n• ')) : '')
+      + (inativos.length ? ('\n\nInativos (ignorados):\n• '+inativos.join('\n• ')) : '')
+      + '\n\nDica: importe a carga inicial (Importar JSON) ou ative/cadastre os blocos faltantes.');
+  }
+}
+
+// ============================================================
 // AUTOCOMPLETE DE CLIENTES / CONTATOS
 var autoBox=null, autoState={input:null, items:[], index:-1, kind:''};
 

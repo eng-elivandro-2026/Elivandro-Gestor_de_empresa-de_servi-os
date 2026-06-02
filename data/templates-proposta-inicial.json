@@ -1,0 +1,27 @@
+[
+  {
+    "codigo": "TPL-IE-CHAVE-GERAL",
+    "nome": "Instalação de Caixa com Chave Geral Tripolar",
+    "blocos": ["OBJ-001","IE-03.001","EXE-001","TC-01.001","ID-001","EXC-001","EXC-002","ENT-001","PAG-001","IMP-001","VALD-001","GAR-001"]
+  },
+  {
+    "codigo": "TPL-ED-PROJETO-PAINEL",
+    "nome": "Projeto Elétrico de Painel",
+    "blocos": ["OBJ-001","ED-05.001","NOR-001","LAY-001","FDP-001","EP-001","ABT-001","OBR-001","OBR-002","EXC-ED-001","PRA-001","PAG-001","IMP-001","VALD-001","GAR-001"]
+  },
+  {
+    "codigo": "TPL-ED-DIAGRAMA-UNIFILAR",
+    "nome": "Diagrama Unifilar Geral",
+    "blocos": ["OBJ-001","ED-06.001","LEV-001","ID-002","ENT-ED-001","OBR-001","OBR-002","EXC-ED-002","PRA-001","PAG-001","IMP-001","FOR-001","VALD-001","GAR-001"]
+  },
+  {
+    "codigo": "TPL-PE-MONTAGEM-OFICINA",
+    "nome": "Montagem de Painel Elétrico em Oficina",
+    "blocos": ["OBJ-001","PE-08.001","LAY-PE-001","ID-003","FDP-001","MAT-PE-001","TC-PE-001","OBR-001","OBR-002","EXC-PE-001","PRA-001","PAG-001","IMP-001","VALD-001","GAR-001"]
+  },
+  {
+    "codigo": "TPL-ED-DOCUMENTACAO-TECNICA",
+    "nome": "Documentação Técnica / Entrega de Projeto",
+    "blocos": ["OBJ-001","LEV-001","ENT-ED-001","OBR-001","OBR-002","EXC-ED-001","PRA-001","PAG-001","IMP-001","VALD-001","GAR-001"]
+  }
+]

@@ -364,6 +364,19 @@
     "obs": "Definir critérios de aceite e termo de entrega."
   },
   {
+    "codigo": "PRA-001",
+    "familia": "PRA",
+    "categoria": "Comercial / Prazo e Cronograma",
+    "tipo": "Prazo",
+    "ordem": 810,
+    "titulo": "PRA-001 — Prazo e Cronograma",
+    "descricao": "Prazo e cronograma previsto para execução ou entrega dos serviços.",
+    "conteudo": "O prazo de execução e/ou entrega dos serviços será definido conforme escopo aprovado, disponibilidade de materiais, liberação de acesso, condições operacionais do cliente e alinhamento prévio das janelas de trabalho. Eventuais alterações de escopo, atrasos na liberação da área, indisponibilidade de informações técnicas, necessidade de parada de produção ou fatores externos poderão impactar o cronograma inicialmente previsto, devendo as partes alinhar nova programação quando necessário.",
+    "status": "Ativo",
+    "observacoes_internas": "Usar como bloco padrão de prazo/cronograma em propostas técnicas e comerciais.",
+    "obs": "Usar como bloco padrão de prazo/cronograma em propostas técnicas e comerciais."
+  },
+  {
     "codigo": "IMP-001",
     "familia": "IMP",
     "categoria": "Comercial / Impostos",

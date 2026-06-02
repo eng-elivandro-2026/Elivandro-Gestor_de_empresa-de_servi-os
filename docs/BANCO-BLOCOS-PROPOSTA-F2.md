@@ -4,7 +4,8 @@ Carga inicial de **blocos reutilizáveis** de proposta técnica/comercial para o
 Banco de Blocos (módulo Comercial → 🗂️ Banco de Escopos), implementado na F1.
 
 ## Arquivo de dados
-- `data/banco-blocos-proposta-inicial.json` — **33 blocos**, todos com `status: "Ativo"`.
+- `data/banco-blocos-proposta-inicial.json` — **34 blocos**, todos com `status: "Ativo"`.
+  - Inclui `PRA-001` (Prazo e Cronograma), adicionado na F3 para que os Templates de Proposta não fiquem com bloco ausente.
 
 ## Como importar
 1. Abrir **Comercial → 🗂️ Banco de Escopos**.
@@ -57,11 +58,11 @@ Compatível com a importação da F1. Campos:
 - Ao **Adicionar na Proposta**, cada bloco entra como **cópia local editável**
   (na Etapa 3). Editar o texto na proposta **não altera** o bloco da biblioteca.
 
-## Lista dos 33 blocos
+## Lista dos 34 blocos
 OBJ-001, IE-03.001, EXE-001, TC-01.001, ID-001, ED-05.001, NOR-001, LAY-001,
 FDP-001, EP-001, ABT-001, ED-06.001, LEV-001, ID-002, ENT-ED-001, PE-08.001,
 LAY-PE-001, ID-003, MAT-PE-001, TC-PE-001, OBR-001, OBR-002, EXC-001, EXC-002,
-EXC-ED-001, EXC-ED-002, EXC-PE-001, ENT-001, IMP-001, PAG-001, FOR-001,
+EXC-ED-001, EXC-ED-002, EXC-PE-001, ENT-001, PRA-001, IMP-001, PAG-001, FOR-001,
 VALD-001, GAR-001.
 
 ## Observações
