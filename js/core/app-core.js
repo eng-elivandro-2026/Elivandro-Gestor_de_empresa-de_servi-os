@@ -686,7 +686,7 @@ function loadAll(){
     if(!Array.isArray(p.esc))p.esc=[];
     p.esc=p.esc.map(function(s){
       if(!s)return null;
-      return {
+      var o={
         id:s.id||uid(), num:s.num||'',
         titulo:s.titulo||s.t||s.nome||'',
         desc:s.desc||s.c||s.conteudo||'',
@@ -694,6 +694,12 @@ function loadAll(){
           return {id:sb.id||uid(),num:sb.num||'',nome:sb.nome||sb.titulo||sb.t||'',desc:sb.desc||sb.c||sb.conteudo||''};
         }):[]
       };
+      // F5: preserva rastreabilidade dos blocos da biblioteca (copia local; nao altera a biblioteca)
+      if(s.codigoBloco)o.codigoBloco=s.codigoBloco;
+      if(s.origemBlocoId)o.origemBlocoId=s.origemBlocoId;
+      if(s.descOriginal!=null)o.descOriginal=s.descOriginal;
+      if(s.origemTemplate)o.origemTemplate=true;
+      return o;
     }).filter(Boolean);
     return p;
   });
@@ -2463,7 +2469,7 @@ function editP(id){
   // Normalizar todos os formatos possíveis de esc[] {t,c} -> {titulo,desc}
   var rawNorm = (Array.isArray(rawEsc) ? rawEsc : []).map(function(s){
     if(!s) return null;
-    return {
+    var o = {
       id:    s.id    || uid(),
       num:   s.num   || '',
       titulo:s.titulo|| s.t || s.nome || '',
@@ -2472,6 +2478,12 @@ function editP(id){
         return {id:sb.id||uid(), num:sb.num||'', nome:sb.nome||sb.titulo||sb.t||'', desc:sb.desc||sb.c||sb.conteudo||''};
       }) : []
     };
+    // F5: preserva rastreabilidade dos blocos da biblioteca (copia local; nao altera a biblioteca)
+    if(s.codigoBloco)o.codigoBloco=s.codigoBloco;
+    if(s.origemBlocoId)o.origemBlocoId=s.origemBlocoId;
+    if(s.descOriginal!=null)o.descOriginal=s.descOriginal;
+    if(s.origemTemplate)o.origemTemplate=true;
+    return o;
   }).filter(Boolean);
   escSecs = JSON.parse(JSON.stringify(rawNorm));
 
@@ -3302,6 +3314,55 @@ function escInsertSym(sel){
   ta.dispatchEvent(new Event('input'));
 }
 
+// ── F5: organização visual dos blocos na Etapa 3 ──
+// Família inferida pelo prefixo do código (apenas rótulo visual; não altera a lógica).
+function escFamiliaDeCodigo(cod){
+  cod=String(cod||'').trim();
+  if(!cod) return '';
+  var m=cod.match(/^[A-Za-z]+/);
+  return m ? m[0].toUpperCase() : '';
+}
+// True quando o texto foi editado localmente em relação ao bloco mestre.
+function escBlocoEditado(sec){
+  return !!(sec && sec.descOriginal!=null && String(sec.desc||'')!==String(sec.descOriginal||''));
+}
+// Faixa de metadados (código, família, origem, "editado localmente") por seção.
+function escMetaBar(sec){
+  var temCodigo=!!(sec.codigoBloco && String(sec.codigoBloco).trim());
+  var cod=temCodigo?String(sec.codigoBloco).trim():'';
+  var fam=escFamiliaDeCodigo(cod);
+  var chips='';
+  chips+='<span class="tg2" title="Código do bloco" style="background:var(--bg3);color:var(--accent);font-weight:700">'
+        +(temCodigo?esc(cod):'Bloco manual')+'</span>';
+  if(fam) chips+='<span class="tg2" title="Família inferida pelo prefixo do código" style="background:var(--bg3)">'+esc(fam)+'</span>';
+  if(sec.origemTemplate) chips+='<span class="tg2" title="Adicionado por Template de Proposta" style="background:rgba(99,102,241,.16);color:var(--accent)">📋 Template</span>';
+  else if(sec.origemBlocoId) chips+='<span class="tg2" title="Conteúdo vindo do Banco de Blocos" style="background:var(--bg3)">Origem: Banco de Blocos</span>';
+  if(escBlocoEditado(sec)) chips+='<span class="tg2" title="O texto foi alterado nesta proposta — o bloco mestre da biblioteca não muda" style="background:rgba(245,158,11,.18);color:#f59e0b">✏️ Editado localmente</span>';
+  return '<div class="es-meta" style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin:.1rem 0 .35rem 0;font-size:.7rem">'+chips+'</div>';
+}
+// Duplica a seção logo abaixo dela (cópia local independente).
+function escDuplicar(si){
+  var sec=escSecs[si]; if(!sec) return;
+  var copia=JSON.parse(JSON.stringify(sec));
+  copia.id=uid(); copia.num='';
+  (copia.subs||[]).forEach(function(sb){sb.id=uid();});
+  escSecs.splice(si+1,0,copia);
+  rEsc();
+  if(typeof scheduleDraftSave==='function')scheduleDraftSave();
+  toast('⧉ Seção duplicada');
+}
+// Restaura o texto da seção para o conteúdo original do bloco mestre (somente quando há texto original).
+function escRestaurarOriginal(si){
+  var sec=escSecs[si]; if(!sec) return;
+  if(sec.descOriginal==null){ toast('Sem texto original disponível para esta seção'); return; }
+  if(String(sec.desc||'')===String(sec.descOriginal||'')){ toast('O texto já está igual ao original'); return; }
+  if(!confirm('Restaurar o texto original do bloco da biblioteca?\n\nO texto editado nesta proposta será substituído pelo conteúdo original do bloco mestre.')) return;
+  sec.desc=String(sec.descOriginal||'');
+  rEsc();
+  if(typeof scheduleDraftSave==='function')scheduleDraftSave();
+  toast('↺ Texto original restaurado');
+}
+
 function rEsc(){
   try{updBT();}catch(e){}
   try{cTot();}catch(e){}
@@ -3333,9 +3394,13 @@ function rEsc(){
       +'<div class="br" style="flex-shrink:0">'
       +(isValor
          ? '<button class="btn ba bxs" onclick="atualizarValorSecaoEscopo()" title="Recarregar tabela de valores considerando descontos atuais">↻ Atualizar valores</button><span class="tg2" title="Tabela de valores automática">💰 Auto</span>'
-         : '<button class="btn bg bxs es-addsub" data-si="'+si+'" title="Adicionar sub-item">+ Item</button><button class="btn bp bxs es-save" data-si="'+si+'" title="Salvar no banco">💾</button>')
+         : '<button class="btn bg bxs es-addsub" data-si="'+si+'" title="Adicionar sub-item">+ Item</button>'
+           +'<button class="btn bg bxs es-dup" data-si="'+si+'" title="Duplicar esta seção">⧉</button>'
+           +(escBlocoEditado(sec)?'<button class="btn ba bxs es-restore" data-si="'+si+'" title="Restaurar o texto original do bloco da biblioteca">↺</button>':'')
+           +'<button class="btn bp bxs es-save" data-si="'+si+'" title="Salvar no banco">💾</button>')
       +'<button class="btn bd bxs es-del" data-sid="'+sec.id+'" title="Excluir seção">🗑</button>'
       +'</div></div>'
+      +(isValor ? '' : escMetaBar(sec))
       +(isValor
          ? '<div class="hint" style="margin:.2rem 0 .5rem 0">Esta seção puxa automaticamente os valores do orçamento e aparece na posição em que você deixar aqui. Você pode mover para cima/baixo, editar o número e clicar em Atualizar valores quando quiser recarregar com os descontos atuais. e trocar o título.</div>'
          : '')
@@ -3389,6 +3454,10 @@ function rEsc(){
       setTimeout(function(){var nb=el.querySelectorAll('.esb-n');if(nb.length)nb[nb.length-1].focus();},80);
     } else if(btn.classList.contains('es-save')){
       saveTplEsc(parseInt(btn.getAttribute('data-si')));
+    } else if(btn.classList.contains('es-dup')){
+      escDuplicar(parseInt(btn.getAttribute('data-si')));
+    } else if(btn.classList.contains('es-restore')){
+      escRestaurarOriginal(parseInt(btn.getAttribute('data-si')));
     } else if(btn.classList.contains('es-subup')){
       var si=parseInt(btn.getAttribute('data-si'));
       var subi=parseInt(btn.getAttribute('data-subi'));
@@ -7159,7 +7228,8 @@ function stplAplicarInline(id){
     var e=_beEscopos.find(function(x){return x.id===eid;});
     if(!e)return;
     var subsForProp=(e.subs||[]).map(function(s){return{id:uid(),nome:s.nome||s.titulo||'',desc:s.desc||''};});
-    escSecs.push({id:uid(),num:'',titulo:e.titulo||'',desc:e.conteudo||'',subs:subsForProp});
+    escSecs.push({id:uid(),num:'',titulo:e.titulo||'',desc:e.conteudo||'',subs:subsForProp,
+      codigoBloco:e.codigo||'', origemBlocoId:e.id||'', descOriginal:e.conteudo||'', origemTemplate:true});
     adicionados++;
   });
   Q('stplModal').style.display='none';
@@ -7486,7 +7556,8 @@ function beInlineAdicionar(){
       subs:  subsForProp,
       // Rastreabilidade (copia local; nao altera o bloco original da biblioteca):
       codigoBloco: e.codigo || '',
-      origemBlocoId: e.id || ''
+      origemBlocoId: e.id || '',
+      descOriginal: e.conteudo || ''
     });
     adicionados++;
   });
@@ -7838,7 +7909,8 @@ function beAdicionarNaProposta(){
       subs:  subsForProp,
       // Rastreabilidade (copia local; nao altera o bloco original da biblioteca):
       codigoBloco: e.codigo || '',
-      origemBlocoId: e.id || ''
+      origemBlocoId: e.id || '',
+      descOriginal: e.conteudo || ''
     });
     adicionados++;
   });
@@ -8087,7 +8159,7 @@ function tplPropAdicionar(tplCodigo){
   paraAdicionar.forEach(function(e){
     var subsForProp=(e.subs||[]).map(function(s){ return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''}; });
     escSecs.push({ id:uid(), num:'', titulo:e.titulo||'', desc:e.conteudo||'', subs:subsForProp,
-      codigoBloco:e.codigo||'', origemBlocoId:e.id||'' });
+      codigoBloco:e.codigo||'', origemBlocoId:e.id||'', descOriginal:e.conteudo||'', origemTemplate:true });
     adicionados++;
   });
 
