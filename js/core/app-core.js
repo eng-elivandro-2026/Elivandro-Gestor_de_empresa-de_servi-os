@@ -205,6 +205,7 @@ var LS=function(k,v){if(v===undefined){try{return JSON.parse(localStorage.getIte
 var LS_EMPRESA_KEYS = [
   'tf_tpls','tf_etpl','tf_prc','tf_meta','tf_cats_excluidas',
   'tf_bancoEscopos','tf_cnt','tf_edb','tf_defp_custom','tf_svc_templates',
+  'tf_templates_proposta_custom',
   'rh_alert_emails','rh_alert_email_date'
 ];
 function _lseEid() {
@@ -8131,7 +8132,11 @@ var TEMPLATES_PROPOSTA = [
     blocos:['OBJ-001','LEV-001','ENT-ED-001','OBR-001','OBR-002','EXC-ED-001','PRA-001','PAG-001','IMP-001','VALD-001','GAR-001'] }
 ];
 
-function tplPropPorCodigo(cod){ return TEMPLATES_PROPOSTA.find(function(t){return t.codigo===cod;}) || null; }
+function tplPropPorCodigo(cod){
+  return TEMPLATES_PROPOSTA.find(function(t){return t.codigo===cod;})
+      || tplPropCustomLoad().find(function(t){return t.codigo===cod;})
+      || null;
+}
 function tplPropBlocoAtivo(cod){
   cod=String(cod||'').toLowerCase();
   return _beEscopos.find(function(e){ return ((e.status||'Ativo')==='Ativo') && String(e.codigo||'').toLowerCase()===cod; }) || null;
@@ -8141,35 +8146,60 @@ function tplPropBlocoQualquer(cod){
   return _beEscopos.find(function(e){ return String(e.codigo||'').toLowerCase()===cod; }) || null;
 }
 
-/* Abre a area "Templates de Proposta" (modal com os templates e seus codigos) */
+/* Chips de blocos (verde=ativo, amarelo=inativo, vermelho=ausente) */
+function _tplPropChips(t){
+  return (t.blocos||[]).map(function(c){
+    var ativo=tplPropBlocoAtivo(c), existe=tplPropBlocoQualquer(c);
+    var cor = ativo?'#3fb950':(existe?'#d4a017':'#f85149');
+    var sufixo = ativo?'':(existe?' (inativo)':' (ausente)');
+    return '<span style="display:inline-flex;align-items:center;font-size:.66rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:.04rem .35rem">'+esc(c)+esc(sufixo)+'</span>';
+  }).join(' ');
+}
+/* Card de um template (fixo ou personalizado) */
+function _tplPropCardHTML(t, isCustom){
+  var nAtivos = (t.blocos||[]).filter(function(c){return tplPropBlocoAtivo(c);}).length;
+  var inativo = isCustom && (t.status||'Ativo')==='Inativo';
+  var selo = isCustom ? ' <span class="tg2" style="background:var(--bg3);color:var(--accent)">Personalizado</span>' : '';
+  if(inativo) selo += ' <span class="tg2" style="background:rgba(245,158,11,.18);color:#f59e0b">Inativo</span>';
+  var acoesEsq = '';
+  if(isCustom){
+    acoesEsq = '<button class="btn bg bxs" onclick="tplPropCustomEditar(\''+esc(t.codigo)+'\')" title="Editar template">✏️ Editar</button>'
+             + '<button class="btn bd bxs" onclick="tplPropCustomExcluir(\''+esc(t.codigo)+'\')" title="Excluir template">🗑</button>';
+  }
+  var acaoUsar = inativo ? '' : '<button class="btn bs" onclick="tplPropAdicionar(\''+esc(t.codigo)+'\')">✅ Adicionar Template na Proposta</button>';
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.7rem .8rem;display:flex;flex-direction:column;gap:.45rem;opacity:'+(inativo?'.65':'1')+'">'
+    + '<div><div style="font-weight:800;color:var(--text);font-size:.95rem">'+esc(t.nome)+selo+'</div>'
+    + '<div style="font-size:.7rem;color:var(--accent);font-weight:700">'+esc(t.codigo)+' — '+nAtivos+'/'+(t.blocos||[]).length+' bloco(s) ativo(s) na biblioteca'+(t.descricao?(' · <span style="color:var(--text2);font-weight:400">'+esc(t.descricao)+'</span>'):'')+'</div></div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+_tplPropChips(t)+'</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:.35rem;align-items:center">'+acoesEsq+acaoUsar+'</div>'
+    + '</div>';
+}
+/* Abre a area "Templates de Proposta" (modal com templates fixos + personalizados) */
 function tplPropAbrir(){
   beLoadDB(); // garante a biblioteca carregada para indicar disponibilidade
   tplPropFechar();
-  var cards = TEMPLATES_PROPOSTA.map(function(t){
-    var nAtivos = t.blocos.filter(function(c){return tplPropBlocoAtivo(c);}).length;
-    var chips = t.blocos.map(function(c){
-      var ativo=tplPropBlocoAtivo(c), existe=tplPropBlocoQualquer(c);
-      var cor = ativo?'#3fb950':(existe?'#d4a017':'#f85149');
-      var sufixo = ativo?'':(existe?' (inativo)':' (ausente)');
-      return '<span style="display:inline-flex;align-items:center;font-size:.66rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:.04rem .35rem">'+esc(c)+esc(sufixo)+'</span>';
-    }).join(' ');
-    return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.7rem .8rem;display:flex;flex-direction:column;gap:.45rem">'
-      + '<div><div style="font-weight:800;color:var(--text);font-size:.95rem">'+esc(t.nome)+'</div>'
-      + '<div style="font-size:.7rem;color:var(--accent);font-weight:700">'+esc(t.codigo)+' — '+nAtivos+'/'+t.blocos.length+' bloco(s) ativo(s) na biblioteca</div></div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+chips+'</div>'
-      + '<div style="display:flex;justify-content:flex-end"><button class="btn bs" onclick="tplPropAdicionar(\''+esc(t.codigo)+'\')">✅ Adicionar Template na Proposta</button></div>'
-      + '</div>';
-  }).join('');
+  var fixosHTML = TEMPLATES_PROPOSTA.map(function(t){ return _tplPropCardHTML(t,false); }).join('');
+  var custom = tplPropCustomLoad();
+  var customHTML = custom.length
+    ? custom.map(function(t){ return _tplPropCardHTML(t,true); }).join('')
+    : '<div style="font-size:.76rem;color:var(--text2);font-style:italic">Nenhum template personalizado ainda. Use “💾 Salvar como Template” na Etapa 3 para criar um a partir dos blocos atuais.</div>';
   var ov=document.createElement('div'); ov.id='tplPropOverlay';
   ov.setAttribute('style','position:fixed;inset:0;z-index:961;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow:auto');
   ov.onclick=function(e){ if(e.target===ov) tplPropFechar(); };
   ov.innerHTML='<div style="width:min(660px,96vw);max-height:92vh;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6)">'
-    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">'
     + '<span style="font-weight:900;color:var(--text)">🧩 Templates de Proposta</span>'
-    + '<button class="btn bg bxs" onclick="tplPropFechar()">✕</button></div>'
+    + '<div style="display:flex;gap:.35rem;align-items:center">'
+    + '<button class="btn bg bxs" onclick="tplPropSalvarComoAbrir()" title="Salvar os blocos atuais da Etapa 3 como um novo template">💾 Salvar atuais</button>'
+    + '<label class="btn bg bxs" style="cursor:pointer" title="Importar templates personalizados (JSON)">⬆️ Importar<input type="file" accept="application/json,.json" onchange="tplPropCustomImportar(event)" style="display:none"></label>'
+    + '<button class="btn bg bxs" onclick="tplPropCustomExportar()" title="Exportar templates personalizados (JSON)">⬇️ Exportar</button>'
+    + '<button class="btn bg bxs" onclick="tplPropFechar()">✕</button></div></div>'
     + '<div style="flex:1 1 auto;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem">'
     + '<div style="font-size:.78rem;color:var(--text2)">Cada template adiciona um conjunto de blocos na proposta atual, como cópias editáveis. Verde = disponível; amarelo = inativo; vermelho = ausente.</div>'
-    + cards
+    + '<div style="font-weight:800;color:var(--text);font-size:.82rem;margin-top:.2rem">📦 Templates fixos</div>'
+    + fixosHTML
+    + '<div style="font-weight:800;color:var(--text);font-size:.82rem;margin-top:.4rem">⭐ Meus templates</div>'
+    + customHTML
     + '</div></div>';
   document.body.appendChild(ov);
 }
@@ -8246,6 +8276,171 @@ function tplPropAdicionar(tplCodigo){
       + (inativos.length ? ('\n\nInativos (ignorados):\n• '+inativos.join('\n• ')) : '')
       + '\n\nDica: importe a carga inicial (Importar JSON) ou ative/cadastre os blocos faltantes.');
   }
+}
+
+// ============================================================
+// F8 — TEMPLATES DE PROPOSTA PERSONALIZADOS (sem banco/migration)
+// Armazenamento em localStorage (empresa-scopado, padrao do portal):
+//   chave: tf_templates_proposta_custom  ->  [{codigo,nome,descricao,categoria,blocos[],status,created_at,updated_at}]
+// ============================================================
+function tplPropCustomLoad(){
+  var v = (typeof LSE==='function') ? LSE('tf_templates_proposta_custom') : null;
+  if(v==null) v = LS('tf_templates_proposta_custom'); // fallback p/ dados globais antigos
+  return Array.isArray(v) ? v : [];
+}
+function tplPropCustomSave(arr){
+  arr = Array.isArray(arr) ? arr : [];
+  var eid = (typeof _lseEid==='function') ? _lseEid() : null;
+  if(eid && typeof LSE==='function') LSE('tf_templates_proposta_custom', arr);
+  else LS('tf_templates_proposta_custom', arr); // sem empresa ativa: guarda global
+}
+// Le os blocos atuais da Etapa 3: lista ordenada de codigos (com codigo), e conta manuais sem codigo.
+function tplPropBlocosDaEtapa3(){
+  var codigos=[], manuais=0, vistos={};
+  (escSecs||[]).forEach(function(s){
+    if(typeof isValorSec==='function' && isValorSec(s)) return; // ignora secao de VALOR
+    var cod = s && s.codigoBloco ? String(s.codigoBloco).trim() : '';
+    if(!cod){ manuais++; return; }
+    var key=cod.toLowerCase();
+    if(vistos[key]) return; // dedup preservando a 1a ocorrencia
+    vistos[key]=true; codigos.push(cod);
+  });
+  return {codigos:codigos, manuais:manuais};
+}
+
+var _tplPropFormModo='criar';     // 'criar' | 'editar'
+var _tplPropFormCodigoOrig='';
+var _tplPropFormBlocos=[];
+
+/* Abre o modal "Salvar como Template" (criar a partir da Etapa 3, ou editar metadados de um custom) */
+function tplPropSalvarComoAbrir(editarCodigo){
+  tplPropSalvarComoFechar();
+  var ed = editarCodigo ? (tplPropCustomLoad().find(function(t){return t.codigo===editarCodigo;})||null) : null;
+  var info;
+  if(ed){
+    _tplPropFormModo='editar'; _tplPropFormCodigoOrig=ed.codigo; _tplPropFormBlocos=(ed.blocos||[]).slice();
+    info={codigos:_tplPropFormBlocos, manuais:0};
+  } else {
+    _tplPropFormModo='criar'; _tplPropFormCodigoOrig='';
+    var r=tplPropBlocosDaEtapa3(); _tplPropFormBlocos=r.codigos; info=r;
+    if(!_tplPropFormBlocos.length){
+      alert('Nenhum bloco com código na Etapa 3 para salvar como template.\n\nAdicione blocos do Banco de Escopos ou de um template. Blocos manuais (sem código) não entram no template.');
+      return;
+    }
+  }
+  var v = function(s){ return esc(s==null?'':s); };
+  var chips = _tplPropFormBlocos.map(function(c){
+    return '<span style="display:inline-flex;font-size:.66rem;font-weight:700;color:var(--accent);border:1px solid var(--border);border-radius:4px;padding:.04rem .35rem">'+esc(c)+'</span>';
+  }).join(' ') || '<span style="font-size:.74rem;color:var(--text2)">(nenhum)</span>';
+  var aviso = (info.manuais>0)
+    ? '<div style="font-size:.74rem;color:#f59e0b">⚠️ '+info.manuais+' bloco(s) manual(is) sem código serão ignorados no template.</div>'
+    : '';
+  var codigoField = (_tplPropFormModo==='editar')
+    ? '<input id="tplFcodigo" value="'+v(_tplPropFormCodigoOrig)+'" disabled style="width:100%;opacity:.7">'
+    : '<input id="tplFcodigo" placeholder="ex.: TPL-MEU-TEMPLATE" value="" style="width:100%" oninput="this.value=this.value.toUpperCase()">';
+  var st = ed ? (ed.status||'Ativo') : 'Ativo';
+  var ov=document.createElement('div'); ov.id='tplPropSalvarOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:985;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow:auto');
+  ov.onclick=function(e){ if(e.target===ov) tplPropSalvarComoFechar(); };
+  var lbl='display:block;font-size:.72rem;font-weight:700;color:var(--text2);margin:.5rem 0 .15rem 0';
+  ov.innerHTML='<div style="width:min(540px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);display:flex;flex-direction:column;max-height:92vh">'
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-weight:900;color:var(--text)">💾 '+(_tplPropFormModo==='editar'?'Editar Template':'Salvar como Template')+'</span>'
+    + '<button class="btn bg bxs" onclick="tplPropSalvarComoFechar()">✕</button></div>'
+    + '<div style="flex:1 1 auto;overflow-y:auto;padding:1rem">'
+    + '<label style="'+lbl+'">Código do template *</label>'+codigoField
+    + '<label style="'+lbl+'">Nome do template *</label><input id="tplFnome" placeholder="Nome visível no modal" value="'+v(ed&&ed.nome)+'" style="width:100%">'
+    + '<label style="'+lbl+'">Descrição</label><input id="tplFdesc" placeholder="Resumo opcional" value="'+v(ed&&ed.descricao)+'" style="width:100%">'
+    + '<label style="'+lbl+'">Categoria</label><input id="tplFcat" placeholder="Opcional (ex.: Elétrica, Documentação)" value="'+v(ed&&ed.categoria)+'" style="width:100%">'
+    + '<label style="'+lbl+'">Status</label><select id="tplFstatus" style="width:100%"><option value="Ativo"'+(st==='Ativo'?' selected':'')+'>Ativo</option><option value="Inativo"'+(st==='Inativo'?' selected':'')+'>Inativo</option></select>'
+    + '<label style="'+lbl+'">Blocos do template ('+_tplPropFormBlocos.length+')'+(_tplPropFormModo==='editar'?' — mantidos da criação':' — capturados da Etapa 3, na ordem atual')+'</label>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.1rem">'+chips+'</div>'
+    + aviso
+    + '</div>'
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end">'
+    + '<button class="btn bg" onclick="tplPropSalvarComoFechar()">Cancelar</button>'
+    + '<button class="btn bs" onclick="tplPropSalvarComoConfirmar()">💾 Salvar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ var f=Q(_tplPropFormModo==='editar'?'tplFnome':'tplFcodigo'); if(f)f.focus(); },60);
+}
+function tplPropSalvarComoFechar(){ var ov=document.getElementById('tplPropSalvarOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+function tplPropSalvarComoConfirmar(){
+  var codigo = (Q('tplFcodigo') ? Q('tplFcodigo').value : '').trim().toUpperCase().replace(/\s+/g,'-');
+  var nome   = (Q('tplFnome') ? Q('tplFnome').value : '').trim();
+  var desc   = (Q('tplFdesc') ? Q('tplFdesc').value : '').trim();
+  var cat    = (Q('tplFcat')  ? Q('tplFcat').value  : '').trim();
+  var status = (Q('tplFstatus') ? Q('tplFstatus').value : 'Ativo');
+  if(_tplPropFormModo==='editar') codigo = _tplPropFormCodigoOrig; // codigo nao muda na edicao
+  if(!codigo){ alert('Informe o código do template.'); return; }
+  if(!nome){ alert('Informe o nome do template.'); return; }
+  if(!_tplPropFormBlocos.length){ alert('O template precisa de ao menos um bloco com código.'); return; }
+  var custom = tplPropCustomLoad();
+  if(_tplPropFormModo==='criar'){
+    if(tplPropPorCodigo(codigo)){ alert('Já existe um template (fixo ou personalizado) com o código "'+codigo+'".\nEscolha outro código.'); return; }
+    var agora=new Date().toISOString();
+    custom.push({ codigo:codigo, nome:nome, descricao:desc, categoria:cat,
+      blocos:_tplPropFormBlocos.slice(), status:status, created_at:agora, updated_at:agora });
+  } else {
+    var t = custom.find(function(x){return x.codigo===codigo;});
+    if(!t){ alert('Template não encontrado para edição.'); return; }
+    t.nome=nome; t.descricao=desc; t.categoria=cat; t.status=status; t.updated_at=new Date().toISOString();
+    // blocos preservados (edicao apenas de metadados/status)
+  }
+  tplPropCustomSave(custom);
+  tplPropSalvarComoFechar();
+  toast('💾 Template "'+nome+'" '+(_tplPropFormModo==='editar'?'atualizado':'salvo')+'!', 'ok');
+  if(document.getElementById('tplPropOverlay')) tplPropAbrir(); // atualiza a listagem se aberta
+}
+function tplPropCustomEditar(cod){ tplPropSalvarComoAbrir(cod); }
+function tplPropCustomExcluir(cod){
+  var custom=tplPropCustomLoad();
+  var t=custom.find(function(x){return x.codigo===cod;}); if(!t) return;
+  if(!confirm('Excluir o template personalizado "'+t.nome+'" ('+cod+')?\n\nEsta ação não pode ser desfeita.')) return;
+  custom=custom.filter(function(x){return x.codigo!==cod;});
+  tplPropCustomSave(custom);
+  toast('🗑 Template excluído');
+  if(document.getElementById('tplPropOverlay')) tplPropAbrir();
+}
+function tplPropCustomExportar(){
+  var custom=tplPropCustomLoad();
+  if(!custom.length){ alert('Não há templates personalizados para exportar.'); return; }
+  try{
+    var blob=new Blob([JSON.stringify(custom,null,2)],{type:'application/json'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='templates-proposta-custom.json'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); if(a.parentNode)a.parentNode.removeChild(a); },1000);
+    toast('⬇️ '+custom.length+' template(s) exportado(s)');
+  }catch(e){ alert('Não foi possível exportar.'); }
+}
+function tplPropCustomImportar(ev){
+  var file = ev && ev.target && ev.target.files && ev.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var dados=JSON.parse(reader.result);
+      if(!Array.isArray(dados)) throw new Error('formato');
+      var custom=tplPropCustomLoad();
+      var existentes={}; custom.forEach(function(t){ existentes[String(t.codigo||'').toUpperCase()]=true; });
+      TEMPLATES_PROPOSTA.forEach(function(t){ existentes[String(t.codigo||'').toUpperCase()]=true; });
+      var add=0, ign=0;
+      dados.forEach(function(t){
+        if(!t || !t.codigo || !Array.isArray(t.blocos) || !t.blocos.length){ ign++; return; }
+        var cu=String(t.codigo).toUpperCase();
+        if(existentes[cu]){ ign++; return; } // nao duplica codigos fixos nem ja existentes
+        var agora=new Date().toISOString();
+        custom.push({ codigo:String(t.codigo), nome:t.nome||t.codigo, descricao:t.descricao||'',
+          categoria:t.categoria||'', blocos:t.blocos.slice(), status:t.status||'Ativo',
+          created_at:t.created_at||agora, updated_at:agora });
+        existentes[cu]=true; add++;
+      });
+      tplPropCustomSave(custom);
+      alert('Importação concluída.\nAdicionados: '+add+'\nIgnorados (inválidos ou já existentes): '+ign);
+      if(document.getElementById('tplPropOverlay')) tplPropAbrir();
+    }catch(e){ alert('Arquivo inválido. Selecione um JSON exportado por esta tela.'); }
+  };
+  reader.readAsText(file);
+  try{ ev.target.value=''; }catch(e){}
 }
 
 // ============================================================
