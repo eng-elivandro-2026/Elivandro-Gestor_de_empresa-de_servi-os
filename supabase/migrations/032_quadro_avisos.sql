@@ -51,11 +51,15 @@ EXECUTE FUNCTION quadro_avisos_set_updated_at();
 
 ALTER TABLE quadro_avisos ENABLE ROW LEVEL SECURITY;
 
--- SELECT: qualquer membro da empresa (a UI ja restringe quem ve o modulo).
+-- SELECT: membro da empresa E (dono OU adriano@tecfusion.com.br).
 DROP POLICY IF EXISTS "quadro_avisos: ver" ON quadro_avisos;
 CREATE POLICY "quadro_avisos: ver"
   ON quadro_avisos FOR SELECT
-  USING (empresa_id IN (SELECT auth_empresa_ids()));
+  USING (
+    empresa_id IN (SELECT auth_empresa_ids())
+    AND ( auth_perfil() = 'dono'
+          OR lower(coalesce(auth.jwt() ->> 'email','')) = 'adriano@tecfusion.com.br' )
+  );
 
 -- INSERT: dono OU adriano@tecfusion.com.br (defesa-em-profundidade alem do gate de UI).
 DROP POLICY IF EXISTS "quadro_avisos: inserir" ON quadro_avisos;
