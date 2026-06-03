@@ -991,11 +991,14 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togMeta()">
       <span class="ct">🎯 Metas <span id="anoAtual" style="color:var(--accent)"></span></span>
       <div class="br" onclick="event.stopPropagation()">
+        <select id="metaAno" onchange="rMeta()" title="Ano dos cálculos de Metas" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem;margin-right:.4rem"></select>
         <button class="btn bg bsm" onclick="abrirConfigMeta()">⚙️ Configurar</button>
       </div>
       <span id="metaChevron" onclick="togMeta()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
     </div>
     <div id="metaBody" style="display:none">
+      <!-- resumo geral do ano selecionado -->
+      <div id="metaResumo" style="margin-bottom:.8rem"></div>
       <!-- linha 1: barras de progresso -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem" id="metaBars"></div>
     <!-- linha 2: mini KPIs divididos em Mensal e Anual -->

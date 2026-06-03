@@ -1382,9 +1382,8 @@ function itemAnalise(txt,cor){
 // ═══ FONTE DE VERDADE: propostas do ano (exclui em_elaboracao) ═══
 // Usada por: Metas, Análise Inteligente, Visão Executiva, Ranking (ano)
 // Filtra pelo ano de CRIAÇÃO (dat2 / dat) — base para Taxa de Conversão e total enviado
-function getPropsAno(){
-  var hoje=new Date();
-  var ano=hoje.getFullYear();
+function getPropsAno(ano){
+  ano = ano || new Date().getFullYear();
   return props.filter(function(p){
     if(p.fas==='em_elaboracao') return false;
     // Prioridade: dat2 (ISO), depois dat (DD/MM/YYYY)
@@ -1406,8 +1405,8 @@ function getPropsAno(){
 // ── V467: getFechAno filtra pelo ANO DE FECHAMENTO (dtFech), não de criação ──
 // Uma proposta criada em 2025 mas fechada em 2026 conta para os números de 2026.
 // Fallback: se não tiver dtFech, usa ano de criação (comportamento legado).
-function getFechAno(){
-  var ano=new Date().getFullYear();
+function getFechAno(ano){
+  ano = ano || new Date().getFullYear();
   return props.filter(function(p){
     if(p.fas==='em_elaboracao') return false;
     // Regra única de negócio ganho/aprovado (ganho + operacionais + legado), tolerando p.fase.
@@ -1433,7 +1432,7 @@ function getFechAno(){
     return false;
   });
 }
-function getRecAno(){ return getFechAno().reduce(function(s,p){return s+n2(p.val);},0); }
+function getRecAno(ano){ return getFechAno(ano).reduce(function(s,p){return s+n2(p.val);},0); }
 // ═══════════════════════════════════════════════════════════════
 
 function rAnaliseInt(){
@@ -10665,10 +10664,76 @@ function togMeta(){
   b.style.display=open?'none':'block';
   ch.textContent=open?'▼ expandir':'▲';
 }
+// ── Metas: seletor de ano + resumo + sincronização do gráfico mensal ─────────
+// Popula o seletor de ano do painel Metas (anos com dados + ano atual), preservando
+// a seleção do usuário entre re-renders (ex.: após o botão Atualizar).
+function _populaMetaAnos(){
+  var sel=Q('metaAno'); if(!sel) return;
+  var anos={};
+  (props||[]).forEach(function(p){
+    if(p.fas==='em_elaboracao') return;
+    var d=p.dat2?new Date(p.dat2+'T12:00:00'):(p.dtFech?new Date(p.dtFech+'T12:00:00'):null);
+    if(d && !isNaN(d.getTime())) anos[d.getFullYear()]=1;
+  });
+  var anoAtual=new Date().getFullYear();
+  anos[anoAtual]=1;
+  var lista=Object.keys(anos).map(Number).sort(function(a,b){return b-a;});
+  var valAtual=sel.value;
+  sel.innerHTML=lista.map(function(a){return '<option value="'+a+'"'+(a===anoAtual?' selected':'')+'>'+a+'</option>';}).join('');
+  if(valAtual && lista.indexOf(parseInt(valAtual))>=0) sel.value=valAtual;
+}
+// Bloco mensal: reusa o gráfico "Fechamentos por Mês", ligando-o ao ano selecionado.
+function _syncFechMesAno(ano){
+  var fsel=Q('fechMesAno'); if(!fsel) return;
+  var has=Array.prototype.some.call(fsel.options,function(o){return o.value===String(ano);});
+  if(!has){ var op=document.createElement('option'); op.value=String(ano); op.textContent=ano; fsel.appendChild(op); }
+  if(fsel.value!==String(ano)){
+    fsel.value=String(ano);
+    if(Q('fechMesBody') && Q('fechMesBody').style.display!=='none' && typeof rFechMes==='function'){
+      try{ rFechMes(); }catch(e){ console.error('[rMeta] rFechMes:',e); }
+    }
+  }
+}
+// Resumo geral do ano selecionado.
+function _renderMetaResumo(ano, recAno, fechAno, totalAno, txConv){
+  var el=Q('metaResumo'); if(!el) return;
+  var ticket = fechAno>0 ? recAno/fechAno : 0;
+  var cards=[
+    {l:'Receita no ano', v:money(recAno), c:'#3fb950'},
+    {l:'Ticket médio', v:money(ticket), c:'var(--cyan)'},
+    {l:'Taxa de conversão', v:txConv+'%', c:'var(--accent)'},
+    {l:'Ganhos', v:fechAno, c:'#3fb950'},
+    {l:'Realizadas', v:totalAno, c:'#58a6ff'}
+  ];
+  el.innerHTML='<div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📊 Resumo geral '+ano+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem">'
+    +cards.map(function(k){
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem">'
+        +'<div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.15rem">'+k.l+'</div>'
+        +'<div style="font-size:1rem;font-weight:800;color:'+k.c+'">'+k.v+'</div>'
+      +'</div>';
+    }).join('')
+    +'</div>';
+}
 function rMeta(){
+  _populaMetaAnos();
   var m=getMeta();
-  var ano=m&&m.ano ? n2(m.ano) : new Date().getFullYear();
+  // Ano padrão = ano atual; usuário pode escolher outro no seletor (sem misturar anos).
+  var ano=parseInt(Q('metaAno')&&Q('metaAno').value)||new Date().getFullYear();
   Q('anoAtual').textContent=ano;
+
+  // Atuais do ANO SELECIONADO — fonte única parametrizada por ano (não mistura anos).
+  var propsAno=getPropsAno(ano);
+  var totalAno=propsAno.length;
+  var fechAno=getFechAno(ano).length;
+  var recAno=getRecAno(ano);
+  var txConvNum = totalAno>0 ? (fechAno/totalAno)*100 : 0;
+  var txConv = txConvNum.toFixed(1);
+
+  // Resumo geral do ano + sincroniza o gráfico mensal com o mesmo ano.
+  _renderMetaResumo(ano, recAno, fechAno, totalAno, txConv);
+  _syncFechMesAno(ano);
+
   if(!m){
     Q('metaBars').innerHTML='<p style="color:var(--text3);font-size:.8rem;grid-column:1/-1">Configure suas metas clicando em ⚙️ Configurar.</p>';
     Q('metaKpis').innerHTML='';
@@ -10684,23 +10749,15 @@ function rMeta(){
   var antRec     = n2(m.antRec||0);
   var antTicket  = n2(m.antTicket&&m.antTicket>0?m.antTicket:75000);
 
-  // Propostas do ano — fonte única
-  var propsAno=getPropsAno();
-  var totalAno=propsAno.length;
-  var fechAno=getFechAno().length;
-  var recAno=getRecAno();
-
-  var txConvNum = totalAno>0 ? (fechAno/totalAno)*100 : 0;
-  var txConv = txConvNum.toFixed(1);
-
   // Mês atual
   var hoje=new Date();
   var mesAtual=hoje.getMonth()+1;
   var metaMensalProp=metaProp>0?(metaProp/12).toFixed(1):'0,0';
   var metaMensalFech=metaFech>0?(metaFech/12).toFixed(1):'0,0';
 
-  // Projeção anual baseada no ritmo atual do ano corrido
-  var fracAno=mesAtual/12;
+  // Projeção anual baseada no ritmo do ano corrido. Só o ano CORRENTE usa fração do ano
+  // corrido; anos passados/futuros usam fração=1 (projeção = realizado, sem inflar).
+  var fracAno = (ano !== hoje.getFullYear()) ? 1 : (mesAtual/12);
   var projProp=fracAno>0?Math.round(totalAno/fracAno):0;
   var projFech=fracAno>0?Math.round(fechAno/fracAno):0;
   var projRec=fracAno>0?Math.round(recAno/fracAno):0;
