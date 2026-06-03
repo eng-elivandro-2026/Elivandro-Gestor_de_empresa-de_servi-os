@@ -346,6 +346,17 @@ function isPropostaGanhaOuAprovada(p){
 }
 if(typeof window!=='undefined') window.isPropostaGanhaOuAprovada = isPropostaGanhaOuAprovada;
 
+// Fases de PIPELINE (oportunidades abertas) e de NEGOCIAÇÃO ativa — alinhadas à
+// lógica do Comercial (fasAberto/FAS_DECISAO). Expostas em window para o Motor de
+// Decisão (js/services/decision-engine), que lê window.FAS_FECHADO/FAS_PIPELINE/FAS_NEGOC.
+var FAS_PIPELINE=['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
+var FAS_NEGOC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+if(typeof window!=='undefined'){
+  window.FAS_FECHADO = FAS_FECHADO;   // inclui 'ganho' + operacionais → Motor de Decisão conta venda ganha
+  window.FAS_PIPELINE = FAS_PIPELINE;
+  window.FAS_NEGOC = FAS_NEGOC;
+}
+
 var SEQ=[  {k:'ESCOPO_FORNECIMENTO',t:'ESCOPO DE FORNECIMENTO'},
   {k:'OBJETIVO',t:'OBJETIVO DO SERVIÇO'},
   {k:'OBRIG_CONTRATADA',t:'OBRIGAÇÕES DA CONTRATADA'},
