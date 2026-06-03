@@ -2142,7 +2142,10 @@ function rProps(){
   var g=Q('pG');
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
-    var f=FASE[p.fas]||FASE.em_elaboracao||FASE.enviada;
+    // Fase exibida = projeção comercial: propostas no Operacional (ou legado
+    // faturado/recebido) aparecem como "Ganho"; o status real vira detalhe secundário.
+    var fcom=faseComercial(p);
+    var f=FASE[fcom]||FASE.em_elaboracao||FASE.enviada;
     var pRevs=p.revs||[];
     var pRevCount=pRevs.length;
     var revAtual=(p.revAtual||'').trim().toUpperCase();
@@ -2165,7 +2168,7 @@ function rProps(){
         var valStr=snapVal!=null?'· '+money(snapVal):'';
         // Badge de status
         var stBadge=isAtiva
-          ?'<span style="font-size:.6rem;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.02rem .28rem;border-radius:3px;flex-shrink:0">'+((FASE[p.fas]&&FASE[p.fas].n)||p.fas)+'</span>'
+          ?'<span style="font-size:.6rem;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:#58a6ff;padding:.02rem .28rem;border-radius:3px;flex-shrink:0">'+((FASE[fcom]&&FASE[fcom].n)||fcom)+'</span>'
           :'<span style="font-size:.6rem;background:var(--bg);border:1px solid var(--border);color:var(--text3);padding:.02rem .28rem;border-radius:3px;flex-shrink:0">Arquivada</span>';
         return '<div style="display:flex;align-items:center;gap:.3rem;padding:.2rem .35rem;border-radius:4px;border:'+brd+';background:'+bg+';margin-bottom:.1rem">'
           +'<span style="font-weight:700;font-size:.72rem;color:'+lc+';min-width:14px;text-align:center;flex-shrink:0">'+esc(r.rev)+'</span>'
@@ -2201,7 +2204,9 @@ function rProps(){
       +(( p.locCnpj||p.cnpj)?'<div class="pc-sub">'+esc(p.locCnpj||p.cnpj)+'</div>':'')
       +((p.csvc||p.cid)?'<div class="pc-sub">📍 '+esc(p.csvc||p.cid)+'</div>':'')
       +((p.ac)?'<div class="pc-sub">👤 '+esc(p.ac)+'</div>':'')
-      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'+_propAlerts(p)
+      +'<span class="bdg '+f.c+'">'+f.i+' '+f.n+'</span>'
+      +((fcom==='ganho'&&p.fas!=='ganho'&&FASE[p.fas])?' <span class="bdg b-elab" style="opacity:.65;font-size:.62rem" title="Status no Operacional">'+esc((FASE[p.fas].i?FASE[p.fas].i+' ':'')+FASE[p.fas].n)+'</span>':'')
+      +_propAlerts(p)
       +(typeof opAcoesPropostaHtml==='function'?opAcoesPropostaHtml(p):'')
       +revFooter
       +'</div>'
