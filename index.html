@@ -9131,7 +9131,10 @@ function rCiclosDash(){
   var pmr=[],cicFin=[],adiantPcts=[],emAberto=[];
 
   props.forEach(function(p){
-    if(p.fas==='em_elaboracao') return;
+    // Regra unificada: os KPIs de Ciclos consideram apenas propostas GANHAS/APROVADAS
+    // (ganho + operacionais + legado faturado/recebido — isPropostaGanhaOuAprovada).
+    // Cada KPI ainda exige as datas próprias preenchidas; abertas/perdidas/em elaboração ficam fora.
+    if(!isPropostaGanhaOuAprovada(p)) return;
     var tl=p.tl||{};
     var dtC =p.dat2||'';
     var dtV =tl.dtVisita||'';
@@ -9922,7 +9925,7 @@ function rExecTimeline(){
         </tbody>
       </table>
       <div style="background:var(--bg3);border-radius:8px;padding:.6rem .8rem;font-size:.75rem;color:var(--text3);line-height:1.5">
-        ℹ️ <strong style="color:var(--text2)">Fonte:</strong> Linha do Tempo de cada proposta. Propostas com status <em>Em Elaboração</em> são excluídas. O número entre parênteses mostra quantas propostas contribuíram para cada média.
+        ℹ️ <strong style="color:var(--text2)">Fonte:</strong> Linha do Tempo de cada proposta. As médias consideram apenas <strong>propostas ganhas / aprovadas</strong> — status <em>Ganho, Aprovado, Em Andamento, TAF, SAT, Finalizado, Atrasado, Em Pausa (Falta Material / Ag. Cliente / Ag. Terceiro)</em> e o legado <em>Faturado / Recebido</em>. Propostas abertas, perdidas/canceladas e <em>Em Elaboração</em> ficam fora. Cada KPI usa só as propostas que têm preenchidas as datas daquela fórmula — por isso o número entre parênteses mostra quantas contribuíram para cada média.
       </div>
     </div>
   </div>

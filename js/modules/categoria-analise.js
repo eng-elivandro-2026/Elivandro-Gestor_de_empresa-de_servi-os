@@ -3769,7 +3769,10 @@ function rCiclosDash(){
   var pmr=[],cicFin=[],adiantPcts=[],emAberto=[];
 
   props.forEach(function(p){
-    if(p.fas==='em_elaboracao') return;
+    // Regra unificada: os KPIs de Ciclos consideram apenas propostas GANHAS/APROVADAS
+    // (ganho + operacionais + legado faturado/recebido — isPropostaGanhaOuAprovada).
+    // Cada KPI ainda exige as datas próprias preenchidas; abertas/perdidas/em elaboração ficam fora.
+    if(!isPropostaGanhaOuAprovada(p)) return;
     var tl=p.tl||{};
     var dtC =p.dat2||'';
     var dtV =tl.dtVisita||'';
