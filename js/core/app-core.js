@@ -1796,11 +1796,15 @@ function rDash(rankTarget, sortBy){
   if(Q('catAnaliseBody')&&Q('catAnaliseBody').style.display==='block') rCatAnalise();
   // Atualizar análise inteligente se painel estiver aberto
   if(Q('analiseBody')&&Q('analiseBody').style.display!=='none') rAnaliseInt();
-  var cFas={};
-  props.forEach(function(p){cFas[p.fas]=(cFas[p.fas]||0)+1});
   Q('phG').innerHTML=commercialPhaseKeys().map(function(f){
-    var v=props.filter(function(p){return p.fas===f}).reduce(function(s,p){return s+n2(p.val)},0);
-    return '<div class="ph" onclick="flt(\''+f+'\',null)"><div class="ph-n">'+(cFas[f]||0)+'</div><div class="ph-v">'+money(v)+'</div><div class="ph-l">'+FASE[f].n+'</div></div>'
+    // Regra única: o card "Ganho" agrega TODAS as propostas ganhas (ganho comercial +
+    // status operacionais + legado faturado/recebido). As demais fases comerciais contam
+    // pelo próprio status. Status operacionais não aparecem como cards separados.
+    var lista=(f==='ganho')
+      ? props.filter(function(p){return isPropostaGanhaOuAprovada(p);})
+      : props.filter(function(p){return p.fas===f;});
+    var v=lista.reduce(function(s,p){return s+n2(p.val)},0);
+    return '<div class="ph" onclick="flt(\''+f+'\',null)"><div class="ph-n">'+lista.length+'</div><div class="ph-v">'+money(v)+'</div><div class="ph-l">'+FASE[f].n+'</div></div>'
   }).join('');
 
   // Ranking de clientes
@@ -2111,7 +2115,11 @@ function rProps(){
   var q=_propBuscaNorm(Q('srch').value||'');
   var list=props;
   if(q)list=list.filter(function(p){return _propBuscaNorm(_propTextoBusca(p)).indexOf(q)>=0});
-  if(fltSt!=='all')list=list.filter(function(p){return p.fas===fltSt});
+  if(fltSt!=='all'){
+    // "Ganho" usa a regra única (inclui operacionais + legado); demais fases: match exato.
+    if(fltSt==='ganho') list=list.filter(function(p){return isPropostaGanhaOuAprovada(p);});
+    else list=list.filter(function(p){return p.fas===fltSt});
+  }
   var g=Q('pG');
   if(!list.length){g.innerHTML='<div class="emp" style="grid-column:1/-1"><div class="emp-i">📋</div><p>Nenhuma proposta encontrada</p></div>';return}
   g.innerHTML=list.map(function(p){
