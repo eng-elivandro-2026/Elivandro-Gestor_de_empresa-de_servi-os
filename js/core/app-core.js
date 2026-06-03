@@ -346,6 +346,16 @@ function isPropostaGanhaOuAprovada(p){
 }
 if(typeof window!=='undefined') window.isPropostaGanhaOuAprovada = isPropostaGanhaOuAprovada;
 
+// Projeção COMERCIAL da fase: do ponto de vista do Comercial/Pipeline, toda proposta
+// que está no Operacional (status operacional) ou no legado faturado/recebido é "Ganho"
+// — pois só vai para execução o que foi ganho. As demais fases permanecem como estão.
+// Não duplica nada: é só a fase que a proposta representa na visão comercial.
+function faseComercial(p){
+  if(!p) return '';
+  return isPropostaGanhaOuAprovada(p) ? 'ganho' : (p.fas||'');
+}
+if(typeof window!=='undefined') window.faseComercial = faseComercial;
+
 // Fases de PIPELINE (oportunidades abertas) e de NEGOCIAÇÃO ativa — alinhadas à
 // lógica do Comercial (fasAberto/FAS_DECISAO). Expostas em window para o Motor de
 // Decisão (js/services/decision-engine), que lê window.FAS_FECHADO/FAS_PIPELINE/FAS_NEGOC.
@@ -1610,7 +1620,9 @@ function rRegistro(){
     var n=String(p.num||'');
     return n.indexOf('.'+fAno)>=0;
   });
-  if(fFas) list=list.filter(function(p){ return p.fas===fFas; });
+  // Filtro por fase usa a projeção comercial: "Ganho" inclui as propostas que estão
+  // no Operacional (espelhadas em Ganho), sem duplicar.
+  if(fFas) list=list.filter(function(p){ return faseComercial(p)===fFas; });
 
   // Ordenação
   list.sort(function(a,b){
@@ -1675,8 +1687,15 @@ function rRegistro(){
     var v=parseFloat(p.val)||0;
     totalVal+=v;
     var isOdd=(i%2!==0);
-    var fasObj=FASE[p.fas]||{n:p.fas||'--',c:'b-elab',i:''};
+    // Fase exibida = projeção comercial (propostas no Operacional aparecem como Ganho).
+    var fcom=faseComercial(p);
+    var fasObj=FASE[fcom]||{n:fcom||'--',c:'b-elab',i:''};
     var bdgHtml='<span class="bdg '+fasObj.c+'">'+esc(fasObj.i?(fasObj.i+' '+fasObj.n):fasObj.n)+'</span>';
+    // Detalhe secundário: status real no Operacional (sem tirar a proposta de "Ganho").
+    if(fcom==='ganho' && p.fas!=='ganho' && FASE[p.fas]){
+      var opObj=FASE[p.fas];
+      bdgHtml+=' <span class="bdg b-elab" style="opacity:.65;font-size:.62rem" title="Status no Operacional">'+esc((opObj.i?opObj.i+' ':'')+opObj.n)+'</span>';
+    }
     var valHtml=v ? '<span style="color:var(--green);font-weight:600">' + money(v) + '</span>'
                   : '<span style="color:var(--text3)">--</span>';
     var tr=document.createElement('tr');
