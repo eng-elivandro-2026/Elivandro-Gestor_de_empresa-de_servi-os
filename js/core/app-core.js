@@ -2118,8 +2118,8 @@ function _propAlerts(p){
   }
   // Decisão do Cliente
   if(FAS_DEC.indexOf(fas)>=0) tags+=sem(dD(dtE||dtC),30,60,'decisão');
-  // Gap Pré-Obra
-  if(fas==='aprovado') tags+=sem(dD(dtF),15,30,'pré-obra');
+  // Gap Pré-Obra — Ganho e Aprovado são negócios fechados aguardando início da obra
+  if(fas==='aprovado'||fas==='ganho') tags+=sem(dD(dtF),15,30,'pré-obra');
   // Duração da Execução (cinza) + alertas
   if(FAS_EXEC.indexOf(fas)>=0){
     var dExec=dD(dtI);
