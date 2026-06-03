@@ -7077,10 +7077,14 @@ function carregarCeoDash(){
   var mesAtual=hoje.getMonth(), anoAtual=hoje.getFullYear();
   var nomeMeses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-  var pipeline=props.filter(function(p){return FAS_PIPELINE.indexOf(p.fas)>=0;});
+  // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
+  // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
+  // lista "Serviços Fechados — Fase OPERACIONAL" usam esta base (não as fases abertas).
+  var pipeline=props.filter(function(p){return isVisaoExecutivaAtiva(p);});
   var valPipeline=pipeline.reduce(function(s,p){return s+n2(p.val);},0);
   var cntPipeline=pipeline.length;
 
+  // Em Negociação = oportunidades abertas em negociação (contexto do funil, mantém FAS_NEGOC).
   var negoc=props.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
   var valNegoc=negoc.reduce(function(s,p){return s+n2(p.val);},0);
   var cntNegoc=negoc.length;
@@ -7088,7 +7092,7 @@ function carregarCeoDash(){
   var atrasadas=props.filter(function(p){return p.fas==='atrasado';});
 
   var fechMes=props.filter(function(p){
-    if(!isPropostaGanhaOuAprovada(p)) return false;
+    if(!isVisaoExecutivaAtiva(p)) return false;
     var d=p.dtFech?new Date(p.dtFech+'T12:00:00'):(p.dat2?new Date(p.dat2+'T12:00:00'):null);
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });

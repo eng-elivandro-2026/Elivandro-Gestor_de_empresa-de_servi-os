@@ -815,9 +815,10 @@ function rFechMes(){
   var valorFiltro=(Q('fmValor')&&Q('fmValor').value)||'';
   var MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  // Coletar propostas fechadas do ano
+  // Coletar propostas fechadas do ano (REGRA Fechamentos por Mês: inclui 'finalizado',
+  // exclui legado faturado/recebido — ver isFechamentoMes em app-core.js).
   var base=props.filter(function(p){
-    if(!isPropostaGanhaOuAprovada(p)) return false;
+    if(!isFechamentoMes(p)) return false;
     var d=_parseDateProp(p); return d && d.getFullYear()===anoSel;
   });
 

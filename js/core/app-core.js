@@ -356,6 +356,28 @@ function faseComercial(p){
 }
 if(typeof window!=='undefined') window.faseComercial = faseComercial;
 
+// ── Regras ESPECÍFICAS de blocos da Visão Estratégica ────────────────────────
+// 📅 Fechamentos por Mês: negócio ganho/fechado = comercial 'ganho' + operacionais,
+// INCLUI 'finalizado' (serviço concluído ainda é um fechamento). NÃO inclui o legado
+// financeiro 'faturado'/'recebido'.
+var FAS_FECHAMENTO_MES=['ganho','aprovado','andamento','taf','sat','finalizado','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+function isFechamentoMes(p){
+  if(!p) return false;
+  return FAS_FECHAMENTO_MES.indexOf(p.fas||p.fase||'') >= 0;
+}
+if(typeof window!=='undefined') window.isFechamentoMes = isFechamentoMes;
+
+// 🏢 Visão Executiva: somente execução ATIVA = comercial 'ganho' + operacionais ativos.
+// NÃO inclui 'finalizado' (já concluído), nem o legado 'faturado'/'recebido'.
+var FAS_VISAO_EXEC_ATIVA=['ganho','aprovado','andamento','taf','sat','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+function isVisaoExecutivaAtiva(p){
+  if(!p) return false;
+  return FAS_VISAO_EXEC_ATIVA.indexOf(p.fas||p.fase||'') >= 0;
+}
+if(typeof window!=='undefined') window.isVisaoExecutivaAtiva = isVisaoExecutivaAtiva;
+
 // Fases de PIPELINE (oportunidades abertas) e de NEGOCIAÇÃO ativa — alinhadas à
 // lógica do Comercial (fasAberto/FAS_DECISAO). Expostas em window para o Motor de
 // Decisão (js/services/decision-engine), que lê window.FAS_FECHADO/FAS_PIPELINE/FAS_NEGOC.
