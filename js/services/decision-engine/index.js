@@ -48,6 +48,10 @@
     var FAZ_OK   = window.FAS_FECHADO  || [];
     var FAZ_PIPE = window.FAS_PIPELINE || [];
     var FAZ_NEG  = window.FAS_NEGOC    || [];
+    // Regra única de negócio ganho/aprovado (ganho + operacionais + legado), tolerando p.fase.
+    var _isWon = (typeof window.isPropostaGanhaOuAprovada === 'function')
+      ? window.isPropostaGanhaOuAprovada
+      : function (p) { return p && FAZ_OK.indexOf(p.fas) >= 0; };
 
     var pipeline  = ps.filter(function (p) { return FAZ_PIPE.indexOf(p.fas) >= 0; });
     var negoc     = ps.filter(function (p) { return FAZ_NEG.indexOf(p.fas) >= 0; });
@@ -66,7 +70,7 @@
     var hoje = new Date();
     var mes = hoje.getMonth(), ano = hoje.getFullYear();
     var fechMes = ps.filter(function (p) {
-      if (FAZ_OK.indexOf(p.fas) < 0) return false;
+      if (!_isWon(p)) return false;
       var d = p.dtFech ? new Date(p.dtFech + 'T12:00:00') : (p.dat2 ? new Date(p.dat2 + 'T12:00:00') : null);
       return d && d.getMonth() === mes && d.getFullYear() === ano;
     });
@@ -75,7 +79,7 @@
     var mesAnt = mes === 0 ? 11 : mes - 1;
     var anoAnt = mes === 0 ? ano - 1 : ano;
     var fechMesAnt = ps.filter(function (p) {
-      if (FAZ_OK.indexOf(p.fas) < 0) return false;
+      if (!_isWon(p)) return false;
       var d = p.dtFech ? new Date(p.dtFech + 'T12:00:00') : (p.dat2 ? new Date(p.dat2 + 'T12:00:00') : null);
       return d && d.getMonth() === mesAnt && d.getFullYear() === anoAnt;
     });

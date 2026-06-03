@@ -1380,7 +1380,8 @@ function getFechAno(){
   var ano=new Date().getFullYear();
   return props.filter(function(p){
     if(p.fas==='em_elaboracao') return false;
-    if(FAS_FECHADO.indexOf(p.fas)<0) return false;
+    // Regra única de negócio ganho/aprovado (ganho + operacionais + legado), tolerando p.fase.
+    if(!isPropostaGanhaOuAprovada(p)) return false;
     // Prioridade: usar dtFech para saber em qual ano o negócio foi fechado
     if(p.dtFech){
       var d=new Date(p.dtFech+'T12:00:00');
@@ -1759,7 +1760,7 @@ function rDash(rankTarget, sortBy){
   var propsAtivas=props.filter(function(p){return p.fas!=='em_elaboracao';});
   var tot=propsAtivas.length;
   var cart=propsAtivas.reduce(function(s,p){return s+n2(p.val)},0);
-  var apr=propsAtivas.filter(function(p){return FAS_FECHADO.indexOf(p.fas)>=0});
+  var apr=propsAtivas.filter(function(p){return isPropostaGanhaOuAprovada(p)});
   var vapr=apr.reduce(function(s,p){return s+n2(p.val)},0);
   var tk=apr.length>0?(vapr/apr.length):0;
   // CONVERSÃO = do ano atual (mesma base que Metas e Análise)
@@ -1857,7 +1858,7 @@ function rDash(rankTarget, sortBy){
     if((p.csvc||'').trim()) porCli[key].cidade=(p.csvc||'').trim();
     if((p.locCnpj||'').trim()) porCli[key].cnpj=(p.locCnpj||'').trim();
     porCli[key].propostas++;
-    if(FAS_FECHADO.indexOf(p.fas)>=0){
+    if(isPropostaGanhaOuAprovada(p)){
       porCli[key].fechados++;
       porCli[key].valor+=n2(p.val);
     }
@@ -1915,7 +1916,7 @@ function rDash(rankTarget, sortBy){
     }
     if(cli) porCtt[ctt].clientes[cli]=true;
     porCtt[ctt].propostas++;
-    if(FAS_FECHADO.indexOf(p.fas)>=0){
+    if(isPropostaGanhaOuAprovada(p)){
       porCtt[ctt].fechados++;
       porCtt[ctt].valor+=n2(p.val);
     }
@@ -2020,7 +2021,7 @@ function rDash(rankTarget, sortBy){
   var decHtml='';
   Object.keys(pmrCli).forEach(function(k){ var c=pmrCli[k],m=Math.round(c.vals.reduce(function(s,v){return s+v;},0)/c.vals.length); if(m>60&&c.vals.length>=2) decHtml+=deCard('atencao','⚠️ Cliente com PMR alto: '+c.cli,'PMR médio histórico de <strong>'+m+' dias</strong> (base: '+c.vals.length+' pagamentos). Custo financeiro embutido recomendado.','Incluir custo financeiro no próximo orçamento'); });
   // Inteligência: ciclo comercial
-  var fastFas=props.filter(function(p){ return p.dtFech&&p.dat2&&FAS_FECHADO.indexOf(p.fas)>=0; });
+  var fastFas=props.filter(function(p){ return p.dtFech&&p.dat2&&isPropostaGanhaOuAprovada(p); });
   if(fastFas.length>=3){ var cicArr=fastFas.map(function(p){ return typeof _difD==='function'?(_difD(p.dat2,p.dtFech)||0):0; }); var cicMed=Math.round(cicArr.reduce(function(s,v){return s+v;},0)/cicArr.length); if(cicMed&&cicMed<=45) decHtml+=deCard('ok','✅ Ciclo comercial competitivo','Serviços fecham em média em <strong>'+cicMed+' dias</strong>. Pipeline saudável.','Manter ritmo de prospecção e follow-up'); }
   if(!decHtml) decHtml='<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Preencha a Linha do Tempo nas propostas para ativar os padrões de inteligência.</div>';
   // Resumo

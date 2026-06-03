@@ -7088,7 +7088,7 @@ function carregarCeoDash(){
   var atrasadas=props.filter(function(p){return p.fas==='atrasado';});
 
   var fechMes=props.filter(function(p){
-    if(FAS_FECHADO.indexOf(p.fas)<0) return false;
+    if(!isPropostaGanhaOuAprovada(p)) return false;
     var d=p.dtFech?new Date(p.dtFech+'T12:00:00'):(p.dat2?new Date(p.dat2+'T12:00:00'):null);
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });

@@ -817,7 +817,7 @@ function rFechMes(){
 
   // Coletar propostas fechadas do ano
   var base=props.filter(function(p){
-    if(FAS_FECHADO.indexOf(p.fas)<0) return false;
+    if(!isPropostaGanhaOuAprovada(p)) return false;
     var d=_parseDateProp(p); return d && d.getFullYear()===anoSel;
   });
 
