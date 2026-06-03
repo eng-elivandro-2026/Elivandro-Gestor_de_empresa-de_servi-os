@@ -2118,8 +2118,17 @@ function _propAlerts(p){
   }
   // Decisão do Cliente
   if(FAS_DEC.indexOf(fas)>=0) tags+=sem(dD(dtE||dtC),30,60,'decisão');
-  // Gap Pré-Obra — Ganho e Aprovado são negócios fechados aguardando início da obra
-  if(fas==='aprovado'||fas==='ganho') tags+=sem(dD(dtF),15,30,'pré-obra');
+  // Gap Pré-Obra
+  if(fas==='aprovado') tags+=sem(dD(dtF),15,30,'pré-obra');
+  // Ganho: mostra TODOS os selos cujas datas existirem (pré-obra + execução + → NF / sem NF)
+  if(fas==='ganho'){
+    if(dtF) tags+=sem(dD(dtF),15,30,'pré-obra');
+    var dExG=dD(dtI);
+    if(dExG!==null) tags+=badge('var(--text3)',dExG+'d execução');
+    var dtRefG=dtA||dtT;
+    if(dtRefG) tags+=sem(dD(dtRefG),3,7,'→ NF');
+    else if(dExG!==null&&dExG>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+dExG+'d');
+  }
   // Duração da Execução (cinza) + alertas
   if(FAS_EXEC.indexOf(fas)>=0){
     var dExec=dD(dtI);

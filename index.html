@@ -7172,7 +7172,15 @@ function carregarCeoDash(){
         // Badge de KPI ao lado do status
         var kpi='';
         var dtI=tl.dtInicioExec||'', dtA=tl.dtAceite||'', dtT=tl.dtTermino||'', dtF=p.dtFech||'';
-        if(fas==='aprovado'||fas==='ganho')  kpi=_sem(_dd(dtF),15,30,'pré-obra');
+        if(fas==='aprovado')  kpi=_sem(_dd(dtF),15,30,'pré-obra');
+        // Ganho: mostra TODOS os selos cujas datas existirem (pré-obra + execução + → NF / sem NF)
+        if(fas==='ganho'){
+          if(dtF) kpi+=_sem(_dd(dtF),15,30,'pré-obra');
+          var dExG=_dd(dtI);
+          if(dExG!==null) kpi+=_sem(dExG,30,60,'execução');
+          if(dtA||dtT) kpi+=_sem(_dd(dtA||dtT),3,7,'→ NF');
+          else if(dExG!==null&&dExG>30&&nfs.length===0) kpi+=_bdg('#f85149','🔴 sem NF '+dExG+'d');
+        }
         if(['andamento','taf','sat'].indexOf(fas)>=0){
           var dEx=_dd(dtI||dtF||p.dat2);
           if(dEx!==null) kpi+=_sem(dEx,30,60,'execução');
