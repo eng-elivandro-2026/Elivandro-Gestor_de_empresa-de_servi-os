@@ -7127,8 +7127,10 @@ function carregarCeoDash(){
 
   var barsEl=Q('ceoPhaseBars');
   if(barsEl){
-    var phData=FAS_PIPELINE.map(function(f){
-      var ps=props.filter(function(p){return p.fas===f;});
+    // Distribuição por Fase: SOMENTE fases de negócio ganho / execução ativa
+    // (FAS_DISTRIBUICAO_EXECUCAO), não as oportunidades abertas (enviada/follows).
+    var phData=FAS_DISTRIBUICAO_EXECUCAO.map(function(f){
+      var ps=props.filter(function(p){return (p.fas||p.fase)===f;});
       return {f:f,n:(FASE[f]||{n:f}).n,i:(FASE[f]||{i:''}).i,cnt:ps.length,val:ps.reduce(function(s,p){return s+n2(p.val);},0)};
     }).filter(function(d){return d.cnt>0;});
     var maxV=phData.reduce(function(mx,d){return Math.max(mx,d.val);},1);

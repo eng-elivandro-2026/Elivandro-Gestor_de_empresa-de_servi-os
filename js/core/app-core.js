@@ -378,6 +378,14 @@ function isVisaoExecutivaAtiva(p){
 }
 if(typeof window!=='undefined') window.isVisaoExecutivaAtiva = isVisaoExecutivaAtiva;
 
+// 📊 Distribuição por Fase (Visão Executiva): mostra SOMENTE fases de negócio ganho /
+// execução ativa, na ordem do funil de execução. Lista própria (não FAS_PIPELINE, que
+// é oportunidade aberta) para controle independente — ex.: incluir 'finalizado' só se
+// autorizado depois. Hoje coincide com FAS_VISAO_EXEC_ATIVA.
+var FAS_DISTRIBUICAO_EXECUCAO=['ganho','aprovado','andamento','taf','sat','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+if(typeof window!=='undefined') window.FAS_DISTRIBUICAO_EXECUCAO = FAS_DISTRIBUICAO_EXECUCAO;
+
 // Fases de PIPELINE (oportunidades abertas) e de NEGOCIAÇÃO ativa — alinhadas à
 // lógica do Comercial (fasAberto/FAS_DECISAO). Expostas em window para o Motor de
 // Decisão (js/services/decision-engine), que lê window.FAS_FECHADO/FAS_PIPELINE/FAS_NEGOC.
