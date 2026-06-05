@@ -8533,6 +8533,111 @@ var _tplEd = null; // {origemFixo, codigoOrig, nome, codigo, descricao, status, 
 
 function tplPropFixoPorCodigo(cod){ return TEMPLATES_PROPOSTA.find(function(t){return t.codigo===cod;})||null; }
 
+// --- CONTROLE DE CÓDIGOS (apoio do editor de templates) ---
+// Prefixos/tipos disponiveis para gerar codigos de bloco.
+var _TPL_PREFIXOS = [
+  ['OBJ','Objetivo'], ['ESC','Escopo'], ['OBR','Obrigações'], ['EXC','Exclusões'],
+  ['PRA','Prazo'], ['PAG','Pagamento'], ['IMP','Impostos'], ['VALD','Validade'],
+  ['GAR','Garantia'], ['MAT','Materiais'], ['DOC','Documentação'], ['ENT','Entrega'],
+  ['ID','Identificação'], ['LIVRE','Bloco livre']
+];
+/* Codigos normalizados (maiusculo/sem espaco) dos blocos do template em edicao. */
+function _tplEdCodigosNorm(){
+  return (_tplEd ? _tplEd.blocos : []).map(function(b){ return String(b.codigo||'').trim().toUpperCase(); });
+}
+/* Mapa codigo->quantidade (ignora vazios). */
+function _tplEdContagem(){
+  var m={}; _tplEdCodigosNorm().forEach(function(c){ if(c) m[c]=(m[c]||0)+1; });
+  return m;
+}
+/* Lista de codigos que aparecem mais de uma vez no template. */
+function _tplEdDuplicados(){
+  var m=_tplEdContagem(), dup=[];
+  Object.keys(m).forEach(function(k){ if(m[k]>1) dup.push(k); });
+  return dup;
+}
+/* Proximo codigo disponivel para um prefixo: PREFIX-(max+1), preenchido com zeros. */
+function _tplEdProximoCodigo(prefixo){
+  prefixo=String(prefixo||'LIVRE').trim().toUpperCase();
+  var re=new RegExp('^'+prefixo.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'-(\\d+)$');
+  var max=0, width=3;
+  _tplEdCodigosNorm().forEach(function(c){
+    var m=c.match(re); if(m){ var n=parseInt(m[1],10); if(n>max)max=n; if(m[1].length>width)width=m[1].length; }
+  });
+  var s=String(max+1); while(s.length<width) s='0'+s;
+  return prefixo+'-'+s;
+}
+/* Onde o codigo existe (biblioteca de escopos). */
+function _tplEdCodigoNaBiblioteca(codigo){
+  codigo=String(codigo||'').trim().toLowerCase(); if(!codigo) return false;
+  return !!(_beEscopos||[]).find(function(e){ return String(e.codigo||'').toLowerCase()===codigo; });
+}
+/* Texto/aviso por bloco: duplicado > sem codigo > existe na biblioteca > personalizado. */
+function _tplEdWarnHTML(codeNorm, isDup){
+  if(isDup) return '<span style="color:#f85149;font-weight:800">⚠️ Código duplicado neste template</span>';
+  if(!codeNorm) return '<span style="color:#f59e0b;font-weight:700">Sem código — clique em “Gerar”</span>';
+  return _tplEdCodigoNaBiblioteca(codeNorm)
+    ? '<span style="color:#3fb950;font-weight:700">✔ Existe na biblioteca</span>'
+    : '<span style="color:var(--text2)">Código personalizado</span>';
+}
+/* Painel-resumo "Controle de Códigos". */
+function _tplEdResumoHTML(){
+  var codes=_tplEdCodigosNorm();
+  var seen={}, ordered=[];
+  codes.forEach(function(c){ if(!c) return; if(seen[c]===undefined){ seen[c]=0; ordered.push(c); } seen[c]++; });
+  var vazios=codes.filter(function(c){return !c;}).length;
+  var dup=_tplEdDuplicados();
+  var chips = ordered.length ? ordered.map(function(c){
+    var d=seen[c]>1;
+    var cor=d?'#f85149':'#3fb950';
+    return '<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.66rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:.04rem .35rem">'+esc(c)+(d?(' ×'+seen[c]):'')+'</span>';
+  }).join(' ') : '<span style="font-size:.72rem;color:var(--text2)">(nenhum código ainda)</span>';
+  var dupBadge = dup.length
+    ? '<b style="color:#f85149">Sim ('+dup.length+')</b>'
+    : '<b style="color:#3fb950">Não</b>';
+  var prefOpts=_TPL_PREFIXOS.map(function(p){ return '<option value="'+p[0]+'">'+p[0]+' — '+esc(p[1])+'</option>'; }).join('');
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.55rem .65rem;display:flex;flex-direction:column;gap:.4rem">'
+    + '<div style="font-weight:800;color:var(--text);font-size:.8rem">🔢 Controle de Códigos</div>'
+    + '<div style="font-size:.72rem;color:var(--text2)">Total de blocos: <b style="color:var(--text)">'+codes.length+'</b> · Códigos únicos: <b style="color:var(--text)">'+ordered.length+'</b> · Duplicados: '+dupBadge+(vazios?(' · <span style="color:#f59e0b">Sem código: '+vazios+'</span>'):'')+'</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+chips+'</div>'
+    + '<div style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;border-top:1px dashed var(--border);padding-top:.4rem">'
+    + '<span style="font-size:.7rem;color:var(--text2);font-weight:700">Gerar próximo código:</span>'
+    + '<select id="tplEdGerarPrefixo" style="font-size:.74rem">'+prefOpts+'</select>'
+    + '<button class="btn bg bxs" onclick="_tplEdGerarNovo()" title="Adiciona um bloco com o próximo código do tipo escolhido">➕ Gerar bloco</button>'
+    + '</div></div>';
+}
+/* Atualiza, sem re-render completo, o painel-resumo e os avisos por bloco (preserva foco). */
+function _tplEdAtualizarControle(){
+  if(!_tplEd) return;
+  _tplEdSync();
+  var dupSet={}; _tplEdDuplicados().forEach(function(c){ dupSet[c]=true; });
+  var r=Q('tplEdResumo'); if(r) r.innerHTML=_tplEdResumoHTML();
+  _tplEd.blocos.forEach(function(b){
+    var c=String(b.codigo||'').trim().toUpperCase();
+    var isDup=!!(c && dupSet[c]);
+    var inp=Q('tplEdB_cod_'+b.id); if(inp) inp.style.borderColor = isDup ? '#f85149' : '';
+    var w=Q('tplEdB_warn_'+b.id); if(w) w.innerHTML=_tplEdWarnHTML(c, isDup);
+  });
+}
+/* Adiciona um novo bloco usando o proximo codigo do prefixo selecionado no painel. */
+function _tplEdGerarNovo(){
+  _tplEdSync();
+  var pref=(Q('tplEdGerarPrefixo')?Q('tplEdGerarPrefixo').value:'LIVRE')||'LIVRE';
+  var cod=_tplEdProximoCodigo(pref);
+  _tplEd.blocos.push({ id:uid(), codigo:cod, titulo:'', descricao:'', conteudo:'', manual:true });
+  _tplEdRender();
+  toast('➕ Bloco '+cod+' adicionado.');
+}
+/* Gera o proximo codigo para um bloco especifico (prefixo detectado pelo codigo atual). */
+function _tplEdGerarCodigoBloco(id){
+  _tplEdSync();
+  var b=_tplEd.blocos.find(function(x){return x.id===id;}); if(!b) return;
+  var m=String(b.codigo||'').toUpperCase().match(/^([A-Z]+)/);
+  var pref=(m&&m[1])?m[1]:'LIVRE';
+  b.codigo=_tplEdProximoCodigo(pref);
+  _tplEdRender();
+}
+
 /* Monta a lista de blocos editaveis a partir de um template (fixo ou custom). */
 function _tplEdBlocosDe(t){
   if(tplPropTemDetalhe(t)){
@@ -8586,10 +8691,13 @@ function _tplEdSync(){
   });
 }
 
-function _tplEdBlocoCardHTML(b, idx, total){
+function _tplEdBlocoCardHTML(b, idx, total, dupSet){
   var lbl='display:block;font-size:.68rem;font-weight:700;color:var(--text2);margin:.4rem 0 .12rem 0';
   var tipo = b.manual ? '<span class="tg2" style="background:rgba(99,102,241,.16);color:var(--accent)">Livre</span>'
                       : '<span class="tg2" style="background:var(--bg2);color:var(--text2)">Biblioteca</span>';
+  var codeNorm=String(b.codigo||'').trim().toUpperCase();
+  var isDup=!!(codeNorm && dupSet && dupSet[codeNorm]);
+  var codBorda = isDup ? ';border-color:#f85149' : '';
   return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg2);padding:.6rem .7rem;display:flex;flex-direction:column;gap:.2rem">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:.4rem;flex-wrap:wrap">'
     + '<div style="display:flex;align-items:center;gap:.4rem"><span style="font-weight:800;color:var(--text2);font-size:.74rem">#'+(idx+1)+'</span>'+tipo+'</div>'
@@ -8599,7 +8707,12 @@ function _tplEdBlocoCardHTML(b, idx, total){
     + '<button class="btn bg bxs" onclick="_tplEdDuplicar(\''+b.id+'\')" title="Duplicar bloco">⧉</button>'
     + '<button class="btn bd bxs" onclick="_tplEdRemover(\''+b.id+'\')" title="Remover bloco">🗑</button>'
     + '</div></div>'
-    + '<label style="'+lbl+'">Código do bloco</label><input id="tplEdB_cod_'+b.id+'" value="'+esc(b.codigo)+'" placeholder="ex.: OBJ-001 ou LIVRE-..." style="width:100%" oninput="this.value=this.value.toUpperCase()">'
+    + '<label style="'+lbl+'">Código do bloco</label>'
+    + '<div style="display:flex;gap:.3rem;align-items:center">'
+    + '<input id="tplEdB_cod_'+b.id+'" value="'+esc(b.codigo)+'" placeholder="ex.: OBJ-001 ou LIVRE-..." style="flex:1 1 auto;width:100%'+codBorda+'" oninput="this.value=this.value.toUpperCase();_tplEdAtualizarControle()">'
+    + '<button class="btn bg bxs" onclick="_tplEdGerarCodigoBloco(\''+b.id+'\')" title="Gerar próximo código deste tipo">⚙ Gerar</button>'
+    + '</div>'
+    + '<div id="tplEdB_warn_'+b.id+'" style="font-size:.66rem;margin-top:.1rem">'+_tplEdWarnHTML(codeNorm, isDup)+'</div>'
     + '<label style="'+lbl+'">Título</label><input id="tplEdB_tit_'+b.id+'" value="'+esc(b.titulo)+'" placeholder="Título do bloco" style="width:100%">'
     + '<label style="'+lbl+'">Descrição (resumo)</label><input id="tplEdB_desc_'+b.id+'" value="'+esc(b.descricao)+'" placeholder="Resumo curto (opcional)" style="width:100%">'
     + '<label style="'+lbl+'">Escopo / conteúdo (vai para a proposta)</label><textarea id="tplEdB_cont_'+b.id+'" placeholder="Texto do escopo do bloco" style="width:100%;min-height:90px;resize:vertical">'+esc(b.conteudo)+'</textarea>'
@@ -8614,8 +8727,9 @@ function _tplEdRender(){
     ? '<span class="tg2" style="background:rgba(245,158,11,.16);color:#f59e0b">Editando template FIXO → salvará como cópia</span>'
     : '<span class="tg2" style="background:var(--bg3);color:var(--accent)">Personalizado</span>';
   var st=_tplEd.status||'Ativo';
+  var dupSet={}; _tplEdDuplicados().forEach(function(c){ dupSet[c]=true; });
   var blocosHTML = _tplEd.blocos.length
-    ? _tplEd.blocos.map(function(b,i){ return _tplEdBlocoCardHTML(b,i,_tplEd.blocos.length); }).join('')
+    ? _tplEd.blocos.map(function(b,i){ return _tplEdBlocoCardHTML(b,i,_tplEd.blocos.length,dupSet); }).join('')
     : '<div style="font-size:.78rem;color:var(--text2);font-style:italic">Nenhum bloco. Use “➕ Adicionar bloco livre” ou “📚 Adicionar da biblioteca”.</div>';
   var avisoFixo = _tplEd.origemFixo
     ? '<div style="font-size:.74rem;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:.4rem .55rem">⚠️ Este é um template fixo. Ao salvar, será criada uma <b>cópia personalizada</b> em “Meus templates”. O template fixo original não será alterado.</div>'
@@ -8630,6 +8744,7 @@ function _tplEdRender(){
     + '<label style="'+lbl+'">Código do template *</label><input id="tplEdCodigo" value="'+esc(_tplEd.codigo)+'" placeholder="ex.: TPL-MEU" style="width:100%" oninput="this.value=this.value.toUpperCase()">'
     + '<label style="'+lbl+'">Descrição curta</label><input id="tplEdDesc" value="'+esc(_tplEd.descricao)+'" placeholder="Resumo opcional" style="width:100%">'
     + '<label style="'+lbl+'">Status</label><select id="tplEdStatus" style="width:100%"><option value="Ativo"'+(st==='Ativo'?' selected':'')+'>Ativo</option><option value="Inativo"'+(st==='Inativo'?' selected':'')+'>Inativo</option></select>'
+    + '<div id="tplEdResumo" style="margin-top:.7rem">'+_tplEdResumoHTML()+'</div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin:.7rem 0 .2rem 0">'
     + '<span style="font-weight:800;color:var(--text);font-size:.84rem">📋 Blocos ('+_tplEd.blocos.length+')</span>'
     + '<div style="display:flex;gap:.3rem;flex-wrap:wrap">'
@@ -8681,7 +8796,7 @@ function _tplEdDuplicar(id){
 }
 function _tplEdAddLivre(){
   _tplEdSync();
-  _tplEd.blocos.push({ id:uid(), codigo:'LIVRE-'+uid().slice(0,5).toUpperCase(), titulo:'', descricao:'', conteudo:'', manual:true });
+  _tplEd.blocos.push({ id:uid(), codigo:_tplEdProximoCodigo('LIVRE'), titulo:'', descricao:'', conteudo:'', manual:true });
   _tplEdRender();
 }
 
@@ -8741,10 +8856,22 @@ function _tplEdSalvar(comoNovo){
   if(!nome){ alert('Informe o nome do template.'); return; }
   if(!codigo){ alert('Informe o código do template.'); return; }
   if(!_tplEd.blocos.length){ alert('O template precisa de ao menos um bloco.'); return; }
-  // Normaliza blocos: garante codigo (gera para livres sem codigo).
+  // Bloqueia salvar enquanto houver codigo duplicado dentro do template.
+  var dups=_tplEdDuplicados();
+  if(dups.length){
+    alert('Não é possível salvar: há código(s) duplicado(s) neste template:\n• '+dups.join('\n• ')
+      + '\n\nCorrija os códigos duplicados (use “⚙ Gerar” para obter o próximo código disponível) antes de salvar.');
+    return;
+  }
+  // Normaliza blocos: garante codigo (gera LIVRE-NNN unico para blocos sem codigo).
+  var usados={}; _tplEdCodigosNorm().forEach(function(c){ if(c) usados[c]=true; });
+  var livreSeq=0;
   var blocosDetalhe=_tplEd.blocos.map(function(b){
     var c=String(b.codigo||'').trim().toUpperCase();
-    if(!c){ c='LIVRE-'+uid().slice(0,5).toUpperCase(); }
+    if(!c){
+      do { livreSeq++; var s=String(livreSeq); while(s.length<3) s='0'+s; c='LIVRE-'+s; } while(usados[c]);
+      usados[c]=true;
+    }
     return { codigo:c, titulo:(b.titulo||'').trim(), descricao:(b.descricao||'').trim(),
              conteudo:b.conteudo||'', manual:!!b.manual };
   });
