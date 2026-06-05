@@ -8618,38 +8618,38 @@ function _tplEdIrAoBloco(id){
   setTimeout(function(){ var f=Q('tplEdB_tit_'+id); if(f){ f.focus(); f.select(); } }, 420);
 }
 /* Linha do Controle de Codigos — cada bloco exibe codigo | origem | status | acoes. */
+/* Linha do Controle de Codigos.
+   Usa CSS grid (3 colunas fixas) para garantir codigo|badges|botoes sempre em linha. */
 function _tplEdResumoLinhaHTML(b, isDup){
   var c=String(b.codigo||'').trim().toUpperCase()||'(sem código)';
-  var orig=_tplEdOrigemLabel(b);
   var st=_tplEdStatusConteudo(b);
 
-  // Badge de status: fundo colorido com borda, contraste adequado.
-  var stBg, stBorder, stCor, stLabel, stIcon;
-  if(isDup)                   { stBg='rgba(248,81,73,.14)';   stBorder='#f85149'; stCor='#f85149'; stLabel='Duplicado';    stIcon='⚠️'; }
-  else if(st==='com-conteudo'){ stBg='rgba(63,185,80,.14)';   stBorder='#3fb950'; stCor='#3fb950'; stLabel='Com conteúdo'; stIcon='●'; }
-  else if(st==='incompleto')  { stBg='rgba(245,158,11,.14)';  stBorder='#f59e0b'; stCor='#d4a017'; stLabel='Incompleto';   stIcon='◐'; }
-  else                        { stBg='rgba(120,120,140,.1)';  stBorder='var(--border)'; stCor='var(--text2)'; stLabel='Vazio'; stIcon='○'; }
+  // Cores e labels por status
+  var stBg, stBorder, stCor, stLabel, stDot;
+  if(isDup)                   { stBg='rgba(248,81,73,.16)';  stBorder='rgba(248,81,73,.5)';  stCor='#f85149'; stLabel='Duplicado';    stDot='⚠'; }
+  else if(st==='com-conteudo'){ stBg='rgba(63,185,80,.16)';  stBorder='rgba(63,185,80,.5)';  stCor='#3fb950'; stLabel='Com conteúdo'; stDot='●'; }
+  else if(st==='incompleto')  { stBg='rgba(245,158,11,.16)'; stBorder='rgba(245,158,11,.5)'; stCor='#f59e0b'; stLabel='Incompleto';   stDot='◐'; }
+  else                        { stBg='rgba(120,120,140,.12)';stBorder='rgba(120,120,140,.3)';stCor='var(--text2)';stLabel='Vazio';    stDot='○'; }
 
-  // Badge de origem: pill discreto.
-  var origBg, origCor;
-  if(!b.manual)                                          { origBg='rgba(120,120,140,.12)'; origCor='var(--text2)'; }
-  else if(/^LIVRE/i.test(String(b.codigo||'')))          { origBg='rgba(56,189,248,.14)';  origCor='#38bdf8'; }
-  else                                                   { origBg='rgba(99,102,241,.14)';  origCor='#818cf8'; }
+  // Cores por origem
+  var origBg, origBorder, origCor, origLabel;
+  origLabel=_tplEdOrigemLabel(b);
+  if(!b.manual)                                        { origBg='rgba(120,120,140,.1)'; origBorder='rgba(120,120,140,.3)'; origCor='var(--text2)'; }
+  else if(/^LIVRE/i.test(String(b.codigo||'')))        { origBg='rgba(56,189,248,.12)'; origBorder='rgba(56,189,248,.4)';  origCor='#38bdf8'; }
+  else                                                 { origBg='rgba(99,102,241,.12)'; origBorder='rgba(99,102,241,.4)';  origCor='#818cf8'; }
 
-  var pill='display:inline-flex;align-items:center;border-radius:4px;font-size:.65rem;font-weight:700;padding:.15rem .45rem;white-space:nowrap';
-  var stBadge='<span style=”'+pill+';background:'+stBg+';color:'+stCor+';border:1px solid '+stBorder+'”>'+stIcon+' '+esc(stLabel)+'</span>';
-  var origBadge='<span style=”'+pill+';background:'+origBg+';color:'+origCor+';border:1px solid '+origCor+'44”>'+esc(orig)+'</span>';
+  var pill='display:inline-flex;align-items:center;border-radius:4px;font-size:.66rem;font-weight:700;padding:.18rem .5rem;white-space:nowrap;line-height:1.3';
+  var origBadge='<span style=”'+pill+';background:'+origBg+';color:'+origCor+';border:1px solid '+origBorder+'”>'+esc(origLabel)+'</span>';
+  var stBadge  ='<span style=”'+pill+';background:'+stBg  +';color:'+stCor  +';border:1px solid '+stBorder  +'”>'+stDot+' '+esc(stLabel)+'</span>';
 
-  return '<div style=”display:flex;align-items:center;gap:.5rem;border:1px solid var(--border);border-radius:7px;background:var(--bg2);padding:.4rem .55rem;flex-wrap:wrap”>'
-    // Codigo
-    + '<span style=”font-family:monospace;font-size:.8rem;font-weight:800;color:var(--text);flex:0 0 auto;min-width:6rem”>'+esc(c)+'</span>'
-    // Badges
-    + '<div style=”display:flex;gap:.3rem;flex-wrap:wrap;flex:1 1 auto;align-items:center”>'+origBadge+stBadge+'</div>'
-    // Acoes
-    + '<div style=”display:flex;gap:.3rem;flex:0 0 auto”>'
-    + '<button class=”btn bg bxs” onclick=”_tplEdIrAoBloco(\''+b.id+'\')” title=”Rolar até o bloco e focar”>🔎 Ir</button>'
-    + '<button class=”btn bg bxs” onclick=”_tplEdDuplicar(\''+b.id+'\')” title=”Duplicar bloco”>⧉</button>'
-    + '<button class=”btn bd bxs” onclick=”_tplEdRemover(\''+b.id+'\')” title=”Remover bloco”>🗑</button>'
+  // Grid 3 colunas: codigo (fixo) | badges (flexivel) | botoes (fixo). Nunca quebra de linha.
+  return '<div style=”display:grid;grid-template-columns:minmax(6rem,max-content) 1fr auto;align-items:center;column-gap:.55rem;border:1px solid var(--border);border-radius:7px;background:var(--bg2);padding:.4rem .6rem”>'
+    + '<span style=”font-size:.78rem;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em”>'+esc(c)+'</span>'
+    + '<div style=”display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;overflow:hidden”>'+origBadge+stBadge+'</div>'
+    + '<div style=”display:flex;gap:.3rem;align-items:center;justify-content:flex-end”>'
+    + '<button class=”btn bg bxs” onclick=”_tplEdIrAoBloco(\''+b.id+'\')” title=”Ir ao bloco”>🔎 Ir</button>'
+    + '<button class=”btn bg bxs” onclick=”_tplEdDuplicar(\''+b.id+'\')” title=”Duplicar”>⧉</button>'
+    + '<button class=”btn bd bxs” onclick=”_tplEdRemover(\''+b.id+'\')” title=”Excluir”>🗑</button>'
     + '</div></div>';
 }
 /* Painel-resumo “Controle de Códigos” — mostra cada bloco com origem, status e ações. */
@@ -8658,34 +8658,37 @@ function _tplEdResumoHTML(){
   var contagem=_tplEdContagem();
   var semCodigo=codes.filter(function(c){return !c;}).length;
   var dup=_tplEdDuplicados();
-  var dupBadge = dup.length ? '<b style=”color:#f85149”>Sim ('+dup.length+')</b>' : '<b style=”color:#3fb950”>Não</b>';
-  var blocos = _tplEd ? _tplEd.blocos : [];
+  var blocos=_tplEd ? _tplEd.blocos : [];
   var semConteudo=blocos.filter(function(b){ return _tplEdStatusConteudo(b)==='vazio'; }).length;
   var linhas=blocos.map(function(b){
     var c=String(b.codigo||'').trim().toUpperCase();
-    var isDup=!!(c && contagem[c]>1);
-    return _tplEdResumoLinhaHTML(b, isDup);
+    return _tplEdResumoLinhaHTML(b, !!(c && contagem[c]>1));
   }).join('');
   var prefOpts=_TPL_PREFIXOS.map(function(p){ return '<option value=”'+p[0]+'”>'+p[0]+' — '+esc(p[1])+'</option>'; }).join('');
+
+  // Badges de resumo
+  var dupBadge = dup.length
+    ? '<span style=”color:#f85149;font-weight:700”>⚠ '+dup.length+' duplicado(s)</span>'
+    : '<span style=”color:#3fb950;font-weight:700”>✔ sem duplicatas</span>';
+  var extras = (semCodigo ? ' · <span style=”color:#f59e0b”>'+semCodigo+' sem código</span>' : '')
+             + (semConteudo ? ' · <span style=”color:var(--text2)”>'+semConteudo+' vazio(s)</span>' : '');
+
   return '<div style=”border:1px solid var(--border);border-radius:10px;background:var(--bg3);overflow:hidden”>'
-    // Cabecalho do painel
-    + '<div style=”padding:.5rem .75rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem”>'
-    + '<span style=”font-weight:900;color:var(--text);font-size:.82rem”>🔢 Controle de Códigos</span>'
-    + '<span style=”font-size:.7rem;color:var(--text2)”>'
-    + 'Blocos: <b style=”color:var(--text)”>'+codes.length+'</b>'
-    + ' &nbsp;·&nbsp; Duplicados: '+dupBadge
-    + (semCodigo ? ' &nbsp;·&nbsp; <span style=”color:#f59e0b”>Sem código: '+semCodigo+'</span>' : '')
-    + (semConteudo ? ' &nbsp;·&nbsp; Vazios: <b style=”color:var(--text2)”>'+semConteudo+'</b>' : '')
-    + '</span></div>'
-    // Lista de blocos
-    + '<div style=”padding:.5rem .6rem;display:flex;flex-direction:column;gap:.3rem”>'
-    + (linhas || '<div style=”font-size:.74rem;color:var(--text2);font-style:italic;padding:.3rem .1rem”>(nenhum bloco ainda)</div>')
+    // Cabecalho: titulo na esquerda, contadores na direita — em linhas separadas no mobile
+    + '<div style=”padding:.5rem .75rem .45rem;border-bottom:1px solid var(--border)”>'
+    + '<div style=”font-weight:900;color:var(--text);font-size:.83rem;margin-bottom:.15rem”>🔢 Controle de Códigos</div>'
+    + '<div style=”font-size:.69rem;color:var(--text2);line-height:1.4”>'
+    + '<b style=”color:var(--text)”>'+codes.length+'</b> bloco(s) &nbsp;·&nbsp; '+dupBadge+extras
+    + '</div></div>'
+    // Linhas por bloco
+    + '<div style=”padding:.45rem .5rem;display:flex;flex-direction:column;gap:.28rem”>'
+    + (linhas || '<div style=”font-size:.74rem;color:var(--text2);font-style:italic;padding:.2rem .2rem”>(nenhum bloco ainda)</div>')
     + '</div>'
     // Gerador de codigo
     + '<div style=”padding:.45rem .75rem;border-top:1px dashed var(--border);display:flex;gap:.4rem;align-items:center;flex-wrap:wrap”>'
-    + '<span style=”font-size:.72rem;color:var(--text2);font-weight:700;flex:0 0 auto”>Gerar próximo código:</span>'
+    + '<span style=”font-size:.71rem;color:var(--text2);font-weight:700;white-space:nowrap”>Gerar próximo:</span>'
     + '<select id=”tplEdGerarPrefixo” style=”font-size:.74rem;flex:1 1 auto;min-width:0”>'+prefOpts+'</select>'
-    + '<button class=”btn bg bxs” onclick=”_tplEdGerarNovo()” title=”Adiciona um bloco com o próximo código do tipo escolhido”>➕ Gerar bloco</button>'
+    + '<button class=”btn bg bxs” onclick=”_tplEdGerarNovo()”>➕ Gerar bloco</button>'
     + '</div></div>';
 }
 /* Atualiza, sem re-render completo, o painel-resumo e os avisos por bloco (preserva foco). */
