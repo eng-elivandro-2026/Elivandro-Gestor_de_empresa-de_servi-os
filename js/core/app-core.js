@@ -8186,8 +8186,16 @@ function tplPropBlocoQualquer(cod){
   return _beEscopos.find(function(e){ return String(e.codigo||'').toLowerCase()===cod; }) || null;
 }
 
-/* Chips de blocos (verde=ativo, amarelo=inativo, vermelho=ausente) */
+/* Chips de blocos (verde=ativo, amarelo=inativo, vermelho=ausente).
+   Em templates com conteudo editavel embutido (blocosDetalhe), mostra o codigo em verde
+   pois o texto ja viaja dentro do template (independe da biblioteca). */
 function _tplPropChips(t){
+  if(tplPropTemDetalhe(t)){
+    return t.blocosDetalhe.map(function(b){
+      var cor='#3fb950', rot=String(b.codigo||b.titulo||'bloco');
+      return '<span style="display:inline-flex;align-items:center;font-size:.66rem;font-weight:700;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:.04rem .35rem">'+esc(rot)+'</span>';
+    }).join(' ');
+  }
   return (t.blocos||[]).map(function(c){
     var ativo=tplPropBlocoAtivo(c), existe=tplPropBlocoQualquer(c);
     var cor = ativo?'#3fb950':(existe?'#d4a017':'#f85149');
@@ -8197,19 +8205,22 @@ function _tplPropChips(t){
 }
 /* Card de um template (fixo ou personalizado) */
 function _tplPropCardHTML(t, isCustom){
-  var nAtivos = (t.blocos||[]).filter(function(c){return tplPropBlocoAtivo(c);}).length;
+  var temDet = tplPropTemDetalhe(t);
+  var total = temDet ? t.blocosDetalhe.length : (t.blocos||[]).length;
+  var nAtivos = temDet ? total : (t.blocos||[]).filter(function(c){return tplPropBlocoAtivo(c);}).length;
   var inativo = isCustom && (t.status||'Ativo')==='Inativo';
-  var selo = isCustom ? ' <span class="tg2" style="background:var(--bg3);color:var(--accent)">Personalizado</span>' : '';
+  var selo = isCustom ? ' <span class="tg2" style="background:var(--bg3);color:var(--accent)">Personalizado</span>' : ' <span class="tg2" style="background:var(--bg3);color:var(--text2)">Fixo</span>';
   if(inativo) selo += ' <span class="tg2" style="background:rgba(245,158,11,.18);color:#f59e0b">Inativo</span>';
-  var acoesEsq = '';
+  // "Editar" disponivel para todos: fixo -> cria copia personalizada; personalizado -> edita ele mesmo.
+  var acoesEsq = '<button class="btn bg bxs" onclick="tplPropEditorAbrir(\''+esc(t.codigo)+'\')" title="Editar template completo">✏️ Editar</button>';
   if(isCustom){
-    acoesEsq = '<button class="btn bg bxs" onclick="tplPropCustomEditar(\''+esc(t.codigo)+'\')" title="Editar template">✏️ Editar</button>'
-             + '<button class="btn bd bxs" onclick="tplPropCustomExcluir(\''+esc(t.codigo)+'\')" title="Excluir template">🗑</button>';
+    acoesEsq += '<button class="btn bd bxs" onclick="tplPropCustomExcluir(\''+esc(t.codigo)+'\')" title="Excluir template">🗑</button>';
   }
+  var detalhe = temDet ? (total+' bloco(s) · conteúdo editável embutido') : (nAtivos+'/'+total+' bloco(s) ativo(s) na biblioteca');
   var acaoUsar = inativo ? '' : '<button class="btn bs" onclick="tplPropAdicionar(\''+esc(t.codigo)+'\')">✅ Adicionar Template na Proposta</button>';
   return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.7rem .8rem;display:flex;flex-direction:column;gap:.45rem;opacity:'+(inativo?'.65':'1')+'">'
     + '<div><div style="font-weight:800;color:var(--text);font-size:.95rem">'+esc(t.nome)+selo+'</div>'
-    + '<div style="font-size:.7rem;color:var(--accent);font-weight:700">'+esc(t.codigo)+' — '+nAtivos+'/'+(t.blocos||[]).length+' bloco(s) ativo(s) na biblioteca'+(t.descricao?(' · <span style="color:var(--text2);font-weight:400">'+esc(t.descricao)+'</span>'):'')+'</div></div>'
+    + '<div style="font-size:.7rem;color:var(--accent);font-weight:700">'+esc(t.codigo)+' — '+detalhe+(t.descricao?(' · <span style="color:var(--text2);font-weight:400">'+esc(t.descricao)+'</span>'):'')+'</div></div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+_tplPropChips(t)+'</div>'
     + '<div style="display:flex;justify-content:flex-end;gap:.35rem;align-items:center">'+acoesEsq+acaoUsar+'</div>'
     + '</div>';
@@ -8271,7 +8282,11 @@ function tplPropAvisoIrNovaProposta(){
   else go('nova', null);
 }
 
-/* Adiciona os blocos ativos de um template na proposta atual (copias locais) */
+/* Templates personalizados podem trazer conteudo editavel embutido (blocosDetalhe).
+   Quando presente, usamos o texto editado pelo usuario em vez de buscar na biblioteca. */
+function tplPropTemDetalhe(t){ return !!(t && Array.isArray(t.blocosDetalhe) && t.blocosDetalhe.length); }
+
+/* Adiciona os blocos de um template na proposta atual (copias locais editaveis) */
 function tplPropAdicionar(tplCodigo){
   var t=tplPropPorCodigo(tplCodigo); if(!t) return;
   if(typeof editId==='undefined' || !editId){
@@ -8282,29 +8297,50 @@ function tplPropAdicionar(tplCodigo){
   var jaNaProposta={};
   (escSecs||[]).forEach(function(s){ if(s.codigoBloco) jaNaProposta[String(s.codigoBloco).toLowerCase()]=true; });
 
-  var paraAdicionar=[], naoEncontrados=[], inativos=[], duplicados=[];
-  t.blocos.forEach(function(cod){
-    var b=tplPropBlocoAtivo(cod);
-    if(!b){ if(tplPropBlocoQualquer(cod)) inativos.push(cod); else naoEncontrados.push(cod); return; }
-    if(jaNaProposta[String(cod).toLowerCase()]){ duplicados.push(b); return; }
-    paraAdicionar.push(b);
-  });
+  var adicionados=0, naoEncontrados=[], inativos=[];
 
-  // Duplicados: por padrao NAO adiciona; oferece confirmacao para duplicar.
-  if(duplicados.length){
-    var addDup=confirm(duplicados.length+' bloco(s) deste template já está(ão) na proposta:\n• '
-      + duplicados.map(function(b){return b.codigo;}).join('\n• ')
-      + '\n\n[OK] = adicionar mesmo assim (duplicar)\n[Cancelar] = ignorar os duplicados');
-    if(addDup){ duplicados.forEach(function(b){ paraAdicionar.push(b); }); }
+  if(tplPropTemDetalhe(t)){
+    // Caminho NOVO: o template carrega titulo/conteudo editaveis embutidos.
+    var paraAddD=[], duplicadosD=[];
+    t.blocosDetalhe.forEach(function(b){
+      var cod=String(b.codigo||'').trim();
+      if(cod && jaNaProposta[cod.toLowerCase()]){ duplicadosD.push(b); return; }
+      paraAddD.push(b);
+    });
+    if(duplicadosD.length){
+      var addDupD=confirm(duplicadosD.length+' bloco(s) deste template já está(ão) na proposta:\n• '
+        + duplicadosD.map(function(b){return b.codigo||b.titulo||'(bloco)';}).join('\n• ')
+        + '\n\n[OK] = adicionar mesmo assim (duplicar)\n[Cancelar] = ignorar os duplicados');
+      if(addDupD){ duplicadosD.forEach(function(b){ paraAddD.push(b); }); }
+    }
+    paraAddD.forEach(function(b){
+      escSecs.push({ id:uid(), num:'', titulo:b.titulo||'', desc:b.conteudo||'', subs:[],
+        codigoBloco:b.codigo||'', origemBlocoId:'', descOriginal:b.conteudo||'', origemTemplate:true });
+      adicionados++;
+    });
+  } else {
+    // Caminho LEGADO: template guarda apenas codigos; busca o conteudo na biblioteca.
+    var paraAdicionar=[], duplicados=[];
+    (t.blocos||[]).forEach(function(cod){
+      var b=tplPropBlocoAtivo(cod);
+      if(!b){ if(tplPropBlocoQualquer(cod)) inativos.push(cod); else naoEncontrados.push(cod); return; }
+      if(jaNaProposta[String(cod).toLowerCase()]){ duplicados.push(b); return; }
+      paraAdicionar.push(b);
+    });
+    // Duplicados: por padrao NAO adiciona; oferece confirmacao para duplicar.
+    if(duplicados.length){
+      var addDup=confirm(duplicados.length+' bloco(s) deste template já está(ão) na proposta:\n• '
+        + duplicados.map(function(b){return b.codigo;}).join('\n• ')
+        + '\n\n[OK] = adicionar mesmo assim (duplicar)\n[Cancelar] = ignorar os duplicados');
+      if(addDup){ duplicados.forEach(function(b){ paraAdicionar.push(b); }); }
+    }
+    paraAdicionar.forEach(function(e){
+      var subsForProp=(e.subs||[]).map(function(s){ return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''}; });
+      escSecs.push({ id:uid(), num:'', titulo:e.titulo||'', desc:e.conteudo||'', subs:subsForProp,
+        codigoBloco:e.codigo||'', origemBlocoId:e.id||'', descOriginal:e.conteudo||'', origemTemplate:true });
+      adicionados++;
+    });
   }
-
-  var adicionados=0;
-  paraAdicionar.forEach(function(e){
-    var subsForProp=(e.subs||[]).map(function(s){ return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''}; });
-    escSecs.push({ id:uid(), num:'', titulo:e.titulo||'', desc:e.conteudo||'', subs:subsForProp,
-      codigoBloco:e.codigo||'', origemBlocoId:e.id||'', descOriginal:e.conteudo||'', origemTemplate:true });
-    adicionados++;
-  });
 
   tplPropFechar();
   if(adicionados>0){ go('nova', null); step(3); rEsc(); }
@@ -8469,9 +8505,11 @@ function tplPropCustomImportar(ev){
         var cu=String(t.codigo).toUpperCase();
         if(existentes[cu]){ ign++; return; } // nao duplica codigos fixos nem ja existentes
         var agora=new Date().toISOString();
-        custom.push({ codigo:String(t.codigo), nome:t.nome||t.codigo, descricao:t.descricao||'',
+        var novo={ codigo:String(t.codigo), nome:t.nome||t.codigo, descricao:t.descricao||'',
           categoria:t.categoria||'', blocos:t.blocos.slice(), status:t.status||'Ativo',
-          created_at:t.created_at||agora, updated_at:agora });
+          created_at:t.created_at||agora, updated_at:agora };
+        if(Array.isArray(t.blocosDetalhe) && t.blocosDetalhe.length) novo.blocosDetalhe=t.blocosDetalhe.slice(); // preserva conteudo editavel
+        custom.push(novo);
         existentes[cu]=true; add++;
       });
       tplPropCustomSave(custom);
@@ -8481,6 +8519,263 @@ function tplPropCustomImportar(ev){
   };
   reader.readAsText(file);
   try{ ev.target.value=''; }catch(e){}
+}
+
+// ============================================================
+// EDITOR COMPLETO DE TEMPLATE DE PROPOSTA (sem banco/migration)
+// Edita 100% do template: nome, codigo, descricao, blocos (titulo/descricao/escopo),
+// ordem, adicionar/remover/duplicar. Salva em "Meus templates" (localStorage).
+//  - Template FIXO  -> editar cria uma COPIA personalizada (nao altera o original).
+//  - Template CUSTOM -> editar atualiza ele mesmo.
+// Conteudo editavel viaja embutido (blocosDetalhe), e tambem ao aplicar na proposta.
+// ============================================================
+var _tplEd = null; // {origemFixo, codigoOrig, nome, codigo, descricao, status, categoria, blocos:[{id,codigo,titulo,descricao,conteudo,manual}]}
+
+function tplPropFixoPorCodigo(cod){ return TEMPLATES_PROPOSTA.find(function(t){return t.codigo===cod;})||null; }
+
+/* Monta a lista de blocos editaveis a partir de um template (fixo ou custom). */
+function _tplEdBlocosDe(t){
+  if(tplPropTemDetalhe(t)){
+    return t.blocosDetalhe.map(function(b){
+      return { id:uid(), codigo:String(b.codigo||''), titulo:b.titulo||'', descricao:b.descricao||'',
+               conteudo:b.conteudo||'', manual:!!b.manual };
+    });
+  }
+  // Legado: apenas codigos -> busca conteudo na biblioteca para tornar editavel.
+  return (t.blocos||[]).map(function(cod){
+    var b=tplPropBlocoQualquer(cod);
+    return { id:uid(), codigo:String(cod||''), titulo:(b&&b.titulo)||'', descricao:(b&&b.descricao)||'',
+             conteudo:(b&&b.conteudo)||'', manual:!b };
+  });
+}
+
+/* Abre o editor completo. */
+function tplPropEditorAbrir(codigo){
+  beLoadDB();
+  var fixo = tplPropFixoPorCodigo(codigo);
+  var custom = fixo ? null : tplPropCustomLoad().find(function(t){return t.codigo===codigo;});
+  var t = fixo || custom;
+  if(!t){ alert('Template não encontrado.'); return; }
+  var origemFixo = !!fixo;
+  _tplEd = {
+    origemFixo: origemFixo,
+    codigoOrig: t.codigo,
+    nome: origemFixo ? (t.nome+' (cópia)') : (t.nome||''),
+    codigo: origemFixo ? (t.codigo+'-COPIA') : t.codigo,
+    descricao: t.descricao||'',
+    status: t.status||'Ativo',
+    categoria: t.categoria||'',
+    blocos: _tplEdBlocosDe(t)
+  };
+  _tplEdRender();
+}
+function tplPropEditorFechar(){ _tplEd=null; var ov=Q('tplEdOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+
+/* Le os valores atuais do DOM de volta para o estado (antes de re-renderizar). */
+function _tplEdSync(){
+  if(!_tplEd) return;
+  if(Q('tplEdNome')) _tplEd.nome=Q('tplEdNome').value;
+  if(Q('tplEdCodigo')) _tplEd.codigo=Q('tplEdCodigo').value;
+  if(Q('tplEdDesc')) _tplEd.descricao=Q('tplEdDesc').value;
+  if(Q('tplEdStatus')) _tplEd.status=Q('tplEdStatus').value;
+  _tplEd.blocos.forEach(function(b){
+    var c=Q('tplEdB_cod_'+b.id);  if(c) b.codigo=c.value;
+    var ti=Q('tplEdB_tit_'+b.id); if(ti) b.titulo=ti.value;
+    var de=Q('tplEdB_desc_'+b.id);if(de) b.descricao=de.value;
+    var co=Q('tplEdB_cont_'+b.id);if(co) b.conteudo=co.value;
+  });
+}
+
+function _tplEdBlocoCardHTML(b, idx, total){
+  var lbl='display:block;font-size:.68rem;font-weight:700;color:var(--text2);margin:.4rem 0 .12rem 0';
+  var tipo = b.manual ? '<span class="tg2" style="background:rgba(99,102,241,.16);color:var(--accent)">Livre</span>'
+                      : '<span class="tg2" style="background:var(--bg2);color:var(--text2)">Biblioteca</span>';
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg2);padding:.6rem .7rem;display:flex;flex-direction:column;gap:.2rem">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:.4rem;flex-wrap:wrap">'
+    + '<div style="display:flex;align-items:center;gap:.4rem"><span style="font-weight:800;color:var(--text2);font-size:.74rem">#'+(idx+1)+'</span>'+tipo+'</div>'
+    + '<div style="display:flex;gap:.25rem;flex-wrap:wrap">'
+    + '<button class="btn bg bxs" '+(idx===0?'disabled style="opacity:.4"':'')+' onclick="_tplEdMover(\''+b.id+'\',-1)" title="Subir">▲</button>'
+    + '<button class="btn bg bxs" '+(idx===total-1?'disabled style="opacity:.4"':'')+' onclick="_tplEdMover(\''+b.id+'\',1)" title="Descer">▼</button>'
+    + '<button class="btn bg bxs" onclick="_tplEdDuplicar(\''+b.id+'\')" title="Duplicar bloco">⧉</button>'
+    + '<button class="btn bd bxs" onclick="_tplEdRemover(\''+b.id+'\')" title="Remover bloco">🗑</button>'
+    + '</div></div>'
+    + '<label style="'+lbl+'">Código do bloco</label><input id="tplEdB_cod_'+b.id+'" value="'+esc(b.codigo)+'" placeholder="ex.: OBJ-001 ou LIVRE-..." style="width:100%" oninput="this.value=this.value.toUpperCase()">'
+    + '<label style="'+lbl+'">Título</label><input id="tplEdB_tit_'+b.id+'" value="'+esc(b.titulo)+'" placeholder="Título do bloco" style="width:100%">'
+    + '<label style="'+lbl+'">Descrição (resumo)</label><input id="tplEdB_desc_'+b.id+'" value="'+esc(b.descricao)+'" placeholder="Resumo curto (opcional)" style="width:100%">'
+    + '<label style="'+lbl+'">Escopo / conteúdo (vai para a proposta)</label><textarea id="tplEdB_cont_'+b.id+'" placeholder="Texto do escopo do bloco" style="width:100%;min-height:90px;resize:vertical">'+esc(b.conteudo)+'</textarea>'
+    + '</div>';
+}
+
+function _tplEdRender(){
+  if(!_tplEd) return;
+  var existe=Q('tplEdOverlay');
+  var lbl='display:block;font-size:.72rem;font-weight:700;color:var(--text2);margin:.5rem 0 .15rem 0';
+  var tipoSelo = _tplEd.origemFixo
+    ? '<span class="tg2" style="background:rgba(245,158,11,.16);color:#f59e0b">Editando template FIXO → salvará como cópia</span>'
+    : '<span class="tg2" style="background:var(--bg3);color:var(--accent)">Personalizado</span>';
+  var st=_tplEd.status||'Ativo';
+  var blocosHTML = _tplEd.blocos.length
+    ? _tplEd.blocos.map(function(b,i){ return _tplEdBlocoCardHTML(b,i,_tplEd.blocos.length); }).join('')
+    : '<div style="font-size:.78rem;color:var(--text2);font-style:italic">Nenhum bloco. Use “➕ Adicionar bloco livre” ou “📚 Adicionar da biblioteca”.</div>';
+  var avisoFixo = _tplEd.origemFixo
+    ? '<div style="font-size:.74rem;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:.4rem .55rem">⚠️ Este é um template fixo. Ao salvar, será criada uma <b>cópia personalizada</b> em “Meus templates”. O template fixo original não será alterado.</div>'
+    : '';
+  var inner=''
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">'
+    + '<span style="font-weight:900;color:var(--text)">✏️ Editar Template &nbsp;'+tipoSelo+'</span>'
+    + '<button class="btn bg bxs" onclick="tplPropEditorFechar()">✕</button></div>'
+    + '<div style="flex:1 1 auto;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.2rem">'
+    + avisoFixo
+    + '<label style="'+lbl+'">Nome do template *</label><input id="tplEdNome" value="'+esc(_tplEd.nome)+'" placeholder="Nome visível" style="width:100%">'
+    + '<label style="'+lbl+'">Código do template *</label><input id="tplEdCodigo" value="'+esc(_tplEd.codigo)+'" placeholder="ex.: TPL-MEU" style="width:100%" oninput="this.value=this.value.toUpperCase()">'
+    + '<label style="'+lbl+'">Descrição curta</label><input id="tplEdDesc" value="'+esc(_tplEd.descricao)+'" placeholder="Resumo opcional" style="width:100%">'
+    + '<label style="'+lbl+'">Status</label><select id="tplEdStatus" style="width:100%"><option value="Ativo"'+(st==='Ativo'?' selected':'')+'>Ativo</option><option value="Inativo"'+(st==='Inativo'?' selected':'')+'>Inativo</option></select>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin:.7rem 0 .2rem 0">'
+    + '<span style="font-weight:800;color:var(--text);font-size:.84rem">📋 Blocos ('+_tplEd.blocos.length+')</span>'
+    + '<div style="display:flex;gap:.3rem;flex-wrap:wrap">'
+    + '<button class="btn bg bxs" onclick="_tplEdAddLivre()">➕ Bloco livre</button>'
+    + '<button class="btn bg bxs" onclick="_tplEdBibAbrir()">📚 Da biblioteca</button>'
+    + '</div></div>'
+    + '<div style="display:flex;flex-direction:column;gap:.5rem">'+blocosHTML+'</div>'
+    + '</div>'
+    + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap">'
+    + '<button class="btn bg" onclick="tplPropEditorFechar()">Cancelar</button>'
+    + (_tplEd.origemFixo ? '' : '<button class="btn bg" onclick="_tplEdSalvar(true)" title="Salvar como um novo template personalizado">📄 Salvar como novo</button>')
+    + '<button class="btn bs" onclick="_tplEdSalvar(false)">💾 '+(_tplEd.origemFixo?'Salvar como cópia':'Salvar template')+'</button>'
+    + '</div>';
+  if(existe){
+    existe.firstChild.innerHTML=inner;
+  } else {
+    var ov=document.createElement('div'); ov.id='tplEdOverlay';
+    ov.setAttribute('style','position:fixed;inset:0;z-index:990;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow:auto');
+    ov.onclick=function(e){ if(e.target===ov) tplPropEditorFechar(); };
+    var box=document.createElement('div');
+    box.setAttribute('style','width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6)');
+    box.innerHTML=inner;
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+  }
+}
+
+function _tplEdMover(id,dir){
+  _tplEdSync();
+  var i=_tplEd.blocos.findIndex(function(b){return b.id===id;}); if(i<0) return;
+  var j=i+dir; if(j<0||j>=_tplEd.blocos.length) return;
+  var tmp=_tplEd.blocos[i]; _tplEd.blocos[i]=_tplEd.blocos[j]; _tplEd.blocos[j]=tmp;
+  _tplEdRender();
+}
+function _tplEdRemover(id){
+  _tplEdSync();
+  var b=_tplEd.blocos.find(function(x){return x.id===id;});
+  if(b && (b.titulo||b.conteudo) && !confirm('Remover o bloco "'+(b.titulo||b.codigo||'bloco')+'" deste template?')) return;
+  _tplEd.blocos=_tplEd.blocos.filter(function(x){return x.id!==id;});
+  _tplEdRender();
+}
+function _tplEdDuplicar(id){
+  _tplEdSync();
+  var i=_tplEd.blocos.findIndex(function(b){return b.id===id;}); if(i<0) return;
+  var src=_tplEd.blocos[i];
+  var copia={ id:uid(), codigo:src.codigo, titulo:src.titulo, descricao:src.descricao, conteudo:src.conteudo, manual:src.manual };
+  _tplEd.blocos.splice(i+1,0,copia);
+  _tplEdRender();
+}
+function _tplEdAddLivre(){
+  _tplEdSync();
+  _tplEd.blocos.push({ id:uid(), codigo:'LIVRE-'+uid().slice(0,5).toUpperCase(), titulo:'', descricao:'', conteudo:'', manual:true });
+  _tplEdRender();
+}
+
+/* Seletor simples da biblioteca de blocos (banco de escopos) para adicionar ao template. */
+var _tplEdBibFiltro='';
+function _tplEdBibAbrir(){
+  _tplEdSync();
+  beLoadDB();
+  _tplEdBibFiltro='';
+  _tplEdBibRender();
+}
+function _tplEdBibFechar(){ var ov=Q('tplEdBibOverlay'); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }
+function _tplEdBibBuscar(v){ _tplEdBibFiltro=String(v||''); _tplEdBibListaRender(); }
+function _tplEdBibListaHTML(){
+  var f=normTxt(_tplEdBibFiltro);
+  var lista=(_beEscopos||[]).filter(function(e){ return (e.status||'Ativo')==='Ativo'; });
+  if(f) lista=lista.filter(function(e){ return normTxt((e.codigo||'')+' '+(e.titulo||'')+' '+(e.categoria||'')).indexOf(f)>=0; });
+  if(!lista.length) return '<div style="font-size:.78rem;color:var(--text2);font-style:italic;padding:.4rem">Nenhum bloco encontrado.</div>';
+  return lista.slice(0,200).map(function(e){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;background:var(--bg2)">'
+      + '<div style="min-width:0"><div style="font-weight:700;color:var(--text);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.titulo||e.codigo)+'</div>'
+      + '<div style="font-size:.66rem;color:var(--accent);font-weight:700">'+esc(e.codigo||'')+(e.categoria?(' · <span style="color:var(--text2);font-weight:400">'+esc(e.categoria)+'</span>'):'')+'</div></div>'
+      + '<button class="btn bs bxs" onclick="_tplEdBibAdd(\''+esc(e.codigo)+'\')">+ Add</button></div>';
+  }).join('');
+}
+function _tplEdBibListaRender(){ var c=Q('tplEdBibLista'); if(c) c.innerHTML=_tplEdBibListaHTML(); }
+function _tplEdBibRender(){
+  _tplEdBibFechar();
+  var ov=document.createElement('div'); ov.id='tplEdBibOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:995;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow:auto');
+  ov.onclick=function(e){ if(e.target===ov) _tplEdBibFechar(); };
+  ov.innerHTML='<div style="width:min(560px,96vw);max-height:88vh;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6)">'
+    + '<div style="flex:0 0 auto;padding:.7rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><span style="font-weight:900;color:var(--text)">📚 Adicionar bloco da biblioteca</span><button class="btn bg bxs" onclick="_tplEdBibFechar()">✕</button></div>'
+    + '<div style="flex:0 0 auto;padding:.6rem 1rem"><input id="tplEdBibBusca" placeholder="Buscar por código, título ou categoria…" oninput="_tplEdBibBuscar(this.value)" style="width:100%"></div>'
+    + '<div id="tplEdBibLista" style="flex:1 1 auto;overflow-y:auto;padding:0 1rem 1rem 1rem;display:flex;flex-direction:column;gap:.35rem">'+_tplEdBibListaHTML()+'</div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ var f=Q('tplEdBibBusca'); if(f) f.focus(); },60);
+}
+function _tplEdBibAdd(cod){
+  var b=tplPropBlocoQualquer(cod); if(!b){ alert('Bloco não encontrado na biblioteca.'); return; }
+  if(!_tplEd){ return; }
+  _tplEd.blocos.push({ id:uid(), codigo:String(b.codigo||''), titulo:b.titulo||'', descricao:b.descricao||'',
+                       conteudo:b.conteudo||'', manual:false });
+  _tplEdBibFechar();
+  _tplEdRender();
+  toast('➕ Bloco "'+(b.titulo||b.codigo)+'" adicionado ao template.');
+}
+
+/* Salva o template editado. comoNovo=true força criar um novo personalizado.
+   Template fixo SEMPRE salva como cópia (nao altera o original). */
+function _tplEdSalvar(comoNovo){
+  _tplEdSync();
+  if(!_tplEd) return;
+  var nome=String(_tplEd.nome||'').trim();
+  var codigo=String(_tplEd.codigo||'').trim().toUpperCase().replace(/\s+/g,'-');
+  if(!nome){ alert('Informe o nome do template.'); return; }
+  if(!codigo){ alert('Informe o código do template.'); return; }
+  if(!_tplEd.blocos.length){ alert('O template precisa de ao menos um bloco.'); return; }
+  // Normaliza blocos: garante codigo (gera para livres sem codigo).
+  var blocosDetalhe=_tplEd.blocos.map(function(b){
+    var c=String(b.codigo||'').trim().toUpperCase();
+    if(!c){ c='LIVRE-'+uid().slice(0,5).toUpperCase(); }
+    return { codigo:c, titulo:(b.titulo||'').trim(), descricao:(b.descricao||'').trim(),
+             conteudo:b.conteudo||'', manual:!!b.manual };
+  });
+  var blocos=blocosDetalhe.map(function(b){return b.codigo;}); // compat com fluxo legado/chips
+  var custom=tplPropCustomLoad();
+  var criarNovo = _tplEd.origemFixo || comoNovo || !custom.some(function(t){return t.codigo===_tplEd.codigoOrig;});
+  var agora=new Date().toISOString();
+
+  if(criarNovo){
+    // Codigo precisa ser unico (entre fixos e personalizados).
+    if(tplPropFixoPorCodigo(codigo) || custom.some(function(t){return t.codigo===codigo;})){
+      alert('Já existe um template (fixo ou personalizado) com o código "'+codigo+'".\nEscolha outro código.'); return;
+    }
+    custom.push({ codigo:codigo, nome:nome, descricao:_tplEd.descricao||'', categoria:_tplEd.categoria||'',
+      blocos:blocos, blocosDetalhe:blocosDetalhe, status:_tplEd.status||'Ativo', created_at:agora, updated_at:agora });
+  } else {
+    // Atualiza o personalizado existente. Permite trocar o codigo (validando colisao).
+    var t=custom.find(function(x){return x.codigo===_tplEd.codigoOrig;});
+    if(!t){ alert('Template não encontrado para atualização.'); return; }
+    if(codigo!==_tplEd.codigoOrig){
+      if(tplPropFixoPorCodigo(codigo) || custom.some(function(x){return x.codigo===codigo;})){
+        alert('Já existe outro template com o código "'+codigo+'".\nEscolha outro código.'); return;
+      }
+    }
+    t.codigo=codigo; t.nome=nome; t.descricao=_tplEd.descricao||''; t.categoria=_tplEd.categoria||'';
+    t.blocos=blocos; t.blocosDetalhe=blocosDetalhe; t.status=_tplEd.status||'Ativo'; t.updated_at=agora;
+  }
+  tplPropCustomSave(custom);
+  tplPropEditorFechar();
+  toast('💾 Template "'+nome+'" '+(criarNovo?'salvo':'atualizado')+' em Meus templates!', 'ok');
+  if(Q('tplPropOverlay')) tplPropAbrir(); // atualiza a listagem se aberta
 }
 
 // ============================================================
