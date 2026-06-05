@@ -8595,32 +8595,61 @@ function _tplEdStatusConteudo(b){
   if((c||d) && !t) return 'incompleto';    // tem escopo mas sem titulo
   return 'com-conteudo';
 }
-/* Scroll e foco no card do bloco (acao “Ir ao bloco” no Controle). */
+/* Scroll e foco no card do bloco (acao “Ir ao bloco” no Controle).
+   Rola o container interno do modal (tplEdScrollBody), nao a pagina.
+   Destaca o bloco por 1.5s com outline colorido e foca o campo Titulo. */
 function _tplEdIrAoBloco(id){
   var anchor=Q('tplEdBlocoAnchor_'+id);
-  if(anchor) anchor.scrollIntoView({behavior:'smooth',block:'center'});
-  setTimeout(function(){ var f=Q('tplEdB_tit_'+id); if(f){ f.focus(); f.select(); } }, 350);
+  var scrollBody=Q('tplEdScrollBody');
+  if(anchor && scrollBody){
+    var aTop=anchor.getBoundingClientRect().top;
+    var bTop=scrollBody.getBoundingClientRect().top;
+    var offset=aTop - bTop + scrollBody.scrollTop - 72;
+    scrollBody.scrollTo({top:Math.max(0,offset), behavior:'smooth'});
+  } else if(anchor){
+    anchor.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  if(anchor){
+    anchor.style.transition='outline .15s';
+    anchor.style.outline='2px solid var(--accent)';
+    anchor.style.outlineOffset='3px';
+    setTimeout(function(){ anchor.style.outline=''; anchor.style.outlineOffset=''; }, 1500);
+  }
+  setTimeout(function(){ var f=Q('tplEdB_tit_'+id); if(f){ f.focus(); f.select(); } }, 420);
 }
-/* Linha do Controle de Codigos para um bloco (codigo|origem|status|acoes). */
+/* Linha do Controle de Codigos — cada bloco exibe codigo | origem | status | acoes. */
 function _tplEdResumoLinhaHTML(b, isDup){
   var c=String(b.codigo||'').trim().toUpperCase()||'(sem código)';
   var orig=_tplEdOrigemLabel(b);
   var st=_tplEdStatusConteudo(b);
-  var stCor, stLabel, stIcon;
-  if(isDup)                   { stCor='#f85149';       stLabel='Duplicado';     stIcon='⚠'; }
-  else if(st==='com-conteudo'){ stCor='#3fb950';       stLabel='Com conteúdo';  stIcon='●'; }
-  else if(st==='incompleto')  { stCor='#f59e0b';       stLabel='Incompleto';    stIcon='◐'; }
-  else                        { stCor='var(--text2)';  stLabel='Vazio';         stIcon='○'; }
-  var origCor = (!b.manual)?'var(--text2)':(/^LIVRE/i.test(String(b.codigo||''))?'var(--accent)':'var(--text2)');
-  var btnEstilo='font-size:.62rem;padding:.08rem .28rem';
-  return '<div style=”display:flex;align-items:center;gap:.3rem;font-size:.7rem;border:1px solid var(--border);border-radius:5px;background:var(--bg2);padding:.22rem .4rem;flex-wrap:wrap”>'
-    + '<span style=”font-weight:800;color:var(--text);min-width:0;flex:0 0 auto”>'+esc(c)+'</span>'
-    + '<span style=”color:'+origCor+';flex:0 0 auto;opacity:.75”>'+esc(orig)+'</span>'
-    + '<span style=”color:'+stCor+';font-weight:700;flex:1 1 auto”>'+stIcon+' '+esc(stLabel)+'</span>'
-    + '<div style=”display:flex;gap:.2rem;flex:0 0 auto”>'
-    + '<button class=”btn bg bxs” style=”'+btnEstilo+'” onclick=”_tplEdIrAoBloco(\''+b.id+'\')” title=”Ir ao bloco e focar”>Ir</button>'
-    + '<button class=”btn bg bxs” style=”'+btnEstilo+'” onclick=”_tplEdDuplicar(\''+b.id+'\')” title=”Duplicar bloco”>⧉</button>'
-    + '<button class=”btn bd bxs” style=”'+btnEstilo+'” onclick=”_tplEdRemover(\''+b.id+'\')” title=”Remover bloco”>🗑</button>'
+
+  // Badge de status: fundo colorido com borda, contraste adequado.
+  var stBg, stBorder, stCor, stLabel, stIcon;
+  if(isDup)                   { stBg='rgba(248,81,73,.14)';   stBorder='#f85149'; stCor='#f85149'; stLabel='Duplicado';    stIcon='⚠️'; }
+  else if(st==='com-conteudo'){ stBg='rgba(63,185,80,.14)';   stBorder='#3fb950'; stCor='#3fb950'; stLabel='Com conteúdo'; stIcon='●'; }
+  else if(st==='incompleto')  { stBg='rgba(245,158,11,.14)';  stBorder='#f59e0b'; stCor='#d4a017'; stLabel='Incompleto';   stIcon='◐'; }
+  else                        { stBg='rgba(120,120,140,.1)';  stBorder='var(--border)'; stCor='var(--text2)'; stLabel='Vazio'; stIcon='○'; }
+
+  // Badge de origem: pill discreto.
+  var origBg, origCor;
+  if(!b.manual)                                          { origBg='rgba(120,120,140,.12)'; origCor='var(--text2)'; }
+  else if(/^LIVRE/i.test(String(b.codigo||'')))          { origBg='rgba(56,189,248,.14)';  origCor='#38bdf8'; }
+  else                                                   { origBg='rgba(99,102,241,.14)';  origCor='#818cf8'; }
+
+  var pill='display:inline-flex;align-items:center;border-radius:4px;font-size:.65rem;font-weight:700;padding:.15rem .45rem;white-space:nowrap';
+  var stBadge='<span style=”'+pill+';background:'+stBg+';color:'+stCor+';border:1px solid '+stBorder+'”>'+stIcon+' '+esc(stLabel)+'</span>';
+  var origBadge='<span style=”'+pill+';background:'+origBg+';color:'+origCor+';border:1px solid '+origCor+'44”>'+esc(orig)+'</span>';
+
+  return '<div style=”display:flex;align-items:center;gap:.5rem;border:1px solid var(--border);border-radius:7px;background:var(--bg2);padding:.4rem .55rem;flex-wrap:wrap”>'
+    // Codigo
+    + '<span style=”font-family:monospace;font-size:.8rem;font-weight:800;color:var(--text);flex:0 0 auto;min-width:6rem”>'+esc(c)+'</span>'
+    // Badges
+    + '<div style=”display:flex;gap:.3rem;flex-wrap:wrap;flex:1 1 auto;align-items:center”>'+origBadge+stBadge+'</div>'
+    // Acoes
+    + '<div style=”display:flex;gap:.3rem;flex:0 0 auto”>'
+    + '<button class=”btn bg bxs” onclick=”_tplEdIrAoBloco(\''+b.id+'\')” title=”Rolar até o bloco e focar”>🔎 Ir</button>'
+    + '<button class=”btn bg bxs” onclick=”_tplEdDuplicar(\''+b.id+'\')” title=”Duplicar bloco”>⧉</button>'
+    + '<button class=”btn bd bxs” onclick=”_tplEdRemover(\''+b.id+'\')” title=”Remover bloco”>🗑</button>'
     + '</div></div>';
 }
 /* Painel-resumo “Controle de Códigos” — mostra cada bloco com origem, status e ações. */
@@ -8638,15 +8667,24 @@ function _tplEdResumoHTML(){
     return _tplEdResumoLinhaHTML(b, isDup);
   }).join('');
   var prefOpts=_TPL_PREFIXOS.map(function(p){ return '<option value=”'+p[0]+'”>'+p[0]+' — '+esc(p[1])+'</option>'; }).join('');
-  return '<div style=”border:1px solid var(--border);border-radius:8px;background:var(--bg3);padding:.55rem .65rem;display:flex;flex-direction:column;gap:.4rem”>'
-    + '<div style=”font-weight:800;color:var(--text);font-size:.8rem”>🔢 Controle de Códigos</div>'
-    + '<div style=”font-size:.72rem;color:var(--text2)”>Blocos: <b style=”color:var(--text)”>'+codes.length+'</b> · Duplicados: '+dupBadge
-    + (semCodigo ? ' · <span style=”color:#f59e0b”>Sem código: '+semCodigo+'</span>' : '')
-    + (semConteudo ? ' · <span style=”color:var(--text2)”>Vazios: '+semConteudo+'</span>' : '')+'</div>'
-    + (linhas ? '<div style=”display:flex;flex-direction:column;gap:.2rem”>'+linhas+'</div>' : '<span style=”font-size:.72rem;color:var(--text2);font-style:italic”>(nenhum bloco ainda)</span>')
-    + '<div style=”display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;border-top:1px dashed var(--border);padding-top:.4rem”>'
-    + '<span style=”font-size:.7rem;color:var(--text2);font-weight:700”>Gerar próximo código:</span>'
-    + '<select id=”tplEdGerarPrefixo” style=”font-size:.74rem”>'+prefOpts+'</select>'
+  return '<div style=”border:1px solid var(--border);border-radius:10px;background:var(--bg3);overflow:hidden”>'
+    // Cabecalho do painel
+    + '<div style=”padding:.5rem .75rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem”>'
+    + '<span style=”font-weight:900;color:var(--text);font-size:.82rem”>🔢 Controle de Códigos</span>'
+    + '<span style=”font-size:.7rem;color:var(--text2)”>'
+    + 'Blocos: <b style=”color:var(--text)”>'+codes.length+'</b>'
+    + ' &nbsp;·&nbsp; Duplicados: '+dupBadge
+    + (semCodigo ? ' &nbsp;·&nbsp; <span style=”color:#f59e0b”>Sem código: '+semCodigo+'</span>' : '')
+    + (semConteudo ? ' &nbsp;·&nbsp; Vazios: <b style=”color:var(--text2)”>'+semConteudo+'</b>' : '')
+    + '</span></div>'
+    // Lista de blocos
+    + '<div style=”padding:.5rem .6rem;display:flex;flex-direction:column;gap:.3rem”>'
+    + (linhas || '<div style=”font-size:.74rem;color:var(--text2);font-style:italic;padding:.3rem .1rem”>(nenhum bloco ainda)</div>')
+    + '</div>'
+    // Gerador de codigo
+    + '<div style=”padding:.45rem .75rem;border-top:1px dashed var(--border);display:flex;gap:.4rem;align-items:center;flex-wrap:wrap”>'
+    + '<span style=”font-size:.72rem;color:var(--text2);font-weight:700;flex:0 0 auto”>Gerar próximo código:</span>'
+    + '<select id=”tplEdGerarPrefixo” style=”font-size:.74rem;flex:1 1 auto;min-width:0”>'+prefOpts+'</select>'
     + '<button class=”btn bg bxs” onclick=”_tplEdGerarNovo()” title=”Adiciona um bloco com o próximo código do tipo escolhido”>➕ Gerar bloco</button>'
     + '</div></div>';
 }
@@ -8782,7 +8820,7 @@ function _tplEdRender(){
     + '<div style="flex:0 0 auto;padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">'
     + '<span style="font-weight:900;color:var(--text)">✏️ Editar Template &nbsp;'+tipoSelo+'</span>'
     + '<button class="btn bg bxs" onclick="tplPropEditorFechar()">✕</button></div>'
-    + '<div style="flex:1 1 auto;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.2rem">'
+    + '<div id="tplEdScrollBody" style="flex:1 1 auto;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.2rem">'
     + avisoFixo
     + '<label style="'+lbl+'">Nome do template *</label><input id="tplEdNome" value="'+esc(_tplEd.nome)+'" placeholder="Nome visível" style="width:100%">'
     + '<label style="'+lbl+'">Código do template *</label><input id="tplEdCodigo" value="'+esc(_tplEd.codigo)+'" placeholder="ex.: TPL-MEU" style="width:100%" oninput="this.value=this.value.toUpperCase()">'
