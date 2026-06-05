@@ -135,6 +135,17 @@
         { label: 'Ferramentas',                   icon: '⚙️', action: "Router.iframeMsg('financeiro','SHOW_TAB','ferramentas');Router._setNavAtivo(this)" },
       ]
     },
+    {
+      id: 'dashboard-estrategico',
+      label: 'Painel Estratégico',
+      icon: '📊',
+      badge: 'CEO',
+      tipo: 'iframe',
+      src: 'pages/dashboard-estrategico.html',
+      nav: [
+        { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
+      ]
+    },
   ];
 
   var _moduloAtivo = null;
