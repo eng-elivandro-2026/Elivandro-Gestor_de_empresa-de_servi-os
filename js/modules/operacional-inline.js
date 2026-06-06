@@ -3853,6 +3853,11 @@
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
   window.opSetAno = opSetAno;
+  // Reuso por outros modulos (RH): lista de negocios operacionais (resolve obras
+  // 'ganho' via tabela obras) e resolucao do ANO DE EXECUCAO (cascata data_inicio_real
+  // -> execDatasOp.ini -> aprovacao). Evita duplicar logica.
+  window.opListarNegociosOperacionais = listarNegociosOperacionais;
+  window.opAnoExecucaoNegocio = _anoExecucaoNegocio;
   window._opExecDatasMap = window._opExecDatasMap || {};
   window.opCarregarDatasExecucao = carregarDatasExecucao;
   window.opMudarStatusNegocio = mudarStatusNegocio;
