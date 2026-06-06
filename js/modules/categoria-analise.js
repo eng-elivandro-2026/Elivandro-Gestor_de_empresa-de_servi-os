@@ -3903,6 +3903,7 @@ function rExecTimeline(){
   // Ano do filtro GLOBAL da aba Comercial; 'all' usa o ano atual (eixo de 12 meses).
   var _selC=window._anoComercialSel;
   var anoN=(_selC==='all')?new Date().getFullYear():(parseInt(_selC,10)||new Date().getFullYear());
+  var ano=anoN; // rótulos/textos exibem o ano efetivamente renderizado no eixo
 
   // Coletar projetos com dtInicioExec no ano selecionado ou que atravessam o ano
   var itens=[];
