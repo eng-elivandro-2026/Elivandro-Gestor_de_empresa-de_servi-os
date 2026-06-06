@@ -917,6 +917,13 @@ body.empresa-tema-fortex{
 <!-- DASHBOARD -->
 <div id="dashboard" class="sec on">
 
+  <!-- FILTRO DE ANO GLOBAL — comanda TODA a aba Comercial -->
+  <div id="comercialAnoBar" style="position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .8rem;margin-bottom:.8rem">
+    <span style="font-size:.78rem;font-weight:700;color:var(--text2)">📅 Filtrar ano:</span>
+    <select id="comercialAno" onchange="setAnoComercial(this.value)" title="Filtra TODOS os módulos da aba Comercial" style="padding:.22rem .6rem;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:.8rem;font-weight:600"></select>
+    <span style="font-size:.68rem;color:var(--text3)">um seletor comanda Propostas, Metas, Visão Executiva, Rankings, Ciclos, Fechamentos e Linha do Tempo</span>
+  </div>
+
   <!-- MOTOR DE DECISÃO -->
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
@@ -991,7 +998,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togMeta()">
       <span class="ct">🎯 Metas <span id="anoAtual" style="color:var(--accent)"></span></span>
       <div class="br" onclick="event.stopPropagation()">
-        <select id="metaAno" onchange="rMeta()" title="Ano dos cálculos de Metas" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem;margin-right:.4rem"></select>
+        <select id="metaAno" onchange="rMeta()" title="Ano dos cálculos de Metas" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem;margin-right:.4rem"></select>
         <button class="btn bg bsm" onclick="abrirConfigMeta()">⚙️ Configurar</button>
       </div>
       <span id="metaChevron" onclick="togMeta()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
@@ -1160,7 +1167,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togExecTimeline()">
       <span class="ct">📅 Linha do Tempo de Execução</span>
       <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
-        <select id="execTlAno" onchange="rExecTimeline()" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
+        <select id="execTlAno" onchange="rExecTimeline()" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
         <span id="execTlChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togExecTimeline()">▼ expandir</span>
       </div>
     </div>
@@ -1178,7 +1185,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togFechMes()">
       <span class="ct">📅 Fechamentos por Mês</span>
       <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
-        <select id="fechMesAno" onchange="rFechMes()" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
+        <select id="fechMesAno" onchange="rFechMes()" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
         <span id="fechMesChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togFechMes()">▼ expandir</span>
       </div>
     </div>
@@ -10038,7 +10045,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js"></script>
+<script src="js/core/app-core.js?v=2"></script>
 <script src="js/services/decision-engine/index.js"></script>
 <script src="js/core/permissoes.js?v=2"></script>
 <script src="js/modules/multi-empresa.js"></script>
