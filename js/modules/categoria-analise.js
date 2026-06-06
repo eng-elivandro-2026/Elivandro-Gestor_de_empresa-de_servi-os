@@ -67,7 +67,7 @@ function calcCatData(){
   var cats={};
   var FAS_APR=FAS_FECHADO;
 
-  props.forEach(function(p){
+  propsComercial().forEach(function(p){
     if(p.fas==='em_elaboracao')return;
     var isApr=FAS_APR.indexOf(p.fas)>=0;
     var isNao=!isApr;
@@ -810,16 +810,22 @@ function rFechMes(){
   var kpisEl=Q('fechMesKpis'), chartEl=Q('fechMesChart');
   if(!kpisEl||!chartEl) return;
 
-  var anoSel=parseInt((Q('fechMesAno')&&Q('fechMesAno').value)||new Date().getFullYear());
+  // Ano vem do filtro GLOBAL da aba Comercial. 'all' = agrega todos os anos por mês.
+  var _selC=window._anoComercialSel;
+  var _todosAnos=(_selC==='all');
+  var anoSel=_todosAnos?null:(parseInt(_selC,10)||new Date().getFullYear());
+  var _anoArg=_todosAnos?"'all'":anoSel; // literal JS p/ onclick do detalhe
   var filtro=(Q('fmFiltro')&&Q('fmFiltro').value)||'todos';
   var valorFiltro=(Q('fmValor')&&Q('fmValor').value)||'';
   var MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   // Coletar propostas fechadas do ano (REGRA Fechamentos por Mês: inclui 'finalizado',
   // exclui legado faturado/recebido — ver isFechamentoMes em app-core.js).
+  // 'all' → agrega fechamentos de TODOS os anos no gráfico de 12 meses.
   var base=props.filter(function(p){
     if(!isFechamentoMes(p)) return false;
-    var d=_parseDateProp(p); return d && d.getFullYear()===anoSel;
+    var d=_parseDateProp(p); if(!d) return false;
+    return _todosAnos ? true : d.getFullYear()===anoSel;
   });
 
   // Popular select de valores do filtro
@@ -865,7 +871,7 @@ function rFechMes(){
 
   var ks='background:var(--bg3);border-radius:8px;padding:.5rem .8rem;min-width:130px;flex:1';
   kpisEl.innerHTML=
-    '<div style="'+ks+'"><div style="font-size:.65rem;color:var(--text3);margin-bottom:.15rem">FECHAMENTOS '+anoSel+labelFiltro+'</div><div style="font-size:1.05rem;font-weight:800;color:var(--accent)">'+totalN+' propostas</div></div>'
+    '<div style="'+ks+'"><div style="font-size:.65rem;color:var(--text3);margin-bottom:.15rem">FECHAMENTOS '+(_todosAnos?'(Todos os anos)':anoSel)+labelFiltro+'</div><div style="font-size:1.05rem;font-weight:800;color:var(--accent)">'+totalN+' propostas</div></div>'
    +'<div style="'+ks+'"><div style="font-size:.65rem;color:var(--text3);margin-bottom:.15rem">RECEITA FECHADA</div><div style="font-size:1rem;font-weight:800;color:#3fb950">'+money(totalVal)+'</div></div>'
    +(mesesCom>0?'<div style="'+ks+'"><div style="font-size:.65rem;color:var(--text3);margin-bottom:.15rem">MÉDIA/MÊS ATIVO</div><div style="font-size:.9rem;font-weight:700;color:var(--text)">'+money(media)+'</div></div>':'')
    +(melhor.n>0?'<div style="'+ks+'"><div style="font-size:.65rem;color:var(--text3);margin-bottom:.15rem">MELHOR MÊS</div><div style="font-size:.88rem;font-weight:700;color:#d4a017">'+MESES[melhor.mes]+' — '+money(melhor.val)+'</div></div>':'');
@@ -875,7 +881,7 @@ function rFechMes(){
   var chartW=Math.max(600, 12*(barW+gap)+padL+padR);
   var maxVal=Math.max.apply(null,dados.map(function(d){return d.val;}));
   if(maxVal<=0) maxVal=1;
-  var mesAtual=new Date().getFullYear()===anoSel?new Date().getMonth():-1;
+  var mesAtual=(!_todosAnos && new Date().getFullYear()===anoSel)?new Date().getMonth():-1;
 
   var svg='<svg viewBox="0 0 '+chartW+' '+(H+padT+padB)+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:inherit">';
 
@@ -902,14 +908,14 @@ function rFechMes(){
     var _valY    = _barTopo - 28;     // valor sempre 28px acima do topo (acima da bolinha)
 
     if(temDados){
-      svg+='<text x="'+cx+'" y="'+_valY+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="'+cor+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+anoSel+')">'+_fmtK(d.val)+'</text>';
-      svg+='<circle cx="'+cx+'" cy="'+_bolaY+'" r="10" fill="'+(isAtual?'rgba(88,166,255,.25)':'rgba(63,185,80,.2)')+'" stroke="'+(isAtual?'#58a6ff':'#3fb950')+'" stroke-width="1.5" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+anoSel+')"/>';
-      svg+='<text x="'+cx+'" y="'+(_bolaY+4)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+(isAtual?'#58a6ff':'#3fb950')+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+anoSel+')">'+d.n+'</text>';
+      svg+='<text x="'+cx+'" y="'+_valY+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="'+cor+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+_anoArg+')">'+_fmtK(d.val)+'</text>';
+      svg+='<circle cx="'+cx+'" cy="'+_bolaY+'" r="10" fill="'+(isAtual?'rgba(88,166,255,.25)':'rgba(63,185,80,.2)')+'" stroke="'+(isAtual?'#58a6ff':'#3fb950')+'" stroke-width="1.5" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+_anoArg+')"/>';
+      svg+='<text x="'+cx+'" y="'+(_bolaY+4)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+(isAtual?'#58a6ff':'#3fb950')+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+_anoArg+')">'+d.n+'</text>';
     }
     if(barH>1){
-      svg+='<rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4" fill="'+cor+'" opacity="0.88" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+anoSel+')" />';
+      svg+='<rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4" fill="'+cor+'" opacity="0.88" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+_anoArg+')" />';
     } else if(temDados){
-      svg+='<rect x="'+x+'" y="'+(padT+H-3)+'" width="'+barW+'" height="3" rx="2" fill="'+cor+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+anoSel+')"/>';
+      svg+='<rect x="'+x+'" y="'+(padT+H-3)+'" width="'+barW+'" height="3" rx="2" fill="'+cor+'" style="cursor:pointer" onclick="fmMostrarDetalhe('+i+','+_anoArg+')"/>';
     } else {
       svg+='<rect x="'+x+'" y="'+(padT+H-2)+'" width="'+barW+'" height="2" rx="1" fill="rgba(128,128,128,.12)"/>';
     }
@@ -1003,7 +1009,8 @@ function fmMostrarDetalhe(mes, ano){
   var lista=props.filter(function(p){
     if(FAS_FECHADO.indexOf(p.fas)<0) return false;
     var d=_parseDateProp(p);
-    if(!d||d.getFullYear()!==ano||d.getMonth()!==mes) return false;
+    if(!d||d.getMonth()!==mes) return false;
+    if(ano!=='all' && d.getFullYear()!==ano) return false; // 'all' = todos os anos
     if(valorFiltro && _fmGetValor(p,filtro)!==valorFiltro) return false;
     return true;
   });
@@ -3768,7 +3775,7 @@ function rCiclosDash(){
   var prosp=[],elab=[],dec=[],cicCom=[],gapPre=[],exec=[],entNF=[];
   var pmr=[],cicFin=[],adiantPcts=[],emAberto=[];
 
-  props.forEach(function(p){
+  propsComercial().forEach(function(p){
     // Regra unificada: os KPIs de Ciclos consideram apenas propostas GANHAS/APROVADAS
     // (ganho + operacionais + legado faturado/recebido — isPropostaGanhaOuAprovada).
     // Cada KPI ainda exige as datas próprias preenchidas; abertas/perdidas/em elaboração ficam fora.
@@ -3893,8 +3900,9 @@ function _populaExecTlAnos(){
 
 function rExecTimeline(){
   var el=Q('execTlChart');if(!el)return;
-  var ano=Q('execTlAno')&&Q('execTlAno').value||String(new Date().getFullYear());
-  var anoN=parseInt(ano);
+  // Ano do filtro GLOBAL da aba Comercial; 'all' usa o ano atual (eixo de 12 meses).
+  var _selC=window._anoComercialSel;
+  var anoN=(_selC==='all')?new Date().getFullYear():(parseInt(_selC,10)||new Date().getFullYear());
 
   // Coletar projetos com dtInicioExec no ano selecionado ou que atravessam o ano
   var itens=[];
