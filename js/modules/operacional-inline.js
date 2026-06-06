@@ -1128,6 +1128,8 @@
       status_source: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra) ? 'obra' : 'fase',
       valor_vendido: Number(p.valor_total || s.val || 0) || 0,
       data_aprovacao: valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']),
+      // Inicio real da obra (tabela obras) — fonte primaria do "ano de execucao".
+      data_inicio_real: obra ? (obra.data_inicio_real || '') : '',
       snapshot_proposta_json: s,
       observacoes: ''
     };
@@ -1256,13 +1258,15 @@
       + '<button class="btn bg op-main-refresh" onclick="opCarregarObras()">Atualizar</button>'
       + '</div>'
       + '<div class="card op-filter-card" style="margin-bottom:1rem;max-width:100%;box-sizing:border-box;overflow:hidden">'
-      + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr auto;gap:.65rem;align-items:end;min-width:0">'
+      + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr .8fr auto;gap:.65rem;align-items:end;min-width:0">'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Busca'
       + '<input id="opBusca" placeholder="Codigo, proposta, titulo ou cliente" value="' + esc(state.busca) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Fase'
       + '<select id="opStatus" onchange="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"><option value="">Todas</option>' + faseOptions(state.status) + '</select></label>'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Cliente'
       + '<input id="opCliente" placeholder="Filtrar cliente" value="' + esc(state.cliente) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0" title="Ano de execucao da obra (compartilhado com o Comercial)">Ano (execucao)'
+      + '<select id="opAno" onchange="opSetAno(this.value)" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></select></label>'
       + '<button class="btn bg op-filter-clear" onclick="opLimparFiltros()">Limpar</button>'
       + '</div>'
       + '</div>'
@@ -1310,9 +1314,30 @@
       + '</style>';
   }
 
+  // Ano de EXECUCAO do negocio (regra do dono), cascata de fallback:
+  //   data_inicio_real (obra) -> execDatasOp(p).ini -> data_aprovacao (dtFech/dat).
+  // Resolvido em tempo de filtro (execDatasOp re-le o mapa atual). Retorna null
+  // se nao houver NENHUMA data — nesse caso o item nunca some (aparece em qualquer ano).
+  function _refDataExecucao(o) {
+    if (!o) return '';
+    var ex = (typeof execDatasOp === 'function')
+      ? execDatasOp({ id: o.proposta_app_id, app_id: o.proposta_app_id })
+      : { ini: '' };
+    return o.data_inicio_real || (ex && ex.ini) || o.data_aprovacao || '';
+  }
+  function _anoExecucaoNegocio(o) {
+    var ref = _refDataExecucao(o);
+    if (!ref) return null;
+    var d = new Date(String(ref).length === 10 ? ref + 'T12:00:00' : ref);
+    return isNaN(d.getTime()) ? null : d.getFullYear();
+  }
+
   function obrasFiltradas() {
     var busca = (state.busca || '').toLowerCase();
     var cliente = (state.cliente || '').toLowerCase();
+    // Filtro de ano GLOBAL (compartilhado com o Comercial via _anoComercialSel).
+    var anoSel = (typeof window !== 'undefined') ? window._anoComercialSel : 'all';
+    var anoNum = (anoSel && anoSel !== 'all') ? (parseInt(anoSel, 10) || null) : null;
     return (state.obras || []).filter(function (o) {
       if (state.status && o.status_operacional !== state.status) return false;
       if (cliente && String(o.cliente_nome || '').toLowerCase().indexOf(cliente) < 0) return false;
@@ -1320,13 +1345,51 @@
         var hay = [o.codigo_obra, o.proposta_numero, o.titulo, o.cliente_nome].join(' ').toLowerCase();
         if (hay.indexOf(busca) < 0) return false;
       }
+      // Ano de execucao: filtra so quando um ano especifico esta selecionado.
+      // Itens sem nenhuma data (ano null) nunca somem (aparecem em qualquer ano).
+      if (anoNum) {
+        var ay = _anoExecucaoNegocio(o);
+        if (ay != null && ay !== anoNum) return false;
+      }
       return true;
     });
+  }
+
+  // Popula o seletor de ano do Operacional a partir das obras carregadas + ano atual.
+  // Le o ano selecionado de _anoComercialSel (compartilhado com o Comercial).
+  function _populaOpAnos() {
+    var sel = $('opAno');
+    if (!sel) return;
+    var anos = {};
+    (state.obras || []).forEach(function (o) {
+      var a = _anoExecucaoNegocio(o);
+      if (a) anos[a] = 1;
+    });
+    anos[new Date().getFullYear()] = 1;
+    var lista = Object.keys(anos).map(Number).sort(function (a, b) { return b - a; });
+    var atual = String((typeof window !== 'undefined' && window._anoComercialSel) || new Date().getFullYear());
+    var html = lista.map(function (a) {
+      return '<option value="' + a + '"' + (atual === String(a) ? ' selected' : '') + '>' + a + '</option>';
+    }).join('');
+    html += '<option value="all"' + (atual === 'all' ? ' selected' : '') + '>Todos os anos</option>';
+    sel.innerHTML = html;
+  }
+
+  // Troca o ano: escreve no estado GLOBAL (_anoComercialSel, via setAnoComercial,
+  // mantendo o Comercial em sincronia) e re-filtra a lista do Operacional.
+  function opSetAno(v) {
+    if (typeof window.setAnoComercial === 'function') {
+      window.setAnoComercial(v);
+    } else {
+      window._anoComercialSel = (v === 'all') ? 'all' : (parseInt(v, 10) || new Date().getFullYear());
+    }
+    renderLista();
   }
 
   function renderLista() {
     var el = $('opLista');
     if (!el) return;
+    _populaOpAnos(); // mantem o seletor de ano sincronizado com _anoComercialSel
     if (state.carregando) {
       el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando negocios operacionais da empresa selecionada...</div>';
       return;
@@ -3789,6 +3852,7 @@
   window.rOperacional = rOperacional;
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
+  window.opSetAno = opSetAno;
   window._opExecDatasMap = window._opExecDatasMap || {};
   window.opCarregarDatasExecucao = carregarDatasExecucao;
   window.opMudarStatusNegocio = mudarStatusNegocio;
