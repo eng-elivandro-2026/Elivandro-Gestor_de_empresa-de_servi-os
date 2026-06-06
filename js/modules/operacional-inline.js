@@ -1388,22 +1388,43 @@
         if (typeof window.sbAtualizarObra !== 'function') throw new Error('Atualizacao de obra indisponivel.');
         await window.sbAtualizarObra(o.obra_id, { status_operacional: novoStatus });
       } else {
+        // Reespelha o status na COLUNA fase E no dados_json.fas no MESMO update,
+        // evitando desync entre coluna e JSON (Comercial le dados_json).
+        var pc = Array.isArray(window.props)
+          ? window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); })
+          : null;
+        var payload = { fase: novoStatus, updated_at: new Date().toISOString() };
+        if (pc) {
+          pc.fas = novoStatus;                          // cache em memoria
+          payload.dados_json = Object.assign({}, pc);   // espelha fas no JSON
+        }
         var res = await window.sbClient
           .from('propostas')
-          .update({ fase: novoStatus, updated_at: new Date().toISOString() })
+          .update(payload)
           .eq('app_id', appId)
           .eq('empresa_id', empresaId)
           .select('app_id, fase')
           .single();
         if (res.error) throw res.error;
-        // Mantem o cache comercial em memoria coerente (mesma proposta), evitando
-        // que um saveAll() posterior do Comercial sobrescreva a fase recem-alterada.
-        try {
-          if (Array.isArray(window.props)) {
-            var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
-            if (pc) pc.fas = novoStatus;
+        // Fallback: proposta nao estava no cache — atualiza dados_json buscando do banco.
+        if (!pc) {
+          var cur = await window.sbClient
+            .from('propostas')
+            .select('dados_json')
+            .eq('app_id', appId)
+            .eq('empresa_id', empresaId)
+            .single();
+          if (!cur.error && cur.data && cur.data.dados_json) {
+            var dj = cur.data.dados_json; dj.fas = novoStatus;
+            await window.sbClient
+              .from('propostas')
+              .update({ dados_json: dj })
+              .eq('app_id', appId)
+              .eq('empresa_id', empresaId);
           }
-        } catch (e) {}
+        }
+        // Persiste o estado otimista no localStorage (sobrevive ate o proximo load).
+        try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       }
       msg('Status operacional atualizado para "' + textoLimpo(labelFaseNegocio(novoStatus)) + '".');
     } catch (e) {
@@ -1465,27 +1486,48 @@
     var empresaId = o.empresa_id || getEmpresaId();
     var appId = o.proposta_app_id || o.id;
     try {
-      // 1) Proposta volta ao Comercial na fase escolhida
+      // 1) Proposta volta ao Comercial na fase escolhida — reespelha fas na COLUNA
+      //    e no dados_json no MESMO update (evita desync coluna<->JSON).
+      var pc = Array.isArray(window.props)
+        ? window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); })
+        : null;
+      var payload = { fase: fase, updated_at: new Date().toISOString() };
+      if (pc) {
+        pc.fas = fase;                                // cache em memoria
+        payload.dados_json = Object.assign({}, pc);   // espelha fas no JSON
+      }
       var res = await window.sbClient
         .from('propostas')
-        .update({ fase: fase, updated_at: new Date().toISOString() })
+        .update(payload)
         .eq('app_id', appId)
         .eq('empresa_id', empresaId)
         .select('app_id, fase')
         .single();
       if (res.error) throw res.error;
+      // Fallback: proposta nao estava no cache — atualiza dados_json buscando do banco.
+      if (!pc) {
+        var cur = await window.sbClient
+          .from('propostas')
+          .select('dados_json')
+          .eq('app_id', appId)
+          .eq('empresa_id', empresaId)
+          .single();
+        if (!cur.error && cur.data && cur.data.dados_json) {
+          var dj = cur.data.dados_json; dj.fas = fase;
+          await window.sbClient
+            .from('propostas')
+            .update({ dados_json: dj })
+            .eq('app_id', appId)
+            .eq('empresa_id', empresaId);
+        }
+      }
       // 2) Card COM obra: arquiva a obra (status 'cancelada') — NAO apaga fisicamente.
       //    Card legado SEM obra: nada a fazer na tabela obras.
       if (temObra && typeof window.sbAtualizarObra === 'function') {
         await window.sbAtualizarObra(o.obra_id, { status_operacional: 'cancelada' });
       }
-      // 3) Mantem o cache comercial em memoria coerente
-      try {
-        if (Array.isArray(window.props)) {
-          var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
-          if (pc) pc.fas = fase;
-        }
-      } catch (e) {}
+      // 3) Persiste o estado otimista no localStorage.
+      try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       fecharDesfazerObra();
       msg('Proposta devolvida ao Comercial como "' + textoLimpo(labelFaseNegocio(fase)) + '".' + (temObra ? ' Obra arquivada.' : ''));
       await carregarObras();
