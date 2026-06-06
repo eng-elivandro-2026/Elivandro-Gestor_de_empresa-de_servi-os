@@ -525,6 +525,7 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -543,7 +544,10 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
       <span id="themeIcon">☀️</span>
       <span id="themeLabel">Tema claro</span>
     </button>
-    <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;">Dados reais 2021–2026</div>
+    <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:12px;">
+      <span id="sbStatus" style="font-size:11px;">⟳ Aguardando dados...</span>
+      <button onclick="if(window.atualizarDashboard)window.atualizarDashboard()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);padding:3px 10px;cursor:pointer;font-size:11px;font-family:inherit;">↻ Atualizar</button>
+    </div>
   </div>
 </div>
 
@@ -561,21 +565,21 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
   </div>
   <div class="kpi" style="--kc:#4f8ef7">
     <div class="kpi-tag">Carteira Emitida 2025</div>
-    <div class="kpi-val">R$ 14,98M</div>
+    <div class="kpi-val" id="kpiCarteira25">R$ 14,98M</div>
     <div class="kpi-sub">Faturamento real aprovado: R$ 2,18M</div>
     <div class="kpi-delta up">↑ 104% vs 2024 (R$ 7,36M)</div>
     <button class="origin-btn" onclick="showModal('carteira25')">📋 Ver dados de origem</button>
   </div>
   <div class="kpi" style="--kc:#f5a623">
     <div class="kpi-tag">Taxa de Aprovação 2025</div>
-    <div class="kpi-val">27,6%</div>
+    <div class="kpi-val" id="kpiConv25">27,6%</div>
     <div class="kpi-sub">29 de 105 propostas aprovadas</div>
     <div class="kpi-delta dn">↓ vs 52% em 2023 e 44% em 2024</div>
     <button class="origin-btn" onclick="showModal('conv25')">📋 Ver dados de origem</button>
   </div>
   <div class="kpi" style="--kc:#9b6dff">
     <div class="kpi-tag">Ticket Médio 2025</div>
-    <div class="kpi-val">R$ 75k</div>
+    <div class="kpi-val" id="kpiTicket25">R$ 75k</div>
     <div class="kpi-sub">R$ 2,176M ÷ 29 aprovadas</div>
     <div class="kpi-delta neu">Média 2022–25: R$ 62,7k</div>
     <button class="origin-btn" onclick="showModal('ticket25')">📋 Ver dados de origem</button>
@@ -586,28 +590,28 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
 <div class="kpi-row cols4" style="margin-bottom:2rem">
   <div class="kpi" style="--kc:#00cfe0">
     <div class="kpi-tag">Faturamento Real Médio / Ano</div>
-    <div class="kpi-val" style="color:var(--sim2)">R$ 1,84M</div>
+    <div class="kpi-val" id="kpiFatMedio" style="color:var(--sim2)">R$ 1,84M</div>
     <div class="kpi-sub">Média 2022–2025 (somente aprovado)</div>
     <div class="kpi-delta neu">22: R$2,07M · 23: R$2,02M · 24: R$1,09M · 25: R$2,18M</div>
     <button class="origin-btn" onclick="showModal('fatmedio')">📋 Ver dados de origem</button>
   </div>
   <div class="kpi" style="--kc:#00cfe0">
     <div class="kpi-tag">Propostas Feitas / Ano (Média)</div>
-    <div class="kpi-val" style="color:var(--sim2)">71,8</div>
+    <div class="kpi-val" id="kpiPropMedio" style="color:var(--sim2)">71,8</div>
     <div class="kpi-sub">Média 2022–2025</div>
     <div class="kpi-delta neu">22: 58 · 23: 65 · 24: 59 · 25: 105</div>
     <button class="origin-btn" onclick="showModal('propmedio')">📋 Ver dados de origem</button>
   </div>
   <div class="kpi" style="--kc:#00cfe0">
     <div class="kpi-tag">Aprovadas / Ano (Média)</div>
-    <div class="kpi-val" style="color:var(--sim2)">29,2</div>
+    <div class="kpi-val" id="kpiAprovMedio" style="color:var(--sim2)">29,2</div>
     <div class="kpi-sub">Média 2022–2025</div>
     <div class="kpi-delta neu">22: 28 · 23: 34 · 24: 26 · 25: 29</div>
     <button class="origin-btn" onclick="showModal('aprovmedio')">📋 Ver dados de origem</button>
   </div>
   <div class="kpi" style="--kc:#00cfe0">
     <div class="kpi-tag">Conversão Média</div>
-    <div class="kpi-val" style="color:var(--sim2)">43,1%</div>
+    <div class="kpi-val" id="kpiConvMedio" style="color:var(--sim2)">43,1%</div>
     <div class="kpi-sub">Média 2022–2025</div>
     <div class="kpi-delta neu">22: 48% · 23: 52% · 24: 44% · 25: 28%</div>
     <button class="origin-btn" onclick="showModal('convmedio')">📋 Ver dados de origem</button>
@@ -627,7 +631,7 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
       <th>Carteira Emitida</th><th>Propostas</th><th>Aprovadas</th>
       <th>Conversão</th><th>Ticket Médio Real</th>
     </tr></thead>
-    <tbody>
+    <tbody id="tabelaHistoricaBody">
       <tr>
         <td class="yr">2021</td>
         <td>R$ 100.965</td><td style="color:var(--muted)">R$ 8.414</td>
@@ -736,7 +740,7 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
     <div class="chart-sub">Propostas que precisam de follow-up imediato</div>
     <table class="ptbl">
       <thead><tr><th>Nº</th><th>Descrição</th><th>Cliente</th><th>Status</th><th style="text-align:right">Valor</th></tr></thead>
-      <tbody>
+      <tbody id="pipelineBody">
         <tr><td class="mono" style="color:var(--red2)">200C.26</td><td>Elétrica da Análise In Line</td><td style="font-size:12px;color:var(--muted)">JDE</td><td><span class="pb phot">Follow 3</span></td><td class="mono" style="text-align:right;color:var(--red2)">R$ 750k</td></tr>
         <tr><td class="mono" style="color:var(--amber2)">360A.26</td><td>Adequação Máquinas VDC</td><td style="font-size:12px;color:var(--muted)">JDE</td><td><span class="pb pwarm">Follow 1</span></td><td class="mono" style="text-align:right;color:var(--amber2)">R$ 454k</td></tr>
         <tr><td class="mono" style="color:var(--amber2)">T25.02.180C</td><td>Alimentação Tombamento Torrador</td><td style="font-size:12px;color:var(--muted)">JDE</td><td><span class="pb phot">Follow 4</span></td><td class="mono" style="text-align:right;color:var(--amber2)">R$ 140k</td></tr>
@@ -746,7 +750,7 @@ input[type=range].cresc-range::-webkit-slider-thumb:hover{
       </tbody>
     </table>
     <div style="margin-top:12px;font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;">
-      Total pipeline quente: <span style="color:var(--amber2);font-weight:700">R$ 1,707M</span> — converter 50% = +R$ 853k aprovado
+      Total pipeline quente: <span id="pipelineTotal" style="color:var(--amber2);font-weight:700">R$ 1,707M</span> — converter 50% = +R$ 853k aprovado
     </div>
   </div>
 </div>
@@ -2742,5 +2746,171 @@ if(ctxMg) {
 
 </script>
 
+
+<script>
+// ── renderDashboard — alimentado por supabase-integracao.js ───────────────
+window.renderDashboard = function(dadosAnos, dadosPropostas) {
+  function fmtR(v) {
+    if (!v) return '—';
+    if (v >= 1e6) return 'R$ ' + (v/1e6).toFixed(2).replace('.', ',') + 'M';
+    if (v >= 1e3) return 'R$ ' + Math.round(v/1e3) + 'k';
+    return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+  }
+  function fmtPct(v) { return v != null ? v.toFixed(1) + '%' : '—'; }
+  function set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
+
+  // ── 1. KPIs 2025 ──────────────────────────────────────────────────────
+  var a25 = dadosAnos[2025] || {};
+  if (a25.carteira)          set('kpiCarteira25', fmtR(a25.carteira));
+  if (a25.conversao != null) set('kpiConv25',     fmtPct(a25.conversao));
+  if (a25.ticketMedio)       set('kpiTicket25',   fmtR(a25.ticketMedio));
+
+  // ── 2. KPIs médias 2022–2025 ──────────────────────────────────────────
+  var anosM = [2022, 2023, 2024, 2025].map(function(y) { return dadosAnos[y] || {}; });
+  var vFat = anosM.filter(function(a) { return a.faturado; });
+  if (vFat.length) set('kpiFatMedio', fmtR(vFat.reduce(function(s,a){return s+a.faturado;},0)/vFat.length));
+  var vP = anosM.filter(function(a) { return a.props; });
+  if (vP.length) set('kpiPropMedio', (vP.reduce(function(s,a){return s+a.props;},0)/vP.length).toFixed(1));
+  var vA = anosM.filter(function(a) { return a.ganhas; });
+  if (vA.length) set('kpiAprovMedio', (vA.reduce(function(s,a){return s+a.ganhas;},0)/vA.length).toFixed(1));
+  var vC = anosM.filter(function(a) { return a.conversao != null; });
+  if (vC.length) set('kpiConvMedio', fmtPct(vC.reduce(function(s,a){return s+a.conversao;},0)/vC.length));
+
+  // ── 3. Mutate HIST (idx: 0=2021, 1=2022, 2=2023, 3=2024, 4=2025, 5=2026) ──
+  [2021,2022,2023,2024,2025,2026].forEach(function(ano, idx) {
+    var a = dadosAnos[ano]; if (!a) return;
+    if (a.carteira)          HIST.carteira[idx]  = a.carteira;
+    if (a.faturado)          HIST.fat_real[idx]  = a.faturado;
+    if (a.props)             HIST.propostas[idx] = a.props;
+    if (a.ganhas)            HIST.aprovadas[idx] = a.ganhas;
+    if (a.conversao != null) HIST.conversao[idx] = +a.conversao.toFixed(1);
+    if (a.ticketMedio)       HIST.ticket[idx]    = Math.round(a.ticketMedio);
+  });
+
+  // ── 4. Sync TV_SERIES e rebuildTV ─────────────────────────────────────
+  TV_SERIES.fat.data       = HIST.fat_real.slice(0,6);
+  TV_SERIES.conversao.data = HIST.conversao.slice(0,6);
+  TV_SERIES.ticket.data    = HIST.ticket.slice(0,6);
+  TV_SERIES.propostas.data = HIST.propostas.slice(0,6);
+  if (typeof rebuildTV === 'function') rebuildTV();
+
+  // ── 5. chartCarteira (2022–2026, índices 1–5) ──────────────────────────
+  var elCart = document.getElementById('chartCarteira');
+  if (elCart && window.Chart) {
+    var chCart = Chart.getChart(elCart);
+    if (chCart) {
+      var fat22 = HIST.fat_real.slice(1,6);
+      var cart22 = HIST.carteira.slice(1,6);
+      chCart.data.datasets[0].data = fat22;
+      chCart.data.datasets[1].data = cart22.map(function(c,i){return (c||0)-(fat22[i]||0);});
+      chCart.update();
+    }
+  }
+
+  // ── 6. chartConversao ─────────────────────────────────────────────────
+  var elConv = document.getElementById('chartConversao');
+  if (elConv && window.Chart) {
+    var chConv = Chart.getChart(elConv);
+    if (chConv) {
+      chConv.data.datasets[0].data = HIST.conversao.slice(1,6);
+      chConv.data.datasets[1].data = HIST.lucro.slice(1,6);
+      chConv.update();
+    }
+  }
+
+  // ── 7. chartTicket ────────────────────────────────────────────────────
+  var elTk = document.getElementById('chartTicket');
+  if (elTk && window.Chart) {
+    var chTk = Chart.getChart(elTk);
+    if (chTk) {
+      chTk.data.datasets[0].data = HIST.ticket.slice(1,6);
+      chTk.update();
+    }
+  }
+
+  // ── 8. Tabela histórica ───────────────────────────────────────────────
+  var tbody = document.getElementById('tabelaHistoricaBody');
+  if (tbody) {
+    var rowHtml = [2021,2022,2023,2024,2025,2026].map(function(ano) {
+      var a = dadosAnos[ano] || {};
+      var m = function(v){return '<span style="color:var(--muted)">'+v+'</span>';};
+      var cart  = a.carteira    ? fmtR(a.carteira)         : m('—');
+      var prop  = a.props       ? a.props                  : m('—');
+      var aprov = a.ganhas      ? a.ganhas                 : m('—');
+      var conv  = a.conversao != null ? fmtPct(a.conversao): m('—');
+      var tick  = a.ticketMedio ? fmtR(a.ticketMedio)      : m('—');
+      return '<tr><td class="yr">'+ano+'*</td>'
+        .replace('2026*','<td class="yr" style="color:var(--accent2)">2026*</td>')
+        .replace('2021*','<td class="yr">2021</td>')
+        .replace('2022*','<td class="yr">2022</td>')
+        .replace('2023*','<td class="yr">2023</td>')
+        .replace('2024*','<td class="yr" style="color:var(--red2)">2024</td>')
+        .replace('2025*','<td class="yr" style="color:var(--green2)">2025</td>')
+        + '<td>'+m('—')+'</td>'
+        + '<td>'+m('—')+'</td>'
+        + '<td>'+cart+'</td>'
+        + '<td>'+prop+'</td>'
+        + '<td>'+aprov+'</td>'
+        + '<td>'+conv+'</td>'
+        + '<td>'+tick+'</td>'
+        + '</tr>';
+    }).join('');
+    tbody.innerHTML = rowHtml;
+  }
+
+  // ── 9. Pipeline quente 2026 ───────────────────────────────────────────
+  var FAS_PIPE = ['enviada','budget','cobrir','rascunho','follow1','follow3','follow4','cliente_analisando','outro_pipeline'];
+  var pBody = document.getElementById('pipelineBody');
+  var pTot  = document.getElementById('pipelineTotal');
+  if (pBody && Array.isArray(dadosPropostas)) {
+    var pipe = dadosPropostas.filter(function(row) {
+      var dj = row.dados_json || {};
+      var fase = String(row.fase || dj.fas || dj.fase || '').toLowerCase().trim();
+      if (FAS_PIPE.indexOf(fase) < 0) return false;
+      // ano de criação
+      var ano = null;
+      if (dj.dat2) { var d=new Date(String(dj.dat2)+'T12:00:00'); if(!isNaN(d))ano=d.getFullYear(); }
+      if (!ano && dj.dat) { var ps=String(dj.dat).split('/'); if(ps.length===3){var d2=new Date(ps[2]+'-'+ps[1]+'-'+ps[0]+'T12:00:00');if(!isNaN(d2))ano=d2.getFullYear();} }
+      if (!ano && dj.ano) ano = Number(dj.ano);
+      if (!ano && row.created_at) ano = new Date(row.created_at).getFullYear();
+      return ano === 2026;
+    });
+    pipe.sort(function(a,b) {
+      var va = Number(a.valor_total)||Number((a.dados_json||{}).val)||0;
+      var vb = Number(b.valor_total)||Number((b.dados_json||{}).val)||0;
+      return vb-va;
+    });
+    var PBADGE = {follow3:'phot',follow4:'phot',follow1:'pwarm',budget:'pwarm',
+      cliente_analisando:'pwarm',enviada:'pcool',cobrir:'pcool',rascunho:'pcool',outro_pipeline:'pcool'};
+    var FLABEL = {follow1:'Follow 1',follow3:'Follow 3',follow4:'Follow 4',enviada:'Enviada',
+      budget:'Budget',cobrir:'Cobrir',rascunho:'Rascunho',cliente_analisando:'Analisando',outro_pipeline:'Pipeline'};
+    var totalPipe = 0;
+    var pRows = pipe.slice(0,8).map(function(row) {
+      var dj  = row.dados_json || {};
+      var fase = String(row.fase||dj.fas||dj.fase||'').toLowerCase().trim();
+      var val  = Number(row.valor_total)||Number(dj.val)||0;
+      totalPipe += val;
+      var num  = row.numero_proposta || dj.num || '—';
+      var cli  = String(row.cliente||dj.cli||dj.loc||'—').substring(0,15);
+      var desc = String(dj.titulo||dj.descr||dj.descricao||num).substring(0,35);
+      var badge = PBADGE[fase]||'pcool';
+      var label = FLABEL[fase]||fase;
+      var valStr = val>=1e6?'R$ '+(val/1e6).toFixed(2).replace('.',',')+'M':val>=1e3?'R$ '+Math.round(val/1e3)+'k':'—';
+      return '<tr>'
+        +'<td class="mono">'+num+'</td>'
+        +'<td>'+desc+'</td>'
+        +'<td style="font-size:12px;color:var(--muted)">'+cli+'</td>'
+        +'<td><span class="pb '+badge+'">'+label+'</span></td>'
+        +'<td class="mono" style="text-align:right">'+valStr+'</td>'
+        +'</tr>';
+    });
+    pBody.innerHTML = pRows.join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:1rem">Nenhuma proposta no pipeline 2026</td></tr>';
+    if (pTot) {
+      pTot.textContent = totalPipe>=1e6?'R$ '+(totalPipe/1e6).toFixed(3).replace('.',',')+'M':'R$ '+Math.round(totalPipe/1e3)+'k';
+    }
+  }
+};
+</script>
+<script src="../js/dashboard/supabase-integracao.js"></script>
 </body>
 </html>

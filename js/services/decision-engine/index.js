@@ -44,7 +44,8 @@
 
   // ── getData ───────────────────────────────────────────────────
   function getData() {
-    var ps       = window.props || [];
+    // Respeita o filtro de ano global da aba Comercial (propsComercial); 'all' = tudo.
+    var ps       = (typeof propsComercial === 'function') ? propsComercial() : (window.props || []);
     var FAZ_OK   = window.FAS_FECHADO  || [];
     var FAZ_PIPE = window.FAS_PIPELINE || [];
     var FAZ_NEG  = window.FAS_NEGOC    || [];
@@ -59,9 +60,10 @@
     var atrasadas = ps.filter(function (p) { return p.fas === 'atrasado'; });
     var emPausa   = ps.filter(function (p) { return p.fas.indexOf('em_pausa') === 0; });
 
-    var _pAno  = typeof getPropsAno === 'function' ? getPropsAno() : [];
-    var _fAno  = typeof getFechAno  === 'function' ? getFechAno()  : [];
-    var recAno = typeof getRecAno   === 'function' ? getRecAno()   : 0;
+    // Wrappers Comerciais (respeitam o ano global + 'all'); fallback p/ os originais.
+    var _pAno  = typeof getPropsAnoC === 'function' ? getPropsAnoC() : (typeof getPropsAno === 'function' ? getPropsAno() : []);
+    var _fAno  = typeof getFechAnoC  === 'function' ? getFechAnoC()  : (typeof getFechAno  === 'function' ? getFechAno()  : []);
+    var recAno = typeof getRecAnoC   === 'function' ? getRecAnoC()   : (typeof getRecAno   === 'function' ? getRecAno()   : 0);
     var meta   = typeof getMeta     === 'function' ? getMeta()     : {};
 
     var taxaConv = _pAno.length > 0 ? (_fAno.length / _pAno.length) * 100 : 0;

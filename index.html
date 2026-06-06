@@ -917,6 +917,13 @@ body.empresa-tema-fortex{
 <!-- DASHBOARD -->
 <div id="dashboard" class="sec on">
 
+  <!-- FILTRO DE ANO GLOBAL — comanda TODA a aba Comercial -->
+  <div id="comercialAnoBar" style="position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .8rem;margin-bottom:.8rem">
+    <span style="font-size:.78rem;font-weight:700;color:var(--text2)">📅 Filtrar ano:</span>
+    <select id="comercialAno" onchange="setAnoComercial(this.value)" title="Filtra TODOS os módulos da aba Comercial" style="padding:.22rem .6rem;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:.8rem;font-weight:600"></select>
+    <span style="font-size:.68rem;color:var(--text3)">um seletor comanda Propostas, Metas, Visão Executiva, Rankings, Ciclos, Fechamentos e Linha do Tempo</span>
+  </div>
+
   <!-- MOTOR DE DECISÃO -->
   <div class="card" id="motorDecisaoCard" style="margin-bottom:.8rem;border-color:rgba(88,166,255,.35)">
     <div class="ch" style="cursor:pointer;margin-bottom:0;border-bottom:none;padding-bottom:0" onclick="togMotorDecisao()">
@@ -991,7 +998,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togMeta()">
       <span class="ct">🎯 Metas <span id="anoAtual" style="color:var(--accent)"></span></span>
       <div class="br" onclick="event.stopPropagation()">
-        <select id="metaAno" onchange="rMeta()" title="Ano dos cálculos de Metas" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem;margin-right:.4rem"></select>
+        <select id="metaAno" onchange="rMeta()" title="Ano dos cálculos de Metas" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem;margin-right:.4rem"></select>
         <button class="btn bg bsm" onclick="abrirConfigMeta()">⚙️ Configurar</button>
       </div>
       <span id="metaChevron" onclick="togMeta()" style="font-size:.8rem;color:var(--text3);margin-left:.4rem;cursor:pointer">▼ expandir</span>
@@ -1160,7 +1167,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togExecTimeline()">
       <span class="ct">📅 Linha do Tempo de Execução</span>
       <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
-        <select id="execTlAno" onchange="rExecTimeline()" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
+        <select id="execTlAno" onchange="rExecTimeline()" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
         <span id="execTlChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togExecTimeline()">▼ expandir</span>
       </div>
     </div>
@@ -1178,7 +1185,7 @@ body.empresa-tema-fortex{
     <div class="ch" style="cursor:pointer" onclick="togFechMes()">
       <span class="ct">📅 Fechamentos por Mês</span>
       <div style="display:flex;align-items:center;gap:.6rem" onclick="event.stopPropagation()">
-        <select id="fechMesAno" onchange="rFechMes()" style="padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
+        <select id="fechMesAno" onchange="rFechMes()" style="display:none;padding:.18rem .5rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.75rem"></select>
         <span id="fechMesChevron" style="font-size:.8rem;color:var(--text3);cursor:pointer" onclick="togFechMes()">▼ expandir</span>
       </div>
     </div>
@@ -7080,37 +7087,42 @@ function carregarCeoDash(){
   var mesAtual=hoje.getMonth(), anoAtual=hoje.getFullYear();
   var nomeMeses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+  // Respeita o filtro de ano global da aba Comercial (propsComercial); 'all' = tudo.
+  var pc=(typeof propsComercial==='function')?propsComercial():props;
+
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
   // lista "Serviços Fechados — Fase OPERACIONAL" usam esta base (não as fases abertas).
-  var pipeline=props.filter(function(p){return isVisaoExecutivaAtiva(p);});
+  var pipeline=pc.filter(function(p){return isVisaoExecutivaAtiva(p);});
   var valPipeline=pipeline.reduce(function(s,p){return s+n2(p.val);},0);
   var cntPipeline=pipeline.length;
 
   // Em Negociação = oportunidades abertas em negociação (contexto do funil, mantém FAS_NEGOC).
-  var negoc=props.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
+  var negoc=pc.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
   var valNegoc=negoc.reduce(function(s,p){return s+n2(p.val);},0);
   var cntNegoc=negoc.length;
 
-  var atrasadas=props.filter(function(p){return p.fas==='atrasado';});
+  var atrasadas=pc.filter(function(p){return p.fas==='atrasado';});
 
-  var fechMes=props.filter(function(p){
+  var fechMes=pc.filter(function(p){
     if(!isVisaoExecutivaAtiva(p)) return false;
     var d=p.dtFech?new Date(p.dtFech+'T12:00:00'):(p.dat2?new Date(p.dat2+'T12:00:00'):null);
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });
   var valFechMes=fechMes.reduce(function(s,p){return s+n2(p.val);},0);
 
-  var novasMes=props.filter(function(p){
+  var novasMes=pc.filter(function(p){
     if(p.fas==='em_elaboracao') return false;
     var d=p.dat2?new Date(p.dat2+'T12:00:00'):null;
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });
 
-  var _pAno=getPropsAno(); var _fAno=getFechAno();
+  // Taxa de ganho / receita do ano respeitam o seletor global (wrappers C, com 'all').
+  var _pAno=(typeof getPropsAnoC==='function')?getPropsAnoC():(typeof getPropsAno==='function'?getPropsAno():[]);
+  var _fAno=(typeof getFechAnoC==='function')?getFechAnoC():(typeof getFechAno==='function'?getFechAno():[]);
   var taxaGanho=_pAno.length>0?((_fAno.length/_pAno.length)*100).toFixed(1):'0.0';
   var ticketMedio=cntPipeline>0?valPipeline/cntPipeline:0;
-  var recAnoVal=typeof getRecAno==='function'?getRecAno():0;
+  var recAnoVal=(typeof getRecAnoC==='function')?getRecAnoC():(typeof getRecAno==='function'?getRecAno():0);
 
   var kpiEl=Q('ceoKpis');
   if(kpiEl){
@@ -7133,7 +7145,7 @@ function carregarCeoDash(){
     // Distribuição por Fase: SOMENTE fases de negócio ganho / execução ativa
     // (FAS_DISTRIBUICAO_EXECUCAO), não as oportunidades abertas (enviada/follows).
     var phData=FAS_DISTRIBUICAO_EXECUCAO.map(function(f){
-      var ps=props.filter(function(p){return (p.fas||p.fase)===f;});
+      var ps=pc.filter(function(p){return (p.fas||p.fase)===f;});
       return {f:f,n:(FASE[f]||{n:f}).n,i:(FASE[f]||{i:''}).i,cnt:ps.length,val:ps.reduce(function(s,p){return s+n2(p.val);},0)};
     }).filter(function(d){return d.cnt>0;});
     var maxV=phData.reduce(function(mx,d){return Math.max(mx,d.val);},1);
@@ -10038,12 +10050,12 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js"></script>
-<script src="js/services/decision-engine/index.js"></script>
+<script src="js/core/app-core.js?v=2"></script>
+<script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=2"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js?v=2"></script>
-<script src="js/modules/categoria-analise.js?v=2"></script>
+<script src="js/modules/categoria-analise.js?v=4"></script>
 <script src="js/modules/cotacao.js"></script>
 <script src="js/modules/gantt.js?v=4"></script>
 <script src="js/modules/log-modal.js"></script>
