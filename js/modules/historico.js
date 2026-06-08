@@ -444,9 +444,12 @@
 
   function _popularPropostas(selecionado) {
     var sel = document.getElementById('hPropostaId');
-    if (!sel || !window.props) return;
+    if (!sel) return;
+    // Respeita o filtro de ano global da aba Comercial (regra mista: fechamento se
+    // fechada, criacao se aberta). 'all' = todas. Sem aplicar criterio de "obra ativa".
+    var _pc = (typeof propsComercial === 'function') ? propsComercial() : (window.props || []);
     var opts = '<option value="">— nenhuma —</option>';
-    var pList = (window.props || []).slice().sort(function (a, b) {
+    var pList = _pc.slice().sort(function (a, b) {
       return (a.num || '').localeCompare(b.num || '');
     });
     pList.forEach(function (p) {
@@ -523,9 +526,11 @@
     if (ate && !ate.value) ate.value = y+'-'+mo+'-'+String(new Date(y,hoje.getMonth()+1,0).getDate()).padStart(2,'0');
     // Popular select de propostas
     var selProp = document.getElementById('rRelProposta');
-    if (selProp && window.props) {
+    if (selProp) {
+      // Respeita o filtro de ano global (propsComercial); 'all' = todas.
+      var _pcR = (typeof propsComercial === 'function') ? propsComercial() : (window.props || []);
       var optsP = '<option value="">Todas</option>';
-      (window.props||[]).slice().sort(function(a,b){ return (a.num||'').localeCompare(b.num||''); }).forEach(function(p){
+      _pcR.slice().sort(function(a,b){ return (a.num||'').localeCompare(b.num||''); }).forEach(function(p){
         optsP += '<option value="'+esc(p.id)+'">#'+(p.num||'')+(p.tit?' — '+p.tit.slice(0,50):'')+' ('+esc(p.loc||p.cli||'')+')</option>';
       });
       selProp.innerHTML = optsP;
