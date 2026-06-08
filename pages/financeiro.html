@@ -561,9 +561,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ── IMPRESSÃO / PDF ─────────────────────────────────────────── */
 .fin-print-header,.fin-print-footer{display:none}
-@page{size:A4 landscape;margin:1.5cm}
+/* @page é injetado dinamicamente em #fin-print-page-style conforme a orientação escolhida no modal */
 
 @media print{
+  /* O modal de opções nunca é impresso */
+  .modal-overlay{display:none !important}
+  /* Conteúdo "Só tabela": esconde KPI cards/totalizadores */
+  body.fin-print-no-kpis .kpi-row{display:none !important}
   /* Mostrar só a aba marcada */
   body.fin-printing .tab-content:not(.print-active){display:none !important}
   body.fin-printing .tab-content.print-active{display:block !important}
@@ -14521,47 +14525,85 @@ function _printFmtData(iso) {
   return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
 }
 
-function _printPeriodoLabel(tabId) {
-  var v = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
-  if (tabId === 'tab-fluxo') {
-    var ini = v('fluxo-data-inicio'), fim = v('fluxo-data-fim');
-    return (ini && fim) ? _printFmtData(ini) + ' a ' + _printFmtData(fim) : 'Todos os períodos';
-  }
-  if (tabId === 'tab-dre') {
-    var lbl = document.getElementById('dre-periodo-label');
-    if (lbl && lbl.textContent.trim()) return lbl.textContent.trim();
-    var ini = v('dre-data-inicio'), fim = v('dre-data-fim');
-    return (ini && fim) ? _printFmtData(ini) + ' a ' + _printFmtData(fim) : '';
-  }
-  if (tabId === 'tab-cp') {
-    var ini = v('cp-filtro-venc-ini'), fim = v('cp-filtro-venc-fim');
-    return (ini && fim) ? 'Venc.: ' + _printFmtData(ini) + ' a ' + _printFmtData(fim) : '';
-  }
-  return '';
-}
-
 function _escHTML(s) {
   return String(s || '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Período já filtrado na aba ativa, em ISO (para pré-preencher o modal).
+function _printPeriodoISO(tabId) {
+  var v = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  if (tabId === 'tab-fluxo') return { ini: v('fluxo-data-inicio'), fim: v('fluxo-data-fim') };
+  if (tabId === 'tab-dre')   return { ini: v('dre-data-inicio'),   fim: v('dre-data-fim')   };
+  if (tabId === 'tab-cp')    return { ini: v('cp-filtro-venc-ini'),fim: v('cp-filtro-venc-fim') };
+  return { ini: '', fim: '' }; // tab-contas (CR) não tem filtro de período
+}
+
+// Monta o rótulo de período para o cabeçalho a partir das datas escolhidas no modal.
+function _printPeriodoLabelISO(ini, fim) {
+  if (ini && fim) return _printFmtData(ini) + ' a ' + _printFmtData(fim);
+  if (ini) return 'A partir de ' + _printFmtData(ini);
+  if (fim) return 'Até ' + _printFmtData(fim);
+  return '';
+}
+
+// Estado do modal de impressão (aba que disparou + título customizado).
+var _printState = { tabId: null, titulo: null };
+
+// Abre o modal de opções (não imprime ainda).
 function printRelatorio(tabId, opts) {
   opts = opts || {};
   var tab = document.getElementById(tabId);
   if (!tab) return;
 
-  var empresa    = _empresaAtiva || {};
+  _printState.tabId = tabId;
+  _printState.titulo = opts.titulo || null;
+
+  // Pré-preenche o período com o filtro já aplicado na aba (se houver).
+  var per = _printPeriodoISO(tabId);
+  var di = document.getElementById('print-data-inicio');
+  var df = document.getElementById('print-data-fim');
+  if (di) di.value = per.ini || '';
+  if (df) df.value = per.fim || '';
+
+  // Defaults: paisagem + conteúdo completo.
+  var rl = document.querySelector('input[name="print-orient"][value="landscape"]');
+  if (rl) rl.checked = true;
+  var rc = document.querySelector('input[name="print-conteudo"][value="completo"]');
+  if (rc) rc.checked = true;
+
+  var modal = document.getElementById('print-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function _printFecharModal() {
+  var modal = document.getElementById('print-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Aplica as opções escolhidas e dispara window.print().
+function _printConfirmarModal() {
+  var tabId = _printState.tabId;
+  var tab = tabId && document.getElementById(tabId);
+  if (!tab) { _printFecharModal(); return; }
+
+  var orient = (document.querySelector('input[name="print-orient"]:checked') || {}).value || 'landscape';
+  var conteudo = (document.querySelector('input[name="print-conteudo"]:checked') || {}).value || 'completo';
+  var ini = (document.getElementById('print-data-inicio') || {}).value || '';
+  var fim = (document.getElementById('print-data-fim') || {}).value || '';
+
+  var empresa     = _empresaAtiva || {};
   var nomeEmpresa = empresa.nome_curto || empresa.nome || 'Empresa';
-  var titleEl    = tab.querySelector('.page-title');
-  var titulo     = opts.titulo || (titleEl ? titleEl.textContent.trim() : 'Relatório Financeiro');
-  var periodo    = _printPeriodoLabel(tabId);
-  var now        = new Date();
-  var geradoEm   = now.toLocaleDateString('pt-BR') + ' às '
-                 + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  var titleEl     = tab.querySelector('.page-title');
+  var titulo      = _printState.titulo || (titleEl ? titleEl.textContent.trim() : 'Relatório Financeiro');
+  var periodo     = _printPeriodoLabelISO(ini, fim);
+  var now         = new Date();
+  var geradoEm    = now.toLocaleDateString('pt-BR') + ' às '
+                  + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
 
   var wrap = tab.querySelector('.wrap');
-  if (!wrap) return;
+  if (!wrap) { _printFecharModal(); return; }
 
   // Cabeçalho do print (injetado no topo do wrap)
   var hId = tabId + '-phdr';
@@ -14589,19 +14631,38 @@ function printRelatorio(tabId, opts) {
   }
   f.textContent = 'Gerado em ' + geradoEm + ' · ' + nomeEmpresa + ' · Sistema FORTEX';
 
-  // Marcar aba e body para o CSS de print
+  // @page dinâmico conforme a orientação escolhida.
+  var pageStyle = document.getElementById('fin-print-page-style');
+  if (!pageStyle) {
+    pageStyle = document.createElement('style');
+    pageStyle.id = 'fin-print-page-style';
+    document.head.appendChild(pageStyle);
+  }
+  pageStyle.textContent = '@page{size:A4 ' + orient + ';margin:1.5cm}';
+
+  // Conteúdo: "Só tabela" esconde os KPI cards.
+  document.body.classList.toggle('fin-print-no-kpis', conteudo === 'tabela');
+
+  // Marcar aba e body para o CSS de print.
   tab.classList.add('print-active');
   document.body.classList.add('fin-printing');
 
-  // Limpar após fechar o diálogo (afterprint funciona em todos os navegadores modernos)
+  // Fecha o modal antes de abrir o diálogo de impressão.
+  _printFecharModal();
+
+  // Limpeza após fechar o diálogo (afterprint: Chrome, Firefox, Safari).
   function cleanup() {
     tab.classList.remove('print-active');
     document.body.classList.remove('fin-printing');
+    document.body.classList.remove('fin-print-no-kpis');
+    var ps = document.getElementById('fin-print-page-style');
+    if (ps && ps.parentNode) ps.parentNode.removeChild(ps);
     window.removeEventListener('afterprint', cleanup);
   }
   window.addEventListener('afterprint', cleanup);
 
-  window.print();
+  // Pequeno atraso para o modal sumir antes do diálogo do navegador.
+  setTimeout(function(){ window.print(); }, 50);
 }
 
 function printRelatorioConc() {
@@ -14609,6 +14670,52 @@ function printRelatorioConc() {
 }
 // ── FIM IMPRESSÃO / PDF ────────────────────────────────────────────
 </script>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- MODAL: OPÇÕES DE IMPRESSÃO (compartilhado pelas 5 abas)      -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="print-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-titulo">🖨️ Opções de impressão</div>
+
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Orientação</div>
+        <label style="display:inline-flex;align-items:center;gap:.35rem;margin-right:1.2rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-orient" value="landscape" checked> Paisagem
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-orient" value="portrait"> Retrato
+        </label>
+      </div>
+
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Conteúdo</div>
+        <label style="display:flex;align-items:center;gap:.35rem;margin-bottom:.3rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-conteudo" value="completo" checked> Tabela + KPIs/totalizadores
+        </label>
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-conteudo" value="tabela"> Só a tabela/lista
+        </label>
+      </div>
+
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Período (cabeçalho do relatório)</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem">
+          <span class="filtro-label">Início</span>
+          <input type="date" id="print-data-inicio" class="filtro-input" style="max-width:150px">
+          <span class="filtro-label">Fim</span>
+          <input type="date" id="print-data-fim" class="filtro-input" style="max-width:150px">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-acoes">
+      <button class="modal-btn-cancelar" onclick="_printFecharModal()">Cancelar</button>
+      <button class="modal-btn-confirmar" onclick="_printConfirmarModal()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
