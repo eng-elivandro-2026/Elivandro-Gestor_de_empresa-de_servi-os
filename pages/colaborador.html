@@ -873,23 +873,36 @@ async function carregarPropostasEmpresaAtual() {
   _propostas = [];
   if (!empId) return;
 
-  var STATUS_OPERACIONAL_ATIVOS = [
+  var FASES_OPERACIONAIS_ATIVAS = [
     'aprovado','andamento','taf','sat','atrasado',
     'em_pausa_falta_material','em_pausa_aguardando_cliente',
     'em_pausa_aguardando_terceiro'
   ];
 
-  // Fonte: APENAS a tabela obras. O RLS bloqueia 'propostas' para colaborador/prestador
-  // (mig. 015), entao a query de propostas retornava vazio — removida. Obras sao liberadas
-  // pela mig. 032. Mostra so obras ATIVAS do ANO EM EXERCICIO (ano atual, fixo — colaborador
-  // nao escolhe ano) via obra.data_inicio_real. Obras SEM data_inicio_real sao mantidas
-  // (nunca somem).
+  // Fonte 1: propostas em fase operacional ativa (mig.036 libera SELECT para colaborador).
+  // Sem filtro de ano — propostas nao tem data_inicio_real; sem data nunca somem.
+  var resProps = await sb.from('propostas')
+    .select('app_id,numero_proposta,titulo,empresa_id,fase')
+    .eq('empresa_id', empId)
+    .in('fase', FASES_OPERACIONAIS_ATIVAS)
+    .order('numero_proposta', {ascending:false});
+  if (resProps.error) console.warn('Falha ao carregar propostas:', resProps.error);
+
+  var listaProps = ((resProps.data) || [])
+    .filter(function(p){ return p.empresa_id === empId; })
+    .map(function(p){
+      return { app_id: p.app_id, numero_proposta: p.numero_proposta,
+               titulo: p.titulo, empresa_id: p.empresa_id, _fonte: 'proposta' };
+    });
+
+  // Fonte 2: obras com status operacional ativo (mig.032), filtradas pelo ANO EM EXERCICIO.
+  // Obras sem data_inicio_real sao mantidas (nunca somem).
   var anoAtual = new Date().getFullYear();
 
   var resObras = await sb.from('obras')
     .select('proposta_app_id,codigo_obra,proposta_numero,titulo,cliente_nome,empresa_id,status_operacional,data_inicio_real')
     .eq('empresa_id', empId)
-    .in('status_operacional', STATUS_OPERACIONAL_ATIVOS)
+    .in('status_operacional', FASES_OPERACIONAIS_ATIVAS)
     .not('proposta_app_id', 'is', null)
     .order('proposta_numero', {ascending:false});
   if (resObras.error) console.warn('Falha ao carregar obras operacionais:', resObras.error);
@@ -897,8 +910,6 @@ async function carregarPropostasEmpresaAtual() {
   var listaObras = ((resObras.data) || [])
     .filter(function(o){
       if (o.empresa_id !== empId || !o.proposta_app_id) return false;
-      // Ano em exercicio: so obras com data_inicio_real no ano atual.
-      // Sem data_inicio_real -> mantem visivel (nunca some).
       if (o.data_inicio_real) {
         var d = new Date(String(o.data_inicio_real).slice(0,10) + 'T12:00:00');
         if (!isNaN(d.getTime()) && d.getFullYear() !== anoAtual) return false;
@@ -907,11 +918,12 @@ async function carregarPropostasEmpresaAtual() {
     })
     .map(function(o){
       return { app_id: o.proposta_app_id, numero_proposta: o.proposta_numero || o.codigo_obra,
-               titulo: o.titulo, cliente: o.cliente_nome, empresa_id: o.empresa_id, _fonte: 'obra' };
+               titulo: o.titulo, empresa_id: o.empresa_id, _fonte: 'obra' };
     });
 
-  // Fonte unica = obras. Mapa por app_id (dedup) e ordenacao por numero.
+  // Dedup por app_id: propostas primeiro, obras sobrescrevem (dados mais precisos).
   var mapa = {};
+  listaProps.forEach(function(p){ if (p.app_id) mapa[p.app_id] = p; });
   listaObras.forEach(function(o){ if (o.app_id) mapa[o.app_id] = o; });
 
   _propostas = Object.keys(mapa).map(function(k){ return mapa[k]; })
