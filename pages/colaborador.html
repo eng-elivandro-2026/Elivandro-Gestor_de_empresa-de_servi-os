@@ -879,17 +879,31 @@ async function carregarPropostasEmpresaAtual() {
     'em_pausa_aguardando_terceiro'
   ];
 
+  var anoAtual = new Date().getFullYear();
+
   // Fonte 1: propostas em fase operacional ativa (mig.036 libera SELECT para colaborador).
-  // Sem filtro de ano — propostas nao tem data_inicio_real; sem data nunca somem.
+  // Filtro de ano via cascata dtFech -> dat2 -> dat -> dados_json.ano (campos em dados_json).
+  // Propostas sem nenhuma data ficam visiveis (nunca somem).
   var resProps = await sb.from('propostas')
-    .select('app_id,numero_proposta,titulo,empresa_id,fase')
+    .select('app_id,numero_proposta,titulo,empresa_id,fase,dados_json')
     .eq('empresa_id', empId)
     .in('fase', FASES_OPERACIONAIS_ATIVAS)
     .order('numero_proposta', {ascending:false});
   if (resProps.error) console.warn('Falha ao carregar propostas:', resProps.error);
 
   var listaProps = ((resProps.data) || [])
-    .filter(function(p){ return p.empresa_id === empId; })
+    .filter(function(p){
+      if (p.empresa_id !== empId) return false;
+      var dj = p.dados_json || {};
+      // Cascata de datas: dtFech -> dat2 -> dat -> dados_json.ano
+      var dateStr = dj.dtFech || dj.dat2 || dj.dat || null;
+      if (dateStr) {
+        var d = new Date(String(dateStr).slice(0,10) + 'T12:00:00');
+        if (!isNaN(d.getTime())) return d.getFullYear() === anoAtual;
+      }
+      if (dj.ano) return String(dj.ano) === String(anoAtual);
+      return true; // sem data -> sempre visivel
+    })
     .map(function(p){
       return { app_id: p.app_id, numero_proposta: p.numero_proposta,
                titulo: p.titulo, empresa_id: p.empresa_id, _fonte: 'proposta' };
@@ -897,7 +911,6 @@ async function carregarPropostasEmpresaAtual() {
 
   // Fonte 2: obras com status operacional ativo (mig.032), filtradas pelo ANO EM EXERCICIO.
   // Obras sem data_inicio_real sao mantidas (nunca somem).
-  var anoAtual = new Date().getFullYear();
 
   var resObras = await sb.from('obras')
     .select('proposta_app_id,codigo_obra,proposta_numero,titulo,cliente_nome,empresa_id,status_operacional,data_inicio_real')
