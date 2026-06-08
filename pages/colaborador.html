@@ -873,42 +873,68 @@ async function carregarPropostasEmpresaAtual() {
   _propostas = [];
   if (!empId) return;
 
-  var STATUS_OPERACIONAL_ATIVOS = [
+  var FASES_OPERACIONAIS_ATIVAS = [
     'aprovado','andamento','taf','sat','atrasado',
     'em_pausa_falta_material','em_pausa_aguardando_cliente',
     'em_pausa_aguardando_terceiro'
   ];
 
+  var anoAtual = new Date().getFullYear();
+
+  // Fonte 1: propostas em fase operacional ativa (mig.036 libera SELECT para colaborador).
+  // Filtro de ano via cascata dtFech -> dat2 -> dat -> dados_json.ano (campos em dados_json).
+  // Propostas sem nenhuma data ficam visiveis (nunca somem).
   var resProps = await sb.from('propostas')
-    .select('app_id,numero_proposta,titulo,cliente,fase,empresa_id')
+    .select('app_id,numero_proposta,titulo,empresa_id,fase,dados_json')
     .eq('empresa_id', empId)
-    .ilike('fase', 'aprovado')
+    .in('fase', FASES_OPERACIONAIS_ATIVAS)
     .order('numero_proposta', {ascending:false});
   if (resProps.error) console.warn('Falha ao carregar propostas:', resProps.error);
 
   var listaProps = ((resProps.data) || [])
-    .filter(function(p){ return p.empresa_id === empId && faseProjetoAprovada(p.fase); })
+    .filter(function(p){
+      if (p.empresa_id !== empId) return false;
+      var dj = p.dados_json || {};
+      // Cascata de datas: dtFech -> dat2 -> dat -> dados_json.ano
+      var dateStr = dj.dtFech || dj.dat2 || dj.dat || null;
+      if (dateStr) {
+        var d = new Date(String(dateStr).slice(0,10) + 'T12:00:00');
+        if (!isNaN(d.getTime())) return d.getFullYear() === anoAtual;
+      }
+      if (dj.ano) return String(dj.ano) === String(anoAtual);
+      return true; // sem data -> sempre visivel
+    })
     .map(function(p){
       return { app_id: p.app_id, numero_proposta: p.numero_proposta,
-               titulo: p.titulo, cliente: p.cliente, empresa_id: p.empresa_id, _fonte: 'proposta' };
+               titulo: p.titulo, empresa_id: p.empresa_id, _fonte: 'proposta' };
     });
 
+  // Fonte 2: obras com status operacional ativo (mig.032), filtradas pelo ANO EM EXERCICIO.
+  // Obras sem data_inicio_real sao mantidas (nunca somem).
+
   var resObras = await sb.from('obras')
-    .select('proposta_app_id,codigo_obra,proposta_numero,titulo,cliente_nome,empresa_id,status_operacional')
+    .select('proposta_app_id,codigo_obra,proposta_numero,titulo,cliente_nome,empresa_id,status_operacional,data_inicio_real')
     .eq('empresa_id', empId)
-    .in('status_operacional', STATUS_OPERACIONAL_ATIVOS)
+    .in('status_operacional', FASES_OPERACIONAIS_ATIVAS)
     .not('proposta_app_id', 'is', null)
     .order('proposta_numero', {ascending:false});
   if (resObras.error) console.warn('Falha ao carregar obras operacionais:', resObras.error);
 
   var listaObras = ((resObras.data) || [])
-    .filter(function(o){ return o.empresa_id === empId && o.proposta_app_id; })
+    .filter(function(o){
+      if (o.empresa_id !== empId || !o.proposta_app_id) return false;
+      if (o.data_inicio_real) {
+        var d = new Date(String(o.data_inicio_real).slice(0,10) + 'T12:00:00');
+        if (!isNaN(d.getTime()) && d.getFullYear() !== anoAtual) return false;
+      }
+      return true;
+    })
     .map(function(o){
       return { app_id: o.proposta_app_id, numero_proposta: o.proposta_numero || o.codigo_obra,
-               titulo: o.titulo, cliente: o.cliente_nome, empresa_id: o.empresa_id, _fonte: 'obra' };
+               titulo: o.titulo, empresa_id: o.empresa_id, _fonte: 'obra' };
     });
 
-  // Obras têm precedência — sobrescrevem proposta de mesmo app_id
+  // Dedup por app_id: propostas primeiro, obras sobrescrevem (dados mais precisos).
   var mapa = {};
   listaProps.forEach(function(p){ if (p.app_id) mapa[p.app_id] = p; });
   listaObras.forEach(function(o){ if (o.app_id) mapa[o.app_id] = o; });

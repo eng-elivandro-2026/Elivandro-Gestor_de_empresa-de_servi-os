@@ -3107,7 +3107,7 @@ async function preencherSelectPropostas() {
   if (!sel) return;
   sel.innerHTML = '<option value="">Selecione a proposta...</option>';
   _propostas.forEach(function(p) {
-    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + (p.cliente ? ' — ' + p.cliente : '') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
+    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.titulo || '') + '</option>';
   });
 }
 
@@ -4593,9 +4593,7 @@ async function _popularProjetosDesp() {
   sel.innerHTML = '<option value="">— nenhum —</option>'
     + _propostas.map(function(p) {
         return '<option value="' + p.app_id + '"' + (p.app_id===cur?' selected':'') + '>'
-          + p.numero_proposta
-          + (p.cliente ? ' — ' + p.cliente : '')
-          + (p.titulo  ? ' | ' + p.titulo  : '')
+          + p.numero_proposta + ' — ' + (p.titulo || '')
           + '</option>';
       }).join('');
 }
