@@ -39,7 +39,8 @@
     fPrio: '',
     fData: '',
     verResolvidos: false,
-    form: null // objeto do aviso em edicao/criacao (modal aberto) ou null
+    form: null, // objeto do aviso em edicao/criacao (modal aberto) ou null
+    detalhe: null // id do aviso aberto no modal de visualizacao, ou null
   };
 
   function esc(v) {
@@ -160,6 +161,12 @@
       + 'border-style:solid;border-width:0 14px 14px 0;'
       + 'border-color:transparent rgba(15,23,42,.14) transparent transparent;'
       + 'border-top-right-radius:8px;}'
+      // Card com ALTURA FIXA — conteudo longo e cortado; clique abre o modal de visualizacao.
+      + '.av-card{height:240px;overflow:hidden;cursor:pointer;transition:transform .12s,box-shadow .12s}'
+      + '.av-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,23,42,.18)}'
+      + '.av-clip-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
+      + '.av-clip-3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}'
+      + '.av-vermais{font-size:.72rem;color:var(--blue);font-weight:700;margin-top:.1rem}'
       + '</style>';
     html += '<div style="padding:1rem;max-width:1200px;margin:0 auto">';
     // Cabecalho
@@ -204,6 +211,7 @@
     }
 
     html += '</div>'; // wrapper
+    html += state.detalhe ? detalheHtml() : '';
     html += state.form ? modalHtml() : '';
     root.innerHTML = html;
   }
@@ -260,37 +268,22 @@
     var borda = corPrio(a.prioridade);
     var fundo = fundoPrio(a.prioridade);
     var resp = a.responsavel_email ? nomeUsuario(a.responsavel_email) : '';
-    var refs = [];
-    if (a.cliente_ref) refs.push('👤 ' + esc(a.cliente_ref));
-    if (a.proposta_ref) refs.push('📄 ' + esc(a.proposta_ref));
-    if (a.obra_ref) refs.push('🏗️ ' + esc(a.obra_ref));
 
-    var podeEditar = podeUsar();
-    var acoes = '';
-    if (podeEditar) {
-      acoes += '<button onclick="avEditar(\'' + esc(a.id) + '\')" style="' + btnMini('var(--bg3)', 'var(--text2)') + '">✏️ Editar</button>';
-      if (a.status !== 'em_andamento' && a.status !== 'resolvido') acoes += '<button onclick="avStatus(\'' + esc(a.id) + '\',\'em_andamento\')" style="' + btnMini('rgba(37,99,235,.15)', '#2563eb') + '">▶ Em andamento</button>';
-      if (a.status !== 'resolvido') acoes += '<button onclick="avResolver(\'' + esc(a.id) + '\')" style="' + btnMini('rgba(63,185,80,.15)', '#3fb950') + '">✓ Resolver</button>';
-      if (a.status === 'resolvido') acoes += '<button onclick="avStatus(\'' + esc(a.id) + '\',\'aberto\')" style="' + btnMini('var(--bg3)', 'var(--text2)') + '">↩ Reabrir</button>';
-      if (ehDono()) acoes += '<button onclick="avExcluir(\'' + esc(a.id) + '\')" style="' + btnMini('rgba(248,81,73,.12)', '#f85149') + '">🗑 Excluir</button>';
-    }
-
-    return '<div class="av-card" style="position:relative;border:1px solid ' + borda + ';border-left:4px solid ' + borda + ';border-radius:8px;background:' + fundo + ';padding:.7rem .8rem;display:flex;flex-direction:column;gap:.4rem;box-shadow:0 2px 6px rgba(15,23,42,.08)">'
+    // Card de ALTURA FIXA: previa compacta. O card inteiro e clicavel e abre
+    // o modal de visualizacao com o conteudo completo + acoes.
+    return '<div class="av-card" onclick="avAbrirDetalhe(\'' + esc(a.id) + '\')" style="position:relative;border:1px solid ' + borda + ';border-left:4px solid ' + borda + ';border-radius:8px;background:' + fundo + ';padding:.7rem .8rem;display:flex;flex-direction:column;gap:.4rem;box-shadow:0 2px 6px rgba(15,23,42,.08)">'
       + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;padding-right:1.1rem">'
       + bdg(STATUSES[a.status] || a.status, corStatus(a.status))
       + bdg(PRIORIDADES[a.prioridade] || a.prioridade, corPrio(a.prioridade))
       + (vencido ? bdg('VENCIDO', '#f85149') : '')
       + '</div>'
-      + '<div style="font-weight:800;color:var(--text);font-size:.95rem;line-height:1.25">' + esc(a.assunto || '-') + '</div>'
-      + (a.descricao ? '<div style="font-size:.95rem;font-weight:400;color:var(--text2);line-height:1.4;white-space:pre-wrap;word-break:break-word">' + esc(a.descricao) + '</div>' : '')
-      + '<div style="font-size:.74rem;color:var(--text3);display:flex;flex-direction:column;gap:.15rem">'
+      + '<div class="av-clip-2" style="font-weight:800;color:var(--text);font-size:.95rem;line-height:1.25">' + esc(a.assunto || '-') + '</div>'
+      + (a.descricao ? '<div class="av-clip-3" style="font-size:.9rem;font-weight:400;color:var(--text2);line-height:1.4">' + esc(a.descricao) + '</div>' : '')
+      + '<div style="font-size:.74rem;color:var(--text3);display:flex;flex-direction:column;gap:.15rem;margin-top:auto">'
       + (resp ? '<div>Responsavel: <strong style="color:var(--text2)">' + esc(resp) + '</strong></div>' : '')
       + (a.data_final ? '<div>Prazo: <strong style="color:' + (vencido ? '#f85149' : 'var(--text2)') + '">' + esc(dataBR(a.data_final)) + '</strong></div>' : '')
-      + (a.criado_por_email ? '<div>Criado por: ' + esc(a.criado_por_email) + '</div>' : '')
-      + (a.criado_em ? '<div>Criado em: ' + esc(dataHoraBR(a.criado_em)) + '</div>' : '')
-      + (refs.length ? '<div>' + refs.join(' &nbsp; ') + '</div>' : '')
+      + '<div class="av-vermais">👁 Clique para ver / gerenciar</div>'
       + '</div>'
-      + (acoes ? '<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">' + acoes + '</div>' : '')
       + '</div>';
   }
   function btnMini(bg, cor) {
@@ -353,6 +346,52 @@
       + '</div></div></div>';
   }
 
+  // Modal de VISUALIZACAO do aviso (conteudo completo + acoes).
+  function detalheHtml() {
+    var a = (state.avisos || []).find(function (x) { return String(x.id) === String(state.detalhe); });
+    if (!a) return ''; // aviso pode ter sido excluido — modal some no proximo render
+    var vencido = estaVencido(a);
+    var resp = a.responsavel_email ? nomeUsuario(a.responsavel_email) : '';
+    var refs = [];
+    if (a.cliente_ref) refs.push('👤 ' + esc(a.cliente_ref));
+    if (a.proposta_ref) refs.push('📄 ' + esc(a.proposta_ref));
+    if (a.obra_ref) refs.push('🏗️ ' + esc(a.obra_ref));
+
+    var acoes = '';
+    if (podeUsar()) {
+      acoes += '<button onclick="avEditar(\'' + esc(a.id) + '\')" style="' + btnMini('var(--bg3)', 'var(--text2)') + '">✏️ Editar</button>';
+      if (a.status !== 'em_andamento' && a.status !== 'resolvido') acoes += '<button onclick="avStatus(\'' + esc(a.id) + '\',\'em_andamento\')" style="' + btnMini('rgba(37,99,235,.15)', '#2563eb') + '">▶ Em andamento</button>';
+      if (a.status !== 'resolvido') acoes += '<button onclick="avResolver(\'' + esc(a.id) + '\')" style="' + btnMini('rgba(63,185,80,.15)', '#3fb950') + '">✓ Resolver</button>';
+      if (a.status === 'resolvido') acoes += '<button onclick="avStatus(\'' + esc(a.id) + '\',\'aberto\')" style="' + btnMini('var(--bg3)', 'var(--text2)') + '">↩ Reabrir</button>';
+      if (ehDono()) acoes += '<button onclick="avExcluir(\'' + esc(a.id) + '\')" style="' + btnMini('rgba(248,81,73,.12)', '#f85149') + '">🗑 Excluir</button>';
+    }
+
+    return '<div id="avDetalheOverlay" onclick="if(event.target===this)avFecharDetalhe()" style="position:fixed;inset:0;z-index:955;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:.7rem;overflow:auto">'
+      + '<div style="width:min(640px,96vw);max-height:92vh;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.6);display:flex;flex-direction:column">'
+      + '<div style="flex:0 0 auto;padding:.65rem .9rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.5rem">'
+      + '<div style="font-weight:900;color:var(--text)">📌 Aviso</div>'
+      + '<button onclick="avFecharDetalhe()" style="padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);font-weight:800;cursor:pointer">✕</button>'
+      + '</div>'
+      + '<div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:.9rem;display:flex;flex-direction:column;gap:.6rem">'
+      + '<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center">'
+      + bdg(STATUSES[a.status] || a.status, corStatus(a.status))
+      + bdg(PRIORIDADES[a.prioridade] || a.prioridade, corPrio(a.prioridade))
+      + (vencido ? bdg('VENCIDO', '#f85149') : '')
+      + '</div>'
+      + '<div style="font-weight:800;color:var(--text);font-size:1.1rem;line-height:1.3">' + esc(a.assunto || '-') + '</div>'
+      + (a.descricao ? '<div style="font-size:.95rem;font-weight:400;color:var(--text);line-height:1.5;white-space:pre-wrap;word-break:break-word">' + esc(a.descricao) + '</div>' : '')
+      + '<div style="font-size:.8rem;color:var(--text3);display:flex;flex-direction:column;gap:.2rem;border-top:1px solid var(--border);padding-top:.55rem">'
+      + (resp ? '<div>Responsavel: <strong style="color:var(--text2)">' + esc(resp) + '</strong></div>' : '')
+      + (a.data_final ? '<div>Prazo: <strong style="color:' + (vencido ? '#f85149' : 'var(--text2)') + '">' + esc(dataBR(a.data_final)) + '</strong></div>' : '')
+      + (a.criado_por_email ? '<div>Criado por: ' + esc(a.criado_por_email) + '</div>' : '')
+      + (a.criado_em ? '<div>Criado em: ' + esc(dataHoraBR(a.criado_em)) + '</div>' : '')
+      + (refs.length ? '<div>' + refs.join(' &nbsp; ') + '</div>' : '')
+      + '</div>'
+      + '</div>'
+      + (acoes ? '<div style="flex:0 0 auto;padding:.7rem .9rem;border-top:1px solid var(--border);display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end">' + acoes + '</div>' : '')
+      + '</div></div>';
+  }
+
   // ── Acoes (window.*) ─────────────────────────────────────
   function rAvisos() {
     if (!podeUsar()) { render(); return; }
@@ -384,10 +423,13 @@
   function editar(id) {
     var a = (state.avisos || []).find(function (x) { return String(x.id) === String(id); });
     if (!a) return;
+    state.detalhe = null; // fecha o modal de visualizacao ao abrir o de edicao
     state.form = Object.assign({}, a);
     render();
   }
   function fecharModal() { state.form = null; render(); }
+  function abrirDetalhe(id) { state.detalhe = id; render(); }
+  function fecharDetalhe() { state.detalhe = null; render(); }
 
   function toggleTopicos(ev) {
     if (ev && ev.stopPropagation) ev.stopPropagation();
@@ -502,6 +544,8 @@
   window.avAbrirResolvidos = abrirResolvidos;
   window.avNovo = novo;
   window.avEditar = editar;
+  window.avAbrirDetalhe = abrirDetalhe;
+  window.avFecharDetalhe = fecharDetalhe;
   window.avFecharModal = fecharModal;
   window.avToggleTopicos = toggleTopicos;
   window.avInserirTopico = inserirTopico;
