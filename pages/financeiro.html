@@ -558,6 +558,93 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .nff-produto-item{border:1px solid var(--border);border-radius:var(--r2);padding:.48rem .55rem;background:var(--bg2)}
 .nff-produto-desc{font-size:.77rem;font-weight:650;color:var(--text);line-height:1.35;word-break:break-word}
 .nff-produto-meta{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.28rem;font-size:.68rem;color:var(--text3)}
+
+/* ── IMPRESSÃO / PDF ─────────────────────────────────────────── */
+.fin-print-header,.fin-print-footer{display:none}
+/* @page é injetado dinamicamente em #fin-print-page-style conforme a orientação escolhida no modal */
+
+@media print{
+  /* O modal de opções nunca é impresso */
+  .modal-overlay{display:none !important}
+  /* Conteúdo "Só tabela": esconde KPI cards/totalizadores */
+  body.fin-print-no-kpis .kpi-row{display:none !important}
+  /* Mostrar só a aba marcada */
+  body.fin-printing .tab-content:not(.print-active){display:none !important}
+  body.fin-printing .tab-content.print-active{display:block !important}
+  /* Cabeçalho e rodapé */
+  .fin-print-header{
+    display:block !important;margin-bottom:1.2rem;
+    padding-bottom:.75rem;border-bottom:2px solid #333;
+  }
+  .fin-print-title{font-size:16pt;font-weight:700;color:#111;margin-bottom:.3rem}
+  .fin-print-meta{font-size:10pt;color:#444;margin-bottom:.15rem}
+  .fin-print-date{font-size:8pt;color:#666}
+  .fin-print-footer{
+    display:block !important;margin-top:2rem;padding-top:.5rem;
+    border-top:1px solid #ccc;font-size:7.5pt;color:#888;text-align:center;
+  }
+  /* Ocultar controles de UI (o cabeçalho de print injetado substitui o page-header) */
+  .page-header,.page-header-actions,.filtros-bar,.btn-refresh,.btn-preset,.btn-limpar,
+  .bc-tabs,.bc-actions,.fluxo-aviso,.estado,.cp-form-wrap,
+  #fg-cards-section,#fluxo-gerencial-section,#fluxo-pvr-section,
+  #dre-plano-conceito,#dre-plano-alertas,.nf-alerta{display:none !important}
+  /* Expor tabelas que JS pode ter escondido */
+  .print-active #table-wrap,
+  .print-active #cp-table-wrap,
+  .print-active #fluxo-table-wrap{display:block !important;overflow:visible !important}
+  /* DRE — elementos hidden no HTML, precisam aparecer */
+  .print-active #dre-plano-section{display:block !important}
+  .print-active #dre-plano-table-wrap{display:block !important;overflow:visible !important}
+  .print-active #dre-kpi-row{display:grid !important}
+  /* Página */
+  body,html{background:#fff !important;color:#111 !important}
+  .wrap{max-width:100% !important;padding:.5rem !important}
+  /* KPI Cards — 3 colunas, legível no papel */
+  .kpi-row{
+    display:grid !important;
+    grid-template-columns:repeat(3,1fr) !important;
+    gap:.5rem !important;break-inside:avoid;
+  }
+  .kpi-card{
+    background:#f9f9f9 !important;border:1px solid #ccc !important;
+    border-top:3px solid #888 !important;padding:.5rem .75rem !important;
+    break-inside:avoid;
+  }
+  .kpi-label{color:#555 !important;font-size:8pt !important}
+  .kpi-valor{color:#111 !important;font-size:13pt !important}
+  .kpi-sub{color:#666 !important;font-size:7.5pt !important}
+  .kpi-valor.verde{color:#166534 !important}
+  .kpi-valor.vermelho{color:#991b1b !important}
+  .kpi-valor.emp{color:#b45309 !important}
+  /* Tabelas com bordas visíveis */
+  .table-wrap,.table-scroll{overflow:visible !important}
+  .fin-table{
+    width:100% !important;border-collapse:collapse !important;
+    font-size:8.5pt !important;
+  }
+  .fin-table th{
+    background:#f3f4f6 !important;color:#111 !important;
+    border:1px solid #ccc !important;padding:.3rem .45rem !important;
+    font-size:8pt !important;text-align:left;
+  }
+  .fin-table td{
+    border:1px solid #ddd !important;padding:.28rem .45rem !important;
+    color:#222 !important;background:#fff !important;
+  }
+  .fin-table tbody tr:nth-child(even) td{background:#fafafa !important}
+  .fin-table tr{break-inside:avoid}
+  /* No print, células não truncam — texto quebra e aparece inteiro */
+  .fin-table td{white-space:normal !important;word-break:break-word;overflow-wrap:break-word}
+  .fin-table .col-cliente,.fin-table .col-titulo,.fin-table .fg-cat{
+    max-width:none !important;overflow:visible !important;
+    text-overflow:clip !important;white-space:normal !important;
+  }
+  /* Valores e datas continuam em uma linha */
+  .fin-table .col-valor,.fin-table .col-data{white-space:nowrap !important}
+  /* Esconder botões de ação dentro das linhas */
+  .fin-table .btn-acao-detalhe,.fin-table .btn-refresh,
+  .col-acoes-nf{display:none !important}
+}
 </style>
 </head>
 <body>
@@ -578,6 +665,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="page-header-actions">
       <button class="btn-refresh" id="cr-btn-exportar-csv" onclick="crExportarCSV()" title="Exportar CSV de Contas a Receber filtradas">
         Exportar CSV CR
+      </button>
+      <button class="btn-refresh" id="cr-btn-imprimir" onclick="printRelatorio('tab-contas')" title="Imprimir / salvar como PDF">
+        🖨️ Imprimir
       </button>
       <button class="btn-refresh" id="btn-refresh" onclick="recarregarContas()" title="Recarregar dados">
       🔄 Atualizar
@@ -1356,8 +1446,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn-refresh" id="fluxo-btn-exportar-csv" onclick="fluxoExportarCSV()" title="Exportar CSV do fluxo filtrado">
         Exportar CSV
       </button>
+      <button class="btn-refresh" id="fluxo-btn-imprimir" onclick="printRelatorio('tab-fluxo')" title="Imprimir Fluxo de Caixa / salvar como PDF">
+        🖨️ Imprimir
+      </button>
       <button class="btn-refresh" id="fluxo-btn-exportar-conciliacoes-csv" onclick="fluxoExportarConciliacoesCSV()" title="Exportar CSV das concilia&ccedil;&otilde;es financeiras">
         Exportar CSV Concilia&ccedil;&otilde;es
+      </button>
+      <button class="btn-refresh" id="fluxo-btn-imprimir-conc" onclick="printRelatorioConc()" title="Imprimir Concilia&ccedil;&otilde;es / salvar como PDF">
+        🖨️ Concili.
       </button>
       <button class="btn-refresh" id="fluxo-btn-refresh" onclick="recarregarFluxo()" title="Recarregar dados">
         🔄 Atualizar
@@ -1529,6 +1625,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="page-header-actions">
       <button class="btn-refresh" id="cp-btn-exportar-csv" onclick="cpExportarCSV()" title="Exportar CSV de Contas a Pagar filtradas">
         Exportar CSV CP
+      </button>
+      <button class="btn-refresh" id="cp-btn-imprimir" onclick="printRelatorio('tab-cp')" title="Imprimir / salvar como PDF">
+        🖨️ Imprimir
       </button>
       <button class="btn-refresh" id="cp-btn-refresh" onclick="recarregarCp()" title="Recarregar dados">
       🔄 Atualizar
@@ -2058,6 +2157,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="page-header-actions">
         <button class="btn-refresh" id="dre-plano-btn-exportar-csv" onclick="drePlanoExportarCSV()" title="Exportar CSV da DRE Gerencial filtrada">
           Exportar CSV
+        </button>
+        <button class="btn-refresh" id="dre-btn-imprimir" onclick="printRelatorio('tab-dre')" title="Imprimir DRE Gerencial / salvar como PDF">
+          🖨️ Imprimir
         </button>
         <span class="filtro-count" id="dre-plano-count"></span>
       </div>
@@ -14423,7 +14525,205 @@ async function vincularPOaNF(nfId) {
     alert('❌ Erro: ' + err.message);
   }
 }
+
+// ── IMPRESSÃO / PDF ────────────────────────────────────────────────
+function _printFmtData(iso) {
+  if (!iso) return '';
+  var p = iso.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+}
+
+function _escHTML(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Período já filtrado na aba ativa, em ISO (para pré-preencher o modal).
+function _printPeriodoISO(tabId) {
+  var v = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  if (tabId === 'tab-fluxo') return { ini: v('fluxo-data-inicio'), fim: v('fluxo-data-fim') };
+  if (tabId === 'tab-dre')   return { ini: v('dre-data-inicio'),   fim: v('dre-data-fim')   };
+  if (tabId === 'tab-cp')    return { ini: v('cp-filtro-venc-ini'),fim: v('cp-filtro-venc-fim') };
+  return { ini: '', fim: '' }; // tab-contas (CR) não tem filtro de período
+}
+
+// Monta o rótulo de período para o cabeçalho a partir das datas escolhidas no modal.
+function _printPeriodoLabelISO(ini, fim) {
+  if (ini && fim) return _printFmtData(ini) + ' a ' + _printFmtData(fim);
+  if (ini) return 'A partir de ' + _printFmtData(ini);
+  if (fim) return 'Até ' + _printFmtData(fim);
+  return '';
+}
+
+// Estado do modal de impressão (aba que disparou + título customizado).
+var _printState = { tabId: null, titulo: null };
+
+// Abre o modal de opções (não imprime ainda).
+function printRelatorio(tabId, opts) {
+  opts = opts || {};
+  var tab = document.getElementById(tabId);
+  if (!tab) return;
+
+  _printState.tabId = tabId;
+  _printState.titulo = opts.titulo || null;
+
+  // Pré-preenche o período com o filtro já aplicado na aba (se houver).
+  var per = _printPeriodoISO(tabId);
+  var di = document.getElementById('print-data-inicio');
+  var df = document.getElementById('print-data-fim');
+  if (di) di.value = per.ini || '';
+  if (df) df.value = per.fim || '';
+
+  // Defaults: paisagem + conteúdo completo.
+  var rl = document.querySelector('input[name="print-orient"][value="landscape"]');
+  if (rl) rl.checked = true;
+  var rc = document.querySelector('input[name="print-conteudo"][value="completo"]');
+  if (rc) rc.checked = true;
+
+  var modal = document.getElementById('print-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function _printFecharModal() {
+  var modal = document.getElementById('print-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Aplica as opções escolhidas e dispara window.print().
+function _printConfirmarModal() {
+  var tabId = _printState.tabId;
+  var tab = tabId && document.getElementById(tabId);
+  if (!tab) { _printFecharModal(); return; }
+
+  var orient = (document.querySelector('input[name="print-orient"]:checked') || {}).value || 'landscape';
+  var conteudo = (document.querySelector('input[name="print-conteudo"]:checked') || {}).value || 'completo';
+  var ini = (document.getElementById('print-data-inicio') || {}).value || '';
+  var fim = (document.getElementById('print-data-fim') || {}).value || '';
+
+  var empresa     = _empresaAtiva || {};
+  var nomeEmpresa = empresa.nome_curto || empresa.nome || 'Empresa';
+  var titleEl     = tab.querySelector('.page-title');
+  var titulo      = _printState.titulo || (titleEl ? titleEl.textContent.trim() : 'Relatório Financeiro');
+  var periodo     = _printPeriodoLabelISO(ini, fim);
+  var now         = new Date();
+  var geradoEm    = now.toLocaleDateString('pt-BR') + ' às '
+                  + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+
+  var wrap = tab.querySelector('.wrap');
+  if (!wrap) { _printFecharModal(); return; }
+
+  // Cabeçalho do print (injetado no topo do wrap)
+  var hId = tabId + '-phdr';
+  var h = document.getElementById(hId);
+  if (!h) {
+    h = document.createElement('div');
+    h.id = hId;
+    h.className = 'fin-print-header';
+    wrap.insertBefore(h, wrap.firstChild);
+  }
+  h.innerHTML =
+    '<div class="fin-print-title">' + _escHTML(titulo) + '</div>' +
+    '<div class="fin-print-meta">' + _escHTML(nomeEmpresa) +
+      (periodo ? ' &nbsp;·&nbsp; ' + _escHTML(periodo) : '') + '</div>' +
+    '<div class="fin-print-date">Gerado em ' + _escHTML(geradoEm) + '</div>';
+
+  // Rodapé do print (injetado no fim do wrap)
+  var fId = tabId + '-pftr';
+  var f = document.getElementById(fId);
+  if (!f) {
+    f = document.createElement('div');
+    f.id = fId;
+    f.className = 'fin-print-footer';
+    wrap.appendChild(f);
+  }
+  f.textContent = 'Gerado em ' + geradoEm + ' · ' + nomeEmpresa + ' · Sistema FORTEX';
+
+  // @page dinâmico conforme a orientação escolhida.
+  var pageStyle = document.getElementById('fin-print-page-style');
+  if (!pageStyle) {
+    pageStyle = document.createElement('style');
+    pageStyle.id = 'fin-print-page-style';
+    document.head.appendChild(pageStyle);
+  }
+  pageStyle.textContent = '@page{size:A4 ' + orient + ';margin:1.5cm}';
+
+  // Conteúdo: "Só tabela" esconde os KPI cards.
+  document.body.classList.toggle('fin-print-no-kpis', conteudo === 'tabela');
+
+  // Marcar aba e body para o CSS de print.
+  tab.classList.add('print-active');
+  document.body.classList.add('fin-printing');
+
+  // Fecha o modal antes de abrir o diálogo de impressão.
+  _printFecharModal();
+
+  // Limpeza após fechar o diálogo (afterprint: Chrome, Firefox, Safari).
+  function cleanup() {
+    tab.classList.remove('print-active');
+    document.body.classList.remove('fin-printing');
+    document.body.classList.remove('fin-print-no-kpis');
+    var ps = document.getElementById('fin-print-page-style');
+    if (ps && ps.parentNode) ps.parentNode.removeChild(ps);
+    window.removeEventListener('afterprint', cleanup);
+  }
+  window.addEventListener('afterprint', cleanup);
+
+  // Pequeno atraso para o modal sumir antes do diálogo do navegador.
+  setTimeout(function(){ window.print(); }, 50);
+}
+
+function printRelatorioConc() {
+  printRelatorio('tab-fluxo', { titulo: '🔗 Conciliações Financeiras' });
+}
+// ── FIM IMPRESSÃO / PDF ────────────────────────────────────────────
 </script>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- MODAL: OPÇÕES DE IMPRESSÃO (compartilhado pelas 5 abas)      -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="print-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-titulo">🖨️ Opções de impressão</div>
+
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Orientação</div>
+        <label style="display:inline-flex;align-items:center;gap:.35rem;margin-right:1.2rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-orient" value="landscape" checked> Paisagem
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-orient" value="portrait"> Retrato
+        </label>
+      </div>
+
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Conteúdo</div>
+        <label style="display:flex;align-items:center;gap:.35rem;margin-bottom:.3rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-conteudo" value="completo" checked> Tabela + KPIs/totalizadores
+        </label>
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="radio" name="print-conteudo" value="tabela"> Só a tabela/lista
+        </label>
+      </div>
+
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Período (cabeçalho do relatório)</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem">
+          <span class="filtro-label">Início</span>
+          <input type="date" id="print-data-inicio" class="filtro-input" style="max-width:150px">
+          <span class="filtro-label">Fim</span>
+          <input type="date" id="print-data-fim" class="filtro-input" style="max-width:150px">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-acoes">
+      <button class="modal-btn-cancelar" onclick="_printFecharModal()">Cancelar</button>
+      <button class="modal-btn-confirmar" onclick="_printConfirmarModal()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
