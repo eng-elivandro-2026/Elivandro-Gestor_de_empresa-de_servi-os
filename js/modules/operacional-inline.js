@@ -1128,6 +1128,8 @@
       status_source: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra) ? 'obra' : 'fase',
       valor_vendido: Number(p.valor_total || s.val || 0) || 0,
       data_aprovacao: valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']),
+      // Inicio real da obra (tabela obras) — fonte primaria do "ano de execucao".
+      data_inicio_real: obra ? (obra.data_inicio_real || '') : '',
       snapshot_proposta_json: s,
       observacoes: ''
     };
@@ -1256,13 +1258,15 @@
       + '<button class="btn bg op-main-refresh" onclick="opCarregarObras()">Atualizar</button>'
       + '</div>'
       + '<div class="card op-filter-card" style="margin-bottom:1rem;max-width:100%;box-sizing:border-box;overflow:hidden">'
-      + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr auto;gap:.65rem;align-items:end;min-width:0">'
+      + '<div class="op-main-filters" style="display:grid;grid-template-columns:1.2fr .9fr .9fr .8fr auto;gap:.65rem;align-items:end;min-width:0">'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Busca'
       + '<input id="opBusca" placeholder="Codigo, proposta, titulo ou cliente" value="' + esc(state.busca) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Fase'
       + '<select id="opStatus" onchange="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"><option value="">Todas</option>' + faseOptions(state.status) + '</select></label>'
       + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0">Cliente'
       + '<input id="opCliente" placeholder="Filtrar cliente" value="' + esc(state.cliente) + '" oninput="opFiltros()" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></label>'
+      + '<label class="op-filter-field" style="display:flex;flex-direction:column;gap:.22rem;font-size:.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;min-width:0" title="Ano de execucao da obra (compartilhado com o Comercial)">Ano (execucao)'
+      + '<select id="opAno" onchange="opSetAno(this.value)" style="padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)"></select></label>'
       + '<button class="btn bg op-filter-clear" onclick="opLimparFiltros()">Limpar</button>'
       + '</div>'
       + '</div>'
@@ -1310,9 +1314,30 @@
       + '</style>';
   }
 
+  // Ano de EXECUCAO do negocio (regra do dono), cascata de fallback:
+  //   data_inicio_real (obra) -> execDatasOp(p).ini -> data_aprovacao (dtFech/dat).
+  // Resolvido em tempo de filtro (execDatasOp re-le o mapa atual). Retorna null
+  // se nao houver NENHUMA data — nesse caso o item nunca some (aparece em qualquer ano).
+  function _refDataExecucao(o) {
+    if (!o) return '';
+    var ex = (typeof execDatasOp === 'function')
+      ? execDatasOp({ id: o.proposta_app_id, app_id: o.proposta_app_id })
+      : { ini: '' };
+    return o.data_inicio_real || (ex && ex.ini) || o.data_aprovacao || '';
+  }
+  function _anoExecucaoNegocio(o) {
+    var ref = _refDataExecucao(o);
+    if (!ref) return null;
+    var d = new Date(String(ref).length === 10 ? ref + 'T12:00:00' : ref);
+    return isNaN(d.getTime()) ? null : d.getFullYear();
+  }
+
   function obrasFiltradas() {
     var busca = (state.busca || '').toLowerCase();
     var cliente = (state.cliente || '').toLowerCase();
+    // Filtro de ano GLOBAL (compartilhado com o Comercial via _anoComercialSel).
+    var anoSel = (typeof window !== 'undefined') ? window._anoComercialSel : 'all';
+    var anoNum = (anoSel && anoSel !== 'all') ? (parseInt(anoSel, 10) || null) : null;
     return (state.obras || []).filter(function (o) {
       if (state.status && o.status_operacional !== state.status) return false;
       if (cliente && String(o.cliente_nome || '').toLowerCase().indexOf(cliente) < 0) return false;
@@ -1320,13 +1345,51 @@
         var hay = [o.codigo_obra, o.proposta_numero, o.titulo, o.cliente_nome].join(' ').toLowerCase();
         if (hay.indexOf(busca) < 0) return false;
       }
+      // Ano de execucao: filtra so quando um ano especifico esta selecionado.
+      // Itens sem nenhuma data (ano null) nunca somem (aparecem em qualquer ano).
+      if (anoNum) {
+        var ay = _anoExecucaoNegocio(o);
+        if (ay != null && ay !== anoNum) return false;
+      }
       return true;
     });
+  }
+
+  // Popula o seletor de ano do Operacional a partir das obras carregadas + ano atual.
+  // Le o ano selecionado de _anoComercialSel (compartilhado com o Comercial).
+  function _populaOpAnos() {
+    var sel = $('opAno');
+    if (!sel) return;
+    var anos = {};
+    (state.obras || []).forEach(function (o) {
+      var a = _anoExecucaoNegocio(o);
+      if (a) anos[a] = 1;
+    });
+    anos[new Date().getFullYear()] = 1;
+    var lista = Object.keys(anos).map(Number).sort(function (a, b) { return b - a; });
+    var atual = String((typeof window !== 'undefined' && window._anoComercialSel) || new Date().getFullYear());
+    var html = lista.map(function (a) {
+      return '<option value="' + a + '"' + (atual === String(a) ? ' selected' : '') + '>' + a + '</option>';
+    }).join('');
+    html += '<option value="all"' + (atual === 'all' ? ' selected' : '') + '>Todos os anos</option>';
+    sel.innerHTML = html;
+  }
+
+  // Troca o ano: escreve no estado GLOBAL (_anoComercialSel, via setAnoComercial,
+  // mantendo o Comercial em sincronia) e re-filtra a lista do Operacional.
+  function opSetAno(v) {
+    if (typeof window.setAnoComercial === 'function') {
+      window.setAnoComercial(v);
+    } else {
+      window._anoComercialSel = (v === 'all') ? 'all' : (parseInt(v, 10) || new Date().getFullYear());
+    }
+    renderLista();
   }
 
   function renderLista() {
     var el = $('opLista');
     if (!el) return;
+    _populaOpAnos(); // mantem o seletor de ano sincronizado com _anoComercialSel
     if (state.carregando) {
       el.innerHTML = '<div class="card" style="color:var(--text3)">Carregando negocios operacionais da empresa selecionada...</div>';
       return;
@@ -1388,22 +1451,43 @@
         if (typeof window.sbAtualizarObra !== 'function') throw new Error('Atualizacao de obra indisponivel.');
         await window.sbAtualizarObra(o.obra_id, { status_operacional: novoStatus });
       } else {
+        // Reespelha o status na COLUNA fase E no dados_json.fas no MESMO update,
+        // evitando desync entre coluna e JSON (Comercial le dados_json).
+        var pc = Array.isArray(window.props)
+          ? window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); })
+          : null;
+        var payload = { fase: novoStatus, updated_at: new Date().toISOString() };
+        if (pc) {
+          pc.fas = novoStatus;                          // cache em memoria
+          payload.dados_json = Object.assign({}, pc);   // espelha fas no JSON
+        }
         var res = await window.sbClient
           .from('propostas')
-          .update({ fase: novoStatus, updated_at: new Date().toISOString() })
+          .update(payload)
           .eq('app_id', appId)
           .eq('empresa_id', empresaId)
           .select('app_id, fase')
           .single();
         if (res.error) throw res.error;
-        // Mantem o cache comercial em memoria coerente (mesma proposta), evitando
-        // que um saveAll() posterior do Comercial sobrescreva a fase recem-alterada.
-        try {
-          if (Array.isArray(window.props)) {
-            var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
-            if (pc) pc.fas = novoStatus;
+        // Fallback: proposta nao estava no cache — atualiza dados_json buscando do banco.
+        if (!pc) {
+          var cur = await window.sbClient
+            .from('propostas')
+            .select('dados_json')
+            .eq('app_id', appId)
+            .eq('empresa_id', empresaId)
+            .single();
+          if (!cur.error && cur.data && cur.data.dados_json) {
+            var dj = cur.data.dados_json; dj.fas = novoStatus;
+            await window.sbClient
+              .from('propostas')
+              .update({ dados_json: dj })
+              .eq('app_id', appId)
+              .eq('empresa_id', empresaId);
           }
-        } catch (e) {}
+        }
+        // Persiste o estado otimista no localStorage (sobrevive ate o proximo load).
+        try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       }
       msg('Status operacional atualizado para "' + textoLimpo(labelFaseNegocio(novoStatus)) + '".');
     } catch (e) {
@@ -1465,27 +1549,48 @@
     var empresaId = o.empresa_id || getEmpresaId();
     var appId = o.proposta_app_id || o.id;
     try {
-      // 1) Proposta volta ao Comercial na fase escolhida
+      // 1) Proposta volta ao Comercial na fase escolhida — reespelha fas na COLUNA
+      //    e no dados_json no MESMO update (evita desync coluna<->JSON).
+      var pc = Array.isArray(window.props)
+        ? window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); })
+        : null;
+      var payload = { fase: fase, updated_at: new Date().toISOString() };
+      if (pc) {
+        pc.fas = fase;                                // cache em memoria
+        payload.dados_json = Object.assign({}, pc);   // espelha fas no JSON
+      }
       var res = await window.sbClient
         .from('propostas')
-        .update({ fase: fase, updated_at: new Date().toISOString() })
+        .update(payload)
         .eq('app_id', appId)
         .eq('empresa_id', empresaId)
         .select('app_id, fase')
         .single();
       if (res.error) throw res.error;
+      // Fallback: proposta nao estava no cache — atualiza dados_json buscando do banco.
+      if (!pc) {
+        var cur = await window.sbClient
+          .from('propostas')
+          .select('dados_json')
+          .eq('app_id', appId)
+          .eq('empresa_id', empresaId)
+          .single();
+        if (!cur.error && cur.data && cur.data.dados_json) {
+          var dj = cur.data.dados_json; dj.fas = fase;
+          await window.sbClient
+            .from('propostas')
+            .update({ dados_json: dj })
+            .eq('app_id', appId)
+            .eq('empresa_id', empresaId);
+        }
+      }
       // 2) Card COM obra: arquiva a obra (status 'cancelada') — NAO apaga fisicamente.
       //    Card legado SEM obra: nada a fazer na tabela obras.
       if (temObra && typeof window.sbAtualizarObra === 'function') {
         await window.sbAtualizarObra(o.obra_id, { status_operacional: 'cancelada' });
       }
-      // 3) Mantem o cache comercial em memoria coerente
-      try {
-        if (Array.isArray(window.props)) {
-          var pc = window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); });
-          if (pc) pc.fas = fase;
-        }
-      } catch (e) {}
+      // 3) Persiste o estado otimista no localStorage.
+      try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       fecharDesfazerObra();
       msg('Proposta devolvida ao Comercial como "' + textoLimpo(labelFaseNegocio(fase)) + '".' + (temObra ? ' Obra arquivada.' : ''));
       await carregarObras();
@@ -3747,6 +3852,12 @@
   window.rOperacional = rOperacional;
   window.opCarregarObras = carregarObras;
   window.opFiltros = filtros;
+  window.opSetAno = opSetAno;
+  // Reuso por outros modulos (RH): lista de negocios operacionais (resolve obras
+  // 'ganho' via tabela obras) e resolucao do ANO DE EXECUCAO (cascata data_inicio_real
+  // -> execDatasOp.ini -> aprovacao). Evita duplicar logica.
+  window.opListarNegociosOperacionais = listarNegociosOperacionais;
+  window.opAnoExecucaoNegocio = _anoExecucaoNegocio;
   window._opExecDatasMap = window._opExecDatasMap || {};
   window.opCarregarDatasExecucao = carregarDatasExecucao;
   window.opMudarStatusNegocio = mudarStatusNegocio;

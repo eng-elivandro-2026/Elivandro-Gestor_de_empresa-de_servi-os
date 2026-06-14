@@ -3061,18 +3061,53 @@ async function preencherSelectColabs() {
   });
 }
 
-async function preencherSelectPropostas() {
+// Obras ATIVAS (em execucao) do ANO selecionado, para os seletores de RH
+// (Apontamento de Horas e Despesas). Reusa o modelo do Operacional — que resolve
+// negocios 'ganho' via tabela obras — e o ANO DE EXECUCAO (_anoComercialSel +
+// cascata data_inicio_real -> execDatasOp.ini -> aprovacao), sem duplicar logica.
+// Retorna no formato legado {app_id, numero_proposta, titulo, cliente, fase}.
+var FASES_OBRA_ATIVA_RH = ['aprovado','andamento','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','taf','sat'];
+async function _carregarObrasAtivasAno() {
   var empId = await getEmpresaId();
-  var { data } = await sb.from('propostas')
-    .select('app_id, numero_proposta, titulo, fase')
-    .eq('empresa_id', empId)
-    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado','taf','sat'])
-    .order('numero_proposta', { ascending: false });
-  _propostas = data || [];
+  var lista = [];
+  if (typeof window.opListarNegociosOperacionais === 'function') {
+    try {
+      // Garante as datas de execucao carregadas p/ resolver o ano com precisao.
+      if (typeof window.opCarregarDatasExecucao === 'function') {
+        try { await window.opCarregarDatasExecucao(empId); } catch (e) {}
+      }
+      lista = (await window.opListarNegociosOperacionais(empId)) || [];
+    } catch (e) { lista = []; }
+  }
+  var anoSel = (typeof window !== 'undefined') ? window._anoComercialSel : 'all';
+  var anoNum = (anoSel && anoSel !== 'all') ? (parseInt(anoSel, 10) || null) : null;
+  return lista.filter(function (o) {
+    var st = String(o.status_operacional || '').toLowerCase();
+    if (FASES_OBRA_ATIVA_RH.indexOf(st) < 0) return false;             // so obras ativas
+    if (anoNum && typeof window.opAnoExecucaoNegocio === 'function') {  // filtro de ano
+      var ay = window.opAnoExecucaoNegocio(o);
+      if (ay != null && ay !== anoNum) return false;                   // sem data -> nunca some
+    }
+    return true;
+  }).map(function (o) {
+    return {
+      app_id: o.proposta_app_id,
+      numero_proposta: o.proposta_numero,
+      titulo: o.titulo,
+      cliente: o.cliente_nome,
+      fase: o.status_operacional
+    };
+  });
+}
+
+async function preencherSelectPropostas() {
+  _propostas = await _carregarObrasAtivasAno();
   var sel = document.getElementById('aptProposta');
+  if (!sel) return;
   sel.innerHTML = '<option value="">Selecione a proposta...</option>';
   _propostas.forEach(function(p) {
-    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + (p.cliente ? ' — ' + p.cliente : '') + (p.titulo ? ' | ' + p.titulo : '') + '</option>';
+    sel.innerHTML += '<option value="' + p.app_id + '">' + p.numero_proposta + ' — ' + (p.titulo || '') + '</option>';
   });
 }
 
@@ -4550,23 +4585,15 @@ async function salvarAdicionarEmpresa() {
 // ══ DESPESAS ══════════════════════════════════════════════════
 
 async function _popularProjetosDesp() {
-  // Always refresh — proposal stages can change while user is in the session
-  var empId = await getEmpresaId();
-  var { data } = await sb.from('propostas')
-    .select('app_id, numero_proposta, titulo, cliente, fase')
-    .eq('empresa_id', empId)
-    .in('fase', ['aprovado','andamento','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro','atrasado','taf','sat'])
-    .order('numero_proposta', { ascending: false });
-  _propostas = data || [];
+  // Mesma regra do Apontamento: obras ATIVAS do ano (reusa o modelo do Operacional).
+  _propostas = await _carregarObrasAtivasAno();
   var sel = document.getElementById('dProjetoId');
   if (!sel) return;
   var cur = sel.value;
   sel.innerHTML = '<option value="">— nenhum —</option>'
     + _propostas.map(function(p) {
         return '<option value="' + p.app_id + '"' + (p.app_id===cur?' selected':'') + '>'
-          + p.numero_proposta
-          + (p.cliente ? ' — ' + p.cliente : '')
-          + (p.titulo  ? ' | ' + p.titulo  : '')
+          + p.numero_proposta + ' — ' + (p.titulo || '')
           + '</option>';
       }).join('');
 }

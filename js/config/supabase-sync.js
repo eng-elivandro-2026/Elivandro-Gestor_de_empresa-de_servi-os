@@ -125,6 +125,16 @@
     return res;
   };
 
+  // Resolve o status verdadeiro da proposta a partir da COLUNA fase e do dados_json.fas.
+  // Regra do dono: a coluna 'fase' (mais recente — escrita por Comercial e Operacional)
+  // sempre manda; fallback ao JSON apenas se a coluna vier vazia.
+  var FAS_OPERACIONAIS = ['aprovado','andamento','taf','sat','finalizado','atrasado',
+    'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+  function _resolverFas(colFase, jsonFas) {
+    if (colFase && FAS_OPERACIONAIS.indexOf(colFase) >= 0) return colFase; // operacional prevalece
+    return colFase || jsonFas;                                             // coluna manda; fallback JSON
+  }
+
   window.sbCarregarNuvem = async function (empresaId) {
     if (!window.sbClient) return;
     var empId = empresaId
@@ -138,13 +148,17 @@
 
     var res = await window.sbClient
       .from('propostas')
-      .select('dados_json, app_id')
+      .select('dados_json, app_id, fase')
       .eq('empresa_id', empId)
       .order('updated_at', { ascending: false });
     if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
     var nuvem = (res.data || []).map(function (r) {
       var p = r.dados_json || {};
       if (!p.id && r.app_id) p.id = r.app_id;
+      // Status verdadeiro: a COLUNA fase (escrita por Comercial E Operacional) manda;
+      // fallback ao dados_json.fas se a coluna vier vazia. Corrige desync coluna<->JSON.
+      var faseReal = _resolverFas(r.fase, p.fas);
+      if (faseReal) p.fas = faseReal;
       return p;
     });
     // ── Merge: preserva propostas locais mais recentes ou ausentes no Supabase ──
