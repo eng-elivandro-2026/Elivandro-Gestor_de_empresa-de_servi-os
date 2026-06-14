@@ -583,8 +583,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     display:block !important;margin-top:2rem;padding-top:.5rem;
     border-top:1px solid #ccc;font-size:7.5pt;color:#888;text-align:center;
   }
-  /* Ocultar controles de UI */
-  .page-header-actions,.filtros-bar,.btn-refresh,.btn-preset,.btn-limpar,
+  /* Ocultar controles de UI (o cabeçalho de print injetado substitui o page-header) */
+  .page-header,.page-header-actions,.filtros-bar,.btn-refresh,.btn-preset,.btn-limpar,
   .bc-tabs,.bc-actions,.fluxo-aviso,.estado,
   #fg-cards-section,#fluxo-gerencial-section,#fluxo-pvr-section,
   #dre-plano-conceito,#dre-plano-alertas,.nf-alerta{display:none !important}
@@ -633,6 +633,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   }
   .fin-table tbody tr:nth-child(even) td{background:#fafafa !important}
   .fin-table tr{break-inside:avoid}
+  /* No print, células não truncam — texto quebra e aparece inteiro */
+  .fin-table td{white-space:normal !important;word-break:break-word;overflow-wrap:break-word}
+  .fin-table .col-cliente,.fin-table .col-titulo,.fin-table .fg-cat{
+    max-width:none !important;overflow:visible !important;
+    text-overflow:clip !important;white-space:normal !important;
+  }
+  /* Valores e datas continuam em uma linha */
+  .fin-table .col-valor,.fin-table .col-data{white-space:nowrap !important}
   /* Esconder botões de ação dentro das linhas */
   .fin-table .btn-acao-detalhe,.fin-table .btn-refresh,
   .col-acoes-nf{display:none !important}
