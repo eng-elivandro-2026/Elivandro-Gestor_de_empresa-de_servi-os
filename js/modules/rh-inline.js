@@ -1418,12 +1418,76 @@ async function aprovarApt(id) {
   carregarApontamentos(); carregarKpiApt();
 }
 
+// Rejeicao agora exige MOTIVO (modal) e grava na trilha apontamentos_historico (evento 'rejeitado').
+var _aptRejeitarId = null;
+
 async function rejeitarApt(id) {
-  if (!confirm('Rejeitar este apontamento?')) return;
-  var { error } = await sb.from('apontamentos').update({ status:'rejeitado', updated_at: new Date().toISOString() }).eq('id', id);
-  if (error) { toast('Erro ao rejeitar', 'err'); return; }
+  var { data: apt, error } = await sb.from('apontamentos')
+    .select('id, data, hora_entrada, hora_saida, horas_total, valor_total, status, colaboradores(nome)')
+    .eq('id', id).single();
+  if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (apt.status !== 'pendente') { toast('Somente apontamentos pendentes podem ser rejeitados.', 'err'); return; }
+
+  _aptRejeitarId = id;
+  var nomeColab = apt.colaboradores ? apt.colaboradores.nome : '—';
+  document.getElementById('rejeitarAptResumo').innerHTML =
+    '<strong>' + nomeColab + '</strong>'
+    + ' · ' + fmtData(apt.data)
+    + ' · ' + (apt.hora_entrada||'—') + '–' + (apt.hora_saida||'—')
+    + ' · ' + Number(apt.horas_total||0).toFixed(1) + 'h'
+    + ' · ' + fmtMoeda(apt.valor_total)
+    + '<br><span style="color:var(--accent);font-size:.72rem">Status atual: ' + (apt.status||'—') + '</span>';
+  document.getElementById('txtMotivoRejeitarApt').value = '';
+  document.getElementById('rejeitarAptMotivoErr').style.display = 'none';
+  document.getElementById('modalRejeitarApt').classList.add('on');
+}
+
+function fecharModalRejeitarApt() {
+  document.getElementById('modalRejeitarApt').classList.remove('on');
+  _aptRejeitarId = null;
+}
+
+async function confirmarRejeitarApt() {
+  var motivo = document.getElementById('txtMotivoRejeitarApt').value.trim();
+  var errEl  = document.getElementById('rejeitarAptMotivoErr');
+  if (!motivo || motivo.length < 10) {
+    errEl.style.display = 'block';
+    document.getElementById('txtMotivoRejeitarApt').focus();
+    return;
+  }
+  errEl.style.display = 'none';
+  if (!_aptRejeitarId) return;
+
+  var empId = await getEmpresaId();
+  var usr   = await _resolverUsuarioLogado();
+
+  // Re-verifica server-side antes de gravar (guarda de corrida)
+  var { data: apt } = await sb.from('apontamentos')
+    .select('id, status').eq('id', _aptRejeitarId).single();
+  if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (apt.status !== 'pendente') { toast('Status mudou — só pendentes podem ser rejeitados.', 'err'); fecharModalRejeitarApt(); return; }
+
+  var agora = new Date().toISOString();
+  var { error: errUpd } = await sb.from('apontamentos').update({
+    status:     'rejeitado',
+    updated_at: agora
+  }).eq('id', _aptRejeitarId).eq('empresa_id', empId);
+  if (errUpd) { toast('Erro ao rejeitar: ' + errUpd.message, 'err'); return; }
+
+  // Trilha de auditoria
+  await sb.from('apontamentos_historico').insert({
+    apontamento_id: _aptRejeitarId,
+    empresa_id:     empId,
+    evento:         'rejeitado',
+    motivo:         motivo,
+    usuario_id:     usr.id,
+    usuario_nome:   usr.nome
+  });
+
   toast('Apontamento rejeitado.', 'ok');
+  fecharModalRejeitarApt();
   carregarApontamentos();
+  carregarKpiApt();
 }
 
 // ── Cancelamento lógico de apontamentos ──────────────────────
@@ -1816,6 +1880,7 @@ var _HIST_EVENTO_CFG = {
   aprovado:  { cor: 'var(--green)',  bg: 'rgba(63,185,80,.08)',   brd: 'rgba(63,185,80,.22)',   icon: '✔'  },
   rejeitado: { cor: 'var(--orange)', bg: 'rgba(210,153,34,.08)',  brd: 'rgba(210,153,34,.22)',  icon: '⛔' },
   reaberto:  { cor: 'var(--blue)',   bg: 'rgba(88,166,255,.08)',  brd: 'rgba(88,166,255,.22)',  icon: '🔓' },
+  reenviado: { cor: 'var(--blue)',   bg: 'rgba(88,166,255,.08)',  brd: 'rgba(88,166,255,.22)',  icon: '🔁' },
   cancelado: { cor: 'var(--red)',    bg: 'rgba(248,81,73,.08)',   brd: 'rgba(248,81,73,.22)',   icon: '🚫' },
   editado:   { cor: 'var(--accent)', bg: 'rgba(240,165,0,.08)',   brd: 'rgba(240,165,0,.22)',   icon: '✏️' }
 };
