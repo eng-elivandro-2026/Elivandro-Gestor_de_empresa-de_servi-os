@@ -5863,6 +5863,31 @@ function guiaAba(n){
   </div>
 </div>
 
+<!-- ══ MODAL REJEITAR APONTAMENTO ═══════════════════════════ -->
+<div class="modal-overlay" id="modalRejeitarApt" onclick="if(event.target===this)fecharModalRejeitarApt()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-tit">Rejeitar Apontamento</span>
+      <button class="btn bd bsm" onclick="fecharModalRejeitarApt()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="rejeitarAptResumo" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text2)"></div>
+      <div class="f">
+        <label>Motivo da rejeição <span style="color:var(--red)">*</span></label>
+        <textarea id="txtMotivoRejeitarApt" placeholder="Descreva o motivo da rejeição (mínimo 10 caracteres)..." style="min-height:80px"></textarea>
+        <span id="rejeitarAptMotivoErr" style="font-size:.7rem;color:var(--red);display:none">Motivo obrigatório — mínimo 10 caracteres.</span>
+      </div>
+      <div style="background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:var(--r2);padding:.55rem .75rem;margin-top:.75rem;font-size:.75rem;color:var(--accent)">
+        ℹ️ O colaborador verá o motivo e poderá corrigir e reenviar o apontamento (voltará a pendente).
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalRejeitarApt()">Voltar</button>
+      <button class="btn bo" onclick="confirmarRejeitarApt()">⛔ Confirmar Rejeição</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL REABRIR APONTAMENTO ════════════════════════════ -->
 <div class="modal-overlay" id="modalReabrirApt" onclick="if(event.target===this)fecharModalReabrirApt()">
   <div class="modal-box" style="max-width:480px">
@@ -10064,7 +10089,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=12"></script>
-<script src="js/modules/rh-inline.js?v=2"></script>
+<script src="js/modules/rh-inline.js?v=3"></script>
 <script src="js/modules/operacional-inline.js?v=3"></script>
 <script src="js/modules/avisos-inline.js?v=1"></script>
 <script src="js/config/supabase-financeiro.js"></script>

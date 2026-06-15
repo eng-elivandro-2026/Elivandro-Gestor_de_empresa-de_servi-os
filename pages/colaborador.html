@@ -156,6 +156,25 @@ body{
 .bdg-red{background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.2)}
 .bdg-blue{background:rgba(96,160,240,.12);color:var(--blue);border:1px solid rgba(96,160,240,.2)}
 
+/* ── Rejeição + ações no card ─────────────────────────── */
+.apt-rej-box{margin-top:.55rem;background:rgba(240,96,96,.10);border:1px solid rgba(240,96,96,.28);border-radius:8px;padding:.5rem .65rem}
+.apt-rej-titulo{font-size:.7rem;font-weight:800;color:var(--red);margin-bottom:.2rem}
+.apt-rej-motivo{font-size:.74rem;color:var(--text);line-height:1.4;white-space:pre-wrap;word-break:break-word;font-style:italic}
+.apt-acoes{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem}
+.apt-btn{font-size:.7rem;font-weight:700;padding:.32rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit}
+.apt-btn.danger{border-color:rgba(240,96,96,.4);background:rgba(240,96,96,.12);color:var(--red)}
+/* Modal de histórico (colaborador) */
+.hist-overlay{position:fixed;inset:0;z-index:980;background:rgba(0,0,0,.66);display:none;align-items:center;justify-content:center;padding:.8rem}
+.hist-overlay.on{display:flex}
+.hist-box{width:min(440px,96vw);max-height:88vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem}
+.hist-ev{display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.6rem}
+.hist-ev-ico{width:30px;height:30px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem}
+.hist-ev-corpo{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.45rem .6rem}
+.hist-ev-top{display:flex;justify-content:space-between;gap:.5rem;font-size:.7rem}
+.hist-ev-acao{font-weight:800;color:var(--text)}
+.hist-ev-data{color:var(--text3);white-space:nowrap}
+.hist-ev-motivo{margin-top:.25rem;font-size:.72rem;color:var(--text2);font-style:italic;white-space:pre-wrap;word-break:break-word}
+
 /* ── FORM ─────────────────────────────────────────────── */
 .f{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.7rem}
 .f label{font-size:.66rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
@@ -502,7 +521,7 @@ body{
     <div class="hdr-logo">
       <div class="hdr-mk" id="hdrMk2">TC</div>
       <div class="hdr-info">
-        <div class="hdr-empresa">Novo Apontamento</div>
+        <div class="hdr-empresa" id="novoAptTitulo">Novo Apontamento</div>
         <div class="hdr-sub">Registrar horas trabalhadas</div>
       </div>
     </div>
@@ -598,7 +617,7 @@ body{
         <textarea id="nDesc" placeholder="Descreva as atividades realizadas neste dia/projeto..."></textarea>
       </div>
 
-      <button class="btn btn-primary" onclick="salvarNovoApt()">💾 Salvar Apontamento</button>
+      <button class="btn btn-primary" id="btnSalvarApt" onclick="salvarNovoApt()">💾 Salvar Apontamento</button>
       <button class="btn btn-secondary" style="margin-top:.5rem" onclick="irPara('inicio')">Cancelar</button>
     </div>
   </div>
@@ -790,6 +809,7 @@ var _empresa = null;
 var _vinculoEmpresaAtual = null;
 var _propostas = [];
 var _telaAtual = 'inicio';
+var _editAptId = null; // id do apontamento em modo "corrigir e reenviar" (null = novo)
 
 // ══ UTILITÁRIOS ═══════════════════════════════════════════════
 function toast(msg, tipo) {
@@ -1236,6 +1256,7 @@ async function carregarInicio() {
     ul.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Nenhum registro ainda.</div></div>';
     return;
   }
+  await _anexarMotivosRejeicao(ultimos);
   ul.innerHTML = ultimos.map(function(a){ return renderAptItem(a,true); }).join('');
 }
 
@@ -1256,6 +1277,20 @@ function renderAptItem(a, mini) {
   var projNum = proj ? proj.numero_proposta : (a.proposta_id||'—');
   var projDesc = proj ? (proj.cliente||proj.titulo||'') : '';
 
+  // Bloco de rejeição (motivo vindo de apontamentos_historico, anexado em a._motivoRej)
+  var rejBox = '';
+  if (a.status === 'rejeitado') {
+    rejBox = '<div class="apt-rej-box">'
+      + '<div class="apt-rej-titulo">❌ Rejeitado — motivo:</div>'
+      + '<div class="apt-rej-motivo">' + (a._motivoRej ? escHtmlColab(a._motivoRej) : 'Sem motivo registrado.') + '</div>'
+      + '</div>';
+  }
+  // Ações: histórico (sempre) + corrigir/reenviar (só rejeitado)
+  var acoes = '<div class="apt-acoes">'
+    + '<button class="apt-btn" onclick="verHistoricoApt(\'' + a.id + '\')">📜 Histórico</button>'
+    + (a.status === 'rejeitado' ? '<button class="apt-btn danger" onclick="corrigirReenviarApt(\'' + a.id + '\')">✏️ Corrigir e Reenviar</button>' : '')
+    + '</div>';
+
   return '<div class="apt-item ' + sCls + '">'
     + '<div class="apt-row">'
       + '<div class="apt-left">'
@@ -1270,12 +1305,40 @@ function renderAptItem(a, mini) {
         + '<div class="apt-horas">' + fmtHoras(a.horas_total) + '</div>'
       + '</div>'
     + '</div>'
+    + rejBox
+    + acoes
   + '</div>';
+}
+
+// Escape simples para textos vindos do banco (motivo etc.)
+function escHtmlColab(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Anexa o motivo da última rejeição (apontamentos_historico) aos apontamentos rejeitados.
+async function _anexarMotivosRejeicao(apts) {
+  var rejeitados = (apts || []).filter(function(a){ return a.status === 'rejeitado'; });
+  if (!rejeitados.length) return apts;
+  var ids = rejeitados.map(function(a){ return a.id; });
+  var { data: hist } = await sb.from('apontamentos_historico')
+    .select('apontamento_id, motivo, criado_em, evento')
+    .in('apontamento_id', ids)
+    .eq('evento', 'rejeitado')
+    .order('criado_em', { ascending: true });
+  var mapa = {};
+  (hist || []).forEach(function(h){ if (h.motivo) mapa[h.apontamento_id] = h.motivo; }); // último vence
+  rejeitados.forEach(function(a){ a._motivoRej = mapa[a.id] || ''; });
+  return apts;
 }
 
 // ══ NOVO APONTAMENTO ══════════════════════════════════════════
 function prepararNovoApt() {
   var empId = empresaAtualId();
+  // Sai do modo "corrigir/reenviar" e restaura rótulos padrão
+  _editAptId = null;
+  var tit = document.getElementById('novoAptTitulo'); if (tit) tit.textContent = 'Novo Apontamento';
+  var btn = document.getElementById('btnSalvarApt');  if (btn) btn.textContent = '💾 Salvar Apontamento';
   // Preencher select de propostas
   var sel = document.getElementById('nProposta');
   sel.innerHTML = '<option value="">Selecione o projeto...</option>';
@@ -1403,6 +1466,31 @@ async function salvarNovoApt() {
     status: 'pendente'
   }, calc);
 
+  if (_editAptId) {
+    // ── Corrigir e reenviar: volta a 'pendente' e registra evento no histórico ──
+    var payload = Object.assign({}, row, { updated_at: new Date().toISOString() });
+    var idEdit = _editAptId;
+    var { error: errUpd } = await sb.from('apontamentos')
+      .update(payload).eq('id', idEdit).eq('colaborador_id', _colab.id);
+    if (errUpd) { toast('Erro ao reenviar: ' + errUpd.message, 'err'); return; }
+
+    // Trilha de auditoria (não bloqueia o reenvio caso a RLS ainda não esteja aplicada)
+    var { error: errHist } = await sb.from('apontamentos_historico').insert({
+      apontamento_id: idEdit,
+      empresa_id:     empId,
+      evento:         'reenviado',
+      motivo:         'Colaborador corrigiu e reenviou',
+      usuario_nome:   _colab.nome
+    });
+    if (errHist) console.warn('Falha ao registrar histórico de reenvio:', errHist.message);
+
+    _editAptId = null;
+    toast('Apontamento corrigido e reenviado! Aguardando aprovação.', 'ok');
+    document.getElementById('calcBox').classList.remove('on');
+    setTimeout(function(){ irPara('historico'); }, 1200);
+    return;
+  }
+
   var { error } = await sb.from('apontamentos').insert(row);
   if (error) { toast('Erro: ' + error.message,'err'); return; }
 
@@ -1456,7 +1544,69 @@ async function carregarHistorico() {
     el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Nenhum apontamento neste período.</div></div>';
     return;
   }
+  await _anexarMotivosRejeicao(data);
   el.innerHTML = data.map(function(a){ return renderAptItem(a,false); }).join('');
+}
+
+// ── Corrigir e Reenviar (apontamento rejeitado) ──────────────
+async function corrigirReenviarApt(id) {
+  var empId = empresaAtualId();
+  var { data: a } = await sb.from('apontamentos')
+    .select('*').eq('id', id).eq('colaborador_id', _colab.id).maybeSingle();
+  if (!a) { toast('Apontamento não encontrado.', 'err'); return; }
+  if (a.status !== 'rejeitado') { toast('Apenas apontamentos rejeitados podem ser reenviados.', 'err'); return; }
+
+  irPara('novo');        // mostra a tela e roda prepararNovoApt() (reseta para "novo")
+  _editAptId = id;       // entra em modo edição APÓS o preparar
+
+  document.getElementById('nProposta').value = a.proposta_id || '';
+  document.getElementById('nData').value     = a.data || '';
+  document.getElementById('nTipoDia').value  = a.tipo_dia || 'util';
+  document.getElementById('nJornada').value  = a.regime_jornada || '08-18';
+  document.getElementById('nEntrada').value  = a.hora_entrada || '08:00';
+  document.getElementById('nSaida').value    = a.hora_saida || '18:00';
+  document.getElementById('nIntIni').value   = a.intervalo_inicio || '12:00';
+  document.getElementById('nIntFim').value   = a.intervalo_fim || '13:00';
+  document.getElementById('nDesc').value     = a.descricao || '';
+  calcNovo();
+
+  var tit = document.getElementById('novoAptTitulo'); if (tit) tit.textContent = 'Corrigir e Reenviar';
+  var btn = document.getElementById('btnSalvarApt');  if (btn) btn.textContent = '🔁 Salvar e Reenviar';
+  window.scrollTo(0, 0);
+}
+
+// ── Histórico de revisões (visível ao colaborador) ───────────
+var _HIST_ICONE = { criado:'➕', editado:'✏️', aprovado:'✔', rejeitado:'⛔', reaberto:'🔓', reenviado:'🔁', cancelado:'🚫' };
+async function verHistoricoApt(id) {
+  var box = document.getElementById('histColabBody');
+  box.innerHTML = '<div style="color:var(--text3);font-size:.8rem">Carregando…</div>';
+  document.getElementById('histColabModal').classList.add('on');
+
+  var { data: hist } = await sb.from('apontamentos_historico')
+    .select('evento, motivo, usuario_nome, criado_em')
+    .eq('apontamento_id', id)
+    .order('criado_em', { ascending: true });
+
+  if (!hist || !hist.length) {
+    box.innerHTML = '<div style="color:var(--text3);font-size:.8rem">Sem histórico registrado para este apontamento.</div>';
+    return;
+  }
+  box.innerHTML = hist.map(function(h){
+    var ico = _HIST_ICONE[h.evento] || '•';
+    var dt = h.criado_em ? new Date(h.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '';
+    return '<div class="hist-ev">'
+      + '<div class="hist-ev-ico">' + ico + '</div>'
+      + '<div class="hist-ev-corpo">'
+        + '<div class="hist-ev-top"><span class="hist-ev-acao">' + escHtmlColab((h.evento||'—').toUpperCase()) + '</span>'
+        + '<span class="hist-ev-data">' + escHtmlColab(dt) + '</span></div>'
+        + '<div style="font-size:.68rem;color:var(--text3)">por ' + escHtmlColab(h.usuario_nome || '—') + '</div>'
+        + (h.motivo ? '<div class="hist-ev-motivo">"' + escHtmlColab(h.motivo) + '"</div>' : '')
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+function fecharHistColab() {
+  document.getElementById('histColabModal').classList.remove('on');
 }
 
 // ══ BOLETINS ══════════════════════════════════════════════════
@@ -1919,5 +2069,16 @@ async function fazerLogout() {
   window.location.href = '/login.html';
 }
 </script>
+
+<!-- ══ MODAL: HISTÓRICO DE REVISÕES (colaborador) ═══════════ -->
+<div class="hist-overlay" id="histColabModal" onclick="if(event.target===this)fecharHistColab()">
+  <div class="hist-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.8rem">
+      <div style="font-weight:800;color:var(--text)">📜 Histórico de revisões</div>
+      <button class="apt-btn" onclick="fecharHistColab()">✕</button>
+    </div>
+    <div id="histColabBody"></div>
+  </div>
+</div>
 </body>
 </html>
