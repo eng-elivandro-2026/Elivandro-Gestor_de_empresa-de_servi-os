@@ -3228,7 +3228,7 @@ async function salvarApontamento() {
   var basePerig = perig ? (colab.periculosidade_base || 'normal') : null;
 
   if (vh === 0 && colab) {
-    mostrarToast('Atenção: ' + (colab.nome || 'Colaborador') + ' sem valor/hora cadastrado. Salvando com valor zero.', 'warning');
+    toast('Atenção: ' + (colab.nome || 'Colaborador') + ' sem valor/hora cadastrado. Salvando com valor zero.', 'warning');
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
