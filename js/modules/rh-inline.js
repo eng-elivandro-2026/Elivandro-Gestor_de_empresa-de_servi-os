@@ -164,10 +164,31 @@ async function usuarioEhColaboradorRH(authUser) {
   return false;
 }
 function bloquearAcessoRH() {
-  var root = document.getElementById('rhRoot') || document.body;
+  // Escopa SOMENTE ao container do RH — NUNCA apaga o document.body (evita travar a plataforma inteira).
+  var root = document.getElementById('rhRoot') || document.getElementById('rh-wrap') || document.getElementById('rh');
+  if (!root) return;
   root.innerHTML = '<div style="min-height:360px;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:system-ui;padding:2rem;text-align:center">'
-    + '<div style="max-width:360px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
-    + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p></div></div>';
+    + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
+    + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
+    + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
+    + '</div></div></div>';
+}
+
+// Sair com seguranca: encerra a sessao e volta ao login.
+async function rhSairDaPlataforma() {
+  try { await sb.auth.signOut(); } catch(e) {}
+  var host = window.location.hostname || '';
+  window.location.href = (host === 'localhost' || host === '127.0.0.1') ? '/login.html' : '/login';
+}
+
+// Se o usuario for colaborador (por auth_id OU email), redireciona ao portal do colaborador
+// em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
+async function _bloquearOuRedirRH(authUser, ehColabKnown) {
+  var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
+  if (ehColab) { window.location.href = '/pages/colaborador.html'; return; }
+  bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {
   var { data: authData } = await sb.auth.getUser();
@@ -182,7 +203,7 @@ async function validarAcessoRHAdministrativo() {
     .maybeSingle();
   var usuarioEmail = normalizarEmailRH(usr && usr.email);
   if (error || !usr || usr.ativo === false || !usuarioEmail || usuarioEmail !== authEmail) {
-    bloquearAcessoRH();
+    await _bloquearOuRedirRH(authData.user);
     return false;
   }
   var empId = await getEmpresaId();
@@ -192,7 +213,7 @@ async function validarAcessoRHAdministrativo() {
   var perfilEfetivo = perfilEmpresa || perfilGlobal;
   var ehColaborador = await usuarioEhColaboradorRH(authData.user);
   if (!empId || !vinculo || !perfilRHPermitido(perfilEfetivo) || (ehColaborador && !perfilRHMaster(perfilEfetivo) && perfilEfetivo !== 'gestor' && perfilEfetivo !== 'socio' && perfilEfetivo !== 'sócio' && perfilEfetivo !== 'admin')) {
-    bloquearAcessoRH();
+    await _bloquearOuRedirRH(authData.user, ehColaborador);
     return false;
   }
   _usuarioRH = usr;
@@ -4868,15 +4889,13 @@ async function rejeitarDespesa(id) {
     }
   } catch(e) {}
 
-  var acessoOK = await validarAcessoRHAdministrativo();
-  if (!acessoOK) return;
-
-  // Carregar colaboradores
-  await carregarColabs();
-  await gerarAlertas();
+  // NAO valida acesso aqui (no load do index.html): a barreira do RH agora roda
+  // SOMENTE quando o modulo RH e aberto (window.rRH), evitando travar a plataforma
+  // de quem nunca abriu o RH. Ver window.rRH abaixo.
 })();
   // Expor funções globais necessárias para onclick handlers
   window.rhShowSec = rhShowSec;
+  window.rhSairDaPlataforma = rhSairDaPlataforma;
   window.showTab = showTab;
   window.setModoApt = setModoApt;
   window.filtrarColabs = filtrarColabs;
@@ -5004,9 +5023,13 @@ async function rejeitarDespesa(id) {
   window.rejeitarDespesa = rejeitarDespesa;
 
   // Init quando módulo RH for ativado
-  window.rRH = function() {
+  window.rRH = async function() {
     // Sincronizar empresa ativa
     if(typeof getEmpresaAtivaId === 'function') _empresaId = getEmpresaAtivaId();
+    // Barreira de acesso: roda SOMENTE ao abrir o RH (nao no load da plataforma).
+    // Colaborador e redirecionado ao portal; nao-autorizado ve a tela com saidas.
+    var acessoOK = await validarAcessoRHAdministrativo();
+    if (!acessoOK) return;
     // Carregar e-mails de alerta da nuvem (atualiza localStorage silenciosamente)
     if(typeof window.sbCarregarEmailsAlerta === 'function') window.sbCarregarEmailsAlerta();
     rhShowSec('colaboradores', document.querySelector('.nav-rh-btn'));
