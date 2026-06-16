@@ -1682,6 +1682,26 @@ async function confirmarReabrirApt() {
 
 // ══ EDITAR APONTAMENTO ═══════════════════════════════════════
 
+// Resolve o valor/hora efetivo ATUAL do colaborador (override da empresa ?? global).
+// Usado para corrigir apontamentos cujo valor_hora_base foi gravado como 0/null.
+async function _valorHoraAtualColab(colaboradorId) {
+  if (!colaboradorId) return 0;
+  // 1) cache _colabs (ja vem com override?? global da empresa ativa)
+  var cached = (_colabs || []).find(function(c){ return c.id === colaboradorId; });
+  if (cached && cached.valor_hora) return Number(cached.valor_hora) || 0;
+  // 2) fallback: busca no banco (override da empresa ativa ?? global)
+  try {
+    var empId = await getEmpresaId();
+    var { data: ov } = await sb.from('colaborador_empresas')
+      .select('valor_hora').eq('colaborador_id', colaboradorId).eq('empresa_id', empId).maybeSingle();
+    if (ov && ov.valor_hora != null) return Number(ov.valor_hora) || 0;
+    var { data: g } = await sb.from('colaboradores')
+      .select('valor_hora').eq('id', colaboradorId).maybeSingle();
+    if (g && g.valor_hora != null) return Number(g.valor_hora) || 0;
+  } catch(e) {}
+  return 0;
+}
+
 async function abrirModalEditarApt(id) {
   var { data: apt, error } = await sb.from('apontamentos')
     .select('*, colaboradores(nome), propostas(numero_proposta, titulo)')
@@ -1689,6 +1709,14 @@ async function abrirModalEditarApt(id) {
   if (error || !apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status !== 'pendente') { toast('Apenas apontamentos pendentes podem ser editados.', 'err'); return; }
   if (apt.boletim_id) { toast('Apontamento está vinculado a um documento e não pode ser editado.', 'err'); return; }
+
+  // Opcao 3 (hibrida): se o snapshot valor_hora_base for 0/null, usa o valor/hora ATUAL
+  // do colaborador (corrige apontamentos criados quando o valor/hora ainda era 0).
+  // Apontamentos com valor_hora_base > 0 preservam o snapshot historico.
+  if (!apt.valor_hora_base || Number(apt.valor_hora_base) === 0) {
+    var vhAtual = await _valorHoraAtualColab(apt.colaborador_id);
+    if (vhAtual) apt.valor_hora_base = vhAtual;
+  }
 
   _aptEditId   = id;
   _aptEditData = apt;
@@ -1799,11 +1827,18 @@ async function salvarEdicaoApt() {
 
   // Race-condition guard: re-fetch current state before writing
   var { data: apt } = await sb.from('apontamentos')
-    .select('id, status, boletim_id, hora_entrada, hora_saida, intervalo_inicio, intervalo_fim, tipo_dia, descricao, horas_normal, horas_extra_50, horas_extra_100, horas_noturno, horas_total, valor_total, valor_hora_base, periculoso, perc_periculosidade, periculosidade_base, jornada_inicio, jornada_fim')
+    .select('id, status, boletim_id, colaborador_id, hora_entrada, hora_saida, intervalo_inicio, intervalo_fim, tipo_dia, descricao, horas_normal, horas_extra_50, horas_extra_100, horas_noturno, horas_total, valor_total, valor_hora_base, periculoso, perc_periculosidade, periculosidade_base, jornada_inicio, jornada_fim')
     .eq('id', _aptEditId).single();
   if (!apt) { toast('Apontamento não encontrado.', 'err'); return; }
   if (apt.status !== 'pendente') { toast('Apontamento não está mais pendente. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
   if (apt.boletim_id) { toast('Apontamento foi vinculado a um documento. Edição bloqueada.', 'err'); fecharModalEditarApt(); return; }
+
+  // Opcao 3 (hibrida): snapshot 0/null -> usa o valor/hora ATUAL do colaborador
+  // (e persiste em valor_hora_base no UPDATE abaixo). > 0 preserva o historico.
+  if (!apt.valor_hora_base || Number(apt.valor_hora_base) === 0) {
+    var vhAtualEdit = await _valorHoraAtualColab(apt.colaborador_id);
+    if (vhAtualEdit) apt.valor_hora_base = vhAtualEdit;
+  }
 
   // Snapshot dos valores ANTES
   var antes = {
@@ -1846,6 +1881,7 @@ async function salvarEdicaoApt() {
     intervalo_inicio: intIni,
     intervalo_fim:    intFim,
     descricao:        desc,
+    valor_hora_base:  vh,
     editado_por:      usr.nome,
     editado_em:       agora,
     motivo_edicao:    motivo,
