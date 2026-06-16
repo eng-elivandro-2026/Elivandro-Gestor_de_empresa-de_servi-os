@@ -10089,7 +10089,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=12"></script>
-<script src="js/modules/rh-inline.js?v=5"></script>
+<script src="js/modules/rh-inline.js?v=6"></script>
 <script src="js/modules/operacional-inline.js?v=3"></script>
 <script src="js/modules/avisos-inline.js?v=1"></script>
 <script src="js/config/supabase-financeiro.js"></script>
@@ -10143,11 +10143,26 @@ async function iniciarPlataforma() {
       if (_usr.data && (_usr.data.perfil === 'dono' || _usr.data.perfil === 'gestor')) {
         // Fica na plataforma — botões aparecem via _atualizarBotoesAdmin() quando empresa carrega
       } else {
-        // Verificar se é colaborador puro
+        // Verificar se é colaborador — por auth_id E, como fallback, por email
+        // (igual ao decidirDestino do login.html), auto-vinculando o auth_id.
+        // Sem isso, colaboradores vindos de magic link/reset (auth_id ainda não
+        // vinculado) ficavam presos na plataforma em vez de ir ao portal correto.
         var _cc = await window.sbClient
           .from('colaboradores').select('id')
           .eq('auth_id', _au.data.user.id).eq('ativo', true).maybeSingle();
-        if (!_cc.error && _cc.data) {
+        var _ehColab = !_cc.error && _cc.data;
+        if (!_ehColab && _au.data.user.email) {
+          var _ccEmail = await window.sbClient
+            .from('colaboradores').select('id')
+            .eq('email', _au.data.user.email).eq('ativo', true).maybeSingle();
+          if (_ccEmail && _ccEmail.data) {
+            _ehColab = true;
+            // Auto-vincular auth_id para os próximos acessos
+            window.sbClient.from('colaboradores')
+              .update({ auth_id: _au.data.user.id }).eq('id', _ccEmail.data.id).then(function(){});
+          }
+        }
+        if (_ehColab) {
           window.location.href = '/pages/colaborador.html'; return;
         }
       }
