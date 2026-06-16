@@ -4954,6 +4954,8 @@ async function rejeitarDespesa(id) {
   window.salvarApontamento = salvarApontamento;
   window.aprovarApt = aprovarApt;
   window.rejeitarApt = rejeitarApt;
+  window.confirmarRejeitarApt = confirmarRejeitarApt;
+  window.fecharModalRejeitarApt = fecharModalRejeitarApt;
   window.abrirModalCancelApt = abrirModalCancelApt;
   window.confirmarCancelApt = confirmarCancelApt;
   window.fecharModalCancelApt = fecharModalCancelApt;
