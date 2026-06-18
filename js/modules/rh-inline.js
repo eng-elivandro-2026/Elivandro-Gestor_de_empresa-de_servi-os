@@ -5020,6 +5020,8 @@ async function rejeitarDespesa(id) {
   window.fecharModalGerarBol = fecharModalGerarBol;
   window.previewApontamentosBol = previewApontamentosBol;
   window.gerarBoletim = gerarBoletim;
+  window.imprimirBoletim = imprimirBoletim;
+  window.abrirEditarObs = abrirEditarObs;
   window.abrirBoletimGestor = abrirBoletimGestor;
   window.fecharVerBolGestor = fecharVerBolGestor;
   window.salvarObservacoesBoletim = salvarObservacoesBoletim;
