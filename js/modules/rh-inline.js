@@ -4188,6 +4188,9 @@ async function imprimirBoletim() {
   var _semValidade = !(bol.assinado_prestador && bol.assinado_empresa);
   var _wmSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='500' height='340'><text x='18' y='250' transform='rotate(-30 250 170)' font-family='Arial,sans-serif' font-size='26' font-weight='bold' fill='#c0392b'>SEM VALIDADE - AGUARDANDO ASSINATURAS</text></svg>";
   var _wmUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(_wmSvg);
+  // Faixas fixas (topo + rodape) repetindo em CADA pagina impressa; @page reserva o espaco.
+  var _svCss = '<style>@media print{@page{margin-top:24mm;margin-bottom:22mm}}.sv-faixa{position:fixed;left:0;right:0;background:#c0392b;color:#fff;font-weight:800;font-size:12px;text-align:center;padding:7px 10px;z-index:5;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sv-faixa-top{top:0}.sv-faixa-bot{bottom:0}</style>';
+  var _svFaixas = '<div class="sv-faixa sv-faixa-top">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div><div class="sv-faixa sv-faixa-bot">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div>';
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head>'
     + '<meta charset="UTF-8"><title>' + titulo + ' — ' + bol.numero + '</title>'
@@ -4213,7 +4216,7 @@ async function imprimirBoletim() {
     + '.footer-doc{display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #1e3a5f;padding-top:10px;margin-top:8px}'
     + '.valid-badge{background:#198754;color:white;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700}'
     + '@media print{body{padding:10px}.no-print{display:none}}'
-    + '</style></head><body>'
+    + '</style>' + (_semValidade ? _svCss : '') + '</head><body>'
 
     // Botão imprimir (some ao imprimir)
     + '<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">'
@@ -4223,10 +4226,10 @@ async function imprimirBoletim() {
 
     // Marca d'agua "SEM VALIDADE" (fixa, atras do conteudo) — so quando falta assinatura
     + (_semValidade ? '<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.12;-webkit-print-color-adjust:exact;print-color-adjust:exact;background-image:url(\'' + _wmUrl + '\');background-repeat:repeat"></div>' : '')
+    // Faixas vermelhas fixas: topo + rodape, repetem em cada pagina impressa
+    + (_semValidade ? _svFaixas : '')
     // Wrapper do conteudo acima da marca d'agua
     + '<div style="position:relative;z-index:1">'
-    // Faixa vermelha de alerta no topo
-    + (_semValidade ? '<div style="background:#c0392b;color:#fff;font-weight:800;font-size:13px;text-align:center;padding:10px;border-radius:4px;margin-bottom:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div>' : '')
 
     // Cabeçalho
     + (function(){
