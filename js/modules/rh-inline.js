@@ -4184,6 +4184,11 @@ async function imprimirBoletim() {
     });
   };
 
+  // Alerta de documento sem validade: faltando QUALQUER assinatura (prestador ou empresa).
+  var _semValidade = !(bol.assinado_prestador && bol.assinado_empresa);
+  var _wmSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='500' height='340'><text x='18' y='250' transform='rotate(-30 250 170)' font-family='Arial,sans-serif' font-size='26' font-weight='bold' fill='#c0392b'>SEM VALIDADE - AGUARDANDO ASSINATURAS</text></svg>";
+  var _wmUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(_wmSvg);
+
   var html = '<!DOCTYPE html><html lang="pt-BR"><head>'
     + '<meta charset="UTF-8"><title>' + titulo + ' — ' + bol.numero + '</title>'
     + '<style>'
@@ -4215,6 +4220,13 @@ async function imprimirBoletim() {
     + '<button onclick="window.print()" style="background:#1e3a5f;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">🖨️ Imprimir / Salvar PDF</button>'
     + '<button onclick="window.close()" style="background:#6c757d;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">✕ Fechar</button>'
     + '</div>'
+
+    // Marca d'agua "SEM VALIDADE" (fixa, atras do conteudo) — so quando falta assinatura
+    + (_semValidade ? '<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.12;-webkit-print-color-adjust:exact;print-color-adjust:exact;background-image:url(\'' + _wmUrl + '\');background-repeat:repeat"></div>' : '')
+    // Wrapper do conteudo acima da marca d'agua
+    + '<div style="position:relative;z-index:1">'
+    // Faixa vermelha de alerta no topo
+    + (_semValidade ? '<div style="background:#c0392b;color:#fff;font-weight:800;font-size:13px;text-align:center;padding:10px;border-radius:4px;margin-bottom:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div>' : '')
 
     // Cabeçalho
     + (function(){
@@ -4329,6 +4341,7 @@ async function imprimirBoletim() {
     + '<div style="font-size:8px;color:#6c757d;margin-top:3px">Validação do documento</div>'
     + '</div>'
     + '</div>'
+    + '</div>' // fecha wrapper de conteudo (z-index acima da marca d'agua)
     + '</body></html>';
 
   _imprimirHtml(html);
