@@ -2467,11 +2467,11 @@ function _confirmarNovaRev(propId){
 }
 
 function _desfazerUltimaRev(propId){
-  var p=props.find(function(x){return x.id===propId}); if(!p) return;
+  var p=props.find(function(x){return x.id===propId}); if(!p){ toast('Abra a proposta no editor para desfazer a revisão.','err'); return; }
   var pRevs=p.revs?JSON.parse(JSON.stringify(p.revs)):[];
   if(pRevs.length<2){ toast('Não há revisão anterior para restaurar.','err'); return; }
   var ultima=pRevs[pRevs.length-1];
-  if(ultima.status!=='ativa'){ toast('Apenas a revisão ativa pode ser desfeita.','err'); return; }
+  if(ultima.status && ultima.status!=='ativa'){ toast('Apenas a revisão ativa pode ser desfeita.','err'); return; }
   if(!confirm('Desfazer a Rev. '+ultima.rev+'?\n\nEla será excluída e a revisão anterior será reativada com seus dados originais.')){ return; }
   // Remove a revisão ativa
   pRevs.pop();
