@@ -1945,7 +1945,7 @@ async function imprimirBoletimColab() {
   var _wmUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(_wmSvg);
   // Faixas fixas (topo + rodape) repetindo em CADA pagina impressa; @page reserva o espaco.
   var _svCss = '<style>@media print{@page{margin-top:24mm;margin-bottom:22mm}}.sv-faixa{position:fixed;left:0;right:0;background:#c0392b;color:#fff;font-weight:800;font-size:12px;text-align:center;padding:7px 10px;z-index:5;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sv-faixa-top{top:0}.sv-faixa-bot{bottom:0}</style>';
-  var _svFaixas = '<div class="sv-faixa sv-faixa-top">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div><div class="sv-faixa sv-faixa-bot">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div>';
+  var _svFaixas = '<div class="sv-faixa sv-faixa-top">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE</div><div class="sv-faixa sv-faixa-bot">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE</div>';
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+titulo+' — '+bol.numero+'</title><style>'+css+'</style>'+(_semValidade ? _svCss : '')+'</head><body>'
     + '<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">'
