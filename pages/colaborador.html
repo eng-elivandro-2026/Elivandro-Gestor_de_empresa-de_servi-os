@@ -1939,11 +1939,22 @@ async function imprimirBoletimColab() {
 
   var css = '*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#212529;padding:20px}h1{font-size:16px;color:#1e3a5f;margin-bottom:2px}h2{font-size:11px;color:#6c757d;font-weight:400;margin-bottom:16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#1e3a5f;color:white;padding:6px 8px;text-align:left;font-size:10px}td{padding:5px 8px;border-bottom:1px solid #dee2e6;font-size:10px}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:16px;padding:10px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px}.info-label{font-size:9px;color:#6c757d;text-transform:uppercase;letter-spacing:.04em}.info-val{font-size:11px;font-weight:600;color:#212529}.total-row td{background:#1e3a5f;color:white;font-weight:700;border:none}.section-title{font-size:10px;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px;border-bottom:2px solid #1e3a5f;padding-bottom:3px}.ass-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.ass-box{border:1px solid #dee2e6;border-radius:4px;padding:8px}.ass-ok{border-color:#198754;background:#d1fae5}.ass-pend{border-color:#ffc107;background:#fff9e6}.hash{font-family:monospace;font-size:9px;color:#6c757d;word-break:break-all;margin-top:4px}.juridico{background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:10px;font-size:9px;color:#495057;line-height:1.5;margin-bottom:16px}.footer-doc{display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #1e3a5f;padding-top:10px}.valid-badge{background:#198754;color:white;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700}@media print{.no-print{display:none}}';
 
-  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+titulo+' — '+bol.numero+'</title><style>'+css+'</style></head><body>'
+  // Alerta de documento sem validade: faltando QUALQUER assinatura (prestador ou empresa).
+  var _semValidade = !(bol.assinado_prestador && bol.assinado_empresa);
+  var _wmSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='500' height='340'><text x='18' y='250' transform='rotate(-30 250 170)' font-family='Arial,sans-serif' font-size='26' font-weight='bold' fill='#c0392b'>SEM VALIDADE - AGUARDANDO ASSINATURAS</text></svg>";
+  var _wmUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(_wmSvg);
+  // Faixas fixas (topo + rodape) repetindo em CADA pagina impressa; @page reserva o espaco.
+  var _svCss = '<style>@media print{@page{margin-top:24mm;margin-bottom:22mm}}.sv-faixa{position:fixed;left:0;right:0;background:#c0392b;color:#fff;font-weight:800;font-size:12px;text-align:center;padding:7px 10px;z-index:5;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sv-faixa-top{top:0}.sv-faixa-bot{bottom:0}</style>';
+  var _svFaixas = '<div class="sv-faixa sv-faixa-top">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div><div class="sv-faixa sv-faixa-bot">⚠️ BOLETIM AGUARDANDO ASSINATURAS — SEM VALIDADE JURÍDICA</div>';
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+titulo+' — '+bol.numero+'</title><style>'+css+'</style>'+(_semValidade ? _svCss : '')+'</head><body>'
     + '<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">'
     + '<button onclick="window.print()" style="background:#1e3a5f;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">🖨️ Imprimir / Salvar PDF</button>'
     + '<button onclick="window.close()" style="background:#6c757d;color:white;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px">✕ Fechar</button>'
     + '</div>'
+    + (_semValidade ? '<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.12;-webkit-print-color-adjust:exact;print-color-adjust:exact;background-image:url(\'' + _wmUrl + '\');background-repeat:repeat"></div>' : '')
+    + (_semValidade ? _svFaixas : '')
+    + '<div style="position:relative;z-index:1">'
     + (function(){
         var empNome = emp ? (emp.nome||'') : '';
         var isFx    = empNome.toLowerCase().includes('fortex');
@@ -1992,7 +2003,9 @@ async function imprimirBoletimColab() {
     + (bol.status==='valido'?'<div class="valid-badge" style="margin-top:4px">✅ DOCUMENTO VÁLIDO</div>':'')
     + '<div style="font-size:9px;color:#6c757d;margin-top:4px">Emitido em: '+agoraBrasilia().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'})+'</div></div>'
     + '<div style="text-align:center"><img src="'+qrUrl+'" width="90" height="90" alt="QR Code" style="border:3px solid #1e3a5f;border-radius:4px"><div style="font-size:8px;color:#6c757d;margin-top:3px">Validação do documento</div></div>'
-    + '</div></body></html>';
+    + '</div>'
+    + '</div>' // fecha wrapper de conteudo (z-index acima da marca d'agua)
+    + '</body></html>';
 
   _imprimirHtml(html);
 }
