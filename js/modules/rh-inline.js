@@ -3625,7 +3625,7 @@ async function carregarBoletins() {
     var nome = b.colaboradores ? b.colaboradores.nome : '—';
     var tipo = b.colaboradores ? b.colaboradores.tipo : 'mei';
     var isClt = tipo === 'clt';
-    var docNome = isClt ? 'Controle de Ponto' : 'Rel. Serviços Prestados';
+    var docNome = isClt ? 'Registro de Jornada' : 'Rel. Medição de Serviços';
     var sBdg = b.status==='valido'?'bdg-green'
              : b.status==='aguard_prestador'||b.status==='aguard_empresa'?'bdg-yellow'
              : b.status==='cancelado'?'bdg-red':'bdg-gray';
@@ -3819,7 +3819,7 @@ async function gerarBoletim() {
   var ano = new Date().getFullYear();
   var mes = String(new Date().getMonth()+1).padStart(2,'0');
   var isClt = colab.tipo === 'clt';
-  var prefixo = isClt ? 'CP' : 'RSP';
+  var prefixo = isClt ? 'RJ' : 'RMS';
   var numero = prefixo + '-' + ano + '-' + mes + '-' + String(seq).padStart(4,'0');
 
   var totH = _bolAptPreview.reduce(function(s,a){ return s + Number(a.horas_total||0); }, 0);
@@ -3862,7 +3862,7 @@ async function abrirBoletimGestor(bolId) {
 
   var colab  = bol.colaboradores || {};
   var isClt  = (colab.tipo||'mei') === 'clt';
-  var titulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var titulo = isClt ? 'REGISTRO DE JORNADA' : 'RELATÓRIO DE MEDIÇÃO DE SERVIÇOS';
   var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
   document.getElementById('verBolGestorTit').textContent = titulo;
 
@@ -4115,7 +4115,7 @@ async function imprimirBoletim() {
   var bol  = _bolGestorAtivo;
   var colab = bol.colaboradores || {};
   var isClt = (colab.tipo||'mei') === 'clt';
-  var titulo = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var titulo = isClt ? 'REGISTRO DE JORNADA' : 'RELATÓRIO DE MEDIÇÃO DE SERVIÇOS';
   var subtit = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
 
   // Buscar apontamentos — evitar .in() com array vazio (trava o Supabase)

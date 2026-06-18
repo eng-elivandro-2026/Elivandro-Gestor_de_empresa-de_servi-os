@@ -78,7 +78,7 @@ function fmtDt(d){ return d?new Date(d).toLocaleString('pt-BR',{timeZone:'Americ
   var logoSrc = isFx ? LOGO_FORTEX : LOGO_TECFUSION;
   var logoBg  = isFx ? '#F05A1A'   : '#ffffff';
   var isClt   = (colab.tipo||'mei') === 'clt';
-  var docNome = isClt ? 'CONTROLE DE PONTO' : 'RELATÓRIO DE SERVIÇOS PRESTADOS';
+  var docNome = isClt ? 'REGISTRO DE JORNADA' : 'RELATÓRIO DE MEDIÇÃO DE SERVIÇOS';
   var docSub  = isClt ? 'Registro de Jornada de Trabalho' : 'Comprovante de Prestação de Serviços';
 
   // Validar hash parcial da URL
