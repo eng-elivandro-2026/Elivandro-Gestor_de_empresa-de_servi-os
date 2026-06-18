@@ -3734,7 +3734,9 @@
     try {
       var obra = await window.sbBuscarObraPorProposta(getEmpresaId(), p.id);
       if (obra) {
-        container.innerHTML = '<button type="button" style="padding:.28rem .5rem;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-size:.7rem;font-weight:800;cursor:pointer" onclick="event.stopPropagation();opAbrirObraComercial(\'' + esc(obra.id) + '\')">Abrir Obra</button>';
+        // Obra ja existe: a gestao acontece no Operacional ("Abrir Gestao").
+        // Rotulo nao-clicavel (sem aparencia de botao) — fluxo antigo "Abrir Obra" removido.
+        container.innerHTML = '<span style="font-size:.7rem;font-weight:700;color:var(--text3);display:inline-flex;align-items:center;gap:.3rem">✓ Obra criada — gerenciar no Operacional</span>';
       } else if (isGanho(p) || isAprovado(p)) {
         container.innerHTML = '<button type="button" style="padding:.28rem .5rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#000;font-size:.7rem;font-weight:800;cursor:pointer" onclick="event.stopPropagation();opCriarObraDePropostaId(\'' + esc(p.id) + '\',false)">Criar Obra</button>';
       } else {
@@ -3782,11 +3784,6 @@
     } catch (e) {
       msg('Erro ao criar obra: ' + (e.message || e), 'err');
     }
-  }
-
-  function abrirObraComercial(id) {
-    if (window.Router) window.Router.ir('operacional');
-    setTimeout(function () { abrirObra(id); }, 120);
   }
 
   function renderActionBar(p) {
@@ -3879,7 +3876,6 @@
   window.opHidratarAcoesPropostas = hidratarAcoesPropostas;
   window.opAcoesPropostaHtml = acoesPropostaHtml;
   window.opCriarObraDePropostaId = criarObraDePropostaId;
-  window.opAbrirObraComercial = abrirObraComercial;
   window.opRenderActionBar = renderActionBar;
   window.opLimparActionBar = limparActionBar;
   window.opCarregarRecursosMobilizacaoObra = carregarRecursosMobilizacaoObra;
