@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Portal do Prestador</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/shared/ajuda-conteudo.js?v=1"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoTopo');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -400,6 +402,8 @@ body{
       <button class="btn btn-secondary btn-sm" onclick="fecharAjudaColab()" style="width:auto">Fechar</button>
     </div>
     <div class="help-body">
+      <!-- Fluxo apontamento->boletim + FAQ (conteudo compartilhado window.AJUDA_HTML) -->
+      <div id="ajudaFluxoTopo" style="margin-bottom:1rem"></div>
       <div class="help-intro">
         Antes de lançar horas, confira sempre o nome da empresa no topo da tela.
         Se estiver na empresa errada, vá em Perfil e toque em Trocar empresa.
