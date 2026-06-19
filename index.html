@@ -5030,6 +5030,7 @@ function guiaAba(n){
     <button class="nav-rh-btn" onclick="rhShowSec('boletins', this)">📋 Boletins</button>
     <button class="nav-rh-btn" onclick="rhShowSec('despesas', this)">💰 Despesas</button>
     <button class="nav-rh-btn" onclick="rhShowSec('ferias-geral', this)">🌴 Férias</button>
+    <button class="nav-rh-btn" onclick="rhShowSec('ajuda', this)">❓ Ajuda</button>
     <button class="nav-rh-btn" onclick="abrirConfigEmails()" style="margin-left:auto;font-size:.75rem;opacity:.7">🔔 E-mails de Alerta</button>
     <button class="nav-rh-btn" onclick="testarEnvioEmails()" style="font-size:.75rem;opacity:.7">📧 Testar Envio</button>
   </div>
@@ -5065,6 +5066,11 @@ function guiaAba(n){
         <button class="btn bs" onclick="salvarConfigEmails()">💾 Salvar</button>
       </div>
     </div>
+  </div>
+
+  <!-- ══ SEÇÃO AJUDA (conteúdo compartilhado window.AJUDA_HTML) ══ -->
+  <div class="rhsec" id="sec-ajuda">
+    <div id="ajudaFluxoRH" style="max-width:760px"></div>
   </div>
 
   <!-- ══ SEÇÃO COLABORADORES ══════════════════════════════ -->
@@ -10090,6 +10096,8 @@ function rExecTimeline(){
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=12"></script>
 <script src="js/modules/rh-inline.js?v=13"></script>
+<script src="js/shared/ajuda-conteudo.js?v=1"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=4"></script>
 <script src="js/modules/avisos-inline.js?v=1"></script>
 <script src="js/config/supabase-financeiro.js"></script>
