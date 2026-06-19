@@ -30,6 +30,33 @@
   --shadow:0 4px 24px rgba(0,0,0,.35);
   --shadow2:0 2px 12px rgba(0,0,0,.25);
 }
+/* ── TEMA CLARO (toggle proprio do colaborador: chave tf_theme_colab) ── */
+body.light{
+  --bg:#f5f7fb;
+  --bg2:#ffffff;
+  --bg3:#eef2f7;
+  --bg4:#e2e8f0;
+  --border:#d5dce6;
+  --text:#111827;
+  --text2:#4b5563;
+  --text3:#6b7280;
+  --accent:#d97706;
+  --accent2:#b45309;
+  --green:#15803d;
+  --red:#dc2626;
+  --blue:#2563eb;
+  --orange:#c2410c;
+  --shadow:0 4px 24px rgba(15,23,42,.12);
+  --shadow2:0 2px 12px rgba(15,23,42,.08);
+}
+/* Botao de alternar tema (sol/lua) — presente no header de todas as telas */
+.theme-btn{
+  width:34px;height:34px;border-radius:50%;
+  border:1px solid var(--border);background:transparent;color:var(--text2);
+  cursor:pointer;font-size:1rem;line-height:1;display:grid;place-items:center;
+  font-family:inherit;transition:.15s;flex:0 0 auto;
+}
+.theme-btn:hover{color:var(--accent);border-color:var(--accent)}
 html{font-size:16px;height:100%}
 body{
   font-family:'DM Sans',system-ui,sans-serif;
@@ -383,6 +410,7 @@ body{
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('tf_theme_colab')==='light')document.body.classList.add('light');}catch(e){}</script>
 
 <!-- LOADING -->
 <div id="loading">
@@ -469,6 +497,7 @@ body{
       </div>
     </div>
     <div class="hdr-user">
+      <button class="theme-btn" onclick="toggleTemaColab()" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌙</button>
       <div class="avatar" id="hdrAvatar">?</div>
       <button class="btn-logout" onclick="fazerLogout()">Sair</button>
     </div>
@@ -529,6 +558,7 @@ body{
         <div class="hdr-sub">Registrar horas trabalhadas</div>
       </div>
     </div>
+    <button class="theme-btn" onclick="toggleTemaColab()" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌙</button>
   </div>
   <div class="content">
     <div id="avisoSemValorHora" style="display:none;background:#fef9c3;border-left:4px solid #eab308;color:#713f12;padding:.75rem 1rem;margin:0 0 1rem;border-radius:6px;font-size:.85rem;font-weight:600">
@@ -647,6 +677,7 @@ body{
     <select id="filtroMes" onchange="carregarHistorico()"
       style="padding:.3rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r3);color:var(--text);font-size:.72rem;font-family:inherit">
     </select>
+    <button class="theme-btn" onclick="toggleTemaColab()" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌙</button>
   </div>
   <div class="content">
     <div class="kpi-row" id="kpiHist">
@@ -675,6 +706,7 @@ body{
         <div class="hdr-sub">Boletins de horas</div>
       </div>
     </div>
+    <button class="theme-btn" onclick="toggleTemaColab()" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌙</button>
   </div>
   <div class="content">
     <div id="boletinsList">
@@ -700,6 +732,7 @@ body{
         <div class="hdr-sub">Dados cadastrais</div>
       </div>
     </div>
+    <button class="theme-btn" onclick="toggleTemaColab()" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌙</button>
   </div>
   <div class="content">
     <div class="perfil-card">
@@ -2085,6 +2118,25 @@ async function fazerLogout() {
   await sb.auth.signOut();
   window.location.href = '/login.html';
 }
+
+// ══ TEMA CLARO/ESCURO (independente do gestor: chave tf_theme_colab) ═══
+function _temaColabAtual() {
+  try { return localStorage.getItem('tf_theme_colab') || 'dark'; } catch (e) { return 'dark'; }
+}
+function _atualizarIconeTema() {
+  var isLight = document.body.classList.contains('light');
+  document.querySelectorAll('.theme-btn').forEach(function (b) { b.textContent = isLight ? '☀️' : '🌙'; });
+}
+function toggleTemaColab() {
+  var novo = _temaColabAtual() === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem('tf_theme_colab', novo); } catch (e) {}
+  document.body.classList.toggle('light', novo === 'light');
+  _atualizarIconeTema();
+}
+document.addEventListener('DOMContentLoaded', function () {
+  document.body.classList.toggle('light', _temaColabAtual() === 'light');
+  _atualizarIconeTema();
+});
 </script>
 
 <!-- ══ MODAL: HISTÓRICO DE REVISÕES (colaborador) ═══════════ -->
