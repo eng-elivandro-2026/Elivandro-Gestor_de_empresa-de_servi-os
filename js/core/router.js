@@ -334,10 +334,13 @@
           return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item.label + '</div>';
         }
         if (item.emBreve) {
-          // Item ainda não disponível: visível, porém não clicável, com badge "Em breve".
-          return '<div class="nb" style="opacity:.55;cursor:not-allowed;display:flex;align-items:center;gap:.4rem" title="Em breve">' +
-              '<span>' + item.icon + '</span> <span style="flex:1">' + item.label + '</span>' +
-              '<span style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .4rem;border-radius:10px;background:var(--emp-bg,rgba(240,165,0,.1));border:1px solid var(--emp-bdr,rgba(240,165,0,.28));color:var(--emp-cor,var(--accent))">Em breve</span>' +
+          // Item ainda não disponível: alinhado como subitem (recuado dentro do pai),
+          // não clicável, com badge "Em breve". Sem classe .nav-item para não receber
+          // o destaque "on" nem o clique.
+          return '<div style="width:100%;display:flex;align-items:center;gap:.45rem;padding:.38rem .6rem .38rem 1.5rem;border-radius:var(--r2);color:var(--text3);font-size:.76rem;opacity:.7;cursor:not-allowed;white-space:nowrap;overflow:hidden" title="Em breve">' +
+              '<span>' + item.icon + '</span>' +
+              '<span style="flex:1;text-align:left">' + item.label + '</span>' +
+              '<span style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:.1rem .4rem;border-radius:10px;background:var(--emp-bg,rgba(240,165,0,.1));border:1px solid var(--emp-bdr,rgba(240,165,0,.28));color:var(--emp-cor,var(--accent));flex-shrink:0">Em breve</span>' +
             '</div>';
         }
         var isSubitem = item.label.indexOf('↳') === 0;
