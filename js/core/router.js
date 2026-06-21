@@ -23,15 +23,7 @@
         { label: 'Macro-processo',  icon: '🗺️', emBreve: true },
         { label: 'Organograma',     icon: '🏛️', emBreve: true },
         { label: 'Processos',       icon: '⚙️', emBreve: true },
-      ]
-    },
-    {
-      id: 'pessoas',
-      label: 'Pessoas',
-      icon: '👥',
-      tipo: 'iframe',
-      src: 'em-breve.html',
-      nav: [
+        { separator: true, label: 'Pessoas' },
         { label: 'Departamentos',   icon: '🏢', emBreve: true },
         { label: 'Funções e RCF',   icon: '📋', emBreve: true },
         { label: 'Colaboradores',   icon: '👤', emBreve: true },
@@ -39,15 +31,7 @@
         { label: 'PDI',             icon: '📈', emBreve: true },
         { label: 'Kanban',          icon: '🗂️', emBreve: true },
         { label: 'Reunião 1:1',     icon: '💬', emBreve: true },
-      ]
-    },
-    {
-      id: 'reunioes',
-      label: 'Reuniões',
-      icon: '📅',
-      tipo: 'iframe',
-      src: 'em-breve.html',
-      nav: [
+        { separator: true, label: 'Reuniões' },
         { label: 'Diárias',     icon: '📅', emBreve: true },
         { label: 'Semanais',    icon: '🗓️', emBreve: true },
         { label: 'Quinzenais',  icon: '📆', emBreve: true },
