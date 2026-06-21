@@ -29,6 +29,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 .wrap{max-width:1240px;margin:0 auto;padding:1.1rem}
+
+/* Painel de KPIs */
+#kpis-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:1rem}
+.kpis-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.kpis-titulo{font-size:.95rem;font-weight:800;color:var(--emp-cor)}
+.kpis-bloco{margin-bottom:.8rem}
+.kpis-bloco:last-child{margin-bottom:0}
+.kpis-bloco-t{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.45rem}
+.kpis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem}
+.kpi-c{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .7rem}
+.kpi-c-l{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.25rem}
+.kpi-c-v{font-size:1.35rem;font-weight:800;color:var(--emp-cor);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-c-s{font-size:.65rem;color:var(--text3);margin-top:.2rem}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
 .hdr-l{display:flex;align-items:center;gap:.7rem}
 .hdr-mk{width:40px;height:40px;border-radius:10px;background:var(--emp-cor);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1rem;flex-shrink:0}
@@ -168,6 +181,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 
+  <div id="kpis-painel">
+    <div class="kpis-head">
+      <span class="kpis-titulo">📊 Indicadores</span>
+      <button class="btn btn-ghost btn-sm" id="kpis-toggle" onclick="toggleKpis()">▲ recolher</button>
+    </div>
+    <div id="kpis-body">
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Resultado Financeiro</div><div class="kpis-grid" id="kpis-fin"></div></div>
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Comercial</div><div class="kpis-grid" id="kpis-com"></div></div>
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Velocidade</div><div class="kpis-grid" id="kpis-vel"></div></div>
+    </div>
+  </div>
+
   <div class="cols">
     <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
     <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
@@ -274,6 +299,103 @@ function _aplicarTema(nc){ document.body.classList.remove('empresa-tema-tecfusio
 function _iniciais(nome){ var n=(nome||'').toLowerCase(); if(n.includes('tecfusion')) return 'TC'; if(n.includes('fortex')) return 'FX'; var p=(nome||'').trim().split(/\s+/).filter(Boolean); if(p.length>=2) return (p[0][0]+p[1][0]).toUpperCase(); return ((nome||'—').trim().slice(0,2).toUpperCase())||'—'; }
 function _header(emp){ var nome=(emp&&(emp.nome_curto||emp.nome))||'—'; document.getElementById('hdr-nome').textContent=nome; document.getElementById('hdr-mk').textContent=_iniciais(nome); }
 
+// ── Painel de KPIs ──
+var _kpisAberto=true;
+var _FAS_GANHA=['aprovado','ganho','andamento','taf','sat','finalizado','atrasado','faturado','recebido'];
+var _FAS_PIPE =['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
+
+function _sf(){ try{ return (window.parent && window.parent.sbFinanceiro) ? window.parent.sbFinanceiro : (window.sbFinanceiro||null); }catch(e){ return null; } }
+function _props(){ try{ return (window.parent && Array.isArray(window.parent.props)) ? window.parent.props : []; }catch(e){ return []; } }
+function _money(v){ if(v==null||isNaN(v)) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function _noMes(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; var n=new Date(); return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth(); }
+function _noAno(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; return d.getFullYear()===(new Date()).getFullYear(); }
+function _media(arr){ if(!arr.length) return null; return arr.reduce(function(s,v){return s+v;},0)/arr.length; }
+function _kpiCard(label,valor,sub){ return '<div class="kpi-c"><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
+
+function toggleKpis(){
+  _kpisAberto=!_kpisAberto;
+  var b=document.getElementById('kpis-body'); var t=document.getElementById('kpis-toggle');
+  if(b) b.style.display=_kpisAberto?'':'none';
+  if(t) t.textContent=_kpisAberto?'▲ recolher':'▼ expandir';
+}
+
+function renderKpis(){
+  _renderKpisComercial();
+  _renderKpisVelocidade();
+  _renderKpisFinanceiro();
+}
+
+function _renderKpisComercial(){
+  var el=document.getElementById('kpis-com'); if(!el) return;
+  var ps=_props();
+  var enviadasMes=ps.filter(function(p){ return p.fas!=='em_elaboracao' && _noMes(p.dat2); });
+  var ganhasMes  =ps.filter(function(p){ return _FAS_GANHA.indexOf(p.fas)>=0 && _noMes(p.dtFech); });
+  var conv = enviadasMes.length>0 ? (ganhasMes.length/enviadasMes.length*100) : null;
+  var carteira=ps.filter(function(p){ return _FAS_PIPE.indexOf(p.fas)>=0; }).reduce(function(s,p){ return s+(Number(p.val)||0); },0);
+  var ganhasAno=ps.filter(function(p){ return _FAS_GANHA.indexOf(p.fas)>=0 && _noAno(p.dtFech); });
+  var somaAno=ganhasAno.reduce(function(s,p){ return s+(Number(p.val)||0); },0);
+  var ticket = ganhasAno.length>0 ? (somaAno/ganhasAno.length) : null;
+  el.innerHTML=
+    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Criadas no mês (excl. elaboração)')+
+    _kpiCard('Propostas ganhas no mês', String(ganhasMes.length), 'Fechadas no mês (por dtFech)')+
+    _kpiCard('Taxa de conversão do mês', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ enviadas')+
+    _kpiCard('Carteira aberta', _money(carteira), 'Pipeline em aberto')+
+    _kpiCard('Ticket médio do ano', ticket==null?'—':_money(ticket), 'Ganhas no ano (por dtFech)');
+}
+
+function _renderKpisVelocidade(){
+  var el=document.getElementById('kpis-vel'); if(!el) return;
+  var ps=_props();
+  var elab=[], gap=[], ciclo=[];
+  ps.forEach(function(p){
+    var tl=p.tl||{};
+    var dEl=_diasEntre(tl.dtVisita||p.dat2, tl.dtEnvio); if(dEl!=null && tl.dtEnvio && (tl.dtVisita||p.dat2)) elab.push(dEl);
+    if(_FAS_GANHA.indexOf(p.fas)>=0){
+      var dG=_diasEntre(p.dtFech, tl.dtInicioExec); if(dG!=null && p.dtFech && tl.dtInicioExec) gap.push(dG);
+      var dC=_diasEntre(p.dat2, p.dtFech); if(dC!=null && p.dat2 && p.dtFech) ciclo.push(dC);
+    }
+  });
+  var mEl=_media(elab), mGap=_media(gap), mCic=_media(ciclo);
+  el.innerHTML=
+    _kpiCard('Elaboração média', mEl==null?'—':Math.round(mEl)+' dias', 'Visita → Envio')+
+    _kpiCard('Gap pré-obra médio', mGap==null?'—':Math.round(mGap)+' dias', 'Fechamento → Início exec.')+
+    _kpiCard('Ciclo comercial total', mCic==null?'—':Math.round(mCic)+' dias', 'Criação → Fechamento');
+}
+
+async function _renderKpisFinanceiro(){
+  var el=document.getElementById('kpis-fin'); if(!el) return;
+  el.innerHTML=
+    _kpiCard('Faturado no mês','…','NFs emitidas no mês')+
+    _kpiCard('Recebido no mês','…','Recebimentos no mês')+
+    _kpiCard('A receber em aberto','…','Contas não recebidas')+
+    _kpiCard('Faturado no ano','…','NFs emitidas no ano');
+  var sf=_sf(); var id=_empresaAtiva && _empresaAtiva.id;
+  var fatMes='—', fatAno='—', recMes='—', aberto='—';
+  if(sf && id){
+    try{
+      var nfs=await sf.listarNotasFiscaisEmpresa(id) || [];
+      var validas=(nfs||[]).filter(function(nf){ var st=String(nf.status||'').toLowerCase(); return nf.tipo_nf!=='po' && st!=='cancelada' && st!=='cancelado'; });
+      fatMes=_money(validas.filter(function(nf){return _noMes(nf.data_emissao);}).reduce(function(s,nf){return s+(parseFloat(nf.valor_nf)||0);},0));
+      fatAno=_money(validas.filter(function(nf){return _noAno(nf.data_emissao);}).reduce(function(s,nf){return s+(parseFloat(nf.valor_nf)||0);},0));
+    }catch(e){ fatMes='—'; fatAno='—'; }
+    try{
+      var recs=await sf.listarRecebimentosEmpresa(id) || [];
+      recMes=_money((recs||[]).filter(function(r){return _noMes(r.data_recebimento);}).reduce(function(s,r){return s+(parseFloat(r.valor_recebido)||0);},0));
+    }catch(e){ recMes='—'; }
+    try{
+      var cr=await sf.listarContasReceber(id) || [];
+      aberto=_money((cr||[]).filter(function(c){ var st=String(c.status||'').toLowerCase(); return st!=='recebido' && st!=='cancelado'; }).reduce(function(s,c){return s+((parseFloat(c.valor)||0)-(parseFloat(c.valor_recebido)||0));},0));
+    }catch(e){ aberto='—'; }
+  }
+  // Empresa pode ter mudado durante o await → não sobrescrever com dados antigos
+  if(!_empresaAtiva || _empresaAtiva.id!==id) return;
+  el.innerHTML=
+    _kpiCard('Faturado no mês', fatMes, 'NFs emitidas no mês')+
+    _kpiCard('Recebido no mês', recMes, 'Recebimentos no mês')+
+    _kpiCard('A receber em aberto', aberto, 'Contas não recebidas')+
+    _kpiCard('Faturado no ano', fatAno, 'NFs emitidas no ano');
+}
+
 // ── Progresso e status ──
 function _progresso(m){
   var a=m.valor_atual, mt=m.valor_meta;
@@ -303,6 +425,7 @@ function _onTrocaEmpresa(d){
   _metas=[]; _metaSelId=null; _acoes=[]; _pdca=null; _radar=[];
   document.getElementById('detalhe').innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>';
   carregarMetas();
+  renderKpis();
 }
 
 async function carregarMetas(){
