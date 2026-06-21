@@ -30,11 +30,11 @@ body.light{
 }
 /* Temas de empresa — cores oficiais por empresa */
 body.empresa-tema-tecfusion{
-  --emp-cor:#4DB748;--emp-cor-2:#5fce5a;
+  --emp-cor:#4DB748;--emp-cor-2:#4DB748;
   --emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
 }
 body.empresa-tema-fortex{
-  --emp-cor:#F5A623;--emp-cor-2:#ffbb4d;
+  --emp-cor:#F5A623;--emp-cor-2:#F5A623;
   --emp-bg:rgba(245,166,35,.10);--emp-bdr:rgba(245,166,35,.32);
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -243,11 +243,20 @@ function _aplicarTema(nomeCurto){
 }
 
 // ── Cabeçalho ─────────────────────────────────────────────────
+function _iniciais(nome){
+  var n = (nome || '').toLowerCase();
+  if (n.includes('tecfusion')) return 'TC';
+  if (n.includes('fortex')) return 'FT';
+  var partes = (nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length >= 2) return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
+  return ((nome || '—').trim().slice(0, 2).toUpperCase()) || '—';
+}
+
 function _atualizarHeader(emp){
   var nome = (emp && (emp.nome_curto || emp.nome)) || '—';
   document.getElementById('hdr-nome').textContent = nome;
   var mk = document.getElementById('hdr-mk');
-  mk.textContent = (nome && nome !== '—') ? nome.trim().charAt(0).toUpperCase() : '—';
+  mk.textContent = _iniciais(nome);
 
   // Subtítulo: slogan/descrição vindo do portal; senão texto fixo por empresa
   var sub = (emp && emp.slogan && emp.slogan.trim()) ? emp.slogan.trim() : '';
