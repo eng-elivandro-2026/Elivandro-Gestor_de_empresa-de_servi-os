@@ -17,7 +17,42 @@
       tipo: 'iframe',
       src: 'pages/dashboard-minha-empresa.html',
       nav: [
-        { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
+        { label: 'Dashboard — Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
+        { label: 'PVE',             icon: '📈', emBreve: true },
+        { label: 'Cadeia de Valor', icon: '🔗', emBreve: true },
+        { label: 'Macro-processo',  icon: '🗺️', emBreve: true },
+        { label: 'Organograma',     icon: '🏛️', emBreve: true },
+        { label: 'Processos',       icon: '⚙️', emBreve: true },
+      ]
+    },
+    {
+      id: 'pessoas',
+      label: 'Pessoas',
+      icon: '👥',
+      tipo: 'iframe',
+      src: 'em-breve.html',
+      nav: [
+        { label: 'Departamentos',   icon: '🏢', emBreve: true },
+        { label: 'Funções e RCF',   icon: '📋', emBreve: true },
+        { label: 'Colaboradores',   icon: '👤', emBreve: true },
+        { label: 'Matriz Nine Box', icon: '🎯', emBreve: true },
+        { label: 'PDI',             icon: '📈', emBreve: true },
+        { label: 'Kanban',          icon: '🗂️', emBreve: true },
+        { label: 'Reunião 1:1',     icon: '💬', emBreve: true },
+      ]
+    },
+    {
+      id: 'reunioes',
+      label: 'Reuniões',
+      icon: '📅',
+      tipo: 'iframe',
+      src: 'em-breve.html',
+      nav: [
+        { label: 'Diárias',     icon: '📅', emBreve: true },
+        { label: 'Semanais',    icon: '🗓️', emBreve: true },
+        { label: 'Quinzenais',  icon: '📆', emBreve: true },
+        { label: 'Trimestrais', icon: '📊', emBreve: true },
+        { label: 'Anuais',      icon: '🎯', emBreve: true },
       ]
     },
     {
@@ -297,6 +332,13 @@
       el.innerHTML = mod.nav.map(function (item) {
         if (item.separator) {
           return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item.label + '</div>';
+        }
+        if (item.emBreve) {
+          // Item ainda não disponível: visível, porém não clicável, com badge "Em breve".
+          return '<div class="nb" style="opacity:.55;cursor:not-allowed;display:flex;align-items:center;gap:.4rem" title="Em breve">' +
+              '<span>' + item.icon + '</span> <span style="flex:1">' + item.label + '</span>' +
+              '<span style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .4rem;border-radius:10px;background:var(--emp-bg,rgba(240,165,0,.1));border:1px solid var(--emp-bdr,rgba(240,165,0,.28));color:var(--emp-cor,var(--accent))">Em breve</span>' +
+            '</div>';
         }
         var isSubitem = item.label.indexOf('↳') === 0;
         var labelClean = isSubitem ? item.label.slice(2) : item.label;

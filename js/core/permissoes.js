@@ -52,8 +52,14 @@
       ver: ['dono', 'admin']
     },
     'dashboard-minha-empresa': {
-      ver:    ['dono', 'admin', 'gestor', 'financeiro', 'comercial'],
-      editar: ['dono', 'admin']
+      ver:    ['dono'],
+      editar: ['dono']
+    },
+    'pessoas': {
+      ver: ['dono']
+    },
+    'reunioes': {
+      ver: ['dono']
     },
     rh: {
       ver:    ['dono', 'admin', 'gestor', 'rh'],
@@ -70,7 +76,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'operacional', 'historico', 'gestao', 'rh', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa'];
+  var _MODULOS_ROUTER = ['comercial', 'operacional', 'historico', 'gestao', 'rh', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'pessoas', 'reunioes'];
 
   // ── Helpers internos ─────────────────────────────────────
 
