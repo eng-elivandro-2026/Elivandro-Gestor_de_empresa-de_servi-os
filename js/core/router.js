@@ -17,7 +17,7 @@
       tipo: 'iframe',
       src: 'pages/dashboard-minha-empresa.html',
       nav: [
-        { label: 'Dashboard — Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
+        { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
         { label: 'PVE',             icon: '📈', emBreve: true },
         { label: 'Cadeia de Valor', icon: '🔗', emBreve: true },
         { label: 'Macro-processo',  icon: '🗺️', emBreve: true },
