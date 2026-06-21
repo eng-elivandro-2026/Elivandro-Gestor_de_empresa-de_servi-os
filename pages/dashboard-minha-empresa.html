@@ -575,6 +575,13 @@ window.addEventListener('message', function(e){
   }
 });
 
+// Sincronizar tema claro/escuro com o portal pai ao carregar
+try {
+  if (window.parent && window.parent.document.body.classList.contains('light')){
+    document.body.classList.add('light');
+  }
+} catch(e){}
+
 // Pedir empresa ao pai caso a página tenha carregado após o SET_EMPRESA inicial
 try {
   if (window.parent && window.parent !== window){
