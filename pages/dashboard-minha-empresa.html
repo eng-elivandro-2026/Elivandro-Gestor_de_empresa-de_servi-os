@@ -55,7 +55,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* Cards de métrica */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.9rem;margin-bottom:1.6rem}
-.card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.9rem 1rem}
+.card{background:var(--emp-bg);border:1px solid var(--emp-bdr);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.9rem 1rem}
 .card-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
 .card-valor{font-size:1.7rem;font-weight:800;color:var(--emp-cor);line-height:1.1}
 .card-sub{font-size:.7rem;color:var(--text3);margin-top:.25rem}
@@ -127,7 +127,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="hdr-mk" id="hdr-mk">—</div>
       <div>
         <div class="hdr-nome" id="hdr-nome">—</div>
-        <div class="hdr-sub">Minha Empresa</div>
+        <div class="hdr-sub" id="hdr-sub">Minha Empresa</div>
       </div>
     </div>
   </div>
@@ -248,6 +248,15 @@ function _atualizarHeader(emp){
   document.getElementById('hdr-nome').textContent = nome;
   var mk = document.getElementById('hdr-mk');
   mk.textContent = (nome && nome !== '—') ? nome.trim().charAt(0).toUpperCase() : '—';
+
+  // Subtítulo: slogan/descrição vindo do portal; senão texto fixo por empresa
+  var sub = (emp && emp.slogan && emp.slogan.trim()) ? emp.slogan.trim() : '';
+  if (!sub){
+    var n = (emp && (emp.nome_curto || emp.nome) || '').toLowerCase();
+    if (n.includes('tecfusion')) sub = 'Soluções Elétricas Industriais';
+    else sub = 'Minha Empresa';
+  }
+  document.getElementById('hdr-sub').textContent = sub;
 }
 
 // ── Boot / troca de empresa ───────────────────────────────────
@@ -255,7 +264,8 @@ function _onTrocaEmpresa(dados){
   _empresaAtiva = {
     id:         dados.empresaId,
     nome:       dados.empresaNome      || '',
-    nome_curto: dados.empresaNomeCurto || ''
+    nome_curto: dados.empresaNomeCurto || '',
+    slogan:     dados.empresaSlogan    || dados.empresaDescricao || ''
   };
   _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
   _atualizarHeader(_empresaAtiva);
