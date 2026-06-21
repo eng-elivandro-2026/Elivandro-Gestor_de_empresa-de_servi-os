@@ -64,6 +64,16 @@
       ]
     },
     {
+      id: 'gestao-a-vista',
+      label: 'Gestão à Vista',
+      icon: '📊',
+      tipo: 'iframe',
+      src: 'pages/gestao-a-vista.html',
+      nav: [
+        { label: 'Metas', icon: '🎯', action: "Router.ir('gestao-a-vista')" },
+      ]
+    },
+    {
       id: 'operacional',
       label: 'Operacional',
       icon: 'OP',
