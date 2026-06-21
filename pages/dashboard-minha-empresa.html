@@ -246,7 +246,7 @@ function _aplicarTema(nomeCurto){
 function _iniciais(nome){
   var n = (nome || '').toLowerCase();
   if (n.includes('tecfusion')) return 'TC';
-  if (n.includes('fortex')) return 'FT';
+  if (n.includes('fortex')) return 'FX';
   var partes = (nome || '').trim().split(/\s+/).filter(Boolean);
   if (partes.length >= 2) return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
   return ((nome || '—').trim().slice(0, 2).toUpperCase()) || '—';

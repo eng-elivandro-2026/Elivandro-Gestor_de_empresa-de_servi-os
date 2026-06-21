@@ -204,10 +204,10 @@
     // Cor diferente por empresa
     if (logoMk) {
       if (empresa.nome_curto === 'Tecfusion') {
-        logoMk.style.background = '#f0a500'; // amarelo
+        logoMk.style.background = '#4DB748'; // verde
         logoMk.textContent = 'TC';
       } else if (empresa.nome_curto === 'Fortex') {
-        logoMk.style.background = '#F05A1A'; // laranja
+        logoMk.style.background = '#F5A623'; // laranja
         logoMk.textContent = 'FX';
       } else {
         logoMk.textContent = empresa.nome_curto.slice(0, 2).toUpperCase();
