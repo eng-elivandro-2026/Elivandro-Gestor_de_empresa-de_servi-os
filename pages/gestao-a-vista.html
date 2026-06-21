@@ -77,16 +77,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .valbox{display:flex;align-items:baseline;gap:.5rem;margin:.6rem 0;font-size:.9rem;flex-wrap:wrap}
 .valbox b{font-size:1.5rem;color:var(--emp-cor)}
 
-/* 5W2H Kanban */
-.w5-kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.7rem;margin-top:.4rem}
-.w5-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.w5-head{display:flex;align-items:center;gap:.5rem;padding:.6rem .7rem;background:var(--emp-bg);border-bottom:1px solid var(--border)}
-.w5-num{width:24px;height:24px;border-radius:50%;background:var(--emp-cor);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0}
-.w5-tit{font-weight:700;font-size:.85rem;flex:1}
-.w5-body{padding:.6rem .7rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.w5-f .w5-k{font-size:.6rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.w5-f .w5-v{font-size:.8rem;line-height:1.45;white-space:pre-wrap}
-.w5-f.full{grid-column:1/-1}
+/* 5W2H — colunas lado a lado (estilo PDF) */
+.w5-cols{display:flex;gap:.7rem;overflow-x:auto;padding-bottom:.4rem;margin-top:.4rem}
+.w5-col{flex:0 0 230px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.w5-col-h{padding:.6rem .7rem;border-bottom:1px solid var(--border);text-align:center}
+.w5-col-num{font-size:1.7rem;font-weight:900;color:var(--emp-cor);line-height:1}
+.w5-col-tit{font-size:.76rem;font-weight:800;text-transform:uppercase;margin-top:.25rem;min-height:2.2em;line-height:1.2}
+.w5-col-body{padding:.6rem .7rem;display:flex;flex-direction:column;gap:.55rem;flex:1}
+.w5-badge{display:inline-block;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#fff;border-radius:4px;padding:.13rem .45rem;margin-bottom:.22rem}
+.w5-fld-v{font-size:.8rem;line-height:1.45;white-space:pre-wrap;color:var(--text);min-height:1.1em}
+.w5-col-actions{padding:.4rem .7rem;border-top:1px solid var(--border);display:flex;gap:.3rem;justify-content:flex-end}
 
 /* PDCA 2x2 colorido — sentido horário: P(TL) D(TR) C(BR) A(BL) */
 .pdca-banner{background:#4DB748;color:#fff;border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.8rem;font-weight:700;font-size:.9rem}
@@ -132,10 +132,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .modal-acoes{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
 .estado{padding:2.2rem;text-align:center;color:var(--text3);font-size:.9rem}
 .vazio{color:var(--text3);font-style:italic;font-size:.86rem;padding:1rem 0}
+
+/* Impressão */
+#print-cab,#print-rod{display:none}
+@media print{
+  @page{ size:A4 portrait; margin:14mm 12mm }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
+  body{ background:#fff }
+  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg{ display:none !important }
+  .cols{ display:block !important }
+  .det{ border:none !important; padding:0 !important; min-height:0 !important }
+  .w5-cols{ overflow:visible !important; flex-wrap:wrap }
+  .tbl textarea.rad-act{ border:none }
+  #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:8px; margin-bottom:14px }
+  #print-cab .pc-logo{ font-weight:900; font-size:18px; color:#4DB748; letter-spacing:1px }
+  #print-cab .pc-tool{ font-size:13px; font-weight:700; margin-top:2px; color:#111 }
+  #print-cab .pc-meta{ font-size:11px; color:#333; margin-top:5px }
+  #print-rod{ display:block !important; position:fixed; bottom:6mm; left:0; right:0; text-align:center; font-size:10px; color:#666 }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div id="print-cab"></div>
   <div class="hdr">
     <div class="hdr-l">
       <div class="hdr-mk" id="hdr-mk">—</div>
@@ -153,6 +172,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
     <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
   </div>
+  <div id="print-rod"></div>
 </div>
 
 <!-- Modal meta -->
@@ -334,6 +354,7 @@ function renderDetalhe(){
   if(!m){ el.innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>'; return; }
   var abas=[['smart','Meta SMART'],['w5h2','Plano 5W2H'],['pdca','Ciclo PDCA'],['radar','Radar']];
   var html='<div class="abas">'+abas.map(function(a){ return '<button class="aba'+(_aba===a[0]?' on':'')+'" onclick="trocarAba(\''+a[0]+'\')">'+a[1]+'</button>'; }).join('')+'</div>';
+  html+='<div class="det-acoes" style="justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="imprimir()">🖨️ Imprimir PDF</button></div>';
   if(_aba==='smart') html+=_renderSmart(m);
   else if(_aba==='w5h2') html+=_renderW5h2(m);
   else if(_aba==='pdca') html+=_renderPdca(m);
@@ -370,24 +391,34 @@ function _renderSmart(m){
   return h;
 }
 
+var _W5FIELDS=[
+  ['O quê','o_que','#4DB748'],
+  ['Por quê','por_que','#f97316'],
+  ['Quem','quem','#4DB748'],
+  ['Quando','quando','#4DB748'],
+  ['Como','como','#4DB748'],
+  ['Custo','custo','#4DB748']
+];
+function _colAcao(a,i){
+  var num=String((a&&a.ordem)||i+1); if(num.length<2) num='0'+num;
+  var tit=(a&&a.titulo)?esc(String(a.titulo).toUpperCase()):'&nbsp;';
+  var body=_W5FIELDS.map(function(f){
+    var val=a?a[f[1]]:'';
+    return '<div class="w5-fld"><span class="w5-badge" style="background:'+f[2]+'">'+f[0]+'</span><div class="w5-fld-v">'+(val?esc(val):'')+'</div></div>';
+  }).join('');
+  var actions = (a&&_podeEditar())
+    ? '<div class="w5-col-actions"><button class="btn btn-ghost btn-sm" onclick="abrirModalAcao(\''+a.id+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="excluirAcao(\''+a.id+'\')">🗑️</button></div>'
+    : '';
+  return '<div class="w5-col">'+
+    '<div class="w5-col-h"><div class="w5-col-num">'+num+'</div><div class="w5-col-tit">'+tit+'</div></div>'+
+    '<div class="w5-col-body">'+body+'</div>'+actions+
+  '</div>';
+}
 function _renderW5h2(m){
-  var h='';
-  if(!_acoes.length){
-    if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button></div>';
-    return h+'<div class="vazio">Nenhuma ação cadastrada nesta meta.</div>';
-  }
-  var stMap={pendente:['Pendente','var(--text3)'],em_andamento:['Em andamento','var(--blue)'],concluida:['Concluída','var(--green)']};
-  h+='<div class="w5-kanban">'+_acoes.map(function(a,i){
-    var st=stMap[a.status]||stMap.pendente;
-    var f=[['O quê',a.o_que,true],['Por quê',a.por_que,true],['Quem',a.quem,false],['Quando',a.quando,false],['Onde',a.onde,false],['Custo',a.custo,false],['Como',a.como,true]];
-    return '<div class="w5-card">'+
-      '<div class="w5-head"><span class="w5-num">'+(a.ordem||i+1)+'</span><span class="w5-tit">'+esc(a.titulo||'(sem título)')+'</span>'+
-        '<span class="badge" style="background:'+st[1]+'22;color:'+st[1]+'">'+st[0]+'</span>'+
-        (_podeEditar()?'<button class="btn btn-ghost btn-sm" onclick="abrirModalAcao(\''+a.id+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="excluirAcao(\''+a.id+'\')">🗑️</button>':'')+
-      '</div>'+
-      '<div class="w5-body">'+f.map(function(x){ return '<div class="w5-f'+(x[2]?' full':'')+'"><div class="w5-k">'+x[0]+'</div><div class="w5-v">'+(x[1]?esc(x[1]):'—')+'</div></div>'; }).join('')+'</div>'+
-    '</div>';
-  }).join('')+'</div>';
+  var cols;
+  if(_acoes.length){ cols=_acoes.map(_colAcao).join(''); }
+  else { cols=[0,1,2,3].map(function(i){ return _colAcao(null,i); }).join(''); }  // 4 colunas vazias
+  var h='<div class="w5-cols">'+cols+'</div>';
   if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button></div>';
   return h;
 }
@@ -418,12 +449,28 @@ function _renderPdca(m){
   return h;
 }
 
+function _radarHead(){
+  return '<th>Proposta/Cliente</th><th>Data início</th><th>Data fim</th><th>Valor realizado</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>';
+}
+function _radarLegendaEAcao(){
+  var h='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
+  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
+  return h;
+}
 function _renderRadar(m){
-  var h='';
+  // Sem registros: estrutura visível com 7 linhas vazias (Registro 1..7)
   if(!_radar.length){
-    if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
-    return h+'<div class="vazio">Nenhum registro no radar desta meta.</div>';
+    var vazias='';
+    for(var i=1;i<=7;i++){
+      vazias+='<tr><td class="rad-ref">Registro '+i+'</td><td></td><td></td><td></td><td></td><td></td></tr>';
+    }
+    var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+'</tr></thead><tbody>'+
+      vazias+
+      '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>'+
+      '</tbody></table></div>';
+    return hv+_radarLegendaEAcao();
   }
+  var h='';
   var soma=0,cont=0;
   var linhas=_radar.map(function(r){
     if(r.valor_realizado!=null){ soma+=Number(r.valor_realizado); cont++; }
@@ -442,13 +489,11 @@ function _renderRadar(m){
     '</tr>';
   }).join('');
   var media = cont? _fmtNum(soma/cont) : '—';
-  h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
-    '<th>Proposta/Cliente</th><th>Data início</th><th>Data fim</th><th>Valor realizado</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>'+
+  h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+
     '</tr></thead><tbody>'+linhas+
     '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+media+'</td><td>—</td><td>—</td></tr>'+
     '</tbody></table></div>';
-  h+='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
-  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
+  h+=_radarLegendaEAcao();
   return h;
 }
 
@@ -598,6 +643,21 @@ async function salvarAnotacaoRadar(id, val){
 // ── Modais utils ──
 function abrirModal(id){ document.getElementById(id).classList.add('on'); }
 function fecharModal(id){ document.getElementById(id).classList.remove('on'); }
+
+// ── Impressão (PDF via browser) ──
+function imprimir(){
+  var m=_metaSel();
+  var abaNome={smart:'Meta SMART',w5h2:'Plano 5W2H',pdca:'Ciclo PDCA',radar:'Radar'}[_aba]||'';
+  var cab=document.getElementById('print-cab');
+  var rod=document.getElementById('print-rod');
+  if(cab){
+    cab.innerHTML='<div class="pc-logo">TECFUSION</div>'+
+      '<div class="pc-tool">Gestão à Vista — '+esc(abaNome)+'</div>'+
+      (m?'<div class="pc-meta"><b>'+esc(m.titulo)+'</b> · Responsável: '+esc(m.responsavel_nome||'—')+' · Período: '+_dataBR(m.data_inicio)+' a '+_dataBR(m.data_prazo)+'</div>':'');
+  }
+  if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
+  window.print();
+}
 
 // ── postMessage ──
 window.addEventListener('message', function(e){
