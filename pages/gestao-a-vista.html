@@ -65,39 +65,57 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .det-linha{font-size:.8rem;color:var(--text2);margin-bottom:.15rem}
 .det-acoes{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 
-.smart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem;margin-top:.8rem}
-.smart-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--emp-cor);border-radius:var(--r2);padding:.7rem .8rem}
-.smart-k{font-size:.7rem;font-weight:800;color:var(--emp-cor);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
-.smart-v{font-size:.84rem;line-height:1.5;white-space:pre-wrap}
-.valbox{display:flex;align-items:baseline;gap:.5rem;margin:.6rem 0;font-size:.9rem}
+/* SMART Kanban (5 colunas) */
+.smart-kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-top:.8rem}
+@media(max-width:880px){ .smart-kanban{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:520px){ .smart-kanban{grid-template-columns:1fr} }
+.sk-col{display:flex;flex-direction:column;gap:.5rem}
+.sk-head{border-radius:var(--r2);padding:.5rem .6rem;color:#fff;text-align:center}
+.sk-letter{font-size:1.5rem;font-weight:900;line-height:1}
+.sk-name{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-top:.18rem;opacity:.95}
+.sk-card{background:var(--bg3);border:1px solid var(--border);border-top:3px solid var(--sk-c,var(--emp-cor));border-radius:var(--r2);padding:.6rem .7rem;font-size:.82rem;line-height:1.5;white-space:pre-wrap;flex:1}
+.valbox{display:flex;align-items:baseline;gap:.5rem;margin:.6rem 0;font-size:.9rem;flex-wrap:wrap}
 .valbox b{font-size:1.5rem;color:var(--emp-cor)}
 
-/* 5W2H */
-.acao{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem .8rem;margin-bottom:.7rem}
-.acao-top{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
-.acao-num{width:24px;height:24px;border-radius:50%;background:var(--emp-cor);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0}
-.acao-tit{font-weight:700;font-size:.86rem;flex:1}
-.w5h2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem}
-.w-item .w-k{font-size:.62rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.w-item .w-v{font-size:.8rem;line-height:1.45;white-space:pre-wrap}
+/* 5W2H Kanban */
+.w5-kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.7rem;margin-top:.4rem}
+.w5-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.w5-head{display:flex;align-items:center;gap:.5rem;padding:.6rem .7rem;background:var(--emp-bg);border-bottom:1px solid var(--border)}
+.w5-num{width:24px;height:24px;border-radius:50%;background:var(--emp-cor);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0}
+.w5-tit{font-weight:700;font-size:.85rem;flex:1}
+.w5-body{padding:.6rem .7rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.w5-f .w5-k{font-size:.6rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.w5-f .w5-v{font-size:.8rem;line-height:1.45;white-space:pre-wrap}
+.w5-f.full{grid-column:1/-1}
 
-/* PDCA */
+/* PDCA 2x2 colorido — sentido horário: P(TL) D(TR) C(BR) A(BL) */
+.pdca-banner{background:#4DB748;color:#fff;border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.8rem;font-weight:700;font-size:.9rem}
 .pdca{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 @media(max-width:680px){ .pdca{grid-template-columns:1fr} }
-.quad{border:1px solid var(--border);border-radius:var(--r);padding:.8rem .9rem}
-.quad-h{font-size:.9rem;font-weight:800;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
-.quad-p{background:var(--emp-bg);border-color:var(--emp-bdr)}
-.quad-p .quad-h{color:var(--emp-cor)}
-.pdca-fld{margin-bottom:.6rem}
-.pdca-fld label{font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.25rem}
-.pdca-fld textarea,.pdca-ro{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.82rem;line-height:1.5;padding:.5rem .6rem;resize:vertical;min-height:64px}
-.pdca-ro{min-height:auto;white-space:pre-wrap}
+.quad{border-radius:var(--r);padding:.9rem 1rem;color:#fff}
+.quad-h{display:flex;align-items:baseline;gap:.5rem}
+.quad-letter{font-size:1.7rem;font-weight:900;line-height:1}
+.quad-name{font-size:1rem;font-weight:800}
+.quad-sub{font-size:.7rem;opacity:.9;margin:.05rem 0 .6rem}
+.quad-q-p{background:#4DB748}
+.quad-q-d{background:#166534}
+.quad-q-c{background:#2563eb}
+.quad-q-a{background:#f97316}
+.pdca-fld{margin-bottom:.55rem}
+.pdca-fld label{font-size:.66rem;color:#fff;opacity:.9;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.2rem}
+.pdca-fld textarea{width:100%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:var(--r2);color:#fff;font-family:inherit;font-size:.82rem;line-height:1.5;padding:.45rem .55rem;resize:vertical;min-height:58px}
+.pdca-fld textarea::placeholder{color:rgba(255,255,255,.65)}
+.pdca-ro{font-size:.84rem;line-height:1.5;white-space:pre-wrap;color:#fff;opacity:.95}
+.pdca-plan-list{margin:.3rem 0 0 1.1rem;font-size:.82rem;line-height:1.5}
 
 /* Radar */
 .tbl{width:100%;border-collapse:collapse;font-size:.8rem}
-.tbl th{text-align:left;padding:.45rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
-.tbl td{padding:.45rem .5rem;border-bottom:1px solid var(--border)}
-.tbl tr.media td{font-weight:800;border-top:2px solid var(--border)}
+.tbl th{text-align:left;padding:.5rem .55rem;background:#4DB748;color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}
+.tbl td{padding:.45rem .55rem;border:1px solid var(--border);vertical-align:top}
+.tbl td.rad-ref{background:#4DB748;color:#fff;font-weight:700}
+.tbl tr.media td{background:#2563eb;color:#fff;font-weight:800;border-color:rgba(255,255,255,.2)}
+.tbl textarea.rad-act{width:100%;min-width:140px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;line-height:1.4;padding:.35rem .45rem;resize:vertical;min-height:38px}
+.rad-legenda{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.74rem;color:var(--text2);margin-top:.6rem}
 
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:1.5rem 1rem;z-index:1000;overflow-y:auto}
@@ -336,27 +354,41 @@ function _renderSmart(m){
       '<button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button>'+
     '</div>';
   }
-  var smart=[['S — Específico',m.especifico],['M — Mensurável',m.mensuravel],['A — Atingível',m.atingivel],['R — Relevante',m.relevante],['T — Temporal',m.temporal]];
-  h+='<div class="smart-grid">'+smart.map(function(s){ return '<div class="smart-card"><div class="smart-k">'+s[0]+'</div><div class="smart-v">'+(s[1]?esc(s[1]):'<span style="color:var(--text3)">—</span>')+'</div></div>'; }).join('')+'</div>';
+  var cols=[
+    ['S','Específico',m.especifico,'#4DB748'],
+    ['M','Mensurável',m.mensuravel,'#2563eb'],
+    ['A','Atingível',m.atingivel,'#7c3aed'],
+    ['R','Relevante',m.relevante,'#0891b2'],
+    ['T','Temporal',m.temporal,'#d97706']
+  ];
+  h+='<div class="smart-kanban">'+cols.map(function(c){
+    return '<div class="sk-col">'+
+      '<div class="sk-head" style="background:'+c[3]+'"><div class="sk-letter">'+c[0]+'</div><div class="sk-name">'+c[1]+'</div></div>'+
+      '<div class="sk-card" style="--sk-c:'+c[3]+'">'+(c[2]?esc(c[2]):'<span style="color:var(--text3)">—</span>')+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
   return h;
 }
 
 function _renderW5h2(m){
   var h='';
-  if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Nova ação</button></div>';
-  if(!_acoes.length) return h+'<div class="vazio">Nenhuma ação cadastrada nesta meta.</div>';
+  if(!_acoes.length){
+    if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button></div>';
+    return h+'<div class="vazio">Nenhuma ação cadastrada nesta meta.</div>';
+  }
   var stMap={pendente:['Pendente','var(--text3)'],em_andamento:['Em andamento','var(--blue)'],concluida:['Concluída','var(--green)']};
-  h+=_acoes.map(function(a,i){
+  h+='<div class="w5-kanban">'+_acoes.map(function(a,i){
     var st=stMap[a.status]||stMap.pendente;
-    var w=[['O quê',a.o_que],['Por quê',a.por_que],['Quem',a.quem],['Quando',a.quando],['Onde',a.onde],['Como',a.como],['Custo',a.custo]];
-    return '<div class="acao">'+
-      '<div class="acao-top"><span class="acao-num">'+(a.ordem||i+1)+'</span><span class="acao-tit">'+esc(a.titulo||'(sem título)')+'</span>'+
+    var f=[['O quê',a.o_que,true],['Por quê',a.por_que,true],['Quem',a.quem,false],['Quando',a.quando,false],['Onde',a.onde,false],['Custo',a.custo,false],['Como',a.como,true]];
+    return '<div class="w5-card">'+
+      '<div class="w5-head"><span class="w5-num">'+(a.ordem||i+1)+'</span><span class="w5-tit">'+esc(a.titulo||'(sem título)')+'</span>'+
         '<span class="badge" style="background:'+st[1]+'22;color:'+st[1]+'">'+st[0]+'</span>'+
         (_podeEditar()?'<button class="btn btn-ghost btn-sm" onclick="abrirModalAcao(\''+a.id+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="excluirAcao(\''+a.id+'\')">🗑️</button>':'')+
       '</div>'+
-      '<div class="w5h2">'+w.map(function(x){ return '<div class="w-item"><div class="w-k">'+x[0]+'</div><div class="w-v">'+(x[1]?esc(x[1]):'—')+'</div></div>'; }).join('')+'</div>'+
+      '<div class="w5-body">'+f.map(function(x){ return '<div class="w5-f'+(x[2]?' full':'')+'"><div class="w5-k">'+x[0]+'</div><div class="w5-v">'+(x[1]?esc(x[1]):'—')+'</div></div>'; }).join('')+'</div>'+
     '</div>';
-  }).join('');
+  }).join('')+'</div>';
+  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button></div>';
   return h;
 }
 
@@ -364,20 +396,23 @@ function _renderPdca(m){
   var p=_pdca||{};
   var ro=!_podePdca();
   function fld(id,label,val){ return '<div class="pdca-fld"><label>'+label+'</label>'+(ro?'<div class="pdca-ro">'+(val?esc(val):'—')+'</div>':'<textarea id="'+id+'">'+esc(val||'')+'</textarea>')+'</div>'; }
-  var planAcoes = _acoes.length? '<ul style="margin:.3rem 0 0 1rem;font-size:.82rem;line-height:1.5">'+_acoes.map(function(a){return '<li>'+esc(a.titulo||a.o_que||'(ação)')+'</li>';}).join('')+'</ul>' : '<div style="color:var(--text3);font-size:.82rem;margin-top:.3rem">Sem ações cadastradas.</div>';
-  var h='<div class="pdca">'+
-    '<div class="quad quad-p"><div class="quad-h">P — Planejar</div>'+
-      '<div style="font-weight:700;font-size:.85rem">'+esc(m.titulo)+'</div>'+planAcoes+'</div>'+
-    '<div class="quad"><div class="quad-h">D — Executar</div>'+
+  function quad(cls,letter,name,sub,inner){ return '<div class="quad '+cls+'"><div class="quad-h"><span class="quad-letter">'+letter+'</span><span class="quad-name">'+name+'</span></div><div class="quad-sub">'+sub+'</div>'+inner+'</div>'; }
+  var planAcoes = _acoes.length? '<ul class="pdca-plan-list">'+_acoes.map(function(a){return '<li>'+esc(a.titulo||a.o_que||'(ação)')+'</li>';}).join('')+'</ul>' : '<div style="opacity:.85;font-size:.82rem;margin-top:.3rem">Sem ações cadastradas.</div>';
+  var bannerVals = (m.valor_atual!=null||m.valor_meta!=null) ? ' — '+_fmtNum(m.valor_atual)+' → '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'') : '';
+  var h='<div class="pdca-banner">🎯 '+esc(m.titulo)+bannerVals+'</div>';
+  // Ordem do DOM em grid 2 col: TL, TR, BL, BR → P, D, A, C (horário)
+  h+='<div class="pdca">'+
+    quad('quad-q-p','P','Planejar','Meta e plano de ação','<div style="font-weight:700;font-size:.86rem">'+esc(m.titulo)+'</div>'+planAcoes)+
+    quad('quad-q-d','D','Executar','Registro da execução',
       fld('pd-do-certo','O que deu certo',p.do_certo)+
-      fld('pd-do-dif','Dificuldades na execução',p.do_dificuldades)+
-      fld('pd-do-sup','Como superar',p.do_superar)+'</div>'+
-    '<div class="quad"><div class="quad-h">C — Verificar</div>'+
-      fld('pd-check-at','Atingiu a meta? Análise',p.check_atingiu)+
-      fld('pd-check-obs','Observações',p.check_observacoes)+'</div>'+
-    '<div class="quad"><div class="quad-h">A — Agir</div>'+
-      fld('pd-act-cor','O que vou corrigir/ajustar',p.act_corrigir)+
-      fld('pd-act-pad','O que deu certo e vou padronizar',p.act_padronizar)+'</div>'+
+      fld('pd-do-dif','Dificuldades',p.do_dificuldades)+
+      fld('pd-do-sup','Como superar',p.do_superar))+
+    quad('quad-q-a','A','Agir','Correções e padronização',
+      fld('pd-act-cor','O que corrigir',p.act_corrigir)+
+      fld('pd-act-pad','O que padronizar',p.act_padronizar))+
+    quad('quad-q-c','C','Verificar','Resultado vs meta',
+      fld('pd-check-obs','Tempo médio',p.check_observacoes)+
+      fld('pd-check-at','Atingiu a meta?',p.check_atingiu))+
   '</div>';
   if(!ro) h+='<div class="det-acoes" style="margin-top:1rem"><button class="btn btn-emp btn-sm" onclick="salvarPdca()">Salvar PDCA</button></div>';
   return h;
@@ -385,28 +420,35 @@ function _renderPdca(m){
 
 function _renderRadar(m){
   var h='';
-  if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro manual</button></div>';
-  if(!_radar.length) return h+'<div class="vazio">Nenhum registro no radar desta meta.</div>';
+  if(!_radar.length){
+    if(_podeEditar()) h+='<div class="det-acoes"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
+    return h+'<div class="vazio">Nenhum registro no radar desta meta.</div>';
+  }
   var soma=0,cont=0;
   var linhas=_radar.map(function(r){
     if(r.valor_realizado!=null){ soma+=Number(r.valor_realizado); cont++; }
-    var bateu = r.bateu_meta===true?'✅ Sim':(r.bateu_meta===false?'❌ Não':'—');
-    return '<tr>'+
-      '<td>'+esc(r.referencia||'—')+'</td>'+
+    var bateu = r.bateu_meta===true?'🟢 Sim':(r.bateu_meta===false?'🔴 Não':'—');
+    var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
+      (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
+    var actCell = _podeEditar()
+      ? '<textarea class="rad-act" onchange="salvarAnotacaoRadar(\''+r.id+'\',this.value)">'+esc(r.anotacao||'')+'</textarea>'
+      : (r.anotacao?esc(r.anotacao):'—');
+    return '<tr>'+refCell+
       '<td>'+_dataBR(r.data_inicio)+'</td>'+
       '<td>'+_dataBR(r.data_fim)+'</td>'+
       '<td>'+_fmtNum(r.valor_realizado)+'</td>'+
       '<td>'+bateu+'</td>'+
-      '<td>'+esc(r.anotacao||'—')+'</td>'+
-      (_podeEditar()?'<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button> <button class="btn btn-danger btn-sm" onclick="excluirRadar(\''+r.id+'\')">🗑️</button></td>':'')+
+      '<td>'+actCell+'</td>'+
     '</tr>';
   }).join('');
   var media = cont? _fmtNum(soma/cont) : '—';
   h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
-    '<th>Referência</th><th>Início</th><th>Fim</th><th>Valor</th><th>Bateu?</th><th>Anotação</th>'+(_podeEditar()?'<th></th>':'')+
+    '<th>Proposta/Cliente</th><th>Data início</th><th>Data fim</th><th>Valor realizado</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>'+
     '</tr></thead><tbody>'+linhas+
-    '<tr class="media"><td colspan="3">Média (valor realizado)</td><td>'+media+'</td><td></td><td></td>'+(_podeEditar()?'<td></td>':'')+'</tr>'+
+    '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+media+'</td><td>—</td><td>—</td></tr>'+
     '</tbody></table></div>';
+  h+='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
+  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
   return h;
 }
 
@@ -542,6 +584,15 @@ async function excluirRadar(id){
   var sb=_sb(); if(!sb) return;
   try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
   catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
+}
+async function salvarAnotacaoRadar(id, val){
+  if(!_podeEditar()) return;
+  var sb=_sb(); if(!sb) return;
+  try{
+    var r=await sb.from('meta_radar').update({ anotacao: val||null, updated_at:new Date().toISOString() }).eq('id',id);
+    if(r.error) throw r.error;
+    var reg=_radar.find(function(x){return x.id===id;}); if(reg) reg.anotacao=val;
+  }catch(e){ alert('Erro ao salvar anotação: '+(e&&e.message||'')); }
 }
 
 // ── Modais utils ──
