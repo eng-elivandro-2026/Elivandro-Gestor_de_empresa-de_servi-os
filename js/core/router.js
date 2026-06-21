@@ -11,6 +11,16 @@
   // nav (subitens do sidebar), badge (opcional)
   var MODULOS = [
     {
+      id: 'dashboard-minha-empresa',
+      label: 'Minha Empresa',
+      icon: '🏢',
+      tipo: 'iframe',
+      src: 'pages/dashboard-minha-empresa.html',
+      nav: [
+        { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
+      ]
+    },
+    {
       id: 'comercial',
       label: 'Comercial',
       icon: '📊',
@@ -144,16 +154,6 @@
       src: 'pages/dashboard-estrategico.html',
       nav: [
         { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
-      ]
-    },
-    {
-      id: 'dashboard-minha-empresa',
-      label: 'Minha Empresa',
-      icon: '🏢',
-      tipo: 'iframe',
-      src: 'pages/dashboard-minha-empresa.html',
-      nav: [
-        { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
       ]
     },
   ];
