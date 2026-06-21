@@ -146,6 +146,16 @@
         { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
       ]
     },
+    {
+      id: 'dashboard-minha-empresa',
+      label: 'Minha Empresa',
+      icon: '🏢',
+      tipo: 'iframe',
+      src: 'pages/dashboard-minha-empresa.html',
+      nav: [
+        { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
+      ]
+    },
   ];
 
   var _moduloAtivo = null;

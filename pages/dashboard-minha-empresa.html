@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minha Empresa</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--purple:#bc8cff;--orange:#F05A1A;
+  --r:8px;--r2:6px;
+  /* Tema empresa — sobrescrito via JS (SET_EMPRESA) */
+  --emp-cor:#f0a500;--emp-cor-2:#f0a500;
+  --emp-bg:rgba(240,165,0,.10);--emp-bdr:rgba(240,165,0,.28);
+  /* Blocos de valores */
+  --viv-bg:rgba(63,185,80,.10);--viv-bdr:rgba(63,185,80,.32);--viv-cor:#3fb950;
+  --nviv-bg:rgba(248,81,73,.10);--nviv-bdr:rgba(248,81,73,.32);--nviv-cor:#f85149;
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;
+  --red:#dc2626;--orange:#c2410c;
+  --viv-bg:rgba(21,128,61,.10);--viv-bdr:rgba(21,128,61,.30);--viv-cor:#15803d;
+  --nviv-bg:rgba(220,38,38,.10);--nviv-bdr:rgba(220,38,38,.30);--nviv-cor:#dc2626;
+}
+/* Temas de empresa — cores oficiais por empresa */
+body.empresa-tema-tecfusion{
+  --emp-cor:#4DB748;--emp-cor-2:#5fce5a;
+  --emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.empresa-tema-fortex{
+  --emp-cor:#F5A623;--emp-cor-2:#ffbb4d;
+  --emp-bg:rgba(245,166,35,.10);--emp-bdr:rgba(245,166,35,.32);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.wrap{max-width:1100px;margin:0 auto;padding:1.25rem}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.hdr-l{display:flex;align-items:center;gap:.8rem}
+.hdr-mk{width:44px;height:44px;border-radius:10px;background:var(--emp-cor);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1.1rem;flex-shrink:0}
+.hdr-nome{font-size:1.25rem;font-weight:800;line-height:1.15}
+.hdr-sub{font-size:.78rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+/* Cards de métrica */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.9rem;margin-bottom:1.6rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.9rem 1rem}
+.card-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
+.card-valor{font-size:1.7rem;font-weight:800;color:var(--emp-cor);line-height:1.1}
+.card-sub{font-size:.7rem;color:var(--text3);margin-top:.25rem}
+
+/* Seções */
+.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem 1.2rem;margin-bottom:1.2rem}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.7rem}
+.sec-titulo{display:flex;align-items:center;gap:.5rem;font-size:1rem;font-weight:800;color:var(--emp-cor)}
+.sec-icon{font-size:1.1rem}
+.sec-texto{font-size:.92rem;line-height:1.6;color:var(--text);white-space:pre-wrap}
+.sec-vazio{font-size:.9rem;color:var(--text3);font-style:italic}
+
+/* Botões */
+.btn{border:none;border-radius:var(--r2);padding:.4rem .8rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.35rem}
+.btn-emp{background:var(--emp-cor);color:#fff}
+.btn-emp:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+.btn-sm{padding:.28rem .6rem;font-size:.74rem}
+
+/* Editor inline */
+.editor textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.9rem;line-height:1.55;padding:.6rem .7rem;resize:vertical;min-height:120px}
+.editor-acoes{display:flex;gap:.5rem;margin-top:.6rem}
+
+/* Valores — 2 colunas */
+.val-grid{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:1rem}
+.val-lista{display:flex;flex-direction:column;gap:.35rem}
+.val-item{display:flex;align-items:center;gap:.6rem;background:var(--bg3);border:1px solid var(--border);border-left:3px solid transparent;border-radius:var(--r2);padding:.5rem .7rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);transition:border-color .12s,background .12s}
+.val-item:hover{border-color:var(--border2)}
+.val-item.on{border-left-color:var(--emp-cor);background:var(--emp-bg)}
+.val-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--emp-cor);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem}
+.val-nome{font-size:.86rem;font-weight:600}
+.val-det-nome{font-size:1.1rem;font-weight:800;color:var(--emp-cor);margin-bottom:.8rem}
+.bloco{border-radius:var(--r);padding:.8rem .9rem;margin-bottom:.8rem;font-size:.88rem;line-height:1.55}
+.bloco-titulo{font-weight:800;font-size:.82rem;display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
+.bloco-viv{background:var(--viv-bg);border:1px solid var(--viv-bdr)}
+.bloco-viv .bloco-titulo{color:var(--viv-cor)}
+.bloco-nviv{background:var(--nviv-bg);border:1px solid var(--nviv-bdr)}
+.bloco-nviv .bloco-titulo{color:var(--nviv-cor)}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;z-index:1000;overflow-y:auto}
+.modal-bg.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);width:100%;max-width:760px;padding:1.2rem}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.modal-titulo{font-size:1.05rem;font-weight:800;color:var(--emp-cor)}
+.mval{border:1px solid var(--border);border-radius:var(--r2);padding:.8rem;margin-bottom:.8rem}
+.mval-top{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.mval label{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin:.5rem 0 .25rem}
+.mval input,.mval textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.85rem;padding:.45rem .6rem;line-height:1.5}
+.mval textarea{resize:vertical;min-height:80px}
+.mval-rm{margin-left:auto;background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:1rem}
+.mval-rm:hover{color:var(--red)}
+.modal-acoes{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+
+.estado{padding:2rem;text-align:center;color:var(--text3);font-size:.9rem}
+
+@media(max-width:680px){
+  .val-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Cabeçalho dinâmico -->
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="hdr-mk" id="hdr-mk">—</div>
+      <div>
+        <div class="hdr-nome" id="hdr-nome">—</div>
+        <div class="hdr-sub">Minha Empresa</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards de métrica -->
+  <div class="cards" id="cards">
+    <div class="card">
+      <div class="card-label">Propostas enviadas no mês</div>
+      <div class="card-valor" id="mt-propostas">—</div>
+      <div class="card-sub">Criadas no mês corrente</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Obras ativas</div>
+      <div class="card-valor" id="mt-obras">—</div>
+      <div class="card-sub">Em andamento (não entregues)</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Taxa de conversão do mês</div>
+      <div class="card-valor" id="mt-conversao">—</div>
+      <div class="card-sub">Fechadas ÷ enviadas no mês</div>
+    </div>
+  </div>
+
+  <!-- Missão -->
+  <div class="sec">
+    <div class="sec-head">
+      <div class="sec-titulo"><span class="sec-icon">🎯</span> Missão</div>
+      <button class="btn btn-ghost btn-sm" id="btn-edit-missao" style="display:none" onclick="editarIdentidade('missao')">✏️ Editar</button>
+    </div>
+    <div id="box-missao"><div class="sec-vazio">Carregando…</div></div>
+  </div>
+
+  <!-- Visão -->
+  <div class="sec">
+    <div class="sec-head">
+      <div class="sec-titulo"><span class="sec-icon">🔭</span> Visão</div>
+      <button class="btn btn-ghost btn-sm" id="btn-edit-visao" style="display:none" onclick="editarIdentidade('visao')">✏️ Editar</button>
+    </div>
+    <div id="box-visao"><div class="sec-vazio">Carregando…</div></div>
+  </div>
+
+  <!-- Valores -->
+  <div class="sec">
+    <div class="sec-head">
+      <div class="sec-titulo"><span class="sec-icon">💎</span> Valores</div>
+      <button class="btn btn-ghost btn-sm" id="btn-edit-valores" style="display:none" onclick="abrirModalValores()">✏️ Editar valores</button>
+    </div>
+    <div id="box-valores"><div class="sec-vazio">Carregando…</div></div>
+  </div>
+
+</div>
+
+<!-- Modal editar valores -->
+<div class="modal-bg" id="modal-valores">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-titulo">Editar Valores</div>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalValores()">✕</button>
+    </div>
+    <div id="modal-valores-lista"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addValorLinha()">＋ Adicionar valor</button>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharModalValores()">Cancelar</button>
+      <button class="btn btn-emp" id="btn-salvar-valores" onclick="salvarValores()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Minha Empresa — Missão, Visão e Valores por empresa ativa.
+// Página iframe autônoma. Recebe a empresa via postMessage do
+// portal pai (SET_EMPRESA) e usa window.parent.sbClient.
+// ============================================================
+
+var _empresaAtiva = null;   // { id, nome, nome_curto, ... }
+var _identidade   = { missao: '', visao: '' };
+var _valores      = [];     // [{ id, ordem, nome, como_vivemos, como_nao_vivemos }]
+var _valSel       = 0;      // índice do valor selecionado
+
+// Fases consideradas "fechadas/ganhas" (espelho do app-core)
+var _FAS_FECHADO = ['ganho','aprovado','andamento','faturado','recebido','taf','sat',
+  'finalizado','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente',
+  'em_pausa_aguardando_terceiro'];
+
+// ── Utilitários ───────────────────────────────────────────────
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _sbClient(){
+  if (window.parent && window.parent.sbClient) return window.parent.sbClient;
+  return null;
+}
+function _podeEditar(){
+  try {
+    return !!(window.parent && typeof window.parent.podeAcao === 'function'
+      && window.parent.podeAcao('dashboard-minha-empresa', 'editar'));
+  } catch(e){ return false; }
+}
+function _mesCorrenteISO(){
+  var d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0).toISOString();
+}
+
+// ── Tema por empresa ──────────────────────────────────────────
+function _aplicarTema(nomeCurto){
+  document.body.classList.remove('empresa-tema-tecfusion', 'empresa-tema-fortex');
+  var n = (nomeCurto || '').toLowerCase();
+  if (n.includes('tecfusion')) document.body.classList.add('empresa-tema-tecfusion');
+  else if (n.includes('fortex')) document.body.classList.add('empresa-tema-fortex');
+}
+
+// ── Cabeçalho ─────────────────────────────────────────────────
+function _atualizarHeader(emp){
+  var nome = (emp && (emp.nome_curto || emp.nome)) || '—';
+  document.getElementById('hdr-nome').textContent = nome;
+  var mk = document.getElementById('hdr-mk');
+  mk.textContent = (nome && nome !== '—') ? nome.trim().charAt(0).toUpperCase() : '—';
+}
+
+// ── Boot / troca de empresa ───────────────────────────────────
+function _onTrocaEmpresa(dados){
+  _empresaAtiva = {
+    id:         dados.empresaId,
+    nome:       dados.empresaNome      || '',
+    nome_curto: dados.empresaNomeCurto || ''
+  };
+  _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
+  _atualizarHeader(_empresaAtiva);
+  _aplicarGatesEdicao();
+
+  // Limpar estado anterior e recarregar tudo do zero
+  _identidade = { missao: '', visao: '' };
+  _valores = [];
+  _valSel = 0;
+  carregarMetricas(_empresaAtiva.id);
+  carregarIdentidade(_empresaAtiva.id);
+  carregarValores(_empresaAtiva.id);
+}
+
+function _aplicarGatesEdicao(){
+  var show = _podeEditar() ? 'inline-flex' : 'none';
+  document.getElementById('btn-edit-missao').style.display  = show;
+  document.getElementById('btn-edit-visao').style.display   = show;
+  document.getElementById('btn-edit-valores').style.display = show;
+}
+
+// ── Métricas ──────────────────────────────────────────────────
+async function carregarMetricas(empId){
+  var elP = document.getElementById('mt-propostas');
+  var elO = document.getElementById('mt-obras');
+  var elC = document.getElementById('mt-conversao');
+  elP.textContent = '—'; elO.textContent = '—'; elC.textContent = '—';
+  var sb = _sbClient();
+  if (!sb || !empId) return;
+  var mesIni = _mesCorrenteISO();
+
+  // Propostas do mês (enviadas + conversão)
+  try {
+    var rp = await sb.from('propostas')
+      .select('fase, created_at')
+      .eq('empresa_id', empId)
+      .gte('created_at', mesIni);
+    if (!rp.error && Array.isArray(rp.data)) {
+      var enviadas = rp.data.filter(function(x){ return x.fase && x.fase !== 'em_elaboracao'; });
+      var fechadas = enviadas.filter(function(x){ return _FAS_FECHADO.indexOf(x.fase) >= 0; });
+      elP.textContent = String(enviadas.length);
+      elC.textContent = enviadas.length > 0
+        ? Math.round((fechadas.length / enviadas.length) * 100) + '%'
+        : '—';
+    }
+  } catch(e){ /* mantém — */ }
+
+  // Obras ativas
+  try {
+    var ro = await sb.from('obras')
+      .select('id, status_operacional')
+      .eq('empresa_id', empId)
+      .neq('status_operacional', 'entregue_ao_cliente');
+    if (!ro.error && Array.isArray(ro.data)) {
+      elO.textContent = String(ro.data.length);
+    }
+  } catch(e){ /* mantém — */ }
+}
+
+// ── Missão / Visão ────────────────────────────────────────────
+async function carregarIdentidade(empId){
+  var sb = _sbClient();
+  if (!sb || !empId){ _renderIdentidade(); return; }
+  try {
+    var r = await sb.from('empresa_identidade')
+      .select('missao, visao')
+      .eq('empresa_id', empId)
+      .maybeSingle();
+    if (!r.error && r.data){
+      _identidade = { missao: r.data.missao || '', visao: r.data.visao || '' };
+    } else {
+      _identidade = { missao: '', visao: '' };
+    }
+  } catch(e){ _identidade = { missao: '', visao: '' }; }
+  _renderIdentidade();
+}
+
+function _renderIdentidade(){
+  _renderCampoIdentidade('missao', 'box-missao', 'Nenhuma missão cadastrada ainda.');
+  _renderCampoIdentidade('visao',  'box-visao',  'Nenhuma visão cadastrada ainda.');
+}
+
+function _renderCampoIdentidade(campo, boxId, vazioMsg){
+  var box = document.getElementById(boxId);
+  var txt = _identidade[campo] || '';
+  if (txt.trim()){
+    box.innerHTML = '<div class="sec-texto">' + esc(txt) + '</div>';
+  } else {
+    box.innerHTML = '<div class="sec-vazio">' + esc(vazioMsg) + '</div>';
+  }
+}
+
+function editarIdentidade(campo){
+  if (!_podeEditar()) return;
+  var boxId = campo === 'missao' ? 'box-missao' : 'box-visao';
+  var box = document.getElementById(boxId);
+  var atual = _identidade[campo] || '';
+  box.innerHTML =
+    '<div class="editor">' +
+      '<textarea id="ed-' + campo + '">' + esc(atual) + '</textarea>' +
+      '<div class="editor-acoes">' +
+        '<button class="btn btn-emp btn-sm" onclick="salvarIdentidade(\'' + campo + '\')">Salvar</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="cancelarIdentidade(\'' + campo + '\')">Cancelar</button>' +
+      '</div>' +
+    '</div>';
+  var ta = document.getElementById('ed-' + campo);
+  if (ta) ta.focus();
+}
+
+function cancelarIdentidade(campo){
+  _renderIdentidade();
+}
+
+async function salvarIdentidade(campo){
+  if (!_podeEditar() || !_empresaAtiva) return;
+  var sb = _sbClient();
+  if (!sb) return;
+  var ta = document.getElementById('ed-' + campo);
+  if (!ta) return;
+  var novoVal = ta.value;
+  // Preserva o outro campo no upsert
+  var payload = {
+    empresa_id: _empresaAtiva.id,
+    missao: campo === 'missao' ? novoVal : (_identidade.missao || null),
+    visao:  campo === 'visao'  ? novoVal : (_identidade.visao  || null),
+    updated_at: new Date().toISOString()
+  };
+  var btnEd = document.querySelector('#box-' + campo + ' .btn-emp');
+  if (btnEd){ btnEd.textContent = 'Salvando…'; btnEd.disabled = true; }
+  try {
+    var r = await sb.from('empresa_identidade')
+      .upsert(payload, { onConflict: 'empresa_id' });
+    if (r.error){
+      alert('Erro ao salvar: ' + r.error.message);
+      if (btnEd){ btnEd.textContent = 'Salvar'; btnEd.disabled = false; }
+      return;
+    }
+    _identidade[campo] = novoVal;
+    _renderIdentidade();
+  } catch(e){
+    alert('Erro ao salvar.');
+    if (btnEd){ btnEd.textContent = 'Salvar'; btnEd.disabled = false; }
+  }
+}
+
+// ── Valores ───────────────────────────────────────────────────
+async function carregarValores(empId){
+  var sb = _sbClient();
+  if (!sb || !empId){ _valores = []; _renderValores(); return; }
+  try {
+    var r = await sb.from('empresa_valores')
+      .select('id, ordem, nome, como_vivemos, como_nao_vivemos')
+      .eq('empresa_id', empId)
+      .order('ordem', { ascending: true });
+    _valores = (!r.error && Array.isArray(r.data)) ? r.data : [];
+  } catch(e){ _valores = []; }
+  _valSel = 0;
+  _renderValores();
+}
+
+function _renderValores(){
+  var box = document.getElementById('box-valores');
+  if (!_valores.length){
+    box.innerHTML = '<div class="sec-vazio">Nenhum valor cadastrado ainda.</div>';
+    return;
+  }
+  if (_valSel < 0 || _valSel >= _valores.length) _valSel = 0;
+
+  var lista = _valores.map(function(v, i){
+    return '<button class="val-item' + (i === _valSel ? ' on' : '') + '" onclick="selecionarValor(' + i + ')">' +
+      '<span class="val-num">' + (v.ordem || (i + 1)) + '</span>' +
+      '<span class="val-nome">' + esc(v.nome || '') + '</span>' +
+    '</button>';
+  }).join('');
+
+  var v = _valores[_valSel];
+  var det =
+    '<div class="val-det-nome">' + esc(v.nome || '') + '</div>' +
+    '<div class="bloco bloco-viv">' +
+      '<div class="bloco-titulo">✓ Como vivemos</div>' +
+      '<div>' + (v.como_vivemos ? esc(v.como_vivemos) : '<span class="sec-vazio">—</span>') + '</div>' +
+    '</div>' +
+    '<div class="bloco bloco-nviv">' +
+      '<div class="bloco-titulo">✗ Como não vivemos</div>' +
+      '<div>' + (v.como_nao_vivemos ? esc(v.como_nao_vivemos) : '<span class="sec-vazio">—</span>') + '</div>' +
+    '</div>';
+
+  box.innerHTML =
+    '<div class="val-grid">' +
+      '<div class="val-lista">' + lista + '</div>' +
+      '<div class="val-det">' + det + '</div>' +
+    '</div>';
+}
+
+function selecionarValor(i){
+  _valSel = i;
+  _renderValores();
+}
+
+// ── Modal editar valores ──────────────────────────────────────
+function abrirModalValores(){
+  if (!_podeEditar()) return;
+  _renderModalValores(_valores.map(function(v){
+    return { nome: v.nome || '', como_vivemos: v.como_vivemos || '', como_nao_vivemos: v.como_nao_vivemos || '' };
+  }));
+  document.getElementById('modal-valores').classList.add('on');
+}
+
+function fecharModalValores(){
+  document.getElementById('modal-valores').classList.remove('on');
+}
+
+function _coletarModal(){
+  var rows = [];
+  document.querySelectorAll('#modal-valores-lista .mval').forEach(function(el){
+    rows.push({
+      nome:             (el.querySelector('.mv-nome')  || {}).value || '',
+      como_vivemos:     (el.querySelector('.mv-viv')   || {}).value || '',
+      como_nao_vivemos: (el.querySelector('.mv-nviv')  || {}).value || ''
+    });
+  });
+  return rows;
+}
+
+function _renderModalValores(rows){
+  var cont = document.getElementById('modal-valores-lista');
+  cont.innerHTML = rows.map(function(r, i){
+    return '<div class="mval">' +
+      '<div class="mval-top">' +
+        '<span class="val-num">' + (i + 1) + '</span>' +
+        '<input class="mv-nome" placeholder="Nome do valor" value="' + esc(r.nome) + '" style="flex:1">' +
+        '<button class="mval-rm" title="Remover" onclick="removerValorLinha(this)">🗑️</button>' +
+      '</div>' +
+      '<label>Como vivemos</label>' +
+      '<textarea class="mv-viv">' + esc(r.como_vivemos) + '</textarea>' +
+      '<label>Como não vivemos</label>' +
+      '<textarea class="mv-nviv">' + esc(r.como_nao_vivemos) + '</textarea>' +
+    '</div>';
+  }).join('');
+}
+
+function addValorLinha(){
+  var rows = _coletarModal();
+  rows.push({ nome: '', como_vivemos: '', como_nao_vivemos: '' });
+  _renderModalValores(rows);
+}
+
+function removerValorLinha(btn){
+  var rows = _coletarModal();
+  var card = btn.closest('.mval');
+  var idx = Array.prototype.indexOf.call(card.parentNode.children, card);
+  if (idx >= 0) rows.splice(idx, 1);
+  _renderModalValores(rows);
+}
+
+async function salvarValores(){
+  if (!_podeEditar() || !_empresaAtiva) return;
+  var sb = _sbClient();
+  if (!sb) return;
+  var rows = _coletarModal()
+    .filter(function(r){ return (r.nome || '').trim(); })
+    .map(function(r, i){
+      return {
+        empresa_id:       _empresaAtiva.id,
+        ordem:            i + 1,
+        nome:             r.nome.trim(),
+        como_vivemos:     r.como_vivemos || null,
+        como_nao_vivemos: r.como_nao_vivemos || null
+      };
+    });
+
+  var btn = document.getElementById('btn-salvar-valores');
+  btn.textContent = 'Salvando…'; btn.disabled = true;
+  try {
+    var del = await sb.from('empresa_valores').delete().eq('empresa_id', _empresaAtiva.id);
+    if (del.error){ throw del.error; }
+    if (rows.length){
+      var ins = await sb.from('empresa_valores').insert(rows);
+      if (ins.error){ throw ins.error; }
+    }
+    btn.textContent = 'Salvar'; btn.disabled = false;
+    fecharModalValores();
+    await carregarValores(_empresaAtiva.id);
+  } catch(e){
+    alert('Erro ao salvar valores: ' + (e && e.message ? e.message : ''));
+    btn.textContent = 'Salvar'; btn.disabled = false;
+  }
+}
+
+// ── postMessage do portal pai ─────────────────────────────────
+window.addEventListener('message', function(e){
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'SET_EMPRESA'){
+    _onTrocaEmpresa(e.data);
+  }
+  if (e.data.type === 'SET_TEMA'){
+    document.body.classList.toggle('light', e.data.tema === 'light');
+  }
+});
+
+// Pedir empresa ao pai caso a página tenha carregado após o SET_EMPRESA inicial
+try {
+  if (window.parent && window.parent !== window){
+    window.parent.postMessage({ type: 'RH_PEDIR_EMPRESA' }, '*');
+  }
+} catch(e){}
+</script>
+</body>
+</html>
