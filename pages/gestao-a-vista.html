@@ -229,12 +229,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="modal">
     <div class="modal-head"><div class="modal-titulo" id="modal-radar-titulo">Novo registro</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-radar')">✕</button></div>
     <div class="fgrid">
-      <div class="fld full"><label>Referência / Cliente</label><input id="r-referencia"></div>
-      <div class="fld"><label>Data início</label><input id="r-data-inicio" type="date"></div>
-      <div class="fld"><label>Data fim</label><input id="r-data-fim" type="date"></div>
-      <div class="fld"><label>Valor realizado</label><input id="r-valor" type="number" step="any"></div>
-      <div class="fld"><label>Bateu meta?</label><select id="r-bateu"><option value="">—</option><option value="true">Sim</option><option value="false">Não</option></select></div>
-      <div class="fld full"><label>Anotação / Ação</label><textarea id="r-anotacao"></textarea></div>
+      <div class="fld full"><label>Proposta / Cliente</label><input id="r-referencia"></div>
+      <div class="fld"><label>Data visita/contato</label><input id="r-data-inicio" type="date"></div>
+      <div class="fld"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
+      <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
     </div>
     <div class="modal-acoes">
       <button class="btn btn-ghost" onclick="fecharModal('modal-radar')">Cancelar</button>
@@ -396,6 +394,7 @@ var _W5FIELDS=[
   ['Por quê','por_que','#f97316'],
   ['Quem','quem','#4DB748'],
   ['Quando','quando','#4DB748'],
+  ['Onde','onde','#4DB748'],
   ['Como','como','#4DB748'],
   ['Custo','custo','#4DB748']
 ];
@@ -450,7 +449,13 @@ function _renderPdca(m){
 }
 
 function _radarHead(){
-  return '<th>Proposta/Cliente</th><th>Data início</th><th>Data fim</th><th>Valor realizado</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>';
+  return '<th>Proposta/Cliente</th><th>Data visita/contato</th><th>Data envio/entrega</th><th>Dias</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>';
+}
+function _diasEntre(ini,fim){
+  if(!ini||!fim) return null;
+  var a=new Date(ini+'T12:00:00'), b=new Date(fim+'T12:00:00');
+  if(isNaN(a)||isNaN(b)) return null;
+  return Math.round((b-a)/86400000);
 }
 function _radarLegendaEAcao(){
   var h='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
@@ -462,7 +467,7 @@ function _renderRadar(m){
   if(!_radar.length){
     var vazias='';
     for(var i=1;i<=7;i++){
-      vazias+='<tr><td class="rad-ref">Registro '+i+'</td><td></td><td></td><td></td><td></td><td></td></tr>';
+      vazias+='<tr><td class="rad-ref">Registro '+i+'</td><td></td><td></td><td>—</td><td>—</td><td></td></tr>';
     }
     var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+'</tr></thead><tbody>'+
       vazias+
@@ -471,10 +476,14 @@ function _renderRadar(m){
     return hv+_radarLegendaEAcao();
   }
   var h='';
+  var m=_metaSel();
   var soma=0,cont=0;
   var linhas=_radar.map(function(r){
-    if(r.valor_realizado!=null){ soma+=Number(r.valor_realizado); cont++; }
-    var bateu = r.bateu_meta===true?'🟢 Sim':(r.bateu_meta===false?'🔴 Não':'—');
+    var dias=_diasEntre(r.data_inicio,r.data_fim);
+    if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
+    var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : r.bateu_meta;
+    if(dias!=null){ soma+=dias; cont++; }
+    var bateuTxt = bateu===true?'🟢 Sim':(bateu===false?'🔴 Não':'—');
     var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
       (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
     var actCell = _podeEditar()
@@ -483,15 +492,17 @@ function _renderRadar(m){
     return '<tr>'+refCell+
       '<td>'+_dataBR(r.data_inicio)+'</td>'+
       '<td>'+_dataBR(r.data_fim)+'</td>'+
-      '<td>'+_fmtNum(r.valor_realizado)+'</td>'+
-      '<td>'+bateu+'</td>'+
+      '<td>'+(dias==null?'—':dias)+'</td>'+
+      '<td>'+bateuTxt+'</td>'+
       '<td>'+actCell+'</td>'+
     '</tr>';
   }).join('');
-  var media = cont? _fmtNum(soma/cont) : '—';
+  var mediaDias = cont? (soma/cont) : null;
+  var mediaTxt = mediaDias==null?'—':_fmtNum(mediaDias);
+  var mediaBateu = (mediaDias!=null && m && m.valor_meta!=null) ? (mediaDias<=Number(m.valor_meta)?'🟢 Sim':'🔴 Não') : '—';
   h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+
     '</tr></thead><tbody>'+linhas+
-    '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+media+'</td><td>—</td><td>—</td></tr>'+
+    '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+mediaTxt+'</td><td>'+mediaBateu+'</td><td>—</td></tr>'+
     '</tbody></table></div>';
   h+=_radarLegendaEAcao();
   return h;
@@ -600,19 +611,20 @@ function abrirModalRadar(id){
   var r = id? _radar.find(function(x){return x.id===id;}) : null;
   document.getElementById('modal-radar-titulo').textContent = r? 'Editar registro':'Novo registro';
   _sv('r-referencia',r&&r.referencia); _sv('r-data-inicio',r&&r.data_inicio); _sv('r-data-fim',r&&r.data_fim);
-  _sv('r-valor',r&&r.valor_realizado); _sv('r-anotacao',r&&r.anotacao);
-  _sv('r-bateu', r&&r.bateu_meta===true?'true':(r&&r.bateu_meta===false?'false':''));
+  _sv('r-anotacao',r&&r.anotacao);
   abrirModal('modal-radar');
 }
 async function salvarRadar(){
   if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
   var sb=_sb(); if(!sb) return;
-  var bateuRaw=_gv('r-bateu');
+  var ini=_gv('r-data-inicio')||null, fim=_gv('r-data-fim')||null;
+  var dias=_diasEntre(ini,fim);
+  var m=_metaSel();
+  var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : null;
   var payload={
     meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
-    referencia:_gv('r-referencia')||null, data_inicio:_gv('r-data-inicio')||null, data_fim:_gv('r-data-fim')||null,
-    valor_realizado:_numOrNull(_gv('r-valor')),
-    bateu_meta: bateuRaw===''?null:(bateuRaw==='true'),
+    referencia:_gv('r-referencia')||null, data_inicio:ini, data_fim:fim,
+    valor_realizado:dias, bateu_meta:bateu,
     anotacao:_gv('r-anotacao')||null, updated_at:new Date().toISOString()
   };
   var btn=document.getElementById('btn-salvar-radar'); btn.disabled=true; btn.textContent='Salvando…';
