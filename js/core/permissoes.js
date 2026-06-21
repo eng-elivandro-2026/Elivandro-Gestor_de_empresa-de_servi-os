@@ -52,8 +52,8 @@
       ver: ['dono', 'admin']
     },
     'dashboard-minha-empresa': {
-      ver:    ['dono', 'admin', 'gestor', 'financeiro', 'comercial'],
-      editar: ['dono', 'admin']
+      ver:    ['dono'],
+      editar: ['dono']
     },
     rh: {
       ver:    ['dono', 'admin', 'gestor', 'rh'],
