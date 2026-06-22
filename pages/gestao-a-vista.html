@@ -246,6 +246,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld"><label>Valor meta</label><input id="m-valor-meta" type="number" step="any"></div>
       <div class="fld"><label>Unidade</label><input id="m-unidade" placeholder="ex: dias, propostas/mês"></div>
       <div class="fld"><label>Status</label><select id="m-status"><option value="ativa">Ativa</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select></div>
+      <div class="fld full" style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.2rem"><label style="color:var(--emp-cor)">Configuração do Radar</label></div>
+      <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option></select></div>
+      <div class="fld"><label>Sentido da meta</label><select id="m-radar-sentido"><option value="menor">Menor é melhor (reduzir)</option><option value="maior">Maior é melhor (aumentar)</option></select></div>
       <div class="fld full"><label>S — Específico</label><textarea id="m-especifico"></textarea></div>
       <div class="fld full"><label>M — Mensurável</label><textarea id="m-mensuravel"></textarea></div>
       <div class="fld full"><label>A — Atingível</label><textarea id="m-atingivel"></textarea></div>
@@ -286,9 +289,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="modal">
     <div class="modal-head"><div class="modal-titulo" id="modal-radar-titulo">Novo registro</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-radar')">✕</button></div>
     <div class="fgrid">
-      <div class="fld full"><label>Proposta / Cliente</label><input id="r-referencia"></div>
-      <div class="fld"><label>Data visita/contato</label><input id="r-data-inicio" type="date"></div>
-      <div class="fld"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
+      <div class="fld full"><label id="r-referencia-label">Proposta / Cliente</label><input id="r-referencia"></div>
+      <div class="fld" id="r-grp-ini"><label id="r-ini-label">Data do registro</label><input id="r-data-inicio" type="date"></div>
+      <div class="fld" id="r-grp-fim"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
+      <div class="fld" id="r-grp-valor"><label>Valor (R$)</label><input id="r-valor" type="number" step="any"></div>
       <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
     </div>
     <div class="modal-acoes">
@@ -574,19 +578,53 @@ function _onTrocaEmpresa(d){
   document.getElementById('btn-nova-meta').style.display = _podeEditar()? 'inline-flex':'none';
   _metas=[]; _metaSelId=null; _acoes=[]; _pdca=null; _radar=[];
   document.getElementById('detalhe').innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>';
-  carregarMetas();
+  carregarTudo();
   renderKpis();
   renderFechMes();
 }
 
-async function carregarMetas(){
+// Caches em memória (por meta_id) — carga única por empresa
+var _cacheAcoes={}, _cachePdca={}, _cacheRadar={};
+function _porMeta(arr){ var o={}; (arr||[]).forEach(function(x){ (o[x.meta_id]=o[x.meta_id]||[]).push(x); }); return o; }
+
+async function carregarTudo(){
   var sb=_sb(); var el=document.getElementById('lista-metas');
-  if(!sb||!_empresaAtiva){ el.innerHTML='<div class="vazio">Sem conexão.</div>'; return; }
+  _metas=[]; _cacheAcoes={}; _cachePdca={}; _cacheRadar={};
+  if(!sb||!_empresaAtiva){ if(el) el.innerHTML='<div class="vazio">Sem conexão.</div>'; return; }
+  var eid=_empresaAtiva.id;
+  function q(p){ return p.then(function(r){ return (!r.error&&Array.isArray(r.data))?r.data:[]; }).catch(function(){ return []; }); }
   try{
-    var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
-    _metas=(!r.error&&Array.isArray(r.data))?r.data:[];
-  }catch(e){ _metas=[]; }
+    var res=await Promise.all([
+      q(sb.from('metas').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
+      q(sb.from('meta_acoes').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
+      q(sb.from('meta_pdca').select('*').eq('empresa_id',eid)),
+      q(sb.from('meta_radar').select('*').eq('empresa_id',eid).order('created_at',{ascending:true}))
+    ]);
+    _metas=res[0]||[];
+    _cacheAcoes=_porMeta(res[1]);
+    (res[2]||[]).forEach(function(p){ _cachePdca[p.meta_id]=p; });
+    _cacheRadar=_porMeta(res[3]);
+  }catch(e){ /* degrada para vazio */ }
   renderLista();
+}
+
+// Refetch pontual (invalidação) — só a meta/tabela afetada
+async function _recarregarMetas(){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{ var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}); if(!r.error&&Array.isArray(r.data)) _metas=r.data; }catch(e){}
+  renderLista();
+}
+async function _recarregarAcoes(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_acoes').select('*').eq('meta_id',id).order('ordem',{ascending:true}); _cacheAcoes[id]=(!r.error&&r.data)?r.data:[]; }catch(e){ _cacheAcoes[id]=_cacheAcoes[id]||[]; }
+}
+async function _recarregarRadar(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_radar').select('*').eq('meta_id',id).order('created_at',{ascending:true}); _cacheRadar[id]=(!r.error&&r.data)?r.data:[]; }catch(e){ _cacheRadar[id]=_cacheRadar[id]||[]; }
+}
+async function _recarregarPdca(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_pdca').select('*').eq('meta_id',id).maybeSingle(); _cachePdca[id]=(!r.error&&r.data)?r.data:null; }catch(e){}
 }
 
 function renderLista(){
@@ -595,7 +633,7 @@ function renderLista(){
   el.innerHTML=_metas.map(function(m){
     var st=_statusMeta(m); var prog=_progresso(m);
     return '<button class="meta-card'+(m.id===_metaSelId?' on':'')+'" onclick="selecionarMeta(\''+m.id+'\')">'+
-      '<div class="meta-card-tit">'+esc(m.titulo)+'</div>'+
+      '<div class="meta-card-tit">Meta '+_numMeta(m)+' — '+esc(m.titulo)+'</div>'+
       '<div class="prog"><div class="prog-bar" style="width:'+(prog==null?0:prog)+'%"></div></div>'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:.4rem">'+
         '<span class="badge" style="background:'+st.cor+'22;color:'+st.cor+'">'+st.label+'</span>'+
@@ -606,20 +644,32 @@ function renderLista(){
   }).join('');
 }
 
-async function selecionarMeta(id){
+function selecionarMeta(id){
   _metaSelId=id; _aba='smart';
+  // Lê do cache em memória (carga única feita em carregarTudo) — sem rede
+  _acoes=_cacheAcoes[id]||[];
+  _pdca =_cachePdca[id]||null;
+  _radar=_cacheRadar[id]||[];
   renderLista();
-  var sb=_sb();
-  _acoes=[]; _pdca=null; _radar=[];
-  if(sb){
-    try{ var ra=await sb.from('meta_acoes').select('*').eq('meta_id',id).order('ordem',{ascending:true}); _acoes=(!ra.error&&ra.data)?ra.data:[]; }catch(e){}
-    try{ var rp=await sb.from('meta_pdca').select('*').eq('meta_id',id).maybeSingle(); _pdca=(!rp.error&&rp.data)?rp.data:null; }catch(e){}
-    try{ var rr=await sb.from('meta_radar').select('*').eq('meta_id',id).order('created_at',{ascending:true}); _radar=(!rr.error&&rr.data)?rr.data:[]; }catch(e){}
-  }
   renderDetalhe();
 }
 
 function _metaSel(){ return _metas.find(function(m){return m.id===_metaSelId;}) || null; }
+
+// Numeração sequencial (posição em _metas, já ordenado por ordem) → "01","02"...
+function _numMeta(m){
+  var i=_metas.findIndex(function(x){return x.id===m.id;});
+  var n=(i>=0)?(i+1):(Number(m.ordem)||1);
+  return (n<10?'0':'')+n;
+}
+// Config do Radar (compatível com null → dias/menor)
+function _radarTipo(m){ return (m&&m.radar_tipo)||'dias'; }
+function _radarSentido(m){ return (m&&m.radar_sentido)||'menor'; }
+function _bateu(valor, m){
+  if(valor==null || !m || m.valor_meta==null) return null;
+  var alvo=Number(m.valor_meta);
+  return _radarSentido(m)==='maior' ? (Number(valor)>=alvo) : (Number(valor)<=alvo);
+}
 
 function renderDetalhe(){
   var m=_metaSel(); var el=document.getElementById('detalhe');
@@ -637,7 +687,7 @@ function trocarAba(a){ _aba=a; renderDetalhe(); }
 
 function _renderSmart(m){
   var st=_statusMeta(m);
-  var h='<div class="det-titulo">'+esc(m.titulo)+'</div>'+
+  var h='<div class="det-titulo">Meta '+_numMeta(m)+' — '+esc(m.titulo)+'</div>'+
     '<div class="det-linha">'+esc(m.area||'—')+' · Responsável: '+esc(m.responsavel_nome||'—')+'</div>'+
     '<div class="det-linha">Início: '+_dataBR(m.data_inicio)+' · Prazo: '+_dataBR(m.data_prazo)+' · <span class="badge" style="background:'+st.cor+'22;color:'+st.cor+'">'+st.label+'</span></div>'+
     '<div class="valbox"><span>Atual</span><b>'+_fmtNum(m.valor_atual)+'</b><span>→ Meta</span><b>'+_fmtNum(m.valor_meta)+'</b><span>'+esc(m.unidade||'')+'</span></div>';
@@ -722,62 +772,74 @@ function _renderPdca(m){
   return h;
 }
 
-function _radarHead(){
-  return '<th>Proposta/Cliente</th><th>Data visita/contato</th><th>Data envio/entrega</th><th>Dias</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>';
-}
 function _diasEntre(ini,fim){
   if(!ini||!fim) return null;
   var a=new Date(ini+'T12:00:00'), b=new Date(fim+'T12:00:00');
   if(isNaN(a)||isNaN(b)) return null;
   return Math.round((b-a)/86400000);
 }
+function _radarCols(tipo){
+  if(tipo==='contagem') return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
+  if(tipo==='valor')    return ['Referência/Cliente','Data do registro','Valor (R$)','Causa/Ação (ACT)'];
+  return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)'];
+}
+function _radarHead(tipo){ return _radarCols(tipo).map(function(c){return '<th>'+c+'</th>';}).join(''); }
+function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—'); }
 function _radarLegendaEAcao(){
-  var h='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
+  var h='<div class="rad-legenda"><span>🟢 Bateu</span><span>🔴 Não bateu</span><span>🔵 Total/Média do período</span></div>';
   if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
   return h;
 }
 function _renderRadar(m){
-  // Sem registros: estrutura visível com 7 linhas vazias (Registro 1..7)
+  var tipo=_radarTipo(m);
+  // Sem registros: estrutura visível com 7 linhas vazias + rodapé, colunas conforme o tipo
   if(!_radar.length){
+    var midEmpty = tipo==='dias'  ? '<td></td><td></td><td>—</td><td>—</td><td></td>'
+                 : tipo==='valor' ? '<td></td><td>—</td><td></td>'
+                 :                  '<td></td><td></td>';   // contagem
     var vazias='';
-    for(var i=1;i<=7;i++){
-      vazias+='<tr><td class="rad-ref">Registro '+i+'</td><td></td><td></td><td>—</td><td>—</td><td></td></tr>';
-    }
-    var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+'</tr></thead><tbody>'+
-      vazias+
-      '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>'+
-      '</tbody></table></div>';
+    for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
+    var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'
+                  : tipo==='valor' ? '<td>TOTAL</td><td>—</td><td>—</td><td>—</td>'
+                  :                  '<td>TOTAL</td><td>—</td><td>—</td>';
+    var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
+      vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
   }
-  var h='';
-  var m=_metaSel();
-  var soma=0,cont=0;
+  var soma=0, cont=0;
   var linhas=_radar.map(function(r){
-    var dias=_diasEntre(r.data_inicio,r.data_fim);
-    if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
-    var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : r.bateu_meta;
-    if(dias!=null){ soma+=dias; cont++; }
-    var bateuTxt = bateu===true?'🟢 Sim':(bateu===false?'🔴 Não':'—');
     var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
       (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
     var actCell = _podeEditar()
       ? '<textarea class="rad-act" onchange="salvarAnotacaoRadar(\''+r.id+'\',this.value)">'+esc(r.anotacao||'')+'</textarea>'
       : (r.anotacao?esc(r.anotacao):'—');
-    return '<tr>'+refCell+
-      '<td>'+_dataBR(r.data_inicio)+'</td>'+
-      '<td>'+_dataBR(r.data_fim)+'</td>'+
-      '<td>'+(dias==null?'—':dias)+'</td>'+
-      '<td>'+bateuTxt+'</td>'+
-      '<td>'+actCell+'</td>'+
-    '</tr>';
+    if(tipo==='dias'){
+      var dias=_diasEntre(r.data_inicio,r.data_fim);
+      if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
+      if(dias!=null){ soma+=dias; cont++; }
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+_dataBR(r.data_fim)+'</td><td>'+(dias==null?'—':dias)+'</td><td>'+_bateuTxt(_bateu(dias,m))+'</td><td>'+actCell+'</td></tr>';
+    } else if(tipo==='valor'){
+      var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
+      if(v!=null){ soma+=v; cont++; }
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+(v==null?'—':_money(v))+'</td><td>'+actCell+'</td></tr>';
+    } else { // contagem — cada linha vale 1
+      cont++;
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+actCell+'</td></tr>';
+    }
   }).join('');
-  var mediaDias = cont? (soma/cont) : null;
-  var mediaTxt = mediaDias==null?'—':_fmtNum(mediaDias);
-  var mediaBateu = (mediaDias!=null && m && m.valor_meta!=null) ? (mediaDias<=Number(m.valor_meta)?'🟢 Sim':'🔴 Não') : '—';
-  h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+
-    '</tr></thead><tbody>'+linhas+
-    '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+mediaTxt+'</td><td>'+mediaBateu+'</td><td>—</td></tr>'+
-    '</tbody></table></div>';
+  var footRow;
+  if(tipo==='dias'){
+    var media = cont? (soma/cont) : null;
+    footRow='<td>MÉDIA</td><td>—</td><td>—</td><td>'+(media==null?'—':_fmtNum(media))+'</td><td>'+_bateuTxt(_bateu(media,m))+'</td><td>—</td>';
+  } else if(tipo==='valor'){
+    var totalV = cont? soma : null;
+    footRow='<td>TOTAL</td><td>—</td><td>'+(totalV==null?'—':_money(totalV))+'</td><td>'+_bateuTxt(_bateu(totalV,m))+'</td>';
+  } else { // contagem
+    var nLinhas=_radar.length;
+    footRow='<td>TOTAL</td><td><b>'+nLinhas+'</b></td><td>'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
+  }
+  var h='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+
+    '</tr></thead><tbody>'+linhas+'<tr class="media">'+footRow+'</tr></tbody></table></div>';
   h+=_radarLegendaEAcao();
   return h;
 }
@@ -792,6 +854,7 @@ function abrirModalMeta(id){
   _sv('m-data-inicio',m&&m.data_inicio); _sv('m-data-prazo',m&&m.data_prazo);
   _sv('m-valor-atual',m&&m.valor_atual); _sv('m-valor-meta',m&&m.valor_meta); _sv('m-unidade',m&&m.unidade);
   _sv('m-status',(m&&m.status)||'ativa');
+  _sv('m-radar-tipo',(m&&m.radar_tipo)||'dias'); _sv('m-radar-sentido',(m&&m.radar_sentido)||'menor');
   _sv('m-especifico',m&&m.especifico); _sv('m-mensuravel',m&&m.mensuravel); _sv('m-atingivel',m&&m.atingivel); _sv('m-relevante',m&&m.relevante); _sv('m-temporal',m&&m.temporal);
   abrirModal('modal-meta');
 }
@@ -807,6 +870,7 @@ async function salvarMeta(){
     data_inicio:_gv('m-data-inicio')||null, data_prazo:_gv('m-data-prazo')||null,
     valor_atual:_numOrNull(_gv('m-valor-atual')), valor_meta:_numOrNull(_gv('m-valor-meta')),
     unidade:_gv('m-unidade')||null, status:_gv('m-status')||'ativa',
+    radar_tipo:_gv('m-radar-tipo')||'dias', radar_sentido:_gv('m-radar-sentido')||'menor',
     especifico:_gv('m-especifico')||null, mensuravel:_gv('m-mensuravel')||null,
     atingivel:_gv('m-atingivel')||null, relevante:_gv('m-relevante')||null, temporal:_gv('m-temporal')||null,
     updated_at:new Date().toISOString()
@@ -815,8 +879,8 @@ async function salvarMeta(){
   try{
     var r = id ? await sb.from('metas').update(payload).eq('id',id) : await sb.from('metas').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-meta'); await carregarMetas();
-    if(id){ await selecionarMeta(id); }
+    fecharModal('modal-meta'); await _recarregarMetas();
+    if(id){ selecionarMeta(id); }
   }catch(e){ alert('Erro ao salvar meta: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -848,7 +912,7 @@ async function salvarAcao(){
     if(_editAcaoId){ r=await sb.from('meta_acoes').update(payload).eq('id',_editAcaoId); }
     else { payload.ordem=_acoes.length+1; r=await sb.from('meta_acoes').insert(payload); }
     if(r.error) throw r.error;
-    fecharModal('modal-acao'); await selecionarMeta(_metaSelId);
+    fecharModal('modal-acao'); await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId);
   }catch(e){ alert('Erro ao salvar ação: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -856,7 +920,7 @@ async function excluirAcao(id){
   if(!_podeEditar()) return;
   if(!confirm('Excluir esta ação?')) return;
   var sb=_sb(); if(!sb) return;
-  try{ var r=await sb.from('meta_acoes').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  try{ var r=await sb.from('meta_acoes').delete().eq('id',id); if(r.error) throw r.error; await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId); }
   catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
 }
 
@@ -874,38 +938,59 @@ async function salvarPdca(){
   try{
     var r=await sb.from('meta_pdca').upsert(payload,{onConflict:'meta_id'});
     if(r.error) throw r.error;
-    _pdca=payload; alert('PDCA salvo.');
+    _pdca=payload; _cachePdca[_metaSelId]=payload; alert('PDCA salvo.');
   }catch(e){ alert('Erro ao salvar PDCA: '+(e&&e.message||'')); }
 }
 
 // ── Radar ──
+function _setDisp(id,show){ var e=document.getElementById(id); if(e) e.style.display=show?'':'none'; }
 function abrirModalRadar(id){
   if(!_podeEditar()||!_metaSelId) return;
   _editRadarId=id||null;
   var r = id? _radar.find(function(x){return x.id===id;}) : null;
+  var tipo=_radarTipo(_metaSel());
   document.getElementById('modal-radar-titulo').textContent = r? 'Editar registro':'Novo registro';
-  _sv('r-referencia',r&&r.referencia); _sv('r-data-inicio',r&&r.data_inicio); _sv('r-data-fim',r&&r.data_fim);
-  _sv('r-anotacao',r&&r.anotacao);
+  // Mostrar/esconder campos conforme o tipo de medição (data_inicio é sempre exibido)
+  _setDisp('r-grp-ini', true);
+  _setDisp('r-grp-fim', tipo==='dias');
+  _setDisp('r-grp-valor', tipo==='valor');
+  var lblRef=document.getElementById('r-referencia-label');
+  if(lblRef) lblRef.textContent = (tipo==='dias') ? 'Proposta / Cliente' : 'Referência / Cliente';
+  var lblIni=document.getElementById('r-ini-label');
+  if(lblIni) lblIni.textContent = (tipo==='dias') ? 'Data visita/contato' : 'Data do registro';
+  // Popular valores
+  _sv('r-referencia',r&&r.referencia); _sv('r-anotacao',r&&r.anotacao);
+  _sv('r-data-fim',r&&r.data_fim);
+  _sv('r-valor', (r&&tipo==='valor')?r.valor_realizado:'');
+  // data_inicio: registro existente usa o salvo; novo em contagem/valor assume hoje
+  var _hoje=new Date().toISOString().slice(0,10);
+  _sv('r-data-inicio', r ? r.data_inicio : (tipo==='dias' ? '' : _hoje));
   abrirModal('modal-radar');
 }
 async function salvarRadar(){
   if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
   var sb=_sb(); if(!sb) return;
-  var ini=_gv('r-data-inicio')||null, fim=_gv('r-data-fim')||null;
-  var dias=_diasEntre(ini,fim);
-  var m=_metaSel();
-  var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : null;
+  var m=_metaSel(); var tipo=_radarTipo(m);
+  var ini=_gv('r-data-inicio')||null, fim=null, valor=null, bateu=null;
+  if(tipo==='dias'){
+    fim=_gv('r-data-fim')||null;
+    valor=_diasEntre(ini,fim);          // dias calculados
+    bateu=_bateu(valor,m);              // bateu por registro só faz sentido em dias
+  } else if(tipo==='valor'){
+    valor=_numOrNull(_gv('r-valor'));   // valor monetário; data_inicio = data do registro
+  }
+  // contagem: cada linha vale 1 → valor_realizado fica null; agregado é calculado na exibição
   var payload={
     meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
     referencia:_gv('r-referencia')||null, data_inicio:ini, data_fim:fim,
-    valor_realizado:dias, bateu_meta:bateu,
+    valor_realizado:valor, bateu_meta:bateu,
     anotacao:_gv('r-anotacao')||null, updated_at:new Date().toISOString()
   };
   var btn=document.getElementById('btn-salvar-radar'); btn.disabled=true; btn.textContent='Salvando…';
   try{
     var r = _editRadarId ? await sb.from('meta_radar').update(payload).eq('id',_editRadarId) : await sb.from('meta_radar').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-radar'); await selecionarMeta(_metaSelId);
+    fecharModal('modal-radar'); await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId);
   }catch(e){ alert('Erro ao salvar registro: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -913,7 +998,7 @@ async function excluirRadar(id){
   if(!_podeEditar()) return;
   if(!confirm('Excluir este registro?')) return;
   var sb=_sb(); if(!sb) return;
-  try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId); }
   catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
 }
 async function salvarAnotacaoRadar(id, val){
@@ -939,7 +1024,7 @@ function imprimir(){
   if(cab){
     cab.innerHTML='<div class="pc-logo">TECFUSION</div>'+
       '<div class="pc-tool">Gestão à Vista — '+esc(abaNome)+'</div>'+
-      (m?'<div class="pc-meta"><b>'+esc(m.titulo)+'</b> · Responsável: '+esc(m.responsavel_nome||'—')+' · Período: '+_dataBR(m.data_inicio)+' a '+_dataBR(m.data_prazo)+'</div>':'');
+      (m?'<div class="pc-meta"><b>Meta '+_numMeta(m)+' — '+esc(m.titulo)+'</b> · Responsável: '+esc(m.responsavel_nome||'—')+' · Período: '+_dataBR(m.data_inicio)+' a '+_dataBR(m.data_prazo)+'</div>':'');
   }
   if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
   window.print();
