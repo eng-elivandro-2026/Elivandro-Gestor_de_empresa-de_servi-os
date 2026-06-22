@@ -311,6 +311,9 @@ function _noMes(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,
 function _noAno(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; return d.getFullYear()===(new Date()).getFullYear(); }
 function _media(arr){ if(!arr.length) return null; return arr.reduce(function(s,v){return s+v;},0)/arr.length; }
 function _kpiCard(label,valor,sub){ return '<div class="kpi-c"><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
+// Reuso das funções globais do shell (Metas 2026) para bater 100% com aquele painel
+function _pFn(name){ try{ return (window.parent && typeof window.parent[name]==='function') ? window.parent[name] : null; }catch(e){ return null; } }
+function _ppGanha(p){ try{ return !!(window.parent && typeof window.parent.isPropostaGanhaOuAprovada==='function' && window.parent.isPropostaGanhaOuAprovada(p)); }catch(e){ return _FAS_GANHA.indexOf(p.fas)>=0; } }
 
 function toggleKpis(){
   _kpisAberto=!_kpisAberto;
@@ -328,19 +331,24 @@ function renderKpis(){
 function _renderKpisComercial(){
   var el=document.getElementById('kpis-com'); if(!el) return;
   var ps=_props();
+  // Contagens do mês (simples) — usa critério oficial de "ganha" (inclui em_pausa_*)
   var enviadasMes=ps.filter(function(p){ return p.fas!=='em_elaboracao' && _noMes(p.dat2); });
-  var ganhasMes  =ps.filter(function(p){ return _FAS_GANHA.indexOf(p.fas)>=0 && _noMes(p.dtFech); });
-  var conv = enviadasMes.length>0 ? (ganhasMes.length/enviadasMes.length*100) : null;
+  var fechMes    =ps.filter(function(p){ return _ppGanha(p) && _noMes(p.dtFech); });
   var carteira=ps.filter(function(p){ return _FAS_PIPE.indexOf(p.fas)>=0; }).reduce(function(s,p){ return s+(Number(p.val)||0); },0);
-  var ganhasAno=ps.filter(function(p){ return _FAS_GANHA.indexOf(p.fas)>=0 && _noAno(p.dtFech); });
-  var somaAno=ganhasAno.reduce(function(s,p){ return s+(Number(p.val)||0); },0);
-  var ticket = ganhasAno.length>0 ? (somaAno/ganhasAno.length) : null;
+  // Ano: reusa as funções do shell p/ bater exatamente com o Metas 2026
+  var getProps=_pFn('getPropsAnoC'), getFech=_pFn('getFechAnoC'), getRec=_pFn('getRecAnoC');
+  var totalAno = getProps ? (getProps()||[]).length : null;
+  var fechAno  = getFech  ? (getFech()||[]).length  : null;
+  var recAno   = getRec   ? getRec()                : null;
+  var conv   = (totalAno!=null && totalAno>0 && fechAno!=null) ? (fechAno/totalAno*100) : null;
+  var ticket = (recAno!=null && fechAno!=null && fechAno>0)    ? (recAno/fechAno)       : null;
   el.innerHTML=
     _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Criadas no mês (excl. elaboração)')+
-    _kpiCard('Propostas ganhas no mês', String(ganhasMes.length), 'Fechadas no mês (por dtFech)')+
-    _kpiCard('Taxa de conversão do mês', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ enviadas')+
+    _kpiCard('Fechamentos no mês', String(fechMes.length), 'Ganhas por data de fechamento')+
+    _kpiCard('Taxa de conversão do ano', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ realizadas (ano)')+
+    _kpiCard('Receita no ano', recAno==null?'—':_money(recAno), 'Valor das ganhas (ano)')+
     _kpiCard('Carteira aberta', _money(carteira), 'Pipeline em aberto')+
-    _kpiCard('Ticket médio do ano', ticket==null?'—':_money(ticket), 'Ganhas no ano (por dtFech)');
+    _kpiCard('Ticket médio do ano', ticket==null?'—':_money(ticket), 'Receita ÷ fechamentos (ano)');
 }
 
 function _renderKpisVelocidade(){
@@ -350,7 +358,7 @@ function _renderKpisVelocidade(){
   ps.forEach(function(p){
     var tl=p.tl||{};
     var dEl=_diasEntre(tl.dtVisita||p.dat2, tl.dtEnvio); if(dEl!=null && tl.dtEnvio && (tl.dtVisita||p.dat2)) elab.push(dEl);
-    if(_FAS_GANHA.indexOf(p.fas)>=0){
+    if(_ppGanha(p)){
       var dG=_diasEntre(p.dtFech, tl.dtInicioExec); if(dG!=null && p.dtFech && tl.dtInicioExec) gap.push(dG);
       var dC=_diasEntre(p.dat2, p.dtFech); if(dC!=null && p.dat2 && p.dtFech) ciclo.push(dC);
     }
