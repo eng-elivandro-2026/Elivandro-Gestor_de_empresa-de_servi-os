@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reunião de Radar</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;--red:#f85149;
+  --r:8px;--r2:6px;
+  --emp-cor:#f0a500;--emp-bg:rgba(240,165,0,.10);--emp-bdr:rgba(240,165,0,.28);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;--border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;--accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;
+}
+body.empresa-tema-tecfusion{ --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32); }
+body.empresa-tema-fortex{ --emp-cor:#F5A623;--emp-bg:rgba(245,166,35,.10);--emp-bdr:rgba(245,166,35,.32); }
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+.hdr{display:flex;align-items:center;gap:.7rem;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-mk{width:40px;height:40px;border-radius:10px;background:var(--emp-cor);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1rem;flex-shrink:0}
+.hdr-nome{font-size:1.15rem;font-weight:800;line-height:1.1}
+.hdr-sub{font-size:.72rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.abas{display:flex;gap:.3rem;border-bottom:1px solid var(--border);margin-bottom:1rem;flex-wrap:wrap}
+.aba{padding:.5rem .9rem;border:none;background:transparent;color:var(--text3);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent}
+.aba.on{color:var(--emp-cor);border-bottom-color:var(--emp-cor)}
+.btn{border:none;border-radius:var(--r2);padding:.45rem .85rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.35rem}
+.btn-emp{background:var(--emp-cor);color:#fff}.btn-emp:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+.btn-sm{padding:.3rem .6rem;font-size:.74rem}
+.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;margin-bottom:1rem}
+.sec-t{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--emp-cor);margin-bottom:.6rem}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem}
+.fld label{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.22rem}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.85rem;padding:.45rem .6rem;line-height:1.5}
+.fld textarea{resize:vertical;min-height:70px}
+.full{grid-column:1/-1}
+/* Cronômetro */
+.cron{position:sticky;top:0;z-index:50;background:var(--bg2);border:1px solid var(--emp-bdr);border-radius:var(--r);padding:.7rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.cron-disp{font-size:2.2rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;min-width:130px;text-align:center}
+.cron-ctrl{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.cron-ctrl input,.cron-ctrl select{background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;padding:.35rem .5rem}
+.cron-ctrl input{width:64px}
+/* Indicadores */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem}
+.tbl th{text-align:left;padding:.5rem .55rem;background:var(--emp-cor);color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;border:1px solid rgba(255,255,255,.2)}
+.tbl td{padding:.45rem .55rem;border:1px solid var(--border);vertical-align:top}
+.tbl td.ind-nome{font-weight:700}
+.tbl textarea{width:100%;min-width:160px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;padding:.35rem .45rem;resize:vertical;min-height:38px;line-height:1.4}
+.badge{display:inline-block;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:.12rem .45rem;border-radius:20px}
+.bg-ok{background:rgba(63,185,80,.16);color:var(--green)}
+.bg-fora{background:rgba(248,81,73,.16);color:var(--red)}
+/* Como funciona */
+.cf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.8rem}
+.cf-card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.9rem 1rem}
+.cf-card h3{font-size:.92rem;font-weight:800;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.cf-card p,.cf-card li{font-size:.83rem;line-height:1.55;color:var(--text2)}
+.cf-card ul{margin:.3rem 0 0 1.1rem}
+/* Histórico */
+.hist-item{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.6rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.hist-item:hover{border-color:var(--border2)}
+.hist-d{font-weight:800;font-size:.95rem}
+.hist-sub{font-size:.74rem;color:var(--text3)}
+.acoes{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.4rem}
+.vazio{color:var(--text3);font-style:italic;font-size:.86rem;padding:1rem 0}
+.ro-txt{white-space:pre-wrap;font-size:.85rem;line-height:1.55}
+
+/* Impressão (paisagem) */
+#print-cab,#print-rod{display:none}
+@media print{
+  @page{ size:A4 landscape; margin:10mm }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
+  html,body{ background:#fff !important; color:#111 !important; height:auto !important }
+  .hdr,.abas,.btn,.cron,.no-print,#aba-como,#aba-hist .hist-item,#aba-hist .acoes{ display:none !important }
+  .sec{ border:1px solid #ccc !important; background:#fff !important; page-break-inside:avoid }
+  .sec-t{ color:#111 !important }
+  .fld input,.fld select,.fld textarea,.tbl textarea{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important }
+  .tbl th{ background:#4DB748 !important; color:#fff !important; border:1px solid #cfcfcf !important }
+  .tbl td{ border:1px solid #cfcfcf !important; color:#111 !important }
+  #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:6px; margin-bottom:10px }
+  #print-cab .pc-logo{ font-weight:900; font-size:16px; color:#4DB748; letter-spacing:1px }
+  #print-cab .pc-tool{ font-size:12px; font-weight:700; color:#111; margin-top:2px }
+  #print-rod{ display:block !important; margin-top:10px; text-align:center; font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:4px }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="print-cab"></div>
+  <div class="hdr">
+    <div class="hdr-mk" id="hdr-mk">—</div>
+    <div><div class="hdr-nome" id="hdr-nome">—</div><div class="hdr-sub">Reunião de Radar</div></div>
+  </div>
+
+  <div class="abas">
+    <button class="aba on" id="t-como" onclick="trocarAba('como')">Como funciona</button>
+    <button class="aba" id="t-ata" onclick="trocarAba('ata')">Ata atual</button>
+    <button class="aba" id="t-hist" onclick="trocarAba('hist')">Histórico</button>
+  </div>
+
+  <!-- ABA 1 -->
+  <div id="aba-como"></div>
+
+  <!-- ABA 2 -->
+  <div id="aba-ata" style="display:none">
+    <div class="cron no-print">
+      <div class="cron-disp" id="cr-display">15:00</div>
+      <div class="cron-ctrl">
+        <button class="btn btn-emp btn-sm" id="cr-play" onclick="crToggle()">▶ Iniciar</button>
+        <button class="btn btn-ghost btn-sm" onclick="crZerar()">⟲ Zerar</button>
+        <label style="font-size:.7rem;color:var(--text3)">Min <input type="number" id="cr-min" value="15" min="0" onchange="crRender()"></label>
+        <select id="cr-modo" onchange="crZerar()">
+          <option value="reg">Regressivo</option>
+          <option value="prog">Progressivo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">Cabeçalho da ata</div>
+      <div class="fgrid">
+        <div class="fld"><label>Data</label><input type="date" id="a-data"></div>
+        <div class="fld"><label>Anfitrião</label><input id="a-anfitriao"></div>
+        <div class="fld"><label>Status</label><select id="a-status"><option value="aberta">Aberta</option><option value="concluida">Concluída</option></select></div>
+        <div class="fld full"><label>Participantes</label><input id="a-participantes"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">Indicadores da semana</div>
+      <div id="ata-indicadores"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">Novidades da semana</div>
+      <div class="fld"><textarea id="a-novidades"></textarea></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Onde estamos presos (restrições)</div>
+      <div class="fld"><textarea id="a-restricoes"></textarea></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Conclusão — principais pontos e próximos passos</div>
+      <div class="fld"><textarea id="a-conclusao"></textarea></div>
+    </div>
+
+    <div class="acoes no-print">
+      <button class="btn btn-ghost" onclick="imprimirAta()">🖨️ Imprimir PDF</button>
+      <button class="btn btn-emp" id="btn-salvar-ata" onclick="salvarAta()" style="display:none">Salvar ata</button>
+    </div>
+  </div>
+
+  <!-- ABA 3 -->
+  <div id="aba-hist" style="display:none">
+    <div class="sec no-print" id="hist-busca-wrap">
+      <div class="fld"><label>Buscar (data, anfitrião ou texto)</label><input id="hist-busca" oninput="renderHistorico()" placeholder="Ex: 2026-06, João, conclusão…"></div>
+    </div>
+    <div id="hist-lista"></div>
+    <div id="hist-detalhe"></div>
+  </div>
+
+  <div id="print-rod"></div>
+</div>
+
+<script>
+// ============================================================
+// Reunião de Radar — ata semanal por empresa + indicadores (snapshot).
+// Página iframe: empresa via postMessage; dados via window.parent.sbClient.
+// ============================================================
+var _empresaAtiva=null;
+var _metas=[];        // metas ativas (para montar a ata atual)
+var _indForm=[];      // indicadores da ata em edição (snapshot em construção)
+var _ataId=null;      // id da reunião em edição (null = nova)
+var _reunioes=[];     // histórico
+var _indByReuniao={}; // indicadores agrupados por reuniao_id
+var _aba='como';
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function _sb(){ try{ return (window.parent&&window.parent.sbClient)?window.parent.sbClient:null; }catch(e){ return null; } }
+function _podeEditar(){ try{ return !!(window.parent&&typeof window.parent.podeAcao==='function'&&window.parent.podeAcao('reuniao-radar','editar')); }catch(e){ return false; } }
+function _gv(id){ var e=document.getElementById(id); return e? e.value : ''; }
+function _sv(id,v){ var e=document.getElementById(id); if(e) e.value=(v==null?'':v); }
+function _dataBR(d){ if(!d) return '—'; try{ return new Date(String(d).slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
+function _hoje(){ return new Date().toISOString().slice(0,10); }
+function _aplicarTema(nc){ document.body.classList.remove('empresa-tema-tecfusion','empresa-tema-fortex'); var n=(nc||'').toLowerCase(); if(n.includes('tecfusion')) document.body.classList.add('empresa-tema-tecfusion'); else if(n.includes('fortex')) document.body.classList.add('empresa-tema-fortex'); }
+function _iniciais(nome){ var n=(nome||'').toLowerCase(); if(n.includes('tecfusion'))return 'TC'; if(n.includes('fortex'))return 'FX'; var p=(nome||'').trim().split(/\s+/).filter(Boolean); if(p.length>=2)return (p[0][0]+p[1][0]).toUpperCase(); return ((nome||'—').trim().slice(0,2).toUpperCase())||'—'; }
+
+// status do indicador conforme o sentido da meta
+function _statusInd(atual, meta, sentido){
+  if(atual==null||meta==null||atual===''||meta==='') return null;
+  var a=Number(atual), m=Number(meta);
+  if(isNaN(a)||isNaN(m)) return null;
+  var ok=(sentido==='maior')?(a>=m):(a<=m);
+  if(ok) return 'na_meta';
+  return a<m ? 'abaixo' : 'acima';
+}
+function _statusBadge(st){
+  if(st==='na_meta') return '<span class="badge bg-ok">Na meta</span>';
+  if(st==='abaixo')  return '<span class="badge bg-fora">Abaixo</span>';
+  if(st==='acima')   return '<span class="badge bg-fora">Acima</span>';
+  return '<span class="badge" style="background:var(--bg3);color:var(--text3)">—</span>';
+}
+
+// ── Boot ──
+function _onTrocaEmpresa(d){
+  _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
+  _aplicarTema(_empresaAtiva.nome_curto||_empresaAtiva.nome);
+  var nome=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
+  document.getElementById('hdr-nome').textContent=nome;
+  document.getElementById('hdr-mk').textContent=_iniciais(nome);
+  _metas=[]; _indForm=[]; _ataId=null; _reunioes=[]; _indByReuniao={};
+  _renderComoFunciona();
+  novaAta();          // prepara ata atual em branco (puxa metas)
+  carregarHistorico();
+}
+
+function trocarAba(a){
+  _aba=a;
+  document.getElementById('aba-como').style.display = a==='como'?'':'none';
+  document.getElementById('aba-ata').style.display  = a==='ata'?'':'none';
+  document.getElementById('aba-hist').style.display = a==='hist'?'':'none';
+  document.getElementById('t-como').className='aba'+(a==='como'?' on':'');
+  document.getElementById('t-ata').className ='aba'+(a==='ata'?' on':'');
+  document.getElementById('t-hist').className='aba'+(a==='hist'?' on':'');
+  if(a==='hist'){ document.getElementById('hist-detalhe').innerHTML=''; document.getElementById('hist-lista').style.display=''; document.getElementById('hist-busca-wrap').style.display=''; renderHistorico(); }
+}
+
+// ── ABA 1: Como funciona ──
+function _renderComoFunciona(){
+  var el=document.getElementById('aba-como');
+  el.innerHTML='<div class="cf-grid">'+
+    '<div class="cf-card"><h3>🎯 O que é</h3><p>Encontro semanal para avaliar o desempenho dos processos pelos indicadores: o que está na meta, o que saiu da meta e o que será feito a respeito.</p></div>'+
+    '<div class="cf-card"><h3>🗣️ Como conduzir</h3><p>Cada líder apresenta:</p><ul><li><b>Indicadores</b> — resultado vs meta da semana.</li><li><b>Desafios</b> — o que aconteceu na semana.</li><li><b>Planos</b> — ação para metas não atingidas (ou para manter as que vão bem).</li></ul></div>'+
+    '<div class="cf-card"><h3>📌 Quando criar um plano</h3><ul><li>Indicador que <b>não alcançou</b> a meta.</li><li>Indicador que <b>superou muito</b> — investigar e padronizar.</li><li>Indicador com <b>tendência de queda</b>.</li></ul></div>'+
+    '<div class="cf-card"><h3>✅ Boas práticas</h3><ul><li>Frequência semanal, ~1h30, com presença do dono.</li><li>Participantes definidos, com anfitrião e substituto.</li><li>Todos preparam as informações antes.</li><li>Participação ativa e colaborativa.</li></ul></div>'+
+  '</div>';
+}
+
+// ── ABA 2: Ata atual ──
+async function carregarMetas(){
+  var sb=_sb(); _metas=[];
+  if(!sb||!_empresaAtiva) return;
+  try{
+    var r=await sb.from('metas').select('id,titulo,valor_atual,valor_meta,unidade,radar_sentido,status').eq('empresa_id',_empresaAtiva.id).eq('status','ativa').order('ordem',{ascending:true});
+    _metas=(!r.error&&Array.isArray(r.data))?r.data:[];
+  }catch(e){ _metas=[]; }
+}
+async function novaAta(){
+  _ataId=null;
+  _sv('a-data',_hoje()); _sv('a-anfitriao',''); _sv('a-participantes',''); _sv('a-status','aberta');
+  _sv('a-novidades',''); _sv('a-restricoes',''); _sv('a-conclusao','');
+  await carregarMetas();
+  _indForm=_metas.map(function(m){
+    return { meta_id:m.id, meta_titulo:m.titulo,
+      valor_atual:(m.valor_atual==null?'':String(m.valor_atual)),
+      valor_meta:(m.valor_meta==null?'':String(m.valor_meta)),
+      unidade:m.unidade||'',
+      status_indicador:_statusInd(m.valor_atual,m.valor_meta,m.radar_sentido||'menor'),
+      desafio_plano:'' };
+  });
+  _renderIndicadores(true);
+  document.getElementById('btn-salvar-ata').style.display = _podeEditar()?'inline-flex':'none';
+}
+function _renderIndicadores(editavel){
+  var el=document.getElementById('ata-indicadores');
+  if(!_indForm.length){ el.innerHTML='<div class="vazio">Nenhuma meta ativa para esta empresa.</div>'; return; }
+  var linhas=_indForm.map(function(it,i){
+    var dp = editavel
+      ? '<textarea id="ind-'+i+'" oninput="_indForm['+i+'].desafio_plano=this.value">'+esc(it.desafio_plano||'')+'</textarea>'
+      : (it.desafio_plano?esc(it.desafio_plano):'—');
+    return '<tr>'+
+      '<td class="ind-nome">'+esc(it.meta_titulo||'—')+'</td>'+
+      '<td>'+esc(it.valor_atual||'—')+(it.unidade?' '+esc(it.unidade):'')+'</td>'+
+      '<td>'+esc(it.valor_meta||'—')+(it.unidade?' '+esc(it.unidade):'')+'</td>'+
+      '<td>'+_statusBadge(it.status_indicador)+'</td>'+
+      '<td>'+dp+'</td>'+
+    '</tr>';
+  }).join('');
+  el.innerHTML='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
+    '<th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th>'+
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+}
+async function salvarAta(){
+  if(!_podeEditar()||!_empresaAtiva){ return; }
+  var sb=_sb(); if(!sb) return;
+  var btn=document.getElementById('btn-salvar-ata'); btn.disabled=true; btn.textContent='Salvando…';
+  var ata={
+    empresa_id:_empresaAtiva.id,
+    data_reuniao:_gv('a-data')||_hoje(),
+    anfitriao:_gv('a-anfitriao')||null,
+    participantes:_gv('a-participantes')||null,
+    novidades:_gv('a-novidades')||null,
+    restricoes:_gv('a-restricoes')||null,
+    conclusao:_gv('a-conclusao')||null,
+    status:_gv('a-status')||'aberta',
+    duracao_segundos:_elapsed||0,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    var rid=_ataId;
+    if(rid){
+      var u=await sb.from('reuniao_radar').update(ata).eq('id',rid); if(u.error) throw u.error;
+      await sb.from('reuniao_radar_indicadores').delete().eq('reuniao_id',rid);
+    } else {
+      var ins=await sb.from('reuniao_radar').insert(ata).select('id').single(); if(ins.error) throw ins.error;
+      rid=ins.data.id; _ataId=rid;
+    }
+    if(_indForm.length){
+      var rows=_indForm.map(function(it,i){
+        return { reuniao_id:rid, empresa_id:_empresaAtiva.id, meta_id:it.meta_id||null,
+          meta_titulo:it.meta_titulo||null, valor_atual:(it.valor_atual||null), valor_meta:(it.valor_meta||null),
+          status_indicador:it.status_indicador||null, desafio_plano:it.desafio_plano||null, ordem:i+1 };
+      });
+      var ri=await sb.from('reuniao_radar_indicadores').insert(rows); if(ri.error) throw ri.error;
+    }
+    btn.disabled=false; btn.textContent='Salvar ata';
+    alert('Ata salva.');
+    await carregarHistorico();
+  }catch(e){ alert('Erro ao salvar ata: '+(e&&e.message||'')); btn.disabled=false; btn.textContent='Salvar ata'; }
+}
+
+// ── ABA 3: Histórico ──
+async function carregarHistorico(){
+  var sb=_sb(); _reunioes=[]; _indByReuniao={};
+  if(!sb||!_empresaAtiva){ renderHistorico(); return; }
+  try{
+    var rr=await sb.from('reuniao_radar').select('*').eq('empresa_id',_empresaAtiva.id).order('data_reuniao',{ascending:false});
+    _reunioes=(!rr.error&&rr.data)?rr.data:[];
+    var ri=await sb.from('reuniao_radar_indicadores').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
+    (!ri.error&&ri.data?ri.data:[]).forEach(function(x){ (_indByReuniao[x.reuniao_id]=_indByReuniao[x.reuniao_id]||[]).push(x); });
+  }catch(e){ _reunioes=[]; }
+  if(_aba==='hist') renderHistorico();
+}
+function renderHistorico(){
+  var el=document.getElementById('hist-lista'); if(!el) return;
+  document.getElementById('hist-detalhe').innerHTML='';
+  el.style.display='';
+  var q=(_gv('hist-busca')||'').toLowerCase().trim();
+  var lista=_reunioes.filter(function(r){
+    if(!q) return true;
+    return [r.data_reuniao,r.anfitriao,r.participantes,r.novidades,r.restricoes,r.conclusao].join(' ').toLowerCase().indexOf(q)>=0;
+  });
+  if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma reunião registrada.</div>'; return; }
+  el.innerHTML=lista.map(function(r){
+    var inds=_indByReuniao[r.id]||[];
+    var fora=inds.filter(function(x){return x.status_indicador&&x.status_indicador!=='na_meta';}).length;
+    var stTxt = r.status==='concluida'?'Concluída':'Aberta';
+    return '<div class="hist-item" onclick="abrirAta(\''+r.id+'\')">'+
+      '<div><div class="hist-d">'+_dataBR(r.data_reuniao)+'</div><div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · '+stTxt+'</div></div>'+
+      '<div class="hist-sub" style="text-align:right">'+inds.length+' indicador(es)<br>'+(fora?('<span style="color:var(--red)">'+fora+' fora da meta</span>'):'<span style="color:var(--green)">todos na meta</span>')+'</div>'+
+    '</div>';
+  }).join('');
+}
+function abrirAta(id){
+  var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
+  var inds=_indByReuniao[id]||[];
+  document.getElementById('hist-lista').style.display='none';
+  document.getElementById('hist-busca-wrap').style.display='none';
+  var podeReabrir = _podeEditar() && r.status==='aberta';
+  var linhas=inds.map(function(it){
+    return '<tr><td class="ind-nome">'+esc(it.meta_titulo||'—')+'</td><td>'+esc(it.valor_atual||'—')+'</td><td>'+esc(it.valor_meta||'—')+'</td><td>'+_statusBadge(it.status_indicador)+'</td><td class="ro-txt">'+(it.desafio_plano?esc(it.desafio_plano):'—')+'</td></tr>';
+  }).join('');
+  function bloco(t,v){ return '<div class="sec"><div class="sec-t">'+t+'</div><div class="ro-txt">'+(v?esc(v):'—')+'</div></div>'; }
+  var det='<div class="acoes no-print" style="justify-content:space-between">'+
+      '<button class="btn btn-ghost btn-sm" onclick="renderHistorico()">← Voltar ao histórico</button>'+
+      '<span>'+(podeReabrir?'<button class="btn btn-ghost btn-sm" onclick="reabrirAta(\''+id+'\')">✏️ Reabrir/editar</button> ':'')+'<button class="btn btn-ghost btn-sm" onclick="imprimirAta()">🖨️ Imprimir PDF</button></span>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">Ata — '+_dataBR(r.data_reuniao)+'</div>'+
+      '<div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · Participantes: '+esc(r.participantes||'—')+' · '+(r.status==='concluida'?'Concluída':'Aberta')+'</div></div>'+
+    '<div class="sec"><div class="sec-t">Indicadores da semana (snapshot)</div>'+
+      (inds.length?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="vazio">Sem indicadores registrados.</div>')+
+    '</div>'+
+    bloco('Novidades da semana',r.novidades)+
+    bloco('Onde estamos presos (restrições)',r.restricoes)+
+    bloco('Conclusão — principais pontos e próximos passos',r.conclusao);
+  document.getElementById('hist-detalhe').innerHTML=det;
+}
+function reabrirAta(id){
+  var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
+  _ataId=id;
+  _sv('a-data',(r.data_reuniao||'').slice(0,10)); _sv('a-anfitriao',r.anfitriao); _sv('a-participantes',r.participantes);
+  _sv('a-status',r.status||'aberta'); _sv('a-novidades',r.novidades); _sv('a-restricoes',r.restricoes); _sv('a-conclusao',r.conclusao);
+  _indForm=(_indByReuniao[id]||[]).map(function(it){
+    return { meta_id:it.meta_id, meta_titulo:it.meta_titulo, valor_atual:it.valor_atual||'', valor_meta:it.valor_meta||'', unidade:'', status_indicador:it.status_indicador, desafio_plano:it.desafio_plano||'' };
+  });
+  _renderIndicadores(true);
+  document.getElementById('btn-salvar-ata').style.display=_podeEditar()?'inline-flex':'none';
+  trocarAba('ata');
+}
+
+// ── Cronômetro ──
+var _elapsed=0, _running=false, _tick=null;
+function _crBase(){ return (parseInt(_gv('cr-min'),10)||0)*60; }
+function _crModo(){ return _gv('cr-modo')||'reg'; }
+function _crSec(){ return _crModo()==='reg' ? (_crBase()-_elapsed) : _elapsed; }
+function _fmtMMSS(s){ var neg=s<0; s=Math.abs(s); var m=Math.floor(s/60), ss=s%60; return (neg?'-':'')+(m<10?'0':'')+m+':'+(ss<10?'0':'')+ss; }
+function crRender(){ var d=document.getElementById('cr-display'); if(!d) return; var s=_crSec(); d.textContent=_fmtMMSS(s); d.style.color=(_crModo()==='reg'&&s<0)?'var(--red)':''; }
+function crToggle(){
+  if(_running){ clearInterval(_tick); _running=false; document.getElementById('cr-play').textContent='▶ Iniciar'; }
+  else { _running=true; document.getElementById('cr-play').textContent='⏸ Pausar'; _tick=setInterval(function(){ _elapsed++; crRender(); },1000); }
+}
+function crZerar(){ clearInterval(_tick); _running=false; _elapsed=0; var b=document.getElementById('cr-play'); if(b) b.textContent='▶ Iniciar'; crRender(); }
+
+// ── Impressão ──
+function imprimirAta(){
+  var cab=document.getElementById('print-cab'), rod=document.getElementById('print-rod');
+  var emp=(_empresaAtiva&&(_empresaAtiva.nome_curto||_empresaAtiva.nome))||'';
+  var data=_dataBR(_gv('a-data')|| (_reunioes[0]&&_reunioes[0].data_reuniao));
+  if(cab) cab.innerHTML='<div class="pc-logo">TECFUSION</div><div class="pc-tool">Reunião de Radar — '+esc(emp)+(data&&data!=='—'?' · '+esc(data):'')+'</div>';
+  if(rod) rod.textContent='Tecfusion © 2026 — Reunião de Radar';
+  window.print();
+}
+
+// ── postMessage ──
+window.addEventListener('message', function(e){
+  if(!e.data||!e.data.type) return;
+  if(e.data.type==='SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+});
+
+// Tema inicial + pedir empresa
+try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
+_renderComoFunciona();
+try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'},'*'); }catch(e){}
+</script>
+</body>
+</html>

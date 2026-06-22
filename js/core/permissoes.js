@@ -53,6 +53,10 @@
       editar:      ['dono', 'admin', 'gestor'],
       editar_pdca: ['dono', 'admin', 'gestor']
     },
+    'reuniao-radar': {
+      ver:    ['dono', 'admin', 'gestor', 'financeiro', 'comercial', 'operacional', 'colaborador', 'leitura', 'prestador'],
+      editar: ['dono', 'admin', 'gestor']
+    },
     'dashboard-estrategico': {
       ver: ['dono', 'admin']
     },
