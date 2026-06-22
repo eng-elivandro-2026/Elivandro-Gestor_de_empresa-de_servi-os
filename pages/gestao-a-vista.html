@@ -290,9 +290,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="modal-head"><div class="modal-titulo" id="modal-radar-titulo">Novo registro</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-radar')">✕</button></div>
     <div class="fgrid">
       <div class="fld full"><label id="r-referencia-label">Proposta / Cliente</label><input id="r-referencia"></div>
-      <div class="fld" id="r-grp-ini"><label>Data visita/contato</label><input id="r-data-inicio" type="date"></div>
+      <div class="fld" id="r-grp-ini"><label id="r-ini-label">Data do registro</label><input id="r-data-inicio" type="date"></div>
       <div class="fld" id="r-grp-fim"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
-      <div class="fld" id="r-grp-qtd"><label>Quantidade</label><input id="r-quantidade" type="number" step="any"></div>
       <div class="fld" id="r-grp-valor"><label>Valor (R$)</label><input id="r-valor" type="number" step="any"></div>
       <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
     </div>
@@ -749,71 +748,67 @@ function _diasEntre(ini,fim){
   return Math.round((b-a)/86400000);
 }
 function _radarCols(tipo){
-  if(tipo==='contagem') return ['Referência/Período','Quantidade','Bateu?','Causa/Ação (ACT)'];
-  if(tipo==='valor')    return ['Referência/Período','Valor (R$)','Bateu?','Causa/Ação (ACT)'];
+  if(tipo==='contagem') return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
+  if(tipo==='valor')    return ['Referência/Cliente','Data do registro','Valor (R$)','Causa/Ação (ACT)'];
   return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)'];
 }
 function _radarHead(tipo){ return _radarCols(tipo).map(function(c){return '<th>'+c+'</th>';}).join(''); }
 function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—'); }
-function _radarValor(r, tipo){
-  if(tipo==='dias'){
-    var d=_diasEntre(r.data_inicio,r.data_fim);
-    if(d==null && r.valor_realizado!=null) d=Number(r.valor_realizado);
-    return d;
-  }
-  return (r.valor_realizado!=null)?Number(r.valor_realizado):null;
-}
-function _radarValorFmt(v, tipo){
-  if(v==null) return '—';
-  return tipo==='valor' ? _money(v) : _fmtNum(v);
-}
 function _radarLegendaEAcao(){
-  var h='<div class="rad-legenda"><span>🟢 Bateu</span><span>🔴 Não bateu</span><span>🔵 Média do período</span></div>';
+  var h='<div class="rad-legenda"><span>🟢 Bateu</span><span>🔴 Não bateu</span><span>🔵 Total/Média do período</span></div>';
   if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
   return h;
 }
 function _renderRadar(m){
   var tipo=_radarTipo(m);
-  // Sem registros: estrutura visível com 7 linhas vazias, colunas conforme o tipo
+  // Sem registros: estrutura visível com 7 linhas vazias + rodapé, colunas conforme o tipo
   if(!_radar.length){
+    var midEmpty = tipo==='dias'  ? '<td></td><td></td><td>—</td><td>—</td><td></td>'
+                 : tipo==='valor' ? '<td></td><td>—</td><td></td>'
+                 :                  '<td></td><td></td>';   // contagem
     var vazias='';
-    for(var i=1;i<=7;i++){
-      var mid=(tipo==='dias') ? '<td></td><td></td><td>—</td><td>—</td><td></td>' : '<td>—</td><td>—</td><td></td>';
-      vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+mid+'</tr>';
-    }
-    var mediaVazia=(tipo==='dias') ? '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>' : '<td>—</td><td>—</td><td>—</td>';
+    for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
+    var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'
+                  : tipo==='valor' ? '<td>TOTAL</td><td>—</td><td>—</td><td>—</td>'
+                  :                  '<td>TOTAL</td><td>—</td><td>—</td>';
     var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
-      vazias+'<tr class="media"><td>MÉDIA</td>'+mediaVazia+'</tr></tbody></table></div>';
+      vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
   }
-  var soma=0,cont=0;
+  var soma=0, cont=0;
   var linhas=_radar.map(function(r){
-    var val=_radarValor(r,tipo);
-    var bateu=_bateu(val,m);
-    if(val!=null){ soma+=Number(val); cont++; }
     var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
       (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
     var actCell = _podeEditar()
       ? '<textarea class="rad-act" onchange="salvarAnotacaoRadar(\''+r.id+'\',this.value)">'+esc(r.anotacao||'')+'</textarea>'
       : (r.anotacao?esc(r.anotacao):'—');
-    var meio;
     if(tipo==='dias'){
-      meio='<td>'+_dataBR(r.data_inicio)+'</td><td>'+_dataBR(r.data_fim)+'</td><td>'+(val==null?'—':val)+'</td><td>'+_bateuTxt(bateu)+'</td>';
-    } else {
-      meio='<td>'+_radarValorFmt(val,tipo)+'</td><td>'+_bateuTxt(bateu)+'</td>';
+      var dias=_diasEntre(r.data_inicio,r.data_fim);
+      if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
+      if(dias!=null){ soma+=dias; cont++; }
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+_dataBR(r.data_fim)+'</td><td>'+(dias==null?'—':dias)+'</td><td>'+_bateuTxt(_bateu(dias,m))+'</td><td>'+actCell+'</td></tr>';
+    } else if(tipo==='valor'){
+      var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
+      if(v!=null){ soma+=v; cont++; }
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+(v==null?'—':_money(v))+'</td><td>'+actCell+'</td></tr>';
+    } else { // contagem — cada linha vale 1
+      cont++;
+      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+actCell+'</td></tr>';
     }
-    return '<tr>'+refCell+meio+'<td>'+actCell+'</td></tr>';
   }).join('');
-  var mediaVal = cont? (soma/cont) : null;
-  var mediaBateu = _bateu(mediaVal,m);
-  var mediaRow;
+  var footRow;
   if(tipo==='dias'){
-    mediaRow='<td>MÉDIA</td><td>—</td><td>—</td><td>'+(mediaVal==null?'—':_fmtNum(mediaVal))+'</td><td>'+_bateuTxt(mediaBateu)+'</td><td>—</td>';
-  } else {
-    mediaRow='<td>MÉDIA</td><td>'+_radarValorFmt(mediaVal,tipo)+'</td><td>'+_bateuTxt(mediaBateu)+'</td><td>—</td>';
+    var media = cont? (soma/cont) : null;
+    footRow='<td>MÉDIA</td><td>—</td><td>—</td><td>'+(media==null?'—':_fmtNum(media))+'</td><td>'+_bateuTxt(_bateu(media,m))+'</td><td>—</td>';
+  } else if(tipo==='valor'){
+    var totalV = cont? soma : null;
+    footRow='<td>TOTAL</td><td>—</td><td>'+(totalV==null?'—':_money(totalV))+'</td><td>'+_bateuTxt(_bateu(totalV,m))+'</td>';
+  } else { // contagem
+    var nLinhas=_radar.length;
+    footRow='<td>TOTAL</td><td><b>'+nLinhas+'</b></td><td>'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
   }
   var h='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+
-    '</tr></thead><tbody>'+linhas+'<tr class="media">'+mediaRow+'</tr></tbody></table></div>';
+    '</tr></thead><tbody>'+linhas+'<tr class="media">'+footRow+'</tr></tbody></table></div>';
   h+=_radarLegendaEAcao();
   return h;
 }
@@ -924,34 +919,36 @@ function abrirModalRadar(id){
   var r = id? _radar.find(function(x){return x.id===id;}) : null;
   var tipo=_radarTipo(_metaSel());
   document.getElementById('modal-radar-titulo').textContent = r? 'Editar registro':'Novo registro';
-  // Mostrar/esconder campos conforme o tipo de medição
-  _setDisp('r-grp-ini', tipo==='dias');
+  // Mostrar/esconder campos conforme o tipo de medição (data_inicio é sempre exibido)
+  _setDisp('r-grp-ini', true);
   _setDisp('r-grp-fim', tipo==='dias');
-  _setDisp('r-grp-qtd', tipo==='contagem');
   _setDisp('r-grp-valor', tipo==='valor');
   var lblRef=document.getElementById('r-referencia-label');
-  if(lblRef) lblRef.textContent = (tipo==='dias') ? 'Proposta / Cliente' : 'Referência / Período';
+  if(lblRef) lblRef.textContent = (tipo==='dias') ? 'Proposta / Cliente' : 'Referência / Cliente';
+  var lblIni=document.getElementById('r-ini-label');
+  if(lblIni) lblIni.textContent = (tipo==='dias') ? 'Data visita/contato' : 'Data do registro';
   // Popular valores
   _sv('r-referencia',r&&r.referencia); _sv('r-anotacao',r&&r.anotacao);
-  _sv('r-data-inicio',r&&r.data_inicio); _sv('r-data-fim',r&&r.data_fim);
-  _sv('r-quantidade', (r&&tipo==='contagem')?r.valor_realizado:'');
-  _sv('r-valor',      (r&&tipo==='valor')?r.valor_realizado:'');
+  _sv('r-data-fim',r&&r.data_fim);
+  _sv('r-valor', (r&&tipo==='valor')?r.valor_realizado:'');
+  // data_inicio: registro existente usa o salvo; novo em contagem/valor assume hoje
+  var _hoje=new Date().toISOString().slice(0,10);
+  _sv('r-data-inicio', r ? r.data_inicio : (tipo==='dias' ? '' : _hoje));
   abrirModal('modal-radar');
 }
 async function salvarRadar(){
   if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
   var sb=_sb(); if(!sb) return;
   var m=_metaSel(); var tipo=_radarTipo(m);
-  var ini=null, fim=null, valor=null;
+  var ini=_gv('r-data-inicio')||null, fim=null, valor=null, bateu=null;
   if(tipo==='dias'){
-    ini=_gv('r-data-inicio')||null; fim=_gv('r-data-fim')||null;
-    valor=_diasEntre(ini,fim);
-  } else if(tipo==='contagem'){
-    valor=_numOrNull(_gv('r-quantidade'));
-  } else { // valor
-    valor=_numOrNull(_gv('r-valor'));
+    fim=_gv('r-data-fim')||null;
+    valor=_diasEntre(ini,fim);          // dias calculados
+    bateu=_bateu(valor,m);              // bateu por registro só faz sentido em dias
+  } else if(tipo==='valor'){
+    valor=_numOrNull(_gv('r-valor'));   // valor monetário; data_inicio = data do registro
   }
-  var bateu=_bateu(valor,m);
+  // contagem: cada linha vale 1 → valor_realizado fica null; agregado é calculado na exibição
   var payload={
     meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
     referencia:_gv('r-referencia')||null, data_inicio:ini, data_fim:fim,
