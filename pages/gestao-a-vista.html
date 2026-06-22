@@ -173,6 +173,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   body.imprimir-chart #kpis-painel,
   body.imprimir-chart .cols{ display:none !important }
   body.imprimir-chart #fechmes-painel{ display:block !important }
+  body.imprimir-chart #fechmes-body{ display:block !important }
   #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:8px; margin-bottom:14px }
   #print-cab .pc-logo{ font-weight:900; font-size:18px; color:#4DB748; letter-spacing:1px }
   #print-cab .pc-tool{ font-size:13px; font-weight:700; margin-top:2px; color:#111 }
@@ -217,10 +218,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div id="fechmes-painel">
     <div class="fm-head">
       <span class="fm-titulo">📅 Fechamentos por Mês <small id="fechmes-ano"></small></span>
-      <button class="btn btn-ghost btn-sm" onclick="imprimirChart()">🖨️ Imprimir PDF</button>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn btn-ghost btn-sm" id="fechmes-toggle" onclick="toggleFechmes()">▲ recolher</button>
+        <button class="btn btn-ghost btn-sm" onclick="imprimirChart()">🖨️ Imprimir PDF</button>
+      </div>
     </div>
-    <div id="fechmes-kpis"></div>
-    <div id="fechmes-chart"></div>
+    <div id="fechmes-body">
+      <div id="fechmes-kpis"></div>
+      <div id="fechmes-chart"></div>
+    </div>
   </div>
 
   <div id="print-rod"></div>
@@ -346,6 +352,20 @@ function toggleKpis(){
   var b=document.getElementById('kpis-body'); var t=document.getElementById('kpis-toggle');
   if(b) b.style.display=_kpisAberto?'':'none';
   if(t) t.textContent=_kpisAberto?'▲ recolher':'▼ expandir';
+}
+var _fechmesAberto=true;
+function toggleFechmes(){
+  _fechmesAberto=!_fechmesAberto;
+  var b=document.getElementById('fechmes-body'); var t=document.getElementById('fechmes-toggle');
+  if(b) b.style.display=_fechmesAberto?'':'none';
+  if(t) t.textContent=_fechmesAberto?'▲ recolher':'▼ expandir';
+}
+// Garante aberto (não alterna) — usado pela navegação do menu
+function _expandKpis(){ if(!_kpisAberto) toggleKpis(); }
+function _expandFechmes(){ if(!_fechmesAberto) toggleFechmes(); }
+function _scrollTo(id){
+  if(id==='kpis'){ _expandKpis(); var e1=document.getElementById('kpis-painel'); if(e1) e1.scrollIntoView({behavior:'smooth',block:'start'}); }
+  else if(id==='fechmes'){ _expandFechmes(); var e2=document.getElementById('fechmes-painel'); if(e2) e2.scrollIntoView({behavior:'smooth',block:'start'}); }
 }
 
 function renderKpis(){
@@ -930,6 +950,7 @@ window.addEventListener('message', function(e){
   if(!e.data||!e.data.type) return;
   if(e.data.type==='SET_EMPRESA') _onTrocaEmpresa(e.data);
   if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  if(e.data.type==='SCROLL_TO') _scrollTo(e.data.payload);
 });
 
 // Tema inicial do pai + pedir empresa
