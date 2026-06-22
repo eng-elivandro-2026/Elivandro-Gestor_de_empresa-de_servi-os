@@ -64,11 +64,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .btn-sm{padding:.3rem .6rem;font-size:.74rem}
 .btn-danger{background:transparent;border:1px solid var(--red);color:var(--red)}.btn-danger:hover{background:var(--red);color:#fff}
 
-.cols{display:grid;grid-template-columns:300px 1fr;gap:1rem;align-items:start}
-@media(max-width:780px){ .cols{grid-template-columns:1fr} }
+.cols{display:block}
 
-/* Lista de metas */
-.lista{display:flex;flex-direction:column;gap:.6rem}
+/* Lista de metas — grid horizontal no topo */
+.lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem;margin-bottom:1rem}
 .meta-card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.7rem .8rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);transition:border-color .12s}
 .meta-card:hover{border-color:var(--border2)}
 .meta-card.on{background:var(--emp-bg);border-left-color:var(--emp-cor);border-color:var(--emp-bdr)}
@@ -114,29 +113,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pdca-banner{background:#4DB748;color:#fff;border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.8rem;font-weight:700;font-size:.9rem}
 .pdca{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 @media(max-width:680px){ .pdca{grid-template-columns:1fr} }
-.quad{border-radius:var(--r);padding:.9rem 1rem;color:#fff}
-.quad-h{display:flex;align-items:baseline;gap:.5rem}
+.quad{border-radius:var(--r);overflow:hidden;color:var(--text);background:var(--bg2);border:1px solid var(--border)}
+.quad-h{display:flex;align-items:baseline;gap:.5rem;color:#fff;padding:.55rem .85rem}
+.quad-body{padding:.85rem .95rem}
 .quad-letter{font-size:1.7rem;font-weight:900;line-height:1}
 .quad-name{font-size:1rem;font-weight:800}
-.quad-sub{font-size:.7rem;opacity:.9;margin:.05rem 0 .6rem}
-.quad-q-p{background:#4DB748}
-.quad-q-d{background:#166534}
-.quad-q-c{background:#2563eb}
-.quad-q-a{background:#f97316}
+.quad-sub{font-size:.7rem;color:var(--text3);margin:0 0 .7rem}
+.quad-q-p .quad-h{background:#4DB748}
+.quad-q-d .quad-h{background:#166534}
+.quad-q-c .quad-h{background:#2563eb}
+.quad-q-a .quad-h{background:#f97316}
 .pdca-fld{margin-bottom:.55rem}
-.pdca-fld label{font-size:.66rem;color:#fff;opacity:.9;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.2rem}
-.pdca-fld textarea{width:100%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:var(--r2);color:#fff;font-family:inherit;font-size:.82rem;line-height:1.5;padding:.45rem .55rem;resize:vertical;min-height:58px}
-.pdca-fld textarea::placeholder{color:rgba(255,255,255,.65)}
-.pdca-ro{font-size:.84rem;line-height:1.5;white-space:pre-wrap;color:#fff;opacity:.95}
+.pdca-fld label{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.2rem}
+.pdca-fld textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.82rem;line-height:1.5;padding:.45rem .55rem;resize:vertical;min-height:58px}
+.pdca-fld textarea::placeholder{color:var(--text3)}
+.pdca-ro{font-size:.84rem;line-height:1.5;white-space:pre-wrap;color:var(--text)}
 .pdca-plan-list{margin:.3rem 0 0 1.1rem;font-size:.82rem;line-height:1.5}
 
 /* Radar */
-.tbl{width:100%;border-collapse:collapse;font-size:.8rem}
-.tbl th{text-align:left;padding:.5rem .55rem;background:#4DB748;color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}
-.tbl td{padding:.45rem .55rem;border:1px solid var(--border);vertical-align:top}
-.tbl td.rad-ref{background:#4DB748;color:#fff;font-weight:700}
+.tbl{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.82rem}
+.tbl th{text-align:left;padding:14px 12px;background:#4DB748;color:#fff;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}
+.tbl td{padding:14px 12px;border:1px solid var(--border);vertical-align:top}
+.tbl td.rad-ref{background:var(--bg2);color:var(--text);font-weight:700;white-space:normal;word-break:break-word}
+.rad-ref-nome{line-height:1.35}
+.rad-ref-acoes{display:flex;gap:.3rem;margin-top:.5rem}
+.rad-ref-acoes .btn{font-size:.68rem;padding:.15rem .4rem}
 .tbl tr.media td{background:#2563eb;color:#fff;font-weight:800;border-color:rgba(255,255,255,.2)}
-.tbl textarea.rad-act{width:100%;min-width:140px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;line-height:1.4;padding:.35rem .45rem;resize:vertical;min-height:38px}
+.tbl textarea.rad-act{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;line-height:1.4;padding:.35rem .45rem;resize:vertical;min-height:38px}
 .rad-legenda{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.74rem;color:var(--text2);margin-top:.6rem}
 
 /* Modal */
@@ -192,6 +195,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .pdca-banner{ color:#fff !important }
   .pdca{ gap:.4rem !important; page-break-inside:avoid }
   .quad{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important; padding:0 0 .4rem !important; page-break-inside:avoid }
+  .quad-body{ padding:0 !important }
   .quad-h{ color:#fff !important; padding:.25rem .5rem !important; margin-bottom:.3rem }
   .quad-q-p .quad-h{ background:#4DB748 !important }
   .quad-q-d .quad-h{ background:#166534 !important }
@@ -797,7 +801,7 @@ function _renderPdca(m){
   var p=_pdca||{};
   var ro=!_podePdca();
   function fld(id,label,val){ return '<div class="pdca-fld"><label>'+label+'</label>'+(ro?'<div class="pdca-ro">'+(val?esc(val):'—')+'</div>':'<textarea id="'+id+'">'+esc(val||'')+'</textarea>')+'</div>'; }
-  function quad(cls,letter,name,sub,inner){ return '<div class="quad '+cls+'"><div class="quad-h"><span class="quad-letter">'+letter+'</span><span class="quad-name">'+name+'</span></div><div class="quad-sub">'+sub+'</div>'+inner+'</div>'; }
+  function quad(cls,letter,name,sub,inner){ return '<div class="quad '+cls+'"><div class="quad-h"><span class="quad-letter">'+letter+'</span><span class="quad-name">'+name+'</span></div><div class="quad-body"><div class="quad-sub">'+sub+'</div>'+inner+'</div></div>'; }
   var planAcoes = _acoes.length? '<ul class="pdca-plan-list">'+_acoes.map(function(a){return '<li>'+esc(a.titulo||a.o_que||'(ação)')+'</li>';}).join('')+'</ul>' : '<div style="opacity:.85;font-size:.82rem;margin-top:.3rem">Sem ações cadastradas.</div>';
   var bannerVals = (m.valor_atual!=null||m.valor_meta!=null) ? ' — '+_fmtNum(m.valor_atual)+' → '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'') : '';
   var h='<div class="pdca-banner">🎯 '+esc(m.titulo)+bannerVals+'</div>';
@@ -831,6 +835,12 @@ function _radarCols(tipo){
   return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)'];
 }
 function _radarHead(tipo){ return _radarCols(tipo).map(function(c){return '<th>'+c+'</th>';}).join(''); }
+function _radarColgroup(tipo){
+  var ws = tipo==='contagem' ? ['40%','20%','40%']
+         : tipo==='valor'    ? ['38%','16%','16%','30%']
+         :                     ['38%','12%','12%','8%','10%','20%']; // dias
+  return '<colgroup>'+ws.map(function(w){return '<col style="width:'+w+'">';}).join('')+'</colgroup>';
+}
 function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—'); }
 function _radarLegendaEAcao(){
   var h='<div class="rad-legenda"><span>🟢 Bateu</span><span>🔴 Não bateu</span><span>🔵 Total/Média do período</span></div>';
@@ -849,14 +859,14 @@ function _renderRadar(m){
     var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'
                   : tipo==='valor' ? '<td>TOTAL</td><td>—</td><td>—</td><td>—</td>'
                   :                  '<td>TOTAL</td><td>—</td><td>—</td>';
-    var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
+    var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
       vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
   }
   var soma=0, cont=0;
   var linhas=_radar.map(function(r){
-    var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
-      (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
+    var refCell='<td class="rad-ref"><div class="rad-ref-nome">'+esc(r.referencia||'—')+'</div>'+
+      (_podeEditar()?'<div class="rad-ref-acoes"><button class="btn btn-ghost btn-sm" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️ Editar</button><button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button></div>':'')+'</td>';
     var actCell = _podeEditar()
       ? '<textarea class="rad-act" onchange="salvarAnotacaoRadar(\''+r.id+'\',this.value)">'+esc(r.anotacao||'')+'</textarea>'
       : (r.anotacao?esc(r.anotacao):'—');
@@ -885,7 +895,7 @@ function _renderRadar(m){
     var nLinhas=_radar.length;
     footRow='<td>TOTAL</td><td><b>'+nLinhas+'</b></td><td>'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
   }
-  var h='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead(tipo)+
+  var h='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+
     '</tr></thead><tbody>'+linhas+'<tr class="media">'+footRow+'</tr></tbody></table></div>';
   h+=_radarLegendaEAcao();
   return h;
