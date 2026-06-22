@@ -2235,13 +2235,12 @@
     estado.dataUrl = canvas.toDataURL('image/png');
     estado.assinada = true;
     atualizarHintAssinatura(canvas, true);
-    // Quando cliente assina, preencher data de aceite com data atual
+    // Quando cliente assina, refletir a data de aceite = data atual (sempre
+    // atualiza, mesmo se ja havia um valor antigo no campo).
     if (key === 'cliente') {
       var hoje = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
       var campoAceite = Q('opGestaoExecAceite');
-      if (campoAceite && !campoAceite.value) {
-        campoAceite.value = hoje;
-      }
+      if (campoAceite) campoAceite.value = hoje;
     }
   }
 
@@ -2719,11 +2718,10 @@
     var empresa = assinaturaGestaoEstado('empresa');
     var assinadoClienteEm = cliente.dataUrl ? new Date().toISOString() : null;
     var assinadoEmpresaEm = empresa.dataUrl ? new Date().toISOString() : null;
-    // Data de aceite robusta: usa o valor do campo; se estiver vazio (ex.: apagado
-    // por um re-render antes do save) e o cliente tiver assinado, deriva da data
-    // da assinatura do cliente (mesma data). Não depende do DOM sobreviver.
-    var domAceite = (($('opGestaoExecAceite') || {}).value || '').trim();
-    var dataExecAceite = domAceite || (assinadoClienteEm ? assinadoClienteEm.slice(0, 10) : null);
+    // Data de aceite = SEMPRE a data da assinatura do cliente (mesma data de
+    // assinado_cliente_em). Sobrescreve qualquer valor antigo; sem assinatura
+    // do cliente → null. Não depende do valor (disabled) sobreviver no DOM.
+    var dataExecAceite = assinadoClienteEm ? assinadoClienteEm.slice(0, 10) : null;
     return {
       empresa_id: empresaId,
       proposta_id: negocio.proposta_app_id,
@@ -3953,9 +3951,19 @@
       }
 
       console.log('✅ RPC executada com sucesso:', res.data);
+
+      // Limpa também a data de aceite (a RPC nao toca nela) para nao carregar
+      // data velha ao reassinar. Best-effort: doc ja esta rascunho/desbloqueado.
+      try {
+        await window.sbClient.from('gestao_negocio')
+          .update({ data_exec_aceite: null })
+          .eq('id', doc.id).eq('empresa_id', doc.empresa_id);
+      } catch (e) { console.warn('[Operacional] limpar data_exec_aceite:', e && e.message); }
+
       msg('✅ ' + (res.data && res.data.message ? res.data.message : 'Assinaturas deletadas'));
 
       // Atualizar estado em memória
+      state.gestaoDocumento.data_exec_aceite = null;
       state.gestaoDocumento.assinatura_cliente = '';
       state.gestaoDocumento.assinatura_empresa = '';
       state.gestaoDocumento.responsavel_cliente_nome = '';
