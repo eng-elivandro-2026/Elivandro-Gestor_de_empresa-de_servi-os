@@ -2717,21 +2717,28 @@
     var empresaId = getEmpresaId();
     var cliente = assinaturaGestaoEstado('cliente');
     var empresa = assinaturaGestaoEstado('empresa');
+    var assinadoClienteEm = cliente.dataUrl ? new Date().toISOString() : null;
+    var assinadoEmpresaEm = empresa.dataUrl ? new Date().toISOString() : null;
+    // Data de aceite robusta: usa o valor do campo; se estiver vazio (ex.: apagado
+    // por um re-render antes do save) e o cliente tiver assinado, deriva da data
+    // da assinatura do cliente (mesma data). Não depende do DOM sobreviver.
+    var domAceite = (($('opGestaoExecAceite') || {}).value || '').trim();
+    var dataExecAceite = domAceite || (assinadoClienteEm ? assinadoClienteEm.slice(0, 10) : null);
     return {
       empresa_id: empresaId,
       proposta_id: negocio.proposta_app_id,
       diario_texto: (($('opGestaoDiario') || {}).value || '').trim(),
       data_exec_inicio: (($('opGestaoExecInicio') || {}).value || '').trim() || null,
       data_exec_termino: (($('opGestaoExecTermino') || {}).value || '').trim() || null,
-      data_exec_aceite: (($('opGestaoExecAceite') || {}).value || '').trim() || null,
+      data_exec_aceite: dataExecAceite,
       entregas_texto: '',
       aceite_texto: '',
       responsavel_cliente_nome: (($('opAssClienteNome') || {}).value || '').trim(),
       responsavel_empresa_nome: (($('opAssEmpresaNome') || {}).value || '').trim(),
       assinatura_cliente: cliente.dataUrl || '',
       assinatura_empresa: empresa.dataUrl || '',
-      assinado_cliente_em: cliente.dataUrl ? new Date().toISOString() : null,
-      assinado_empresa_em: empresa.dataUrl ? new Date().toISOString() : null,
+      assinado_cliente_em: assinadoClienteEm,
+      assinado_empresa_em: assinadoEmpresaEm,
       status_documento: assinar ? 'assinado' : 'rascunho',
       bloqueado: !!assinar,
       assinado_em: assinar ? new Date().toISOString() : null,
