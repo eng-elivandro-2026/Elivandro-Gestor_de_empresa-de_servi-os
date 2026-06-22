@@ -1142,23 +1142,29 @@
     // Inclui tambem as propostas comerciais em 'ganho' (so aparecem no Operacional
     // depois de "Criar Obra"); seu status operacional fica na tabela obras.
     var fasesQuery = FASES_GESTAO_NEGOCIO.concat(['ganho']);
-    var res = await window.sbClient
+    // PERF: as 2 consultas rodam EM PARALELO (Promise.all). A lista de obras usa
+    // a variante "resumo" (sem o JSONB pesado snapshot_proposta_json); o detalhe
+    // de cada obra continua buscando o registro completo por id.
+    var propPromise = window.sbClient
       .from('propostas')
       .select('id, app_id, numero_proposta, titulo, cliente, valor_total, fase, dados_json, created_at, updated_at, empresa_id')
       .eq('empresa_id', empresaId)
       .in('fase', fasesQuery)
       .order('updated_at', { ascending: false });
+    var obrasPromise = (typeof window.sbListarObrasResumo === 'function')
+      ? window.sbListarObrasResumo(empresaId).catch(function () { return []; })  // sem obras: segue
+      : ((typeof window.sbListarObras === 'function')
+          ? window.sbListarObras(empresaId).catch(function () { return []; })
+          : Promise.resolve([]));
+    var paralelo = await Promise.all([propPromise, obrasPromise]);
+    var res = paralelo[0];
+    var obrasArr = paralelo[1] || [];
     if (res.error) throw res.error;
     // Mapa de obras por proposta (para resolver o status dos negocios 'ganho').
     var obrasPorProp = {};
-    try {
-      if (typeof window.sbListarObras === 'function') {
-        var obras = await window.sbListarObras(empresaId);
-        (obras || []).forEach(function (ob) {
-          if (ob && ob.proposta_app_id) obrasPorProp[String(ob.proposta_app_id)] = ob;
-        });
-      }
-    } catch (e) { /* sem obras: segue (negocios 'ganho' sem obra nao aparecem) */ }
+    obrasArr.forEach(function (ob) {
+      if (ob && ob.proposta_app_id) obrasPorProp[String(ob.proposta_app_id)] = ob;
+    });
     var out = [];
     (res.data || []).forEach(function (p) {
       if (!p || p.empresa_id !== empresaId) return;
@@ -1593,6 +1599,7 @@
       try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       fecharDesfazerObra();
       msg('Proposta devolvida ao Comercial como "' + textoLimpo(labelFaseNegocio(fase)) + '".' + (temObra ? ' Obra arquivada.' : ''));
+      invalidarCacheObras();
       await carregarObras();
     } catch (e) {
       msg((e && e.message) || 'Nao foi possivel desfazer a obra.', 'err');
@@ -2418,13 +2425,25 @@
     }
   }
 
+  // Cache por empresa (stale-while-revalidate): pinta a lista do cache na hora
+  // e revalida em segundo plano. Mantem o conteudo sempre fresco apos mutacoes.
+  var _obrasCache = {};
+
   async function carregarObras() {
     // Captura empresa e token ANTES do await para detectar trocas durante a consulta
     var empresaId = getEmpresaId();
     var token = ++_opLoadToken;
 
-    state.carregando = true;
-    state.erro = '';
+    var temCache = !!(empresaId && _obrasCache[empresaId]);
+    if (temCache) {
+      // Pintura instantanea do cache; revalida em segundo plano (sem "carregando").
+      state.obras = _obrasCache[empresaId];
+      state.carregando = false;
+      state.erro = '';
+    } else {
+      state.carregando = true;
+      state.erro = '';
+    }
     renderLista();
 
     try {
@@ -2435,9 +2454,11 @@
       if (getEmpresaId() !== empresaId) return;
 
       state.obras = obras;
+      if (empresaId) _obrasCache[empresaId] = obras;
     } catch (e) {
       if (token !== _opLoadToken) return;
-      state.erro = e.message || String(e);
+      // Se ja havia cache pintado, nao sobrescreve com erro (mantem a lista).
+      if (!temCache) state.erro = e.message || String(e);
     } finally {
       // Só atualiza UI se ainda somos o carregamento mais recente
       if (token === _opLoadToken) {
@@ -2446,6 +2467,9 @@
       }
     }
   }
+
+  // Invalida o cache de obras (proxima carga refaz a query do zero).
+  function invalidarCacheObras() { _obrasCache = {}; }
 
   function rOperacional() {
     var root = $('operacional-root');
@@ -2610,6 +2634,7 @@
         state.obraAtual = await window.sbAtualizarRecebimentoMobilizacaoObra(state.obraAtual.id, coletarRecebimentoMobilizacao());
       }
       msg('Obra salva com sucesso.');
+      invalidarCacheObras();
       await carregarObras();
       renderDetalhe();
     } catch (e) {
@@ -3790,6 +3815,7 @@
       }
       msg(res.criada ? 'Obra criada com sucesso.' : (reativada ? 'Obra reativada — conteúdo anterior preservado.' : 'Esta proposta ja tinha uma obra.'));
       hidratarAcoesPropostas([p]);
+      invalidarCacheObras();
       if (window.Router && window.Router.getAtivo && window.Router.getAtivo() === 'operacional') {
         await carregarObras();
       }
@@ -3980,6 +4006,7 @@
   // Limpa imediatamente o estado operacional e recarrega se o módulo estiver ativo
   window.addEventListener('empresa:changed', function () {
     // Limpar estado: obras, detalhe aberto, filtros e subestados
+    invalidarCacheObras();
     state.obras = [];
     state.obraAtual = null;
     state.erro = '';
