@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão à Vista</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#f0a500;--emp-cor-2:#f0a500;
+  --emp-bg:rgba(240,165,0,.10);--emp-bdr:rgba(240,165,0,.28);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+body.empresa-tema-tecfusion{ --emp-cor:#4DB748;--emp-cor-2:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32); }
+body.empresa-tema-fortex{ --emp-cor:#F5A623;--emp-cor-2:#F5A623;--emp-bg:rgba(245,166,35,.10);--emp-bdr:rgba(245,166,35,.32); }
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.wrap{max-width:1240px;margin:0 auto;padding:1.1rem}
+
+/* Painel de KPIs */
+#kpis-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:1rem}
+.kpis-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.kpis-titulo{font-size:.95rem;font-weight:800;color:var(--emp-cor)}
+.kpis-bloco{margin-bottom:.8rem}
+.kpis-bloco:last-child{margin-bottom:0}
+.kpis-bloco-t{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.45rem}
+.kpis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem}
+.kpi-c{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .7rem}
+.kpi-c-l{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.25rem}
+.kpi-c-v{font-size:1.35rem;font-weight:800;color:var(--emp-cor);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-c-s{font-size:.65rem;color:var(--text3);margin-top:.2rem}
+
+/* Fechamentos por Mês */
+#fechmes-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-top:1rem}
+.fm-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.fm-titulo{font-size:.95rem;font-weight:800;color:var(--emp-cor)}
+.fm-titulo small{color:var(--text3);font-weight:600;font-size:.7rem;margin-left:.3rem}
+#fechmes-kpis{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.75rem}
+#fechmes-kpis .kpi-c{flex:1;min-width:140px}
+#fechmes-chart{width:100%;overflow-x:auto}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-l{display:flex;align-items:center;gap:.7rem}
+.hdr-mk{width:40px;height:40px;border-radius:10px;background:var(--emp-cor);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1rem;flex-shrink:0}
+.hdr-nome{font-size:1.15rem;font-weight:800;line-height:1.1}
+.hdr-sub{font-size:.72rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.hdr-acoes{display:flex;gap:.5rem;flex-wrap:wrap}
+
+.btn{border:none;border-radius:var(--r2);padding:.45rem .85rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.35rem}
+.btn-emp{background:var(--emp-cor);color:#fff}.btn-emp:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+.btn-sm{padding:.3rem .6rem;font-size:.74rem}
+.btn-danger{background:transparent;border:1px solid var(--red);color:var(--red)}.btn-danger:hover{background:var(--red);color:#fff}
+
+.cols{display:grid;grid-template-columns:300px 1fr;gap:1rem;align-items:start}
+@media(max-width:780px){ .cols{grid-template-columns:1fr} }
+
+/* Lista de metas */
+.lista{display:flex;flex-direction:column;gap:.6rem}
+.meta-card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.7rem .8rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);transition:border-color .12s}
+.meta-card:hover{border-color:var(--border2)}
+.meta-card.on{background:var(--emp-bg);border-left-color:var(--emp-cor);border-color:var(--emp-bdr)}
+.meta-card-tit{font-size:.88rem;font-weight:700;margin-bottom:.3rem}
+.meta-card-meta{font-size:.7rem;color:var(--text3);display:flex;justify-content:space-between;gap:.4rem;margin-top:.4rem}
+.prog{height:7px;background:var(--bg3);border-radius:6px;overflow:hidden;margin:.35rem 0}
+.prog-bar{height:100%;background:var(--emp-cor);border-radius:6px}
+.badge{display:inline-block;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.12rem .45rem;border-radius:20px}
+
+/* Detalhe */
+.det{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;min-height:300px}
+.abas{display:flex;gap:.3rem;border-bottom:1px solid var(--border);margin-bottom:1rem;flex-wrap:wrap}
+.aba{padding:.45rem .8rem;border:none;background:transparent;color:var(--text3);font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent}
+.aba.on{color:var(--emp-cor);border-bottom-color:var(--emp-cor)}
+.det-titulo{font-size:1.15rem;font-weight:800;margin-bottom:.2rem}
+.det-linha{font-size:.8rem;color:var(--text2);margin-bottom:.15rem}
+.det-acoes{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
+
+/* SMART Kanban (5 colunas) */
+.smart-kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-top:.8rem}
+@media(max-width:880px){ .smart-kanban{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:520px){ .smart-kanban{grid-template-columns:1fr} }
+.sk-col{display:flex;flex-direction:column;gap:.5rem}
+.sk-head{border-radius:var(--r2);padding:.5rem .6rem;color:#fff;text-align:center}
+.sk-letter{font-size:1.5rem;font-weight:900;line-height:1}
+.sk-name{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-top:.18rem;opacity:.95}
+.sk-card{background:var(--bg3);border:1px solid var(--border);border-top:3px solid var(--sk-c,var(--emp-cor));border-radius:var(--r2);padding:.6rem .7rem;font-size:.82rem;line-height:1.5;white-space:pre-wrap;flex:1}
+.valbox{display:flex;align-items:baseline;gap:.5rem;margin:.6rem 0;font-size:.9rem;flex-wrap:wrap}
+.valbox b{font-size:1.5rem;color:var(--emp-cor)}
+
+/* 5W2H — colunas lado a lado (estilo PDF) */
+.w5-cols{display:flex;gap:.7rem;overflow-x:auto;padding-bottom:.4rem;margin-top:.4rem}
+.w5-col{flex:0 0 230px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.w5-col-h{padding:.6rem .7rem;border-bottom:1px solid var(--border);text-align:center}
+.w5-col-num{font-size:1.7rem;font-weight:900;color:var(--emp-cor);line-height:1}
+.w5-col-tit{font-size:.76rem;font-weight:800;text-transform:uppercase;margin-top:.25rem;min-height:2.2em;line-height:1.2}
+.w5-col-body{padding:.6rem .7rem;display:flex;flex-direction:column;gap:.55rem;flex:1}
+.w5-badge{display:inline-block;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#fff;border-radius:4px;padding:.13rem .45rem;margin-bottom:.22rem}
+.w5-fld-v{font-size:.8rem;line-height:1.45;white-space:pre-wrap;color:var(--text);min-height:1.1em}
+.w5-col-actions{padding:.4rem .7rem;border-top:1px solid var(--border);display:flex;gap:.3rem;justify-content:flex-end}
+
+/* PDCA 2x2 colorido — sentido horário: P(TL) D(TR) C(BR) A(BL) */
+.pdca-banner{background:#4DB748;color:#fff;border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.8rem;font-weight:700;font-size:.9rem}
+.pdca{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+@media(max-width:680px){ .pdca{grid-template-columns:1fr} }
+.quad{border-radius:var(--r);padding:.9rem 1rem;color:#fff}
+.quad-h{display:flex;align-items:baseline;gap:.5rem}
+.quad-letter{font-size:1.7rem;font-weight:900;line-height:1}
+.quad-name{font-size:1rem;font-weight:800}
+.quad-sub{font-size:.7rem;opacity:.9;margin:.05rem 0 .6rem}
+.quad-q-p{background:#4DB748}
+.quad-q-d{background:#166534}
+.quad-q-c{background:#2563eb}
+.quad-q-a{background:#f97316}
+.pdca-fld{margin-bottom:.55rem}
+.pdca-fld label{font-size:.66rem;color:#fff;opacity:.9;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.2rem}
+.pdca-fld textarea{width:100%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:var(--r2);color:#fff;font-family:inherit;font-size:.82rem;line-height:1.5;padding:.45rem .55rem;resize:vertical;min-height:58px}
+.pdca-fld textarea::placeholder{color:rgba(255,255,255,.65)}
+.pdca-ro{font-size:.84rem;line-height:1.5;white-space:pre-wrap;color:#fff;opacity:.95}
+.pdca-plan-list{margin:.3rem 0 0 1.1rem;font-size:.82rem;line-height:1.5}
+
+/* Radar */
+.tbl{width:100%;border-collapse:collapse;font-size:.8rem}
+.tbl th{text-align:left;padding:.5rem .55rem;background:#4DB748;color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}
+.tbl td{padding:.45rem .55rem;border:1px solid var(--border);vertical-align:top}
+.tbl td.rad-ref{background:#4DB748;color:#fff;font-weight:700}
+.tbl tr.media td{background:#2563eb;color:#fff;font-weight:800;border-color:rgba(255,255,255,.2)}
+.tbl textarea.rad-act{width:100%;min-width:140px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;line-height:1.4;padding:.35rem .45rem;resize:vertical;min-height:38px}
+.rad-legenda{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.74rem;color:var(--text2);margin-top:.6rem}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:1.5rem 1rem;z-index:1000;overflow-y:auto}
+.modal-bg.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);width:100%;max-width:720px;padding:1.2rem}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.modal-titulo{font-size:1.05rem;font-weight:800;color:var(--emp-cor)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.fld{margin-bottom:.2rem}
+.fld.full{grid-column:1/-1}
+.fld label{font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.22rem}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.84rem;padding:.45rem .6rem;line-height:1.5}
+.fld textarea{resize:vertical;min-height:64px}
+.modal-acoes{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+.estado{padding:2.2rem;text-align:center;color:var(--text3);font-size:.9rem}
+.vazio{color:var(--text3);font-style:italic;font-size:.86rem;padding:1rem 0}
+
+/* Impressão */
+#print-cab,#print-rod{display:none}
+@media print{
+  @page{ size:A4 portrait; margin:14mm 12mm }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
+  body{ background:#fff }
+  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg{ display:none !important }
+  .cols{ display:block !important }
+  .det{ border:none !important; padding:0 !important; min-height:0 !important }
+  .w5-cols{ overflow:visible !important; flex-wrap:wrap }
+  .tbl textarea.rad-act{ border:none }
+  /* Gráfico fica fora da impressão das abas de meta */
+  #fechmes-painel{ display:none !important }
+  /* Modo "imprimir só o gráfico" */
+  body.imprimir-chart .hdr,
+  body.imprimir-chart #kpis-painel,
+  body.imprimir-chart .cols{ display:none !important }
+  body.imprimir-chart #fechmes-painel{ display:block !important }
+  body.imprimir-chart #fechmes-body{ display:block !important }
+  #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:8px; margin-bottom:14px }
+  #print-cab .pc-logo{ font-weight:900; font-size:18px; color:#4DB748; letter-spacing:1px }
+  #print-cab .pc-tool{ font-size:13px; font-weight:700; margin-top:2px; color:#111 }
+  #print-cab .pc-meta{ font-size:11px; color:#333; margin-top:5px }
+  #print-rod{ display:block !important; position:fixed; bottom:6mm; left:0; right:0; text-align:center; font-size:10px; color:#666 }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="print-cab"></div>
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="hdr-mk" id="hdr-mk">—</div>
+      <div>
+        <div class="hdr-nome" id="hdr-nome">—</div>
+        <div class="hdr-sub">Gestão à Vista</div>
+      </div>
+    </div>
+    <div class="hdr-acoes">
+      <button class="btn btn-emp btn-sm" id="btn-nova-meta" style="display:none" onclick="abrirModalMeta(null)">＋ Nova meta</button>
+    </div>
+  </div>
+
+  <div id="kpis-painel">
+    <div class="kpis-head">
+      <span class="kpis-titulo">📊 Indicadores</span>
+      <button class="btn btn-ghost btn-sm" id="kpis-toggle" onclick="toggleKpis()">▲ recolher</button>
+    </div>
+    <div id="kpis-body">
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Resultado Financeiro</div><div class="kpis-grid" id="kpis-fin"></div></div>
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Comercial</div><div class="kpis-grid" id="kpis-com"></div></div>
+      <div class="kpis-bloco"><div class="kpis-bloco-t">Velocidade</div><div class="kpis-grid" id="kpis-vel"></div></div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
+    <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
+  </div>
+
+  <div id="fechmes-painel">
+    <div class="fm-head">
+      <span class="fm-titulo">📅 Fechamentos por Mês <small id="fechmes-ano"></small></span>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn btn-ghost btn-sm" id="fechmes-toggle" onclick="toggleFechmes()">▲ recolher</button>
+        <button class="btn btn-ghost btn-sm" onclick="imprimirChart()">🖨️ Imprimir PDF</button>
+      </div>
+    </div>
+    <div id="fechmes-body">
+      <div id="fechmes-kpis"></div>
+      <div id="fechmes-chart"></div>
+    </div>
+  </div>
+
+  <div id="print-rod"></div>
+</div>
+
+<!-- Modal meta -->
+<div class="modal-bg" id="modal-meta">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-titulo" id="modal-meta-titulo">Nova meta</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-meta')">✕</button></div>
+    <div class="fgrid">
+      <div class="fld full"><label>Título *</label><input id="m-titulo"></div>
+      <div class="fld"><label>Área</label><input id="m-area"></div>
+      <div class="fld"><label>Responsável</label><input id="m-responsavel"></div>
+      <div class="fld"><label>Data início</label><input id="m-data-inicio" type="date"></div>
+      <div class="fld"><label>Data prazo</label><input id="m-data-prazo" type="date"></div>
+      <div class="fld"><label>Valor atual</label><input id="m-valor-atual" type="number" step="any"></div>
+      <div class="fld"><label>Valor meta</label><input id="m-valor-meta" type="number" step="any"></div>
+      <div class="fld"><label>Unidade</label><input id="m-unidade" placeholder="ex: dias, propostas/mês"></div>
+      <div class="fld"><label>Status</label><select id="m-status"><option value="ativa">Ativa</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select></div>
+      <div class="fld full"><label>S — Específico</label><textarea id="m-especifico"></textarea></div>
+      <div class="fld full"><label>M — Mensurável</label><textarea id="m-mensuravel"></textarea></div>
+      <div class="fld full"><label>A — Atingível</label><textarea id="m-atingivel"></textarea></div>
+      <div class="fld full"><label>R — Relevante</label><textarea id="m-relevante"></textarea></div>
+      <div class="fld full"><label>T — Temporal</label><textarea id="m-temporal"></textarea></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-meta')">Cancelar</button>
+      <button class="btn btn-emp" id="btn-salvar-meta" onclick="salvarMeta()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ação 5W2H -->
+<div class="modal-bg" id="modal-acao">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-titulo" id="modal-acao-titulo">Nova ação</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-acao')">✕</button></div>
+    <div class="fgrid">
+      <div class="fld full"><label>Título</label><input id="a-titulo"></div>
+      <div class="fld full"><label>O quê</label><textarea id="a-oque"></textarea></div>
+      <div class="fld full"><label>Por quê</label><textarea id="a-porque"></textarea></div>
+      <div class="fld"><label>Quem</label><input id="a-quem"></div>
+      <div class="fld"><label>Quando</label><input id="a-quando"></div>
+      <div class="fld"><label>Onde</label><input id="a-onde"></div>
+      <div class="fld"><label>Custo</label><input id="a-custo"></div>
+      <div class="fld full"><label>Como</label><textarea id="a-como"></textarea></div>
+      <div class="fld"><label>Status</label><select id="a-status"><option value="pendente">Pendente</option><option value="em_andamento">Em andamento</option><option value="concluida">Concluída</option></select></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-acao')">Cancelar</button>
+      <button class="btn btn-emp" id="btn-salvar-acao" onclick="salvarAcao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal registro radar -->
+<div class="modal-bg" id="modal-radar">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-titulo" id="modal-radar-titulo">Novo registro</div><button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-radar')">✕</button></div>
+    <div class="fgrid">
+      <div class="fld full"><label>Proposta / Cliente</label><input id="r-referencia"></div>
+      <div class="fld"><label>Data visita/contato</label><input id="r-data-inicio" type="date"></div>
+      <div class="fld"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
+      <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-radar')">Cancelar</button>
+      <button class="btn btn-emp" id="btn-salvar-radar" onclick="salvarRadar()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Gestão à Vista — metas, plano de ação, ciclo de melhoria e radar
+// por empresa ativa. Página iframe autônoma; empresa via postMessage,
+// dados via window.parent.sbClient (RLS aplica).
+// ============================================================
+
+var _empresaAtiva = null;
+var _metas  = [];
+var _metaSelId = null;
+var _acoes  = [];
+var _pdca   = null;
+var _radar  = [];
+var _aba    = 'smart';
+var _editAcaoId = null;
+var _editRadarId = null;
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function _sb(){ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : null; }
+function _pode(acao){ try{ return !!(window.parent && typeof window.parent.podeAcao==='function' && window.parent.podeAcao('gestao-a-vista', acao)); }catch(e){ return false; } }
+function _podeEditar(){ return _pode('editar'); }
+function _podePdca(){ return _pode('editar_pdca') || _pode('editar'); }
+function _gv(id){ var e=document.getElementById(id); return e? e.value : ''; }
+function _sv(id,v){ var e=document.getElementById(id); if(e) e.value = (v==null?'':v); }
+function _numOrNull(v){ v=String(v).trim(); if(v==='') return null; var n=parseFloat(v.replace(',','.')); return isNaN(n)?null:n; }
+function _dataBR(d){ if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
+function _fmtNum(n){ if(n==null) return '—'; return (Math.round(n*100)/100).toLocaleString('pt-BR'); }
+
+// ── Tema / header ──
+function _aplicarTema(nc){ document.body.classList.remove('empresa-tema-tecfusion','empresa-tema-fortex'); var n=(nc||'').toLowerCase(); if(n.includes('tecfusion')) document.body.classList.add('empresa-tema-tecfusion'); else if(n.includes('fortex')) document.body.classList.add('empresa-tema-fortex'); }
+function _iniciais(nome){ var n=(nome||'').toLowerCase(); if(n.includes('tecfusion')) return 'TC'; if(n.includes('fortex')) return 'FX'; var p=(nome||'').trim().split(/\s+/).filter(Boolean); if(p.length>=2) return (p[0][0]+p[1][0]).toUpperCase(); return ((nome||'—').trim().slice(0,2).toUpperCase())||'—'; }
+function _header(emp){ var nome=(emp&&(emp.nome_curto||emp.nome))||'—'; document.getElementById('hdr-nome').textContent=nome; document.getElementById('hdr-mk').textContent=_iniciais(nome); }
+
+// ── Painel de KPIs ──
+var _kpisAberto=true;
+var _FAS_GANHA=['aprovado','ganho','andamento','taf','sat','finalizado','atrasado','faturado','recebido'];
+var _FAS_PIPE =['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
+
+function _sf(){ try{ return (window.parent && window.parent.sbFinanceiro) ? window.parent.sbFinanceiro : (window.sbFinanceiro||null); }catch(e){ return null; } }
+function _props(){ try{ return (window.parent && Array.isArray(window.parent.props)) ? window.parent.props : []; }catch(e){ return []; } }
+function _money(v){ if(v==null||isNaN(v)) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function _noMes(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; var n=new Date(); return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth(); }
+function _noAno(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; return d.getFullYear()===(new Date()).getFullYear(); }
+function _media(arr){ if(!arr.length) return null; return arr.reduce(function(s,v){return s+v;},0)/arr.length; }
+function _kpiCard(label,valor,sub){ return '<div class="kpi-c"><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
+// Reuso das funções globais do shell (Metas 2026) para bater 100% com aquele painel
+function _pFn(name){ try{ return (window.parent && typeof window.parent[name]==='function') ? window.parent[name] : null; }catch(e){ return null; } }
+function _ppGanha(p){ try{ return !!(window.parent && typeof window.parent.isPropostaGanhaOuAprovada==='function' && window.parent.isPropostaGanhaOuAprovada(p)); }catch(e){ return _FAS_GANHA.indexOf(p.fas)>=0; } }
+
+function toggleKpis(){
+  _kpisAberto=!_kpisAberto;
+  var b=document.getElementById('kpis-body'); var t=document.getElementById('kpis-toggle');
+  if(b) b.style.display=_kpisAberto?'':'none';
+  if(t) t.textContent=_kpisAberto?'▲ recolher':'▼ expandir';
+}
+var _fechmesAberto=true;
+function toggleFechmes(){
+  _fechmesAberto=!_fechmesAberto;
+  var b=document.getElementById('fechmes-body'); var t=document.getElementById('fechmes-toggle');
+  if(b) b.style.display=_fechmesAberto?'':'none';
+  if(t) t.textContent=_fechmesAberto?'▲ recolher':'▼ expandir';
+}
+// Garante aberto (não alterna) — usado pela navegação do menu
+function _expandKpis(){ if(!_kpisAberto) toggleKpis(); }
+function _expandFechmes(){ if(!_fechmesAberto) toggleFechmes(); }
+function _scrollTo(id){
+  if(id==='kpis'){ _expandKpis(); var e1=document.getElementById('kpis-painel'); if(e1) e1.scrollIntoView({behavior:'smooth',block:'start'}); }
+  else if(id==='fechmes'){ _expandFechmes(); var e2=document.getElementById('fechmes-painel'); if(e2) e2.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+
+function renderKpis(){
+  _renderKpisComercial();
+  _renderKpisVelocidade();
+  _renderKpisFinanceiro();
+}
+
+function _renderKpisComercial(){
+  var el=document.getElementById('kpis-com'); if(!el) return;
+  var ps=_props();
+  // Contagens do mês (simples) — usa critério oficial de "ganha" (inclui em_pausa_*)
+  var enviadasMes=ps.filter(function(p){ return p.fas!=='em_elaboracao' && _noMes(p.dat2); });
+  var fechMes    =ps.filter(function(p){ return _ppGanha(p) && _noMes(p.dtFech); });
+  var carteira=ps.filter(function(p){ return _FAS_PIPE.indexOf(p.fas)>=0; }).reduce(function(s,p){ return s+(Number(p.val)||0); },0);
+  // Ano: reusa as funções do shell p/ bater exatamente com o Metas 2026
+  var getProps=_pFn('getPropsAnoC'), getFech=_pFn('getFechAnoC'), getRec=_pFn('getRecAnoC');
+  var totalAno = getProps ? (getProps()||[]).length : null;
+  var fechAno  = getFech  ? (getFech()||[]).length  : null;
+  var recAno   = getRec   ? getRec()                : null;
+  var conv   = (totalAno!=null && totalAno>0 && fechAno!=null) ? (fechAno/totalAno*100) : null;
+  var ticket = (recAno!=null && fechAno!=null && fechAno>0)    ? (recAno/fechAno)       : null;
+  el.innerHTML=
+    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Criadas no mês (excl. elaboração)')+
+    _kpiCard('Fechamentos no mês', String(fechMes.length), 'Ganhas por data de fechamento')+
+    _kpiCard('Taxa de conversão do ano', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ realizadas (ano)')+
+    _kpiCard('Receita no ano', recAno==null?'—':_money(recAno), 'Valor das ganhas (ano)')+
+    _kpiCard('Carteira aberta', _money(carteira), 'Pipeline em aberto')+
+    _kpiCard('Ticket médio do ano', ticket==null?'—':_money(ticket), 'Receita ÷ fechamentos (ano)');
+}
+
+function _renderKpisVelocidade(){
+  var el=document.getElementById('kpis-vel'); if(!el) return;
+  var ps=_props();
+  var elab=[], gap=[], ciclo=[];
+  ps.forEach(function(p){
+    var tl=p.tl||{};
+    var dEl=_diasEntre(tl.dtVisita||p.dat2, tl.dtEnvio); if(dEl!=null && tl.dtEnvio && (tl.dtVisita||p.dat2)) elab.push(dEl);
+    if(_ppGanha(p)){
+      var dG=_diasEntre(p.dtFech, tl.dtInicioExec); if(dG!=null && p.dtFech && tl.dtInicioExec) gap.push(dG);
+      var dC=_diasEntre(p.dat2, p.dtFech); if(dC!=null && p.dat2 && p.dtFech) ciclo.push(dC);
+    }
+  });
+  var mEl=_media(elab), mGap=_media(gap), mCic=_media(ciclo);
+  el.innerHTML=
+    _kpiCard('Elaboração média', mEl==null?'—':Math.round(mEl)+' dias', 'Visita → Envio')+
+    _kpiCard('Gap pré-obra médio', mGap==null?'—':Math.round(mGap)+' dias', 'Fechamento → Início exec.')+
+    _kpiCard('Ciclo comercial total', mCic==null?'—':Math.round(mCic)+' dias', 'Criação → Fechamento');
+}
+
+async function _renderKpisFinanceiro(){
+  var el=document.getElementById('kpis-fin'); if(!el) return;
+  el.innerHTML=
+    _kpiCard('Faturado no mês','…','NFs emitidas no mês')+
+    _kpiCard('Recebido no mês','…','Recebimentos no mês')+
+    _kpiCard('A receber em aberto','…','Contas não recebidas')+
+    _kpiCard('Faturado no ano','…','NFs emitidas no ano');
+  var sf=_sf(); var id=_empresaAtiva && _empresaAtiva.id;
+  var fatMes='—', fatAno='—', recMes='—', aberto='—';
+  if(sf && id){
+    try{
+      var nfs=await sf.listarNotasFiscaisEmpresa(id) || [];
+      var validas=(nfs||[]).filter(function(nf){ var st=String(nf.status||'').toLowerCase(); return nf.tipo_nf!=='po' && st!=='cancelada' && st!=='cancelado'; });
+      fatMes=_money(validas.filter(function(nf){return _noMes(nf.data_emissao);}).reduce(function(s,nf){return s+(parseFloat(nf.valor_nf)||0);},0));
+      fatAno=_money(validas.filter(function(nf){return _noAno(nf.data_emissao);}).reduce(function(s,nf){return s+(parseFloat(nf.valor_nf)||0);},0));
+    }catch(e){ fatMes='—'; fatAno='—'; }
+    try{
+      var recs=await sf.listarRecebimentosEmpresa(id) || [];
+      recMes=_money((recs||[]).filter(function(r){return _noMes(r.data_recebimento);}).reduce(function(s,r){return s+(parseFloat(r.valor_recebido)||0);},0));
+    }catch(e){ recMes='—'; }
+    try{
+      var cr=await sf.listarContasReceber(id) || [];
+      aberto=_money((cr||[]).filter(function(c){ var st=String(c.status||'').toLowerCase(); return st!=='recebido' && st!=='cancelado'; }).reduce(function(s,c){return s+((parseFloat(c.valor)||0)-(parseFloat(c.valor_recebido)||0));},0));
+    }catch(e){ aberto='—'; }
+  }
+  // Empresa pode ter mudado durante o await → não sobrescrever com dados antigos
+  if(!_empresaAtiva || _empresaAtiva.id!==id) return;
+  el.innerHTML=
+    _kpiCard('Faturado no mês', fatMes, 'NFs emitidas no mês')+
+    _kpiCard('Recebido no mês', recMes, 'Recebimentos no mês')+
+    _kpiCard('A receber em aberto', aberto, 'Contas não recebidas')+
+    _kpiCard('Faturado no ano', fatAno, 'NFs emitidas no ano');
+}
+
+// ── Fechamentos por Mês (gráfico SVG, reusa dados/regras do shell) ──
+function _fmtK(v){
+  v=Number(v)||0;
+  if(Math.abs(v)>=1000000) return (v/1000000).toFixed(v%1000000===0?0:1).replace('.',',')+'M';
+  if(Math.abs(v)>=1000) return Math.round(v/1000)+'k';
+  return String(Math.round(v));
+}
+function renderFechMes(){
+  var kpisEl=document.getElementById('fechmes-kpis');
+  var chartEl=document.getElementById('fechmes-chart');
+  if(!kpisEl||!chartEl) return;
+  var ps=_props();
+  var isFech=_pFn('isFechamentoMes');
+  var parseD=_pFn('_parseDateProp');
+  var MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  function _ehFech(p){ return isFech ? isFech(p) : _ppGanha(p); }
+  function _dataP(p){
+    if(parseD) return parseD(p);
+    var s=p.dtFech||p.dat2||''; if(s){ var d=new Date(s+'T12:00:00'); if(!isNaN(d.getTime())) return d; }
+    if(p.dat){ var a=String(p.dat).split('/'); if(a.length===3){ var d2=new Date(a[2]+'-'+a[1]+'-'+a[0]+'T12:00:00'); if(!isNaN(d2.getTime())) return d2; } }
+    return null;
+  }
+  var sel=null; try{ sel=window.parent._anoComercialSel; }catch(e){}
+  var todosAnos=(sel==='all');
+  var anoSel=todosAnos?null:(parseInt(sel,10)||new Date().getFullYear());
+  var elAno=document.getElementById('fechmes-ano'); if(elAno) elAno.textContent=todosAnos?'(todos os anos)':String(anoSel);
+
+  var base=ps.filter(function(p){ if(!_ehFech(p)) return false; var d=_dataP(p); if(!d) return false; return todosAnos?true:d.getFullYear()===anoSel; });
+  var dados=MESES.map(function(_,i){return {mes:i,n:0,val:0};});
+  base.forEach(function(p){ var d=_dataP(p); if(!d) return; var m=d.getMonth(); dados[m].n++; dados[m].val+=Number(p.val)||0; });
+
+  var totalN=dados.reduce(function(s,d){return s+d.n;},0);
+  var totalVal=dados.reduce(function(s,d){return s+d.val;},0);
+  var mesesCom=dados.filter(function(d){return d.n>0;}).length;
+  var melhor=dados.reduce(function(a,b){return b.val>a.val?b:a;},dados[0]);
+  var media=mesesCom>0?totalVal/mesesCom:0;
+
+  if(totalN===0){
+    kpisEl.innerHTML='';
+    chartEl.innerHTML='<div class="vazio">Nenhum fechamento no período.</div>';
+    return;
+  }
+  kpisEl.innerHTML=
+    _kpiCard('Fechamentos no ano', String(totalN), todosAnos?'Todos os anos':String(anoSel))+
+    _kpiCard('Receita fechada', _money(totalVal), 'Soma dos valores')+
+    _kpiCard('Média/mês ativo', _money(media), 'Receita ÷ meses ativos')+
+    _kpiCard('Melhor mês', melhor.n>0?(MESES[melhor.mes]+' — '+_money(melhor.val)):'—', 'Maior receita');
+
+  var H=180,padT=28,padB=32,padL=48,padR=12,barW=46,gap=12;
+  var chartW=Math.max(600,12*(barW+gap)+padL+padR);
+  var maxVal=Math.max.apply(null,dados.map(function(d){return d.val;})); if(maxVal<=0) maxVal=1;
+  var mesAtual=(!todosAnos && new Date().getFullYear()===anoSel)?new Date().getMonth():-1;
+  var corEmp=(getComputedStyle(document.body).getPropertyValue('--emp-cor')||'').trim()||'#4DB748';
+
+  var svg='<svg viewBox="0 0 '+chartW+' '+(H+padT+padB)+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:inherit">';
+  for(var gi=0;gi<=4;gi++){
+    var gy=padT+(H/4)*gi; var gval=maxVal*(1-gi/4);
+    svg+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(chartW-padR)+'" y2="'+gy+'" stroke="rgba(128,128,128,.15)" stroke-width="1" stroke-dasharray="'+(gi===0?'0':'4,3')+'"/>';
+    svg+='<text x="'+(padL-6)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="rgba(150,150,150,.8)">'+_fmtK(gval)+'</text>';
+  }
+  dados.forEach(function(d,i){
+    var x=padL+i*(barW+gap); var cx=x+barW/2;
+    var barH=maxVal>0?Math.min(H-50,(d.val/maxVal)*H):0;
+    var barY=padT+H-barH;
+    var isAtual=(i===mesAtual); var temDados=d.n>0;
+    var cor=temDados?(isAtual?'#58a6ff':corEmp):'rgba(128,128,128,.12)';
+    var _barTopo=padT+H-barH; var _bolaY=_barTopo-12; var _valY=_barTopo-28;
+    if(temDados){
+      svg+='<text x="'+cx+'" y="'+_valY+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="'+cor+'">'+_fmtK(d.val)+'</text>';
+      svg+='<circle cx="'+cx+'" cy="'+_bolaY+'" r="10" fill="'+(isAtual?'rgba(88,166,255,.25)':'rgba(77,183,72,.2)')+'" stroke="'+(isAtual?'#58a6ff':corEmp)+'" stroke-width="1.5"/>';
+      svg+='<text x="'+cx+'" y="'+(_bolaY+4)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+(isAtual?'#58a6ff':corEmp)+'">'+d.n+'</text>';
+    }
+    if(barH>1){ svg+='<rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4" fill="'+cor+'" opacity="0.88"/>'; }
+    else if(temDados){ svg+='<rect x="'+x+'" y="'+(padT+H-3)+'" width="'+barW+'" height="3" rx="2" fill="'+cor+'"/>'; }
+    else { svg+='<rect x="'+x+'" y="'+(padT+H-2)+'" width="'+barW+'" height="2" rx="1" fill="rgba(128,128,128,.12)"/>'; }
+    var corLabel=isAtual?'#58a6ff':(temDados?'rgba(160,160,160,.95)':'rgba(120,120,120,.5)');
+    svg+='<text x="'+cx+'" y="'+(padT+H+16)+'" text-anchor="middle" font-size="10.5" font-weight="'+(isAtual?'700':'400')+'" fill="'+corLabel+'">'+MESES[i]+'</text>';
+    if(isAtual){ svg+='<rect x="'+(x-2)+'" y="'+(padT-6)+'" width="'+(barW+4)+'" height="'+(H+6)+'" rx="5" fill="none" stroke="#58a6ff" stroke-width="1" opacity="0.3"/>'; }
+  });
+  svg+='</svg>';
+  chartEl.innerHTML=svg;
+}
+function imprimirChart(){
+  var ano=''; try{ var s=window.parent._anoComercialSel; ano=(s==='all')?'todos os anos':String(parseInt(s,10)||new Date().getFullYear()); }catch(e){}
+  var cab=document.getElementById('print-cab'); var rod=document.getElementById('print-rod');
+  if(cab){
+    cab.innerHTML='<div class="pc-logo">TECFUSION</div>'+
+      '<div class="pc-tool">Gestão à Vista — Fechamentos por Mês</div>'+
+      '<div class="pc-meta">'+esc((_empresaAtiva&&(_empresaAtiva.nome_curto||_empresaAtiva.nome))||'')+' · Ano: '+esc(ano)+'</div>';
+  }
+  if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
+  document.body.classList.add('imprimir-chart');
+  window.print();
+}
+window.addEventListener('afterprint', function(){ document.body.classList.remove('imprimir-chart'); });
+
+// ── Progresso e status ──
+function _progresso(m){
+  var a=m.valor_atual, mt=m.valor_meta;
+  if(a==null||mt==null||(a===0&&mt===0)) return null;
+  var pct;
+  if(mt>=a){ pct = mt===0?0:(a/mt)*100; }      // meta de aumento
+  else     { pct = a===0?0:(mt/a)*100; }        // meta de redução
+  return Math.max(0, Math.min(100, pct));
+}
+function _diasRestantes(m){ if(!m.data_prazo) return null; var hoje=new Date(); hoje.setHours(0,0,0,0); var p=new Date(m.data_prazo+'T12:00:00'); return Math.ceil((p-hoje)/86400000); }
+function _statusMeta(m){
+  if(m.status==='concluida') return {label:'Concluída', cor:'var(--green)'};
+  if(m.status==='cancelada') return {label:'Cancelada', cor:'var(--text3)'};
+  var prog=_progresso(m); var dias=_diasRestantes(m);
+  var noPrazo = (dias==null) || (dias>=0);
+  if(prog!=null && prog>=50 && noPrazo) return {label:'No prazo', cor:'var(--green)'};
+  if(prog!=null && prog<50 && dias!=null && dias<30) return {label:'Atenção', cor:'var(--amber)'};
+  return {label:'Em andamento', cor:'var(--blue)'};
+}
+
+// ── Boot ──
+function _onTrocaEmpresa(d){
+  _empresaAtiva = { id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
+  _aplicarTema(_empresaAtiva.nome_curto||_empresaAtiva.nome);
+  _header(_empresaAtiva);
+  document.getElementById('btn-nova-meta').style.display = _podeEditar()? 'inline-flex':'none';
+  _metas=[]; _metaSelId=null; _acoes=[]; _pdca=null; _radar=[];
+  document.getElementById('detalhe').innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>';
+  carregarMetas();
+  renderKpis();
+  renderFechMes();
+}
+
+async function carregarMetas(){
+  var sb=_sb(); var el=document.getElementById('lista-metas');
+  if(!sb||!_empresaAtiva){ el.innerHTML='<div class="vazio">Sem conexão.</div>'; return; }
+  try{
+    var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
+    _metas=(!r.error&&Array.isArray(r.data))?r.data:[];
+  }catch(e){ _metas=[]; }
+  renderLista();
+}
+
+function renderLista(){
+  var el=document.getElementById('lista-metas');
+  if(!_metas.length){ el.innerHTML='<div class="vazio">Nenhuma meta cadastrada ainda.</div>'; return; }
+  el.innerHTML=_metas.map(function(m){
+    var st=_statusMeta(m); var prog=_progresso(m);
+    return '<button class="meta-card'+(m.id===_metaSelId?' on':'')+'" onclick="selecionarMeta(\''+m.id+'\')">'+
+      '<div class="meta-card-tit">'+esc(m.titulo)+'</div>'+
+      '<div class="prog"><div class="prog-bar" style="width:'+(prog==null?0:prog)+'%"></div></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:.4rem">'+
+        '<span class="badge" style="background:'+st.cor+'22;color:'+st.cor+'">'+st.label+'</span>'+
+        '<span style="font-size:.72rem;color:var(--text3)">'+_fmtNum(m.valor_atual)+' / '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'')+'</span>'+
+      '</div>'+
+      '<div class="meta-card-meta"><span>'+esc(m.responsavel_nome||'—')+'</span><span>'+_dataBR(m.data_prazo)+'</span></div>'+
+    '</button>';
+  }).join('');
+}
+
+async function selecionarMeta(id){
+  _metaSelId=id; _aba='smart';
+  renderLista();
+  var sb=_sb();
+  _acoes=[]; _pdca=null; _radar=[];
+  if(sb){
+    try{ var ra=await sb.from('meta_acoes').select('*').eq('meta_id',id).order('ordem',{ascending:true}); _acoes=(!ra.error&&ra.data)?ra.data:[]; }catch(e){}
+    try{ var rp=await sb.from('meta_pdca').select('*').eq('meta_id',id).maybeSingle(); _pdca=(!rp.error&&rp.data)?rp.data:null; }catch(e){}
+    try{ var rr=await sb.from('meta_radar').select('*').eq('meta_id',id).order('created_at',{ascending:true}); _radar=(!rr.error&&rr.data)?rr.data:[]; }catch(e){}
+  }
+  renderDetalhe();
+}
+
+function _metaSel(){ return _metas.find(function(m){return m.id===_metaSelId;}) || null; }
+
+function renderDetalhe(){
+  var m=_metaSel(); var el=document.getElementById('detalhe');
+  if(!m){ el.innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>'; return; }
+  var abas=[['smart','Meta SMART'],['w5h2','Plano 5W2H'],['pdca','Ciclo PDCA'],['radar','Radar']];
+  var html='<div class="abas">'+abas.map(function(a){ return '<button class="aba'+(_aba===a[0]?' on':'')+'" onclick="trocarAba(\''+a[0]+'\')">'+a[1]+'</button>'; }).join('')+'</div>';
+  html+='<div class="det-acoes" style="justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="imprimir()">🖨️ Imprimir PDF</button></div>';
+  if(_aba==='smart') html+=_renderSmart(m);
+  else if(_aba==='w5h2') html+=_renderW5h2(m);
+  else if(_aba==='pdca') html+=_renderPdca(m);
+  else if(_aba==='radar') html+=_renderRadar(m);
+  el.innerHTML=html;
+}
+function trocarAba(a){ _aba=a; renderDetalhe(); }
+
+function _renderSmart(m){
+  var st=_statusMeta(m);
+  var h='<div class="det-titulo">'+esc(m.titulo)+'</div>'+
+    '<div class="det-linha">'+esc(m.area||'—')+' · Responsável: '+esc(m.responsavel_nome||'—')+'</div>'+
+    '<div class="det-linha">Início: '+_dataBR(m.data_inicio)+' · Prazo: '+_dataBR(m.data_prazo)+' · <span class="badge" style="background:'+st.cor+'22;color:'+st.cor+'">'+st.label+'</span></div>'+
+    '<div class="valbox"><span>Atual</span><b>'+_fmtNum(m.valor_atual)+'</b><span>→ Meta</span><b>'+_fmtNum(m.valor_meta)+'</b><span>'+esc(m.unidade||'')+'</span></div>';
+  if(_podeEditar()){
+    h+='<div class="det-acoes">'+
+      '<button class="btn btn-ghost btn-sm" onclick="abrirModalMeta(\''+m.id+'\')">✏️ Editar meta</button>'+
+      '<button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button>'+
+    '</div>';
+  }
+  var cols=[
+    ['S','Específico',m.especifico,'#4DB748'],
+    ['M','Mensurável',m.mensuravel,'#2563eb'],
+    ['A','Atingível',m.atingivel,'#7c3aed'],
+    ['R','Relevante',m.relevante,'#0891b2'],
+    ['T','Temporal',m.temporal,'#d97706']
+  ];
+  h+='<div class="smart-kanban">'+cols.map(function(c){
+    return '<div class="sk-col">'+
+      '<div class="sk-head" style="background:'+c[3]+'"><div class="sk-letter">'+c[0]+'</div><div class="sk-name">'+c[1]+'</div></div>'+
+      '<div class="sk-card" style="--sk-c:'+c[3]+'">'+(c[2]?esc(c[2]):'<span style="color:var(--text3)">—</span>')+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+  return h;
+}
+
+var _W5FIELDS=[
+  ['O quê','o_que','#4DB748'],
+  ['Por quê','por_que','#f97316'],
+  ['Quem','quem','#4DB748'],
+  ['Quando','quando','#4DB748'],
+  ['Onde','onde','#4DB748'],
+  ['Como','como','#4DB748'],
+  ['Custo','custo','#4DB748']
+];
+function _colAcao(a,i){
+  var num=String((a&&a.ordem)||i+1); if(num.length<2) num='0'+num;
+  var tit=(a&&a.titulo)?esc(String(a.titulo).toUpperCase()):'&nbsp;';
+  var body=_W5FIELDS.map(function(f){
+    var val=a?a[f[1]]:'';
+    return '<div class="w5-fld"><span class="w5-badge" style="background:'+f[2]+'">'+f[0]+'</span><div class="w5-fld-v">'+(val?esc(val):'')+'</div></div>';
+  }).join('');
+  var actions = (a&&_podeEditar())
+    ? '<div class="w5-col-actions"><button class="btn btn-ghost btn-sm" onclick="abrirModalAcao(\''+a.id+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="excluirAcao(\''+a.id+'\')">🗑️</button></div>'
+    : '';
+  return '<div class="w5-col">'+
+    '<div class="w5-col-h"><div class="w5-col-num">'+num+'</div><div class="w5-col-tit">'+tit+'</div></div>'+
+    '<div class="w5-col-body">'+body+'</div>'+actions+
+  '</div>';
+}
+function _renderW5h2(m){
+  var cols;
+  if(_acoes.length){ cols=_acoes.map(_colAcao).join(''); }
+  else { cols=[0,1,2,3].map(function(i){ return _colAcao(null,i); }).join(''); }  // 4 colunas vazias
+  var h='<div class="w5-cols">'+cols+'</div>';
+  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalAcao(null)">＋ Adicionar ação</button></div>';
+  return h;
+}
+
+function _renderPdca(m){
+  var p=_pdca||{};
+  var ro=!_podePdca();
+  function fld(id,label,val){ return '<div class="pdca-fld"><label>'+label+'</label>'+(ro?'<div class="pdca-ro">'+(val?esc(val):'—')+'</div>':'<textarea id="'+id+'">'+esc(val||'')+'</textarea>')+'</div>'; }
+  function quad(cls,letter,name,sub,inner){ return '<div class="quad '+cls+'"><div class="quad-h"><span class="quad-letter">'+letter+'</span><span class="quad-name">'+name+'</span></div><div class="quad-sub">'+sub+'</div>'+inner+'</div>'; }
+  var planAcoes = _acoes.length? '<ul class="pdca-plan-list">'+_acoes.map(function(a){return '<li>'+esc(a.titulo||a.o_que||'(ação)')+'</li>';}).join('')+'</ul>' : '<div style="opacity:.85;font-size:.82rem;margin-top:.3rem">Sem ações cadastradas.</div>';
+  var bannerVals = (m.valor_atual!=null||m.valor_meta!=null) ? ' — '+_fmtNum(m.valor_atual)+' → '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'') : '';
+  var h='<div class="pdca-banner">🎯 '+esc(m.titulo)+bannerVals+'</div>';
+  // Ordem do DOM em grid 2 col: TL, TR, BL, BR → P, D, A, C (horário)
+  h+='<div class="pdca">'+
+    quad('quad-q-p','P','Planejar','Meta e plano de ação','<div style="font-weight:700;font-size:.86rem">'+esc(m.titulo)+'</div>'+planAcoes)+
+    quad('quad-q-d','D','Executar','Registro da execução',
+      fld('pd-do-certo','O que deu certo',p.do_certo)+
+      fld('pd-do-dif','Dificuldades',p.do_dificuldades)+
+      fld('pd-do-sup','Como superar',p.do_superar))+
+    quad('quad-q-a','A','Agir','Correções e padronização',
+      fld('pd-act-cor','O que corrigir',p.act_corrigir)+
+      fld('pd-act-pad','O que padronizar',p.act_padronizar))+
+    quad('quad-q-c','C','Verificar','Resultado vs meta',
+      fld('pd-check-obs','Tempo médio',p.check_observacoes)+
+      fld('pd-check-at','Atingiu a meta?',p.check_atingiu))+
+  '</div>';
+  if(!ro) h+='<div class="det-acoes" style="margin-top:1rem"><button class="btn btn-emp btn-sm" onclick="salvarPdca()">Salvar PDCA</button></div>';
+  return h;
+}
+
+function _radarHead(){
+  return '<th>Proposta/Cliente</th><th>Data visita/contato</th><th>Data envio/entrega</th><th>Dias</th><th>Bateu?</th><th>Causa/Ação (ACT)</th>';
+}
+function _diasEntre(ini,fim){
+  if(!ini||!fim) return null;
+  var a=new Date(ini+'T12:00:00'), b=new Date(fim+'T12:00:00');
+  if(isNaN(a)||isNaN(b)) return null;
+  return Math.round((b-a)/86400000);
+}
+function _radarLegendaEAcao(){
+  var h='<div class="rad-legenda"><span>🟢 Bateu a meta</span><span>🔴 Acima da meta</span><span>🔵 Média do período</span></div>';
+  if(_podeEditar()) h+='<div class="det-acoes" style="margin-top:.7rem"><button class="btn btn-emp btn-sm" onclick="abrirModalRadar(null)">＋ Adicionar registro</button></div>';
+  return h;
+}
+function _renderRadar(m){
+  // Sem registros: estrutura visível com 7 linhas vazias (Registro 1..7)
+  if(!_radar.length){
+    var vazias='';
+    for(var i=1;i<=7;i++){
+      vazias+='<tr><td class="rad-ref">Registro '+i+'</td><td></td><td></td><td>—</td><td>—</td><td></td></tr>';
+    }
+    var hv='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+'</tr></thead><tbody>'+
+      vazias+
+      '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>'+
+      '</tbody></table></div>';
+    return hv+_radarLegendaEAcao();
+  }
+  var h='';
+  var m=_metaSel();
+  var soma=0,cont=0;
+  var linhas=_radar.map(function(r){
+    var dias=_diasEntre(r.data_inicio,r.data_fim);
+    if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
+    var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : r.bateu_meta;
+    if(dias!=null){ soma+=dias; cont++; }
+    var bateuTxt = bateu===true?'🟢 Sim':(bateu===false?'🔴 Não':'—');
+    var refCell='<td class="rad-ref">'+esc(r.referencia||'—')+
+      (_podeEditar()?' <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️</button><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5)" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button>':'')+'</td>';
+    var actCell = _podeEditar()
+      ? '<textarea class="rad-act" onchange="salvarAnotacaoRadar(\''+r.id+'\',this.value)">'+esc(r.anotacao||'')+'</textarea>'
+      : (r.anotacao?esc(r.anotacao):'—');
+    return '<tr>'+refCell+
+      '<td>'+_dataBR(r.data_inicio)+'</td>'+
+      '<td>'+_dataBR(r.data_fim)+'</td>'+
+      '<td>'+(dias==null?'—':dias)+'</td>'+
+      '<td>'+bateuTxt+'</td>'+
+      '<td>'+actCell+'</td>'+
+    '</tr>';
+  }).join('');
+  var mediaDias = cont? (soma/cont) : null;
+  var mediaTxt = mediaDias==null?'—':_fmtNum(mediaDias);
+  var mediaBateu = (mediaDias!=null && m && m.valor_meta!=null) ? (mediaDias<=Number(m.valor_meta)?'🟢 Sim':'🔴 Não') : '—';
+  h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+_radarHead()+
+    '</tr></thead><tbody>'+linhas+
+    '<tr class="media"><td>MÉDIA</td><td>—</td><td>—</td><td>'+mediaTxt+'</td><td>'+mediaBateu+'</td><td>—</td></tr>'+
+    '</tbody></table></div>';
+  h+=_radarLegendaEAcao();
+  return h;
+}
+
+// ── Modal META ──
+function abrirModalMeta(id){
+  if(!_podeEditar()) return;
+  var m = id? _metas.find(function(x){return x.id===id;}) : null;
+  document.getElementById('modal-meta-titulo').textContent = m? 'Editar meta':'Nova meta';
+  document.getElementById('btn-salvar-meta').dataset.id = m? m.id:'';
+  _sv('m-titulo',m&&m.titulo); _sv('m-area',m&&m.area); _sv('m-responsavel',m&&m.responsavel_nome);
+  _sv('m-data-inicio',m&&m.data_inicio); _sv('m-data-prazo',m&&m.data_prazo);
+  _sv('m-valor-atual',m&&m.valor_atual); _sv('m-valor-meta',m&&m.valor_meta); _sv('m-unidade',m&&m.unidade);
+  _sv('m-status',(m&&m.status)||'ativa');
+  _sv('m-especifico',m&&m.especifico); _sv('m-mensuravel',m&&m.mensuravel); _sv('m-atingivel',m&&m.atingivel); _sv('m-relevante',m&&m.relevante); _sv('m-temporal',m&&m.temporal);
+  abrirModal('modal-meta');
+}
+async function salvarMeta(){
+  if(!_podeEditar()||!_empresaAtiva) return;
+  var sb=_sb(); if(!sb) return;
+  var titulo=_gv('m-titulo').trim();
+  if(!titulo){ alert('Informe o título da meta.'); return; }
+  var id=document.getElementById('btn-salvar-meta').dataset.id;
+  var payload={
+    empresa_id:_empresaAtiva.id, titulo:titulo, area:_gv('m-area')||null,
+    responsavel_nome:_gv('m-responsavel')||null,
+    data_inicio:_gv('m-data-inicio')||null, data_prazo:_gv('m-data-prazo')||null,
+    valor_atual:_numOrNull(_gv('m-valor-atual')), valor_meta:_numOrNull(_gv('m-valor-meta')),
+    unidade:_gv('m-unidade')||null, status:_gv('m-status')||'ativa',
+    especifico:_gv('m-especifico')||null, mensuravel:_gv('m-mensuravel')||null,
+    atingivel:_gv('m-atingivel')||null, relevante:_gv('m-relevante')||null, temporal:_gv('m-temporal')||null,
+    updated_at:new Date().toISOString()
+  };
+  var btn=document.getElementById('btn-salvar-meta'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    var r = id ? await sb.from('metas').update(payload).eq('id',id) : await sb.from('metas').insert(payload);
+    if(r.error) throw r.error;
+    fecharModal('modal-meta'); await carregarMetas();
+    if(id){ await selecionarMeta(id); }
+  }catch(e){ alert('Erro ao salvar meta: '+(e&&e.message||'')); }
+  btn.disabled=false; btn.textContent='Salvar';
+}
+
+// ── Modal AÇÃO ──
+function abrirModalAcao(id){
+  if(!_podeEditar()||!_metaSelId) return;
+  _editAcaoId = id||null;
+  var a = id? _acoes.find(function(x){return x.id===id;}) : null;
+  document.getElementById('modal-acao-titulo').textContent = a? 'Editar ação':'Nova ação';
+  _sv('a-titulo',a&&a.titulo); _sv('a-oque',a&&a.o_que); _sv('a-porque',a&&a.por_que);
+  _sv('a-quem',a&&a.quem); _sv('a-quando',a&&a.quando); _sv('a-onde',a&&a.onde);
+  _sv('a-custo',a&&a.custo); _sv('a-como',a&&a.como); _sv('a-status',(a&&a.status)||'pendente');
+  abrirModal('modal-acao');
+}
+async function salvarAcao(){
+  if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
+  var sb=_sb(); if(!sb) return;
+  var payload={
+    meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
+    titulo:_gv('a-titulo')||null, o_que:_gv('a-oque')||null, por_que:_gv('a-porque')||null,
+    quem:_gv('a-quem')||null, quando:_gv('a-quando')||null, onde:_gv('a-onde')||null,
+    como:_gv('a-como')||null, custo:_gv('a-custo')||null, status:_gv('a-status')||'pendente',
+    updated_at:new Date().toISOString()
+  };
+  var btn=document.getElementById('btn-salvar-acao'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    var r;
+    if(_editAcaoId){ r=await sb.from('meta_acoes').update(payload).eq('id',_editAcaoId); }
+    else { payload.ordem=_acoes.length+1; r=await sb.from('meta_acoes').insert(payload); }
+    if(r.error) throw r.error;
+    fecharModal('modal-acao'); await selecionarMeta(_metaSelId);
+  }catch(e){ alert('Erro ao salvar ação: '+(e&&e.message||'')); }
+  btn.disabled=false; btn.textContent='Salvar';
+}
+async function excluirAcao(id){
+  if(!_podeEditar()) return;
+  if(!confirm('Excluir esta ação?')) return;
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_acoes').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
+}
+
+// ── PDCA ──
+async function salvarPdca(){
+  if(!_podePdca()||!_metaSelId||!_empresaAtiva) return;
+  var sb=_sb(); if(!sb) return;
+  var payload={
+    meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
+    do_certo:_gv('pd-do-certo')||null, do_dificuldades:_gv('pd-do-dif')||null, do_superar:_gv('pd-do-sup')||null,
+    check_atingiu:_gv('pd-check-at')||null, check_observacoes:_gv('pd-check-obs')||null,
+    act_corrigir:_gv('pd-act-cor')||null, act_padronizar:_gv('pd-act-pad')||null,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    var r=await sb.from('meta_pdca').upsert(payload,{onConflict:'meta_id'});
+    if(r.error) throw r.error;
+    _pdca=payload; alert('PDCA salvo.');
+  }catch(e){ alert('Erro ao salvar PDCA: '+(e&&e.message||'')); }
+}
+
+// ── Radar ──
+function abrirModalRadar(id){
+  if(!_podeEditar()||!_metaSelId) return;
+  _editRadarId=id||null;
+  var r = id? _radar.find(function(x){return x.id===id;}) : null;
+  document.getElementById('modal-radar-titulo').textContent = r? 'Editar registro':'Novo registro';
+  _sv('r-referencia',r&&r.referencia); _sv('r-data-inicio',r&&r.data_inicio); _sv('r-data-fim',r&&r.data_fim);
+  _sv('r-anotacao',r&&r.anotacao);
+  abrirModal('modal-radar');
+}
+async function salvarRadar(){
+  if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
+  var sb=_sb(); if(!sb) return;
+  var ini=_gv('r-data-inicio')||null, fim=_gv('r-data-fim')||null;
+  var dias=_diasEntre(ini,fim);
+  var m=_metaSel();
+  var bateu=(dias!=null && m && m.valor_meta!=null) ? (dias<=Number(m.valor_meta)) : null;
+  var payload={
+    meta_id:_metaSelId, empresa_id:_empresaAtiva.id,
+    referencia:_gv('r-referencia')||null, data_inicio:ini, data_fim:fim,
+    valor_realizado:dias, bateu_meta:bateu,
+    anotacao:_gv('r-anotacao')||null, updated_at:new Date().toISOString()
+  };
+  var btn=document.getElementById('btn-salvar-radar'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    var r = _editRadarId ? await sb.from('meta_radar').update(payload).eq('id',_editRadarId) : await sb.from('meta_radar').insert(payload);
+    if(r.error) throw r.error;
+    fecharModal('modal-radar'); await selecionarMeta(_metaSelId);
+  }catch(e){ alert('Erro ao salvar registro: '+(e&&e.message||'')); }
+  btn.disabled=false; btn.textContent='Salvar';
+}
+async function excluirRadar(id){
+  if(!_podeEditar()) return;
+  if(!confirm('Excluir este registro?')) return;
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
+}
+async function salvarAnotacaoRadar(id, val){
+  if(!_podeEditar()) return;
+  var sb=_sb(); if(!sb) return;
+  try{
+    var r=await sb.from('meta_radar').update({ anotacao: val||null, updated_at:new Date().toISOString() }).eq('id',id);
+    if(r.error) throw r.error;
+    var reg=_radar.find(function(x){return x.id===id;}); if(reg) reg.anotacao=val;
+  }catch(e){ alert('Erro ao salvar anotação: '+(e&&e.message||'')); }
+}
+
+// ── Modais utils ──
+function abrirModal(id){ document.getElementById(id).classList.add('on'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('on'); }
+
+// ── Impressão (PDF via browser) ──
+function imprimir(){
+  var m=_metaSel();
+  var abaNome={smart:'Meta SMART',w5h2:'Plano 5W2H',pdca:'Ciclo PDCA',radar:'Radar'}[_aba]||'';
+  var cab=document.getElementById('print-cab');
+  var rod=document.getElementById('print-rod');
+  if(cab){
+    cab.innerHTML='<div class="pc-logo">TECFUSION</div>'+
+      '<div class="pc-tool">Gestão à Vista — '+esc(abaNome)+'</div>'+
+      (m?'<div class="pc-meta"><b>'+esc(m.titulo)+'</b> · Responsável: '+esc(m.responsavel_nome||'—')+' · Período: '+_dataBR(m.data_inicio)+' a '+_dataBR(m.data_prazo)+'</div>':'');
+  }
+  if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
+  window.print();
+}
+
+// ── postMessage ──
+window.addEventListener('message', function(e){
+  if(!e.data||!e.data.type) return;
+  if(e.data.type==='SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  if(e.data.type==='SCROLL_TO') _scrollTo(e.data.payload);
+});
+
+// Tema inicial do pai + pedir empresa
+try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
+try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'},'*'); }catch(e){}
+</script>
+</body>
+</html>

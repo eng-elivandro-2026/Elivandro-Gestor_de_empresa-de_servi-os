@@ -64,6 +64,17 @@
       ]
     },
     {
+      id: 'gestao-a-vista',
+      label: 'Gestão à Vista',
+      icon: '📊',
+      tipo: 'iframe',
+      src: 'pages/gestao-a-vista.html',
+      nav: [
+        { label: 'Indicadores',         icon: '📊', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','kpis');Router._setNavAtivo(this)" },
+        { label: 'Fechamentos por Mês', icon: '📅', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','fechmes');Router._setNavAtivo(this)" },
+      ]
+    },
+    {
       id: 'operacional',
       label: 'Operacional',
       icon: 'OP',
