@@ -1943,6 +1943,9 @@
     var ehAdminDono = ['dono', 'admin'].includes(perfil);
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
+      if (ehDono()) {
+        html += '<button type="button" class="btn bg" title="Somente DONO: reverte a assinatura e volta o documento para rascunho editavel" onclick="opGestaoReverterAssinatura()" style="border:1px solid #ef4444!important;color:#ef4444!important;background:transparent!important">↩ Reverter assinatura</button>';
+      }
     } else {
       html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
         + '<button type="button" class="btn bs op-primary-action" onclick="opGestaoFinalizar()">Finalizar e Assinar Relatorio</button>';
@@ -3887,11 +3890,11 @@
   window.opTogglePreviewGestao = togglePreviewGestao;
   window.opToggleSectionBreak = toggleSectionBreak;
   // Função simples: limpar assinaturas do banco direto via RPC
-  window.opGestaoLimparAssinaturasCompleto = async function() {
+  window.opGestaoLimparAssinaturasCompleto = async function(skipConfirm) {
     var doc = state.gestaoDocumento || {};
     if (!doc.id) { msg('Nenhum documento.', 'err'); return; }
     if (!doc.empresa_id) { msg('Empresa não identificada.', 'err'); return; }
-    if (!confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
+    if (!skipConfirm && !confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
 
     try {
       console.log('🗑️ Deletando assinaturas:', { doc_id: doc.id, empresa_id: doc.empresa_id });
@@ -3927,6 +3930,14 @@
       console.error('💥 ERRO:', e);
       msg('❌ Erro: ' + (e.message || JSON.stringify(e)), 'err');
     }
+  };
+
+  // Reverter assinatura (somente DONO): confirma e reusa a função existente
+  // (skipConfirm=true para nao duplicar o confirm). Mantem a obra no Operacional.
+  window.opGestaoReverterAssinatura = async function() {
+    if (!ehDono()) { msg('Apenas o perfil DONO pode reverter a assinatura.', 'err'); return; }
+    if (!confirm('Tem certeza que deseja reverter a assinatura? O documento voltará para rascunho editável.')) return;
+    await window.opGestaoLimparAssinaturasCompleto(true);
   };
 
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
