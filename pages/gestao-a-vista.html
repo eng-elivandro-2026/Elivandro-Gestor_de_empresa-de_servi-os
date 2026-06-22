@@ -160,28 +160,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 @media print{
   @page{ size:A4 landscape; margin:10mm }
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
-  body{ background:#fff }
-  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg{ display:none !important }
-  /* Painel de indicadores não sai na impressão (evita card vazio no topo) */
-  #kpis-painel{ display:none !important }
+  html,body{ background:#fff !important; color:#111 !important; height:auto !important }
+  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg,#kpis-painel{ display:none !important }
   .cols{ display:block !important }
   .det{ border:none !important; padding:0 !important; min-height:0 !important; width:100% !important }
+  .estado,.vazio{ color:#444 !important }
+
+  /* Cabeçalho/rodapé em fluxo normal (evita página em branco extra) */
+  #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:6px; margin-bottom:10px }
+  #print-cab .pc-logo{ font-weight:900; font-size:16px; color:#4DB748; letter-spacing:1px }
+  #print-cab .pc-tool{ font-size:12px; font-weight:700; margin-top:2px; color:#111 }
+  #print-cab .pc-meta{ font-size:10px; color:#333; margin-top:4px }
+  #print-rod{ display:block !important; margin-top:10px; text-align:center; font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:4px }
+
+  /* ── SMART: cabeçalho da letra colorido (inline), card branco ── */
+  .smart-kanban{ page-break-inside:avoid }
+  .sk-col{ page-break-inside:avoid }
+  .sk-head{ color:#fff !important }
+  .sk-card{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important }
+  .det-titulo{ color:#111 !important }
+  .det-linha{ color:#333 !important }
+
+  /* ── 5W2H: colunas lado a lado, badges coloridos, corpo branco ── */
   .w5-cols{ overflow:visible !important; flex-wrap:wrap }
-  .tbl textarea.rad-act{ border:none }
-  /* Gráfico fica fora da impressão das abas de meta */
+  .w5-col{ page-break-inside:avoid; background:#fff !important; border:1px solid #ccc !important }
+  .w5-col-h{ background:#fff !important }
+  .w5-col-tit{ color:#111 !important }
+  .w5-fld-v{ color:#111 !important }
+
+  /* ── PDCA: cabeçalho do quadrante colorido, corpo branco; cabe em 1 página ── */
+  .pdca-banner{ color:#fff !important }
+  .pdca{ gap:.4rem !important; page-break-inside:avoid }
+  .quad{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important; padding:0 0 .4rem !important; page-break-inside:avoid }
+  .quad-h{ color:#fff !important; padding:.25rem .5rem !important; margin-bottom:.3rem }
+  .quad-q-p .quad-h{ background:#4DB748 !important }
+  .quad-q-d .quad-h{ background:#166534 !important }
+  .quad-q-c .quad-h{ background:#2563eb !important }
+  .quad-q-a .quad-h{ background:#f97316 !important }
+  .quad-letter{ font-size:1.2rem !important }
+  .quad-name{ font-size:.85rem !important }
+  .quad-sub{ color:#444 !important; opacity:1 !important; padding:0 .5rem; margin-bottom:.35rem }
+  .quad .pdca-fld{ padding:0 .5rem; margin-bottom:.3rem }
+  .pdca-fld label{ color:#333 !important; opacity:1 !important }
+  .pdca-fld textarea, .pdca-ro{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important; min-height:30px !important }
+  .pdca-plan-list{ color:#111 !important }
+
+  /* ── Radar: só cabeçalho verde; 1ª coluna e TOTAL/MÉDIA neutras; bordas finas ── */
+  .tbl tr{ page-break-inside:avoid }
+  .tbl th{ background:#4DB748 !important; color:#fff !important; border:1px solid #cfcfcf !important }
+  .tbl td{ border:1px solid #cfcfcf !important; color:#111 !important }
+  .tbl td.rad-ref{ background:#fff !important; color:#111 !important }
+  .tbl tr.media td{ background:#f0f0f0 !important; color:#111 !important; border-color:#cfcfcf !important }
+  .tbl textarea.rad-act{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important }
+  .rad-legenda{ color:#333 !important }
+
+  /* ── Gráfico: fora da impressão das abas de meta ── */
   #fechmes-painel{ display:none !important }
   /* Modo "imprimir só o gráfico" */
   body.imprimir-chart .hdr,
   body.imprimir-chart #kpis-painel,
   body.imprimir-chart .cols{ display:none !important }
-  body.imprimir-chart #fechmes-painel{ display:block !important }
+  body.imprimir-chart #fechmes-painel{ display:block !important; background:#fff !important; border:none !important }
   body.imprimir-chart #fechmes-body{ display:block !important }
-  #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:8px; margin-bottom:14px }
-  #print-cab .pc-logo{ font-weight:900; font-size:18px; color:#4DB748; letter-spacing:1px }
-  #print-cab .pc-tool{ font-size:13px; font-weight:700; margin-top:2px; color:#111 }
-  #print-cab .pc-meta{ font-size:11px; color:#333; margin-top:5px }
-  #print-rod{ display:block !important; position:fixed; bottom:6mm; left:0; right:0; text-align:center; font-size:10px; color:#666 }
+  body.imprimir-chart .fm-head{ display:none !important }
+  #fechmes-kpis .kpi-c{ background:#fff !important; border:1px solid #ccc !important }
+  #fechmes-kpis .kpi-c-v{ color:#111 !important }
 }
+
 </style>
 </head>
 <body>
