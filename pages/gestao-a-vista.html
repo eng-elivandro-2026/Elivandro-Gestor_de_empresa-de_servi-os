@@ -42,6 +42,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi-c-l{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.25rem}
 .kpi-c-v{font-size:1.35rem;font-weight:800;color:var(--emp-cor);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-c-s{font-size:.65rem;color:var(--text3);margin-top:.2rem}
+
+/* Fechamentos por Mês */
+#fechmes-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-top:1rem}
+.fm-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.fm-titulo{font-size:.95rem;font-weight:800;color:var(--emp-cor)}
+.fm-titulo small{color:var(--text3);font-weight:600;font-size:.7rem;margin-left:.3rem}
+#fechmes-kpis{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.75rem}
+#fechmes-kpis .kpi-c{flex:1;min-width:140px}
+#fechmes-chart{width:100%;overflow-x:auto}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
 .hdr-l{display:flex;align-items:center;gap:.7rem}
 .hdr-mk{width:40px;height:40px;border-radius:10px;background:var(--emp-cor);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1rem;flex-shrink:0}
@@ -157,6 +166,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .det{ border:none !important; padding:0 !important; min-height:0 !important }
   .w5-cols{ overflow:visible !important; flex-wrap:wrap }
   .tbl textarea.rad-act{ border:none }
+  /* Gráfico fica fora da impressão das abas de meta */
+  #fechmes-painel{ display:none !important }
+  /* Modo "imprimir só o gráfico" */
+  body.imprimir-chart .hdr,
+  body.imprimir-chart #kpis-painel,
+  body.imprimir-chart .cols{ display:none !important }
+  body.imprimir-chart #fechmes-painel{ display:block !important }
   #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:8px; margin-bottom:14px }
   #print-cab .pc-logo{ font-weight:900; font-size:18px; color:#4DB748; letter-spacing:1px }
   #print-cab .pc-tool{ font-size:13px; font-weight:700; margin-top:2px; color:#111 }
@@ -197,6 +213,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
     <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
   </div>
+
+  <div id="fechmes-painel">
+    <div class="fm-head">
+      <span class="fm-titulo">📅 Fechamentos por Mês <small id="fechmes-ano"></small></span>
+      <button class="btn btn-ghost btn-sm" onclick="imprimirChart()">🖨️ Imprimir PDF</button>
+    </div>
+    <div id="fechmes-kpis"></div>
+    <div id="fechmes-chart"></div>
+  </div>
+
   <div id="print-rod"></div>
 </div>
 
@@ -404,6 +430,102 @@ async function _renderKpisFinanceiro(){
     _kpiCard('Faturado no ano', fatAno, 'NFs emitidas no ano');
 }
 
+// ── Fechamentos por Mês (gráfico SVG, reusa dados/regras do shell) ──
+function _fmtK(v){
+  v=Number(v)||0;
+  if(Math.abs(v)>=1000000) return (v/1000000).toFixed(v%1000000===0?0:1).replace('.',',')+'M';
+  if(Math.abs(v)>=1000) return Math.round(v/1000)+'k';
+  return String(Math.round(v));
+}
+function renderFechMes(){
+  var kpisEl=document.getElementById('fechmes-kpis');
+  var chartEl=document.getElementById('fechmes-chart');
+  if(!kpisEl||!chartEl) return;
+  var ps=_props();
+  var isFech=_pFn('isFechamentoMes');
+  var parseD=_pFn('_parseDateProp');
+  var MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  function _ehFech(p){ return isFech ? isFech(p) : _ppGanha(p); }
+  function _dataP(p){
+    if(parseD) return parseD(p);
+    var s=p.dtFech||p.dat2||''; if(s){ var d=new Date(s+'T12:00:00'); if(!isNaN(d.getTime())) return d; }
+    if(p.dat){ var a=String(p.dat).split('/'); if(a.length===3){ var d2=new Date(a[2]+'-'+a[1]+'-'+a[0]+'T12:00:00'); if(!isNaN(d2.getTime())) return d2; } }
+    return null;
+  }
+  var sel=null; try{ sel=window.parent._anoComercialSel; }catch(e){}
+  var todosAnos=(sel==='all');
+  var anoSel=todosAnos?null:(parseInt(sel,10)||new Date().getFullYear());
+  var elAno=document.getElementById('fechmes-ano'); if(elAno) elAno.textContent=todosAnos?'(todos os anos)':String(anoSel);
+
+  var base=ps.filter(function(p){ if(!_ehFech(p)) return false; var d=_dataP(p); if(!d) return false; return todosAnos?true:d.getFullYear()===anoSel; });
+  var dados=MESES.map(function(_,i){return {mes:i,n:0,val:0};});
+  base.forEach(function(p){ var d=_dataP(p); if(!d) return; var m=d.getMonth(); dados[m].n++; dados[m].val+=Number(p.val)||0; });
+
+  var totalN=dados.reduce(function(s,d){return s+d.n;},0);
+  var totalVal=dados.reduce(function(s,d){return s+d.val;},0);
+  var mesesCom=dados.filter(function(d){return d.n>0;}).length;
+  var melhor=dados.reduce(function(a,b){return b.val>a.val?b:a;},dados[0]);
+  var media=mesesCom>0?totalVal/mesesCom:0;
+
+  if(totalN===0){
+    kpisEl.innerHTML='';
+    chartEl.innerHTML='<div class="vazio">Nenhum fechamento no período.</div>';
+    return;
+  }
+  kpisEl.innerHTML=
+    _kpiCard('Fechamentos no ano', String(totalN), todosAnos?'Todos os anos':String(anoSel))+
+    _kpiCard('Receita fechada', _money(totalVal), 'Soma dos valores')+
+    _kpiCard('Média/mês ativo', _money(media), 'Receita ÷ meses ativos')+
+    _kpiCard('Melhor mês', melhor.n>0?(MESES[melhor.mes]+' — '+_money(melhor.val)):'—', 'Maior receita');
+
+  var H=180,padT=28,padB=32,padL=48,padR=12,barW=46,gap=12;
+  var chartW=Math.max(600,12*(barW+gap)+padL+padR);
+  var maxVal=Math.max.apply(null,dados.map(function(d){return d.val;})); if(maxVal<=0) maxVal=1;
+  var mesAtual=(!todosAnos && new Date().getFullYear()===anoSel)?new Date().getMonth():-1;
+  var corEmp=(getComputedStyle(document.body).getPropertyValue('--emp-cor')||'').trim()||'#4DB748';
+
+  var svg='<svg viewBox="0 0 '+chartW+' '+(H+padT+padB)+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:inherit">';
+  for(var gi=0;gi<=4;gi++){
+    var gy=padT+(H/4)*gi; var gval=maxVal*(1-gi/4);
+    svg+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(chartW-padR)+'" y2="'+gy+'" stroke="rgba(128,128,128,.15)" stroke-width="1" stroke-dasharray="'+(gi===0?'0':'4,3')+'"/>';
+    svg+='<text x="'+(padL-6)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="rgba(150,150,150,.8)">'+_fmtK(gval)+'</text>';
+  }
+  dados.forEach(function(d,i){
+    var x=padL+i*(barW+gap); var cx=x+barW/2;
+    var barH=maxVal>0?Math.min(H-50,(d.val/maxVal)*H):0;
+    var barY=padT+H-barH;
+    var isAtual=(i===mesAtual); var temDados=d.n>0;
+    var cor=temDados?(isAtual?'#58a6ff':corEmp):'rgba(128,128,128,.12)';
+    var _barTopo=padT+H-barH; var _bolaY=_barTopo-12; var _valY=_barTopo-28;
+    if(temDados){
+      svg+='<text x="'+cx+'" y="'+_valY+'" text-anchor="middle" font-size="9.5" font-weight="700" fill="'+cor+'">'+_fmtK(d.val)+'</text>';
+      svg+='<circle cx="'+cx+'" cy="'+_bolaY+'" r="10" fill="'+(isAtual?'rgba(88,166,255,.25)':'rgba(77,183,72,.2)')+'" stroke="'+(isAtual?'#58a6ff':corEmp)+'" stroke-width="1.5"/>';
+      svg+='<text x="'+cx+'" y="'+(_bolaY+4)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+(isAtual?'#58a6ff':corEmp)+'">'+d.n+'</text>';
+    }
+    if(barH>1){ svg+='<rect x="'+x+'" y="'+barY+'" width="'+barW+'" height="'+barH+'" rx="4" fill="'+cor+'" opacity="0.88"/>'; }
+    else if(temDados){ svg+='<rect x="'+x+'" y="'+(padT+H-3)+'" width="'+barW+'" height="3" rx="2" fill="'+cor+'"/>'; }
+    else { svg+='<rect x="'+x+'" y="'+(padT+H-2)+'" width="'+barW+'" height="2" rx="1" fill="rgba(128,128,128,.12)"/>'; }
+    var corLabel=isAtual?'#58a6ff':(temDados?'rgba(160,160,160,.95)':'rgba(120,120,120,.5)');
+    svg+='<text x="'+cx+'" y="'+(padT+H+16)+'" text-anchor="middle" font-size="10.5" font-weight="'+(isAtual?'700':'400')+'" fill="'+corLabel+'">'+MESES[i]+'</text>';
+    if(isAtual){ svg+='<rect x="'+(x-2)+'" y="'+(padT-6)+'" width="'+(barW+4)+'" height="'+(H+6)+'" rx="5" fill="none" stroke="#58a6ff" stroke-width="1" opacity="0.3"/>'; }
+  });
+  svg+='</svg>';
+  chartEl.innerHTML=svg;
+}
+function imprimirChart(){
+  var ano=''; try{ var s=window.parent._anoComercialSel; ano=(s==='all')?'todos os anos':String(parseInt(s,10)||new Date().getFullYear()); }catch(e){}
+  var cab=document.getElementById('print-cab'); var rod=document.getElementById('print-rod');
+  if(cab){
+    cab.innerHTML='<div class="pc-logo">TECFUSION</div>'+
+      '<div class="pc-tool">Gestão à Vista — Fechamentos por Mês</div>'+
+      '<div class="pc-meta">'+esc((_empresaAtiva&&(_empresaAtiva.nome_curto||_empresaAtiva.nome))||'')+' · Ano: '+esc(ano)+'</div>';
+  }
+  if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
+  document.body.classList.add('imprimir-chart');
+  window.print();
+}
+window.addEventListener('afterprint', function(){ document.body.classList.remove('imprimir-chart'); });
+
 // ── Progresso e status ──
 function _progresso(m){
   var a=m.valor_atual, mt=m.valor_meta;
@@ -434,6 +556,7 @@ function _onTrocaEmpresa(d){
   document.getElementById('detalhe').innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>';
   carregarMetas();
   renderKpis();
+  renderFechMes();
 }
 
 async function carregarMetas(){
