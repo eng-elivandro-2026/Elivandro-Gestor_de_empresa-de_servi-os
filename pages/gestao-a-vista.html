@@ -578,19 +578,53 @@ function _onTrocaEmpresa(d){
   document.getElementById('btn-nova-meta').style.display = _podeEditar()? 'inline-flex':'none';
   _metas=[]; _metaSelId=null; _acoes=[]; _pdca=null; _radar=[];
   document.getElementById('detalhe').innerHTML='<div class="estado">Selecione uma meta para ver os detalhes.</div>';
-  carregarMetas();
+  carregarTudo();
   renderKpis();
   renderFechMes();
 }
 
-async function carregarMetas(){
+// Caches em memória (por meta_id) — carga única por empresa
+var _cacheAcoes={}, _cachePdca={}, _cacheRadar={};
+function _porMeta(arr){ var o={}; (arr||[]).forEach(function(x){ (o[x.meta_id]=o[x.meta_id]||[]).push(x); }); return o; }
+
+async function carregarTudo(){
   var sb=_sb(); var el=document.getElementById('lista-metas');
-  if(!sb||!_empresaAtiva){ el.innerHTML='<div class="vazio">Sem conexão.</div>'; return; }
+  _metas=[]; _cacheAcoes={}; _cachePdca={}; _cacheRadar={};
+  if(!sb||!_empresaAtiva){ if(el) el.innerHTML='<div class="vazio">Sem conexão.</div>'; return; }
+  var eid=_empresaAtiva.id;
+  function q(p){ return p.then(function(r){ return (!r.error&&Array.isArray(r.data))?r.data:[]; }).catch(function(){ return []; }); }
   try{
-    var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
-    _metas=(!r.error&&Array.isArray(r.data))?r.data:[];
-  }catch(e){ _metas=[]; }
+    var res=await Promise.all([
+      q(sb.from('metas').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
+      q(sb.from('meta_acoes').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
+      q(sb.from('meta_pdca').select('*').eq('empresa_id',eid)),
+      q(sb.from('meta_radar').select('*').eq('empresa_id',eid).order('created_at',{ascending:true}))
+    ]);
+    _metas=res[0]||[];
+    _cacheAcoes=_porMeta(res[1]);
+    (res[2]||[]).forEach(function(p){ _cachePdca[p.meta_id]=p; });
+    _cacheRadar=_porMeta(res[3]);
+  }catch(e){ /* degrada para vazio */ }
   renderLista();
+}
+
+// Refetch pontual (invalidação) — só a meta/tabela afetada
+async function _recarregarMetas(){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{ var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}); if(!r.error&&Array.isArray(r.data)) _metas=r.data; }catch(e){}
+  renderLista();
+}
+async function _recarregarAcoes(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_acoes').select('*').eq('meta_id',id).order('ordem',{ascending:true}); _cacheAcoes[id]=(!r.error&&r.data)?r.data:[]; }catch(e){ _cacheAcoes[id]=_cacheAcoes[id]||[]; }
+}
+async function _recarregarRadar(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_radar').select('*').eq('meta_id',id).order('created_at',{ascending:true}); _cacheRadar[id]=(!r.error&&r.data)?r.data:[]; }catch(e){ _cacheRadar[id]=_cacheRadar[id]||[]; }
+}
+async function _recarregarPdca(id){
+  var sb=_sb(); if(!sb) return;
+  try{ var r=await sb.from('meta_pdca').select('*').eq('meta_id',id).maybeSingle(); _cachePdca[id]=(!r.error&&r.data)?r.data:null; }catch(e){}
 }
 
 function renderLista(){
@@ -610,16 +644,13 @@ function renderLista(){
   }).join('');
 }
 
-async function selecionarMeta(id){
+function selecionarMeta(id){
   _metaSelId=id; _aba='smart';
+  // Lê do cache em memória (carga única feita em carregarTudo) — sem rede
+  _acoes=_cacheAcoes[id]||[];
+  _pdca =_cachePdca[id]||null;
+  _radar=_cacheRadar[id]||[];
   renderLista();
-  var sb=_sb();
-  _acoes=[]; _pdca=null; _radar=[];
-  if(sb){
-    try{ var ra=await sb.from('meta_acoes').select('*').eq('meta_id',id).order('ordem',{ascending:true}); _acoes=(!ra.error&&ra.data)?ra.data:[]; }catch(e){}
-    try{ var rp=await sb.from('meta_pdca').select('*').eq('meta_id',id).maybeSingle(); _pdca=(!rp.error&&rp.data)?rp.data:null; }catch(e){}
-    try{ var rr=await sb.from('meta_radar').select('*').eq('meta_id',id).order('created_at',{ascending:true}); _radar=(!rr.error&&rr.data)?rr.data:[]; }catch(e){}
-  }
   renderDetalhe();
 }
 
@@ -848,8 +879,8 @@ async function salvarMeta(){
   try{
     var r = id ? await sb.from('metas').update(payload).eq('id',id) : await sb.from('metas').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-meta'); await carregarMetas();
-    if(id){ await selecionarMeta(id); }
+    fecharModal('modal-meta'); await _recarregarMetas();
+    if(id){ selecionarMeta(id); }
   }catch(e){ alert('Erro ao salvar meta: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -881,7 +912,7 @@ async function salvarAcao(){
     if(_editAcaoId){ r=await sb.from('meta_acoes').update(payload).eq('id',_editAcaoId); }
     else { payload.ordem=_acoes.length+1; r=await sb.from('meta_acoes').insert(payload); }
     if(r.error) throw r.error;
-    fecharModal('modal-acao'); await selecionarMeta(_metaSelId);
+    fecharModal('modal-acao'); await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId);
   }catch(e){ alert('Erro ao salvar ação: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -889,7 +920,7 @@ async function excluirAcao(id){
   if(!_podeEditar()) return;
   if(!confirm('Excluir esta ação?')) return;
   var sb=_sb(); if(!sb) return;
-  try{ var r=await sb.from('meta_acoes').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  try{ var r=await sb.from('meta_acoes').delete().eq('id',id); if(r.error) throw r.error; await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId); }
   catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
 }
 
@@ -907,7 +938,7 @@ async function salvarPdca(){
   try{
     var r=await sb.from('meta_pdca').upsert(payload,{onConflict:'meta_id'});
     if(r.error) throw r.error;
-    _pdca=payload; alert('PDCA salvo.');
+    _pdca=payload; _cachePdca[_metaSelId]=payload; alert('PDCA salvo.');
   }catch(e){ alert('Erro ao salvar PDCA: '+(e&&e.message||'')); }
 }
 
@@ -959,7 +990,7 @@ async function salvarRadar(){
   try{
     var r = _editRadarId ? await sb.from('meta_radar').update(payload).eq('id',_editRadarId) : await sb.from('meta_radar').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-radar'); await selecionarMeta(_metaSelId);
+    fecharModal('modal-radar'); await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId);
   }catch(e){ alert('Erro ao salvar registro: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -967,7 +998,7 @@ async function excluirRadar(id){
   if(!_podeEditar()) return;
   if(!confirm('Excluir este registro?')) return;
   var sb=_sb(); if(!sb) return;
-  try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await selecionarMeta(_metaSelId); }
+  try{ var r=await sb.from('meta_radar').delete().eq('id',id); if(r.error) throw r.error; await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId); }
   catch(e){ alert('Erro ao excluir: '+(e&&e.message||'')); }
 }
 async function salvarAnotacaoRadar(id, val){
