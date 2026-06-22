@@ -33,10 +33,21 @@
         { label: 'Reunião 1:1',     icon: '💬', emBreve: true },
         { separator: true, label: 'Reuniões' },
         { label: 'Diárias',     icon: '📅', emBreve: true },
-        { label: 'Semanais',    icon: '🗓️', emBreve: true },
+        { label: 'Semanais',    icon: '🗓️', action: "Router.ir('reuniao-radar')" },
         { label: 'Quinzenais',  icon: '📆', emBreve: true },
         { label: 'Trimestrais', icon: '📊', emBreve: true },
         { label: 'Anuais',      icon: '🎯', emBreve: true },
+      ]
+    },
+    {
+      id: 'reuniao-radar',
+      label: 'Reunião de Radar',
+      icon: '🗓️',
+      oculto: true,
+      tipo: 'iframe',
+      src: 'pages/reuniao-radar.html',
+      nav: [
+        { label: 'Reunião de Radar', icon: '🗓️', action: "Router.ir('reuniao-radar')" },
       ]
     },
     {
@@ -294,6 +305,7 @@
       if (!el) return;
       // Filtra módulos pelo perfil atual (permissoes.js); sem filtro se ainda não carregou
       var visiveis = MODULOS.filter(function (m) {
+        if (m.oculto) return false; // módulos acessíveis só por link interno (não viram botão no menu)
         return typeof window.podeAcessarModulo === 'function'
           ? window.podeAcessarModulo(m.id)
           : true;
