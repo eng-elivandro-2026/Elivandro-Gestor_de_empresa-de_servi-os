@@ -158,12 +158,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* Impressão */
 #print-cab,#print-rod{display:none}
 @media print{
-  @page{ size:A4 portrait; margin:14mm 12mm }
+  @page{ size:A4 landscape; margin:10mm }
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
   body{ background:#fff }
   .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg{ display:none !important }
+  /* Painel de indicadores não sai na impressão (evita card vazio no topo) */
+  #kpis-painel{ display:none !important }
   .cols{ display:block !important }
-  .det{ border:none !important; padding:0 !important; min-height:0 !important }
+  .det{ border:none !important; padding:0 !important; min-height:0 !important; width:100% !important }
   .w5-cols{ overflow:visible !important; flex-wrap:wrap }
   .tbl textarea.rad-act{ border:none }
   /* Gráfico fica fora da impressão das abas de meta */
