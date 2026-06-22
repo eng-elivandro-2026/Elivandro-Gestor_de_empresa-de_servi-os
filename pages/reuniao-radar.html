@@ -307,13 +307,26 @@ async function salvarAta(){
     var rid=_ataId;
     if(rid){
       var u=await sb.from('reuniao_radar').update(ata).eq('id',rid); if(u.error) throw u.error;
-      await sb.from('reuniao_radar_indicadores').delete().eq('reuniao_id',rid);
+      // Remove os indicadores antigos ANTES de inserir os novos. Checa erro:
+      // se o delete falhar, aborta (não insere por cima) p/ evitar duplicacao.
+      var del=await sb.from('reuniao_radar_indicadores').delete()
+        .eq('reuniao_id',rid).eq('empresa_id',_empresaAtiva.id);
+      if(del.error) throw del.error;
     } else {
       var ins=await sb.from('reuniao_radar').insert(ata).select('id').single(); if(ins.error) throw ins.error;
       rid=ins.data.id; _ataId=rid;
     }
-    if(_indForm.length){
-      var rows=_indForm.map(function(it,i){
+    // Dedup defensivo: no máximo 1 indicador por meta (meta_id, senão meta_titulo).
+    var _vistos={};
+    var indUnicos=_indForm.filter(function(it){
+      var k=String((it.meta_id||it.meta_titulo||'')).trim();
+      if(!k) return true;
+      if(_vistos[k]) return false;
+      _vistos[k]=true; return true;
+    });
+    _indForm=indUnicos; // reflete a lista limpa na tela
+    if(indUnicos.length){
+      var rows=indUnicos.map(function(it,i){
         return { reuniao_id:rid, empresa_id:_empresaAtiva.id, meta_id:it.meta_id||null,
           meta_titulo:it.meta_titulo||null, valor_atual:(it.valor_atual||null), valor_meta:(it.valor_meta||null),
           status_indicador:it.status_indicador||null, desafio_plano:it.desafio_plano||null, ordem:i+1 };
