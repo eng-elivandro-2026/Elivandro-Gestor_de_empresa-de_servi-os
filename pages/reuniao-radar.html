@@ -209,7 +209,9 @@ function _statusBadge(st){
 }
 
 // ── Boot ──
-function _onTrocaEmpresa(d){
+async function _onTrocaEmpresa(d){
+  // Ignora SET_EMPRESA repetido para a MESMA empresa (evita recarga concorrente).
+  if(_empresaAtiva && _empresaAtiva.id===d.empresaId) return;
   _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
   _aplicarTema(_empresaAtiva.nome_curto||_empresaAtiva.nome);
   var nome=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
@@ -217,8 +219,8 @@ function _onTrocaEmpresa(d){
   document.getElementById('hdr-mk').textContent=_iniciais(nome);
   _metas=[]; _indForm=[]; _ataId=null; _reunioes=[]; _indByReuniao={};
   _renderComoFunciona();
-  novaAta();          // prepara ata atual em branco (puxa metas)
-  carregarHistorico();
+  await novaAta();          // prepara ata atual em branco (puxa metas)
+  await carregarHistorico(); // sequencial — não dispara em paralelo
 }
 
 function trocarAba(a){
@@ -307,13 +309,26 @@ async function salvarAta(){
     var rid=_ataId;
     if(rid){
       var u=await sb.from('reuniao_radar').update(ata).eq('id',rid); if(u.error) throw u.error;
-      await sb.from('reuniao_radar_indicadores').delete().eq('reuniao_id',rid);
+      // Remove os indicadores antigos ANTES de inserir os novos. Checa erro:
+      // se o delete falhar, aborta (não insere por cima) p/ evitar duplicacao.
+      var del=await sb.from('reuniao_radar_indicadores').delete()
+        .eq('reuniao_id',rid).eq('empresa_id',_empresaAtiva.id);
+      if(del.error) throw del.error;
     } else {
       var ins=await sb.from('reuniao_radar').insert(ata).select('id').single(); if(ins.error) throw ins.error;
       rid=ins.data.id; _ataId=rid;
     }
-    if(_indForm.length){
-      var rows=_indForm.map(function(it,i){
+    // Dedup defensivo: no máximo 1 indicador por meta (meta_id, senão meta_titulo).
+    var _vistos={};
+    var indUnicos=_indForm.filter(function(it){
+      var k=String((it.meta_id||it.meta_titulo||'')).trim();
+      if(!k) return true;
+      if(_vistos[k]) return false;
+      _vistos[k]=true; return true;
+    });
+    _indForm=indUnicos; // reflete a lista limpa na tela
+    if(indUnicos.length){
+      var rows=indUnicos.map(function(it,i){
         return { reuniao_id:rid, empresa_id:_empresaAtiva.id, meta_id:it.meta_id||null,
           meta_titulo:it.meta_titulo||null, valor_atual:(it.valor_atual||null), valor_meta:(it.valor_meta||null),
           status_indicador:it.status_indicador||null, desafio_plano:it.desafio_plano||null, ordem:i+1 };
@@ -327,16 +342,23 @@ async function salvarAta(){
 }
 
 // ── ABA 3: Histórico ──
+var _histToken=0; // anti-concorrência: descarta respostas de cargas antigas
 async function carregarHistorico(){
-  var sb=_sb(); _reunioes=[]; _indByReuniao={};
-  if(!sb||!_empresaAtiva){ renderHistorico(); return; }
+  var sb=_sb();
+  if(!sb||!_empresaAtiva){ _reunioes=[]; _indByReuniao={}; renderHistorico(); return; }
+  var token=++_histToken;
   try{
     var rr=await sb.from('reuniao_radar').select('*').eq('empresa_id',_empresaAtiva.id).order('data_reuniao',{ascending:false});
-    _reunioes=(!rr.error&&rr.data)?rr.data:[];
     var ri=await sb.from('reuniao_radar_indicadores').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
-    (!ri.error&&ri.data?ri.data:[]).forEach(function(x){ (_indByReuniao[x.reuniao_id]=_indByReuniao[x.reuniao_id]||[]).push(x); });
-  }catch(e){ _reunioes=[]; }
-  if(_aba==='hist') renderHistorico();
+    if(token!==_histToken) return; // outra carga começou: descarta este resultado
+    // Monta em estruturas LOCAIS e atribui de uma vez (evita race entre cargas concorrentes).
+    var listaLocal=(!rr.error&&Array.isArray(rr.data))?rr.data:[];
+    var mapaLocal={};
+    (!ri.error&&Array.isArray(ri.data)?ri.data:[]).forEach(function(x){ (mapaLocal[x.reuniao_id]=mapaLocal[x.reuniao_id]||[]).push(x); });
+    _reunioes=listaLocal;
+    _indByReuniao=mapaLocal;
+  }catch(e){ if(token===_histToken){ _reunioes=[]; _indByReuniao={}; } }
+  if(token===_histToken && _aba==='hist') renderHistorico();
 }
 function renderHistorico(){
   var el=document.getElementById('hist-lista'); if(!el) return;
@@ -387,7 +409,12 @@ function reabrirAta(id){
   _ataId=id;
   _sv('a-data',(r.data_reuniao||'').slice(0,10)); _sv('a-anfitriao',r.anfitriao); _sv('a-participantes',r.participantes);
   _sv('a-status',r.status||'aberta'); _sv('a-novidades',r.novidades); _sv('a-restricoes',r.restricoes); _sv('a-conclusao',r.conclusao);
-  _indForm=(_indByReuniao[id]||[]).map(function(it){
+  // Dedup defensivo: 1 indicador por meta (rede de segurança caso venha duplicado).
+  var _v={};
+  _indForm=(_indByReuniao[id]||[]).filter(function(it){
+    var k=String(it.meta_id||it.meta_titulo||'').trim();
+    if(!k) return true; if(_v[k]) return false; _v[k]=true; return true;
+  }).map(function(it){
     return { meta_id:it.meta_id, meta_titulo:it.meta_titulo, valor_atual:it.valor_atual||'', valor_meta:it.valor_meta||'', unidade:'', status_indicador:it.status_indicador, desafio_plano:it.desafio_plano||'' };
   });
   _renderIndicadores(true);
