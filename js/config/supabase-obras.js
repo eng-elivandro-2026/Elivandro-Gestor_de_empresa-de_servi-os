@@ -216,6 +216,21 @@
     return res.data || [];
   }
 
+  // Variante "slim" para LISTAGEM: traz só as colunas usadas no card do
+  // Operacional, evitando o JSONB pesado snapshot_proposta_json. O detalhe
+  // de uma obra continua usando sbBuscarObraPorId (registro completo).
+  async function sbListarObrasResumo(empresaId) {
+    empresaId = empresaId || empresaAtivaId();
+    if (!empresaId) throw new Error('Empresa ativa nao encontrada.');
+    var res = await client()
+      .from('obras')
+      .select('id, proposta_app_id, status_operacional, data_inicio_real, created_at')
+      .eq('empresa_id', empresaId)
+      .order('created_at', { ascending: false });
+    if (res.error) throw res.error;
+    return res.data || [];
+  }
+
   async function sbBuscarObraPorProposta(empresaId, propostaAppId) {
     empresaId = empresaId || empresaAtivaId();
     if (!empresaId || !propostaAppId) return null;
@@ -325,6 +340,7 @@
   window.OP_STATUS_OPERACIONAL = STATUS_OPERACIONAL;
   window.OP_STATUS_LABELS = STATUS_LABELS;
   window.sbListarObras = sbListarObras;
+  window.sbListarObrasResumo = sbListarObrasResumo;
   window.sbBuscarObraPorProposta = sbBuscarObraPorProposta;
   window.sbBuscarObraPorId = sbBuscarObraPorId;
   window.sbCriarObraDeProposta = sbCriarObraDeProposta;

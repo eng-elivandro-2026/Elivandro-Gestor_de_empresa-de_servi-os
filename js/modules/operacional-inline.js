@@ -1142,23 +1142,29 @@
     // Inclui tambem as propostas comerciais em 'ganho' (so aparecem no Operacional
     // depois de "Criar Obra"); seu status operacional fica na tabela obras.
     var fasesQuery = FASES_GESTAO_NEGOCIO.concat(['ganho']);
-    var res = await window.sbClient
+    // PERF: as 2 consultas rodam EM PARALELO (Promise.all). A lista de obras usa
+    // a variante "resumo" (sem o JSONB pesado snapshot_proposta_json); o detalhe
+    // de cada obra continua buscando o registro completo por id.
+    var propPromise = window.sbClient
       .from('propostas')
       .select('id, app_id, numero_proposta, titulo, cliente, valor_total, fase, dados_json, created_at, updated_at, empresa_id')
       .eq('empresa_id', empresaId)
       .in('fase', fasesQuery)
       .order('updated_at', { ascending: false });
+    var obrasPromise = (typeof window.sbListarObrasResumo === 'function')
+      ? window.sbListarObrasResumo(empresaId).catch(function () { return []; })  // sem obras: segue
+      : ((typeof window.sbListarObras === 'function')
+          ? window.sbListarObras(empresaId).catch(function () { return []; })
+          : Promise.resolve([]));
+    var paralelo = await Promise.all([propPromise, obrasPromise]);
+    var res = paralelo[0];
+    var obrasArr = paralelo[1] || [];
     if (res.error) throw res.error;
     // Mapa de obras por proposta (para resolver o status dos negocios 'ganho').
     var obrasPorProp = {};
-    try {
-      if (typeof window.sbListarObras === 'function') {
-        var obras = await window.sbListarObras(empresaId);
-        (obras || []).forEach(function (ob) {
-          if (ob && ob.proposta_app_id) obrasPorProp[String(ob.proposta_app_id)] = ob;
-        });
-      }
-    } catch (e) { /* sem obras: segue (negocios 'ganho' sem obra nao aparecem) */ }
+    obrasArr.forEach(function (ob) {
+      if (ob && ob.proposta_app_id) obrasPorProp[String(ob.proposta_app_id)] = ob;
+    });
     var out = [];
     (res.data || []).forEach(function (p) {
       if (!p || p.empresa_id !== empresaId) return;
@@ -1593,6 +1599,7 @@
       try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
       fecharDesfazerObra();
       msg('Proposta devolvida ao Comercial como "' + textoLimpo(labelFaseNegocio(fase)) + '".' + (temObra ? ' Obra arquivada.' : ''));
+      invalidarCacheObras();
       await carregarObras();
     } catch (e) {
       msg((e && e.message) || 'Nao foi possivel desfazer a obra.', 'err');
@@ -1943,6 +1950,9 @@
     var ehAdminDono = ['dono', 'admin'].includes(perfil);
     if (bloqueado) {
       html += '<span class="op-doc-action-status">Relatorio assinado e bloqueado</span>';
+      if (ehDono()) {
+        html += '<button type="button" class="btn bg" title="Somente DONO: reverte a assinatura e volta o documento para rascunho editavel" onclick="opGestaoReverterAssinatura()" style="border:1px solid #ef4444!important;color:#ef4444!important;background:transparent!important">↩ Reverter assinatura</button>';
+      }
     } else {
       html += '<button type="button" class="btn bg op-primary-action" onclick="opGestaoSalvarRascunho()">Salvar Rascunho</button>'
         + '<button type="button" class="btn bs op-primary-action" onclick="opGestaoFinalizar()">Finalizar e Assinar Relatorio</button>';
@@ -2225,13 +2235,12 @@
     estado.dataUrl = canvas.toDataURL('image/png');
     estado.assinada = true;
     atualizarHintAssinatura(canvas, true);
-    // Quando cliente assina, preencher data de aceite com data atual
+    // Quando cliente assina, refletir a data de aceite = data atual (sempre
+    // atualiza, mesmo se ja havia um valor antigo no campo).
     if (key === 'cliente') {
       var hoje = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
       var campoAceite = Q('opGestaoExecAceite');
-      if (campoAceite && !campoAceite.value) {
-        campoAceite.value = hoje;
-      }
+      if (campoAceite) campoAceite.value = hoje;
     }
   }
 
@@ -2415,13 +2424,25 @@
     }
   }
 
+  // Cache por empresa (stale-while-revalidate): pinta a lista do cache na hora
+  // e revalida em segundo plano. Mantem o conteudo sempre fresco apos mutacoes.
+  var _obrasCache = {};
+
   async function carregarObras() {
     // Captura empresa e token ANTES do await para detectar trocas durante a consulta
     var empresaId = getEmpresaId();
     var token = ++_opLoadToken;
 
-    state.carregando = true;
-    state.erro = '';
+    var temCache = !!(empresaId && _obrasCache[empresaId]);
+    if (temCache) {
+      // Pintura instantanea do cache; revalida em segundo plano (sem "carregando").
+      state.obras = _obrasCache[empresaId];
+      state.carregando = false;
+      state.erro = '';
+    } else {
+      state.carregando = true;
+      state.erro = '';
+    }
     renderLista();
 
     try {
@@ -2432,9 +2453,11 @@
       if (getEmpresaId() !== empresaId) return;
 
       state.obras = obras;
+      if (empresaId) _obrasCache[empresaId] = obras;
     } catch (e) {
       if (token !== _opLoadToken) return;
-      state.erro = e.message || String(e);
+      // Se ja havia cache pintado, nao sobrescreve com erro (mantem a lista).
+      if (!temCache) state.erro = e.message || String(e);
     } finally {
       // Só atualiza UI se ainda somos o carregamento mais recente
       if (token === _opLoadToken) {
@@ -2443,6 +2466,9 @@
       }
     }
   }
+
+  // Invalida o cache de obras (proxima carga refaz a query do zero).
+  function invalidarCacheObras() { _obrasCache = {}; }
 
   function rOperacional() {
     var root = $('operacional-root');
@@ -2607,6 +2633,7 @@
         state.obraAtual = await window.sbAtualizarRecebimentoMobilizacaoObra(state.obraAtual.id, coletarRecebimentoMobilizacao());
       }
       msg('Obra salva com sucesso.');
+      invalidarCacheObras();
       await carregarObras();
       renderDetalhe();
     } catch (e) {
@@ -2689,21 +2716,27 @@
     var empresaId = getEmpresaId();
     var cliente = assinaturaGestaoEstado('cliente');
     var empresa = assinaturaGestaoEstado('empresa');
+    var assinadoClienteEm = cliente.dataUrl ? new Date().toISOString() : null;
+    var assinadoEmpresaEm = empresa.dataUrl ? new Date().toISOString() : null;
+    // Data de aceite = SEMPRE a data da assinatura do cliente (mesma data de
+    // assinado_cliente_em). Sobrescreve qualquer valor antigo; sem assinatura
+    // do cliente → null. Não depende do valor (disabled) sobreviver no DOM.
+    var dataExecAceite = assinadoClienteEm ? assinadoClienteEm.slice(0, 10) : null;
     return {
       empresa_id: empresaId,
       proposta_id: negocio.proposta_app_id,
       diario_texto: (($('opGestaoDiario') || {}).value || '').trim(),
       data_exec_inicio: (($('opGestaoExecInicio') || {}).value || '').trim() || null,
       data_exec_termino: (($('opGestaoExecTermino') || {}).value || '').trim() || null,
-      data_exec_aceite: (($('opGestaoExecAceite') || {}).value || '').trim() || null,
+      data_exec_aceite: dataExecAceite,
       entregas_texto: '',
       aceite_texto: '',
       responsavel_cliente_nome: (($('opAssClienteNome') || {}).value || '').trim(),
       responsavel_empresa_nome: (($('opAssEmpresaNome') || {}).value || '').trim(),
       assinatura_cliente: cliente.dataUrl || '',
       assinatura_empresa: empresa.dataUrl || '',
-      assinado_cliente_em: cliente.dataUrl ? new Date().toISOString() : null,
-      assinado_empresa_em: empresa.dataUrl ? new Date().toISOString() : null,
+      assinado_cliente_em: assinadoClienteEm,
+      assinado_empresa_em: assinadoEmpresaEm,
       status_documento: assinar ? 'assinado' : 'rascunho',
       bloqueado: !!assinar,
       assinado_em: assinar ? new Date().toISOString() : null,
@@ -3773,11 +3806,21 @@
       var res = await window.sbCriarObraDeProposta(p);
       // Negocio fechado em 'ganho' inicia no Operacional como 'aprovado'
       // (status guardado na obra; a proposta permanece 'ganho' no Comercial).
-      if (res && res.criada && res.obra && p.fas === 'ganho' && typeof window.sbAtualizarObra === 'function') {
-        try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); } catch (e) {}
+      var reativada = false;
+      if (res && res.obra && typeof window.sbAtualizarObra === 'function') {
+        var statusAtual = String(res.obra.status_operacional || '').trim().toLowerCase();
+        if (res.criada && p.fas === 'ganho') {
+          // Obra nova de negocio 'ganho': entra como 'aprovado'.
+          try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); } catch (e) {}
+        } else if (!res.criada && statusAtual === 'cancelada') {
+          // Obra existente que foi devolvida ao Comercial (status 'cancelada'):
+          // reativa preservando TODO o conteudo (diario, horas, datas intactos).
+          try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); reativada = true; } catch (e) {}
+        }
       }
-      msg(res.criada ? 'Obra criada com sucesso.' : 'Esta proposta ja tinha uma obra.');
+      msg(res.criada ? 'Obra criada com sucesso.' : (reativada ? 'Obra reativada — conteúdo anterior preservado.' : 'Esta proposta ja tinha uma obra.'));
       hidratarAcoesPropostas([p]);
+      invalidarCacheObras();
       if (window.Router && window.Router.getAtivo && window.Router.getAtivo() === 'operacional') {
         await carregarObras();
       }
@@ -3887,11 +3930,11 @@
   window.opTogglePreviewGestao = togglePreviewGestao;
   window.opToggleSectionBreak = toggleSectionBreak;
   // Função simples: limpar assinaturas do banco direto via RPC
-  window.opGestaoLimparAssinaturasCompleto = async function() {
+  window.opGestaoLimparAssinaturasCompleto = async function(skipConfirm) {
     var doc = state.gestaoDocumento || {};
     if (!doc.id) { msg('Nenhum documento.', 'err'); return; }
     if (!doc.empresa_id) { msg('Empresa não identificada.', 'err'); return; }
-    if (!confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
+    if (!skipConfirm && !confirm('DELETAR ASSINATURAS do banco?\n\nNão pode ser desfeito!')) return;
 
     try {
       console.log('🗑️ Deletando assinaturas:', { doc_id: doc.id, empresa_id: doc.empresa_id });
@@ -3908,9 +3951,19 @@
       }
 
       console.log('✅ RPC executada com sucesso:', res.data);
+
+      // Limpa também a data de aceite (a RPC nao toca nela) para nao carregar
+      // data velha ao reassinar. Best-effort: doc ja esta rascunho/desbloqueado.
+      try {
+        await window.sbClient.from('gestao_negocio')
+          .update({ data_exec_aceite: null })
+          .eq('id', doc.id).eq('empresa_id', doc.empresa_id);
+      } catch (e) { console.warn('[Operacional] limpar data_exec_aceite:', e && e.message); }
+
       msg('✅ ' + (res.data && res.data.message ? res.data.message : 'Assinaturas deletadas'));
 
       // Atualizar estado em memória
+      state.gestaoDocumento.data_exec_aceite = null;
       state.gestaoDocumento.assinatura_cliente = '';
       state.gestaoDocumento.assinatura_empresa = '';
       state.gestaoDocumento.responsavel_cliente_nome = '';
@@ -3927,6 +3980,14 @@
       console.error('💥 ERRO:', e);
       msg('❌ Erro: ' + (e.message || JSON.stringify(e)), 'err');
     }
+  };
+
+  // Reverter assinatura (somente DONO): confirma e reusa a função existente
+  // (skipConfirm=true para nao duplicar o confirm). Mantem a obra no Operacional.
+  window.opGestaoReverterAssinatura = async function() {
+    if (!ehDono()) { msg('Apenas o perfil DONO pode reverter a assinatura.', 'err'); return; }
+    if (!confirm('Tem certeza que deseja reverter a assinatura? O documento voltará para rascunho editável.')) return;
+    await window.opGestaoLimparAssinaturasCompleto(true);
   };
 
   window.opGestaoLimparAssinatura = limparAssinaturaGestao;
@@ -3960,6 +4021,7 @@
   // Limpa imediatamente o estado operacional e recarrega se o módulo estiver ativo
   window.addEventListener('empresa:changed', function () {
     // Limpar estado: obras, detalhe aberto, filtros e subestados
+    invalidarCacheObras();
     state.obras = [];
     state.obraAtual = null;
     state.erro = '';
