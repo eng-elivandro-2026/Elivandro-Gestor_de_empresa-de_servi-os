@@ -57,6 +57,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .badge{display:inline-block;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:.12rem .45rem;border-radius:20px}
 .bg-ok{background:rgba(63,185,80,.16);color:var(--green)}
 .bg-fora{background:rgba(248,81,73,.16);color:var(--red)}
+/* Assuntos da reunião anterior */
+.ass-placar{display:flex;gap:1rem;flex-wrap:wrap;font-size:.78rem;font-weight:700;margin-bottom:.7rem;color:var(--text2)}
+.ass-placar .ass-p-ok{color:var(--green)}
+.ass-placar .ass-p-no{color:var(--red)}
+.ass-placar .ass-p-pend{color:var(--text3)}
+.ass-row{display:flex;align-items:center;gap:.6rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem;margin-bottom:.5rem}
+.ass-row .ass-txt{flex:1;font-size:.85rem;line-height:1.4;word-break:break-word}
+.ass-st{flex-shrink:0;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);border-radius:20px;font-family:inherit;font-size:.72rem;font-weight:700;padding:.25rem .6rem;cursor:pointer;white-space:nowrap}
+.ass-del{flex-shrink:0;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:.9rem;padding:.1rem .3rem}
+.ass-del:hover{color:var(--red)}
+.ass-row.ass-ok{background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.4)}
+.ass-row.ass-ok .ass-txt{color:var(--green)}
+.ass-row.ass-ok .ass-st{background:rgba(63,185,80,.18);border-color:var(--green);color:var(--green)}
+.ass-row.ass-no{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4)}
+.ass-row.ass-no .ass-txt{color:var(--red)}
+.ass-row.ass-no .ass-st{background:rgba(248,81,73,.18);border-color:var(--red);color:var(--red)}
+.ass-add{display:flex;gap:.5rem;margin-top:.6rem}
+.ass-add input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.82rem;padding:.45rem .6rem}
+.ass-vazio{color:var(--text3);font-style:italic;font-size:.82rem;padding:.3rem 0}
 /* Como funciona */
 .cf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.8rem}
 .cf-card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-cor);border-radius:var(--r);padding:.9rem 1rem}
@@ -84,6 +103,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .fld input,.fld select,.fld textarea,.tbl textarea{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important }
   .tbl th{ background:#4DB748 !important; color:#fff !important; border:1px solid #cfcfcf !important }
   .tbl td{ border:1px solid #cfcfcf !important; color:#111 !important }
+  .ass-del,.ass-add{ display:none !important }
+  .ass-row{ background:#fff !important; border:1px solid #cfcfcf !important; page-break-inside:avoid }
+  .ass-row .ass-txt{ color:#111 !important }
+  .ass-st{ background:#fff !important }
+  .ass-row.ass-ok .ass-txt,.ass-row.ass-ok .ass-st{ color:#15803d !important; border-color:#15803d !important }
+  .ass-row.ass-no .ass-txt,.ass-row.ass-no .ass-st{ color:#b91c1c !important; border-color:#b91c1c !important }
   #print-cab{ display:block !important; border-bottom:3px solid #4DB748; padding-bottom:6px; margin-bottom:10px }
   #print-cab .pc-logo{ font-weight:900; font-size:16px; color:#4DB748; letter-spacing:1px }
   #print-cab .pc-tool{ font-size:12px; font-weight:700; color:#111; margin-top:2px }
@@ -139,6 +164,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
 
     <div class="sec">
+      <div class="sec-t">Assuntos da reunião anterior</div>
+      <div id="ata-assuntos-placar" class="ass-placar"></div>
+      <div id="ata-assuntos"></div>
+      <div class="ass-add no-print">
+        <input id="ass-novo" placeholder="Adicionar assunto…" onkeydown="if(event.key==='Enter'){event.preventDefault();addAssunto();}">
+        <button class="btn btn-ghost btn-sm" onclick="addAssunto()">＋ Adicionar</button>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-t">Novidades da semana</div>
       <div class="fld"><textarea id="a-novidades"></textarea></div>
     </div>
@@ -180,6 +215,8 @@ var _indForm=[];      // indicadores da ata em edição (snapshot em construçã
 var _ataId=null;      // id da reunião em edição (null = nova)
 var _reunioes=[];     // histórico
 var _indByReuniao={}; // indicadores agrupados por reuniao_id
+var _assForm=[];      // assuntos da reunião anterior em edição: {texto, status}
+var _assByReuniao={}; // assuntos salvos agrupados por reuniao_id
 var _aba='como';
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -217,7 +254,7 @@ async function _onTrocaEmpresa(d){
   var nome=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   document.getElementById('hdr-nome').textContent=nome;
   document.getElementById('hdr-mk').textContent=_iniciais(nome);
-  _metas=[]; _indForm=[]; _ataId=null; _reunioes=[]; _indByReuniao={};
+  _metas=[]; _indForm=[]; _ataId=null; _reunioes=[]; _indByReuniao={}; _assForm=[]; _assByReuniao={};
   _renderComoFunciona();
   await novaAta();          // prepara ata atual em branco (puxa metas)
   await carregarHistorico(); // sequencial — não dispara em paralelo
@@ -268,7 +305,74 @@ async function novaAta(){
       desafio_plano:'' };
   });
   _renderIndicadores(true);
+  await _carregarAssuntosAnteriores();
+  _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display = _podeEditar()?'inline-flex':'none';
+}
+
+// ── Assuntos da reunião anterior ──
+// Quebra a conclusão da ata anterior em itens (1 por linha não-vazia).
+function _assuntosDaConclusao(txt){
+  if(!txt) return [];
+  return String(txt).split(/\r?\n/).map(function(l){
+    return l.replace(/^[\s]*[-•*]\s+/,'').trim();
+  }).filter(function(l){ return l!==''; });
+}
+// Busca a ÚLTIMA ata salva da empresa e pré-popula os assuntos (todos pendentes).
+// Só LÊ a ata anterior — nunca a sobrescreve.
+async function _carregarAssuntosAnteriores(){
+  _assForm=[];
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{
+    var r=await sb.from('reuniao_radar').select('conclusao')
+      .eq('empresa_id',_empresaAtiva.id).order('data_reuniao',{ascending:false}).limit(1);
+    var ata=(!r.error&&Array.isArray(r.data)&&r.data.length)?r.data[0]:null;
+    _assForm=_assuntosDaConclusao(ata&&ata.conclusao).map(function(t){ return { texto:t, status:'pendente' }; });
+  }catch(e){ _assForm=[]; }
+}
+var _ASS_CICLO={ pendente:'resolvido', resolvido:'nao_resolvido', nao_resolvido:'pendente' };
+function _assRowCls(st){ return st==='resolvido'?'ass-ok':(st==='nao_resolvido'?'ass-no':'ass-pend'); }
+function _assStLabel(st){ return st==='resolvido'?'✅ Resolvido':(st==='nao_resolvido'?'❌ Não resolvido':'⏳ Pendente'); }
+function _renderAssuntos(editavel){
+  var elP=document.getElementById('ata-assuntos-placar');
+  var el=document.getElementById('ata-assuntos');
+  if(!el) return;
+  var nOk=0,nNo=0,nPend=0;
+  _assForm.forEach(function(a){ if(a.status==='resolvido')nOk++; else if(a.status==='nao_resolvido')nNo++; else nPend++; });
+  if(elP) elP.innerHTML='<span class="ass-p-ok">✅ '+nOk+' resolvidos</span>'+
+    '<span class="ass-p-no">❌ '+nNo+' não resolvidos</span>'+
+    '<span class="ass-p-pend">⏳ '+nPend+' pendentes</span>';
+  if(!_assForm.length){ el.innerHTML='<div class="ass-vazio">Nenhum assunto herdado da reunião anterior.</div>'; return; }
+  el.innerHTML=_assForm.map(function(a,i){
+    var st=a.status||'pendente';
+    var btn = editavel
+      ? '<button class="ass-st" title="Clique para alterar o status" onclick="ciclarAssunto('+i+')">'+_assStLabel(st)+'</button>'
+      : '<span class="ass-st">'+_assStLabel(st)+'</span>';
+    var del = editavel ? '<button class="ass-del no-print" title="Excluir" onclick="excluirAssunto('+i+')">🗑️</button>' : '';
+    return '<div class="ass-row '+_assRowCls(st)+'">'+btn+'<span class="ass-txt">'+esc(a.texto||'')+'</span>'+del+'</div>';
+  }).join('');
+}
+function ciclarAssunto(i){ if(!_assForm[i]) return; _assForm[i].status=_ASS_CICLO[_assForm[i].status||'pendente']||'pendente'; _renderAssuntos(true); }
+function excluirAssunto(i){ if(i<0||i>=_assForm.length) return; _assForm.splice(i,1); _renderAssuntos(true); }
+function addAssunto(){
+  var inp=document.getElementById('ass-novo'); if(!inp) return;
+  var t=(inp.value||'').trim(); if(!t) return;
+  _assForm.push({ texto:t, status:'pendente' });
+  inp.value=''; _renderAssuntos(true); inp.focus();
+}
+// Bloco read-only de assuntos (usado no histórico / snapshot da reunião).
+function _blocoAssuntos(arr){
+  arr=arr||[];
+  var nOk=0,nNo=0,nPend=0;
+  arr.forEach(function(a){ if(a.status==='resolvido')nOk++; else if(a.status==='nao_resolvido')nNo++; else nPend++; });
+  var placar='<div class="ass-placar"><span class="ass-p-ok">✅ '+nOk+' resolvidos</span>'+
+    '<span class="ass-p-no">❌ '+nNo+' não resolvidos</span>'+
+    '<span class="ass-p-pend">⏳ '+nPend+' pendentes</span></div>';
+  var corpo = arr.length
+    ? arr.map(function(a){ var st=a.status||'pendente';
+        return '<div class="ass-row '+_assRowCls(st)+'"><span class="ass-st">'+_assStLabel(st)+'</span><span class="ass-txt">'+esc(a.texto||'')+'</span></div>'; }).join('')
+    : '<div class="ass-vazio">Sem assuntos registrados.</div>';
+  return '<div class="sec"><div class="sec-t">Assuntos da reunião anterior</div>'+placar+corpo+'</div>';
 }
 function _renderIndicadores(editavel){
   var el=document.getElementById('ata-indicadores');
@@ -314,6 +418,10 @@ async function salvarAta(){
       var del=await sb.from('reuniao_radar_indicadores').delete()
         .eq('reuniao_id',rid).eq('empresa_id',_empresaAtiva.id);
       if(del.error) throw del.error;
+      // Mesmo padrão seguro para os assuntos: delete checado antes de reinserir.
+      var delA=await sb.from('reuniao_radar_assuntos').delete()
+        .eq('reuniao_id',rid).eq('empresa_id',_empresaAtiva.id);
+      if(delA.error) throw delA.error;
     } else {
       var ins=await sb.from('reuniao_radar').insert(ata).select('id').single(); if(ins.error) throw ins.error;
       rid=ins.data.id; _ataId=rid;
@@ -335,6 +443,21 @@ async function salvarAta(){
       });
       var ri=await sb.from('reuniao_radar_indicadores').insert(rows); if(ri.error) throw ri.error;
     }
+    // Assuntos: dedup defensivo (texto não-vazio, sem repetição exata), reordena 1..N.
+    var _vA={};
+    var assUnicos=_assForm.filter(function(a){
+      var t=String(a.texto||'').trim(); if(!t) return false;
+      var k=t.toLowerCase(); if(_vA[k]) return false; _vA[k]=true; return true;
+    });
+    _assForm=assUnicos; // reflete a lista limpa na tela
+    if(assUnicos.length){
+      var rowsA=assUnicos.map(function(a,i){
+        return { reuniao_id:rid, empresa_id:_empresaAtiva.id,
+          texto:String(a.texto).trim(), status:a.status||'pendente', ordem:i+1 };
+      });
+      var ra=await sb.from('reuniao_radar_assuntos').insert(rowsA); if(ra.error) throw ra.error;
+    }
+    _renderAssuntos(true);
     btn.disabled=false; btn.textContent='Salvar ata';
     alert('Ata salva.');
     await carregarHistorico();
@@ -345,19 +468,23 @@ async function salvarAta(){
 var _histToken=0; // anti-concorrência: descarta respostas de cargas antigas
 async function carregarHistorico(){
   var sb=_sb();
-  if(!sb||!_empresaAtiva){ _reunioes=[]; _indByReuniao={}; renderHistorico(); return; }
+  if(!sb||!_empresaAtiva){ _reunioes=[]; _indByReuniao={}; _assByReuniao={}; renderHistorico(); return; }
   var token=++_histToken;
   try{
     var rr=await sb.from('reuniao_radar').select('*').eq('empresa_id',_empresaAtiva.id).order('data_reuniao',{ascending:false});
     var ri=await sb.from('reuniao_radar_indicadores').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
+    var ra=await sb.from('reuniao_radar_assuntos').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true});
     if(token!==_histToken) return; // outra carga começou: descarta este resultado
     // Monta em estruturas LOCAIS e atribui de uma vez (evita race entre cargas concorrentes).
     var listaLocal=(!rr.error&&Array.isArray(rr.data))?rr.data:[];
     var mapaLocal={};
     (!ri.error&&Array.isArray(ri.data)?ri.data:[]).forEach(function(x){ (mapaLocal[x.reuniao_id]=mapaLocal[x.reuniao_id]||[]).push(x); });
+    var mapaAssLocal={};
+    (!ra.error&&Array.isArray(ra.data)?ra.data:[]).forEach(function(x){ (mapaAssLocal[x.reuniao_id]=mapaAssLocal[x.reuniao_id]||[]).push(x); });
     _reunioes=listaLocal;
     _indByReuniao=mapaLocal;
-  }catch(e){ if(token===_histToken){ _reunioes=[]; _indByReuniao={}; } }
+    _assByReuniao=mapaAssLocal;
+  }catch(e){ if(token===_histToken){ _reunioes=[]; _indByReuniao={}; _assByReuniao={}; } }
   if(token===_histToken && _aba==='hist') renderHistorico();
 }
 function renderHistorico(){
@@ -383,6 +510,7 @@ function renderHistorico(){
 function abrirAta(id){
   var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
   var inds=_indByReuniao[id]||[];
+  var assuntos=_assByReuniao[id]||[];
   document.getElementById('hist-lista').style.display='none';
   document.getElementById('hist-busca-wrap').style.display='none';
   var podeReabrir = _podeEditar() && r.status==='aberta';
@@ -399,6 +527,7 @@ function abrirAta(id){
     '<div class="sec"><div class="sec-t">Indicadores da semana (snapshot)</div>'+
       (inds.length?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="vazio">Sem indicadores registrados.</div>')+
     '</div>'+
+    _blocoAssuntos(assuntos)+
     bloco('Novidades da semana',r.novidades)+
     bloco('Onde estamos presos (restrições)',r.restricoes)+
     bloco('Conclusão — principais pontos e próximos passos',r.conclusao);
@@ -418,6 +547,13 @@ function reabrirAta(id){
     return { meta_id:it.meta_id, meta_titulo:it.meta_titulo, valor_atual:it.valor_atual||'', valor_meta:it.valor_meta||'', unidade:'', status_indicador:it.status_indicador, desafio_plano:it.desafio_plano||'' };
   });
   _renderIndicadores(true);
+  // Carrega os assuntos salvos (snapshot) — build local + dedup defensivo por texto.
+  var _vt={};
+  _assForm=(_assByReuniao[id]||[]).filter(function(a){
+    var t=String(a.texto||'').trim(); if(!t) return false;
+    var k=t.toLowerCase(); if(_vt[k]) return false; _vt[k]=true; return true;
+  }).map(function(a){ return { texto:String(a.texto).trim(), status:a.status||'pendente' }; });
+  _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display=_podeEditar()?'inline-flex':'none';
   trocarAba('ata');
 }
