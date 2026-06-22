@@ -3776,10 +3776,19 @@
       var res = await window.sbCriarObraDeProposta(p);
       // Negocio fechado em 'ganho' inicia no Operacional como 'aprovado'
       // (status guardado na obra; a proposta permanece 'ganho' no Comercial).
-      if (res && res.criada && res.obra && p.fas === 'ganho' && typeof window.sbAtualizarObra === 'function') {
-        try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); } catch (e) {}
+      var reativada = false;
+      if (res && res.obra && typeof window.sbAtualizarObra === 'function') {
+        var statusAtual = String(res.obra.status_operacional || '').trim().toLowerCase();
+        if (res.criada && p.fas === 'ganho') {
+          // Obra nova de negocio 'ganho': entra como 'aprovado'.
+          try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); } catch (e) {}
+        } else if (!res.criada && statusAtual === 'cancelada') {
+          // Obra existente que foi devolvida ao Comercial (status 'cancelada'):
+          // reativa preservando TODO o conteudo (diario, horas, datas intactos).
+          try { await window.sbAtualizarObra(res.obra.id, { status_operacional: 'aprovado' }); reativada = true; } catch (e) {}
+        }
       }
-      msg(res.criada ? 'Obra criada com sucesso.' : 'Esta proposta ja tinha uma obra.');
+      msg(res.criada ? 'Obra criada com sucesso.' : (reativada ? 'Obra reativada — conteúdo anterior preservado.' : 'Esta proposta ja tinha uma obra.'));
       hidratarAcoesPropostas([p]);
       if (window.Router && window.Router.getAtivo && window.Router.getAtivo() === 'operacional') {
         await carregarObras();
