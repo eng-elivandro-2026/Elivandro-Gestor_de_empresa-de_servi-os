@@ -48,6 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cron-ctrl{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 .cron-ctrl input,.cron-ctrl select{background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;padding:.35rem .5rem}
 .cron-ctrl input{width:64px}
+.ata-codigo{font-weight:800;font-size:1rem;color:var(--emp-cor);margin-bottom:.6rem}
+.ata-cod-hint{font-weight:600;font-size:.7rem;color:var(--text3)}
 /* Indicadores */
 .tbl{width:100%;border-collapse:collapse;font-size:.82rem}
 .tbl th{text-align:left;padding:.5rem .55rem;background:var(--emp-cor);color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;border:1px solid rgba(255,255,255,.2)}
@@ -150,8 +152,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
     <div class="sec">
       <div class="sec-t">Cabeçalho da ata</div>
+      <div id="ata-codigo" class="ata-codigo"></div>
       <div class="fgrid">
-        <div class="fld"><label>Data</label><input type="date" id="a-data"></div>
+        <div class="fld"><label>Data</label><input type="date" id="a-data" onchange="_renderCodigoAta()"></div>
         <div class="fld"><label>Anfitrião</label><input id="a-anfitriao"></div>
         <div class="fld"><label>Status</label><select id="a-status"><option value="aberta">Aberta</option><option value="concluida">Concluída</option></select></div>
         <div class="fld full"><label>Participantes</label><input id="a-participantes"></div>
@@ -213,6 +216,7 @@ var _empresaAtiva=null;
 var _metas=[];        // metas ativas (para montar a ata atual)
 var _indForm=[];      // indicadores da ata em edição (snapshot em construção)
 var _ataId=null;      // id da reunião em edição (null = nova)
+var _numeroAta=null;  // numero_ata da ata em edição (null = nova, gerado ao salvar)
 var _reunioes=[];     // histórico
 var _indByReuniao={}; // indicadores agrupados por reuniao_id
 var _assForm=[];      // assuntos da reunião anterior em edição: {texto, status}
@@ -254,7 +258,7 @@ async function _onTrocaEmpresa(d){
   var nome=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   document.getElementById('hdr-nome').textContent=nome;
   document.getElementById('hdr-mk').textContent=_iniciais(nome);
-  _metas=[]; _indForm=[]; _ataId=null; _reunioes=[]; _indByReuniao={}; _assForm=[]; _assByReuniao={};
+  _metas=[]; _indForm=[]; _ataId=null; _numeroAta=null; _reunioes=[]; _indByReuniao={}; _assForm=[]; _assByReuniao={};
   _renderComoFunciona();
   await novaAta();          // prepara ata atual em branco (puxa metas)
   await carregarHistorico(); // sequencial — não dispara em paralelo
@@ -292,7 +296,7 @@ async function carregarMetas(){
   }catch(e){ _metas=[]; }
 }
 async function novaAta(){
-  _ataId=null;
+  _ataId=null; _numeroAta=null;
   _sv('a-data',_hoje()); _sv('a-anfitriao',''); _sv('a-participantes',''); _sv('a-status','aberta');
   _sv('a-novidades',''); _sv('a-restricoes',''); _sv('a-conclusao','');
   await carregarMetas();
@@ -308,6 +312,20 @@ async function novaAta(){
   await _carregarAssuntosAnteriores();
   _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display = _podeEditar()?'inline-flex':'none';
+  _renderCodigoAta();
+}
+
+// ── Código/numeração da ata ──
+function _codigoAta(numero, data){
+  var sig=_iniciais((_empresaAtiva&&(_empresaAtiva.nome_curto||_empresaAtiva.nome))||'');
+  var d=_dataBR(data);
+  var nn=(numero==null)?'—':((numero<10?'0':'')+numero);
+  return 'ATA'+nn+'-'+sig+(d&&d!=='—'?' | '+d:'');
+}
+function _renderCodigoAta(){
+  var el=document.getElementById('ata-codigo'); if(!el) return;
+  el.innerHTML='<span>'+esc(_codigoAta(_numeroAta,_gv('a-data')))+'</span>'+
+    (_numeroAta==null?' <span class="ata-cod-hint">número gerado ao salvar</span>':'');
 }
 
 // ── Assuntos da reunião anterior ──
@@ -423,8 +441,18 @@ async function salvarAta(){
         .eq('reuniao_id',rid).eq('empresa_id',_empresaAtiva.id);
       if(delA.error) throw delA.error;
     } else {
-      var ins=await sb.from('reuniao_radar').insert(ata).select('id').single(); if(ins.error) throw ins.error;
-      rid=ins.data.id; _ataId=rid;
+      // Número sequencial por empresa, reiniciando por ano — calculado UMA vez, no insert.
+      var anoAta=parseInt(String(ata.data_reuniao).slice(0,4),10);
+      var prox=1;
+      try{
+        var cnt=await sb.from('reuniao_radar').select('id',{count:'exact',head:true})
+          .eq('empresa_id',_empresaAtiva.id)
+          .gte('data_reuniao',anoAta+'-01-01').lt('data_reuniao',(anoAta+1)+'-01-01');
+        if(!cnt.error && typeof cnt.count==='number') prox=cnt.count+1; else prox=null;
+      }catch(e){ prox=null; } // falha degrada: salva sem número
+      if(prox!=null) ata.numero_ata=prox;
+      var ins=await sb.from('reuniao_radar').insert(ata).select('id,numero_ata').single(); if(ins.error) throw ins.error;
+      rid=ins.data.id; _ataId=rid; _numeroAta=(ins.data.numero_ata!=null?ins.data.numero_ata:prox);
     }
     // Dedup defensivo: no máximo 1 indicador por meta (meta_id, senão meta_titulo).
     var _vistos={};
@@ -458,6 +486,7 @@ async function salvarAta(){
       var ra=await sb.from('reuniao_radar_assuntos').insert(rowsA); if(ra.error) throw ra.error;
     }
     _renderAssuntos(true);
+    _renderCodigoAta();
     btn.disabled=false; btn.textContent='Salvar ata';
     alert('Ata salva.');
     await carregarHistorico();
@@ -502,7 +531,7 @@ function renderHistorico(){
     var fora=inds.filter(function(x){return x.status_indicador&&x.status_indicador!=='na_meta';}).length;
     var stTxt = r.status==='concluida'?'Concluída':'Aberta';
     return '<div class="hist-item" onclick="abrirAta(\''+r.id+'\')">'+
-      '<div><div class="hist-d">'+_dataBR(r.data_reuniao)+'</div><div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · '+stTxt+'</div></div>'+
+      '<div><div class="hist-d">'+esc(_codigoAta(r.numero_ata,r.data_reuniao))+'</div><div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · '+stTxt+'</div></div>'+
       '<div class="hist-sub" style="text-align:right">'+inds.length+' indicador(es)<br>'+(fora?('<span style="color:var(--red)">'+fora+' fora da meta</span>'):'<span style="color:var(--green)">todos na meta</span>')+'</div>'+
     '</div>';
   }).join('');
@@ -514,15 +543,16 @@ function abrirAta(id){
   document.getElementById('hist-lista').style.display='none';
   document.getElementById('hist-busca-wrap').style.display='none';
   var podeReabrir = _podeEditar() && r.status==='aberta';
+  var codAberta=_codigoAta(r.numero_ata,r.data_reuniao);
   var linhas=inds.map(function(it){
     return '<tr><td class="ind-nome">'+esc(it.meta_titulo||'—')+'</td><td>'+esc(it.valor_atual||'—')+'</td><td>'+esc(it.valor_meta||'—')+'</td><td>'+_statusBadge(it.status_indicador)+'</td><td class="ro-txt">'+(it.desafio_plano?esc(it.desafio_plano):'—')+'</td></tr>';
   }).join('');
   function bloco(t,v){ return '<div class="sec"><div class="sec-t">'+t+'</div><div class="ro-txt">'+(v?esc(v):'—')+'</div></div>'; }
   var det='<div class="acoes no-print" style="justify-content:space-between">'+
       '<button class="btn btn-ghost btn-sm" onclick="renderHistorico()">← Voltar ao histórico</button>'+
-      '<span>'+(podeReabrir?'<button class="btn btn-ghost btn-sm" onclick="reabrirAta(\''+id+'\')">✏️ Reabrir/editar</button> ':'')+'<button class="btn btn-ghost btn-sm" onclick="imprimirAta()">🖨️ Imprimir PDF</button></span>'+
+      '<span>'+(podeReabrir?'<button class="btn btn-ghost btn-sm" onclick="reabrirAta(\''+id+'\')">✏️ Reabrir/editar</button> ':'')+'<button class="btn btn-ghost btn-sm" data-cod="'+esc(codAberta)+'" onclick="imprimirAta(this.getAttribute(\'data-cod\'))">🖨️ Imprimir PDF</button></span>'+
     '</div>'+
-    '<div class="sec"><div class="sec-t">Ata — '+_dataBR(r.data_reuniao)+'</div>'+
+    '<div class="sec"><div class="sec-t">Ata '+esc(codAberta)+'</div>'+
       '<div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · Participantes: '+esc(r.participantes||'—')+' · '+(r.status==='concluida'?'Concluída':'Aberta')+'</div></div>'+
     '<div class="sec"><div class="sec-t">Indicadores da semana (snapshot)</div>'+
       (inds.length?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="vazio">Sem indicadores registrados.</div>')+
@@ -535,7 +565,7 @@ function abrirAta(id){
 }
 function reabrirAta(id){
   var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
-  _ataId=id;
+  _ataId=id; _numeroAta=(r.numero_ata!=null?r.numero_ata:null);
   _sv('a-data',(r.data_reuniao||'').slice(0,10)); _sv('a-anfitriao',r.anfitriao); _sv('a-participantes',r.participantes);
   _sv('a-status',r.status||'aberta'); _sv('a-novidades',r.novidades); _sv('a-restricoes',r.restricoes); _sv('a-conclusao',r.conclusao);
   // Dedup defensivo: 1 indicador por meta (rede de segurança caso venha duplicado).
@@ -555,6 +585,7 @@ function reabrirAta(id){
   }).map(function(a){ return { texto:String(a.texto).trim(), status:a.status||'pendente' }; });
   _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display=_podeEditar()?'inline-flex':'none';
+  _renderCodigoAta();
   trocarAba('ata');
 }
 
@@ -572,11 +603,12 @@ function crToggle(){
 function crZerar(){ clearInterval(_tick); _running=false; _elapsed=0; var b=document.getElementById('cr-play'); if(b) b.textContent='▶ Iniciar'; crRender(); }
 
 // ── Impressão ──
-function imprimirAta(){
+function imprimirAta(cod){
   var cab=document.getElementById('print-cab'), rod=document.getElementById('print-rod');
   var emp=(_empresaAtiva&&(_empresaAtiva.nome_curto||_empresaAtiva.nome))||'';
-  var data=_dataBR(_gv('a-data')|| (_reunioes[0]&&_reunioes[0].data_reuniao));
-  if(cab) cab.innerHTML='<div class="pc-logo">TECFUSION</div><div class="pc-tool">Reunião de Radar — '+esc(emp)+(data&&data!=='—'?' · '+esc(data):'')+'</div>';
+  // cod (string) vem do histórico (ata aberta); sem arg, usa a ata atual.
+  var codigo=(typeof cod==='string'&&cod)?cod:_codigoAta(_numeroAta,_gv('a-data')||(_reunioes[0]&&_reunioes[0].data_reuniao));
+  if(cab) cab.innerHTML='<div class="pc-logo">TECFUSION</div><div class="pc-tool">Reunião de Radar — '+esc(emp)+(codigo?' · '+esc(codigo):'')+'</div>';
   if(rod) rod.textContent='Tecfusion © 2026 — Reunião de Radar';
   window.print();
 }
