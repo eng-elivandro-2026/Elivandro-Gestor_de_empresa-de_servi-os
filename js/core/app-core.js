@@ -1443,29 +1443,35 @@ function getRecAno(ano){ return getFechAno(ano).reduce(function(s,p){return s+n2
 // COPOS (ganho/redirecionados/perdas) = desfecho no ano (por dtFech c/ fallback).
 // % sobre QUANTIDADE; denominador = abertas + desfechos do ano (inclui em_elaboracao).
 // ---------------------------------------------------------------
-function calcFunilComercial(ano, arr){
+// Mapa grupo→predicado de fase (compartilhado por calcFunilComercial e funilListaPropostas).
+function _funilFaseDoGrupo(grupo){
+  if(grupo==='em_elaboracao')      return function(p){return p.fas==='em_elaboracao';};
+  if(grupo==='enviada')            return function(p){return p.fas==='enviada';};
+  if(grupo==='follow')             return function(p){return ['follow1','follow2','follow3','follow4'].indexOf(p.fas)>=0;};
+  if(grupo==='cliente_analisando') return function(p){return p.fas==='cliente_analisando';};
+  if(grupo==='ganho')              return function(p){return isPropostaGanhaOuAprovada(p);};
+  if(grupo==='redirecionados')     return function(p){return ['virou_budget','virou_outra_proposta','budget'].indexOf(p.fas)>=0;};
+  if(grupo==='perdas')             return function(p){return ['perdido_valor_alto','perdido_concorrente','perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido','perdido_cancelado','cancelada'].indexOf(p.fas)>=0;};
+  return function(){return false;};
+}
+// Base do funil filtrada pelo ANO — MESMA regra do propsComercial()/#phG (_anoDaProposta:
+// abertas pelo ano de criação; ganhas pelo ano de fechamento). 'all'/null → sem filtro.
+function _funilBaseAno(ano, arr){
   var lista = Array.isArray(arr) ? arr : (Array.isArray(props)?props:[]);
-  var filtroAno = (ano==='all'||ano==null) ? null : (parseInt(ano,10)||new Date().getFullYear());
-  // Mesma cadeia do getFechAno: dtFech → dat2 → dat.
-  function _anoFechDe(p){
-    if(p.dtFech){ var d=new Date(p.dtFech+'T12:00:00'); if(!isNaN(d.getTime())) return d.getFullYear(); }
-    var dRef=p.dat2||''; if(dRef){ var d2=new Date(dRef+'T12:00:00'); if(!isNaN(d2.getTime())) return d2.getFullYear(); }
-    if(p.dat){ var ps=String(p.dat).split('/'); if(ps.length===3){ var d3=new Date(ps[2]+'-'+ps[1]+'-'+ps[0]+'T12:00:00'); if(!isNaN(d3.getTime())) return d3.getFullYear(); } }
-    return null;
-  }
-  function noAno(p){ return filtroAno==null || _anoFechDe(p)===filtroAno; }
-  var REDIR=['virou_budget','virou_outra_proposta','budget'];
-  var PERDA=['perdido_valor_alto','perdido_concorrente','perdido_cliente_decidiu_nao_fazer','perdido_fazer_no_futuro','perdido','cancelada','perdido_cancelado'];
-  function grp(fn){ var l=lista.filter(fn); return { count:l.length, valor:l.reduce(function(s,p){return s+n2(p.val);},0) }; }
-  // Etapas abertas (pipeline atual — independem do ano)
-  var eElab  =grp(function(p){return p.fas==='em_elaboracao';});
-  var eEnv   =grp(function(p){return p.fas==='enviada';});
-  var eFollow=grp(function(p){return ['follow1','follow2','follow3','follow4'].indexOf(p.fas)>=0;});
-  var eCli   =grp(function(p){return p.fas==='cliente_analisando';});
-  // Copos (desfecho no ano)
-  var cGanho=grp(function(p){return isPropostaGanhaOuAprovada(p) && noAno(p);});
-  var cRedir=grp(function(p){return REDIR.indexOf(p.fas)>=0 && noAno(p);});
-  var cPerda=grp(function(p){return PERDA.indexOf(p.fas)>=0 && noAno(p);});
+  if(ano==='all'||ano==null) return lista.slice();
+  var a=parseInt(ano,10)||new Date().getFullYear();
+  return lista.filter(function(p){ return _anoDaProposta(p)===a; });
+}
+// Lista de propostas de um grupo/etapa do funil no ano (para o modal clicável).
+function funilListaPropostas(grupo, ano, arr){
+  return _funilBaseAno(ano, arr).filter(_funilFaseDoGrupo(grupo));
+}
+if(typeof window!=='undefined') window.funilListaPropostas = funilListaPropostas;
+function calcFunilComercial(ano, arr){
+  var base=_funilBaseAno(ano, arr);
+  function grp(grupo){ var l=base.filter(_funilFaseDoGrupo(grupo)); return { count:l.length, valor:l.reduce(function(s,p){return s+n2(p.val);},0) }; }
+  var eElab=grp('em_elaboracao'), eEnv=grp('enviada'), eFollow=grp('follow'), eCli=grp('cliente_analisando');
+  var cGanho=grp('ganho'), cRedir=grp('redirecionados'), cPerda=grp('perdas');
   var total=eElab.count+eEnv.count+eFollow.count+eCli.count+cGanho.count+cRedir.count+cPerda.count;
   function pct(c){ return total>0?(c/total*100):0; }
   function wp(g){ return {count:g.count, valor:g.valor, pct:pct(g.count)}; }
@@ -1474,7 +1480,7 @@ function calcFunilComercial(ano, arr){
   var finalizadas=cGanho.count+cRedir.count+cPerda.count;
   var conversao=finalizadas>0?(cGanho.count/finalizadas*100):0;
   return {
-    ano:(filtroAno==null?'all':filtroAno),
+    ano:((ano==='all'||ano==null)?'all':(parseInt(ano,10)||new Date().getFullYear())),
     total:total,
     etapas:[
       {key:'em_elaboracao',     label:'Em elaboração',      count:eElab.count,  valor:eElab.valor,  pct:pct(eElab.count)},
@@ -1490,9 +1496,14 @@ if(typeof window!=='undefined') window.calcFunilComercial = calcFunilComercial;
 
 // Desenho puro (SVG) a partir do retorno de calcFunilComercial. Tema-aware via
 // currentColor nos rótulos externos; cores fixas (mockup) nas formas.
-function funilComercialSVG(d){
+function funilComercialSVG(d, opts){
   if(!d) return '';
+  opts=opts||{};
+  var clickFn=(typeof opts.onSlice==='string'&&opts.onSlice)?opts.onSlice:'';
+  function clk(key){ return clickFn ? (' onclick="'+clickFn+'(\''+key+'\')" style="cursor:pointer"') : ''; }
   function pctTxt(x){ return (Math.round(x*10)/10)+'%'; }
+  // Número branco com contorno escuro (paint-order) → legível em QUALQUER fundo/tema.
+  var HALO=' style="paint-order:stroke" stroke="rgba(0,0,0,.55)" stroke-width="3" stroke-linejoin="round"';
   var W=600, sh=56, gap=8, top=12;
   var sw=[430,350,270,190], cores=['#8b949e','#58a6ff','#bc8cff','#3fb950'];
   var svg='', y=top;
@@ -1500,10 +1511,12 @@ function funilComercialSVG(d){
     var w=sw[i]!=null?sw[i]:sw[sw.length-1], x=(W-w)/2;
     var wN=sw[i+1]!=null?sw[i+1]:(w-60), xN=(W-wN)/2;
     var pts=[x+','+y,(x+w)+','+y,(xN+wN)+','+(y+sh),xN+','+(y+sh)].join(' ');
-    svg+='<polygon points="'+pts+'" fill="'+cores[i]+'" opacity="0.92"/>';
     var cx=W/2, cy=y+sh/2;
-    svg+='<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">'+esc(st.label)+'</text>';
-    svg+='<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" opacity="0.95">'+st.count+' · '+pctTxt(st.pct)+' · '+money(st.valor)+'</text>';
+    svg+='<g'+clk(st.key)+'>'
+      +'<polygon points="'+pts+'" fill="'+cores[i]+'" opacity="0.92"/>'
+      +'<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#fff"'+HALO+'>'+esc(st.label)+'</text>'
+      +'<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff"'+HALO+'>'+st.count+' · '+pctTxt(st.pct)+' · '+money(st.valor)+'</text>'
+      +'</g>';
     y+=sh+gap;
   });
   var fb=y+10;
@@ -1511,31 +1524,69 @@ function funilComercialSVG(d){
   var maxC=Math.max(1, co.ganho.count||0, co.redirecionados.count||0, co.perdas.count||0);
   var cupH=110, cupY=fb+34;
   var cups=[
-    {t:'Redirecionados', c:'#d4a017', cx:125, w:140, g:co.redirecionados},
-    {t:'Ganho',          c:'#3fb950', cx:300, w:172, g:co.ganho, big:true},
-    {t:'Perdas',         c:'#f85149', cx:475, w:140, g:co.perdas}
+    {key:'redirecionados', t:'Redirecionados', c:'#d4a017', cx:125, w:140, g:co.redirecionados},
+    {key:'ganho',          t:'Ganho',          c:'#3fb950', cx:300, w:172, g:co.ganho, big:true},
+    {key:'perdas',         t:'Perdas',         c:'#f85149', cx:475, w:140, g:co.perdas}
   ];
   cups.forEach(function(cp){
     var w=cp.w, x=cp.cx-w/2, g=cp.g||{count:0,valor:0,pct:0};
-    svg+='<text x="'+cp.cx+'" y="'+(cupY-15)+'" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor">'+esc(cp.t)+'</text>';
-    svg+='<text x="'+cp.cx+'" y="'+(cupY-1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor" opacity="0.8">'+pctTxt(g.pct||0)+' · '+money(g.valor||0)+'</text>';
-    svg+='<rect x="'+x+'" y="'+cupY+'" width="'+w+'" height="'+cupH+'" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.28" stroke-width="2"/>';
     var lh=Math.round(((g.count||0)/maxC)*(cupH-10));
-    svg+='<rect x="'+(x+5)+'" y="'+(cupY+cupH-5-lh)+'" width="'+(w-10)+'" height="'+lh+'" rx="6" fill="'+cp.c+'" opacity="'+(cp.big?0.95:0.85)+'"/>';
-    svg+='<text x="'+cp.cx+'" y="'+(cupY+cupH/2+6)+'" text-anchor="middle" font-size="'+(cp.big?23:19)+'" font-weight="900" fill="#fff">'+(g.count||0)+'</text>';
+    svg+='<g'+clk(cp.key)+'>'
+      +'<text x="'+cp.cx+'" y="'+(cupY-15)+'" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor">'+esc(cp.t)+'</text>'
+      +'<text x="'+cp.cx+'" y="'+(cupY-1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor" opacity="0.8">'+pctTxt(g.pct||0)+' · '+money(g.valor||0)+'</text>'
+      +'<rect x="'+x+'" y="'+cupY+'" width="'+w+'" height="'+cupH+'" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.28" stroke-width="2"/>'
+      +'<rect x="'+(x+5)+'" y="'+(cupY+cupH-5-lh)+'" width="'+(w-10)+'" height="'+lh+'" rx="6" fill="'+cp.c+'" opacity="'+(cp.big?0.95:0.85)+'"/>'
+      +'<text x="'+cp.cx+'" y="'+(cupY+cupH/2+6)+'" text-anchor="middle" font-size="'+(cp.big?23:19)+'" font-weight="900" fill="#fff"'+HALO+'>'+(g.count||0)+'</text>'
+      +'</g>';
   });
   var r=d.resumo||{carteira:{count:0,valor:0},finalizadas:{count:0},conversao:0};
   var ry=cupY+cupH+26;
   svg+='<text x="'+(W/2)+'" y="'+ry+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">'
-      +'Em carteira: '+r.carteira.count+' ('+money(r.carteira.valor)+')   ·   Finalizadas no ano: '+r.finalizadas.count+'   ·   Conversão: '+pctTxt(r.conversao)+'</text>';
+      +'Em carteira (pipeline do ano): '+r.carteira.count+' ('+money(r.carteira.valor)+')   ·   Negócios ganhos no ano: '+(co.ganho.count||0)+'   ·   Finalizadas: '+r.finalizadas.count+'   ·   Conversão: '+pctTxt(r.conversao)+'</text>';
   var H=ry+18;
   return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;font-family:inherit">'+svg+'</svg>';
 }
 if(typeof window!=='undefined') window.funilComercialSVG = funilComercialSVG;
 function renderFunilComercial(){
   var el=Q('funilComercial'); if(!el) return;
-  try{ el.innerHTML=funilComercialSVG(calcFunilComercial(window._anoComercialSel)); }catch(e){ el.innerHTML=''; }
+  try{ el.innerHTML=funilComercialSVG(calcFunilComercial(window._anoComercialSel), {onSlice:'abrirFunilLista'}); }catch(e){ el.innerHTML=''; }
 }
+// ── Lista clicável do funil (modal) — HTML compartilhado p/ Comercial e Gestão à Vista ──
+var _FUNIL_GRUPO_LABEL={em_elaboracao:'Em elaboração',enviada:'Enviada',follow:'Follow 1-4',cliente_analisando:'Cliente analisando',ganho:'Negócios ganhos',redirecionados:'Redirecionados',perdas:'Perdas'};
+function _funilDataBR(iso){ if(!iso) return '—'; var s=String(iso).slice(0,10); var d=new Date(s+'T12:00:00'); if(isNaN(d.getTime())) return '—'; return s.split('-').reverse().join('/'); }
+function funilListaTabelaHTML(grupo, ano){
+  var lista=funilListaPropostas(grupo, ano);
+  var titulo=(_FUNIL_GRUPO_LABEL[grupo]||grupo)+' — '+lista.length+' proposta'+(lista.length!==1?'s':'')+((ano&&ano!=='all')?(' ('+ano+')'):'');
+  var head='<div style="font-size:.9rem;font-weight:800;margin-bottom:.6rem;color:var(--accent)">'+esc(titulo)+'</div>';
+  if(!lista.length) return head+'<div style="color:var(--text3);font-size:.85rem;padding:.6rem 0">Nenhuma proposta nesta fase para o período.</div>';
+  var rows=lista.map(function(p){
+    var nomeFull=(p.loc||p.cli||'—');
+    var nomeCurto=(typeof abreviarCliente==='function')?abreviarCliente(nomeFull):nomeFull;
+    return '<tr>'
+      +'<td style="white-space:nowrap;font-weight:700;padding:.35rem .5rem;border-bottom:1px solid var(--border)">'+esc(p.num||'—')+'</td>'
+      +'<td title="'+esc(nomeFull)+'" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.35rem .5rem;border-bottom:1px solid var(--border)">'+esc(nomeCurto)+'</td>'
+      +'<td title="'+esc(p.tit||'')+'" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.35rem .5rem;border-bottom:1px solid var(--border)">'+esc(p.tit||'—')+'</td>'
+      +'<td style="white-space:nowrap;text-align:center;padding:.35rem .5rem;border-bottom:1px solid var(--border)">'+_funilDataBR(p.tl&&p.tl.dtEnvio)+'</td>'
+      +'<td style="white-space:nowrap;text-align:center;padding:.35rem .5rem;border-bottom:1px solid var(--border)">'+_funilDataBR(p.dtFech)+'</td>'
+      +'</tr>';
+  }).join('');
+  return head
+    +'<div style="overflow:auto;max-height:52vh"><table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+    +'<thead><tr style="position:sticky;top:0;background:var(--bg2)">'
+    +'<th style="text-align:left;padding:.4rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase">Nº</th>'
+    +'<th style="text-align:left;padding:.4rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase">Cliente</th>'
+    +'<th style="text-align:left;padding:.4rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase">Título</th>'
+    +'<th style="text-align:center;padding:.4rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase">Envio</th>'
+    +'<th style="text-align:center;padding:.4rem .5rem;border-bottom:2px solid var(--border);color:var(--text3);font-size:.7rem;text-transform:uppercase">Fechamento</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+if(typeof window!=='undefined') window.funilListaTabelaHTML = funilListaTabelaHTML;
+function abrirFunilLista(grupo){
+  var body=Q('funilListaBody'); if(body) body.innerHTML=funilListaTabelaHTML(grupo, window._anoComercialSel);
+  var m=Q('funilListaModal'); if(m) m.style.display='flex';
+}
+function _fecharFunilListaModal(){ var m=Q('funilListaModal'); if(m) m.style.display='none'; }
+if(typeof window!=='undefined'){ window.abrirFunilLista=abrirFunilLista; window._fecharFunilListaModal=_fecharFunilListaModal; }
 
 // ═══════════════════════════════════════════════════════════════
 // FILTRO DE ANO GLOBAL DA ABA COMERCIAL (view derivada — NUNCA muta `props`)
@@ -11500,7 +11551,7 @@ function _renderMetaResumo(ano, recAno, fechAno, totalAno, txConv){
     {l:'Ticket médio', v:money(ticket), c:'var(--cyan)'},
     {l:'Taxa de conversão', v:txConv+'%', c:'var(--accent)'},
     {l:'Ganhos', v:fechAno, c:'#3fb950'},
-    {l:'Realizadas', v:totalAno, c:'#58a6ff'}
+    {l:'Propostas criadas no ano', v:totalAno, c:'#58a6ff'}
   ];
   el.innerHTML='<div style="font-size:.67rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📊 Resumo geral '+ano+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem">'

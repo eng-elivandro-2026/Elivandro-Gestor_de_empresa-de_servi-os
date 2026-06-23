@@ -365,6 +365,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- Modal: lista de propostas de uma fase/grupo do funil -->
+<div class="modal-bg" id="funil-lista-modal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-head"><div class="modal-titulo">🔻 Propostas da fase</div><button class="btn btn-ghost btn-sm" onclick="_fecharFunilListaGV()">✕</button></div>
+    <div id="funil-lista-body"></div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // Gestão à Vista — metas, plano de ação, ciclo de melhoria e radar
@@ -448,9 +456,21 @@ function renderFunil(){
     var ano; try{ ano=window.parent._anoComercialSel; }catch(e){ ano=null; }
     var data=calc(ano);
     if(elAno) elAno.textContent=(data&&data.ano==='all')?'(todos os anos)':('('+(data?data.ano:'')+')');
-    el.innerHTML=draw(data);
+    el.innerHTML=draw(data, {onSlice:'abrirFunilListaGV'});
   }catch(e){ el.innerHTML='<div id="funil-vazio">Funil indisponível.</div>'; }
 }
+// Lista clicável do funil (modal) — usa a tabela do shell (mesma fonte/dados).
+function abrirFunilListaGV(grupo){
+  var body=document.getElementById('funil-lista-body'); if(!body) return;
+  try{
+    var ano; try{ ano=window.parent._anoComercialSel; }catch(e){ ano=null; }
+    var html=(window.parent&&typeof window.parent.funilListaTabelaHTML==='function')
+      ? window.parent.funilListaTabelaHTML(grupo, ano) : '<div class="vazio">Lista indisponível.</div>';
+    body.innerHTML=html;
+    var m=document.getElementById('funil-lista-modal'); if(m) m.classList.add('on');
+  }catch(e){ body.innerHTML='<div class="vazio">Lista indisponível.</div>'; }
+}
+function _fecharFunilListaGV(){ var m=document.getElementById('funil-lista-modal'); if(m) m.classList.remove('on'); }
 // Garante aberto (não alterna) — usado pela navegação do menu
 function _expandKpis(){ if(!_kpisAberto) toggleKpis(); }
 function _expandFechmes(){ if(!_fechmesAberto) toggleFechmes(); }

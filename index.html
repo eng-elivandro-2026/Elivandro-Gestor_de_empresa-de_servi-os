@@ -1047,11 +1047,11 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
     </div>
     <div id="visaoGeralBody" style="display:none">
     <div class="kpi-g" style="margin-bottom:0">
-      <div class="kpi"><div class="kpi-v" id="kT">0</div><div class="kpi-l">Propostas<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">histórico total</span></div></div>
+      <div class="kpi"><div class="kpi-v" id="kT">0</div><div class="kpi-l">Propostas<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">no ano selecionado</span></div></div>
       <div class="kpi"><div class="kpi-v" id="kC" style="color:var(--blue)">R$0</div><div class="kpi-l">Carteira</div></div>
-      <div class="kpi"><div class="kpi-v" id="kA" style="color:var(--green)">R$0</div><div class="kpi-l">Aprovado<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">histórico total</span></div></div>
+      <div class="kpi"><div class="kpi-v" id="kA" style="color:var(--green)">R$0</div><div class="kpi-l">Aprovado<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">no ano selecionado</span></div></div>
       <div class="kpi"><div class="kpi-v" id="kCv" style="color:var(--purple)">0%</div><div class="kpi-l">Conversão</div></div>
-      <div class="kpi"><div class="kpi-v" id="kTk">R$0</div><div class="kpi-l">Ticket Médio<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">histórico</span></div></div>
+      <div class="kpi"><div class="kpi-v" id="kTk">R$0</div><div class="kpi-l">Ticket Médio<br><span style="font-size:.6rem;color:var(--text3);font-weight:400">no ano selecionado</span></div></div>
       <div class="kpi" title="Tempo médio entre criação e fechamento das propostas aprovadas/finalizadas"><div class="kpi-v" id="kCiclo" style="color:var(--cyan)">—</div><div class="kpi-l">Ciclo de Vendas</div></div>
       <div class="kpi" title="Receita Prevista = Carteira em aberto × Taxa de Conversão"><div class="kpi-v" id="kRecPrev" style="color:var(--accent)">R$0</div><div class="kpi-l">Receita Prevista</div></div>
     </div>
@@ -10093,6 +10093,17 @@ function rExecTimeline(){
     </div>
   </div>
 </div>
+
+<!-- Modal: lista de propostas de uma fase/grupo do funil -->
+<div id="funilListaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:900;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)_fecharFunilListaModal()">
+  <div style="width:min(720px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 10px 50px rgba(0,0,0,.6)">
+    <div style="padding:.85rem 1.2rem .7rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(88,166,255,.07)">
+      <div style="font-size:1rem;font-weight:800;color:#58a6ff">🔻 Propostas da fase</div>
+      <button onclick="_fecharFunilListaModal()" style="background:none;border:none;font-size:1.2rem;color:var(--text3);cursor:pointer;padding:.2rem .5rem;line-height:1">✕</button>
+    </div>
+    <div style="padding:1.1rem 1.2rem" id="funilListaBody"></div>
+  </div>
+</div>
 </div><!-- /comercial-content -->
 <div id="operacional" class="sec">
   <div id="operacional-root"></div>
@@ -10118,7 +10129,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=5"></script>
+<script src="js/core/app-core.js?v=6"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
