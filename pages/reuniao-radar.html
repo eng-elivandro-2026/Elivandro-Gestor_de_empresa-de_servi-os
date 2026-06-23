@@ -51,6 +51,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ata-codigo{font-weight:800;font-size:1rem;color:var(--emp-cor);margin-bottom:.6rem}
 .ata-cod-hint{font-weight:600;font-size:.7rem;color:var(--text3)}
 .ata-trava{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.4);color:var(--red);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:1rem;font-size:.82rem;font-weight:700}
+.conc-card{background:var(--bg2);border:1px solid var(--emp-bdr);border-radius:var(--r);padding:2rem 1.2rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:.7rem}
+.conc-ok{font-size:1.25rem;font-weight:800;color:var(--emp-cor)}
+.conc-txt{font-size:.9rem;color:var(--text2);max-width:440px;line-height:1.5}
+.conc-card .btn{font-size:.9rem;padding:.6rem 1.1rem;margin-top:.3rem}
+.conc-sub{font-size:.74rem;color:var(--text3)}
 /* Indicadores */
 .tbl{width:100%;border-collapse:collapse;font-size:.82rem}
 .tbl th{text-align:left;padding:.5rem .55rem;background:var(--emp-cor);color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;border:1px solid rgba(255,255,255,.2)}
@@ -140,6 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- ABA 2 -->
   <div id="aba-ata" style="display:none">
+   <div id="ata-form">
     <div class="cron no-print">
       <div class="cron-disp" id="cr-display">15:00</div>
       <div class="cron-ctrl">
@@ -199,6 +205,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn btn-ghost" onclick="imprimirAta()">🖨️ Imprimir PDF</button>
       <button class="btn btn-emp" id="btn-salvar-ata" onclick="salvarAta()" style="display:none">Salvar ata</button>
     </div>
+   </div><!-- /#ata-form -->
+   <div id="ata-concluida-estado" style="display:none"></div>
   </div>
 
   <!-- ABA 3 -->
@@ -253,6 +261,30 @@ function _aplicarTravaAta(){
         (_ehDono()?' <button class="btn btn-ghost btn-sm" onclick="reabrirAtaConcluida(\''+(_ataId||'')+'\')">🔓 Reabrir ata</button>':'');
     } else { tv.style.display='none'; tv.innerHTML=''; }
   }
+}
+// Alterna entre o formulário da ata e o estado de "aguardando nova reunião".
+function _mostrarFormAta(){
+  var est=document.getElementById('ata-concluida-estado'); if(est){ est.style.display='none'; est.innerHTML=''; }
+  var form=document.getElementById('ata-form'); if(form) form.style.display='';
+}
+function _mostrarEstadoConcluida(){
+  var cod=_codigoAta(_numeroAta,_gv('a-data'));
+  var form=document.getElementById('ata-form'); if(form) form.style.display='none';
+  var est=document.getElementById('ata-concluida-estado'); if(!est) return;
+  est.style.display='';
+  est.innerHTML='<div class="conc-card">'+
+    '<div class="conc-ok">✅ Ata '+esc(cod)+' concluída com sucesso!</div>'+
+    '<div class="conc-txt">A reunião foi registrada. Quando a próxima reunião acontecer, inicie uma nova ata.</div>'+
+    (_podeEditar()?'<button class="btn btn-emp" onclick="iniciarNovaReuniao()">＋ Iniciar nova reunião</button>':'')+
+    '<div class="conc-sub">Esta ata fica disponível no Histórico.</div>'+
+  '</div>';
+}
+// Inicia uma nova reunião a partir do estado de conclusão (sem confirmação:
+// não há ata aberta em edição para perder). Reseta o cronômetro e abre ata em branco.
+async function iniciarNovaReuniao(){
+  if(!_podeEditar()) return;
+  crZerar();
+  await novaAta();
 }
 function _gv(id){ var e=document.getElementById(id); return e? e.value : ''; }
 function _sv(id,v){ var e=document.getElementById(id); if(e) e.value=(v==null?'':v); }
@@ -342,6 +374,7 @@ async function novaAta(){
   var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
   _renderCodigoAta();
   _aplicarTravaAta();
+  _mostrarFormAta();
 }
 
 // ── Código/numeração da ata ──
@@ -515,14 +548,21 @@ async function salvarAta(){
       });
       var ra=await sb.from('reuniao_radar_assuntos').insert(rowsA); if(ra.error) throw ra.error;
     }
-    _ataConcluida=(ata.status==='concluida'); // ata concluída trava o editor
+    _ataConcluida=(ata.status==='concluida');
     _renderIndicadores(_editavelAta());
     _renderAssuntos(_editavelAta());
     _renderCodigoAta();
     _aplicarTravaAta();
     btn.disabled=false; btn.textContent='Salvar ata';
-    alert(_ataConcluida?'Ata concluída e salva. Agora está travada para edição.':'Ata salva.');
     await carregarHistorico();
+    if(_ataConcluida){
+      // Opção A: fecha a ata atual e mostra o estado de "aguardando nova reunião".
+      _mostrarEstadoConcluida();
+    } else {
+      // Rascunho (aberta): continua na ata editável, como hoje.
+      _mostrarFormAta();
+      alert('Ata salva.');
+    }
   }catch(e){ alert('Erro ao salvar ata: '+(e&&e.message||'')); btn.disabled=false; btn.textContent='Salvar ata'; }
 }
 
@@ -628,6 +668,7 @@ function reabrirAta(id){
   var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
   _renderCodigoAta();
   _aplicarTravaAta();
+  _mostrarFormAta();
   trocarAba('ata');
 }
 // Reabre uma ata CONCLUÍDA (só dono): volta status p/ 'aberta' no banco e abre para edição.
