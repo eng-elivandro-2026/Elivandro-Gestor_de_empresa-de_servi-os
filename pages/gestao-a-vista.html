@@ -396,6 +396,9 @@ function _props(){ try{ return (window.parent && Array.isArray(window.parent.pro
 function _money(v){ if(v==null||isNaN(v)) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
 function _noMes(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; var n=new Date(); return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth(); }
 function _noAno(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false; return d.getFullYear()===(new Date()).getFullYear(); }
+// Propostas ENVIADAS no mês corrente = tl.dtEnvio no mês/ano atual (independe da fase).
+// Sem dtEnvio não conta. Mesmo predicado usado no dashboard-minha-empresa.
+function _enviadasMes(ps){ return (ps||[]).filter(function(p){ var tl=p.tl||{}; return _noMes(tl.dtEnvio); }); }
 function _media(arr){ if(!arr.length) return null; return arr.reduce(function(s,v){return s+v;},0)/arr.length; }
 function _kpiCard(label,valor,sub){ return '<div class="kpi-c"><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
 // Reuso das funções globais do shell (Metas 2026) para bater 100% com aquele painel
@@ -433,7 +436,7 @@ function _renderKpisComercial(){
   var el=document.getElementById('kpis-com'); if(!el) return;
   var ps=_props();
   // Contagens do mês (simples) — usa critério oficial de "ganha" (inclui em_pausa_*)
-  var enviadasMes=ps.filter(function(p){ return p.fas!=='em_elaboracao' && _noMes(p.dat2); });
+  var enviadasMes=_enviadasMes(ps);
   var fechMes    =ps.filter(function(p){ return _ppGanha(p) && _noMes(p.dtFech); });
   var carteira=ps.filter(function(p){ return _FAS_PIPE.indexOf(p.fas)>=0; }).reduce(function(s,p){ return s+(Number(p.val)||0); },0);
   // Ano: reusa as funções do shell p/ bater exatamente com o Metas 2026
@@ -444,7 +447,7 @@ function _renderKpisComercial(){
   var conv   = (totalAno!=null && totalAno>0 && fechAno!=null) ? (fechAno/totalAno*100) : null;
   var ticket = (recAno!=null && fechAno!=null && fechAno>0)    ? (recAno/fechAno)       : null;
   el.innerHTML=
-    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Criadas no mês (excl. elaboração)')+
+    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Enviadas ao cliente no mês (por data de envio)')+
     _kpiCard('Fechamentos no mês', String(fechMes.length), 'Ganhas por data de fechamento')+
     _kpiCard('Taxa de conversão do ano', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ realizadas (ano)')+
     _kpiCard('Receita no ano', recAno==null?'—':_money(recAno), 'Valor das ganhas (ano)')+
