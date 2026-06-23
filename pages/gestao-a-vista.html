@@ -42,6 +42,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi-c-l{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.25rem}
 .kpi-c-v{font-size:1.35rem;font-weight:800;color:var(--emp-cor);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-c-s{font-size:.65rem;color:var(--text3);margin-top:.2rem}
+.kpi-c-link{cursor:pointer;transition:border-color .15s}
+.kpi-c-link:hover{border-color:var(--emp-cor)}
 
 /* Funil Comercial (espelho) */
 #funil-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:1rem;color:var(--text)}
@@ -365,6 +367,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- Modal: propostas enviadas no mês -->
+<div class="modal-bg" id="modal-env-mes-gv" onclick="_fecharEnviadasMesGV()">
+  <div class="modal" style="max-width:760px" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="modal-titulo">Propostas enviadas no mês</div><button class="btn btn-ghost btn-sm" onclick="_fecharEnviadasMesGV()">✕</button></div>
+    <div id="env-mes-body-gv"></div>
+  </div>
+</div>
+
 <!-- Modal: lista de propostas de uma fase/grupo do funil -->
 <div class="modal-bg" id="funil-lista-modal">
   <div class="modal" style="max-width:720px">
@@ -420,7 +430,7 @@ function _noAno(iso){ if(!iso) return false; var d=new Date(String(iso).slice(0,
 // Sem dtEnvio não conta. Mesmo predicado usado no dashboard-minha-empresa.
 function _enviadasMes(ps){ return (ps||[]).filter(function(p){ var tl=p.tl||{}; return _noMes(tl.dtEnvio); }); }
 function _media(arr){ if(!arr.length) return null; return arr.reduce(function(s,v){return s+v;},0)/arr.length; }
-function _kpiCard(label,valor,sub){ return '<div class="kpi-c"><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
+function _kpiCard(label,valor,sub,oc){ var ex=oc?' class="kpi-c kpi-c-link" onclick="'+oc+'" tabindex="0" role="button"':' class="kpi-c"'; return '<div'+ex+'><div class="kpi-c-l">'+esc(label)+'</div><div class="kpi-c-v">'+valor+'</div><div class="kpi-c-s">'+esc(sub||'')+'</div></div>'; }
 // Reuso das funções globais do shell (Metas 2026) para bater 100% com aquele painel
 function _pFn(name){ try{ return (window.parent && typeof window.parent[name]==='function') ? window.parent[name] : null; }catch(e){ return null; } }
 function _ppGanha(p){ try{ return !!(window.parent && typeof window.parent.isPropostaGanhaOuAprovada==='function' && window.parent.isPropostaGanhaOuAprovada(p)); }catch(e){ return _FAS_GANHA.indexOf(p.fas)>=0; } }
@@ -471,6 +481,19 @@ function abrirFunilListaGV(grupo){
   }catch(e){ body.innerHTML='<div class="vazio">Lista indisponível.</div>'; }
 }
 function _fecharFunilListaGV(){ var m=document.getElementById('funil-lista-modal'); if(m) m.classList.remove('on'); }
+function abrirEnviadasMesGV(){
+  var body=document.getElementById('env-mes-body-gv'); if(!body) return;
+  var ps=_enviadasMes(_props());
+  var ab=function(n){ try{ return (window.parent&&typeof window.parent.abreviarCliente==='function')?window.parent.abreviarCliente(n||''):(n||'').split(' ').slice(0,3).join(' '); }catch(e){ return n||''; } };
+  var fmtV=function(v){ if(v==null||isNaN(Number(v))) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  if(!ps.length){ body.innerHTML='<div class="vazio">Nenhuma proposta enviada no mês corrente.</div>'; }
+  else{
+    var rows=ps.map(function(p){ var tl=p.tl||{}; return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:.4rem .5rem">'+esc(p.num||'—')+'</td><td style="padding:.4rem .5rem">'+esc(ab(p.loc||p.cli||''))+'</td><td style="padding:.4rem .5rem">'+esc(p.tit||'—')+'</td><td style="padding:.4rem .5rem;white-space:nowrap">'+esc(_dataBR(tl.dtVisita))+'</td><td style="padding:.4rem .5rem;white-space:nowrap">'+esc(_dataBR(tl.dtEnvio))+'</td><td style="padding:.4rem .5rem;text-align:right;white-space:nowrap">'+esc(fmtV(p.val))+'</td></tr>'; }).join('');
+    body.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Nº</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Cliente</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Título</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Visita</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Envio</th><th style="text-align:right;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Valor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  abrirModal('modal-env-mes-gv');
+}
+function _fecharEnviadasMesGV(){ fecharModal('modal-env-mes-gv'); }
 // Garante aberto (não alterna) — usado pela navegação do menu
 function _expandKpis(){ if(!_kpisAberto) toggleKpis(); }
 function _expandFechmes(){ if(!_fechmesAberto) toggleFechmes(); }
@@ -500,7 +523,7 @@ function _renderKpisComercial(){
   var conv   = (totalAno!=null && totalAno>0 && fechAno!=null) ? (fechAno/totalAno*100) : null;
   var ticket = (recAno!=null && fechAno!=null && fechAno>0)    ? (recAno/fechAno)       : null;
   el.innerHTML=
-    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Enviadas ao cliente no mês (por data de envio)')+
+    _kpiCard('Propostas enviadas no mês', String(enviadasMes.length), 'Enviadas ao cliente no mês (por data de envio)', 'abrirEnviadasMesGV()')+
     _kpiCard('Fechamentos no mês', String(fechMes.length), 'Ganhas por data de fechamento')+
     _kpiCard('Taxa de conversão do ano', conv==null?'—':conv.toFixed(1)+'%', 'Ganhas ÷ realizadas (ano)')+
     _kpiCard('Receita no ano', recAno==null?'—':_money(recAno), 'Valor das ganhas (ano)')+

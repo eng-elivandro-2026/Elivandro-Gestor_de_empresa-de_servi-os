@@ -59,6 +59,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .card-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
 .card-valor{font-size:1.7rem;font-weight:800;color:var(--emp-cor);line-height:1.1}
 .card-sub{font-size:.7rem;color:var(--text3);margin-top:.25rem}
+.card-link{cursor:pointer;transition:border-left-width .1s,opacity .15s}
+.card-link:hover{opacity:.88;border-left-width:5px}
 
 /* Seções */
 .sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem 1.2rem;margin-bottom:1.2rem}
@@ -134,7 +136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- Cards de métrica -->
   <div class="cards" id="cards">
-    <div class="card">
+    <div class="card card-link" onclick="abrirEnviadasMesDME()" tabindex="0" role="button">
       <div class="card-label">Propostas enviadas no mês</div>
       <div class="card-valor" id="mt-propostas">—</div>
       <div class="card-sub">Enviadas ao cliente no mês (por data de envio)</div>
@@ -178,6 +180,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div id="box-valores"><div class="sec-vazio">Carregando…</div></div>
   </div>
 
+</div>
+
+<!-- Modal: propostas enviadas no mês -->
+<div class="modal-bg" id="modal-env-mes-dme" onclick="_fecharEnviadasMesDME()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-titulo">Propostas enviadas no mês</div>
+      <button class="btn btn-ghost btn-sm" onclick="_fecharEnviadasMesDME()">✕</button>
+    </div>
+    <div id="env-mes-body-dme"></div>
+  </div>
 </div>
 
 <!-- Modal editar valores -->
@@ -480,6 +493,23 @@ function selecionarValor(i){
   _valSel = i;
   _renderValores();
 }
+
+// ── Modal: propostas enviadas no mês ─────────────────────────
+function abrirEnviadasMesDME(){
+  var body=document.getElementById('env-mes-body-dme'); if(!body) return;
+  var ps=[]; try{ ps=Array.isArray(window.parent.props)?window.parent.props:[]; }catch(e){}
+  var enviadas=ps.filter(function(p){ var tl=p.tl||{}; return _enviadaNoMes(tl.dtEnvio); });
+  var ab=function(n){ try{ return (window.parent&&typeof window.parent.abreviarCliente==='function')?window.parent.abreviarCliente(n||''):(n||'').split(' ').slice(0,3).join(' '); }catch(e){ return n||''; } };
+  var fmtD=function(iso){ if(!iso) return '—'; var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return iso; return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); };
+  var fmtV=function(v){ if(v==null||isNaN(Number(v))) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  if(!enviadas.length){ body.innerHTML='<div class="estado">Nenhuma proposta enviada no mês corrente.</div>'; }
+  else{
+    var rows=enviadas.map(function(p){ var tl=p.tl||{}; return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:.4rem .5rem">'+esc(p.num||'—')+'</td><td style="padding:.4rem .5rem">'+esc(ab(p.loc||p.cli||''))+'</td><td style="padding:.4rem .5rem">'+esc(p.tit||'—')+'</td><td style="padding:.4rem .5rem;white-space:nowrap">'+esc(fmtD(tl.dtVisita))+'</td><td style="padding:.4rem .5rem;white-space:nowrap">'+esc(fmtD(tl.dtEnvio))+'</td><td style="padding:.4rem .5rem;text-align:right;white-space:nowrap">'+esc(fmtV(p.val))+'</td></tr>'; }).join('');
+    body.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Nº</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Cliente</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Título</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Visita</th><th style="text-align:left;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Envio</th><th style="text-align:right;padding:.4rem .5rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3)">Valor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  document.getElementById('modal-env-mes-dme').classList.add('on');
+}
+function _fecharEnviadasMesDME(){ document.getElementById('modal-env-mes-dme').classList.remove('on'); }
 
 // ── Modal editar valores ──────────────────────────────────────
 function abrirModalValores(){
