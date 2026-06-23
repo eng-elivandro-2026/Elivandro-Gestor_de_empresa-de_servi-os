@@ -146,6 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           <option value="prog">Progressivo</option>
         </select>
       </div>
+      <button class="btn btn-emp btn-sm" id="btn-nova-ata" style="display:none;margin-left:auto" onclick="iniciarNovaAta()">＋ Nova ata</button>
     </div>
 
     <div class="sec">
@@ -308,6 +309,7 @@ async function novaAta(){
   await _carregarAssuntosAnteriores();
   _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display = _podeEditar()?'inline-flex':'none';
+  var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
 }
 
 // ── Assuntos da reunião anterior ──
@@ -555,6 +557,7 @@ function reabrirAta(id){
   }).map(function(a){ return { texto:String(a.texto).trim(), status:a.status||'pendente' }; });
   _renderAssuntos(true);
   document.getElementById('btn-salvar-ata').style.display=_podeEditar()?'inline-flex':'none';
+  var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
   trocarAba('ata');
 }
 
@@ -570,6 +573,14 @@ function crToggle(){
   else { _running=true; document.getElementById('cr-play').textContent='⏸ Pausar'; _tick=setInterval(function(){ _elapsed++; crRender(); },1000); }
 }
 function crZerar(){ clearInterval(_tick); _running=false; _elapsed=0; var b=document.getElementById('cr-play'); if(b) b.textContent='▶ Iniciar'; crRender(); }
+
+// Inicia uma ata nova do zero (com confirmação) — reusa crZerar()/novaAta().
+async function iniciarNovaAta(){
+  if(!_podeEditar()) return;
+  if(!confirm('Começar uma nova ata? As alterações não salvas nesta ata serão perdidas.')) return;
+  crZerar();        // reseta o cronômetro: para se rodando, zera o tempo, volta ao valor inicial
+  await novaAta();  // zera _ataId, data de hoje, metas atuais, assuntos da ata anterior
+}
 
 // ── Impressão ──
 function imprimirAta(){
