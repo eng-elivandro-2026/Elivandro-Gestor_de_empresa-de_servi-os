@@ -1540,10 +1540,12 @@ function funilComercialSVG(d, opts){
       +'</g>';
   });
   var r=d.resumo||{carteira:{count:0,valor:0},finalizadas:{count:0},conversao:0};
-  var ry=cupY+cupH+26;
-  svg+='<text x="'+(W/2)+'" y="'+ry+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">'
-      +'Em carteira (pipeline do ano): '+r.carteira.count+' ('+money(r.carteira.valor)+')   ·   Negócios ganhos no ano: '+(co.ganho.count||0)+'   ·   Finalizadas: '+r.finalizadas.count+'   ·   Conversão: '+pctTxt(r.conversao)+'</text>';
-  var H=ry+18;
+  var ry=cupY+cupH+22;
+  svg+='<text x="'+(W/2)+'" y="'+ry+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">'
+      +'Em carteira: '+r.carteira.count+' ('+money(r.carteira.valor)+')  ·  Ganhos: '+(co.ganho.count||0)+'</text>';
+  svg+='<text x="'+(W/2)+'" y="'+(ry+16)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">'
+      +'Finalizadas: '+r.finalizadas.count+'  ·  Conversão: '+pctTxt(r.conversao)+'</text>';
+  var H=ry+30;
   return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;font-family:inherit">'+svg+'</svg>';
 }
 if(typeof window!=='undefined') window.funilComercialSVG = funilComercialSVG;
