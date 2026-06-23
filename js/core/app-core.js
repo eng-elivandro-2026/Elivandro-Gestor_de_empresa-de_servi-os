@@ -2504,6 +2504,12 @@ function chSt(id,s){
   if(vaiFicarFechado){
     // Abre modal de confirmação de fechamento para preencher dtFech e verificar dat2
     _abrirFechModal(id, s);
+  } else if(s==='enviada'){
+    // Exige data de envio (só pede se tl.dtEnvio vazia). Cancelar reverte o select.
+    exigirDataEnvio(p,
+      function(){ p.fas='enviada'; saveAll(); rDash(); },
+      function(){ rDash(); } // re-render dos cards reverte o select para p.fas (inalterado)
+    );
   } else {
     // Abrindo novamente (saindo de fechado para aberto) — só troca a fase
     p.fas=s;
@@ -2566,6 +2572,46 @@ function _confirmarFechModal(){
   _fecharFechModal();
   saveAll(); rDash();
   toast('✔ Proposta movida para '+((FASE[fase]&&FASE[fase].n)||fase)+' com data '+dtFech.split('-').reverse().join('/'),'ok');
+}
+
+// ── MODAL DE DATA DE ENVIO (obrigatória ao mover para "enviada") ─────────────
+// Função compartilhada pelos dois pontos de mudança de fase (card e edição).
+// Se a proposta já tem tl.dtEnvio, chama onOk direto; senão abre o modal.
+var _envioModalCtx=null;
+function exigirDataEnvio(prop, onOk, onCancel){
+  var atual = prop && prop.tl && prop.tl.dtEnvio;
+  if(atual){ if(typeof onOk==='function') onOk(atual); return; }
+  _abrirEnvioModal(prop, onOk, onCancel);
+}
+function _abrirEnvioModal(prop, onOk, onCancel){
+  _envioModalCtx={ prop:prop, onOk:onOk, onCancel:onCancel };
+  var hoje=new Date().toISOString().slice(0,10);
+  var info=Q('edmPropInfo');
+  if(info){ info.textContent = prop ? ('Nº '+esc(prop.num||'')+' — '+esc(prop.loc||prop.cli||'')+(prop.tit?' | '+esc(prop.tit):'')) : ''; }
+  var ed=Q('edmDtEnvio'); if(ed){ ed.value=hoje; ed.style.borderColor='var(--border)'; }
+  var m=Q('envioDataModal'); if(m) m.style.display='flex';
+  if(ed) setTimeout(function(){ ed.focus(); },120);
+}
+function _fecharEnvioModal(){
+  // Fechamento por ✕/backdrop/Cancelar = cancelar (reverte a fase).
+  var ctx=_envioModalCtx; _envioModalCtx=null;
+  var m=Q('envioDataModal'); if(m) m.style.display='none';
+  if(ctx && typeof ctx.onCancel==='function') ctx.onCancel();
+}
+function _confirmarEnvioModal(){
+  var ctx=_envioModalCtx; if(!ctx) return;
+  var ed=Q('edmDtEnvio');
+  var dt=ed&&ed.value?ed.value:'';
+  if(!dt){
+    if(ed){ ed.style.borderColor='var(--red)'; ed.focus(); }
+    toast('Informe a data de envio para continuar.','err');
+    return; // não fecha, não confirma
+  }
+  // Grava a data na proposta e encerra o ctx ANTES de fechar (p/ não disparar cancel).
+  if(ctx.prop){ if(!ctx.prop.tl) ctx.prop.tl={}; ctx.prop.tl.dtEnvio=dt; }
+  _envioModalCtx=null;
+  var m=Q('envioDataModal'); if(m) m.style.display='none';
+  if(typeof ctx.onOk==='function') ctx.onOk(dt);
 }
 
 function delP(id){
@@ -9686,6 +9732,8 @@ function buildCurrentProposalSnapshot(){
   };
 }
 function upsertCurrentDraft(silent){
+  // Aguardando confirmação da data de envio: não persiste 'enviada' antes de confirmar.
+  if(_aguardandoDataEnvio) return;
   if(!proposalFormHasMeaningfulData()) return;
   var sn=buildCurrentProposalSnapshot();
   var idx=props.findIndex(function(x){return x.id===sn.id});
@@ -9703,6 +9751,8 @@ function scheduleDraftSave(){
   autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 350);
 }
 var _FAS_LOG=['cancelada','virou_outra_proposta'];
+// Controle da exigência de data de envio na EDIÇÃO (#pFas → 'enviada').
+var _aguardandoDataEnvio=false, _pFasPrev='';
 function bindProposalDraftAutoSave(){
   ['pCli','pCnpj','pCid','pAC','pDep','pMail','pTel','pLoc','pCsv','pTit','pRes','pDat','pDatFech','pRevAtual','pFas','vS','vM','vDSval','vDMval','vDSpct','vDMpct'].forEach(function(id){
     var el=Q(id); if(!el || el.__draftBound) return;
@@ -9717,6 +9767,33 @@ function bindProposalDraftAutoSave(){
       if(_FAS_LOG.indexOf(this.value)>=0){
         setTimeout(function(){ abrirLog(); }, 400);
       }
+    });
+  }
+  // Exige data de envio ao mudar a Fase para 'enviada' na edição.
+  var pFasEnvio=Q('pFas');
+  if(pFasEnvio && !pFasEnvio.__envioBound){
+    pFasEnvio.__envioBound=true;
+    pFasEnvio.addEventListener('focus', function(){ _pFasPrev=this.value; });
+    pFasEnvio.addEventListener('change', function(){
+      var self=this;
+      if(self.value!=='enviada') return;
+      var dtForm=Q('tlDtEnvio')&&Q('tlDtEnvio').value;
+      if(dtForm) return; // já tem data → segue o fluxo normal de save
+      var prev=_pFasPrev||'em_elaboracao';
+      _aguardandoDataEnvio=true; // bloqueia o auto-save até confirmar/cancelar
+      exigirDataEnvio({tl:{dtEnvio:''}},
+        function(dt){ // confirmou
+          if(Q('tlDtEnvio')) Q('tlDtEnvio').value=dt;
+          if(editId){ var p=props.find(function(x){return x.id===editId;}); if(p){ if(!p.tl)p.tl={}; p.tl.dtEnvio=dt; } }
+          _aguardandoDataEnvio=false; _pFasPrev='enviada';
+          scheduleDraftSave(); // agora persiste fas='enviada' + dtEnvio
+        },
+        function(){ // cancelou → reverte a fase
+          _aguardandoDataEnvio=false;
+          setComercialFaseSelect(self, prev);
+          _pFasPrev=prev;
+        }
+      );
     });
   }
 }
