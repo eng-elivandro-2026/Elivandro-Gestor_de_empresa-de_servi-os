@@ -137,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="card">
       <div class="card-label">Propostas enviadas no mês</div>
       <div class="card-valor" id="mt-propostas">—</div>
-      <div class="card-sub">Criadas no mês corrente</div>
+      <div class="card-sub">Enviadas ao cliente no mês (por data de envio)</div>
     </div>
     <div class="card">
       <div class="card-label">Obras ativas</div>
@@ -233,6 +233,14 @@ function _mesCorrenteISO(){
   var d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0).toISOString();
 }
+// Proposta ENVIADA no mês corrente = tl.dtEnvio no mês/ano atual. Sem dtEnvio não conta.
+// Mesmo predicado do gestao-a-vista (_noMes) para garantir o MESMO número nos dois cards.
+function _enviadaNoMes(iso){
+  if(!iso) return false;
+  var d=new Date(String(iso).slice(0,10)+'T12:00:00'); if(isNaN(d)) return false;
+  var n=new Date();
+  return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth();
+}
 
 // ── Tema por empresa ──────────────────────────────────────────
 function _aplicarTema(nomeCurto){
@@ -304,16 +312,15 @@ async function carregarMetricas(empId){
   elP.textContent = '—'; elO.textContent = '—'; elC.textContent = '—';
   var sb = _sbClient();
   if (!sb || !empId) return;
-  var mesIni = _mesCorrenteISO();
 
-  // Propostas do mês (enviadas + conversão)
+  // Propostas ENVIADAS no mês = tl.dtEnvio no mês corrente (por data de envio,
+  // independe da fase/criação). Sem dtEnvio não conta. Conversão segue a mesma base.
   try {
     var rp = await sb.from('propostas')
-      .select('fase, created_at')
-      .eq('empresa_id', empId)
-      .gte('created_at', mesIni);
+      .select('fase, dtenvio:dados_json->tl->>dtEnvio')
+      .eq('empresa_id', empId);
     if (!rp.error && Array.isArray(rp.data)) {
-      var enviadas = rp.data.filter(function(x){ return x.fase && x.fase !== 'em_elaboracao'; });
+      var enviadas = rp.data.filter(function(x){ return _enviadaNoMes(x.dtenvio); });
       var fechadas = enviadas.filter(function(x){ return _FAS_FECHADO.indexOf(x.fase) >= 0; });
       elP.textContent = String(enviadas.length);
       elC.textContent = enviadas.length > 0
