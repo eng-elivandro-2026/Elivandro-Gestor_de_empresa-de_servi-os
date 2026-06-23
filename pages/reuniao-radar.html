@@ -50,6 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cron-ctrl input{width:64px}
 .ata-codigo{font-weight:800;font-size:1rem;color:var(--emp-cor);margin-bottom:.6rem}
 .ata-cod-hint{font-weight:600;font-size:.7rem;color:var(--text3)}
+.ata-trava{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.4);color:var(--red);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:1rem;font-size:.82rem;font-weight:700}
 /* Indicadores */
 .tbl{width:100%;border-collapse:collapse;font-size:.82rem}
 .tbl th{text-align:left;padding:.5rem .55rem;background:var(--emp-cor);color:#fff;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;border:1px solid rgba(255,255,255,.2)}
@@ -153,6 +154,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn btn-emp btn-sm" id="btn-nova-ata" style="display:none;margin-left:auto" onclick="iniciarNovaAta()">＋ Nova ata</button>
     </div>
 
+    <div id="ata-trava" class="ata-trava no-print" style="display:none"></div>
+
     <div class="sec">
       <div class="sec-t">Cabeçalho da ata</div>
       <div id="ata-codigo" class="ata-codigo"></div>
@@ -173,7 +176,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="sec-t">Assuntos da reunião anterior</div>
       <div id="ata-assuntos-placar" class="ass-placar"></div>
       <div id="ata-assuntos"></div>
-      <div class="ass-add no-print">
+      <div class="ass-add no-print" id="ass-add-row">
         <input id="ass-novo" placeholder="Adicionar assunto…" onkeydown="if(event.key==='Enter'){event.preventDefault();addAssunto();}">
         <button class="btn btn-ghost btn-sm" onclick="addAssunto()">＋ Adicionar</button>
       </div>
@@ -220,6 +223,7 @@ var _metas=[];        // metas ativas (para montar a ata atual)
 var _indForm=[];      // indicadores da ata em edição (snapshot em construção)
 var _ataId=null;      // id da reunião em edição (null = nova)
 var _numeroAta=null;  // numero_ata da ata em edição (null = nova, gerado ao salvar)
+var _ataConcluida=false; // status persistido da ata no editor (true = travada)
 var _reunioes=[];     // histórico
 var _indByReuniao={}; // indicadores agrupados por reuniao_id
 var _assForm=[];      // assuntos da reunião anterior em edição: {texto, status}
@@ -230,6 +234,26 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function _sb(){ try{ return (window.parent&&window.parent.sbClient)?window.parent.sbClient:null; }catch(e){ return null; } }
 function _podeEditar(){ try{ return !!(window.parent&&typeof window.parent.podeAcao==='function'&&window.parent.podeAcao('reuniao-radar','editar')); }catch(e){ return false; } }
 function _ehDono(){ try{ var p=(window.parent&&(typeof window.parent.getPerfilUsuario==='function'?window.parent.getPerfilUsuario():window.parent._perfilUsuario))||''; return String(p).toLowerCase()==='dono'; }catch(e){ return false; } }
+// Editor liberado só se pode editar E a ata não está concluída (travada).
+function _editavelAta(){ return _podeEditar() && !_ataConcluida; }
+// Aplica/retira a trava de edição no editor da aba "Ata atual".
+function _aplicarTravaAta(){
+  var travada=_ataConcluida, pode=_podeEditar();
+  ['a-data','a-anfitriao','a-status','a-participantes','a-novidades','a-restricoes','a-conclusao'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.disabled = travada || !pode;
+  });
+  var an=document.getElementById('ass-novo'); if(an) an.disabled = travada || !pode;
+  var addRow=document.getElementById('ass-add-row'); if(addRow) addRow.style.display=(travada||!pode)?'none':'flex';
+  var bs=document.getElementById('btn-salvar-ata'); if(bs) bs.style.display=(!travada&&pode)?'inline-flex':'none';
+  var tv=document.getElementById('ata-trava');
+  if(tv){
+    if(travada){
+      tv.style.display='';
+      tv.innerHTML='<span>🔒 Ata concluída — travada para edição.</span>'+
+        (_ehDono()?' <button class="btn btn-ghost btn-sm" onclick="reabrirAtaConcluida(\''+(_ataId||'')+'\')">🔓 Reabrir ata</button>':'');
+    } else { tv.style.display='none'; tv.innerHTML=''; }
+  }
+}
 function _gv(id){ var e=document.getElementById(id); return e? e.value : ''; }
 function _sv(id,v){ var e=document.getElementById(id); if(e) e.value=(v==null?'':v); }
 function _dataBR(d){ if(!d) return '—'; try{ return new Date(String(d).slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
@@ -300,7 +324,7 @@ async function carregarMetas(){
   }catch(e){ _metas=[]; }
 }
 async function novaAta(){
-  _ataId=null; _numeroAta=null;
+  _ataId=null; _numeroAta=null; _ataConcluida=false;
   _sv('a-data',_hoje()); _sv('a-anfitriao',''); _sv('a-participantes',''); _sv('a-status','aberta');
   _sv('a-novidades',''); _sv('a-restricoes',''); _sv('a-conclusao','');
   await carregarMetas();
@@ -312,12 +336,12 @@ async function novaAta(){
       status_indicador:_statusInd(m.valor_atual,m.valor_meta,m.radar_sentido||'menor'),
       desafio_plano:'' };
   });
-  _renderIndicadores(true);
+  _renderIndicadores(_editavelAta());
   await _carregarAssuntosAnteriores();
-  _renderAssuntos(true);
-  document.getElementById('btn-salvar-ata').style.display = _podeEditar()?'inline-flex':'none';
+  _renderAssuntos(_editavelAta());
   var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
   _renderCodigoAta();
+  _aplicarTravaAta();
 }
 
 // ── Código/numeração da ata ──
@@ -375,13 +399,14 @@ function _renderAssuntos(editavel){
     return '<div class="ass-row '+_assRowCls(st)+'">'+btn+'<span class="ass-txt">'+esc(a.texto||'')+'</span>'+del+'</div>';
   }).join('');
 }
-function ciclarAssunto(i){ if(!_assForm[i]) return; _assForm[i].status=_ASS_CICLO[_assForm[i].status||'pendente']||'pendente'; _renderAssuntos(true); }
-function excluirAssunto(i){ if(i<0||i>=_assForm.length) return; _assForm.splice(i,1); _renderAssuntos(true); }
+function ciclarAssunto(i){ if(!_editavelAta()||!_assForm[i]) return; _assForm[i].status=_ASS_CICLO[_assForm[i].status||'pendente']||'pendente'; _renderAssuntos(_editavelAta()); }
+function excluirAssunto(i){ if(!_editavelAta()||i<0||i>=_assForm.length) return; _assForm.splice(i,1); _renderAssuntos(_editavelAta()); }
 function addAssunto(){
+  if(!_editavelAta()) return;
   var inp=document.getElementById('ass-novo'); if(!inp) return;
   var t=(inp.value||'').trim(); if(!t) return;
   _assForm.push({ texto:t, status:'pendente' });
-  inp.value=''; _renderAssuntos(true); inp.focus();
+  inp.value=''; _renderAssuntos(_editavelAta()); inp.focus();
 }
 // Bloco read-only de assuntos (usado no histórico / snapshot da reunião).
 function _blocoAssuntos(arr){
@@ -490,10 +515,13 @@ async function salvarAta(){
       });
       var ra=await sb.from('reuniao_radar_assuntos').insert(rowsA); if(ra.error) throw ra.error;
     }
-    _renderAssuntos(true);
+    _ataConcluida=(ata.status==='concluida'); // ata concluída trava o editor
+    _renderIndicadores(_editavelAta());
+    _renderAssuntos(_editavelAta());
     _renderCodigoAta();
+    _aplicarTravaAta();
     btn.disabled=false; btn.textContent='Salvar ata';
-    alert('Ata salva.');
+    alert(_ataConcluida?'Ata concluída e salva. Agora está travada para edição.':'Ata salva.');
     await carregarHistorico();
   }catch(e){ alert('Erro ao salvar ata: '+(e&&e.message||'')); btn.disabled=false; btn.textContent='Salvar ata'; }
 }
@@ -534,7 +562,7 @@ function renderHistorico(){
   el.innerHTML=lista.map(function(r){
     var inds=_indByReuniao[r.id]||[];
     var fora=inds.filter(function(x){return x.status_indicador&&x.status_indicador!=='na_meta';}).length;
-    var stTxt = r.status==='concluida'?'Concluída':'Aberta';
+    var stTxt = r.status==='concluida'?'🔒 Concluída':'Aberta';
     return '<div class="hist-item" onclick="abrirAta(\''+r.id+'\')">'+
       '<div><div class="hist-d">'+esc(_codigoAta(r.numero_ata,r.data_reuniao))+'</div><div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · '+stTxt+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:.6rem">'+
@@ -550,18 +578,23 @@ function abrirAta(id){
   var assuntos=_assByReuniao[id]||[];
   document.getElementById('hist-lista').style.display='none';
   document.getElementById('hist-busca-wrap').style.display='none';
-  var podeReabrir = _podeEditar() && r.status==='aberta';
   var codAberta=_codigoAta(r.numero_ata,r.data_reuniao);
+  // Ata aberta → editor pode reabrir/editar. Ata concluída → só o dono reabre (destrava).
+  var btnReabrir = (r.status==='aberta' && _podeEditar())
+    ? '<button class="btn btn-ghost btn-sm" onclick="reabrirAta(\''+id+'\')">✏️ Reabrir/editar</button> '
+    : ((r.status==='concluida' && _ehDono())
+        ? '<button class="btn btn-ghost btn-sm" onclick="reabrirAtaConcluida(\''+id+'\')">🔓 Reabrir ata</button> '
+        : '');
   var linhas=inds.map(function(it){
     return '<tr><td class="ind-nome">'+esc(it.meta_titulo||'—')+'</td><td>'+esc(it.valor_atual||'—')+'</td><td>'+esc(it.valor_meta||'—')+'</td><td>'+_statusBadge(it.status_indicador)+'</td><td class="ro-txt">'+(it.desafio_plano?esc(it.desafio_plano):'—')+'</td></tr>';
   }).join('');
   function bloco(t,v){ return '<div class="sec"><div class="sec-t">'+t+'</div><div class="ro-txt">'+(v?esc(v):'—')+'</div></div>'; }
   var det='<div class="acoes no-print" style="justify-content:space-between">'+
       '<button class="btn btn-ghost btn-sm" onclick="renderHistorico()">← Voltar ao histórico</button>'+
-      '<span>'+(podeReabrir?'<button class="btn btn-ghost btn-sm" onclick="reabrirAta(\''+id+'\')">✏️ Reabrir/editar</button> ':'')+(_ehDono()?'<button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirAtaHist(\''+id+'\')">🗑️ Excluir ata</button> ':'')+'<button class="btn btn-ghost btn-sm" data-cod="'+esc(codAberta)+'" onclick="imprimirAta(this.getAttribute(\'data-cod\'))">🖨️ Imprimir PDF</button></span>'+
+      '<span>'+btnReabrir+(_ehDono()?'<button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirAtaHist(\''+id+'\')">🗑️ Excluir ata</button> ':'')+'<button class="btn btn-ghost btn-sm" data-cod="'+esc(codAberta)+'" onclick="imprimirAta(this.getAttribute(\'data-cod\'))">🖨️ Imprimir PDF</button></span>'+
     '</div>'+
     '<div class="sec"><div class="sec-t">Ata '+esc(codAberta)+'</div>'+
-      '<div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · Participantes: '+esc(r.participantes||'—')+' · '+(r.status==='concluida'?'Concluída':'Aberta')+'</div></div>'+
+      '<div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · Participantes: '+esc(r.participantes||'—')+' · '+(r.status==='concluida'?'🔒 Concluída (travada)':'Aberta')+'</div></div>'+
     '<div class="sec"><div class="sec-t">Indicadores da semana (snapshot)</div>'+
       (inds.length?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="vazio">Sem indicadores registrados.</div>')+
     '</div>'+
@@ -573,7 +606,7 @@ function abrirAta(id){
 }
 function reabrirAta(id){
   var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
-  _ataId=id; _numeroAta=(r.numero_ata!=null?r.numero_ata:null);
+  _ataId=id; _numeroAta=(r.numero_ata!=null?r.numero_ata:null); _ataConcluida=(r.status==='concluida');
   _sv('a-data',(r.data_reuniao||'').slice(0,10)); _sv('a-anfitriao',r.anfitriao); _sv('a-participantes',r.participantes);
   _sv('a-status',r.status||'aberta'); _sv('a-novidades',r.novidades); _sv('a-restricoes',r.restricoes); _sv('a-conclusao',r.conclusao);
   // Dedup defensivo: 1 indicador por meta (rede de segurança caso venha duplicado).
@@ -584,18 +617,33 @@ function reabrirAta(id){
   }).map(function(it){
     return { meta_id:it.meta_id, meta_titulo:it.meta_titulo, valor_atual:it.valor_atual||'', valor_meta:it.valor_meta||'', unidade:'', status_indicador:it.status_indicador, desafio_plano:it.desafio_plano||'' };
   });
-  _renderIndicadores(true);
+  _renderIndicadores(_editavelAta());
   // Carrega os assuntos salvos (snapshot) — build local + dedup defensivo por texto.
   var _vt={};
   _assForm=(_assByReuniao[id]||[]).filter(function(a){
     var t=String(a.texto||'').trim(); if(!t) return false;
     var k=t.toLowerCase(); if(_vt[k]) return false; _vt[k]=true; return true;
   }).map(function(a){ return { texto:String(a.texto).trim(), status:a.status||'pendente' }; });
-  _renderAssuntos(true);
-  document.getElementById('btn-salvar-ata').style.display=_podeEditar()?'inline-flex':'none';
+  _renderAssuntos(_editavelAta());
   var bN=document.getElementById('btn-nova-ata'); if(bN) bN.style.display=_podeEditar()?'inline-flex':'none';
   _renderCodigoAta();
+  _aplicarTravaAta();
   trocarAba('ata');
+}
+// Reabre uma ata CONCLUÍDA (só dono): volta status p/ 'aberta' no banco e abre para edição.
+async function reabrirAtaConcluida(id){
+  if(!_ehDono()) return;
+  var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
+  var cod=_codigoAta(r.numero_ata,r.data_reuniao);
+  if(!confirm('Reabrir a ata '+cod+'? Ela voltará para o status Aberta e poderá ser editada.')) return;
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{
+    var u=await sb.from('reuniao_radar').update({status:'aberta',updated_at:new Date().toISOString()})
+      .eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(u.error) throw u.error;
+    await carregarHistorico();   // _reunioes reflete o novo status 'aberta'
+    reabrirAta(id);              // carrega no editor, já destravado
+  }catch(e){ alert('Erro ao reabrir a ata: '+(e&&e.message||'')); }
 }
 // Exclui uma ata (só dono). Cascade apaga indicadores e assuntos vinculados.
 async function excluirAtaHist(id){
