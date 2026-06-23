@@ -43,6 +43,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi-c-v{font-size:1.35rem;font-weight:800;color:var(--emp-cor);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-c-s{font-size:.65rem;color:var(--text3);margin-top:.2rem}
 
+/* Funil Comercial (espelho) */
+#funil-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:1rem;color:var(--text)}
+#funil-svg{overflow-x:auto}
+#funil-vazio{color:var(--text3);font-style:italic;font-size:.86rem;padding:1rem 0}
 /* Fechamentos por Mês */
 #fechmes-painel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-top:1rem}
 .fm-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
@@ -261,6 +265,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 
+  <div id="funil-painel">
+    <div class="fm-head">
+      <span class="fm-titulo">🔻 Funil Comercial <small id="funil-ano"></small></span>
+      <button class="btn btn-ghost btn-sm" id="funil-toggle" onclick="toggleFunil()">▲ recolher</button>
+    </div>
+    <div id="funil-body"><div id="funil-svg"></div></div>
+  </div>
+
   <div class="cols">
     <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
     <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
@@ -417,6 +429,27 @@ function toggleFechmes(){
   var b=document.getElementById('fechmes-body'); var t=document.getElementById('fechmes-toggle');
   if(b) b.style.display=_fechmesAberto?'':'none';
   if(t) t.textContent=_fechmesAberto?'▲ recolher':'▼ expandir';
+}
+// Funil Comercial (espelho) — mesma fonte do Comercial (window.parent.calcFunilComercial)
+var _funilAberto=true;
+function toggleFunil(){
+  _funilAberto=!_funilAberto;
+  var b=document.getElementById('funil-body'); var t=document.getElementById('funil-toggle');
+  if(b) b.style.display=_funilAberto?'':'none';
+  if(t) t.textContent=_funilAberto?'▲ recolher':'▼ expandir';
+}
+function renderFunil(){
+  var el=document.getElementById('funil-svg'); if(!el) return;
+  var elAno=document.getElementById('funil-ano');
+  try{
+    var calc=window.parent&&window.parent.calcFunilComercial;
+    var draw=window.parent&&window.parent.funilComercialSVG;
+    if(typeof calc!=='function'||typeof draw!=='function'){ el.innerHTML='<div id="funil-vazio">Funil indisponível.</div>'; return; }
+    var ano; try{ ano=window.parent._anoComercialSel; }catch(e){ ano=null; }
+    var data=calc(ano);
+    if(elAno) elAno.textContent=(data&&data.ano==='all')?'(todos os anos)':('('+(data?data.ano:'')+')');
+    el.innerHTML=draw(data);
+  }catch(e){ el.innerHTML='<div id="funil-vazio">Funil indisponível.</div>'; }
 }
 // Garante aberto (não alterna) — usado pela navegação do menu
 function _expandKpis(){ if(!_kpisAberto) toggleKpis(); }
@@ -635,6 +668,7 @@ function _onTrocaEmpresa(d){
   carregarTudo();
   renderKpis();
   renderFechMes();
+  renderFunil();
 }
 
 // Caches em memória (por meta_id) — carga única por empresa
