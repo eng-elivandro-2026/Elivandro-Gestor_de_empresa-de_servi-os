@@ -391,6 +391,10 @@ if(typeof window!=='undefined') window.FAS_DISTRIBUICAO_EXECUCAO = FAS_DISTRIBUI
 // Decisão (js/services/decision-engine), que lê window.FAS_FECHADO/FAS_PIPELINE/FAS_NEGOC.
 var FAS_PIPELINE=['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
 var FAS_NEGOC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
+// Fases ANTERIORES ao envio (no PHASE_ORDER, só 'em_elaboracao' vem antes de 'enviada';
+// 'elaboracao' incluída por compatibilidade com dados legados). Ao voltar para uma
+// destas, a data de envio (tl.dtEnvio) deve ser limpa.
+var FAS_PRE_ENVIO=['em_elaboracao','elaboracao'];
 if(typeof window!=='undefined'){
   window.FAS_FECHADO = FAS_FECHADO;   // inclui 'ganho' + operacionais → Motor de Decisão conta venda ganha
   window.FAS_PIPELINE = FAS_PIPELINE;
@@ -2670,6 +2674,10 @@ function chSt(id,s){
   } else {
     // Abrindo novamente (saindo de fechado para aberto) — só troca a fase
     p.fas=s;
+    // [fix dtEnvio] Ao voltar para uma fase ANTERIOR ao envio (em_elaboracao),
+    // limpa a data de envio para a proposta sair de "Propostas enviadas no mês".
+    // Mantém dtFech intacto; fases pós-envio (follow/cliente_analisando/...) preservam dtEnvio.
+    if(FAS_PRE_ENVIO.indexOf(s)>=0 && p.tl && p.tl.dtEnvio){ p.tl.dtEnvio=''; }
     saveAll();rDash();
     if(s==='cancelada'||s==='virou_outra_proposta'){
       editId=id;
