@@ -4524,6 +4524,9 @@ var _budgGrupos = [];      // array de agrupamentos ativos (multi-nível)
 
 // ── Modo Planilha ──────────────────────────────────────────────
 var _modoPlanilha = false;
+var _budgSelPlan = {};        // seleção múltipla na planilha (id -> true)
+var _planExpand = {};         // linhas expandidas na planilha (id -> true)
+var _planModoLoaded = false;  // carregou a preferência de modo desta sessão?
 
 // Corrige selects de categoria no modo planilha
 // (selected via string HTML é ignorado pelo browser — precisamos setar .value)
@@ -4571,12 +4574,8 @@ function _updateRowReadOnly(it){
 
 function toggleModoPlanilha(){
   _modoPlanilha = !_modoPlanilha;
-  var btn = Q('btnModoPlanilha');
-  if(btn){
-    btn.style.background = _modoPlanilha ? 'var(--accent)' : '';
-    btn.style.color      = _modoPlanilha ? '#000' : '';
-    btn.textContent      = _modoPlanilha ? '✅ Modo Planilha ON' : '📝 Modo Planilha';
-  }
+  _planModoSave();
+  _planSyncBtn();
   rBudg();
 }
 
@@ -4592,6 +4591,10 @@ function _saveInlineField(id, field, rawValue){
     it.equip = rawValue.trim();
   } else if(field==='inst'){
     it.inst = rawValue.trim();
+  } else if(field==='faseTrab'){
+    it.faseTrab = rawValue.trim();
+  } else if(field==='un1'){
+    it.un1 = rawValue.trim();
   } else if(field==='cat'){
     it.cat = rawValue;
     // Detecta se a categoria pertence ao outro tipo e corrige automaticamente
@@ -4681,6 +4684,242 @@ function _getCatOptions(tipo, selectedCat){
     });
   }
   return opts.join('');
+}
+
+// ── Modo Planilha: render dedicado (tabela própria em #bPlanilha) ──
+function _planModoLoad(){ try{ var eid=(window._empresaAtiva&&window._empresaAtiva.id)||''; if(eid) _modoPlanilha=(localStorage.getItem('budgModo_'+eid)==='planilha'); }catch(e){} }
+function _planModoSave(){ try{ var eid=(window._empresaAtiva&&window._empresaAtiva.id)||''; if(eid) localStorage.setItem('budgModo_'+eid, _modoPlanilha?'planilha':'cards'); }catch(e){} }
+function _planSyncBtn(){ var b=Q('btnModoPlanilha'); if(!b) return; b.style.background=_modoPlanilha?'var(--accent)':''; b.style.color=_modoPlanilha?'#000':''; b.textContent=_modoPlanilha?'📋 Modo Cards':'📊 Modo Planilha'; }
+function _planRecalc(it,cfg){ cfg=cfg||getPrcAtual(); it.fmf=calcFMF(cfg,it.t,it.cat)||1; it.pvu=n2(it.cu)*it.fmf; it.pvt=it.pvu*n2(it.mult); }
+function _planGrpKey(it){
+  if(!_budgGrupos.length) return '';
+  return _budgGrupos.map(function(k){ var f=(k==='tipo')?'t':k; var v=(it[f]||'').toString().trim(); return v||'(vazio)'; }).join('  ›  ');
+}
+function planSel(id,checked){ if(checked) _budgSelPlan[id]=true; else delete _budgSelPlan[id]; rBudgPlanilha(); }
+function planSelLimpar(){ _budgSelPlan={}; rBudgPlanilha(); }
+function planEditFull(id){ var it=budg.find(function(x){return x.id===id;}); if(it) abrirItemModal(it); }
+function planNovaLinha(){
+  var cfg=getPrcAtual();
+  var lastCat=budg.length?budg[budg.length-1].cat:'';
+  var t='servico';
+  if(lastCat && !cfg.s[lastCat] && cfg.m[lastCat]) t='material';
+  if(!lastCat){ var ks=Object.keys(cfg.s).sort(); lastCat=ks[0]||(Object.keys(cfg.m).sort()[0]||''); if(cfg.m[lastCat]&&!cfg.s[lastCat]) t='material'; }
+  var it=normalizeBudgetItem({id:uid(),t:t,cat:lastCat,desc:'',cu:0,mult:1,tec:1,dias:1,hpd:1,inc:true});
+  _planRecalc(it,cfg);
+  budg.push(it);
+  _planExpand[it.id]=true; // nova linha já abre expandida
+  rBudg(); if(typeof updKpi==='function') updKpi();
+}
+// Opções de categoria (serviço + material) para o select de lote
+function _planBulkCatOptions(){
+  var cfg=getPrcAtual();
+  var s=Object.keys(cfg.s||{}).sort().map(function(k){return '<option value="'+esc(k)+'">'+esc(k+' — '+cfg.s[k].n)+'</option>';}).join('');
+  var m=Object.keys(cfg.m||{}).sort().map(function(k){return '<option value="'+esc(k)+'">'+esc(k+' — '+cfg.m[k].n)+'</option>';}).join('');
+  return '<optgroup label="Serviços">'+s+'</optgroup><optgroup label="Materiais">'+m+'</optgroup>';
+}
+// Valores distintos já usados (para datalist de equip/fase no lote)
+function _planDistinctOptions(field){
+  var seen={}, out=[];
+  (budg||[]).forEach(function(it){ var v=(it[field]||'').toString().trim(); if(v&&!seen[v]){ seen[v]=1; out.push(v); } });
+  out.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+  return out.map(function(v){return '<option value="'+esc(v)+'">';}).join('');
+}
+// Aplica um valor de campo a todos os itens selecionados (núcleo do lote)
+function _planAplicarLote(campo, valor){
+  var ids=Object.keys(_budgSelPlan).filter(function(id){return _budgSelPlan[id];});
+  var sel=budg.filter(function(x){return ids.indexOf(x.id)>=0;});
+  if(sel.length<2) return;
+  var cfg=getPrcAtual();
+  if(campo==='tipo'){
+    var t=(valor==='material')?'material':'servico';
+    sel.forEach(function(it){ it.t=t; var d=(t==='material')?cfg.m:cfg.s; if(!d[it.cat]){ var ks=Object.keys(d).sort(); it.cat=ks[0]||''; } _planRecalc(it,cfg); });
+  } else if(campo==='cat'){
+    sel.forEach(function(it){
+      it.cat=valor;
+      if(cfg.m[valor]&&!cfg.s[valor]) it.t='material';
+      else if(cfg.s[valor]&&!cfg.m[valor]) it.t='servico';
+      _planRecalc(it,cfg);
+    });
+  } else if(campo==='equip'){
+    sel.forEach(function(it){ it.equip=valor; });
+  } else if(campo==='faseTrab'){
+    sel.forEach(function(it){ it.faseTrab=valor; });
+  }
+  rBudg(); if(typeof updKpi==='function') updKpi();
+  try{ if(editId) upsertCurrentDraft(true); }catch(e){}
+}
+// Handlers dos selects/inputs inline da toolbar de lote (resetam após aplicar)
+function planBulkSel(campo, el){ var v=el.value; el.value=''; if(v==='') return; _planAplicarLote(campo, v); }
+function planBulkInput(campo, el){ var v=(el.value||'').trim(); el.value=''; if(!v) return; _planAplicarLote(campo, v); }
+// Exclusão em lote (mantida como botão)
+function planBulk(acao){
+  if(acao!=='del') return;
+  var ids=Object.keys(_budgSelPlan).filter(function(id){return _budgSelPlan[id];});
+  if(ids.length<2) return;
+  if(!confirm('Excluir '+ids.length+' itens selecionados?')) return;
+  budg=budg.filter(function(x){return ids.indexOf(x.id)<0;});
+  _budgSelPlan={};
+  rBudg(); if(typeof updKpi==='function') updKpi();
+  try{ if(editId) upsertCurrentDraft(true); }catch(e){}
+}
+function planToggleExp(id){ if(_planExpand[id]) delete _planExpand[id]; else _planExpand[id]=true; rBudgPlanilha(); }
+function planAgrupar(key){
+  if(!key){ _budgGrupos=[]; _budgSortAtivo=''; rBudg(); return; }
+  _budgGrupos=[key]; _budgSortAtivo=key;
+  var f=(key==='tipo')?'t':key;
+  budg.sort(function(a,b){ var av=(a[f]||'').toString().toLowerCase(), bv=(b[f]||'').toString().toLowerCase(); if(av<bv)return -1; if(av>bv)return 1; return 0; });
+  rBudg();
+}
+// Salva qualquer campo de uma linha da planilha, recalcula (FMF/pvu/pvt) e re-renderiza.
+function budgPlanilhaSalvarLinha(id, campo, valor){
+  var it=budg.find(function(x){return x.id===id;}); if(!it) return;
+  var cfg=getPrcAtual(); var recalc=false;
+  if(campo==='desc'){ it.desc=String(valor).trim(); }
+  else if(campo==='un1'){ it.un1=String(valor).trim(); }
+  else if(campo==='equip'){ it.equip=String(valor).trim(); }
+  else if(campo==='inst'){ it.inst=String(valor).trim(); }
+  else if(campo==='tipoTrab'){ it.tipoTrab=String(valor).trim(); }
+  else if(campo==='faseTrab'){ it.faseTrab=String(valor).trim(); }
+  else if(campo==='cu'){ it.cu=Math.max(0,n2(valor)); recalc=true; }
+  else if(campo==='cat'){ it.cat=valor; if(cfg.m[valor]&&!cfg.s[valor]) it.t='material'; else if(cfg.s[valor]&&!cfg.m[valor]) it.t='servico'; recalc=true; }
+  else if(campo==='tipo'){ it.t=(valor==='material')?'material':'servico'; var d=(it.t==='material')?cfg.m:cfg.s; if(!d[it.cat]){ var ks=Object.keys(d).sort(); it.cat=ks[0]||''; } recalc=true; }
+  else if(campo==='mult'){ if(it.t==='material'){ it.mult=Math.max(0,n2(valor)); } else { it.dias=Math.max(0,n2(valor)); it.mult=Math.max(1,n2(it.tec||1))*it.dias*Math.max(0,n2(it.hpd||0)); } recalc=true; }
+  else if(campo==='tec'){ it.tec=Math.max(1,n2(valor)); it.mult=it.tec*Math.max(0,n2(it.dias||0))*Math.max(0,n2(it.hpd||0)); recalc=true; }
+  else if(campo==='dias'){ it.dias=Math.max(0,n2(valor)); it.mult=Math.max(1,n2(it.tec||1))*it.dias*Math.max(0,n2(it.hpd||0)); recalc=true; }
+  else if(campo==='hpd'){ it.hpd=Math.max(0,n2(valor)); it.mult=Math.max(1,n2(it.tec||1))*Math.max(0,n2(it.dias||0))*it.hpd; recalc=true; }
+  if(recalc){ it.fmf=calcFMF(cfg,it.t,it.cat)||1; it.pvu=n2(it.cu)*it.fmf; it.pvt=it.pvu*n2(it.mult); }
+  updBT(); if(typeof updKpi==='function') updKpi();
+  rBudgPlanilha();
+  try{ if(editId) upsertCurrentDraft(true); }catch(e){}
+}
+function _planGrpHeaderRow(gk,subtotal){
+  return '<tr><td colspan="9" style="background:rgba(240,165,0,.08);border-left:3px solid var(--accent);font-weight:800;font-size:.72rem;color:var(--accent);padding:4px 8px;text-transform:uppercase;letter-spacing:.04em">'
+    +esc(gk||'(sem grupo)')+'  —  '+money(subtotal||0)+'</td></tr>';
+}
+function _planRow(it,i){
+  var ISt='box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:inherit;font-size:.76rem;padding:2px 5px;width:100%';
+  var ISn=ISt+';text-align:right';
+  var _id=it.id;
+  var ev=function(f){ return 'onblur="budgPlanilhaSalvarLinha(\''+_id+'\',\''+f+'\',this.value)" onkeydown="if(event.key===\'Enter\'||event.key===\'Tab\'){budgPlanilhaSalvarLinha(\''+_id+'\',\''+f+'\',this.value);}"'; };
+  var checked=_budgSelPlan[_id]?' checked':'';
+  var exp=!!_planExpand[_id];
+  var rowStyle=(it.inc===false)?'opacity:.5':(it.terc===true?'background:rgba(217,119,6,.06)':'');
+  var arrow='<button class="btn bg bxs" title="'+(exp?'Recolher':'Expandir')+'" onclick="planToggleExp(\''+_id+'\')" style="padding:0 .4rem;font-size:.8rem">'+(exp?'▼':'▶')+'</button>';
+  var badge=(it.t==='material')
+    ? '<span style="font-size:.62rem;font-weight:800;background:rgba(56,189,248,.16);color:#38bdf8;border:1px solid rgba(56,189,248,.4);border-radius:4px;padding:.05rem .35rem;white-space:nowrap">Material</span>'
+    : '<span style="font-size:.62rem;font-weight:800;background:rgba(63,185,80,.16);color:#3fb950;border:1px solid rgba(63,185,80,.4);border-radius:4px;padding:.05rem .35rem;white-space:nowrap">Serviço</span>';
+  var _tag=function(pre,val,cor){ return val?'<span style="font-size:.6rem;color:'+cor+';background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:.02rem .3rem;white-space:nowrap">'+esc(pre+val)+'</span>':''; };
+  var tags=[_tag('= ',it.equip,'#1a9b9b'),_tag('+ ',it.inst,'#c97b3a'),_tag('🔧 ',it.tipoTrab,'#a78bfa'),_tag('📋 ',it.faseTrab,'#38bdf8')].filter(Boolean).join(' ');
+  var tagsHtml=tags?'<div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-top:3px">'+tags+'</div>':'';
+  var qtdCell;
+  if(it.t==='material'){
+    qtdCell='<input type="number" style="'+ISn+'" value="'+n2(it.mult)+'" min="0" step="0.01" title="Quantidade" '+ev('mult')+'>';
+  } else {
+    qtdCell='<span title="Téc × Dias × h/dia — edite no painel expandido" style="font-size:.78rem;color:var(--text2)">'+fmtNumBr(n2(it.mult))+'</span>';
+  }
+  var compact='<tr style="'+rowStyle+'">'
+    +'<td style="padding:2px 2px;text-align:center;width:30px">'+arrow+'</td>'
+    +'<td style="padding:2px 4px;text-align:center;width:26px"><input type="checkbox"'+checked+' onchange="planSel(\''+_id+'\',this.checked)" style="cursor:pointer;width:15px;height:15px"></td>'
+    +'<td style="padding:3px;min-width:240px"><textarea rows="1" placeholder="Descrição" oninput="if(typeof autoResize===\'function\')autoResize(this)" '+ev('desc')+' style="'+ISt+';resize:vertical;min-height:26px;line-height:1.3">'+esc(it.desc||getCatLabel(it.t,it.cat)||'')+'</textarea>'+tagsHtml+'</td>'
+    +'<td style="padding:3px;text-align:center;width:74px">'+badge+'</td>'
+    +'<td style="padding:3px;width:92px"><input type="number" style="'+ISn+'" value="'+n2(it.cu)+'" min="0" step="0.01" title="Custo unitário" '+ev('cu')+'></td>'
+    +'<td style="padding:3px;width:76px;text-align:right">'+qtdCell+'</td>'
+    +'<td style="padding:3px;width:60px"><input type="text" style="'+ISt+'" value="'+esc(it.un1||'')+'" placeholder="un" '+ev('un1')+'></td>'
+    +'<td style="text-align:right;font-weight:700;white-space:nowrap;padding:3px 6px;background:var(--bg3);width:100px">'+money(it.pvt)+(it.inc===false?' ⊘':(it.terc?' T':''))+'</td>'
+    +'<td style="text-align:right;white-space:nowrap;padding:2px 3px;width:64px"><button class="btn bg bxs" title="Duplicar" onclick="dupB(\''+_id+'\')">⧉</button> <button class="btn bd bxs" title="Excluir" onclick="delB(\''+_id+'\')">×</button></td>'
+    +'</tr>';
+  if(!exp) return compact;
+  var lbl='font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px';
+  var fld=function(label,inner){ return '<div><label style="'+lbl+'">'+label+'</label>'+inner+'</div>'; };
+  var selTipo='<select style="'+ISt+'" onchange="budgPlanilhaSalvarLinha(\''+_id+'\',\'tipo\',this.value)"><option value="servico"'+(it.t!=='material'?' selected':'')+'>Serviço</option><option value="material"'+(it.t==='material'?' selected':'')+'>Material</option></select>';
+  var selCat='<select id="psel_'+_id+'" style="'+ISt+'" onchange="budgPlanilhaSalvarLinha(\''+_id+'\',\'cat\',this.value)">'+_getCatOptions(it.t,'')+'</select>';
+  var grid1='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem">'
+    +fld('Tipo',selTipo)
+    +fld('Categoria',selCat)
+    +fld('Disciplina / Proj.','<input type="text" style="'+ISt+'" value="'+esc(it.tipoTrab||'')+'" placeholder="Ex: Elétrica, Automação" '+ev('tipoTrab')+'>')
+    +fld('= Área / Local / Equip. / Linha','<input type="text" style="'+ISt+'" value="'+esc(it.equip||'')+'" placeholder="Opcional" '+ev('equip')+'>')
+    +fld('+ Instalação / Painel / Subgrupo','<input type="text" style="'+ISt+'" value="'+esc(it.inst||'')+'" placeholder="Opcional" '+ev('inst')+'>')
+    +fld('Fase / Etapa','<input type="text" style="'+ISt+'" value="'+esc(it.faseTrab||'')+'" placeholder="Opcional" '+ev('faseTrab')+'>')
+    +'</div>';
+  var grid2='';
+  if(it.t!=='material'){
+    var hxh=Math.max(1,n2(it.tec||1))*Math.max(0,n2(it.dias||0))*Math.max(0,n2(it.hpd||0));
+    grid2='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:.55rem;padding-top:.55rem;border-top:1px dashed var(--border)">'
+      +fld('Técnicos','<input type="number" style="'+ISn+'" value="'+n2(it.tec||1)+'" min="1" step="1" '+ev('tec')+'>')
+      +fld('Dias','<input type="number" style="'+ISn+'" value="'+n2(it.dias||0)+'" min="0" step="0.5" '+ev('dias')+'>')
+      +fld('Horas/dia','<input type="number" style="'+ISn+'" value="'+n2(it.hpd||0)+'" min="0" step="0.5" '+ev('hpd')+'>')
+      +fld('Total H×H','<input type="text" readonly value="'+fmtNumBr(hxh)+'" style="'+ISn+';opacity:.7" title="Técnicos × Dias × Horas/dia">')
+      +'</div>';
+  }
+  var panel='<tr><td colspan="9" style="background:var(--bg3);padding:.6rem .9rem;border-bottom:1px solid var(--border)">'+grid1+grid2+'</td></tr>';
+  return compact+panel;
+}
+function rBudgPlanilha(){
+  var host=Q('bPlanilha'); if(!host) return;
+  budg=(budg||[]).map(normalizeBudgetItem);
+  // limpa seleções de itens que não existem mais
+  Object.keys(_budgSelPlan).forEach(function(id){ if(!budg.some(function(x){return x.id===id;})) delete _budgSelPlan[id]; });
+  var nSel=Object.keys(_budgSelPlan).length;
+
+  var _bSel='background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:inherit;font-size:.74rem;padding:.26rem .4rem';
+  var bulk = nSel>=2 ? (
+    '<div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-bottom:.5rem;padding:.45rem .55rem;background:var(--bg3);border:1px solid var(--accent);border-radius:6px">'
+    +'<span style="font-size:.74rem;font-weight:800;color:var(--accent)">'+nSel+' selecionados — aplicar em lote:</span>'
+    +'<select style="'+_bSel+'" title="Definir tipo" onchange="planBulkSel(\'tipo\',this)"><option value="">Tipo…</option><option value="servico">Serviço</option><option value="material">Material</option></select>'
+    +'<select style="'+_bSel+'" title="Definir categoria" onchange="planBulkSel(\'cat\',this)"><option value="">Categoria…</option>'+_planBulkCatOptions()+'</select>'
+    +'<input list="planBulkEquipDL" placeholder="Equip/Linha…" style="'+_bSel+';width:130px" title="Definir Equip/Linha (escolha ou digite)" onchange="planBulkInput(\'equip\',this)">'
+    +'<input list="planBulkFaseDL" placeholder="Fase…" style="'+_bSel+';width:120px" title="Definir Fase (escolha ou digite)" onchange="planBulkInput(\'faseTrab\',this)">'
+    +'<datalist id="planBulkEquipDL">'+_planDistinctOptions('equip')+'</datalist>'
+    +'<datalist id="planBulkFaseDL">'+_planDistinctOptions('faseTrab')+'</datalist>'
+    +'<button class="btn bd bxs" onclick="planBulk(\'del\')">🗑 Excluir</button>'
+    +'<button class="btn bg bxs" onclick="planSelLimpar()">Limpar seleção</button>'
+    +'</div>') : '';
+
+  var gAtivo=_budgGrupos[0]||'';
+  var gbtn=function(key,label){ var on=(key==='')?!_budgGrupos.length:(gAtivo===key); return '<button class="btn '+(on?'bs':'bg')+' bxs" onclick="planAgrupar(\''+key+'\')">'+label+'</button>'; };
+  var groupBar='<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;margin-bottom:.45rem">'
+    +'<span style="font-size:.7rem;color:var(--text3);font-weight:700">Agrupar:</span>'
+    +gbtn('','Nenhum')+gbtn('tipo','Tipo')+gbtn('cat','Categoria')+gbtn('equip','=Área/Equip.')+gbtn('inst','+Inst./Painel')+gbtn('faseTrab','Fase/Etapa')
+    +'</div>';
+
+  var th='position:sticky;top:0;background:var(--bg3);z-index:1;padding:5px 6px;font-size:.64rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text3);text-align:left;border-bottom:1px solid var(--border)';
+  var head='<thead><tr>'
+    +'<th style="'+th+';width:30px"></th>'
+    +'<th style="'+th+';width:26px"></th>'
+    +'<th style="'+th+';min-width:240px">Descrição</th>'
+    +'<th style="'+th+';width:74px;text-align:center">Tipo</th>'
+    +'<th style="'+th+';width:92px;text-align:right">Custo un.</th>'
+    +'<th style="'+th+';width:76px;text-align:right">Qtd</th>'
+    +'<th style="'+th+';width:60px">Un</th>'
+    +'<th style="'+th+';width:100px;text-align:right">Total</th>'
+    +'<th style="'+th+';width:64px"></th>'
+    +'</tr></thead>';
+
+  var rows='';
+  if(!budg.length){
+    rows='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:1.2rem">Nenhum item — use “+ Nova linha”.</td></tr>';
+  } else {
+    var grpSum={};
+    if(_budgGrupos.length){ budg.forEach(function(it){ if(it.inc!==false){ var k=_planGrpKey(it); grpSum[k]=(grpSum[k]||0)+n2(it.pvt); } }); }
+    var lastGrp=null, somaSvc=0, somaMat=0;
+    budg.forEach(function(it,i){
+      if(_budgGrupos.length){ var gk=_planGrpKey(it); if(gk!==lastGrp){ rows+=_planGrpHeaderRow(gk,grpSum[gk]); lastGrp=gk; } }
+      rows+=_planRow(it,i);
+      if(it.inc!==false){ if(it.t==='material') somaMat+=n2(it.pvt); else somaSvc+=n2(it.pvt); }
+    });
+    rows+='<tr style="border-top:2px solid var(--border)"><td colspan="7" style="text-align:right;font-size:.74rem;color:var(--text3);padding:5px 6px">Soma dos Serviços</td><td style="text-align:right;font-weight:700;padding:5px 6px">'+money(somaSvc)+'</td><td></td></tr>'
+        +'<tr><td colspan="7" style="text-align:right;font-size:.74rem;color:var(--text3);padding:3px 6px">Soma dos Materiais</td><td style="text-align:right;font-weight:700;padding:3px 6px">'+money(somaMat)+'</td><td></td></tr>'
+        +'<tr><td colspan="7" style="text-align:right;font-size:.82rem;font-weight:800;color:var(--accent);padding:5px 6px">TOTAL</td><td style="text-align:right;font-weight:800;color:var(--accent);padding:5px 6px">'+money(somaSvc+somaMat)+'</td><td></td></tr>';
+  }
+
+  host.innerHTML = bulk + groupBar
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;gap:.5rem;flex-wrap:wrap">'
+    + '<button class="btn bs bsm" onclick="planNovaLinha()">+ Nova linha</button>'
+    + '<span style="font-size:.7rem;color:var(--text3)">Clique ▶ para abrir os campos complementares. Tab/Enter salvam.</span>'
+    + '</div>'
+    + '<div style="overflow-x:auto"><table class="bt" style="width:100%;border-collapse:collapse">'+head+'<tbody>'+rows+'</tbody></table></div>';
+
+  setTimeout(_fixPlanilhaSelects,0);
 }
 // ────────────────────────────────────────────────────────────────
 
@@ -4913,6 +5152,15 @@ function sortBudg(por){
   try{ if(editId) upsertCurrentDraft(true); }catch(e){}
 }
 function rBudg(){
+  if(!_planModoLoaded){ _planModoLoad(); _planSyncBtn(); _planModoLoaded=true; }
+  var _cardsW=Q('bCardsWrap'), _planW=Q('bPlanilha');
+  if(_modoPlanilha){
+    if(_cardsW) _cardsW.style.display='none';
+    if(_planW)  _planW.style.display='';
+    rBudgPlanilha(); updBT(); return;
+  }
+  if(_cardsW) _cardsW.style.display='';
+  if(_planW)  _planW.style.display='none';
   var tb=Q('bTb');if(!tb)return;
   budg=(budg||[]).map(normalizeBudgetItem);
   if(!budg.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:.8rem">Nenhum item</td></tr>';updBT();return}
