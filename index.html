@@ -1607,7 +1607,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
           <button class="btn bg bxs" onclick="sortBudg('tipoTrab')" id="sortBudgTipoTrab" title="Projetos | Elétrica | Automação | Mecânica | Engenharia">🔧 Projetos</button>
           <button class="btn bg bxs" onclick="sortBudg('faseTrab')" id="sortBudgFaseTrab" title="Fase | Etapa">📋 Fase/Etapa</button>
           <span style="width:1px;background:var(--border);height:18px;display:inline-block;margin:0 4px"></span>
-          <button class="btn bg bxs" id="btnModoPlanilha" onclick="toggleModoPlanilha()" title="Editar campos diretamente na tabela como planilha">📝 Modo Planilha</button>
+          <button class="btn bg bxs" id="btnModoPlanilha" onclick="toggleModoPlanilha()" title="Editar campos diretamente na tabela como planilha">📊 Modo Planilha</button>
           <span style="width:1px;background:var(--border);height:18px;display:inline-block;margin:0 4px"></span>
           <button class="btn bg bxs" id="btnEditarSel" onclick="abrirEdicaoLote()" title="Editar campos dos itens selecionados em lote" style="display:none">✏️ Editar Selecionados (<span id="selCount">0</span>)</button>
           <button class="btn bg bxs" id="btnDupSel" onclick="abrirDupLote()" title="Duplicar itens selecionados e editar campos" style="display:none">📄 Duplicar Selecionados</button>
@@ -1730,7 +1730,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       </div>
 
       <!-- TABELA DE ITENS -->
-      <div class="bt-w">
+      <div class="bt-w" id="bCardsWrap">
         <table class="bt">
           <thead>
   <tr>
@@ -1751,6 +1751,8 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
           <tbody id="bTb"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:.9rem">Nenhum item</td></tr></tbody>
         </table>
       </div>
+      <!-- Modo Planilha (tabela inline editável; preenchido por rBudgPlanilha) -->
+      <div id="bPlanilha" style="display:none"></div>
     </div>
     <div class="snav"><button class="btn bg" onclick="step(1)">← Anterior</button><button class="btn bp" onclick="step(3)">Escopo →</button></div>
   </div>
@@ -10151,7 +10153,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=11"></script>
+<script src="js/core/app-core.js?v=13"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
