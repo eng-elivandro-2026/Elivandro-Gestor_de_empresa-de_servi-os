@@ -1841,7 +1841,7 @@ function step(n){
   Q('s'+n).classList.add('on');
   for(var i=1;i<=5;i++){var el=Q('ws'+i);if(!el)continue;if(i<n)el.classList.add('dn');else if(i===n)el.classList.add('on')}
   if(n===2){rTplSel();rEsc();if(Q('escTplModal'))Q('escTplModal').style.display='none';}
-  if(n===3){refBudg();rEsc();setTimeout(function(){refreshValorSecEscopo();},30);}
+  if(n===3){refBudg();rEsc();try{beLoadDB();beInlineAtualizarGrupos();beInlineRender();}catch(e){}setTimeout(function(){refreshValorSecEscopo();},30);}
   if(n===4)cTot();
   if(n===5){
     cTot();
@@ -3880,9 +3880,7 @@ function rEsc(){
           +'<button class="btn bg bxs es-subup" data-si="'+si+'" data-subi="'+subi+'" title="Mover item para cima" style="padding:.1rem .28rem;line-height:1;opacity:'+(subFirst?'0.2':'1')+'" '+(subFirst?'disabled':'')+'>▲</button>'
           +'<button class="btn bg bxs es-subdn" data-si="'+si+'" data-subi="'+subi+'" title="Mover item para baixo" style="padding:.1rem .28rem;line-height:1;opacity:'+(subLast?'0.2':'1')+'" '+(subLast?'disabled':'')+'>▼</button>'
           +'</div>'
-          +'<input value="'+esc(sub.num||'')+'" placeholder="Nº" '
-          +'style="width:38px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.2rem .25rem;font-family:inherit;font-size:.76rem" '
-          +'oninput="escSecs['+si+'].subs['+subi+'].num=this.value;scheduleDraftSave()">'
+          +'<span title="Numeração automática (seção.item)" style="min-width:40px;text-align:center;flex-shrink:0;font-weight:700;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.22rem .35rem;font-family:inherit;font-size:.76rem">'+(si+1)+'.'+(subi+1)+'</span>'
           +'<input class="esb-n" value="'+esc(sub.nome)+'" placeholder="Nome do sub-item" style="flex:1" oninput="escSecs['+si+'].subs['+subi+'].nome=this.value;scheduleDraftSave()">'
           +'<button class="btn bd bxs es-delsub" data-si="'+si+'" data-subi="'+subi+'" style="flex-shrink:0">×</button>'
           +'</div>'
@@ -6219,7 +6217,7 @@ function genPrev(){try{
     var body='';
     if(sec.desc) body+='<p class="pp-p">'+esc(sec.desc).replace(/\n/g,'<br>')+'</p>';
     (sec.subs||[]).forEach(function(sub,subi){
-      var subNum=(sub.num||'').trim()||(curSecNum+'.'+(subi+1));
+      var subNum=(curSecNum+'.'+(subi+1)); // numeração automática (ignora sub.num legado)
       body+='<div class="ph3">'+subNum+'. '+esc(sub.nome||sub.titulo||'')+'</div>';
       if(sub.desc) body+='<p class="pp-p" style="margin-left:10px">'+esc(sub.desc).replace(/\n/g,'<br>')+'</p>';
     });
@@ -6253,7 +6251,7 @@ function genPrev(){try{
       +'<td class="pp-tp">—</td>'
       +'</tr>';
     (sec.subs||[]).forEach(function(sub,subi){
-      var subNum=(sub.num||'').trim()||(curSecNum+'.'+(subi+1));
+      var subNum=(curSecNum+'.'+(subi+1)); // numeração automática (ignora sub.num legado)
       tocRows+='<tr style="opacity:.85">'
         +'<td class="pp-tn" style="color:#666;font-size:8.5pt">'+subNum+'</td>'
         +'<td style="padding-left:14px;font-size:9pt;color:#333">'+esc(sub.nome||sub.titulo||'')+'</td>'
@@ -7050,7 +7048,7 @@ function expWordDoc(){
       if(!titulo){ si2++; return; }
       tocEntries.push({num: secNum, titulo: titulo, level: 0});
       (sec.subs||[]).forEach(function(sub, subi){
-        var subNum = (sub.num||'').trim() || (secNum+'.'+(subi+1));
+        var subNum = (secNum+'.'+(subi+1)); // numeração automática (ignora sub.num legado)
         tocEntries.push({num: subNum, titulo: sub.nome||sub.titulo||'', level: 1});
       });
       si2++;
@@ -7904,21 +7902,51 @@ function beInlineAtualizarGrupos(){
     sf.innerHTML = '<option value="">— Todos os grupos —</option>' +
       grupos.map(function(g){return '<option value="'+esc(g)+'"'+(g===cur?' selected':'')+'>'+esc(g)+'</option>';}).join('');
   }
+  // Famílias presentes nos blocos ativos (rótulo via BE_FAMILIAS)
+  var fams = [];
+  _beEscopos.forEach(function(e){
+    if((e.status||'Ativo')!=='Ativo') return;
+    var f = e.familia||''; if(f && fams.indexOf(f)<0) fams.push(f);
+  });
+  fams.sort(function(a,b){return a.localeCompare(b,'pt-BR')});
+  var ff = Q('beInlineFiltroFamilia');
+  if(ff){
+    var curF = ff.value;
+    ff.innerHTML = '<option value="">— Todas as famílias —</option>' +
+      fams.map(function(f){ var lbl=(typeof BE_FAMILIAS!=='undefined'&&BE_FAMILIAS[f])?(f+' — '+BE_FAMILIAS[f]):f; return '<option value="'+esc(f)+'"'+(f===curF?' selected':'')+'>'+esc(lbl)+'</option>'; }).join('');
+  }
+  // Tipos presentes nos blocos ativos
+  var tipos = [];
+  _beEscopos.forEach(function(e){
+    if((e.status||'Ativo')!=='Ativo') return;
+    var t = e.tipo||''; if(t && tipos.indexOf(t)<0) tipos.push(t);
+  });
+  tipos.sort(function(a,b){return a.localeCompare(b,'pt-BR')});
+  var ft = Q('beInlineFiltroTipo');
+  if(ft){
+    var curT = ft.value;
+    ft.innerHTML = '<option value="">— Todos os tipos —</option>' +
+      tipos.map(function(t){return '<option value="'+esc(t)+'"'+(t===curT?' selected':'')+'>'+esc(t)+'</option>';}).join('');
+  }
 }
 
 function beInlineRender(){
   var busca   = ((Q('beInlineBusca')||{}).value||'').toLowerCase().trim();
   var filtroG = ((Q('beInlineFiltroGrupo')||{}).value||'');
+  var filtroF = ((Q('beInlineFiltroFamilia')||{}).value||'');
+  var filtroT = ((Q('beInlineFiltroTipo')||{}).value||'');
   var visiveis = _beEscopos.filter(function(e){
     if((e.status||'Ativo')!=='Ativo') return false; // inativos nao aparecem para adicionar na proposta
     var matchG = !filtroG || e.grupo===filtroG;
+    var matchF = !filtroF || (e.familia||'')===filtroF;
+    var matchT = !filtroT || (e.tipo||'')===filtroT;
     var matchB = !busca ||
       (e.codigo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.titulo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.grupo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.conteudo||'').toLowerCase().indexOf(busca)>=0 ||
       (e.descricao||'').toLowerCase().indexOf(busca)>=0;
-    return matchG && matchB;
+    return matchG && matchF && matchT && matchB;
   });
   var grupos = {};
   visiveis.forEach(function(e){
@@ -7942,7 +7970,9 @@ function beInlineRender(){
               + '<div style="font-weight:700;font-size:.83rem;color:var(--text)">'+esc(e.titulo)+'</div>'
               + (e.descricao?'<div style="font-size:.71rem;color:var(--blue);margin-top:.08rem">'+esc(e.descricao)+'</div>':'')
               + (e.conteudo?'<div style="font-size:.72rem;color:var(--text2);margin-top:.2rem;line-height:1.4;white-space:pre-wrap;max-height:52px;overflow:hidden">'+esc(e.conteudo.slice(0,200))+(e.conteudo.length>200?'…':'')+'</div>':'')
-              + '</div></div>';
+              + '</div>'
+              + '<button type="button" onclick="beAdicionarBlocoPorId(\''+e.id+'\')" title="Adicionar este bloco à proposta" style="flex-shrink:0;align-self:center;background:var(--green,#3fb950);color:#04260f;border:none;border-radius:5px;padding:.28rem .5rem;font-size:.7rem;font-weight:800;cursor:pointer;white-space:nowrap">+ Adicionar</button>'
+              + '</div>';
       });
       html += '</div>';
     });
@@ -7997,12 +8027,29 @@ function beInlineAdicionar(){
   });
   rEsc();
   beInlineDesmarcar();
-  Q('bancoEscoposInline').style.display = 'none';
-  var btn = Q('btnBancoEscoposInline');
-  if(btn) btn.classList.remove('bs');
   Q('escList').scrollIntoView({behavior:'smooth', block:'start'});
   toast('✔ '+adicionados+' escopo(s) adicionado(s)! Edite os textos abaixo.','ok');
 }
+
+// Adiciona UM bloco da biblioteca à proposta pelo id (clique direto "+ Adicionar").
+function beAdicionarBlocoPorId(id){
+  var e = _beEscopos.find(function(x){return x.id===id;});
+  if(!e) return;
+  if((e.status||'Ativo')!=='Ativo'){ if(typeof toast==='function') toast('Apenas blocos Ativos podem ser adicionados.','erro'); return; }
+  escSecs.push({
+    id:    uid(),
+    num:   '',
+    titulo: e.titulo || '',
+    desc:   e.conteudo || '',
+    subs:  (e.subs||[]).map(function(s){ return {id:uid(), nome:s.nome||s.titulo||'', desc:s.desc||''}; }),
+    codigoBloco: e.codigo || '',
+    origemBlocoId: e.id || '',
+    descOriginal: e.conteudo || ''
+  });
+  rEsc();
+  if(typeof toast==='function') toast('✔ "'+(e.titulo||'Bloco')+'" adicionado!','ok');
+}
+if(typeof window!=='undefined') window.beAdicionarBlocoPorId = beAdicionarBlocoPorId;
 
 /* ── SUBTÍTULOS DO FORMULÁRIO ── */
 var _beSubs = []; // [{id, ordem, nome, desc}]
