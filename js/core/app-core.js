@@ -9723,9 +9723,6 @@ function applyContactSelection(rec){
   if(Q('pDep')) Q('pDep').value=dept;
   if(Q('pMail'))Q('pMail').value=email;
   if(Q('pTel')) Q('pTel').value=tel;
-  if(Q('pCli') && !Q('pCli').value && rec.empresa) Q('pCli').value=rec.empresa;
-  if(Q('pCnpj') && !Q('pCnpj').value && rec.cnpj) Q('pCnpj').value=rec.cnpj;
-  if(Q('pCid') && !Q('pCid').value && rec.cidade) Q('pCid').value=rec.cidade;
   hideAutoBox();
 }
 function applyContactSelection2(rec){
@@ -9832,7 +9829,6 @@ function initClientAutoComplete(){
   ensureAutoBox();
   bindAutoInput(Q('pCli'),'company');
   bindAutoInput(Q('pLoc'),'loc_company');
-  bindAutoInput(Q('pAC'),'contact');
   bindAutoInput(Q('pAC2'),'contact2');
   bindAutoInput(Q('iDesc'),'itemdesc');
   window.addEventListener('resize', function(){
