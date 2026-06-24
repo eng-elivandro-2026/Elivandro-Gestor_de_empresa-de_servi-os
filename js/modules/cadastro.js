@@ -158,6 +158,19 @@
     // [FIX duplicados] Roda no máximo 1x por empresa: evita recriar registros
     // (com novos ids) a cada page-load / propostas:loaded, que acumulava duplicatas.
     var _flag = _seedFlagKey();
+    var _eid  = _getEmpresaId();
+    // [CORREÇÃO 3 — migração v14] Uma única vez por empresa, limpa a flag seed-once
+    // para o seed rodar mais uma vez e enriquecer contatos já existentes com dados
+    // completos (departamento/email/telefone). Depois disso a flag volta ao normal.
+    if (_eid) {
+      var _migKey = '_seedEnriquecidoV14_' + _eid;
+      try {
+        if (localStorage.getItem(_migKey) !== '1') {
+          if (_flag) localStorage.removeItem(_flag);
+          localStorage.setItem(_migKey, '1');
+        }
+      } catch(e) {}
+    }
     if (_flag) {
       try { if (localStorage.getItem(_flag) === '1') return; } catch(e) {}
     }
@@ -168,12 +181,12 @@
     var cliDel = _cliDelLoad();
     var ctsDel = _ctsDelLoad();
 
-    function addCts(nome, empresa) {
+    function addCts(nome, empresa, departamento, email, telefone) {
       if (!nome || !nome.trim()) return;
       nome = nome.trim();
       if (ctsDel.indexOf(nome.toLowerCase()) >= 0) return;
       if (cts.some(function(c) { return c.nome.toLowerCase() === nome.toLowerCase(); })) return;
-      cts.push({ id: _id(), nome: nome, empresa: empresa || '', email: '', telefone: '', criado: new Date().toISOString() });
+      cts.push({ id: _id(), nome: nome, empresa: empresa || '', departamento: departamento || '', email: email || '', telefone: telefone || '', criado: new Date().toISOString() });
       ctsChanged = true;
     }
     function addCli(nome, cnpj) {
@@ -193,8 +206,8 @@
     allProps.forEach(function(p) {
       var cli = (p.loc || p.cli || '').trim();
       if (cli) addCli(cli, p.locCnpj || p.cnpj || '');
-      if (p.ac)  addCts(p.ac,  cli);
-      if (p.ac2) addCts(p.ac2, cli);
+      if (p.ac)  addCts(p.ac,  cli, p.dep  || '', p.mail  || '', p.tel  || '');
+      if (p.ac2) addCts(p.ac2, cli, p.dep2 || '', p.mail2 || '', p.tel2 || '');
     });
 
     // Do histórico — usa chave por empresa_id se disponível
@@ -204,8 +217,27 @@
       try { hist = JSON.parse(localStorage.getItem(histKey) || '[]'); } catch(e) {}
     }
     hist.forEach(function(h) {
-      if (h.contato) addCts(h.contato, h.cliente || '');
+      if (h.contato) addCts(h.contato, h.cliente || '', h.departamento || '', h.email || '', h.telefone || '');
       if (h.cliente) addCli(h.cliente, '');
+    });
+
+    // [CORREÇÃO 2] Enriquece contatos JÁ existentes que estão com campos vazios,
+    // usando os dados das propostas. Só preenche o que está vazio — nunca sobrescreve.
+    function _vazio(v) { return v === undefined || v === null || String(v).trim() === ''; }
+    allProps.forEach(function(p) {
+      [
+        { nome: p.ac,  dep: p.dep,  mail: p.mail,  tel: p.tel  },
+        { nome: p.ac2, dep: p.dep2, mail: p.mail2, tel: p.tel2 }
+      ].forEach(function(src) {
+        if (!src.nome || !src.nome.trim()) return;
+        var alvo = cts.find(function(c) {
+          return c.nome && c.nome.toLowerCase() === src.nome.trim().toLowerCase();
+        });
+        if (!alvo) return;
+        if (_vazio(alvo.departamento) && !_vazio(src.dep))  { alvo.departamento = src.dep;  ctsChanged = true; }
+        if (_vazio(alvo.email)        && !_vazio(src.mail)) { alvo.email        = src.mail; ctsChanged = true; }
+        if (_vazio(alvo.telefone)     && !_vazio(src.tel))  { alvo.telefone     = src.tel;  ctsChanged = true; }
+      });
     });
 
     if (ctsChanged) ctsSave(cts);
