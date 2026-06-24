@@ -62,7 +62,7 @@
     }
     // [DataGuard] Backup + validação antes de gravar contatos
     if (typeof window.dgAntesDeSalvar === 'function') {
-      var _dgCts = window.dgAntesDeSalvar(key, list, 'ctsSave');
+      var _dgCts = window.dgAntesDeSalvar(key, list, 'ctsSave', { forcar: !!(opcoes && opcoes.forcar) });
       if (!_dgCts.ok) return; // bloqueado pelo DataGuard
     }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
@@ -82,7 +82,7 @@
     }
     // [DataGuard] Backup + validação antes de gravar clientes
     if (typeof window.dgAntesDeSalvar === 'function') {
-      var _dgCli = window.dgAntesDeSalvar(key, list, 'cliSave(' + (opcoes && opcoes.permitirListaVazia ? 'excluir-manual' : 'auto') + ')');
+      var _dgCli = window.dgAntesDeSalvar(key, list, 'cliSave(' + (opcoes && opcoes.permitirListaVazia ? 'excluir-manual' : 'auto') + ')', { forcar: !!(opcoes && opcoes.forcar) });
       if (!_dgCli.ok) return; // bloqueado pelo DataGuard
     }
     try { localStorage.setItem(key, JSON.stringify(list)); } catch(e) {}
@@ -150,7 +150,17 @@
     if (del.indexOf(n) < 0) { del.push(n); localStorage.setItem(key, JSON.stringify(del)); }
   }
 
+  function _seedFlagKey() {
+    var eid = _getEmpresaId();
+    return eid ? ('_seedJaRodouEmpresa_' + eid) : null;
+  }
   function seedFromData() {
+    // [FIX duplicados] Roda no máximo 1x por empresa: evita recriar registros
+    // (com novos ids) a cada page-load / propostas:loaded, que acumulava duplicatas.
+    var _flag = _seedFlagKey();
+    if (_flag) {
+      try { if (localStorage.getItem(_flag) === '1') return; } catch(e) {}
+    }
     var cts  = ctsLoad();
     var clis = cliLoad();
     var ctsChanged = false;
@@ -200,7 +210,78 @@
 
     if (ctsChanged) ctsSave(cts);
     if (cliChanged) cliSave(clis);
+    // Marca que o seed já rodou para esta empresa (resetado em empresa:changed).
+    if (_flag) { try { localStorage.setItem(_flag, '1'); } catch(e) {} }
   }
+
+  // ── PARTE 1: Limpeza automática de duplicados ─────────────
+  // Score de completude: +1 por campo não vazio (exceto id/criado).
+  function _scoreCompletude(o) {
+    var s = 0;
+    Object.keys(o || {}).forEach(function(k) {
+      if (k === 'id' || k === 'criado') return;
+      var v = o[k];
+      if (v !== undefined && v !== null && String(v).trim() !== '') s++;
+    });
+    return s;
+  }
+  // Extrai o timestamp do id (cad_<ts>_xxx / rec_cli_<ts>...). Menor = mais antigo.
+  function _idTime(id) {
+    var m = String(id || '').match(/(\d{10,})/);
+    return m ? Number(m[1]) : 0;
+  }
+  // Dedup genérico: agrupa por keyFn; em cada grupo mantém o de maior score
+  // (empate → id mais antigo). Registros sem chave são preservados.
+  function _dedupPorChave(lista, keyFn) {
+    var grupos = {}, ordem = [], semChave = [], removidos = 0;
+    (lista || []).forEach(function(it) {
+      var k = keyFn(it);
+      if (k === null || k === '') { semChave.push(it); return; }
+      if (!grupos[k]) { grupos[k] = []; ordem.push(k); }
+      grupos[k].push(it);
+    });
+    var resultado = [];
+    ordem.forEach(function(k) {
+      var g = grupos[k];
+      if (g.length === 1) { resultado.push(g[0]); return; }
+      var melhor = g[0], melhorScore = _scoreCompletude(g[0]), melhorT = _idTime(g[0].id);
+      for (var i = 1; i < g.length; i++) {
+        var sc = _scoreCompletude(g[i]), t = _idTime(g[i].id);
+        if (sc > melhorScore || (sc === melhorScore && t < melhorT)) {
+          melhor = g[i]; melhorScore = sc; melhorT = t;
+        }
+      }
+      resultado.push(melhor);
+      removidos += g.length - 1;
+    });
+    semChave.forEach(function(it) { resultado.push(it); });
+    return { lista: resultado, removidos: removidos };
+  }
+  // Remove duplicados de clientes (por nome) e contatos (por nome+empresa).
+  // Salva via cliSave/ctsSave com forcar:true (a redução é intencional; o
+  // DataGuard ainda cria backup antes, só não bloqueia).
+  window.limparDuplicadosAutomatico = function() {
+    var clis = (window.cliGetAll && window.cliGetAll()) || [];
+    var rc = _dedupPorChave(clis, function(c) {
+      return (c && c.nome) ? c.nome.toLowerCase().trim() : null;
+    });
+    if (rc.removidos > 0) cliSave(rc.lista, { permitirListaVazia: false, forcar: true });
+
+    var cts = (window.ctsGetAll && window.ctsGetAll()) || [];
+    var rt = _dedupPorChave(cts, function(c) {
+      if (!c || !c.nome) return null;
+      return c.nome.toLowerCase().trim() + '|' + String(c.empresa || '').toLowerCase().trim();
+    });
+    if (rt.removidos > 0) ctsSave(rt.lista, { permitirListaVazia: false, forcar: true });
+
+    console.log('%c[Dedup] clientes removidos: ' + rc.removidos
+      + ' · contatos removidos: ' + rt.removidos
+      + ' (clientes agora: ' + rc.lista.length + ' · contatos: ' + rt.lista.length + ')',
+      'color:#f59e0b;font-weight:700');
+    try { renderTabelaClientes(); } catch(e) {}
+    try { renderTabelaContatos(); } catch(e) {}
+    return { clientes: rc.removidos, contatos: rt.removidos };
+  };
 
   // ── CSS do dropdown ───────────────────────────────────────
   var style = document.createElement('style');
@@ -958,10 +1039,22 @@
         var local  = ctsLoad();
         var del    = _ctsDelLoad();
         var merged = local.slice();
+        // [FIX duplicados] dedup também por nome+empresa (consistente com a limpeza):
+        // não traz da nuvem um par nome+empresa já existente
+        var chavesVistas = {};
+        merged.forEach(function(m) {
+          if (m && m.nome) chavesVistas[m.nome.toLowerCase().trim() + '|' + String(m.empresa || '').toLowerCase().trim()] = true;
+        });
         v.forEach(function(x) {
           if (!x.id) return; // descarta apenas se não houver id (sem conteúdo útil)
-          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+          var nm = (x.nome || '').toLowerCase().trim();
+          if (del.indexOf(nm) >= 0) return; // tombstone é por nome
+          var chave = nm + '|' + String(x.empresa || '').toLowerCase().trim();
+          if (nm && chavesVistas[chave]) return; // já existe registro com mesmo nome+empresa
+          if (!merged.some(function(m) { return m.id === x.id; })) {
+            merged.push(x);
+            if (nm) chavesVistas[chave] = true;
+          }
         });
         // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
         // DataGuard protege redução destrutiva; merge que só cresce é seguro
@@ -976,10 +1069,18 @@
         var local  = cliLoad();
         var del    = _cliDelLoad();
         var merged = local.slice();
+        // [FIX duplicados] dedup também por nome: não traz da nuvem nome já existente
+        var nomesVistos = {};
+        merged.forEach(function(m) { if (m && m.nome) nomesVistos[m.nome.toLowerCase().trim()] = true; });
         v.forEach(function(x) {
           if (!x.id) return; // descarta apenas se não houver id (sem conteúdo útil)
-          if (del.indexOf((x.nome || '').toLowerCase()) >= 0) return;
-          if (!merged.some(function(m) { return m.id === x.id; })) merged.push(x);
+          var nm = (x.nome || '').toLowerCase().trim();
+          if (del.indexOf(nm) >= 0) return;
+          if (nm && nomesVistos[nm]) return; // já existe registro com mesmo nome
+          if (!merged.some(function(m) { return m.id === x.id; })) {
+            merged.push(x);
+            if (nm) nomesVistos[nm] = true;
+          }
         });
         // Sync nuvem→local: additive (só ADICIONA, nunca remove) — DataGuard não bloqueia
         // _limkarClientes() REMOVIDA do callback — nunca automática
@@ -1023,6 +1124,9 @@
     // Flag: inibe seedFromData no propostas:loaded que dispara durante a troca
     window._cadEmpresaTrocando = true;
     setTimeout(function() { window._cadEmpresaTrocando = false; }, 3500);
+    // Libera o seed para rodar uma vez na empresa recém-ativada (a flag é por empresa).
+    var _flagNova = _seedFlagKey();
+    if (_flagNova) { try { localStorage.removeItem(_flagNova); } catch(e) {} }
 
     var msg = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:.82rem">'
             + 'Carregando dados da empresa...</div>';
