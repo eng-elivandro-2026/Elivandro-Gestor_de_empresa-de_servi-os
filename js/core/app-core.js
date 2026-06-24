@@ -9428,18 +9428,11 @@ function findSelectedCompanyRecord(){
 }
 function getCompanySuggestions(query){
   var q=normTxt(query);
-  var dir=buildClientDirectory();
-  // Adiciona clientes cadastrados em Relacionamentos — deduplica por nome+CNPJ para mostrar filiais separadas
-  if(typeof window.cliGetAll==='function'){
-    var dirKeys={};
-    dir.forEach(function(e){ dirKeys[normTxt(e.empresa)+'|'+_normCnpjDigits(e.cnpj)]=true; });
-    window.cliGetAll().forEach(function(c){
-      if(!c.nome) return;
-      var k=normTxt(c.nome)+'|'+_normCnpjDigits(c.cnpj);
-      if(dirKeys[k]) return;
-      dir.push({empresa:c.nome,cnpj:c.cnpj||'',cidade:c.cidade||'',contatos:[],total:0,_fromCad:true});
-    });
-  }
+  // Fonte única: clientes cadastrados (Relacionamento). NÃO usa propostas anteriores.
+  if(typeof window.cliGetAll!=='function') return [];
+  var dir=(window.cliGetAll()||[]).filter(function(c){ return c && c.nome; }).map(function(c){
+    return {empresa:c.nome, cnpj:c.cnpj||'', cidade:c.cidade||'', _id:c.id||null};
+  });
   return dir.filter(function(e){
     if(!q) return true;
     var hay=[e.empresa,e.cnpj,e.cidade].map(normTxt).join(' | ');
@@ -9448,7 +9441,7 @@ function getCompanySuggestions(query){
     return {
       kind:'company',
       title:e.empresa||'—',
-      meta:[e.cnpj||'Sem CNPJ', e.cidade||'Sem cidade', e.total?(e.total+' proposta(s)'):'Cadastro'].join(' • '),
+      meta:[e.cnpj||'Sem CNPJ', e.cidade||'Sem cidade'].join(' • '),
       raw:e
     };
   });
@@ -9582,11 +9575,31 @@ function renderAutoItems(input, items, kind){
   box.style.display='block';
 }
 function _normCnpjDigits(s){ return (s||'').replace(/\D/g,''); }
+// Preenche os campos do Contato 1 (Etapa 1) a partir de um contato cadastrado.
+function _fillContato1(c){
+  if(!c) return;
+  if(Q('pAC'))  Q('pAC').value=c.nome||'';
+  if(Q('pDep')) Q('pDep').value=c.departamento||'';
+  if(Q('pMail'))Q('pMail').value=c.email||'';
+  if(Q('pTel')) Q('pTel').value=c.telefone||'';
+}
+// Contatos vinculados a um cliente (apenas ativos). Prioridade: empresa_cliente_id;
+// fallback: texto legado da empresa == nome do cliente.
+function _contatosDoCliente(clienteId, clienteNome){
+  if(typeof window.ctsGetAll!=='function') return [];
+  var ativos=(window.ctsGetAll()||[]).filter(function(c){ return c && c.ativo!==false; });
+  var byId = clienteId ? ativos.filter(function(c){ return c.empresa_cliente_id===clienteId; }) : [];
+  if(byId.length) return byId;
+  var nomeNorm=normTxt(clienteNome||'');
+  if(!nomeNorm) return [];
+  return ativos.filter(function(c){ return normTxt(c.empresa)===nomeNorm; });
+}
 function applyCompanySelection(rec){
   if(!rec) return;
   var empresa=rec.empresa||'';
   var cnpj=rec.cnpj||'';
   var cidade=rec.cidade||'';
+  var clienteId=rec._id||null;
   if(typeof window.cliGetAll==='function'){
     var cadMatch=null;
     // Prioridade: match por CNPJ (evita pegar a filial errada com mesmo nome)
@@ -9599,12 +9612,36 @@ function applyCompanySelection(rec){
     if(cadMatch){
       if(cadMatch.cnpj)   cnpj=cadMatch.cnpj;
       if(cadMatch.cidade) cidade=cadMatch.cidade;
+      if(cadMatch.id)     clienteId=cadMatch.id;
     }
   }
   if(Q('pCli'))  Q('pCli').value=empresa;
   if(Q('pCnpj')) Q('pCnpj').value=cnpj;
   if(Q('pCid'))  Q('pCid').value=cidade;
-  if(Q('pAC') && !Q('pAC').value && rec.contatos && rec.contatos[0]) Q('pAC').value=rec.contatos[0].nome||'';
+  // Contatos vinculados ao cliente selecionado
+  var contatos=_contatosDoCliente(clienteId, empresa);
+  if(contatos.length===1){
+    _fillContato1(contatos[0]);
+    hideAutoBox();
+  } else if(contatos.length>=2){
+    // 2+ contatos: dropdown sobre o pAC para o usuário escolher (mesmo estilo dos autoBoxes)
+    var items=contatos.map(function(c){
+      return {
+        kind:'company_contact',
+        title:c.nome||'(sem nome)',
+        meta:[c.departamento||'', c.email||''].filter(Boolean).join(' • '),
+        raw:c
+      };
+    });
+    renderAutoItems(Q('pAC')||Q('pCli'), items, 'company_contact');
+  } else {
+    hideAutoBox();
+  }
+}
+// Seleção de um contato no dropdown disparado pela escolha do cliente.
+function applyCompanyContactSelection(rec){
+  if(!rec) return;
+  _fillContato1(rec);
   hideAutoBox();
 }
 function buildServiceLocDirectory(){
@@ -9686,9 +9723,6 @@ function applyContactSelection(rec){
   if(Q('pDep')) Q('pDep').value=dept;
   if(Q('pMail'))Q('pMail').value=email;
   if(Q('pTel')) Q('pTel').value=tel;
-  if(Q('pCli') && !Q('pCli').value && rec.empresa) Q('pCli').value=rec.empresa;
-  if(Q('pCnpj') && !Q('pCnpj').value && rec.cnpj) Q('pCnpj').value=rec.cnpj;
-  if(Q('pCid') && !Q('pCid').value && rec.cidade) Q('pCid').value=rec.cidade;
   hideAutoBox();
 }
 function applyContactSelection2(rec){
@@ -9745,6 +9779,7 @@ function pickAutoItem(idx){
   var it=autoState.items[idx];
   if(!it) return;
   if(it.kind==='company') applyCompanySelection(it.raw);
+  if(it.kind==='company_contact') applyCompanyContactSelection(it.raw);
   if(it.kind==='loc_company') applyLocCompanySelection(it.raw);
   if(it.kind==='contact') applyContactSelection(it.raw);
   if(it.kind==='contact2') applyContactSelection2(it.raw);
@@ -9794,7 +9829,6 @@ function initClientAutoComplete(){
   ensureAutoBox();
   bindAutoInput(Q('pCli'),'company');
   bindAutoInput(Q('pLoc'),'loc_company');
-  bindAutoInput(Q('pAC'),'contact');
   bindAutoInput(Q('pAC2'),'contact2');
   bindAutoInput(Q('iDesc'),'itemdesc');
   window.addEventListener('resize', function(){
