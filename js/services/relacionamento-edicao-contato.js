@@ -86,6 +86,227 @@
       : 'Ficha profissional da pessoa dentro da conta, mantendo compatibilidade com dados antigos.';
   }
 
+  // ── Importar contato via imagem (OCR autocontido) ───────────
+  // Loader do Tesseract.js duplicado de relacionamento-edicao-empresa.js (opção b),
+  // adaptado para usar o status próprio do modal de contato (#eCtaOcrStatus).
+  var TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  var _tesseractLoading = null;
+  function _loadTesseract() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (_tesseractLoading) return _tesseractLoading;
+    _tesseractLoading = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = TESSERACT_URL;
+      s.async = true;
+      s.onload = function () {
+        if (!window.Tesseract) { reject(new Error('Tesseract.js não ficou disponível após o carregamento.')); return; }
+        resolve(window.Tesseract);
+      };
+      s.onerror = function () { reject(new Error('Não foi possível carregar Tesseract.js pela CDN.')); };
+      document.head.appendChild(s);
+    });
+    return _tesseractLoading;
+  }
+
+  function _ctaIsImage(file) {
+    return !!file && (/^image\/(jpeg|png|webp)$/i.test(file.type || '') || /\.(jpe?g|png|webp)$/i.test(file.name || ''));
+  }
+
+  function _setOcrStatus(msg, tipo) {
+    var el = document.getElementById('eCtaOcrStatus');
+    if (!el) return;
+    var cor = tipo === 'erro' ? '#f87171' : (tipo === 'ok' ? '#34d399' : '#94a3b8');
+    el.style.display = msg ? 'block' : 'none';
+    el.style.color = cor;
+    el.innerHTML = msg || '';
+  }
+
+  function _normalizarTextoOCR(txt) {
+    return String(txt || '')
+      .replace(/\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[|]/g, ' ')
+      .trim();
+  }
+
+  async function _lerImagemPorOCR(imageSource, origem) {
+    _setOcrStatus('Executando OCR, isso pode levar alguns segundos...', 'aviso');
+    var Tesseract = await _loadTesseract();
+    var result = await Tesseract.recognize(imageSource, 'por+eng', {
+      logger: function (m) {
+        if (!m || m.status !== 'recognizing text' || !m.progress) return;
+        _setOcrStatus('Executando OCR... ' + Math.round(m.progress * 100) + '%', 'aviso');
+      }
+    });
+    var texto = result && result.data && result.data.text ? result.data.text : '';
+    texto = _normalizarTextoOCR(texto);
+    if (!texto || texto.replace(/\s+/g, '').length < 40) {
+      throw new Error('OCR sem resultado útil em ' + (origem || 'imagem'));
+    }
+    return texto;
+  }
+
+  // Heurística por palavras-chave (regex com limites de palavra p/ evitar falsos positivos).
+  var _CARGO_RE = /\b(engenheir[oa]|analista|gerente|coordenador[a]?|diretor[a]?|supervisor[a]?|t[ée]cnic[oa]|assistente|consultor[a]?|especialista|manager|engineer|ceo|cto|cfo)\b/i;
+  var _EMP_RE   = /\b(ltda|s\.?\/?a|me|eireli|inc|corp|group|grupo|solu[çc][õo]es|servi[çc]os|ind[úu]stria|com[ée]rcio)\b/i;
+  var _DEPT_RE  = /\b(engenharia|manuten[çc][ãa]o|produ[çc][ãa]o|compras|ti|rh|financeiro|comercial|opera[çc][õo]es|log[íi]stica|qualidade)\b/i;
+
+  function _linhasContato(txt) {
+    return String(txt || '').split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
+  }
+
+  function _extrairDadosContato(texto) {
+    var lines = _linhasContato(texto);
+    var reEmail    = /[\w.+-]+@[\w-]+\.[a-z]{2,}/i;
+    var reTelG     = /\(?\d{2}\)?\s?\d{4,5}-?\d{4}/g;   // global: pega todos os números
+    var reTelLine  = /\(?\d{2}\)?\s?\d{4,5}-?\d{4}/;    // não-global: teste por linha
+    var reLinkedin = /linkedin\.com\/in\/[\w-]+/i;
+    var reLinkLike = /@|https?:|www\.|\.com/i;
+
+    var email    = (texto.match(reEmail) || [''])[0];
+    var linkedin = (texto.match(reLinkedin) || [''])[0];
+    var tels     = texto.match(reTelG) || [];
+    var telefone = tels[0] || '';
+    var whatsapp = tels[1] || '';
+
+    var nome = '', cargo = '', empresa = '', departamento = '';
+    var usadas = {};
+
+    // Cada linha entra em no máximo uma categoria (prioridade: cargo > empresa > departamento).
+    for (var i = 0; i < lines.length; i++) {
+      if (usadas[i]) continue;
+      if (!cargo && _CARGO_RE.test(lines[i]))        { cargo = lines[i];        usadas[i] = true; continue; }
+      if (!empresa && _EMP_RE.test(lines[i]))        { empresa = lines[i];      usadas[i] = true; continue; }
+      if (!departamento && _DEPT_RE.test(lines[i]))  { departamento = lines[i]; usadas[i] = true; continue; }
+    }
+
+    // Nome: 1ª linha "limpa" (sem e-mail/url/telefone), 3–50 chars, com >= 2 palavras.
+    for (var j = 0; j < lines.length; j++) {
+      if (usadas[j]) continue;
+      var l = lines[j];
+      if (reLinkLike.test(l) || reTelLine.test(l)) continue;
+      if (l.length < 3 || l.length > 50) continue;
+      if (l.split(/\s+/).length < 2) continue;
+      nome = l; usadas[j] = true; break;
+    }
+
+    // Empresa (fallback): última linha não usada que não seja e-mail/url/telefone.
+    if (!empresa) {
+      for (var k = lines.length - 1; k >= 0; k--) {
+        if (usadas[k]) continue;
+        var lk = lines[k];
+        if (reLinkLike.test(lk) || reTelLine.test(lk)) continue;
+        if (lk.length < 3) continue;
+        empresa = lk; break;
+      }
+    }
+
+    return {
+      nome: nome, cargo: cargo, departamento: departamento,
+      empresa: empresa, email: email, telefone: telefone,
+      whatsapp: whatsapp, linkedin: linkedin
+    };
+  }
+
+  // Preenche apenas campos VAZIOS — nunca sobrescreve o que o usuário já digitou.
+  function _aplicarContatoAoForm(d) {
+    var mapa = [
+      { id: 'eCtaNome',     val: d.nome,         label: 'Nome' },
+      { id: 'eCtaCargo',    val: d.cargo,        label: 'Cargo' },
+      { id: 'eCtaDept',     val: d.departamento, label: 'Departamento' },
+      { id: 'eCtaEmail',    val: d.email,        label: 'E-mail' },
+      { id: 'eCtaTelefone', val: d.telefone,     label: 'Telefone' },
+      { id: 'eCtaWhatsapp', val: d.whatsapp,     label: 'WhatsApp' },
+      { id: 'eCtaLinkedin', val: d.linkedin,     label: 'LinkedIn' }
+    ];
+    var preenchidos = [], emBranco = [];
+    mapa.forEach(function (f) {
+      var el = document.getElementById(f.id);
+      if (!el) return;
+      var jaTem  = String(el.value || '').trim() !== '';
+      var temDado = String(f.val || '').trim() !== '';
+      if (jaTem) return;                       // não sobrescreve
+      if (temDado) { el.value = f.val; preenchidos.push(f.label); }
+      else { emBranco.push(f.label); }
+    });
+    var msg = '';
+    if (preenchidos.length) msg += '✅ Preenchido(s): ' + preenchidos.join(', ') + '. ';
+    if (emBranco.length)    msg += '✏️ Revise/complete: ' + emBranco.join(', ') + '.';
+    if (!preenchidos.length && !emBranco.length) msg = 'Nenhum campo alterado (já estavam preenchidos).';
+    _setOcrStatus(msg, preenchidos.length ? 'ok' : 'aviso');
+  }
+
+  window._ctaSelecionarImagem = function () {
+    var input = document.getElementById('eCtaImgFile');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  // Núcleo: processa um File vindo de input file, colar (Ctrl+V) ou arrastar.
+  async function _ctaProcessarArquivo(file) {
+    if (!file) return;
+    if (!_ctaIsImage(file)) { _setOcrStatus('Selecione uma imagem JPG, PNG ou WebP.', 'erro'); return; }
+    if (file.size > 12 * 1024 * 1024) { _setOcrStatus('Imagem muito grande (limite 12 MB).', 'erro'); return; }
+    try {
+      _setOcrStatus('Lendo imagem...', 'aviso');
+      var texto = await _lerImagemPorOCR(file, file.name || 'imagem');
+      var dados = _extrairDadosContato(texto);
+      _aplicarContatoAoForm(dados);
+    } catch (e) {
+      console.error('[ImportarContato OCR] erro:', e);
+      _setOcrStatus('Não foi possível ler a imagem. Tente uma foto mais nítida ou preencha manualmente.', 'erro');
+    }
+  }
+
+  window._ctaProcessarImagem = function (input) {
+    var file = input && input.files && input.files[0];
+    _ctaProcessarArquivo(file);
+  };
+
+  // ── Colar (Ctrl+V) e arrastar imagem ─────────────────────────
+  // Listener de paste no document, ativo só enquanto o modal está aberto.
+  function _ctaPasteHandler(ev) {
+    var modal = document.getElementById('m-editar-contato');
+    if (!modal || modal.style.display === 'none') return;
+    var items = (ev.clipboardData && ev.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i] && /^image\//i.test(items[i].type || '')) {
+        var file = items[i].getAsFile();
+        if (file) { ev.preventDefault(); _ctaProcessarArquivo(file); return; }
+      }
+    }
+  }
+  function _ctaAtivarPaste() {
+    document.removeEventListener('paste', _ctaPasteHandler); // evita duplicar
+    document.addEventListener('paste', _ctaPasteHandler);
+  }
+  function _ctaDesativarPaste() {
+    document.removeEventListener('paste', _ctaPasteHandler);
+  }
+  // Liga drag&drop + clique na drop zone (uma única vez, na criação do modal).
+  function _ctaWireDropZone() {
+    var dz = document.getElementById('eCtaDropZone');
+    if (!dz || dz._wired) return;
+    dz._wired = true;
+    function hl(on) {
+      dz.style.background = on ? '#15233b' : '#0f172a';
+      dz.style.borderColor = on ? '#38bdf8' : '#334155';
+    }
+    dz.addEventListener('click', function () { window._ctaSelecionarImagem(); });
+    dz.addEventListener('dragover', function (e) { e.preventDefault(); hl(true); });
+    dz.addEventListener('dragleave', function (e) { e.preventDefault(); hl(false); });
+    dz.addEventListener('drop', function (e) {
+      e.preventDefault(); hl(false);
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      if (!String(file.type || '').startsWith('image/')) { _setOcrStatus('Arraste um arquivo de imagem.', 'erro'); return; }
+      _ctaProcessarArquivo(file);
+    });
+  }
+
+
   // ── Criar modal lazily ───────────────────────────────────────
   function _ensureModal() {
     if (document.getElementById('m-editar-contato')) return;
@@ -120,6 +341,13 @@
       + '<option value="true">Ativo</option>'
       + '<option value="false">Inativo</option>'
       + '</select></div>')
+      + '<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">'
+      + '<button type="button" onclick="_ctaSelecionarImagem()" title="Extrair dados de uma foto de cartão de visita ou assinatura de e-mail" style="' + S_BTN_MUTED + '">📷 Selecionar arquivo</button>'
+      + '<input id="eCtaImgFile" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display:none" onchange="_ctaProcessarImagem(this)">'
+      + '<span style="font-size:.66rem;color:#64748b">OCR local · revise os campos antes de salvar</span>'
+      + '</div>'
+      + '<div id="eCtaDropZone" title="Clique, arraste uma imagem ou cole com Ctrl+V" style="cursor:pointer;border:1px dashed #334155;background:#0f172a;border-radius:8px;padding:.7rem;text-align:center;font-size:.74rem;color:#94a3b8;transition:background .15s,border-color .15s">📋 Arraste uma imagem ou cole com Ctrl+V</div>'
+      + '<div id="eCtaOcrStatus" style="display:none;font-size:.72rem;margin-top:.1rem"></div>'
       + '</section>'
 
       // Comunicação
@@ -202,6 +430,7 @@
     var tmp = document.createElement('div');
     tmp.innerHTML = html;
     document.body.appendChild(tmp.firstElementChild);
+    _ctaWireDropZone();
   }
 
   window._eeCtaFocarEmpresa = function () {
@@ -355,6 +584,9 @@
     var dd = document.getElementById('eCtaEmpresaDD');
     if (dd) dd.style.display = 'none';
 
+    _setOcrStatus('');      // limpa status de OCR de uma abertura anterior
+    _ctaAtivarPaste();      // habilita colar imagem (Ctrl+V) enquanto o modal está aberto
+
     var m = document.getElementById('m-editar-contato');
     if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
   };
@@ -385,12 +617,16 @@
     var dd = document.getElementById('eCtaEmpresaDD');
     if (dd) dd.style.display = 'none';
 
+    _setOcrStatus('');      // limpa status de OCR de uma abertura anterior
+    _ctaAtivarPaste();      // habilita colar imagem (Ctrl+V) enquanto o modal está aberto
+
     var m = document.getElementById('m-editar-contato');
     if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
   };
 
   // ── Fechar modal ─────────────────────────────────────────────
   window._fecharModalContato2 = function () {
+    _ctaDesativarPaste();   // remove o listener de paste para não vazar
     var m = document.getElementById('m-editar-contato');
     if (m) m.style.display = 'none';
     _cst.contatoId        = null;
