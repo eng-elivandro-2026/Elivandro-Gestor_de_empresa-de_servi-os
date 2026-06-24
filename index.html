@@ -806,6 +806,17 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 .es-drag:active,.esb-drag:active{cursor:grabbing}
 .es-ghost,.esb-ghost{opacity:.4}
 .es-drag-chosen{box-shadow:0 0 0 2px var(--accent) inset}
+/* Painel lateral do Banco de Escopos (Etapa 3) */
+#s3.on{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
+#s3 > .card{min-width:0}
+#s3 > .snav{grid-column:1 / -1}
+#bancoEscoposInline{position:sticky;top:70px;max-height:calc(100vh - 90px);overflow-y:auto;border-radius:10px;border:1px solid var(--border)}
+#bancoEscoposInline > .card{margin-bottom:0;border:none;background:var(--bg2)}
+#bancoEscoposInline .ch{position:sticky;top:0;background:var(--bg2);z-index:2;padding-bottom:.5rem;margin-bottom:.6rem}
+@media(max-width:900px){
+  #s3.on{grid-template-columns:1fr}
+  #bancoEscoposInline{position:static;max-height:none}
+}
 </style>
 </head>
 
@@ -1755,7 +1766,6 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
           <button class="btn bg bsm" onclick="addGanttSec()" title="Inserir seção de cronograma Gantt">📅 Gantt</button>
           <button class="btn bg bsm" onclick="tplPropAbrir()" title="Adicionar conjuntos de blocos (templates) diretamente nesta proposta">🧩 Templates de Proposta</button>
           <button class="btn bg bsm" onclick="tplPropSalvarComoAbrir()" title="Salvar os blocos atuais da Etapa 3 como um novo template reutilizável">💾 Salvar como Template</button>
-          <button class="btn bg bsm" onclick="toggleBancoEscoposInline()" id="btnBancoEscoposInline">🗂️ Banco de Escopos</button>
           <button class="btn bg bsm" onclick="escOrganizarPorSecoes()" title="Reordena os blocos na ordem padrão de seções da proposta (pede confirmação)">🧷 Organizar por seções</button>
           <button class="btn ba bsm" onclick="recarregarEscopo()" title="Recarrega as seções salvas desta proposta">🔄 Recarregar Escopo</button>
         </div>
@@ -1764,26 +1774,31 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       <div id="escList"></div>
     </div>
 
-    <!-- BANCO DE ESCOPOS INLINE na Etapa 3 -->
-    <div id="bancoEscoposInline" style="display:none">
-      <div class="card" style="border-color:var(--accent)">
+    <!-- BANCO DE ESCOPOS INLINE na Etapa 3 (painel lateral direito) -->
+    <div id="bancoEscoposInline">
+      <div class="card">
         <div class="ch">
           <span class="ct">🗂️ Banco de Escopos</span>
           <div class="br">
             <button class="btn bs bsm" onclick="beInlineAdicionar()">✅ Adicionar Selecionados</button>
-            <button class="btn bg bsm" onclick="toggleBancoEscoposInline()">✕ Fechar</button>
           </div>
         </div>
         <div style="display:flex;gap:.5rem;margin-bottom:.7rem;flex-wrap:wrap">
-          <input type="text" id="beInlineBusca" placeholder="🔍 Buscar escopos..." oninput="beInlineRender()" style="flex:1;min-width:160px;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit">
-          <select id="beInlineFiltroGrupo" onchange="beInlineRender()" style="padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:160px">
+          <input type="text" id="beInlineBusca" placeholder="🔍 Buscar escopos..." oninput="beInlineRender()" style="flex:1;min-width:140px;padding:.42rem .7rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:.82rem;font-family:inherit">
+          <select id="beInlineFiltroGrupo" onchange="beInlineRender()" style="flex:1;padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:140px">
             <option value="">— Todos os grupos —</option>
+          </select>
+          <select id="beInlineFiltroFamilia" onchange="beInlineRender()" style="flex:1;padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:140px">
+            <option value="">— Todas as famílias —</option>
+          </select>
+          <select id="beInlineFiltroTipo" onchange="beInlineRender()" style="flex:1;padding:.38rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.8rem;min-width:140px">
+            <option value="">— Todos os tipos —</option>
           </select>
         </div>
         <div id="beInlineContador" style="font-size:.74rem;color:var(--accent);font-weight:600;margin-bottom:.5rem;display:none">
           ✔ <span id="beInlineNumSel">0</span> escopo(s) selecionado(s)
         </div>
-        <div id="beInlineLista" style="max-height:380px;overflow-y:auto;padding-right:2px"></div>
+        <div id="beInlineLista" style="padding-right:2px"></div>
         <div style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border);display:flex;gap:.4rem;flex-wrap:wrap">
           <button class="btn bs" onclick="beInlineAdicionar()">✅ Adicionar Selecionados</button>
           <button class="btn bg bsm" onclick="beInlineMarcarTodos()">☑ Marcar todos</button>
@@ -10136,7 +10151,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=9"></script>
+<script src="js/core/app-core.js?v=11"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
