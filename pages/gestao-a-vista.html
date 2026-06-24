@@ -170,7 +170,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   @page{ size:A4 landscape; margin:10mm }
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
   html,body{ background:#fff !important; color:#111 !important; height:auto !important }
-  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg,#kpis-painel{ display:none !important }
+  .hdr,.lista,.abas,.det-acoes,.btn,.modal-bg,#kpis-painel,#funil-painel{ display:none !important }
   .cols{ display:block !important }
   .det{ border:none !important; padding:0 !important; min-height:0 !important; width:100% !important }
   .estado,.vazio{ color:#444 !important }
@@ -224,15 +224,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .tbl textarea.rad-act{ background:#fff !important; color:#111 !important; border:1px solid #ccc !important }
   .rad-legenda{ color:#333 !important }
 
-  /* ── Gráfico: fora da impressão das abas de meta ── */
-  #fechmes-painel{ display:none !important }
-  /* Modo "imprimir só o gráfico" */
-  body.imprimir-chart .hdr,
-  body.imprimir-chart #kpis-painel,
-  body.imprimir-chart .cols{ display:none !important }
-  body.imprimir-chart #fechmes-painel{ display:block !important; background:#fff !important; border:none !important }
-  body.imprimir-chart #fechmes-body{ display:block !important }
-  body.imprimir-chart .fm-head{ display:none !important }
+  /* ── Isolamento de impressão: imprime APENAS o bloco marcado (.print-only) ── */
+  /* Esconde os irmãos ao longo da cadeia de ancestrais (preserva o layout interno do bloco). */
+  body.print-isolado .print-anc > *{ display:none !important; }
+  body.print-isolado .print-anc{ display:block !important; }
+  body.print-isolado .print-only{ display:block !important; }
+  body.print-isolado #print-cab, body.print-isolado #print-rod{ display:block !important; }
+  /* Dentro do bloco impresso, oculta controles que não devem sair no papel */
+  body.print-isolado .print-only .abas,
+  body.print-isolado .print-only .det-acoes,
+  body.print-isolado .print-only .fm-head,
+  body.print-isolado .print-only .btn{ display:none !important; }
+  /* Estilo das KPIs do gráfico na impressão */
   #fechmes-kpis .kpi-c{ background:#fff !important; border:1px solid #ccc !important }
   #fechmes-kpis .kpi-c-v{ color:#111 !important }
 }
@@ -380,6 +383,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="modal" style="max-width:720px">
     <div class="modal-head"><div class="modal-titulo">🔻 Propostas da fase</div><button class="btn btn-ghost btn-sm" onclick="_fecharFunilListaGV()">✕</button></div>
     <div id="funil-lista-body"></div>
+  </div>
+</div>
+
+<!-- Modal: configurações de impressão -->
+<div class="modal-bg" id="modal-print">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><div class="modal-titulo">🖨️ Configurações de impressão</div><button class="btn btn-ghost btn-sm" onclick="_cancelarImpressao()">✕</button></div>
+    <div class="fgrid">
+      <div class="fld"><label>Orientação</label><select id="printOrient"><option value="landscape" selected>Paisagem</option><option value="portrait">Retrato</option></select></div>
+      <div class="fld"><label>Tamanho do papel</label><select id="printSize"><option value="A4" selected>A4</option><option value="A3">A3</option></select></div>
+      <div class="fld full"><label style="display:flex;align-items:center;gap:.45rem;text-transform:none;letter-spacing:0;font-size:.84rem;color:var(--text);cursor:pointer"><input type="checkbox" id="printFit" style="width:auto;margin:0"> Ajustar para caber na página</label></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="_cancelarImpressao()">Cancelar</button>
+      <button class="btn btn-emp" onclick="_confirmarImpressao()">Imprimir</button>
+    </div>
   </div>
 </div>
 
@@ -676,9 +695,13 @@ function imprimirChart(){
   }
   if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
   document.body.classList.add('imprimir-chart');
-  window.print();
+  abrirModalImpressao(function(){ _marcarPrintOnly(document.getElementById('fechmes-painel')); window.print(); });
 }
-window.addEventListener('afterprint', function(){ document.body.classList.remove('imprimir-chart'); });
+window.addEventListener('afterprint', function(){
+  document.body.classList.remove('imprimir-chart');
+  _limparPrintOnly();
+  var st=document.getElementById('print-opts'); if(st) st.remove();
+});
 
 // ── Progresso e status ──
 function _progresso(m){
@@ -1152,6 +1175,73 @@ async function salvarAnotacaoRadar(id, val){
 function abrirModal(id){ document.getElementById(id).classList.add('on'); }
 function fecharModal(id){ document.getElementById(id).classList.remove('on'); }
 
+// ── Configurações de impressão (modal antes do window.print) ──
+var _printCb = null;
+function abrirModalImpressao(callback){
+  _printCb = (typeof callback==='function') ? callback : null;
+  abrirModal('modal-print');
+}
+// Marca o bloco a imprimir (.print-only) e a cadeia de ancestrais (.print-anc) até o body.
+function _marcarPrintOnly(el){
+  _limparPrintOnly();
+  if(!el) return;
+  document.body.classList.add('print-isolado');
+  el.classList.add('print-only');
+  var n=el.parentElement;
+  while(n && n!==document.body){ n.classList.add('print-anc'); n=n.parentElement; }
+}
+function _limparPrintOnly(){
+  document.body.classList.remove('print-isolado');
+  Array.prototype.forEach.call(document.querySelectorAll('.print-only,.print-anc'), function(x){
+    x.classList.remove('print-only'); x.classList.remove('print-anc');
+  });
+}
+function _cancelarImpressao(){
+  _printCb = null;
+  document.body.classList.remove('imprimir-chart'); // desfaz modo gráfico se foi pré-marcado
+  _limparPrintOnly();
+  fecharModal('modal-print');
+}
+// Calcula um fator de escala para tentar caber o bloco impresso em 1 página.
+function _calcFitScale(size, orient){
+  try{
+    var MM=3.7795; // mm → px @96dpi
+    var dims=({A4:[210,297],A3:[297,420]})[size]||[210,297];
+    var wmm=(orient==='landscape')?dims[1]:dims[0];
+    var hmm=(orient==='landscape')?dims[0]:dims[1];
+    var usableW=(wmm-20)*MM, usableH=(hmm-20)*MM; // margens 10mm cada lado
+    var el = document.body.classList.contains('imprimir-chart')
+      ? document.getElementById('fechmes-painel')
+      : document.getElementById('detalhe');
+    if(!el) return 1;
+    var w=el.scrollWidth||el.offsetWidth||0, h=el.scrollHeight||el.offsetHeight||0;
+    if(!w||!h) return 1;
+    var sc=Math.min(1, usableW/w, usableH/h);
+    return (sc>0 && sc<1) ? sc : 1;
+  }catch(e){ return 1; }
+}
+function _confirmarImpressao(){
+  var orient=((document.getElementById('printOrient')||{}).value)||'landscape';
+  var size  =((document.getElementById('printSize')||{}).value)||'A4';
+  var fit   = !!(document.getElementById('printFit')||{}).checked;
+  // remove estilo de uma impressão anterior
+  var old=document.getElementById('print-opts'); if(old) old.remove();
+  var css='@page{ size:'+size+' '+orient+'; margin:10mm; }';
+  if(fit){
+    var sc=_calcFitScale(size, orient);
+    if(sc<1) css+='@media print{ body{ transform:scale('+sc.toFixed(3)+'); transform-origin:top left; } }';
+  }
+  var st=document.createElement('style'); st.id='print-opts'; st.textContent=css;
+  document.head.appendChild(st);
+  fecharModal('modal-print');
+  var cb=_printCb; _printCb=null;
+  setTimeout(function(){
+    if(typeof cb==='function') cb();
+    // fallback de limpeza caso afterprint não dispare (ex.: impressão cancelada)
+    setTimeout(function(){ var s=document.getElementById('print-opts'); if(s) s.remove(); document.body.classList.remove('imprimir-chart'); _limparPrintOnly(); }, 2000);
+  }, 60);
+}
+
 // ── Impressão (PDF via browser) ──
 function imprimir(){
   var m=_metaSel();
@@ -1164,7 +1254,7 @@ function imprimir(){
       (m?'<div class="pc-meta"><b>Meta '+_numMeta(m)+' — '+esc(m.titulo)+'</b> · Responsável: '+esc(m.responsavel_nome||'—')+' · Período: '+_dataBR(m.data_inicio)+' a '+_dataBR(m.data_prazo)+'</div>':'');
   }
   if(rod) rod.textContent='Tecfusion © 2026 — Gestão à Vista';
-  window.print();
+  abrirModalImpressao(function(){ _marcarPrintOnly(document.getElementById('detalhe')); window.print(); });
 }
 
 // ── postMessage ──
