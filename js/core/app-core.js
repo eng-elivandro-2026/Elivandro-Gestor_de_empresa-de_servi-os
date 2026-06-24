@@ -3823,6 +3823,7 @@ function rEsc(){
   var el=Q('escList');
   if(!escSecs.length){
     el.innerHTML='<div class="emp"><div class="emp-i">🔧</div><p>Clique em "+ Nova Seção" para começar.</p></div>';
+    escInitSortable();
     return;
   }
   // Migra seções antigas: marca hasGantt pelo título para que editar o título não apague o gantt
@@ -3839,6 +3840,7 @@ function rEsc(){
     return _hdr
       +'<div class="es" data-sid="'+sec.id+'" data-si="'+si+'">'
       +'<div class="es-hd">'
+      +'<span class="es-drag" title="Arraste para reordenar a seção" style="font-size:1rem;padding:0 .15rem;align-self:center">⠿</span>'
       +'<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-right:3px">'
       +'<button class="btn bg bxs es-up" data-si="'+si+'" title="Mover para cima" style="padding:.1rem .3rem;line-height:1;opacity:'+(isFirst?'0.2':'1')+'" '+(isFirst?'disabled':'')+'>▲</button>'
       +'<button class="btn bg bxs es-dn" data-si="'+si+'" title="Mover para baixo" style="padding:.1rem .3rem;line-height:1;opacity:'+(isLast?'0.2':'1')+'" '+(isLast?'disabled':'')+'>▼</button>'
@@ -3873,6 +3875,7 @@ function rEsc(){
         var subFirst=subi===0,subLast=subi===totSubs-1;
         return '<div class="esb" style="margin-top:.45rem" data-subi="'+subi+'" data-si="'+si+'">'
           +'<div style="display:flex;align-items:center;gap:.3rem">'
+          +'<span class="esb-drag" title="Arraste para reordenar o item" style="font-size:.9rem">⠿</span>'
           +'<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">'
           +'<button class="btn bg bxs es-subup" data-si="'+si+'" data-subi="'+subi+'" title="Mover item para cima" style="padding:.1rem .28rem;line-height:1;opacity:'+(subFirst?'0.2':'1')+'" '+(subFirst?'disabled':'')+'>▲</button>'
           +'<button class="btn bg bxs es-subdn" data-si="'+si+'" data-subi="'+subi+'" title="Mover item para baixo" style="padding:.1rem .28rem;line-height:1;opacity:'+(subLast?'0.2':'1')+'" '+(subLast?'disabled':'')+'>▼</button>'
@@ -3891,6 +3894,7 @@ function rEsc(){
   }).join('');
 
   setTimeout(autoResizeAll, 0);
+  escInitSortable();
 
   el.onclick=function(e){
     var btn=e.target.closest('button');if(!btn)return;
@@ -3933,6 +3937,53 @@ function rEsc(){
       rEsc();toast('🗑 Item "'+nome2+'" removido');
     }
   };
+}
+
+// ── Drag-and-drop do escopo (SortableJS) — coexiste com os botões de seta ──
+// _escDragSi (linha ~3405) era código morto; mantido por compatibilidade.
+var _escSortables = [];
+function escInitSortable(){
+  if(typeof Sortable === 'undefined') return;     // CDN ainda não carregou: degrada p/ setas
+  var el = Q('escList'); if(!el) return;
+  // O rEsc() reconstrói o innerHTML a cada render → destrói instâncias antigas antes de recriar.
+  _escSortables.forEach(function(s){ try{ s.destroy(); }catch(e){} });
+  _escSortables = [];
+
+  // (1) Seções: arrasta os cards .es. draggableIndex ignora os cabeçalhos .es-grupo,
+  //     batendo exatamente com o índice em escSecs.
+  _escSortables.push(new Sortable(el, {
+    draggable: '.es', handle: '.es-drag', animation: 150,
+    ghostClass: 'es-ghost', chosenClass: 'es-drag-chosen',
+    onEnd: function(evt){
+      var from = evt.oldDraggableIndex, to = evt.newDraggableIndex;
+      if(from==null || to==null || from===to){ return; }
+      var sec = escSecs.splice(from, 1)[0];
+      escSecs.splice(to, 0, sec);
+      rEsc();                                       // renumera e re-renderiza (reinicia o Sortable)
+      if(typeof toast==='function') toast('Seção reordenada');
+    }
+  }));
+
+  // (2) Subitens: um Sortable por seção. Arrasta .esb dentro do próprio .es.
+  el.querySelectorAll('.es').forEach(function(secEl){
+    var si = parseInt(secEl.getAttribute('data-si'), 10);
+    if(isNaN(si) || !escSecs[si] || isValorSec(escSecs[si])) return;
+    _escSortables.push(new Sortable(secEl, {
+      draggable: '.esb', handle: '.esb-drag', animation: 150,
+      group: 'sub-' + si,                           // isola: subitem não cruza de seção
+      ghostClass: 'esb-ghost',
+      onEnd: function(evt){
+        var from = evt.oldDraggableIndex, to = evt.newDraggableIndex;
+        if(from==null || to==null || from===to){ return; }
+        var subs = escSecs[si] && escSecs[si].subs;
+        if(!subs || from>=subs.length || to>=subs.length){ rEsc(); return; }
+        var sub = subs.splice(from, 1)[0];
+        subs.splice(to, 0, sub);
+        rEsc();
+        if(typeof toast==='function') toast('Item reordenado');
+      }
+    }));
+  });
 }
 
 function impEscDB(){
