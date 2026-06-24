@@ -800,6 +800,12 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
   box-shadow:0 3px 8px rgba(0,0,0,.22);
   margin-bottom:.85rem;
 }
+/* Drag-and-drop do escopo (Etapa 3) — SortableJS */
+.es-drag,.esb-drag{cursor:grab;user-select:none;color:var(--text3);line-height:1;flex-shrink:0}
+.es-drag:hover,.esb-drag:hover{color:var(--accent)}
+.es-drag:active,.esb-drag:active{cursor:grabbing}
+.es-ghost,.esb-ghost{opacity:.4}
+.es-drag-chosen{box-shadow:0 0 0 2px var(--accent) inset}
 </style>
 </head>
 
@@ -10122,6 +10128,7 @@ function rExecTimeline(){
 <!-- SCRIPTS EXTERNOS -->
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script src="js/config/supabase.js"></script>
 <script src="js/config/supabase-sync.js?v=1"></script>
 <script src="js/config/supabase-obras.js?v=2"></script>
@@ -10129,7 +10136,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=6"></script>
+<script src="js/core/app-core.js?v=7"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
