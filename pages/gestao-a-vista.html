@@ -324,7 +324,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld full"><label>T — Temporal</label><textarea id="m-temporal"></textarea></div>
     </div>
     <div class="modal-acoes">
-      <button class="btn btn-ghost" onclick="fecharModal('modal-meta')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="fecharModal('modal-meta')">Fechar</button>
       <button class="btn btn-emp" id="btn-salvar-meta" onclick="salvarMeta()">Salvar</button>
     </div>
   </div>
@@ -346,7 +346,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld"><label>Status</label><select id="a-status"><option value="pendente">Pendente</option><option value="em_andamento">Em andamento</option><option value="concluida">Concluída</option></select></div>
     </div>
     <div class="modal-acoes">
-      <button class="btn btn-ghost" onclick="fecharModal('modal-acao')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="fecharModal('modal-acao')">Fechar</button>
       <button class="btn btn-emp" id="btn-salvar-acao" onclick="salvarAcao()">Salvar</button>
     </div>
   </div>
@@ -364,7 +364,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
     </div>
     <div class="modal-acoes">
-      <button class="btn btn-ghost" onclick="fecharModal('modal-radar')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="fecharModal('modal-radar')">Fechar</button>
       <button class="btn btn-emp" id="btn-salvar-radar" onclick="salvarRadar()">Salvar</button>
     </div>
   </div>
@@ -799,7 +799,7 @@ function renderLista(){
 }
 
 function selecionarMeta(id){
-  _metaSelId=id; _aba='smart';
+  if(id !== _metaSelId) _aba='smart'; _metaSelId=id; // reseta a aba só ao trocar de meta
   // Lê do cache em memória (carga única feita em carregarTudo) — sem rede
   _acoes=_cacheAcoes[id]||[];
   _pdca =_cachePdca[id]||null;
@@ -922,7 +922,7 @@ function _renderPdca(m){
       fld('pd-check-obs','Tempo médio',p.check_observacoes)+
       fld('pd-check-at','Atingiu a meta?',p.check_atingiu))+
   '</div>';
-  if(!ro) h+='<div class="det-acoes" style="margin-top:1rem"><button class="btn btn-emp btn-sm" onclick="salvarPdca()">Salvar PDCA</button></div>';
+  if(!ro) h+='<div class="det-acoes" style="margin-top:1rem"><button class="btn btn-emp btn-sm" id="btn-salvar-pdca" onclick="salvarPdca()">Salvar PDCA</button></div>';
   return h;
 }
 
@@ -1039,8 +1039,10 @@ async function salvarMeta(){
   try{
     var r = id ? await sb.from('metas').update(payload).eq('id',id) : await sb.from('metas').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-meta'); await _recarregarMetas();
+    await _recarregarMetas();
     if(id){ selecionarMeta(id); }
+    _feedbackSalvo('btn-salvar-meta');
+    abrirModalMeta(null); // limpa os campos e mantém o modal aberto para adicionar outra
   }catch(e){ alert('Erro ao salvar meta: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -1072,7 +1074,9 @@ async function salvarAcao(){
     if(_editAcaoId){ r=await sb.from('meta_acoes').update(payload).eq('id',_editAcaoId); }
     else { payload.ordem=_acoes.length+1; r=await sb.from('meta_acoes').insert(payload); }
     if(r.error) throw r.error;
-    fecharModal('modal-acao'); await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId);
+    await _recarregarAcoes(_metaSelId); selecionarMeta(_metaSelId);
+    _feedbackSalvo('btn-salvar-acao');
+    abrirModalAcao(null); // limpa os campos e mantém o modal aberto
   }catch(e){ alert('Erro ao salvar ação: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -1098,7 +1102,7 @@ async function salvarPdca(){
   try{
     var r=await sb.from('meta_pdca').upsert(payload,{onConflict:'meta_id'});
     if(r.error) throw r.error;
-    _pdca=payload; _cachePdca[_metaSelId]=payload; alert('PDCA salvo.');
+    _pdca=payload; _cachePdca[_metaSelId]=payload; _feedbackSalvo('btn-salvar-pdca');
   }catch(e){ alert('Erro ao salvar PDCA: '+(e&&e.message||'')); }
 }
 
@@ -1150,7 +1154,9 @@ async function salvarRadar(){
   try{
     var r = _editRadarId ? await sb.from('meta_radar').update(payload).eq('id',_editRadarId) : await sb.from('meta_radar').insert(payload);
     if(r.error) throw r.error;
-    fecharModal('modal-radar'); await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId);
+    await _recarregarRadar(_metaSelId); selecionarMeta(_metaSelId);
+    _feedbackSalvo('btn-salvar-radar');
+    abrirModalRadar(null); // limpa os campos e mantém o modal aberto
   }catch(e){ alert('Erro ao salvar registro: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
@@ -1174,6 +1180,17 @@ async function salvarAnotacaoRadar(id, val){
 // ── Modais utils ──
 function abrirModal(id){ document.getElementById(id).classList.add('on'); }
 function fecharModal(id){ document.getElementById(id).classList.remove('on'); }
+// Feedback "✓ Salvo" transitório (2s) ao lado de um botão — não bloqueia (sem alert).
+function _feedbackSalvo(btnId){
+  var b=document.getElementById(btnId); if(!b||!b.parentElement) return;
+  var prev=b.parentElement.querySelector('.fb-salvo'); if(prev) prev.remove();
+  var s=document.createElement('span');
+  s.className='fb-salvo';
+  s.textContent='✓ Salvo';
+  s.style.cssText='align-self:center;color:#22c55e;font-weight:700;font-size:.82rem;margin-right:.4rem';
+  b.parentElement.insertBefore(s,b);
+  setTimeout(function(){ if(s.parentElement) s.remove(); },2000);
+}
 
 // ── Configurações de impressão (modal antes do window.print) ──
 var _printCb = null;
