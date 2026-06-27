@@ -1212,83 +1212,113 @@ function irParaPreviewProposta(){
 // Persistido na proposta como dim_html (HTML do editor) e dim_blocos
 // (array com o estado de cada bloco: tabela, canvas, checklist, divisor).
 // ============================================================
-var _dimQuill=null;
-var _dimNoQuill=false;
 var _dimPasteBound=false;
 var _dimSaveBound=false;
-var _dimPendingHtml=null, _dimPendingBlocos=null;
+var _dimBlocksMO=null;
+var _dimSortable=null;
+var _dimPendingBlocos=null;
 // Agenda o autosave da proposta (mesmo debounce usado pelo restante do formulário).
 function _dimTouch(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
 
 function dimInit(){
-  var elEd=Q('dimEditor'); if(!elEd) return;
-  if(!_dimQuill && !_dimNoQuill){
-    if(typeof Quill!=='undefined'){
-      _dimQuill=new Quill('#dimEditor',{
-        theme:'snow',
-        placeholder:'Memória de cálculo, premissas, fórmulas, observações do dimensionamento…',
-        modules:{ toolbar:'#dimToolbar' }
-      });
-    } else {
-      // Fallback (CDN indisponível): editor simples editável.
-      _dimNoQuill=true;
-      elEd.setAttribute('contenteditable','true');
-      elEd.style.minHeight='150px'; elEd.style.padding='.6rem'; elEd.style.outline='none';
-      var tb=Q('dimToolbar'); if(tb) tb.style.display='none';
-    }
-  }
+  var host=_dimBlocksEl(); if(!host) return;
   // Colar imagem (Ctrl+V) em qualquer ponto da Etapa 2 → cria um bloco de imagem.
   if(!_dimPasteBound){
     var s2=document.getElementById('s2dim');
     if(s2){ s2.addEventListener('paste', _dimHandlePaste, true); _dimPasteBound=true; }
   }
-  // Autosave: qualquer edição na Etapa 2 agenda o salvamento da proposta.
-  if(!_dimSaveBound){
-    // Texto do editor (Quill ou fallback) — o evento 'input' do contenteditable sobe até #dimEditor.
-    if(elEd) elEd.addEventListener('input', _dimTouch);
-    // Blocos: observa inserção/remoção, edição de texto e mudanças de estilo (tabela, checklist, imagem…).
-    var blocksEl=Q('dimBlocks');
-    if(blocksEl && typeof MutationObserver!=='undefined'){
-      _dimBlocksMO=new MutationObserver(_dimTouch);
-      _dimBlocksMO.observe(blocksEl, {childList:true, subtree:true, attributes:true, characterData:true});
-    }
+  // Autosave: observa qualquer edição dentro dos blocos (inserir/remover, texto, estilo).
+  if(!_dimSaveBound && typeof MutationObserver!=='undefined'){
+    _dimBlocksMO=new MutationObserver(_dimTouch);
+    _dimBlocksMO.observe(host, {childList:true, subtree:true, attributes:true, characterData:true});
     _dimSaveBound=true;
   }
-  if(_dimPendingHtml!=null || _dimPendingBlocos!=null) dimApplyPending();
+  // Reordenar blocos por drag-and-drop (SortableJS via CDN — já carregado no projeto).
+  if(!_dimSortable && typeof Sortable!=='undefined'){
+    _dimSortable=new Sortable(host, {
+      draggable:'.dim-block', handle:'.dim-block-drag', animation:150, ghostClass:'sortable-ghost',
+      onEnd:function(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
+    });
+  }
+  if(_dimPendingBlocos!=null) dimApplyPending();
+  // Garante ao menos um bloco de texto inicial.
+  if(host.children.length===0) dimAddText({});
 }
-var _dimBlocksMO=null;
-function _dimGetHtml(){ if(_dimQuill) return _dimQuill.root.innerHTML; var el=Q('dimEditor'); return el?el.innerHTML:''; }
-function _dimSetHtml(html){ if(_dimQuill){ _dimQuill.root.innerHTML=html||''; return; } var el=Q('dimEditor'); if(el) el.innerHTML=html||''; }
 function dimApplyPending(){
-  if(!Q('dimEditor')) return;
-  if(_dimPendingHtml!=null) _dimSetHtml(_dimPendingHtml);
+  var host=_dimBlocksEl(); if(!host) return;
   dimRebuildBlocks(_dimPendingBlocos||[]);
-  _dimPendingHtml=null; _dimPendingBlocos=null;
+  _dimPendingBlocos=null;
 }
-// Carrega (de editP/reset) o conteúdo da etapa. Aplica já se o editor existir; senão fica pendente.
+// Carrega (de editP/reset) os blocos. Compat: proposta antiga só tinha dim_html
+// (editor fixo) → vira um bloco de texto inicial.
 function dimLoad(html, blocos){
-  _dimPendingHtml=html||''; _dimPendingBlocos=blocos||[];
-  if(_dimQuill || _dimNoQuill){ dimApplyPending(); }
-  else { var host=_dimBlocksEl(); if(host) dimRebuildBlocks(_dimPendingBlocos); } // html aplica no dimInit; blocos já aparecem
+  var arr=(blocos&&blocos.length)?blocos.slice():[];
+  if(!arr.length && html && String(html).trim()){ arr=[{kind:'text', title:'', html:html}]; }
+  _dimPendingBlocos=arr;
+  if(_dimBlocksEl()) dimApplyPending();
 }
-// Estado atual para o snapshot da proposta.
+// Estado atual para o snapshot (tudo em dim_blocos; dim_html mantido vazio por compat).
 function dimSerialize(){
-  if(_dimQuill || _dimNoQuill) return { html:_dimGetHtml(), blocos:dimReadBlocks() };
-  return { html:(_dimPendingHtml||''), blocos:(dimReadBlocks().length?dimReadBlocks():(_dimPendingBlocos||[])) };
+  if(_dimBlocksEl()) return { html:'', blocos:dimReadBlocks() };
+  return { html:'', blocos:(_dimPendingBlocos||[]) };
 }
 
 function _dimBlocksEl(){ return Q('dimBlocks'); }
 // Wrapper padrão de um bloco (cabeçalho + botão fechar). Retorna {wrap, body}.
-function _dimWrap(kind, titulo){
+// Wrapper padrão do bloco: handle de arraste ⠿ + título editável + botão remover.
+// label = rótulo do tipo (vira placeholder do título); savedTitle = título salvo;
+// editable=false (divisor) usa rótulo estático em vez de input.
+function _dimWrap(kind, label, savedTitle, editable){
   var wrap=document.createElement('div'); wrap.className='dim-block'; wrap.setAttribute('data-bk', kind);
   var head=document.createElement('div'); head.className='dim-block-h';
-  var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=titulo||''; head.appendChild(t);
+  var grip=document.createElement('span'); grip.className='dim-block-drag'; grip.title='Arraste para reordenar'; grip.textContent='⠿';
+  head.appendChild(grip);
+  if(editable===false){
+    var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=label||''; head.appendChild(t);
+  } else {
+    var inp=document.createElement('input'); inp.type='text'; inp.className='dim-block-title';
+    inp.placeholder=label||'Título do bloco…'; inp.value=savedTitle||'';
+    inp.addEventListener('change', function(){ if(typeof _dimTouch==='function') _dimTouch(); });
+    head.appendChild(inp);
+  }
   var x=document.createElement('button'); x.type='button'; x.className='dim-x'; x.title='Remover bloco'; x.textContent='✕';
-  x.addEventListener('click', function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); });
+  x.addEventListener('click', function(){
+    if(kind==='text' && !confirm('Remover este bloco de texto? O conteúdo será perdido.')) return;
+    if(wrap.parentNode){ wrap.parentNode.removeChild(wrap); if(typeof _dimTouch==='function') _dimTouch(); }
+  });
   head.appendChild(x);
   var body=document.createElement('div'); body.className='dim-block-b';
   wrap.appendChild(head); wrap.appendChild(body);
   return {wrap:wrap, body:body};
+}
+// ── Bloco de texto (editor Quill próprio por bloco) ──
+function dimAddText(state){
+  var w=_dimWrap('text','📝 Texto', state&&state.title);
+  w.wrap.classList.add('dim-text-block');
+  var ed=document.createElement('div'); ed.className='dim-text-ed';
+  w.body.appendChild(ed);
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap);
+  var q=null;
+  if(typeof Quill!=='undefined'){
+    q=new Quill(ed,{ theme:'snow', placeholder:'Texto livre…',
+      modules:{ toolbar:[['bold','italic','underline','strike'],[{header:1},{header:2}],[{color:[]}],[{list:'ordered'},{list:'bullet'},{indent:'-1'},{indent:'+1'}]] } });
+    if(state&&state.html) q.root.innerHTML=state.html;
+    q.on('text-change', function(){ if(typeof _dimTouch==='function') _dimTouch(); });
+  } else {
+    // Fallback (CDN indisponível): contenteditable simples.
+    ed.setAttribute('contenteditable','true'); ed.classList.add('dim-text-fallback');
+    ed.style.minHeight='120px'; ed.style.padding='.5rem'; ed.style.outline='none';
+    if(state&&state.html) ed.innerHTML=state.html;
+    ed.addEventListener('input', function(){ if(typeof _dimTouch==='function') _dimTouch(); });
+  }
+  w.wrap._quill=q;
+  return w.wrap;
+}
+function _dimSerText(wrap){
+  var html='';
+  if(wrap._quill){ html=wrap._quill.root.innerHTML; }
+  else { var ed=wrap.querySelector('.dim-text-ed'); html=ed?ed.innerHTML:''; }
+  return { kind:'text', title:_dimBlockTitle(wrap), html:html };
 }
 
 // ── Tabelas (Excel e vazia) ──
@@ -1402,7 +1432,7 @@ function _dimMountTable(body, cols, rows){
 function dimAddTable(state){
   var cols=(state&&state.cols&&state.cols.length)?state.cols:((state&&state.headers&&state.headers.length)?state.headers:['Coluna 1','Coluna 2','Coluna 3','Coluna 4']);
   var rows=(state&&state.rows)?state.rows:[['','','',''],['','','',''],['','','','']];
-  var w=_dimWrap('table','▦ Tabela');
+  var w=_dimWrap('table','▦ Tabela', state&&state.title);
   _dimMountTable(w.body, cols, rows);
   var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
 }
@@ -1439,10 +1469,11 @@ function _dimTableState(table){
   var rows=[]; table.querySelectorAll('tbody tr').forEach(function(tr){ var r=[]; tr.querySelectorAll('td').forEach(function(td){ var o=sty(td); o.text=td.textContent||''; r.push(o); }); rows.push(r); });
   return { cols:cols, rows:rows };
 }
+function _dimBlockTitle(wrap){ var i=wrap.querySelector('.dim-block-title'); return i?(i.value||''):''; }
 function _dimSerTable(wrap){
   var table=wrap.querySelector('table.dim-tbl'); if(!table) return null;
   var st=_dimTableState(table);
-  return { kind:'table', cols:st.cols, rows:st.rows };
+  return { kind:'table', cols:st.cols, rows:st.rows, title:_dimBlockTitle(wrap) };
 }
 // Reconstrói thead/tbody a partir de um snapshot (mantém o mesmo elemento <table>).
 function _dimTableApplyState(table, state){
@@ -1532,7 +1563,7 @@ function _dimCanvasExport(canvas){
   }catch(e){ if(typeof toast==='function') toast('Não foi possível exportar o PNG.','erro'); }
 }
 function dimAddCanvas(state){
-  var w=_dimWrap('canvas','✏️ Área de desenho');
+  var w=_dimWrap('canvas','✏️ Área de desenho', state&&state.title);
   var BUF=2, BASEW=620;                                  // resolução interna alta = 2× a exibição
   var displayH=(state&&state.h)?Math.max(200,Math.min(800,parseInt(state.h,10)||220)):220;
   var zoom=100;
@@ -1616,12 +1647,12 @@ function _dimSerCanvas(wrap){
   var canvas=wrap.querySelector('canvas.dim-canvas'); if(!canvas) return null;
   var png=''; try{ png=canvas.toDataURL('image/png'); }catch(e){ png=''; }
   var h=parseInt(canvas.getAttribute('data-h'),10)||220;
-  return { kind:'canvas', png:png, h:h };
+  return { kind:'canvas', png:png, h:h, title:_dimBlockTitle(wrap) };
 }
 
 // ── Checklist ──
 function dimAddChecklist(state){
-  var w=_dimWrap('checklist','☑ Checklist');
+  var w=_dimWrap('checklist','☑ Checklist', state&&state.title);
   var list=document.createElement('div'); list.className='dim-chk-list';
   function addItem(texto, checked){
     var row=document.createElement('div'); row.className='dim-chk'+(checked?' done':'');
@@ -1645,12 +1676,12 @@ function _dimSerChecklist(wrap){
     var cb=row.querySelector('input[type=checkbox]'); var sp=row.querySelector('.dim-chk-t');
     items.push({ texto:(sp?sp.textContent:''), checked:!!(cb&&cb.checked) });
   });
-  return { kind:'checklist', items:items };
+  return { kind:'checklist', items:items, title:_dimBlockTitle(wrap) };
 }
 
 // ── Divisor ──
 function dimAddDivider(){
-  var w=_dimWrap('divider','— Divisor'); var hr=document.createElement('hr'); hr.className='dim-hr';
+  var w=_dimWrap('divider','— Divisor', null, false); var hr=document.createElement('hr'); hr.className='dim-hr';
   w.body.appendChild(hr); var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
 }
 
@@ -1678,7 +1709,7 @@ function _dimHandlePaste(ev){
 function dimAddImage(state){
   var src=(state&&state.src)||''; if(!src) return null;
   var wd=(state&&state.w!=null)?Math.max(50,Math.min(100,parseInt(state.w,10)||100)):100;
-  var w=_dimWrap('image','🖼️ Imagem');
+  var w=_dimWrap('image','🖼️ Imagem', state&&state.title);
   var box=document.createElement('div'); box.className='dim-img-block';
   var img=document.createElement('img'); img.src=src; img.style.width=wd+'%'; img.title='Clique para abrir em tamanho real';
   img.addEventListener('click', function(){ try{ var nw=window.open(); if(nw) nw.document.write('<img src="'+src+'" style="max-width:100%">'); }catch(e){} });
@@ -1697,14 +1728,15 @@ function _dimSerImage(wrap){
   var img=wrap.querySelector('.dim-img-block img'); if(!img) return null;
   var sl=wrap.querySelector('.dim-img-ctl input[type=range]');
   var cap=wrap.querySelector('.dim-img-cap');
-  return { kind:'image', src:img.getAttribute('src')||'', w:(sl?parseInt(sl.value,10)||100:100), label:(cap?cap.textContent||'':'') };
+  return { kind:'image', src:img.getAttribute('src')||'', w:(sl?parseInt(sl.value,10)||100:100), label:(cap?cap.textContent||'':''), title:_dimBlockTitle(wrap) };
 }
 
 function dimReadBlocks(){
   var out=[]; var host=_dimBlocksEl(); if(!host) return out;
   Array.prototype.forEach.call(host.children, function(wrap){
     var k=wrap.getAttribute('data-bk'); var ser=null;
-    if(k==='table') ser=_dimSerTable(wrap);
+    if(k==='text') ser=_dimSerText(wrap);
+    else if(k==='table') ser=_dimSerTable(wrap);
     else if(k==='canvas') ser=_dimSerCanvas(wrap);
     else if(k==='checklist') ser=_dimSerChecklist(wrap);
     else if(k==='image') ser=_dimSerImage(wrap);
@@ -1717,10 +1749,11 @@ function dimRebuildBlocks(blocos){
   var host=_dimBlocksEl(); if(!host) return; host.innerHTML='';
   (blocos||[]).forEach(function(b){
     if(!b||!b.kind) return;
-    if(b.kind==='table') dimAddTable(b);
-    else if(b.kind==='canvas') dimAddCanvas({png:b.png, h:b.h});
-    else if(b.kind==='checklist') dimAddChecklist({items:b.items});
-    else if(b.kind==='image') dimAddImage({src:b.src, w:b.w, label:b.label});
+    if(b.kind==='text') dimAddText({title:b.title, html:b.html});
+    else if(b.kind==='table') dimAddTable(b);
+    else if(b.kind==='canvas') dimAddCanvas({png:b.png, h:b.h, title:b.title});
+    else if(b.kind==='checklist') dimAddChecklist({items:b.items, title:b.title});
+    else if(b.kind==='image') dimAddImage({src:b.src, w:b.w, label:b.label, title:b.title});
     else if(b.kind==='divider') dimAddDivider();
   });
 }
