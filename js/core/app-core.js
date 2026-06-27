@@ -666,7 +666,7 @@ function _fluxoRenderTree(filtro){
 var __syncValorTimer=null;
 function refreshValorSecEscopo(){
   try{
-    if(typeof cStep==='undefined' || cStep!==3) return;
+    if(typeof cStep==='undefined' || cStep!==4) return;
     var root=Q('escList');
     if(!root) return;
     var cards=root.querySelectorAll('.es');
@@ -685,13 +685,13 @@ function syncValorDependentes(imediato){
     if(__syncValorTimer) clearTimeout(__syncValorTimer);
     var run=function(){
       try{
-        if(typeof cStep!=='undefined' && cStep===3){
+        if(typeof cStep!=='undefined' && cStep===4){
           refreshValorSecEscopo();
         }
       }catch(e){}
       try{
         var pv=Q('pvWrap');
-        if(typeof genPrev==='function' && typeof cStep!=='undefined' && cStep===5 && pv){
+        if(typeof genPrev==='function' && typeof cStep!=='undefined' && cStep===6 && pv){
           genPrev();
         }
       }catch(e){}
@@ -1077,6 +1077,7 @@ function resetWizardState(){
   revs=[];
   eTplId=null;
   _tempGantt=null;
+  try{ dimLoad('', []); }catch(e){}
   try{ rBudg(); }catch(e){}
   try{ rEsc(); }catch(e){}
   try{ rRevs(); }catch(e){}
@@ -1201,9 +1202,427 @@ function novaPropostaRapida(btn){
   step(1);
 }
 
-// Atalho claro para o Preview (passo 5 do wizard).
+// Atalho claro para o Preview (passo 6 do wizard).
 function irParaPreviewProposta(){
-  try{step(5);}catch(e){}
+  try{step(6);}catch(e){}
+}
+
+// ============================================================
+// ETAPA 2 — DIMENSIONAMENTO (editor livre Quill + blocos inseríveis)
+// Persistido na proposta como dim_html (HTML do editor) e dim_blocos
+// (array com o estado de cada bloco: tabela, canvas, checklist, divisor).
+// ============================================================
+var _dimQuill=null;
+var _dimNoQuill=false;
+var _dimPasteBound=false;
+var _dimPendingHtml=null, _dimPendingBlocos=null;
+
+function dimInit(){
+  var elEd=Q('dimEditor'); if(!elEd) return;
+  if(!_dimQuill && !_dimNoQuill){
+    if(typeof Quill!=='undefined'){
+      _dimQuill=new Quill('#dimEditor',{
+        theme:'snow',
+        placeholder:'Memória de cálculo, premissas, fórmulas, observações do dimensionamento…',
+        modules:{ toolbar:'#dimToolbar' }
+      });
+    } else {
+      // Fallback (CDN indisponível): editor simples editável.
+      _dimNoQuill=true;
+      elEd.setAttribute('contenteditable','true');
+      elEd.style.minHeight='150px'; elEd.style.padding='.6rem'; elEd.style.outline='none';
+      var tb=Q('dimToolbar'); if(tb) tb.style.display='none';
+    }
+  }
+  // Colar imagem (Ctrl+V) em qualquer ponto da Etapa 2 → cria um bloco de imagem.
+  if(!_dimPasteBound){
+    var s2=document.getElementById('s2dim');
+    if(s2){ s2.addEventListener('paste', _dimHandlePaste, true); _dimPasteBound=true; }
+  }
+  if(_dimPendingHtml!=null || _dimPendingBlocos!=null) dimApplyPending();
+}
+function _dimGetHtml(){ if(_dimQuill) return _dimQuill.root.innerHTML; var el=Q('dimEditor'); return el?el.innerHTML:''; }
+function _dimSetHtml(html){ if(_dimQuill){ _dimQuill.root.innerHTML=html||''; return; } var el=Q('dimEditor'); if(el) el.innerHTML=html||''; }
+function dimApplyPending(){
+  if(!Q('dimEditor')) return;
+  if(_dimPendingHtml!=null) _dimSetHtml(_dimPendingHtml);
+  dimRebuildBlocks(_dimPendingBlocos||[]);
+  _dimPendingHtml=null; _dimPendingBlocos=null;
+}
+// Carrega (de editP/reset) o conteúdo da etapa. Aplica já se o editor existir; senão fica pendente.
+function dimLoad(html, blocos){
+  _dimPendingHtml=html||''; _dimPendingBlocos=blocos||[];
+  if(_dimQuill || _dimNoQuill){ dimApplyPending(); }
+  else { var host=_dimBlocksEl(); if(host) dimRebuildBlocks(_dimPendingBlocos); } // html aplica no dimInit; blocos já aparecem
+}
+// Estado atual para o snapshot da proposta.
+function dimSerialize(){
+  if(_dimQuill || _dimNoQuill) return { html:_dimGetHtml(), blocos:dimReadBlocks() };
+  return { html:(_dimPendingHtml||''), blocos:(dimReadBlocks().length?dimReadBlocks():(_dimPendingBlocos||[])) };
+}
+
+function _dimBlocksEl(){ return Q('dimBlocks'); }
+// Wrapper padrão de um bloco (cabeçalho + botão fechar). Retorna {wrap, body}.
+function _dimWrap(kind, titulo){
+  var wrap=document.createElement('div'); wrap.className='dim-block'; wrap.setAttribute('data-bk', kind);
+  var head=document.createElement('div'); head.className='dim-block-h';
+  var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=titulo||''; head.appendChild(t);
+  var x=document.createElement('button'); x.type='button'; x.className='dim-x'; x.title='Remover bloco'; x.textContent='✕';
+  x.addEventListener('click', function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); });
+  head.appendChild(x);
+  var body=document.createElement('div'); body.className='dim-block-b';
+  wrap.appendChild(head); wrap.appendChild(body);
+  return {wrap:wrap, body:body};
+}
+
+// ── Tabelas (Excel e vazia) ──
+function _dimCellText(item){ return (item&&typeof item==='object')?(item.text||''):(item!=null?String(item):''); }
+function _dimToHex(c){
+  if(!c) return ''; c=String(c); if(c.charAt(0)==='#') return c;
+  var m=c.match(/\d+/g); if(!m||m.length<3) return '';
+  function h(n){ n=(parseInt(n,10)||0).toString(16); return n.length<2?'0'+n:n; }
+  return '#'+h(m[0])+h(m[1])+h(m[2]);
+}
+function _dimApplyCellStyle(cell,s){
+  if(!s||typeof s!=='object') return;
+  if(s.align) cell.style.textAlign=s.align;
+  if(s.color) cell.style.color=s.color;
+  if(s.bg) cell.style.backgroundColor=s.bg;
+  if(s.w) cell.style.width=(parseInt(s.w,10)||60)+'px';
+}
+// Cabeçalho com handle de redimensionamento de coluna (borda direita).
+function _dimMakeTh(item){
+  var th=document.createElement('th'); th.contentEditable='true'; th.textContent=_dimCellText(item);
+  if(item&&typeof item==='object') _dimApplyCellStyle(th,item);
+  var rz=document.createElement('span'); rz.className='dim-col-rz'; rz.contentEditable='false';
+  rz.addEventListener('mousedown', function(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    var sx=ev.clientX, sw=th.getBoundingClientRect().width;
+    function mm(e){ th.style.width=Math.max(60, sw+(e.clientX-sx))+'px'; }
+    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  });
+  th.appendChild(rz); return th;
+}
+function _dimMakeTd(item){
+  var td=document.createElement('td'); td.contentEditable='true'; td.textContent=_dimCellText(item);
+  if(item&&typeof item==='object') _dimApplyCellStyle(td,item);
+  return td;
+}
+function _dimHeaderText(th){ var cl=th.cloneNode(true); var r=cl.querySelector('.dim-col-rz'); if(r&&r.parentNode) r.parentNode.removeChild(r); return cl.textContent||''; }
+function _dimMakeTable(cols, rows){
+  var table=document.createElement('table'); table.className='dim-tbl';
+  var thead=document.createElement('thead'); var htr=document.createElement('tr');
+  var cs=(cols&&cols.length)?cols:['Coluna 1'];
+  cs.forEach(function(h){ htr.appendChild(_dimMakeTh(h)); });
+  thead.appendChild(htr); table.appendChild(thead);
+  var tbody=document.createElement('tbody'); var ncol=htr.children.length;
+  (rows||[]).forEach(function(r){
+    var tr=document.createElement('tr');
+    for(var c=0;c<ncol;c++){ tr.appendChild(_dimMakeTd(r?r[c]:'')); }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody); return table;
+}
+function _dimTableControls(table){
+  var bar=document.createElement('div'); bar.className='dim-tbl-ctl';
+  function mkbtn(txt,fn){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs'; b.textContent=txt; b.addEventListener('click',fn); return b; }
+  bar.appendChild(mkbtn('+ Linha', function(){
+    var tb=table.querySelector('tbody'); var ncol=table.querySelector('thead tr').children.length; var tr=document.createElement('tr');
+    for(var c=0;c<ncol;c++){ tr.appendChild(_dimMakeTd('')); }
+    tb.appendChild(tr);
+  }));
+  bar.appendChild(mkbtn('+ Coluna', function(){
+    var htr=table.querySelector('thead tr'); htr.appendChild(_dimMakeTh('Coluna '+(htr.children.length+1)));
+    table.querySelectorAll('tbody tr').forEach(function(tr){ tr.appendChild(_dimMakeTd('')); });
+  }));
+  return bar;
+}
+// Mini-toolbar flutuante por célula (alinhamento, cor do texto, cor de fundo).
+function _dimCellToolbar(table, body){
+  var bar=document.createElement('div'); bar.className='dim-cell-tb'; bar.style.display='none';
+  function ab(txt,al,title){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs'; b.textContent=txt; b.title=title;
+    b.addEventListener('mousedown',function(e){ e.preventDefault(); });
+    b.addEventListener('click',function(){ if(table._cur) table._cur.style.textAlign=al; }); return b; }
+  bar.appendChild(ab('⬅','left','Alinhar à esquerda'));
+  bar.appendChild(ab('↔','center','Centralizar'));
+  bar.appendChild(ab('➡','right','Alinhar à direita'));
+  var ci=document.createElement('input'); ci.type='color'; ci.className='dim-cell-color'; ci.title='Cor do texto'; ci.value='#111111';
+  ci.addEventListener('input',function(){ if(table._cur) table._cur.style.color=ci.value; });
+  bar.appendChild(ci);
+  var bi=document.createElement('input'); bi.type='color'; bi.className='dim-cell-bg'; bi.title='Cor de fundo'; bi.value='#ffffff';
+  bi.addEventListener('input',function(){ if(table._cur) table._cur.style.backgroundColor=bi.value; });
+  bar.appendChild(bi);
+  body.appendChild(bar);
+  function show(cell){
+    table._cur=cell; bar.style.display='flex';
+    var cr=cell.getBoundingClientRect(), br=body.getBoundingClientRect();
+    var top=cr.top-br.top-bar.offsetHeight-6; if(top<0) top=cr.bottom-br.top+4;
+    bar.style.left=Math.max(2,(cr.left-br.left))+'px'; bar.style.top=top+'px';
+    var hc=_dimToHex(cell.style.color); if(hc) ci.value=hc;
+    var hb=_dimToHex(cell.style.backgroundColor); if(hb) bi.value=hb;
+  }
+  table.addEventListener('focusin', function(ev){ var c=ev.target; if(c&&(c.tagName==='TD'||c.tagName==='TH')) show(c); });
+  function maybeHide(){ setTimeout(function(){ var a=document.activeElement; if(a&&(table.contains(a)||bar.contains(a))) return; bar.style.display='none'; },150); }
+  table.addEventListener('focusout', maybeHide);
+  bar.addEventListener('focusout', maybeHide);
+  return bar;
+}
+function _dimMountTable(body, cols, rows){
+  body.style.position='relative';
+  var table=_dimMakeTable(cols, rows);
+  body.appendChild(table);
+  body.appendChild(_dimTableControls(table));
+  _dimCellToolbar(table, body);
+  return table;
+}
+function dimAddTable(state){
+  var cols=(state&&state.cols&&state.cols.length)?state.cols:((state&&state.headers&&state.headers.length)?state.headers:['Coluna 1','Coluna 2','Coluna 3','Coluna 4']);
+  var rows=(state&&state.rows)?state.rows:[['','','',''],['','','',''],['','','','']];
+  var w=_dimWrap('table','▦ Tabela');
+  _dimMountTable(w.body, cols, rows);
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
+}
+function _dimParseTSV(txt){
+  var lines=String(txt||'').replace(/\r/g,'').split('\n');
+  while(lines.length && lines[lines.length-1]==='') lines.pop();
+  if(!lines.length) return {headers:[],rows:[]};
+  var matrix=lines.map(function(l){ return l.split('\t'); });
+  var ncol=matrix.reduce(function(m,r){ return Math.max(m, r.length); }, 0);
+  matrix=matrix.map(function(r){ while(r.length<ncol) r.push(''); return r; });
+  return { headers:matrix[0], rows:matrix.slice(1) };
+}
+function dimAddExcel(){
+  var w=_dimWrap('table','📋 Colar do Excel');
+  var zone=document.createElement('div'); zone.className='dim-paste'; zone.contentEditable='true';
+  zone.setAttribute('data-ph','Clique aqui e cole (Ctrl+V) os dados copiados do Excel/Sheets…');
+  zone.addEventListener('paste', function(ev){
+    var txt=(ev.clipboardData||window.clipboardData) ? (ev.clipboardData||window.clipboardData).getData('text/plain') : '';
+    if(!txt){ return; }
+    ev.preventDefault();
+    var parsed=_dimParseTSV(txt);
+    if(!parsed.headers.length){ return; }
+    var fb=document.createElement('div'); fb.className='dim-paste-fb';
+    fb.textContent='Tabela criada — '+(parsed.rows.length+1)+' linhas × '+parsed.headers.length+' colunas';
+    w.body.innerHTML=''; w.body.appendChild(fb);
+    _dimMountTable(w.body, parsed.headers, parsed.rows);
+  });
+  w.body.appendChild(zone);
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
+}
+function _dimSerTable(wrap){
+  var table=wrap.querySelector('table.dim-tbl'); if(!table) return null;
+  function sty(cell){ var o={}; if(cell.style.textAlign) o.align=cell.style.textAlign; var hc=_dimToHex(cell.style.color); if(hc) o.color=hc; var hb=_dimToHex(cell.style.backgroundColor); if(hb) o.bg=hb; return o; }
+  var cols=[]; table.querySelectorAll('thead th').forEach(function(th){ var o=sty(th); o.text=_dimHeaderText(th); if(th.style.width) o.w=parseInt(th.style.width,10)||undefined; cols.push(o); });
+  var rows=[]; table.querySelectorAll('tbody tr').forEach(function(tr){ var r=[]; tr.querySelectorAll('td').forEach(function(td){ var o=sty(td); o.text=td.textContent||''; r.push(o); }); rows.push(r); });
+  return { kind:'table', cols:cols, rows:rows };
+}
+
+// ── Área de desenho (canvas) ──
+function _dimCanvasExport(canvas){
+  try{
+    var t=document.createElement('canvas'); t.width=canvas.width; t.height=canvas.height; var c=t.getContext('2d');
+    c.fillStyle='#ffffff'; c.fillRect(0,0,t.width,t.height); c.strokeStyle='#e5e7eb'; c.lineWidth=1;
+    var x,y; var g=40; // grade 20px na resolução de exibição (buffer = 2×)
+    for(x=0;x<=t.width;x+=g){ c.beginPath(); c.moveTo(x+0.5,0); c.lineTo(x+0.5,t.height); c.stroke(); }
+    for(y=0;y<=t.height;y+=g){ c.beginPath(); c.moveTo(0,y+0.5); c.lineTo(t.width,y+0.5); c.stroke(); }
+    c.drawImage(canvas,0,0);
+    var a=document.createElement('a'); a.href=t.toDataURL('image/png'); a.download='dimensionamento.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }catch(e){ if(typeof toast==='function') toast('Não foi possível exportar o PNG.','erro'); }
+}
+function dimAddCanvas(state){
+  var w=_dimWrap('canvas','✏️ Área de desenho');
+  var BUF=2, BASEW=620;                                  // resolução interna alta = 2× a exibição
+  var displayH=(state&&state.h)?Math.max(200,Math.min(800,parseInt(state.h,10)||220)):220;
+  var zoom=100;
+  var tb=document.createElement('div'); tb.className='dim-cv-tb';
+  var wrap=document.createElement('div'); wrap.className='dim-cv-wrap';
+  var canvas=document.createElement('canvas'); canvas.className='dim-canvas';
+  canvas.width=BASEW*BUF; canvas.height=displayH*BUF;    // buffer (ex.: 1240×440)
+  var ctx=canvas.getContext('2d'); ctx.lineCap='round'; ctx.lineJoin='round';
+  var st={tool:'pen', color:'#111111', size:4, drawing:false, sx:0, sy:0, snap:null, undo:[]};
+  function applyView(){ canvas.style.width=(BASEW*zoom/100)+'px'; canvas.style.height=(displayH*zoom/100)+'px'; wrap.style.height=displayH+'px'; canvas.setAttribute('data-h', displayH); }
+  function pushUndo(){ try{ st.undo.push(canvas.toDataURL()); if(st.undo.length>30) st.undo.shift(); }catch(e){} }
+  function toolBtn(label,tool){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs dim-tool'; b.textContent=label;
+    b.addEventListener('click',function(){ st.tool=tool; tb.querySelectorAll('.dim-tool').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }); return b; }
+  var bPen=toolBtn('✏️ Caneta','pen'); bPen.classList.add('on');
+  tb.appendChild(bPen); tb.appendChild(toolBtn('╱ Linha','line')); tb.appendChild(toolBtn('▭ Retângulo','rect')); tb.appendChild(toolBtn('🩹 Borracha','eraser'));
+  var sepA=document.createElement('span'); sepA.className='dim-sep'; tb.appendChild(sepA);
+  [['#111111','Preto'],['#2563eb','Azul'],['#dc2626','Vermelho'],['#16a34a','Verde'],['#d97706','Laranja']].forEach(function(c){
+    var b=document.createElement('button'); b.type='button'; b.className='dim-color'; b.title=c[1]; b.style.background=c[0]; if(c[0]==='#111111') b.classList.add('on');
+    b.addEventListener('click',function(){ st.color=c[0]; if(st.tool==='eraser'){ st.tool='pen'; tb.querySelectorAll('.dim-tool').forEach(function(x){x.classList.remove('on');}); bPen.classList.add('on'); }
+      tb.querySelectorAll('.dim-color').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); });
+    tb.appendChild(b);
+  });
+  // Espessura do traço (slider 1–20px)
+  var sepB=document.createElement('span'); sepB.className='dim-sep'; tb.appendChild(sepB);
+  var thl=document.createElement('span'); thl.className='dim-cv-lab'; thl.textContent='Traço'; tb.appendChild(thl);
+  var slider=document.createElement('input'); slider.type='range'; slider.min='1'; slider.max='20'; slider.step='1'; slider.value=String(st.size); slider.className='dim-range'; slider.title='Espessura do traço';
+  var sval=document.createElement('span'); sval.className='dim-cv-val'; sval.textContent=st.size+'px';
+  slider.addEventListener('input',function(){ st.size=parseInt(slider.value,10)||1; sval.textContent=st.size+'px'; });
+  tb.appendChild(slider); tb.appendChild(sval);
+  // Zoom (slider 50–200%)
+  var sepC=document.createElement('span'); sepC.className='dim-sep'; tb.appendChild(sepC);
+  var zl=document.createElement('span'); zl.className='dim-cv-lab'; zl.textContent='Zoom'; tb.appendChild(zl);
+  var zs=document.createElement('input'); zs.type='range'; zs.min='50'; zs.max='200'; zs.step='25'; zs.value='100'; zs.className='dim-range'; zs.title='Zoom';
+  var zval=document.createElement('span'); zval.className='dim-cv-val'; zval.textContent='100%';
+  zs.addEventListener('input',function(){ zoom=parseInt(zs.value,10)||100; zval.textContent=zoom+'%'; applyView(); });
+  tb.appendChild(zs); tb.appendChild(zval);
+  // Ações
+  var sepD=document.createElement('span'); sepD.className='dim-sep'; tb.appendChild(sepD);
+  var bUndo=document.createElement('button'); bUndo.type='button'; bUndo.className='btn bg bxs'; bUndo.textContent='↶ Desfazer';
+  bUndo.addEventListener('click',function(){ if(!st.undo.length){ ctx.clearRect(0,0,canvas.width,canvas.height); return; } var d=st.undo.pop(); var img=new Image(); img.onload=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); }; img.src=d; });
+  tb.appendChild(bUndo);
+  var bClear=document.createElement('button'); bClear.type='button'; bClear.className='btn bg bxs'; bClear.textContent='🗑 Limpar';
+  bClear.addEventListener('click',function(){ pushUndo(); ctx.clearRect(0,0,canvas.width,canvas.height); }); tb.appendChild(bClear);
+  var bSave=document.createElement('button'); bSave.type='button'; bSave.className='btn bg bxs'; bSave.textContent='💾 PNG';
+  bSave.addEventListener('click',function(){ _dimCanvasExport(canvas); }); tb.appendChild(bSave);
+  // Coordenadas em pixels do buffer (getBoundingClientRect já reflete zoom/altura)
+  function pos(ev){ var r=canvas.getBoundingClientRect(); var cx=(ev.touches&&ev.touches[0]?ev.touches[0].clientX:ev.clientX); var cy=(ev.touches&&ev.touches[0]?ev.touches[0].clientY:ev.clientY); return {x:(cx-r.left)*(canvas.width/r.width), y:(cy-r.top)*(canvas.height/r.height)}; }
+  function down(ev){ ev.preventDefault(); pushUndo(); st.drawing=true; var p=pos(ev); st.sx=p.x; st.sy=p.y;
+    if(st.tool==='line'||st.tool==='rect'){ try{ st.snap=ctx.getImageData(0,0,canvas.width,canvas.height); }catch(e){ st.snap=null; } }
+    else { ctx.beginPath(); ctx.moveTo(p.x,p.y); } }
+  function move(ev){ if(!st.drawing) return; ev.preventDefault(); var p=pos(ev);
+    if(st.tool==='pen'||st.tool==='eraser'){
+      ctx.globalCompositeOperation=(st.tool==='eraser'?'destination-out':'source-over');
+      ctx.strokeStyle=st.color; ctx.lineWidth=(st.tool==='eraser'?Math.max(st.size*4,14):st.size)*BUF;
+      ctx.lineTo(p.x,p.y); ctx.stroke();
+    } else {
+      if(st.snap){ ctx.putImageData(st.snap,0,0); }
+      ctx.globalCompositeOperation='source-over'; ctx.strokeStyle=st.color; ctx.lineWidth=st.size*BUF; ctx.beginPath();
+      if(st.tool==='line'){ ctx.moveTo(st.sx,st.sy); ctx.lineTo(p.x,p.y); } else { ctx.rect(st.sx,st.sy, p.x-st.sx, p.y-st.sy); }
+      ctx.stroke();
+    } }
+  function up(){ if(!st.drawing) return; st.drawing=false; st.snap=null; ctx.globalCompositeOperation='source-over'; }
+  canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
+  canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
+  // Handle de redimensionamento da altura (200–800px), preservando o conteúdo.
+  function resizeHeight(nh){ var tmp=document.createElement('canvas'); tmp.width=canvas.width; tmp.height=canvas.height; tmp.getContext('2d').drawImage(canvas,0,0); canvas.height=nh*BUF; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.drawImage(tmp,0,0); displayH=nh; applyView(); }
+  var rzh=document.createElement('div'); rzh.className='dim-cv-resize'; rzh.title='Arraste para ajustar a altura';
+  rzh.addEventListener('mousedown', function(ev){ ev.preventDefault(); var sy=ev.clientY, sh=displayH;
+    function mm(e){ var nh=Math.max(200,Math.min(800, sh+Math.round(e.clientY-sy))); if(nh!==displayH) resizeHeight(nh); }
+    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  });
+  wrap.appendChild(canvas);
+  w.body.appendChild(tb); w.body.appendChild(wrap); w.body.appendChild(rzh);
+  applyView();
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap);
+  if(state&&state.png){ var img=new Image(); img.onload=function(){ ctx.drawImage(img,0,0); }; img.src=state.png; }
+  return w.wrap;
+}
+function _dimSerCanvas(wrap){
+  var canvas=wrap.querySelector('canvas.dim-canvas'); if(!canvas) return null;
+  var png=''; try{ png=canvas.toDataURL('image/png'); }catch(e){ png=''; }
+  var h=parseInt(canvas.getAttribute('data-h'),10)||220;
+  return { kind:'canvas', png:png, h:h };
+}
+
+// ── Checklist ──
+function dimAddChecklist(state){
+  var w=_dimWrap('checklist','☑ Checklist');
+  var list=document.createElement('div'); list.className='dim-chk-list';
+  function addItem(texto, checked){
+    var row=document.createElement('div'); row.className='dim-chk'+(checked?' done':'');
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!checked;
+    cb.addEventListener('change',function(){ row.classList.toggle('done', cb.checked); });
+    var sp=document.createElement('span'); sp.className='dim-chk-t'; sp.contentEditable='true'; sp.textContent=texto||'';
+    var x=document.createElement('button'); x.type='button'; x.className='dim-chk-x'; x.title='Remover item'; x.textContent='✕';
+    x.addEventListener('click',function(){ if(row.parentNode) row.parentNode.removeChild(row); });
+    row.appendChild(cb); row.appendChild(sp); row.appendChild(x); list.appendChild(row);
+  }
+  var items=(state&&state.items&&state.items.length)?state.items:[{texto:'',checked:false}];
+  items.forEach(function(it){ addItem(it.texto, it.checked); });
+  var add=document.createElement('button'); add.type='button'; add.className='btn bg bxs'; add.textContent='+ Adicionar item';
+  add.addEventListener('click',function(){ addItem('', false); var sps=list.querySelectorAll('.dim-chk-t'); if(sps.length) sps[sps.length-1].focus(); });
+  w.body.appendChild(list); w.body.appendChild(add);
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
+}
+function _dimSerChecklist(wrap){
+  var items=[];
+  wrap.querySelectorAll('.dim-chk').forEach(function(row){
+    var cb=row.querySelector('input[type=checkbox]'); var sp=row.querySelector('.dim-chk-t');
+    items.push({ texto:(sp?sp.textContent:''), checked:!!(cb&&cb.checked) });
+  });
+  return { kind:'checklist', items:items };
+}
+
+// ── Divisor ──
+function dimAddDivider(){
+  var w=_dimWrap('divider','— Divisor'); var hr=document.createElement('hr'); hr.className='dim-hr';
+  w.body.appendChild(hr); var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
+}
+
+// ── Imagem (upload via botão ou colar Ctrl+V) ──
+function dimImgPick(){ var inp=Q('dimImgInput'); if(inp) inp.click(); }
+function dimImgFromInput(ev){
+  var inp=ev&&ev.target; var file=inp&&inp.files&&inp.files[0]; if(!file){ return; }
+  if(file.type.indexOf('image/')!==0){ if(typeof toast==='function') toast('Selecione um arquivo de imagem.','erro'); inp.value=''; return; }
+  var rd=new FileReader();
+  rd.onload=function(){ dimAddImage({src:rd.result, w:100, label:''}); };
+  rd.readAsDataURL(file);
+  inp.value=''; // permite reselecionar o mesmo arquivo
+}
+function _dimHandlePaste(ev){
+  var items=(ev.clipboardData&&ev.clipboardData.items)||null; if(!items) return;
+  var it=null;
+  for(var i=0;i<items.length;i++){ if(items[i].type && items[i].type.indexOf('image/')===0){ it=items[i]; break; } }
+  if(!it) return; // não é imagem → deixa o paste normal (texto/Quill/Excel) seguir
+  var file=it.getAsFile(); if(!file) return;
+  ev.preventDefault(); ev.stopPropagation();
+  var rd=new FileReader();
+  rd.onload=function(){ dimAddImage({src:rd.result, w:100, label:''}); if(typeof toast==='function') toast('🖼️ Imagem colada no Dimensionamento.','ok'); };
+  rd.readAsDataURL(file);
+}
+function dimAddImage(state){
+  var src=(state&&state.src)||''; if(!src) return null;
+  var wd=(state&&state.w!=null)?Math.max(50,Math.min(100,parseInt(state.w,10)||100)):100;
+  var w=_dimWrap('image','🖼️ Imagem');
+  var box=document.createElement('div'); box.className='dim-img-block';
+  var img=document.createElement('img'); img.src=src; img.style.width=wd+'%'; img.title='Clique para abrir em tamanho real';
+  img.addEventListener('click', function(){ try{ var nw=window.open(); if(nw) nw.document.write('<img src="'+src+'" style="max-width:100%">'); }catch(e){} });
+  var ctl=document.createElement('div'); ctl.className='dim-img-ctl';
+  var lab=document.createElement('span'); lab.textContent='Largura';
+  var sl=document.createElement('input'); sl.type='range'; sl.min='50'; sl.max='100'; sl.step='5'; sl.value=String(wd); sl.className='dim-range'; sl.title='Largura da imagem';
+  var val=document.createElement('span'); val.className='dim-cv-val'; val.textContent=wd+'%';
+  sl.addEventListener('input', function(){ var v=parseInt(sl.value,10)||100; img.style.width=v+'%'; val.textContent=v+'%'; });
+  ctl.appendChild(lab); ctl.appendChild(sl); ctl.appendChild(val);
+  var cap=document.createElement('div'); cap.className='dim-img-cap'; cap.contentEditable='true'; cap.setAttribute('data-ph','Legenda (opcional)…'); cap.textContent=(state&&state.label)||'';
+  box.appendChild(img); box.appendChild(ctl); box.appendChild(cap);
+  w.body.appendChild(box);
+  var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
+}
+function _dimSerImage(wrap){
+  var img=wrap.querySelector('.dim-img-block img'); if(!img) return null;
+  var sl=wrap.querySelector('.dim-img-ctl input[type=range]');
+  var cap=wrap.querySelector('.dim-img-cap');
+  return { kind:'image', src:img.getAttribute('src')||'', w:(sl?parseInt(sl.value,10)||100:100), label:(cap?cap.textContent||'':'') };
+}
+
+function dimReadBlocks(){
+  var out=[]; var host=_dimBlocksEl(); if(!host) return out;
+  Array.prototype.forEach.call(host.children, function(wrap){
+    var k=wrap.getAttribute('data-bk'); var ser=null;
+    if(k==='table') ser=_dimSerTable(wrap);
+    else if(k==='canvas') ser=_dimSerCanvas(wrap);
+    else if(k==='checklist') ser=_dimSerChecklist(wrap);
+    else if(k==='image') ser=_dimSerImage(wrap);
+    else if(k==='divider') ser={kind:'divider'};
+    if(ser) out.push(ser);
+  });
+  return out;
+}
+function dimRebuildBlocks(blocos){
+  var host=_dimBlocksEl(); if(!host) return; host.innerHTML='';
+  (blocos||[]).forEach(function(b){
+    if(!b||!b.kind) return;
+    if(b.kind==='table') dimAddTable(b);
+    else if(b.kind==='canvas') dimAddCanvas({png:b.png, h:b.h});
+    else if(b.kind==='checklist') dimAddChecklist({items:b.items});
+    else if(b.kind==='image') dimAddImage({src:b.src, w:b.w, label:b.label});
+    else if(b.kind==='divider') dimAddDivider();
+  });
 }
 
 // "+ Nova" agora abre o modal de escolha (Rápida / Completa).
@@ -1842,15 +2261,18 @@ function step(n){
   cStep=n;
   document.querySelectorAll('.sp').forEach(function(p){p.classList.remove('on')});
   document.querySelectorAll('.ws').forEach(function(s){s.classList.remove('on','dn')});
-  Q('s'+n).classList.add('on');
-  for(var i=1;i<=5;i++){var el=Q('ws'+i);if(!el)continue;if(i<n)el.classList.add('dn');else if(i===n)el.classList.add('on')}
-  if(n===2){rTplSel();rEsc();if(Q('escTplModal'))Q('escTplModal').style.display='none';}
-  if(n===3){refBudg();rEsc();try{beLoadDB();beInlineAtualizarGrupos();beInlineRender();}catch(e){}setTimeout(function(){refreshValorSecEscopo();},30);}
-  if(n===4)cTot();
-  if(n===5){
+  // Mapa etapa→container: a etapa 2 (Dimensionamento) usa #s2dim; as demais usam s1..s5.
+  var _secMap={1:'s1',2:'s2dim',3:'s2',4:'s3',5:'s4',6:'s5'};
+  var _sec=Q(_secMap[n]||('s'+n)); if(_sec) _sec.classList.add('on');
+  for(var i=1;i<=6;i++){var el=Q('ws'+i);if(!el)continue;if(i<n)el.classList.add('dn');else if(i===n)el.classList.add('on')}
+  if(n===2){try{dimInit();}catch(e){console.error('dimInit:',e);}}
+  if(n===3){rTplSel();rEsc();if(Q('escTplModal'))Q('escTplModal').style.display='none';}
+  if(n===4){refBudg();rEsc();try{beLoadDB();beInlineAtualizarGrupos();beInlineRender();}catch(e){}setTimeout(function(){refreshValorSecEscopo();},30);}
+  if(n===5)cTot();
+  if(n===6){
     cTot();
     setTimeout(function(){
-      try{genPrev(); var pv=Q('pvWrap'); if(pv) pv.scrollTop=0;}catch(e){console.error('Erro ao gerar preview no passo 5:',e)}
+      try{genPrev(); var pv=Q('pvWrap'); if(pv) pv.scrollTop=0;}catch(e){console.error('Erro ao gerar preview no passo 6:',e)}
     },10);
   }
 }
@@ -2912,6 +3334,8 @@ function editP(id){
   // Sem filtro - todas as seções ficam visíveis no editor
 
   budg=JSON.parse(JSON.stringify(p.bi||[]));
+  // Dimensionamento (Etapa 2): carrega HTML do editor + blocos inseridos.
+  try{ dimLoad(p.dim_html||'', p.dim_blocos||[]); }catch(e){ console.error('dimLoad:',e); }
   tplEdits={};
   // ── Migração definitiva: ts → escSecs usando todas as fontes disponíveis ──
   if(!escSecs.length && p.ts && p.ts.length){
@@ -3020,7 +3444,7 @@ function cTot(){
   if(Q('vTM_desc'))Q('vTM_desc').textContent=dM>0?'– '+money(dM)+' de desconto':'';
   if(Q('vDesc_total'))Q('vDesc_total').textContent=money(vD);
 
-  if(typeof cStep!=='undefined' && (cStep===3 || cStep===5)){
+  if(typeof cStep!=='undefined' && (cStep===4 || cStep===6)){
     syncValorDependentes(false);
   }
 }
@@ -8686,9 +9110,9 @@ function beAdicionarNaProposta(){
   if(adicionados>0){
     // Navegar para o escopo da proposta
     go('nova', null);
-    step(3);
+    step(4);
     rEsc();
-    toast('✔ '+adicionados+' escopo(s) adicionado(s) à proposta! Edite na Etapa 3.','ok');
+    toast('✔ '+adicionados+' escopo(s) adicionado(s) à proposta! Edite na Etapa 4.','ok');
     beDesmarcarTodos();
   }
 }
@@ -9024,7 +9448,7 @@ function tplPropAdicionar(tplCodigo){
   }
 
   tplPropFechar();
-  if(adicionados>0){ go('nova', null); step(3); rEsc(); }
+  if(adicionados>0){ go('nova', null); step(4); rEsc(); }
   toast(adicionados>0 ? ('✔ Template "'+t.nome+'": '+adicionados+' bloco(s) adicionado(s) à proposta.') : 'Nenhum bloco do template foi adicionado.', adicionados>0?'ok':'err');
 
   if(naoEncontrados.length || inativos.length){
@@ -10274,6 +10698,8 @@ function buildCurrentProposalSnapshot(){
     res:Q('pRes').value||'',vS:vs,vM:vm,vD:vd,vDS:vdS,vDM:vdM,val:vs+vm-vd,
     prz:'',przI:'',przF:'',val2:'',gar:'',pag:'',cforn:'',imp:'',
     ts:[],esc:JSON.parse(JSON.stringify(escSecs)),bi:JSON.parse(JSON.stringify(budg)),revs:JSON.parse(JSON.stringify(revs)),
+    dim_html:(function(){try{var d=dimSerialize();return d.html;}catch(e){return '';}})(),
+    dim_blocos:(function(){try{var d=dimSerialize();return d.blocos;}catch(e){return [];}})(),
     log:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.log)?JSON.parse(JSON.stringify(_p.log)):{hist:[],relat:[]}; })(),
     gantt:(function(){ var _p=props.find(function(x){return x.id===editId;}); var _src=_p&&_p.gantt?_p.gantt:(_tempGantt||null); var _g=_src?JSON.parse(JSON.stringify(_src)):{inicio:'',fases:[],trabSab:false,trabDom:false,feriados:[]}; if(_g.trabSab===undefined)_g.trabSab=false; if(_g.trabDom===undefined)_g.trabDom=false; if(!_g.feriados)_g.feriados=[]; return _g; })(),
     stages:(function(){ var _p=props.find(function(x){return x.id===editId;}); return (_p&&_p.stages)?JSON.parse(JSON.stringify(_p.stages)):(typeof criarStagesVazios==='function'?criarStagesVazios():{}); })(),

@@ -817,7 +817,59 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
   #s3.on{grid-template-columns:1fr}
   #bancoEscoposInline{position:static;max-height:none}
 }
+/* ── Etapa 2: Dimensionamento ── */
+#dimToolbar.ql-toolbar.ql-snow{border-color:var(--border);border-top-left-radius:var(--r2);border-top-right-radius:var(--r2);background:var(--bg3)}
+#dimEditor.ql-container.ql-snow{border-color:var(--border);border-bottom-left-radius:var(--r2);border-bottom-right-radius:var(--r2);font-family:inherit;font-size:.9rem}
+#dimEditor .ql-editor{min-height:160px;color:var(--text)}
+#dimEditor .ql-editor.ql-blank::before{color:var(--text3);font-style:normal;left:.9rem}
+#dimToolbar .ql-stroke{stroke:var(--text2)} #dimToolbar .ql-fill{fill:var(--text2)} #dimToolbar .ql-picker{color:var(--text2)}
+#dimInsertBar{display:flex;gap:.4rem;flex-wrap:wrap;margin:.7rem 0}
+#dimBlocks{display:flex;flex-direction:column;gap:.7rem}
+.dim-block{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);overflow:hidden}
+.dim-block-h{display:flex;align-items:center;justify-content:space-between;padding:.35rem .55rem;background:var(--bg2);border-bottom:1px solid var(--border)}
+.dim-block-t{font-size:.78rem;font-weight:700;color:var(--text2)}
+.dim-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;line-height:1;padding:.1rem .3rem;border-radius:4px}
+.dim-x:hover{color:var(--red,#dc2626);background:rgba(220,38,38,.1)}
+.dim-block-b{padding:.6rem}
+.dim-tbl{border-collapse:collapse;width:100%;font-size:.82rem}
+.dim-tbl th,.dim-tbl td{border:1px solid var(--border);padding:.3rem .45rem;min-width:60px;color:var(--text)}
+.dim-tbl th{background:var(--bg2);font-weight:700;text-align:left;position:relative}
+.dim-tbl th:focus,.dim-tbl td:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.dim-col-rz{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;user-select:none;z-index:3}
+.dim-cell-tb{position:absolute;z-index:25;display:flex;align-items:center;gap:.25rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.2rem .3rem;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.dim-cell-tb input[type=color]{width:24px;height:22px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:none}
+.dim-tbl-ctl{display:flex;gap:.4rem;margin-top:.5rem}
+.dim-paste{min-height:70px;border:1.5px dashed var(--border);border-radius:var(--r2);padding:.6rem;color:var(--text);background:var(--bg2);outline:none}
+.dim-paste:empty::before{content:attr(data-ph);color:var(--text3)}
+.dim-paste-fb{font-size:.74rem;color:var(--green,#16a34a);font-weight:600;margin-bottom:.4rem}
+.dim-cv-tb{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-bottom:.5rem}
+.dim-sep{width:1px;height:18px;background:var(--border);margin:0 .2rem;display:inline-block}
+.dim-tool.on,.dim-size.on{background:var(--accent);color:#04260f;border-color:var(--accent)}
+.dim-color{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0}
+.dim-color.on{border-color:var(--text);box-shadow:0 0 0 2px var(--accent)}
+.dim-cv-wrap{overflow:auto;border:1px solid var(--border);border-radius:6px;max-width:100%;background:#fff}
+.dim-canvas{display:block;background-color:#fff;background-image:linear-gradient(#e5e7eb 1px,transparent 1px),linear-gradient(90deg,#e5e7eb 1px,transparent 1px);background-size:20px 20px;cursor:crosshair;touch-action:none}
+.dim-cv-resize{height:11px;margin-top:5px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);cursor:ns-resize;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.7rem;line-height:1}
+.dim-cv-resize::after{content:"⋯⋯⋯"}
+.dim-range{vertical-align:middle;cursor:pointer;accent-color:var(--accent)}
+.dim-cv-lab{font-size:.72rem;color:var(--text3)}
+.dim-cv-val{font-size:.72rem;color:var(--text2);min-width:36px;font-weight:600}
+.dim-img-block{display:flex;flex-direction:column;gap:.4rem}
+.dim-img-block img{max-width:100%;border-radius:6px;border:1px solid var(--border);cursor:pointer;align-self:flex-start}
+.dim-img-ctl{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--text3)}
+.dim-img-cap{font-size:.78rem;color:var(--text2);outline:none;min-height:1.1em}
+.dim-img-cap:empty::before{content:attr(data-ph);color:var(--text3)}
+.dim-chk-list{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.5rem}
+.dim-chk{display:flex;align-items:center;gap:.5rem}
+.dim-chk input{width:15px;height:15px;accent-color:var(--green,#16a34a);cursor:pointer;flex-shrink:0}
+.dim-chk-t{flex:1;color:var(--text);outline:none;font-size:.85rem}
+.dim-chk.done .dim-chk-t{color:#16a34a;text-decoration:line-through}
+.dim-chk-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.75rem;flex-shrink:0}
+.dim-hr{border:none;border-top:2px solid var(--border);margin:.3rem 0}
 </style>
+<!-- Quill 1.3.7 (editor de texto rico — Etapa 2 Dimensionamento) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 </head>
 
 <body onload="iniciarPlataforma()">
@@ -925,10 +977,11 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
   <!-- Linha 2: etapas de navegação (ocultas — duplicam as abas do wizard) -->
   <div class="ab-steps">
     <button class="ab-step" id="ab-s1" onclick="step(1)"><span class="ab-sn">1</span><span class="ab-sl">Dados</span></button>
-    <button class="ab-step" id="ab-s2" onclick="step(2)"><span class="ab-sn">2</span><span class="ab-sl">Orçamento</span></button>
-    <button class="ab-step" id="ab-s3" onclick="step(3)"><span class="ab-sn">3</span><span class="ab-sl">Escopo</span></button>
-    <button class="ab-step" id="ab-s4" onclick="step(4)"><span class="ab-sn">4</span><span class="ab-sl">Valores</span></button>
-    <button class="ab-step" id="ab-s5" onclick="step(5);genPrev()"><span class="ab-sn">5</span><span class="ab-sl">Preview</span></button>
+    <button class="ab-step" id="ab-s2" onclick="step(2)"><span class="ab-sn">2</span><span class="ab-sl">Dimensionamento</span></button>
+    <button class="ab-step" id="ab-s3" onclick="step(3)"><span class="ab-sn">3</span><span class="ab-sl">Orçamento</span></button>
+    <button class="ab-step" id="ab-s4" onclick="step(4)"><span class="ab-sn">4</span><span class="ab-sl">Escopo</span></button>
+    <button class="ab-step" id="ab-s5" onclick="step(5)"><span class="ab-sn">5</span><span class="ab-sl">Valores</span></button>
+    <button class="ab-step" id="ab-s6" onclick="step(6);genPrev()"><span class="ab-sn">6</span><span class="ab-sl">Preview</span></button>
   </div>
 </div>
 
@@ -1239,11 +1292,11 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 <div id="nova" class="sec">
   <div class="wz">
     <button class="ws on" id="ws1" onclick="step(1)"><span class="wn">1</span>Dados</button>
-    <button class="ws" id="ws2" onclick="step(2)"><span class="wn">2</span>Orçamento</button>
-    <button class="ws" id="ws3" onclick="step(3)"><span class="wn">3</span>Escopo</button>
-    <button class="ws" id="ws4" onclick="step(4)"><span class="wn">4</span>Valores</button>
-    
-    <button class="ws" id="ws5" onclick="step(5)"><span class="wn">5</span>Preview</button>
+    <button class="ws" id="ws2" onclick="step(2)"><span class="wn">2</span>Dimensionamento</button>
+    <button class="ws" id="ws3" onclick="step(3)"><span class="wn">3</span>Orçamento</button>
+    <button class="ws" id="ws4" onclick="step(4)"><span class="wn">4</span>Escopo</button>
+    <button class="ws" id="ws5" onclick="step(5)"><span class="wn">5</span>Valores</button>
+    <button class="ws" id="ws6" onclick="step(6)"><span class="wn">6</span>Preview</button>
   </div>
 
   <!-- S1 -->
@@ -1488,7 +1541,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
           <!-- Botões de navegação -->
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.65rem">
             <button class="btn bg bxs" onclick="Router.ir('financeiro')" style="font-size:.77rem">💰 Abrir Módulo Financeiro</button>
-            <button class="btn bg bxs" onclick="step(4)" style="font-size:.77rem">📊 Ver Resumo Nesta Proposta</button>
+            <button class="btn bg bxs" onclick="step(5)" style="font-size:.77rem">📊 Ver Resumo Nesta Proposta</button>
           </div>
 
           <!-- Elementos ocultos para compatibilidade — não remover -->
@@ -1517,7 +1570,33 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       </div>
     </div>
 
-    <div class="snav"><button class="btn bg" onclick="irParaPreviewProposta()" title="Ir direto para o Preview da proposta">👁 Ver Preview</button><button class="btn bp" onclick="step(2)">Orçamento →</button></div>
+    <div class="snav"><button class="btn bg" onclick="irParaPreviewProposta()" title="Ir direto para o Preview da proposta">👁 Ver Preview</button><button class="btn bp" onclick="step(2)">Dimensionamento →</button></div>
+  </div>
+
+  <!-- S2DIM — DIMENSIONAMENTO (Etapa 2) -->
+  <div id="s2dim" class="sp">
+    <div class="card">
+      <div class="ch"><span class="ct">📐 Dimensionamento</span></div>
+      <p class="hint" style="margin-bottom:.6rem">Espaço livre para a memória de cálculo do dimensionamento: texto, tabelas (inclusive coladas do Excel), desenhos à mão livre e checklists. Tudo é salvo junto da proposta.</p>
+      <div id="dimToolbar">
+        <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button><button class="ql-strike"></button></span>
+        <span class="ql-formats"><select class="ql-header"><option value="1"></option><option value="2"></option><option selected></option></select></span>
+        <span class="ql-formats"><select class="ql-color"></select></span>
+        <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><button class="ql-indent" value="-1"></button><button class="ql-indent" value="+1"></button></span>
+      </div>
+      <div id="dimEditor"></div>
+      <div id="dimInsertBar">
+        <button type="button" class="btn bg bsm" onclick="dimAddExcel()">📋 Colar do Excel</button>
+        <button type="button" class="btn bg bsm" onclick="dimAddTable()">▦ Tabela vazia</button>
+        <button type="button" class="btn bg bsm" onclick="dimAddCanvas()">✏️ Área de desenho</button>
+        <button type="button" class="btn bg bsm" onclick="dimAddChecklist()">☑ Checklist</button>
+        <button type="button" class="btn bg bsm" onclick="dimImgPick()">🖼️ Imagem</button>
+        <button type="button" class="btn bg bsm" onclick="dimAddDivider()">— Divisor</button>
+        <input type="file" id="dimImgInput" accept="image/*" style="display:none" onchange="dimImgFromInput(event)">
+      </div>
+      <div id="dimBlocks"></div>
+    </div>
+    <div class="snav"><button class="btn bg" onclick="step(1)">← Dados</button><button class="btn bp" onclick="step(3)">Orçamento →</button></div>
   </div>
 
   <!-- S2 -->
@@ -1754,7 +1833,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       <!-- Modo Planilha (tabela inline editável; preenchido por rBudgPlanilha) -->
       <div id="bPlanilha" style="display:none"></div>
     </div>
-    <div class="snav"><button class="btn bg" onclick="step(1)">← Anterior</button><button class="btn bp" onclick="step(3)">Escopo →</button></div>
+    <div class="snav"><button class="btn bg" onclick="step(2)">← Anterior</button><button class="btn bp" onclick="step(4)">Escopo →</button></div>
   </div>
 
   <!-- S3 -->
@@ -1767,7 +1846,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
           <button class="btn ba bsm" onclick="addValorSec()">💰 Inserir Valor</button>
           <button class="btn bg bsm" onclick="addGanttSec()" title="Inserir seção de cronograma Gantt">📅 Gantt</button>
           <button class="btn bg bsm" onclick="tplPropAbrir()" title="Adicionar conjuntos de blocos (templates) diretamente nesta proposta">🧩 Templates de Proposta</button>
-          <button class="btn bg bsm" onclick="tplPropSalvarComoAbrir()" title="Salvar os blocos atuais da Etapa 3 como um novo template reutilizável">💾 Salvar como Template</button>
+          <button class="btn bg bsm" onclick="tplPropSalvarComoAbrir()" title="Salvar os blocos atuais da Etapa 4 como um novo template reutilizável">💾 Salvar como Template</button>
           <button class="btn bg bsm" onclick="escOrganizarPorSecoes()" title="Reordena os blocos na ordem padrão de seções da proposta (pede confirmação)">🧷 Organizar por seções</button>
           <button class="btn ba bsm" onclick="recarregarEscopo()" title="Recarrega as seções salvas desta proposta">🔄 Recarregar Escopo</button>
         </div>
@@ -1809,7 +1888,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       </div>
     </div>
 
-    <div class="snav"><button class="btn bg" onclick="step(2)">← Anterior</button><button class="btn bp" onclick="step(4)">Valores →</button></div>
+    <div class="snav"><button class="btn bg" onclick="step(3)">← Anterior</button><button class="btn bp" onclick="step(5)">Valores →</button></div>
   </div>
 
   <!-- S4 -->
@@ -1899,7 +1978,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
         <div id="kpiLegend" style="display:flex;flex-wrap:wrap;gap:.5rem 1rem;font-size:.72rem;color:var(--text2)"></div>
       </div>
     </div>
-    <div class="snav"><button class="btn bg" onclick="step(3)">← Anterior</button><button class="btn bp" onclick="step(5);genPrev()">Preview →</button></div>
+    <div class="snav"><button class="btn bg" onclick="step(4)">← Anterior</button><button class="btn bp" onclick="step(6);genPrev()">Preview →</button></div>
   </div>
 
   <!-- S5 -->
@@ -1919,7 +1998,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       </div>
       <div id="pvWrap"><div style="text-align:center;padding:2.5rem;color:#888">Clique em "Atualizar" para gerar o preview.</div></div>
     </div>
-    <div class="snav"><button class="btn bg" onclick="step(4)">← Anterior</button><div></div></div>
+    <div class="snav"><button class="btn bg" onclick="step(5)">← Anterior</button><div></div></div>
   </div>
 </div>
 
@@ -6425,10 +6504,11 @@ function guiaAba(n){
         <div class="ct">⚡ Barra de Ação da Proposta</div>
         <div style="font-size:13px;line-height:1.65;color:var(--text2)">
           <strong>📋 Editar Dados</strong> — Etapa 1.<br>
-          <strong>⚙️ Orçamento</strong> — Etapa 2.<br>
-          <strong>📝 Editar Escopo</strong> — Etapa 3.<br>
-          <strong>💰 Valores</strong> — Etapa 4.<br>
-          <strong>👁 Preview</strong> — Etapa 5.<br>
+          <strong>📐 Dimensionamento</strong> — Etapa 2.<br>
+          <strong>⚙️ Orçamento</strong> — Etapa 3.<br>
+          <strong>📝 Editar Escopo</strong> — Etapa 4.<br>
+          <strong>💰 Valores</strong> — Etapa 5.<br>
+          <strong>👁 Preview</strong> — Etapa 6.<br>
           <strong>📋 Log</strong> — registros internos.<br>
           <strong>💾 Salvar</strong> — salva manualmente.<br>
           <strong>🏠 Fechar</strong> — salva e volta ao Dashboard.<br>
@@ -6437,7 +6517,7 @@ function guiaAba(n){
       </div>
 
       <div class="card" style="margin:0">
-        <div class="ct">2️⃣ Etapa 2 — Orçamento</div>
+        <div class="ct">3️⃣ Etapa 3 — Orçamento</div>
         <div style="font-size:13px;line-height:1.65;color:var(--text2)">
           <strong>📊 Margens por Categoria</strong> — margem/markup por categoria desta proposta.<br>
           <strong>+ Nova Categoria</strong> — cria categoria personalizada.<br>
@@ -6447,7 +6527,7 @@ function guiaAba(n){
           <strong>🖨️ Imprimir / 📊 Excel</strong> — exporta categorias.<br>
           <strong>➕ Adicionar / ✏️ Editar Item</strong> — modal centralizado com preview FMF/PV/LL ao vivo e painel de margem rápida.<br>
           <strong>📥 Importar Lote</strong> — itens do Excel.<br>
-          <strong>↓ Usar nos Valores</strong> — leva total à Etapa 4.
+          <strong>↓ Usar nos Valores</strong> — leva total à Etapa 5.
         </div>
       </div>
 
@@ -6466,7 +6546,7 @@ function guiaAba(n){
       </div>
 
       <div class="card" style="margin:0">
-        <div class="ct">4️⃣ Etapa 4 — Valores e Alíquotas</div>
+        <div class="ct">5️⃣ Etapa 5 — Valores e Alíquotas</div>
         <div style="font-size:13px;line-height:1.65;color:var(--text2)">
           <strong>PV Serviços / PV Materiais</strong> — valores por tipo.<br>
           <strong>Desconto</strong> — abate o PV total (temporário).<br>
@@ -6506,7 +6586,7 @@ function guiaAba(n){
           <strong>🖨️ Imprimir</strong> — diálogo de impressão do sistema.<br>
           <strong>📄 PDF</strong> — salva como PDF.<br>
           <strong>📝 Word (.docx)</strong> — gera arquivo completo incluindo Gantt.<br>
-          <strong>🗓️ Gantt</strong> — disponível na Etapa 3 em seções de Prazo. Calcula em dias úteis com feriados nacionais e locais configuráveis.
+          <strong>🗓️ Gantt</strong> — disponível na Etapa 4 em seções de Prazo. Calcula em dias úteis com feriados nacionais e locais configuráveis.
         </div>
       </div>
 
@@ -6709,11 +6789,11 @@ function guiaAba(n){
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start">
           <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">7</span>
-          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 2 — Orçamento:</strong> adicione os itens de Serviço e/ou Material. O sistema calcula FMF, PV, total e margens automaticamente.</div>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 3 — Orçamento:</strong> adicione os itens de Serviço e/ou Material. O sistema calcula FMF, PV, total e margens automaticamente.</div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start">
           <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">8</span>
-          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 3 — Escopo:</strong> descreva o escopo técnico por seções (clique em ➕ para adicionar seções e sub-itens).</div>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Etapa 4 — Escopo:</strong> descreva o escopo técnico por seções (clique em ➕ para adicionar seções e sub-itens).</div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start">
           <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">9</span>
@@ -6721,7 +6801,7 @@ function guiaAba(n){
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start">
           <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">10</span>
-          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Exporte o PDF ou Word (Etapa 4) e envie ao cliente. Depois mude a fase para <strong style="color:var(--text)">📤 Enviada</strong>.</div>
+          <div style="font-size:.8rem;color:var(--text2);line-height:1.5">Exporte o PDF ou Word (Etapa 5) e envie ao cliente. Depois mude a fase para <strong style="color:var(--text)">📤 Enviada</strong>.</div>
         </div>
           </div>
         <div style="margin-top:12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.22);border-radius:6px;padding:.55rem .75rem;font-size:.73rem;color:#58a6ff;line-height:1.5">💡 <strong>Auto-draft:</strong> o sistema salva rascunho automaticamente enquanto você digita. Se fechar o browser acidentalmente, a proposta estará salva ao reabrir.</div>
@@ -10153,7 +10233,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=15"></script>
+<script src="js/core/app-core.js?v=18"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
