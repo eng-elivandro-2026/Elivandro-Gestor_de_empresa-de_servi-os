@@ -838,7 +838,13 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 .dim-col-rz{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;user-select:none;z-index:3}
 .dim-cell-tb{position:absolute;z-index:25;display:flex;align-items:center;gap:.25rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.2rem .3rem;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .dim-cell-tb input[type=color]{width:24px;height:22px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:none}
-.dim-tbl-ctl{display:flex;gap:.4rem;margin-top:.5rem}
+.dim-tbl-ctl{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+.dim-ctx{position:fixed;z-index:1000;background:var(--color-background-primary,var(--bg));border:1px solid var(--color-border-secondary,var(--border));border-radius:var(--border-radius-md,var(--r2));font-size:13px;padding:.25rem 0;box-shadow:0 6px 20px rgba(0,0,0,.4);min-width:200px;color:var(--text)}
+.dim-ctx-i{padding:.4rem .85rem;cursor:pointer;white-space:nowrap}
+.dim-ctx-i:hover{background:var(--bg3)}
+.dim-ctx-i.dis{opacity:.4;cursor:not-allowed}
+.dim-ctx-i.dis:hover{background:none}
+.dim-ctx-sep{height:1px;background:var(--border);margin:.25rem 0}
 .dim-paste{min-height:70px;border:1.5px dashed var(--border);border-radius:var(--r2);padding:.6rem;color:var(--text);background:var(--bg2);outline:none}
 .dim-paste:empty::before{content:attr(data-ph);color:var(--text3)}
 .dim-paste-fb{font-size:.74rem;color:var(--green,#16a34a);font-weight:600;margin-bottom:.4rem}
@@ -10233,7 +10239,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=18"></script>
+<script src="js/core/app-core.js?v=19"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
