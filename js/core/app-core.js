@@ -3783,6 +3783,34 @@ function escRestaurarOriginal(si){
   if(typeof scheduleDraftSave==='function')scheduleDraftSave();
   toast('↺ Texto original restaurado');
 }
+// Abre o formulário do Banco de Escopos pré-preenchido com os dados da seção.
+// Salvar de fato fica a cargo do beSalvar() existente (validação, anti-duplicado, persistência).
+function beSalvarDeSecao(si){
+  var sec=escSecs[si]; if(!sec) return;
+  if(isValorSec(sec)){ toast('A seção de VALOR é automática e não vai para o Banco.','erro'); return; }
+  // Garante a biblioteca carregada (necessário para o anti-duplicado do beSalvar).
+  try{ beLoadDB(); }catch(e){}
+  // Modo "novo bloco" limpo (zera _beEditId, _beSubs, campos e status).
+  if(typeof beLimparForm==='function') beLimparForm();
+  _beEditId=null;
+  var cod=String(sec.codigoBloco||'').trim();
+  function setv(id,v){ var el=Q(id); if(el) el.value=(v!=null?v:''); }
+  setv('beCodigo',  cod);                                   // vazio => usuário preenche
+  setv('beFamilia', cod ? escFamiliaDeCodigo(cod) : '');    // inferida pelo prefixo do código
+  setv('beTitulo',  sec.titulo||'');
+  setv('beConteudo', sec.desc||'');
+  // subs da seção → _beSubs do formulário (ordem sequencial; desc não é editável no banco)
+  _beSubs=(sec.subs||[]).filter(function(s){return (s&&(s.nome||'')).trim();})
+    .map(function(s,i){ return {id:uid(), ordem:(i+1), nome:(s.nome||'').trim(), desc:''}; });
+  if(typeof beRenderSubs==='function') beRenderSubs();
+  var ct=Q('beCadTitulo'); if(ct) ct.textContent='➕ Cadastrar Escopo (a partir da seção)';
+  // Navega para a aba Banco de Escopos e foca o primeiro campo.
+  go('escopos', document.querySelector('.nb[onclick*="escopos"]') || document.querySelector('.nav-item'));
+  setTimeout(function(){
+    var f=Q('beCodigo'); if(f){ f.scrollIntoView({behavior:'smooth', block:'center'}); f.focus(); }
+  },80);
+  toast('🗂️ Revise os campos e clique em Salvar para gravar no Banco.','ok');
+}
 
 // ── F6: agrupamento VISUAL dos blocos da Etapa 3 por seção de proposta ──
 // Apenas rótulos visuais (cabeçalhos). Não altera escSecs nem a geração final.
@@ -3866,7 +3894,8 @@ function rEsc(){
          : '<button class="btn bg bxs es-addsub" data-si="'+si+'" title="Adicionar sub-item">+ Item</button>'
            +'<button class="btn bg bxs es-dup" data-si="'+si+'" title="Duplicar esta seção">⧉</button>'
            +(escBlocoEditado(sec)?'<button class="btn ba bxs es-restore" data-si="'+si+'" title="Restaurar o texto original do bloco da biblioteca">↺</button>':'')
-           +'<button class="btn bp bxs es-save" data-si="'+si+'" title="Salvar no banco">💾</button>')
+           +'<button class="btn bp bxs es-save" data-si="'+si+'" title="Salvar no banco">💾</button>'
+           +'<button class="btn bg bxs es-bebanco" data-si="'+si+'" title="Salvar no Banco de Escopos">🗂️</button>')
       +'<button class="btn bd bxs es-del" data-sid="'+sec.id+'" title="Excluir seção">🗑</button>'
       +'</div></div>'
       +(isValor ? '' : escMetaBar(sec))
@@ -3923,6 +3952,8 @@ function rEsc(){
       setTimeout(function(){var nb=el.querySelectorAll('.esb-n');if(nb.length)nb[nb.length-1].focus();},80);
     } else if(btn.classList.contains('es-save')){
       saveTplEsc(parseInt(btn.getAttribute('data-si')));
+    } else if(btn.classList.contains('es-bebanco')){
+      beSalvarDeSecao(parseInt(btn.getAttribute('data-si')));
     } else if(btn.classList.contains('es-dup')){
       escDuplicar(parseInt(btn.getAttribute('data-si')));
     } else if(btn.classList.contains('es-restore')){
