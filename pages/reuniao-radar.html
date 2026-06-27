@@ -107,6 +107,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .acoes{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.4rem}
 .vazio{color:var(--text3);font-style:italic;font-size:.86rem;padding:1rem 0}
 .ro-txt{white-space:pre-wrap;font-size:.85rem;line-height:1.55}
+/* ── Comparação lado a lado de atas ── */
+#cmp-grid{display:block}
+#cmp-grid.cmp-on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.cmp-col{min-width:0}
+#cmp-grid.cmp-on #cmp-left{border-left:3px solid #2563eb;padding-left:12px}
+#cmp-grid.cmp-on > #ata-form{border-left:3px solid var(--green);padding-left:12px}
+.cmp-head{font-weight:800;font-size:.92rem;padding:.45rem .7rem;border-radius:var(--r2);margin-bottom:.8rem}
+.cmp-head-l{background:rgba(37,99,235,.15);color:#3b82f6;border:1px solid rgba(37,99,235,.45)}
+.cmp-head-r{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.45)}
+#cmp-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--bg2);border:1px solid var(--emp-bdr);border-radius:var(--r);padding:.6rem 1rem;margin-bottom:1rem;flex-wrap:wrap}
+.cmp-mode{font-weight:800;color:var(--emp-cor)}
+#cmp-tabs{display:none;gap:.5rem;margin-bottom:.8rem}
+#cmp-tabs .btn.on{background:var(--emp-cor);color:#fff;border-color:var(--emp-cor)}
+/* Painel lateral de busca de atas */
+#cmp-panel{position:fixed;top:0;right:0;width:340px;max-width:90vw;height:100%;background:var(--bg2);border-left:1px solid var(--emp-bdr);box-shadow:-4px 0 22px rgba(0,0,0,.45);z-index:900;padding:1rem;overflow-y:auto;display:none;flex-direction:column;gap:.6rem}
+#cmp-panel.on{display:flex}
+.cmp-panel-head{display:flex;align-items:center;justify-content:space-between}
+.cmp-panel-head strong{font-size:1rem;color:var(--emp-cor)}
+#cmp-busca{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.85rem;padding:.45rem .6rem}
+.cmp-item{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .7rem;cursor:pointer;color:var(--text)}
+.cmp-item:hover{border-color:var(--emp-cor)}
+.cmp-item-cod{font-weight:800;font-size:.88rem;color:var(--emp-cor)}
+.cmp-item-sub{font-size:.74rem;color:var(--text2);margin-top:.1rem}
+.cmp-item-part{font-size:.72rem;color:var(--text3);margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){
+  #cmp-grid.cmp-on{grid-template-columns:1fr}
+  body.cmp-active #cmp-tabs{display:flex}
+  #cmp-grid.cmp-on.cmp-show-right #cmp-left{display:none !important}
+  #cmp-grid.cmp-on.cmp-show-left > #ata-form{display:none !important}
+}
 
 /* Impressão */
 #print-cab,#print-rod,.print-mirror{display:none}
@@ -188,6 +218,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <!-- ABA 2 -->
   <div id="aba-ata" style="display:none">
+   <div id="cmp-topbar" class="no-print" style="display:none"><span class="cmp-mode">🆚 Modo comparação de atas</span><button class="btn btn-emp btn-sm" onclick="sairComparar()">✕ Sair da comparação</button></div>
+   <div id="cmp-tabs" class="no-print"><button class="btn btn-ghost btn-sm" id="cmp-tab-l" onclick="_cmpTab('left')">◧ Ata comparação</button><button class="btn btn-ghost btn-sm" id="cmp-tab-r" onclick="_cmpTab('right')">Ata atual ◨</button></div>
+   <div id="cmp-grid">
+   <div id="cmp-left" class="cmp-col" style="display:none"></div>
    <div id="ata-form">
     <div class="cron no-print">
       <div class="cron-disp" id="cr-display">15:00</div>
@@ -254,11 +288,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
 
     <div class="acoes no-print">
+      <button class="btn btn-ghost no-print" id="btn-comparar" onclick="abrirComparar()">🆚 Comparar atas</button>
       <button class="btn btn-ghost" onclick="imprimirAta()">🖨️ Imprimir PDF</button>
       <button class="btn btn-emp" id="btn-salvar-ata" onclick="salvarAta()" style="display:none">Salvar ata</button>
     </div>
    </div><!-- /#ata-form -->
+   </div><!-- /#cmp-grid -->
    <div id="ata-concluida-estado" style="display:none"></div>
+  </div>
+
+  <!-- Painel lateral: busca de atas para comparação -->
+  <div id="cmp-panel" class="no-print">
+    <div class="cmp-panel-head"><strong>🆚 Comparar com…</strong><button class="btn btn-ghost btn-sm" onclick="fecharComparar()">✕</button></div>
+    <input id="cmp-busca" oninput="renderCmpLista()" placeholder="Buscar ata (número, data, participantes)…">
+    <div id="cmp-lista"></div>
   </div>
 
   <!-- ABA 3 -->
@@ -727,6 +770,88 @@ function abrirAta(id){
     bloco('Conclusão — principais pontos e próximos passos',r.conclusao);
   document.getElementById('hist-detalhe').innerHTML=det;
 }
+
+// ── Comparação lado a lado de duas atas (esquerda: só leitura; direita: ata atual editável) ──
+var _cmpLeftId=null;
+// HTML só-leitura de uma ata (reaproveita os mesmos blocos do histórico).
+function _ataReadOnlyHTML(r, inds, assuntos){
+  function bloco(t,v){ return '<div class="sec"><div class="sec-t">'+t+'</div><div class="ro-txt">'+(v?esc(v):'—')+'</div></div>'; }
+  var linhas=(inds||[]).map(function(it){ return '<tr><td class="ind-nome">'+esc(it.meta_titulo||'—')+'</td><td>'+esc(it.valor_atual||'—')+'</td><td>'+esc(it.valor_meta||'—')+'</td><td>'+_statusBadge(it.status_indicador)+'</td><td class="ro-txt">'+(it.desafio_plano?esc(it.desafio_plano):'—')+'</td></tr>'; }).join('');
+  return '<div class="sec"><div class="sec-t">Cabeçalho</div><div class="hist-sub">Anfitrião: '+esc(r.anfitriao||'—')+' · Participantes: '+esc(r.participantes||'—')+' · '+(r.status==='concluida'?'🔒 Concluída':'Aberta')+'</div></div>'+
+    '<div class="sec"><div class="sec-t">Indicadores da semana</div>'+
+      (r.indicadores_html
+        ? '<div class="ql-snow"><div class="ql-editor" style="padding:0">'+r.indicadores_html+'</div></div>'
+        : ((inds&&inds.length)?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Indicador</th><th>Atual</th><th>Meta</th><th>Status</th><th>Desafio / Plano</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="vazio">Sem indicadores registrados.</div>'))+
+    '</div>'+
+    _blocoAssuntos(assuntos||[])+
+    bloco('Novidades da semana', r.novidades)+
+    bloco('Onde estamos presos (restrições)', r.restricoes)+
+    bloco('Conclusão — principais pontos e próximos passos', r.conclusao);
+}
+async function abrirComparar(){
+  if(!_empresaAtiva){ return; }
+  if(!_reunioes.length){ try{ await carregarHistorico(); }catch(e){} }
+  var bs=document.getElementById('cmp-busca'); if(bs) bs.value='';
+  renderCmpLista();
+  document.getElementById('cmp-panel').classList.add('on');
+}
+function fecharComparar(){ var p=document.getElementById('cmp-panel'); if(p) p.classList.remove('on'); }
+function renderCmpLista(){
+  var q=(_gv('cmp-busca')||'').toLowerCase().trim();
+  var lista=_reunioes.filter(function(r){
+    if(!q) return true;
+    return [_codigoAta(r.numero_ata,r.data_reuniao), r.data_reuniao, r.participantes, r.anfitriao].join(' ').toLowerCase().indexOf(q)>=0;
+  }).slice(0,50);
+  var el=document.getElementById('cmp-lista'); if(!el) return;
+  if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma ata encontrada.</div>'; return; }
+  el.innerHTML=lista.map(function(r){
+    var cod=_codigoAta(r.numero_ata,r.data_reuniao);
+    var st=r.status==='concluida'?'🔒 Concluída':'Aberta';
+    return '<button type="button" class="cmp-item" onclick="escolherCmp(\''+r.id+'\')">'+
+      '<div class="cmp-item-cod">'+esc(cod)+'</div>'+
+      '<div class="cmp-item-sub">'+esc((r.data_reuniao||'').slice(0,10))+' · '+esc(r.anfitriao||'—')+' · '+st+'</div>'+
+      '<div class="cmp-item-part">👥 '+esc(r.participantes||'—')+'</div>'+
+    '</button>';
+  }).join('');
+}
+function escolherCmp(id){ _cmpLeftId=id; fecharComparar(); entrarComparar(id); }
+function entrarComparar(id){
+  var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
+  var inds=_indByReuniao[id]||[], assuntos=_assByReuniao[id]||[];
+  var cod=_codigoAta(r.numero_ata, r.data_reuniao);
+  var left=document.getElementById('cmp-left');
+  left.innerHTML='<div class="cmp-head cmp-head-l">◧ '+esc(cod)+' · '+esc((r.data_reuniao||'').slice(0,10))+' — comparação (leitura)</div>'+_ataReadOnlyHTML(r, inds, assuntos);
+  left.style.display='';
+  _cmpAddRightHead();
+  document.getElementById('cmp-grid').classList.add('cmp-on');
+  document.getElementById('cmp-topbar').style.display='';
+  document.body.classList.add('cmp-active');
+  _cmpTab('left'); // mobile começa pela ata de comparação; no desktop ambas aparecem
+  var tp=document.getElementById('cmp-topbar'); if(tp) tp.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function sairComparar(){
+  _cmpLeftId=null;
+  var g=document.getElementById('cmp-grid'); if(g) g.classList.remove('cmp-on','cmp-show-left','cmp-show-right');
+  var left=document.getElementById('cmp-left'); if(left){ left.style.display='none'; left.innerHTML=''; }
+  var tp=document.getElementById('cmp-topbar'); if(tp) tp.style.display='none';
+  document.body.classList.remove('cmp-active');
+  _cmpRemoveRightHead();
+}
+function _cmpTab(which){
+  var g=document.getElementById('cmp-grid'); if(!g) return;
+  g.classList.remove('cmp-show-left','cmp-show-right');
+  g.classList.add(which==='left'?'cmp-show-left':'cmp-show-right');
+  var bl=document.getElementById('cmp-tab-l'), br=document.getElementById('cmp-tab-r');
+  if(bl) bl.classList.toggle('on', which==='left');
+  if(br) br.classList.toggle('on', which==='right');
+}
+function _cmpAddRightHead(){
+  var form=document.getElementById('ata-form'); if(!form || document.getElementById('cmp-right-head')) return;
+  var h=document.createElement('div'); h.className='cmp-head cmp-head-r'; h.id='cmp-right-head'; h.textContent='◨ Ata atual (em edição)';
+  form.insertBefore(h, form.firstChild);
+}
+function _cmpRemoveRightHead(){ var h=document.getElementById('cmp-right-head'); if(h&&h.parentNode) h.parentNode.removeChild(h); }
+
 function reabrirAta(id){
   var r=_reunioes.find(function(x){return x.id===id;}); if(!r) return;
   _ataId=id; _numeroAta=(r.numero_ata!=null?r.numero_ata:null); _ataConcluida=(r.status==='concluida');
