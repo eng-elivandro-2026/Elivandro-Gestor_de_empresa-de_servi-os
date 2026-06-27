@@ -826,8 +826,14 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 #dimInsertBar{display:flex;gap:.4rem;flex-wrap:wrap;margin:.7rem 0}
 #dimBlocks{display:flex;flex-direction:column;gap:.7rem}
 .dim-block{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);overflow:hidden}
-.dim-block-h{display:flex;align-items:center;justify-content:space-between;padding:.35rem .55rem;background:var(--bg2);border-bottom:1px solid var(--border)}
-.dim-block-t{font-size:.78rem;font-weight:700;color:var(--text2)}
+.dim-block-h{display:flex;align-items:center;gap:.2rem;padding:.35rem .55rem;background:var(--bg2);border-bottom:1px solid var(--border)}
+.dim-block-t{font-size:.78rem;font-weight:700;color:var(--text2);flex:1}
+.dim-block-drag{cursor:grab;color:var(--muted,var(--text3));padding:0 6px;user-select:none}
+.dim-block-drag:active{cursor:grabbing}
+.sortable-ghost{opacity:.4}
+.dim-block-title{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text);font-size:13px;font-weight:500;font-family:inherit;padding:.2rem .4rem;outline:none}
+.dim-block-title:focus{border-color:var(--border);background:var(--bg)}
+.dim-block-title::placeholder{color:var(--text3);font-weight:400}
 .dim-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;line-height:1;padding:.1rem .3rem;border-radius:4px}
 .dim-x:hover{color:var(--red,#dc2626);background:rgba(220,38,38,.1)}
 .dim-block-b{padding:.6rem}
@@ -10239,7 +10245,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=20"></script>
+<script src="js/core/app-core.js?v=21"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>

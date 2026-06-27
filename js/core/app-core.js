@@ -1254,9 +1254,20 @@ function dimInit(){
     }
     _dimSaveBound=true;
   }
+  // Reordenar blocos por drag-and-drop (SortableJS via CDN — já carregado no projeto).
+  if(!_dimSortable){
+    var bl=Q('dimBlocks');
+    if(bl && typeof Sortable!=='undefined'){
+      _dimSortable=new Sortable(bl, {
+        draggable:'.dim-block', handle:'.dim-block-drag', animation:150, ghostClass:'sortable-ghost',
+        onEnd:function(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
+      });
+    }
+  }
   if(_dimPendingHtml!=null || _dimPendingBlocos!=null) dimApplyPending();
 }
 var _dimBlocksMO=null;
+var _dimSortable=null;
 function _dimGetHtml(){ if(_dimQuill) return _dimQuill.root.innerHTML; var el=Q('dimEditor'); return el?el.innerHTML:''; }
 function _dimSetHtml(html){ if(_dimQuill){ _dimQuill.root.innerHTML=html||''; return; } var el=Q('dimEditor'); if(el) el.innerHTML=html||''; }
 function dimApplyPending(){
@@ -1279,12 +1290,24 @@ function dimSerialize(){
 
 function _dimBlocksEl(){ return Q('dimBlocks'); }
 // Wrapper padrão de um bloco (cabeçalho + botão fechar). Retorna {wrap, body}.
-function _dimWrap(kind, titulo){
+// Wrapper padrão do bloco: handle de arraste ⠿ + título editável + botão remover.
+// label = rótulo do tipo (vira placeholder do título); savedTitle = título salvo;
+// editable=false (divisor) usa rótulo estático em vez de input.
+function _dimWrap(kind, label, savedTitle, editable){
   var wrap=document.createElement('div'); wrap.className='dim-block'; wrap.setAttribute('data-bk', kind);
   var head=document.createElement('div'); head.className='dim-block-h';
-  var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=titulo||''; head.appendChild(t);
+  var grip=document.createElement('span'); grip.className='dim-block-drag'; grip.title='Arraste para reordenar'; grip.textContent='⠿';
+  head.appendChild(grip);
+  if(editable===false){
+    var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=label||''; head.appendChild(t);
+  } else {
+    var inp=document.createElement('input'); inp.type='text'; inp.className='dim-block-title';
+    inp.placeholder=label||'Título do bloco…'; inp.value=savedTitle||'';
+    inp.addEventListener('change', function(){ if(typeof _dimTouch==='function') _dimTouch(); });
+    head.appendChild(inp);
+  }
   var x=document.createElement('button'); x.type='button'; x.className='dim-x'; x.title='Remover bloco'; x.textContent='✕';
-  x.addEventListener('click', function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); });
+  x.addEventListener('click', function(){ if(wrap.parentNode){ wrap.parentNode.removeChild(wrap); if(typeof _dimTouch==='function') _dimTouch(); } });
   head.appendChild(x);
   var body=document.createElement('div'); body.className='dim-block-b';
   wrap.appendChild(head); wrap.appendChild(body);
@@ -1402,7 +1425,7 @@ function _dimMountTable(body, cols, rows){
 function dimAddTable(state){
   var cols=(state&&state.cols&&state.cols.length)?state.cols:((state&&state.headers&&state.headers.length)?state.headers:['Coluna 1','Coluna 2','Coluna 3','Coluna 4']);
   var rows=(state&&state.rows)?state.rows:[['','','',''],['','','',''],['','','','']];
-  var w=_dimWrap('table','▦ Tabela');
+  var w=_dimWrap('table','▦ Tabela', state&&state.title);
   _dimMountTable(w.body, cols, rows);
   var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
 }
@@ -1439,10 +1462,11 @@ function _dimTableState(table){
   var rows=[]; table.querySelectorAll('tbody tr').forEach(function(tr){ var r=[]; tr.querySelectorAll('td').forEach(function(td){ var o=sty(td); o.text=td.textContent||''; r.push(o); }); rows.push(r); });
   return { cols:cols, rows:rows };
 }
+function _dimBlockTitle(wrap){ var i=wrap.querySelector('.dim-block-title'); return i?(i.value||''):''; }
 function _dimSerTable(wrap){
   var table=wrap.querySelector('table.dim-tbl'); if(!table) return null;
   var st=_dimTableState(table);
-  return { kind:'table', cols:st.cols, rows:st.rows };
+  return { kind:'table', cols:st.cols, rows:st.rows, title:_dimBlockTitle(wrap) };
 }
 // Reconstrói thead/tbody a partir de um snapshot (mantém o mesmo elemento <table>).
 function _dimTableApplyState(table, state){
@@ -1532,7 +1556,7 @@ function _dimCanvasExport(canvas){
   }catch(e){ if(typeof toast==='function') toast('Não foi possível exportar o PNG.','erro'); }
 }
 function dimAddCanvas(state){
-  var w=_dimWrap('canvas','✏️ Área de desenho');
+  var w=_dimWrap('canvas','✏️ Área de desenho', state&&state.title);
   var BUF=2, BASEW=620;                                  // resolução interna alta = 2× a exibição
   var displayH=(state&&state.h)?Math.max(200,Math.min(800,parseInt(state.h,10)||220)):220;
   var zoom=100;
@@ -1616,12 +1640,12 @@ function _dimSerCanvas(wrap){
   var canvas=wrap.querySelector('canvas.dim-canvas'); if(!canvas) return null;
   var png=''; try{ png=canvas.toDataURL('image/png'); }catch(e){ png=''; }
   var h=parseInt(canvas.getAttribute('data-h'),10)||220;
-  return { kind:'canvas', png:png, h:h };
+  return { kind:'canvas', png:png, h:h, title:_dimBlockTitle(wrap) };
 }
 
 // ── Checklist ──
 function dimAddChecklist(state){
-  var w=_dimWrap('checklist','☑ Checklist');
+  var w=_dimWrap('checklist','☑ Checklist', state&&state.title);
   var list=document.createElement('div'); list.className='dim-chk-list';
   function addItem(texto, checked){
     var row=document.createElement('div'); row.className='dim-chk'+(checked?' done':'');
@@ -1645,12 +1669,12 @@ function _dimSerChecklist(wrap){
     var cb=row.querySelector('input[type=checkbox]'); var sp=row.querySelector('.dim-chk-t');
     items.push({ texto:(sp?sp.textContent:''), checked:!!(cb&&cb.checked) });
   });
-  return { kind:'checklist', items:items };
+  return { kind:'checklist', items:items, title:_dimBlockTitle(wrap) };
 }
 
 // ── Divisor ──
 function dimAddDivider(){
-  var w=_dimWrap('divider','— Divisor'); var hr=document.createElement('hr'); hr.className='dim-hr';
+  var w=_dimWrap('divider','— Divisor', null, false); var hr=document.createElement('hr'); hr.className='dim-hr';
   w.body.appendChild(hr); var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
 }
 
@@ -1678,7 +1702,7 @@ function _dimHandlePaste(ev){
 function dimAddImage(state){
   var src=(state&&state.src)||''; if(!src) return null;
   var wd=(state&&state.w!=null)?Math.max(50,Math.min(100,parseInt(state.w,10)||100)):100;
-  var w=_dimWrap('image','🖼️ Imagem');
+  var w=_dimWrap('image','🖼️ Imagem', state&&state.title);
   var box=document.createElement('div'); box.className='dim-img-block';
   var img=document.createElement('img'); img.src=src; img.style.width=wd+'%'; img.title='Clique para abrir em tamanho real';
   img.addEventListener('click', function(){ try{ var nw=window.open(); if(nw) nw.document.write('<img src="'+src+'" style="max-width:100%">'); }catch(e){} });
@@ -1697,7 +1721,7 @@ function _dimSerImage(wrap){
   var img=wrap.querySelector('.dim-img-block img'); if(!img) return null;
   var sl=wrap.querySelector('.dim-img-ctl input[type=range]');
   var cap=wrap.querySelector('.dim-img-cap');
-  return { kind:'image', src:img.getAttribute('src')||'', w:(sl?parseInt(sl.value,10)||100:100), label:(cap?cap.textContent||'':'') };
+  return { kind:'image', src:img.getAttribute('src')||'', w:(sl?parseInt(sl.value,10)||100:100), label:(cap?cap.textContent||'':''), title:_dimBlockTitle(wrap) };
 }
 
 function dimReadBlocks(){
@@ -1718,9 +1742,9 @@ function dimRebuildBlocks(blocos){
   (blocos||[]).forEach(function(b){
     if(!b||!b.kind) return;
     if(b.kind==='table') dimAddTable(b);
-    else if(b.kind==='canvas') dimAddCanvas({png:b.png, h:b.h});
-    else if(b.kind==='checklist') dimAddChecklist({items:b.items});
-    else if(b.kind==='image') dimAddImage({src:b.src, w:b.w, label:b.label});
+    else if(b.kind==='canvas') dimAddCanvas({png:b.png, h:b.h, title:b.title});
+    else if(b.kind==='checklist') dimAddChecklist({items:b.items, title:b.title});
+    else if(b.kind==='image') dimAddImage({src:b.src, w:b.w, label:b.label, title:b.title});
     else if(b.kind==='divider') dimAddDivider();
   });
 }
