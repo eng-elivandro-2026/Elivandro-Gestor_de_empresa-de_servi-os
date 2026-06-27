@@ -1215,7 +1215,10 @@ function irParaPreviewProposta(){
 var _dimQuill=null;
 var _dimNoQuill=false;
 var _dimPasteBound=false;
+var _dimSaveBound=false;
 var _dimPendingHtml=null, _dimPendingBlocos=null;
+// Agenda o autosave da proposta (mesmo debounce usado pelo restante do formulário).
+function _dimTouch(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
 
 function dimInit(){
   var elEd=Q('dimEditor'); if(!elEd) return;
@@ -1239,8 +1242,21 @@ function dimInit(){
     var s2=document.getElementById('s2dim');
     if(s2){ s2.addEventListener('paste', _dimHandlePaste, true); _dimPasteBound=true; }
   }
+  // Autosave: qualquer edição na Etapa 2 agenda o salvamento da proposta.
+  if(!_dimSaveBound){
+    // Texto do editor (Quill ou fallback) — o evento 'input' do contenteditable sobe até #dimEditor.
+    if(elEd) elEd.addEventListener('input', _dimTouch);
+    // Blocos: observa inserção/remoção, edição de texto e mudanças de estilo (tabela, checklist, imagem…).
+    var blocksEl=Q('dimBlocks');
+    if(blocksEl && typeof MutationObserver!=='undefined'){
+      _dimBlocksMO=new MutationObserver(_dimTouch);
+      _dimBlocksMO.observe(blocksEl, {childList:true, subtree:true, attributes:true, characterData:true});
+    }
+    _dimSaveBound=true;
+  }
   if(_dimPendingHtml!=null || _dimPendingBlocos!=null) dimApplyPending();
 }
+var _dimBlocksMO=null;
 function _dimGetHtml(){ if(_dimQuill) return _dimQuill.root.innerHTML; var el=Q('dimEditor'); return el?el.innerHTML:''; }
 function _dimSetHtml(html){ if(_dimQuill){ _dimQuill.root.innerHTML=html||''; return; } var el=Q('dimEditor'); if(el) el.innerHTML=html||''; }
 function dimApplyPending(){
@@ -1556,10 +1572,10 @@ function dimAddCanvas(state){
   // Ações
   var sepD=document.createElement('span'); sepD.className='dim-sep'; tb.appendChild(sepD);
   var bUndo=document.createElement('button'); bUndo.type='button'; bUndo.className='btn bg bxs'; bUndo.textContent='↶ Desfazer';
-  bUndo.addEventListener('click',function(){ if(!st.undo.length){ ctx.clearRect(0,0,canvas.width,canvas.height); return; } var d=st.undo.pop(); var img=new Image(); img.onload=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); }; img.src=d; });
+  bUndo.addEventListener('click',function(){ if(!st.undo.length){ ctx.clearRect(0,0,canvas.width,canvas.height); _dimTouch(); return; } var d=st.undo.pop(); var img=new Image(); img.onload=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); _dimTouch(); }; img.src=d; });
   tb.appendChild(bUndo);
   var bClear=document.createElement('button'); bClear.type='button'; bClear.className='btn bg bxs'; bClear.textContent='🗑 Limpar';
-  bClear.addEventListener('click',function(){ pushUndo(); ctx.clearRect(0,0,canvas.width,canvas.height); }); tb.appendChild(bClear);
+  bClear.addEventListener('click',function(){ pushUndo(); ctx.clearRect(0,0,canvas.width,canvas.height); _dimTouch(); }); tb.appendChild(bClear);
   var bSave=document.createElement('button'); bSave.type='button'; bSave.className='btn bg bxs'; bSave.textContent='💾 PNG';
   bSave.addEventListener('click',function(){ _dimCanvasExport(canvas); }); tb.appendChild(bSave);
   // Coordenadas em pixels do buffer (getBoundingClientRect já reflete zoom/altura)
@@ -1578,7 +1594,7 @@ function dimAddCanvas(state){
       if(st.tool==='line'){ ctx.moveTo(st.sx,st.sy); ctx.lineTo(p.x,p.y); } else { ctx.rect(st.sx,st.sy, p.x-st.sx, p.y-st.sy); }
       ctx.stroke();
     } }
-  function up(){ if(!st.drawing) return; st.drawing=false; st.snap=null; ctx.globalCompositeOperation='source-over'; }
+  function up(){ if(!st.drawing) return; st.drawing=false; st.snap=null; ctx.globalCompositeOperation='source-over'; _dimTouch(); }
   canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
   canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
   // Handle de redimensionamento da altura (200–800px), preservando o conteúdo.
