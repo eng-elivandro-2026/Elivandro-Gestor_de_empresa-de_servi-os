@@ -1326,16 +1326,18 @@ function _dimMakeTable(cols, rows){
 }
 function _dimTableControls(table){
   var bar=document.createElement('div'); bar.className='dim-tbl-ctl';
-  function mkbtn(txt,fn){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs'; b.textContent=txt; b.addEventListener('click',fn); return b; }
+  function mkbtn(txt,fn,title){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs'; b.textContent=txt; if(title) b.title=title; b.addEventListener('click',fn); return b; }
   bar.appendChild(mkbtn('+ Linha', function(){
     var tb=table.querySelector('tbody'); var ncol=table.querySelector('thead tr').children.length; var tr=document.createElement('tr');
     for(var c=0;c<ncol;c++){ tr.appendChild(_dimMakeTd('')); }
-    tb.appendChild(tr);
+    tb.appendChild(tr); _dimRecord(table);
   }));
   bar.appendChild(mkbtn('+ Coluna', function(){
     var htr=table.querySelector('thead tr'); htr.appendChild(_dimMakeTh('Coluna '+(htr.children.length+1)));
-    table.querySelectorAll('tbody tr').forEach(function(tr){ tr.appendChild(_dimMakeTd('')); });
+    table.querySelectorAll('tbody tr').forEach(function(tr){ tr.appendChild(_dimMakeTd('')); }); _dimRecord(table);
   }));
+  bar.appendChild(mkbtn('↩ Desfazer', function(){ _dimUndo(table); }, 'Desfazer (até 20 ações)'));
+  bar.appendChild(mkbtn('↪ Refazer', function(){ _dimRedo(table); }, 'Refazer'));
   return bar;
 }
 // Mini-toolbar flutuante por célula (alinhamento, cor do texto, cor de fundo).
@@ -1374,6 +1376,11 @@ function _dimMountTable(body, cols, rows){
   body.appendChild(table);
   body.appendChild(_dimTableControls(table));
   _dimCellToolbar(table, body);
+  // Menu de contexto (botão direito) sobre qualquer célula.
+  table.addEventListener('contextmenu', function(ev){ var cell=ev.target&&ev.target.closest?ev.target.closest('td,th'):null; if(!cell||!table.contains(cell)) return; ev.preventDefault(); _dimShowCtx(table, cell, ev.clientX, ev.clientY); });
+  // Registra no histórico ao sair do foco de uma célula (edição concluída).
+  table.addEventListener('focusout', function(ev){ var c=ev.target; if(c&&(c.tagName==='TD'||c.tagName==='TH')) _dimRecord(table); });
+  _dimRecord(table); // estado inicial
   return table;
 }
 function dimAddTable(state){
@@ -1410,12 +1417,89 @@ function dimAddExcel(){
   w.body.appendChild(zone);
   var host=_dimBlocksEl(); if(host) host.appendChild(w.wrap); return w.wrap;
 }
-function _dimSerTable(wrap){
-  var table=wrap.querySelector('table.dim-tbl'); if(!table) return null;
+function _dimTableState(table){
   function sty(cell){ var o={}; if(cell.style.textAlign) o.align=cell.style.textAlign; var hc=_dimToHex(cell.style.color); if(hc) o.color=hc; var hb=_dimToHex(cell.style.backgroundColor); if(hb) o.bg=hb; return o; }
   var cols=[]; table.querySelectorAll('thead th').forEach(function(th){ var o=sty(th); o.text=_dimHeaderText(th); if(th.style.width) o.w=parseInt(th.style.width,10)||undefined; cols.push(o); });
   var rows=[]; table.querySelectorAll('tbody tr').forEach(function(tr){ var r=[]; tr.querySelectorAll('td').forEach(function(td){ var o=sty(td); o.text=td.textContent||''; r.push(o); }); rows.push(r); });
-  return { kind:'table', cols:cols, rows:rows };
+  return { cols:cols, rows:rows };
+}
+function _dimSerTable(wrap){
+  var table=wrap.querySelector('table.dim-tbl'); if(!table) return null;
+  var st=_dimTableState(table);
+  return { kind:'table', cols:st.cols, rows:st.rows };
+}
+// Reconstrói thead/tbody a partir de um snapshot (mantém o mesmo elemento <table>).
+function _dimTableApplyState(table, state){
+  table._applying=true;
+  while(table.firstChild) table.removeChild(table.firstChild);
+  var thead=document.createElement('thead'); var htr=document.createElement('tr');
+  (state.cols||[]).forEach(function(h){ htr.appendChild(_dimMakeTh(h)); });
+  thead.appendChild(htr); table.appendChild(thead);
+  var tbody=document.createElement('tbody');
+  (state.rows||[]).forEach(function(r){ var tr=document.createElement('tr'); (r||[]).forEach(function(cell){ tr.appendChild(_dimMakeTd(cell)); }); tbody.appendChild(tr); });
+  table.appendChild(tbody);
+  table._applying=false;
+}
+// Histórico de até 20 snapshots por tabela, com ponteiro para desfazer/refazer.
+function _dimRecord(table){
+  if(table._applying) return;
+  var snap=_dimTableState(table); var s=JSON.stringify(snap);
+  if(!table._hist){ table._hist=[]; table._hp=-1; }
+  if(table._hp>=0 && JSON.stringify(table._hist[table._hp])===s) return; // sem mudança real
+  table._hist=table._hist.slice(0, table._hp+1);     // descarta o "futuro" (redo)
+  table._hist.push(snap);
+  if(table._hist.length>20){ table._hist.shift(); }
+  table._hp=table._hist.length-1;
+}
+function _dimUndo(table){ if(!table._hist||table._hp<=0) return; table._hp--; _dimTableApplyState(table, table._hist[table._hp]); }
+function _dimRedo(table){ if(!table._hist||table._hp>=table._hist.length-1) return; table._hp++; _dimTableApplyState(table, table._hist[table._hp]); }
+// Operações de linha/coluna — o índice vem da célula clicada.
+function _dimColCount(table){ return table.querySelectorAll('thead th').length; }
+function _dimInsertRow(table, atIndex){
+  var tbody=table.querySelector('tbody'); var ncol=_dimColCount(table);
+  var tr=document.createElement('tr'); for(var c=0;c<ncol;c++) tr.appendChild(_dimMakeTd(''));
+  if(atIndex>=tbody.children.length) tbody.appendChild(tr); else tbody.insertBefore(tr, tbody.children[atIndex]);
+}
+function _dimDeleteRow(table, idx){ var tbody=table.querySelector('tbody'); if(tbody.children[idx]) tbody.removeChild(tbody.children[idx]); }
+function _dimInsertCol(table, atIndex){
+  var htr=table.querySelector('thead tr'); var th=_dimMakeTh('Coluna '+(_dimColCount(table)+1));
+  if(atIndex>=htr.children.length) htr.appendChild(th); else htr.insertBefore(th, htr.children[atIndex]);
+  table.querySelectorAll('tbody tr').forEach(function(tr){ var td=_dimMakeTd(''); if(atIndex>=tr.children.length) tr.appendChild(td); else tr.insertBefore(td, tr.children[atIndex]); });
+}
+function _dimDeleteCol(table, idx){
+  if(_dimColCount(table)<=1) return;
+  var htr=table.querySelector('thead tr'); if(htr.children[idx]) htr.removeChild(htr.children[idx]);
+  table.querySelectorAll('tbody tr').forEach(function(tr){ if(tr.children[idx]) tr.removeChild(tr.children[idx]); });
+}
+// ── Menu de contexto (botão direito) por célula ──
+var _dimCtxMenu=null;
+function _dimCtxOutside(ev){ if(_dimCtxMenu && !_dimCtxMenu.contains(ev.target)) _dimCloseCtx(); }
+function _dimCloseCtx(){ if(_dimCtxMenu&&_dimCtxMenu.parentNode) _dimCtxMenu.parentNode.removeChild(_dimCtxMenu); _dimCtxMenu=null; document.removeEventListener('mousedown', _dimCtxOutside, true); }
+function _dimShowCtx(table, cell, x, y){
+  _dimCloseCtx();
+  var isTd=(cell.tagName==='TD');
+  var c=Array.prototype.indexOf.call(cell.parentNode.children, cell);
+  var r=isTd ? Array.prototype.indexOf.call(table.querySelector('tbody').children, cell.parentNode) : -1;
+  var menu=document.createElement('div'); menu.className='dim-ctx';
+  function item(label, fn, disabled){
+    var d=document.createElement('div'); d.className='dim-ctx-i'+(disabled?' dis':''); d.textContent=label;
+    if(!disabled) d.addEventListener('mousedown', function(ev){ ev.preventDefault(); ev.stopPropagation(); _dimCloseCtx(); fn(); _dimRecord(table); });
+    return d;
+  }
+  function sep(){ var s=document.createElement('div'); s.className='dim-ctx-sep'; return s; }
+  menu.appendChild(item('Inserir linha acima', function(){ _dimInsertRow(table, isTd?r:0); }));
+  menu.appendChild(item('Inserir linha abaixo', function(){ _dimInsertRow(table, isTd?r+1:0); }));
+  menu.appendChild(item('Excluir linha', function(){ _dimDeleteRow(table, r); }, !isTd));
+  menu.appendChild(sep());
+  menu.appendChild(item('Inserir coluna à esquerda', function(){ _dimInsertCol(table, c); }));
+  menu.appendChild(item('Inserir coluna à direita', function(){ _dimInsertCol(table, c+1); }));
+  menu.appendChild(item('Excluir coluna', function(){ _dimDeleteCol(table, c); }, _dimColCount(table)<=1));
+  document.body.appendChild(menu);
+  var mw=menu.offsetWidth, mh=menu.offsetHeight;
+  menu.style.left=Math.max(2, Math.min(x, window.innerWidth-mw-4))+'px';
+  menu.style.top=Math.max(2, Math.min(y, window.innerHeight-mh-4))+'px';
+  _dimCtxMenu=menu;
+  setTimeout(function(){ document.addEventListener('mousedown', _dimCtxOutside, true); },0);
 }
 
 // ── Área de desenho (canvas) ──
