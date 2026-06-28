@@ -258,12 +258,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 
+  <div class="cols">
+    <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
+    <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
+  </div>
+
   <div id="kpis-painel">
     <div class="kpis-head">
       <span class="kpis-titulo">📊 Indicadores</span>
-      <button class="btn btn-ghost btn-sm" id="kpis-toggle" onclick="toggleKpis()">▲ recolher</button>
+      <button class="btn btn-ghost btn-sm" id="kpis-toggle" onclick="toggleKpis()">▼ expandir</button>
     </div>
-    <div id="kpis-body">
+    <div id="kpis-body" style="display:none">
       <div class="kpis-bloco"><div class="kpis-bloco-t">Resultado Financeiro</div><div class="kpis-grid" id="kpis-fin"></div></div>
       <div class="kpis-bloco"><div class="kpis-bloco-t">Comercial</div><div class="kpis-grid" id="kpis-com"></div></div>
       <div class="kpis-bloco"><div class="kpis-bloco-t">Velocidade</div><div class="kpis-grid" id="kpis-vel"></div></div>
@@ -273,25 +278,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div id="funil-painel">
     <div class="fm-head">
       <span class="fm-titulo">🔻 Funil Comercial <small id="funil-ano"></small></span>
-      <button class="btn btn-ghost btn-sm" id="funil-toggle" onclick="toggleFunil()">▲ recolher</button>
+      <button class="btn btn-ghost btn-sm" id="funil-toggle" onclick="toggleFunil()">▼ expandir</button>
     </div>
-    <div id="funil-body"><div id="funil-svg"></div></div>
-  </div>
-
-  <div class="cols">
-    <div class="lista" id="lista-metas"><div class="vazio">Carregando…</div></div>
-    <div class="det" id="detalhe"><div class="estado">Selecione uma meta para ver os detalhes.</div></div>
+    <div id="funil-body" style="display:none"><div id="funil-svg"></div></div>
   </div>
 
   <div id="fechmes-painel">
     <div class="fm-head">
       <span class="fm-titulo">📅 Fechamentos por Mês <small id="fechmes-ano"></small></span>
       <div style="display:flex;gap:.4rem">
-        <button class="btn btn-ghost btn-sm" id="fechmes-toggle" onclick="toggleFechmes()">▲ recolher</button>
+        <button class="btn btn-ghost btn-sm" id="fechmes-toggle" onclick="toggleFechmes()">▼ expandir</button>
         <button class="btn btn-ghost btn-sm" onclick="imprimirChart()">🖨️ Imprimir PDF</button>
       </div>
     </div>
-    <div id="fechmes-body">
+    <div id="fechmes-body" style="display:none">
       <div id="fechmes-kpis"></div>
       <div id="fechmes-chart"></div>
     </div>
@@ -436,7 +436,7 @@ function _iniciais(nome){ var n=(nome||'').toLowerCase(); if(n.includes('tecfusi
 function _header(emp){ var nome=(emp&&(emp.nome_curto||emp.nome))||'—'; document.getElementById('hdr-nome').textContent=nome; document.getElementById('hdr-mk').textContent=_iniciais(nome); }
 
 // ── Painel de KPIs ──
-var _kpisAberto=true;
+var _kpisAberto=false;
 var _FAS_GANHA=['aprovado','ganho','andamento','taf','sat','finalizado','atrasado','faturado','recebido'];
 var _FAS_PIPE =['enviada','cliente_analisando','follow1','follow2','follow3','follow4','virou_budget'];
 
@@ -460,7 +460,7 @@ function toggleKpis(){
   if(b) b.style.display=_kpisAberto?'':'none';
   if(t) t.textContent=_kpisAberto?'▲ recolher':'▼ expandir';
 }
-var _fechmesAberto=true;
+var _fechmesAberto=false;
 function toggleFechmes(){
   _fechmesAberto=!_fechmesAberto;
   var b=document.getElementById('fechmes-body'); var t=document.getElementById('fechmes-toggle');
@@ -468,7 +468,7 @@ function toggleFechmes(){
   if(t) t.textContent=_fechmesAberto?'▲ recolher':'▼ expandir';
 }
 // Funil Comercial (espelho) — mesma fonte do Comercial (window.parent.calcFunilComercial)
-var _funilAberto=true;
+var _funilAberto=false;
 function toggleFunil(){
   _funilAberto=!_funilAberto;
   var b=document.getElementById('funil-body'); var t=document.getElementById('funil-toggle');
