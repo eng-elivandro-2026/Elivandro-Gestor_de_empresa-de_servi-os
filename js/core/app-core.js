@@ -15786,3 +15786,83 @@ function _cotMsgCopiado(){
   if(msg){ msg.style.display='inline'; setTimeout(function(){msg.style.display='none';},4000); }
   toast('📋 E-mail copiado! Cole no Outlook com Ctrl+V','ok');
 }
+
+// ============================================================
+// RH — Regime de trabalho por colaborador + feriados (PARTE A: leitura)
+// Tabelas: regime_colaborador, feriados_empresa (migrations 049/050).
+// A UI virá em PRs seguintes; aqui só acesso/derivação de dados.
+// ============================================================
+function _rhEmpresaId(){
+  return (typeof getEmpresaAtivaId === 'function' ? getEmpresaAtivaId() : null)
+      || (window._empresaAtiva && window._empresaAtiva.id) || null;
+}
+// Regime ATIVO do colaborador (mais recente por vigência). Retorna o objeto ou null.
+async function rhGetRegime(colaboradorId){
+  if(!window.sbClient || !colaboradorId) return null;
+  try{
+    var r = await window.sbClient.from('regime_colaborador').select('*')
+      .eq('colaborador_id', colaboradorId).eq('ativo', true)
+      .order('vigencia_inicio', {ascending:false, nullsFirst:false})
+      .limit(1);
+    if(r.error){ console.error('[rhGetRegime]', r.error.message); return null; }
+    return (r.data && r.data[0]) || null;
+  }catch(e){ console.error('[rhGetRegime]', e); return null; }
+}
+// Feriados da empresa para um ano (ou todos, se ano vazio). Retorna array.
+async function rhGetFeriados(empresaId, ano){
+  if(!window.sbClient) return [];
+  var eid = empresaId || _rhEmpresaId();
+  if(!eid) return [];
+  try{
+    var q = window.sbClient.from('feriados_empresa').select('*').eq('empresa_id', eid);
+    if(ano){ q = q.gte('data', ano+'-01-01').lte('data', ano+'-12-31'); }
+    var r = await q.order('data', {ascending:true});
+    if(r.error){ console.error('[rhGetFeriados]', r.error.message); return []; }
+    return r.data || [];
+  }catch(e){ console.error('[rhGetFeriados]', e); return []; }
+}
+// Dia da semana de uma data ISO no padrão do regime: 0=segunda … 6=domingo.
+function rhDiaSemana(dataStr){
+  if(!dataStr) return null;
+  var d = new Date(String(dataStr).slice(0,10) + 'T12:00:00');
+  if(isNaN(d.getTime())) return null;
+  return (d.getDay() + 6) % 7; // JS getDay(): 0=domingo → remapeia p/ 0=segunda
+}
+// Tipo do dia: 'feriado' (se houver feriado na data) senão o tipo do regime
+// para aquele dia da semana ('work'/'extra50'/'extra100'/'off'). Default 'work'.
+function rhTipoDia(dataStr, regime, feriados){
+  var dia = String(dataStr || '').slice(0,10);
+  if(!dia) return 'work';
+  if(Array.isArray(feriados) && feriados.some(function(f){ return String(f.data||'').slice(0,10) === dia; })) return 'feriado';
+  var idx = rhDiaSemana(dia);
+  if(idx == null) return 'work';
+  return (regime && regime['dia_'+idx+'_tipo']) || 'work';
+}
+// Pré-preenchimento do apontamento a partir do regime + feriados.
+// Retorna { tipo_dia, jornada_inicio, jornada_fim, intervalo_minutos }.
+async function rhPreencherApontamento(colaboradorId, dataStr){
+  var dia = String(dataStr || '').slice(0,10);
+  var regime = await rhGetRegime(colaboradorId);
+  var ano = dia ? dia.slice(0,4) : null;
+  var feriados = await rhGetFeriados(_rhEmpresaId(), ano);
+  var tipo = rhTipoDia(dia, regime, feriados);
+  var idx = rhDiaSemana(dia);
+  var ini = '08:00', fim = '18:00', intervalo = 60;
+  if(regime){
+    if(regime.refeicao_minutos != null) intervalo = Number(regime.refeicao_minutos) || 60;
+    if(idx != null){
+      var e = regime['dia_'+idx+'_entrada'], s = regime['dia_'+idx+'_saida'];
+      if(e) ini = String(e).slice(0,5);
+      if(s) fim = String(s).slice(0,5);
+    }
+  }
+  return { tipo_dia: tipo, jornada_inicio: ini, jornada_fim: fim, intervalo_minutos: intervalo };
+}
+// Expõe para iframes (pages/rh.html, pages/colaborador.html) via window.parent.
+if(typeof window !== 'undefined'){
+  window.rhGetRegime = rhGetRegime;
+  window.rhGetFeriados = rhGetFeriados;
+  window.rhDiaSemana = rhDiaSemana;
+  window.rhTipoDia = rhTipoDia;
+  window.rhPreencherApontamento = rhPreencherApontamento;
+}
