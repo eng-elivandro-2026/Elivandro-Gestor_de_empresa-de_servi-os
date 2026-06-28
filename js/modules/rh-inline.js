@@ -20,6 +20,8 @@ function fmtBrasilia(isoStr) {
 // ══ CONFIGURAÇÃO SUPABASE ════════════════════════════════════
 var sb = window.sbClient; // usa cliente global
 // ══ ESTADO GLOBAL ════════════════════════════════════════════
+// Tipo do colaborador normalizado (case-insensitive): 'clt' | 'mei' | 'pj' | ''.
+function _tipoColab(c){ return String(c && c.tipo || '').trim().toLowerCase(); }
 var _colabs = [];
 var _colabsGen = 0; // generation counter — prevents stale carregarColabs() from overwriting fresher results
 var _colabAtivo = null;
@@ -171,7 +173,7 @@ function bloquearAcessoRH() {
     + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
     + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
     + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pd\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=ph\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
     + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
     + '</div></div></div>';
 }
@@ -187,7 +189,7 @@ async function rhSairDaPlataforma() {
 // em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
 async function _bloquearOuRedirRH(authUser, ehColabKnown) {
   var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
-  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pd'; return; }
+  if (ehColab) { window.location.href = '/pages/colaborador.html?v=ph'; return; }
   bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {
@@ -467,8 +469,8 @@ function renderColabs(lista) {
   }
   el.innerHTML = lista.map(function(c) {
     var ini = c.nome.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
-    var tipoBdg = c.tipo === 'clt' ? 'bdg-blue' : c.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
-    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    var tipoBdg = _tipoColab(c) === 'clt' ? 'bdg-blue' : _tipoColab(c) === 'mei' ? 'bdg-yellow' : 'bdg-gray';
+    var tipoTxt = _tipoColab(c) === 'clt' ? 'CLT' : _tipoColab(c) === 'mei' ? 'MEI' : 'PJ';
     var inativo = !c.ativo;
     var podeGerenciarEmpresas = document.body.classList.contains('master-admin');
     var acoes = inativo
@@ -495,9 +497,9 @@ function renderColabs(lista) {
 }
 
 function renderKpiColabs(lista) {
-  var clt = lista.filter(function(c){ return c.tipo==='clt'; }).length;
-  var mei = lista.filter(function(c){ return c.tipo==='mei'; }).length;
-  var pj  = lista.filter(function(c){ return c.tipo==='pj'; }).length;
+  var clt = lista.filter(function(c){ return _tipoColab(c)==='clt'; }).length;
+  var mei = lista.filter(function(c){ return _tipoColab(c)==='mei'; }).length;
+  var pj  = lista.filter(function(c){ return _tipoColab(c)==='pj'; }).length;
   document.getElementById('kpiColabs').innerHTML =
     kpi(lista.length, 'Total') +
     kpi(clt, 'CLT') +
@@ -804,7 +806,7 @@ async function abrirDetalhe(id) {
   document.getElementById('detNome').textContent = _colabAtivo.nome;
   document.getElementById('detSub').textContent = (_colabAtivo.funcao||'Sem função') + ' · ' + (_colabAtivo.tipo||'').toUpperCase();
 
-  var tipoBdg = _colabAtivo.tipo === 'clt' ? 'bdg-blue' : _colabAtivo.tipo === 'mei' ? 'bdg-yellow' : 'bdg-gray';
+  var tipoBdg = _tipoColab(_colabAtivo) === 'clt' ? 'bdg-blue' : _tipoColab(_colabAtivo) === 'mei' ? 'bdg-yellow' : 'bdg-gray';
   var inativoDetalhe = !_colabAtivo.ativo;
   document.getElementById('detBadges').innerHTML =
     '<span class="bdg ' + tipoBdg + '">' + (_colabAtivo.tipo||'').toUpperCase() + '</span>' +
@@ -822,7 +824,7 @@ async function abrirDetalhe(id) {
       '<button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>';
   }
 
-  var isClt = (_colabAtivo.tipo === 'clt');
+  var isClt = (_tipoColab(_colabAtivo) === 'clt');
   document.getElementById('tabBtnFerias').style.display = isClt ? '' : 'none';
 
   var admissaoLabel = isClt ? 'Admissão' : 'Início do contrato';
@@ -2168,16 +2170,34 @@ function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni
   };
 }
 
-function aplicarJornada() {
-  var j = document.getElementById('aptJornada').value;
-  var ini = document.getElementById('aptEntrada');
-  var fim = document.getElementById('aptSaida');
-  var ji  = document.getElementById('aptIntInicio');
-  var jf  = document.getElementById('aptIntFim');
-  if (j === '07-17') { ini.value='07:00'; fim.value='17:00'; }
-  else if (j === '08-18') { ini.value='08:00'; fim.value='18:00'; }
-  else if (j === '08-1730') { ini.value='08:00'; fim.value='17:30'; }
-  calcularHorasApt();
+// Acréscimos (extras 50%/100%): CLT sempre aplica; MEI/PJ conforme o regime
+// (campo aplicar_acrescimos, default true). O regime vem do cache em memória.
+function _aptAplicarAcrescimos(colab){
+  var t = _tipoColab(colab);
+  if (t !== 'mei' && t !== 'pj') return true; // CLT (ou sem tipo) sempre aplica
+  var reg = colab && _regimeCache[colab.id];
+  return !(reg && reg.aplicar_acrescimos === false); // default (sem regime / campo ausente) = aplica
+}
+// Calcula com ou sem acréscimos. Sem acréscimos: horas totais × valor/hora (sem split normal/extra/noturno).
+function _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr){
+  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
+  if (aplicarAcr) return full;
+  var tot = full.horas_total;
+  return {
+    horas_normal: tot, horas_extra_50: 0, horas_extra_100: 0, horas_noturno: 0, horas_total: tot,
+    valor_normal: parseFloat((tot*vh).toFixed(2)), valor_extra_50: 0, valor_extra_100: 0, valor_noturno: 0,
+    valor_periculosidade: 0, valor_total: parseFloat((tot*vh).toFixed(2))
+  };
+}
+// Colaborador selecionado no modal: sugere valor/hora e pré-preenche pelo regime.
+// O "aplicar acréscimos" agora vem do regime (configurado no modal de Regime), não há toggle aqui.
+async function aptColabSelecionado(){
+  var colabId = document.getElementById('aptColab').value;
+  var colab = _colabs.find(function(c){ return c.id === colabId; });
+  var vhEl = document.getElementById('aptValorHora');
+  if (vhEl) vhEl.value = (colab && colab.valor_hora != null) ? colab.valor_hora : '';
+  await preencherAptPorRegime();   // data/jornada/intervalo pelo regime (carrega regime no cache)
+  calcularHorasApt();              // garante recálculo mesmo sem regime
 }
 
 function calcularHorasApt() {
@@ -2186,27 +2206,37 @@ function calcularHorasApt() {
   var intIni   = document.getElementById('aptIntInicio').value;
   var intFim   = document.getElementById('aptIntFim').value;
   var tipoDia  = document.getElementById('aptTipoDia').value;
-  var jornada  = document.getElementById('aptJornada').value;
   var colabId  = document.getElementById('aptColab').value;
 
   if (!entrada || !saida) return;
 
-  // Jornada padrão conforme seleção
-  var jIni = '08:00', jFim = '18:00';
-  if (jornada === '07-17') { jIni='07:00'; jFim='17:00'; }
-  else if (jornada === '08-1730') { jIni='08:00'; jFim='17:30'; }
-  else if (jornada === 'custom') { jIni = entrada; jFim = saida; } // regime/personalizado: jornada normal = turno informado
+  // Jornada normal = turno informado (entrada/saída). O regime define entrada/saída no pré-preenchimento.
+  var jIni = entrada, jFim = saida;
 
-  // Pegar valor/hora e periculosidade do colaborador selecionado
   var colab = _colabs.find(function(c){ return c.id === colabId; });
-  var vh         = colab ? (colab.valor_hora||0) : 0;
-  var perig      = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  // Título do card mostra o tipo de vínculo real do colaborador
+  var tipoVinc = colab ? String(colab.tipo||'').toUpperCase() : 'CLT';
+  var titEl = document.getElementById('pvTitulo');
+  if (titEl) titEl.textContent = '⚡ Cálculo automático — ' + (tipoVinc || 'CLT');
+  // Valor/hora editável (campo) com fallback ao valor do colaborador
+  var vhEl = document.getElementById('aptValorHora');
+  var vh   = (vhEl && vhEl.value !== '') ? (Number(vhEl.value) || 0) : (colab ? (colab.valor_hora||0) : 0);
+  var perig      = colab && _tipoColab(colab) === 'clt' ? (colab.periculoso || false) : false;
   var percPerig  = colab ? (colab.perc_periculosidade || 30) : 30;
   var basePerig  = colab ? (colab.periculosidade_base || 'normal') : 'normal';
 
-  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
+  var aplicarAcr = _aptAplicarAcrescimos(colab);
+  var r = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr);
 
   document.getElementById('horasPrevia').style.display = 'block';
+  // Info (somente leitura) do % de extras — só relevante para MEI/PJ; estado vem do regime.
+  var ehMeiPj = (_tipoColab(colab) === 'mei' || _tipoColab(colab) === 'pj');
+  var acrInfoRow = document.getElementById('pvAcrescInfo');
+  var acrInfoVal = document.getElementById('pvAcrescVal');
+  if (acrInfoRow && acrInfoVal) {
+    if (ehMeiPj) { acrInfoRow.style.display = ''; acrInfoVal.textContent = aplicarAcr ? 'Aplicados' : 'Não aplicados'; }
+    else { acrInfoRow.style.display = 'none'; }
+  }
   document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
   document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
   document.getElementById('pvExtra100').textContent  = r.horas_extra_100.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_100);
@@ -3086,7 +3116,7 @@ async function carregarPendentes() {
 
 function renderPendentes(lista) {
   document.getElementById('pendList').innerHTML = lista.map(function(c) {
-    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    var tipoTxt = _tipoColab(c) === 'clt' ? 'CLT' : _tipoColab(c) === 'mei' ? 'MEI' : 'PJ';
     var id = c.id.replace(/'/g,"\\\'");
     var nome = (c.nome||'').replace(/'/g,"\\'");
     return '<div style="display:flex;align-items:center;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)">'
@@ -3153,7 +3183,7 @@ async function carregarInativos() {
 
 function renderInativos(lista) {
   document.getElementById('inativosList').innerHTML = lista.map(function(c) {
-    var tipoTxt = c.tipo === 'clt' ? 'CLT' : c.tipo === 'mei' ? 'MEI' : 'PJ';
+    var tipoTxt = _tipoColab(c) === 'clt' ? 'CLT' : _tipoColab(c) === 'mei' ? 'MEI' : 'PJ';
     var id = c.id.replace(/'/g,"\\\'");
     var nome = (c.nome||'').replace(/'/g,"\\'");
     return '<div style="display:flex;align-items:center;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)">'
@@ -3256,13 +3286,15 @@ async function abrirModalApontamento() {
   await preencherSelectColabs();
   await preencherSelectPropostas();
   document.getElementById('aptData').value = new Date().toISOString().split('T')[0];
-  document.getElementById('aptJornada').value = '08-18';
   document.getElementById('aptEntrada').value = '08:00';
   document.getElementById('aptSaida').value = '18:00';
   document.getElementById('aptIntInicio').value = '12:00';
   document.getElementById('aptIntFim').value = '13:00';
   document.getElementById('aptTipoDia').value = 'util';
   document.getElementById('aptDesc').value = '';
+  var vhEl0 = document.getElementById('aptValorHora'); if (vhEl0) vhEl0.value = '';
+  var titEl0 = document.getElementById('pvTitulo'); if (titEl0) titEl0.textContent = '⚡ Cálculo automático CLT';
+  var acrInfo0 = document.getElementById('pvAcrescInfo'); if (acrInfo0) acrInfo0.style.display = 'none';
   document.getElementById('horasPrevia').style.display = 'none';
   document.getElementById('modalApt').classList.add('on');
 }
@@ -3270,7 +3302,7 @@ async function abrirModalApontamento() {
 async function abrirModalAptColab(colabId) {
   await abrirModalApontamento();
   document.getElementById('aptColab').value = colabId;
-  await preencherAptPorRegime();
+  await aptColabSelecionado();
 }
 
 // PARTE D — pré-preenche o modal de apontamento a partir do regime do colaborador.
@@ -3319,7 +3351,6 @@ async function preencherAptPorRegime(){
   var intervaloMin = (regime.refeicao_minutos != null) ? Number(regime.refeicao_minutos) : 60;
   var mapTipo = { work:'util', extra50:'sabado', extra100:'domingo', feriado:'feriado', off:'feriado' };
   var td = document.getElementById('aptTipoDia'); if(td) td.value = mapTipo[tipoReg] || 'util';
-  var jsel = document.getElementById('aptJornada'); if(jsel) jsel.value = 'custom'; // horário do regime → personalizado
   var ent = document.getElementById('aptEntrada'); if(ent) ent.value = jIni;
   var sai = document.getElementById('aptSaida');   if(sai) sai.value = jFim;
   var iv = _aptIntervaloPorRegime(jIni, jFim, intervaloMin);
@@ -3342,7 +3373,6 @@ async function salvarApontamento() {
   var propostaId= document.getElementById('aptProposta').value;
   var data      = document.getElementById('aptData').value;
   var tipoDia   = document.getElementById('aptTipoDia').value;
-  var jornada   = document.getElementById('aptJornada').value;
   var entrada   = document.getElementById('aptEntrada').value;
   var saida     = document.getElementById('aptSaida').value;
   var intIni    = document.getElementById('aptIntInicio').value || '12:00';
@@ -3353,14 +3383,14 @@ async function salvarApontamento() {
     toast('Preencha todos os campos obrigatórios.','err'); return;
   }
 
-  var jIni='08:00', jFim='18:00';
-  if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
-  else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
-  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
+  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
+  var jIni=entrada, jFim=saida;
 
   var colab = _colabs.find(function(c){ return c.id===colabId; });
-  var vh        = colab ? (colab.valor_hora||0) : 0;
-  var perig     = colab && colab.tipo === 'clt' ? (colab.periculoso || false) : false;
+  // Valor/hora editável (campo) com fallback ao valor do colaborador — salvo em valor_hora_base.
+  var vhEl  = document.getElementById('aptValorHora');
+  var vh    = (vhEl && vhEl.value !== '') ? (Number(vhEl.value) || 0) : (colab ? (colab.valor_hora||0) : 0);
+  var perig     = colab && _tipoColab(colab) === 'clt' ? (colab.periculoso || false) : false;
   var percPerig = perig ? (colab.perc_periculosidade || 30) : null;
   var basePerig = perig ? (colab.periculosidade_base || 'normal') : null;
 
@@ -3369,7 +3399,7 @@ async function salvarApontamento() {
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
-  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
+  var calc = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, _aptAplicarAcrescimos(colab));
 
   var row = Object.assign({
     empresa_id:          empId,
@@ -3377,7 +3407,7 @@ async function salvarApontamento() {
     colaborador_id:      colabId,
     data:                data,
     tipo_dia:            tipoDia,
-    regime_jornada:      jornada,
+    regime_jornada:      'custom',
     jornada_inicio:      jIni,
     jornada_fim:         jFim,
     hora_entrada:        entrada,
@@ -3898,7 +3928,7 @@ async function gerarBoletim() {
   }
   var ano = new Date().getFullYear();
   var mes = String(new Date().getMonth()+1).padStart(2,'0');
-  var isClt = colab.tipo === 'clt';
+  var isClt = _tipoColab(colab) === 'clt';
   var prefixo = isClt ? 'RJ' : 'RMS';
   var numero = prefixo + '-' + ano + '-' + mes + '-' + String(seq).padStart(4,'0');
 
@@ -5113,6 +5143,12 @@ async function rejeitarDespesa(id) {
       _regSet('regVigIni', new Date().toISOString().slice(0,10)); _regSet('regVigFim','');
       if(badge) badge.style.display='none';
     }
+    // Toggle "aplicar acréscimos" — só aparece p/ MEI/PJ; default marcado (true).
+    var ehMeiPjReg = (_tipoColab(_colabAtivo) === 'mei' || _tipoColab(_colabAtivo) === 'pj');
+    var acrRowReg = document.getElementById('regAcrescimosRow');
+    if(acrRowReg) acrRowReg.style.display = ehMeiPjReg ? '' : 'none';
+    var acrTgReg = document.getElementById('regAplicarAcrescimos');
+    if(acrTgReg) acrTgReg.checked = reg ? (reg.aplicar_acrescimos !== false) : true;
     regimeToggleNoturno(); regimeCalc();
     var m=document.getElementById('modalRegime'); if(m) m.classList.add('on');
   }
@@ -5125,10 +5161,12 @@ async function rejeitarDespesa(id) {
     // Campos time/date: vazio (ou só espaços) → null (string vazia '' é time inválido no Postgres → 400).
     function t(v){ return (v && String(v).trim()) ? v : null; }
     var notOn=document.getElementById('regNotAtivo'); notOn=!!(notOn&&notOn.checked);
+    var acrOn=document.getElementById('regAplicarAcrescimos'); acrOn=!acrOn ? true : !!acrOn.checked;
     var row={
       colaborador_id:_colabAtivo.id, empresa_id:eid,
       escala:_regV('regEscala')||'custom',
       refeicao_minutos:parseInt(_regV('regRefeicao'),10)||0,
+      aplicar_acrescimos:acrOn,
       acresc_alem_jornada:parseInt(_regV('regAcAlem'),10)||0,
       acresc_sabado:parseInt(_regV('regAcSab'),10)||0,
       acresc_domingo:parseInt(_regV('regAcDom'),10)||0,
@@ -5391,6 +5429,7 @@ async function rejeitarDespesa(id) {
   window.abrirModalApontamento = abrirModalApontamento;
   window.abrirModalAptColab = abrirModalAptColab;
   window.preencherAptPorRegime = preencherAptPorRegime;
+  window.aptColabSelecionado = aptColabSelecionado;
   window.fecharModalApt = fecharModalApt;
   window.salvarApontamento = salvarApontamento;
   window.aprovarApt = aprovarApt;
@@ -5408,7 +5447,6 @@ async function rejeitarDespesa(id) {
   window.salvarEdicaoApt = salvarEdicaoApt;
   window.carregarHistoricoApt = carregarHistoricoApt;
   window.fecharModalHistoricoApt = fecharModalHistoricoApt;
-  window.aplicarJornada = aplicarJornada;
   window.aplicarJornadaEdit = aplicarJornadaEdit;
   window.calcularHorasApt = calcularHorasApt;
   window.calcularHorasEditApt = calcularHorasEditApt;

@@ -5954,7 +5954,7 @@ function guiaAba(n){
     <div class="modal-body">
       <div class="g2" style="gap:.85rem">
         <div class="f"><label>Colaborador *</label>
-          <select id="aptColab" onchange="preencherAptPorRegime()"><option value="">Selecione...</option></select>
+          <select id="aptColab" onchange="aptColabSelecionado()"><option value="">Selecione...</option></select>
         </div>
         <div class="f"><label>Proposta / Projeto *</label>
           <select id="aptProposta"><option value="">Selecione...</option></select>
@@ -5968,23 +5968,16 @@ function guiaAba(n){
             <option value="feriado">Feriado</option>
           </select>
         </div>
-        <div class="f"><label>Jornada de trabalho</label>
-          <select id="aptJornada" onchange="aplicarJornada()">
-            <option value="07-17">07:00 – 17:00</option>
-            <option value="08-18">08:00 – 18:00</option>
-            <option value="08-1730">08:00 – 17:30</option>
-            <option value="custom">Personalizado</option>
-          </select>
-        </div>
         <div class="f"><label>Hora entrada *</label><input type="time" id="aptEntrada" onchange="calcularHorasApt()"></div>
         <div class="f"><label>Hora saída *</label><input type="time" id="aptSaida" onchange="calcularHorasApt()"></div>
         <div class="f"><label>Intervalo início</label><input type="time" id="aptIntInicio" value="12:00" onchange="calcularHorasApt()"></div>
         <div class="f"><label>Intervalo fim</label><input type="time" id="aptIntFim" value="13:00" onchange="calcularHorasApt()"></div>
+        <div class="f"><label>Valor da hora (R$)</label><input type="number" step="0.01" min="0" id="aptValorHora" oninput="calcularHorasApt()"></div>
       </div>
 
-      <!-- Prévia do cálculo CLT -->
+      <!-- Prévia do cálculo -->
       <div class="horas-calc" id="horasPrevia" style="display:none">
-        <div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
+        <div id="pvTitulo" style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
         <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="pvNormal">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
         <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
@@ -5993,6 +5986,10 @@ function guiaAba(n){
         <div class="horas-linha">
           <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
           <span class="horas-total-val" id="pvTotal">—</span>
+        </div>
+        <div class="horas-linha" id="pvAcrescInfo" style="display:none;border-top:1px solid var(--border);margin-top:.35rem;padding-top:.35rem">
+          <span class="horas-tipo" style="color:var(--text3);font-size:.72rem">% de extras</span>
+          <span class="horas-val" id="pvAcrescVal" style="color:var(--text3);font-size:.72rem;font-weight:600">—</span>
         </div>
       </div>
 
@@ -6039,6 +6036,14 @@ function guiaAba(n){
             <option value="90">1h30</option>
           </select>
         </div>
+      </div>
+
+      <!-- Aplicar % de extras — só MEI/PJ -->
+      <div class="f" id="regAcrescimosRow" style="display:none;margin-top:.6rem">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:500">
+          <input type="checkbox" id="regAplicarAcrescimos" checked>
+          <span>Aplicar % de extras (Extra 50% / 100%) para este colaborador</span>
+        </label>
       </div>
 
       <!-- Horário e tipo por dia -->
@@ -10395,7 +10400,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=23"></script>
+<script src="js/modules/rh-inline.js?v=27"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
@@ -10471,7 +10476,7 @@ async function iniciarPlataforma() {
           }
         }
         if (_ehColab) {
-          window.location.href = '/pages/colaborador.html?v=pd'; return;
+          window.location.href = '/pages/colaborador.html?v=ph'; return;
         }
       }
     }

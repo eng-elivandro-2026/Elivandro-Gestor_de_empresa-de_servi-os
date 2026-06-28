@@ -589,15 +589,6 @@ body{
         </select>
       </div>
 
-      <div class="f">
-        <label>Jornada de trabalho</label>
-        <select id="nJornada" onchange="aplicarJornadaN()">
-          <option value="07-17">07:00 – 17:00</option>
-          <option value="08-18" selected>08:00 – 18:00</option>
-          <option value="08-1730">08:00 – 17:30</option>
-          <option value="custom">Personalizado</option>
-        </select>
-      </div>
 
       <div class="f-row">
         <div class="f">
@@ -621,9 +612,14 @@ body{
         </div>
       </div>
 
-      <!-- Cálculo automático CLT -->
+      <div class="f">
+        <label>Valor da hora (R$)</label>
+        <input type="number" step="0.01" min="0" id="nValorHora" oninput="calcNovo()">
+      </div>
+
+      <!-- Cálculo automático -->
       <div class="calc-box" id="calcBox">
-        <div class="calc-hdr">⚡ Cálculo CLT automático</div>
+        <div class="calc-hdr" id="cTitulo">⚡ Cálculo CLT automático</div>
         <div class="calc-linha">
           <span class="calc-tipo">Horas normais</span>
           <span class="calc-val" id="cNormal">—</span>
@@ -643,6 +639,10 @@ body{
         <div class="calc-linha">
           <span class="calc-tipo" style="font-weight:700;color:var(--text)">TOTAL</span>
           <span class="calc-total-val" id="cTotal">—</span>
+        </div>
+        <div class="calc-linha" id="cAcrescInfo" style="display:none;border-top:1px solid var(--border);margin-top:.35rem;padding-top:.35rem">
+          <span class="calc-tipo" style="color:var(--text3);font-size:.72rem">% de extras</span>
+          <span class="calc-val" id="cAcrescVal" style="color:var(--text3);font-size:.72rem;font-weight:600">—</span>
         </div>
       </div>
 
@@ -847,6 +847,7 @@ var _vinculoEmpresaAtual = null;
 var _propostas = [];
 var _telaAtual = 'inicio';
 var _editAptId = null; // id do apontamento em modo "corrigir e reenviar" (null = novo)
+var _regimeColab = null; // regime ativo do colaborador logado (carregado em preencherNovoAptPorRegime)
 
 // ══ UTILITÁRIOS ═══════════════════════════════════════════════
 function toast(msg, tipo) {
@@ -914,7 +915,9 @@ function empresaAtualId() {
   return _empresa && _empresa.id ? _empresa.id : null;
 }
 function tipoColabAtual() {
-  return (_vinculoEmpresaAtual && _vinculoEmpresaAtual.tipo) || (_colab && _colab.tipo) || '';
+  // Normalizado (case-insensitive): 'clt' | 'mei' | 'pj' | ''. Todas as comparações de tipo passam por aqui.
+  var t = (_vinculoEmpresaAtual && _vinculoEmpresaAtual.tipo) || (_colab && _colab.tipo) || '';
+  return String(t).trim().toLowerCase();
 }
 function valorHoraAtual() {
   if (_vinculoEmpresaAtual && _vinculoEmpresaAtual.valor_hora != null) {
@@ -1097,6 +1100,16 @@ function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, v
     valor_extra_100: parseFloat((extra100*vb*2).toFixed(2)),
     valor_noturno: parseFloat((noturno*vb*0.3).toFixed(2)),
     valor_total: parseFloat((normal*vb + extra50*vb*1.5 + extra100*vb*2 + noturno*vb*0.3).toFixed(2))
+  };
+}
+
+// Sem acréscimos (MEI/PJ): horas totais × valor/hora, sem split normal/extra/noturno.
+function _semAcrescimosN(full, vh){
+  var tot = full.horas_total;
+  return {
+    horas_normal: tot, horas_extra_50: 0, horas_extra_100: 0, horas_noturno: 0, horas_total: tot,
+    valor_normal: parseFloat((tot*vh).toFixed(2)), valor_extra_50: 0, valor_extra_100: 0, valor_noturno: 0,
+    valor_total: parseFloat((tot*vh).toFixed(2))
   };
 }
 
@@ -1396,8 +1409,12 @@ function prepararNovoApt() {
   // Data de hoje
   document.getElementById('nData').value = new Date().toISOString().split('T')[0];
   detectarTipoDia();
-  aplicarJornadaN();
-  preencherNovoAptPorRegime(); // PARTE D — sugere campos a partir do regime (se houver)
+  _regimeColab = null; // será recarregado pelo pré-preenchimento abaixo
+  preencherNovoAptPorRegime(); // PARTE D — sugere campos a partir do regime (se houver) e carrega _regimeColab
+  // Valor/hora sugerido + título por tipo de vínculo
+  var vhEl = document.getElementById('nValorHora'); if (vhEl) vhEl.value = valorHoraAtual() || '';
+  var tipoV = tipoColabAtual();
+  var titEl = document.getElementById('cTitulo'); if (titEl) titEl.textContent = '⚡ Cálculo automático — ' + (tipoV ? tipoV.toUpperCase() : 'CLT');
   document.getElementById('nDesc').value = '';
   document.getElementById('calcBox').classList.remove('on');
 
@@ -1413,14 +1430,6 @@ function detectarTipoDia() {
   if (dia === 0) sel.value = 'domingo';
   else if (dia === 6) sel.value = 'sabado';
   else sel.value = 'util';
-  calcNovo();
-}
-
-function aplicarJornadaN() {
-  var j = document.getElementById('nJornada').value;
-  if (j === '07-17') { document.getElementById('nEntrada').value='07:00'; document.getElementById('nSaida').value='17:00'; }
-  else if (j === '08-18') { document.getElementById('nEntrada').value='08:00'; document.getElementById('nSaida').value='18:00'; }
-  else if (j === '08-1730') { document.getElementById('nEntrada').value='08:00'; document.getElementById('nSaida').value='17:30'; }
   calcNovo();
 }
 
@@ -1450,7 +1459,8 @@ async function preencherNovoAptPorRegime(){
       .order('vigencia_inicio', { ascending:false, nullsFirst:false }).limit(1);
     if (!r.error && r.data) regime = r.data[0] || null;
   } catch(e) { regime = null; }
-  if (!regime) return; // sem regime → mantém comportamento atual
+  _regimeColab = regime; // cache p/ calcNovo/salvarNovoApt (inclusive null = sem regime)
+  if (!regime) { calcNovo(); return; } // sem regime → mantém comportamento atual (mas recalcula a info)
   var dd = new Date(dataStr + 'T12:00:00');
   if (isNaN(dd.getTime())) return;
   var idx = (dd.getDay() + 6) % 7; // 0=segunda … 6=domingo
@@ -1470,7 +1480,6 @@ async function preencherNovoAptPorRegime(){
   var fim = regime['dia_'+idx+'_saida']   ? String(regime['dia_'+idx+'_saida']).slice(0,5)   : '18:00';
   var refeic = (regime.refeicao_minutos != null) ? Number(regime.refeicao_minutos) : 60;
   var td = document.getElementById('nTipoDia'); if(td) td.value = mapTipo[tipoRegime] || 'util';
-  var jsel = document.getElementById('nJornada'); if(jsel) jsel.value = 'custom';
   var ent = document.getElementById('nEntrada'); if(ent) ent.value = ini;
   var sai = document.getElementById('nSaida');   if(sai) sai.value = fim;
   var iv = _intervaloPorRegimeN(ini, fim, refeic);
@@ -1487,18 +1496,32 @@ function calcNovo() {
   var intIni  = document.getElementById('nIntIni').value || '12:00';
   var intFim  = document.getElementById('nIntFim').value || '13:00';
   var tipoDia = document.getElementById('nTipoDia').value;
-  var jornada = document.getElementById('nJornada').value;
   if (!entrada || !saida) return;
 
-  var jIni='08:00', jFim='18:00';
-  if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
-  else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
-  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
+  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
+  var jIni=entrada, jFim=saida;
 
-  var vh = valorHoraAtual();
-  var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  // Título com o tipo de vínculo do colaborador logado
+  var tipo = tipoColabAtual();
+  var titEl = document.getElementById('cTitulo');
+  if (titEl) titEl.textContent = '⚡ Cálculo automático — ' + (tipo ? tipo.toUpperCase() : 'CLT');
+  // Valor/hora editável (campo) com fallback ao valor do colaborador
+  var vhEl = document.getElementById('nValorHora');
+  var vh = (vhEl && vhEl.value !== '') ? (Number(vhEl.value) || 0) : valorHoraAtual();
+  // Acréscimos: CLT sempre aplica; MEI/PJ conforme o regime (aplicar_acrescimos, default true).
+  var ehMeiPj = (tipo === 'mei' || tipo === 'pj');
+  var aplicarAcr = !(ehMeiPj && _regimeColab && _regimeColab.aplicar_acrescimos === false);
+  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var r = aplicarAcr ? full : _semAcrescimosN(full, vh);
 
   document.getElementById('calcBox').classList.add('on');
+  // Info (somente leitura) do % de extras — só para MEI/PJ; estado vem do regime.
+  var acrInfoRow = document.getElementById('cAcrescInfo');
+  var acrInfoVal = document.getElementById('cAcrescVal');
+  if (acrInfoRow && acrInfoVal) {
+    if (ehMeiPj) { acrInfoRow.style.display = ''; acrInfoVal.textContent = aplicarAcr ? 'Aplicados' : 'Não aplicados'; }
+    else { acrInfoRow.style.display = 'none'; }
+  }
   document.getElementById('cNormal').textContent   = fmtHoras(r.horas_normal) + ' → ' + fmtValorPortal(r.valor_normal);
   document.getElementById('cExtra50').textContent  = fmtHoras(r.horas_extra_50) + ' → ' + fmtValorPortal(r.valor_extra_50);
   document.getElementById('cExtra100').textContent = fmtHoras(r.horas_extra_100) + ' → ' + fmtValorPortal(r.valor_extra_100);
@@ -1511,7 +1534,6 @@ async function salvarNovoApt() {
   var propostaId = document.getElementById('nProposta').value;
   var data       = document.getElementById('nData').value;
   var tipoDia    = document.getElementById('nTipoDia').value;
-  var jornada    = document.getElementById('nJornada').value;
   var entrada    = document.getElementById('nEntrada').value;
   var saida      = document.getElementById('nSaida').value;
   var intIni     = document.getElementById('nIntIni').value || '12:00';
@@ -1531,19 +1553,30 @@ async function salvarNovoApt() {
     toast('Selecione um projeto da empresa atual.','err'); return;
   }
 
-  var jIni='08:00', jFim='18:00';
-  if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
-  else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
-  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
+  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
+  var jIni=entrada, jFim=saida;
 
-  var vh = valorHoraAtual();
+  var vhEl = document.getElementById('nValorHora');
+  var vh = (vhEl && vhEl.value !== '') ? (Number(vhEl.value) || 0) : valorHoraAtual();
 
   if (vh === 0) {
     mostrarToast('Atenção: apontamento sem valor/hora. Avise o gestor.', 'warning');
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
-  var calc = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var _tipoV = tipoColabAtual();
+  // Acréscimos: CLT sempre aplica; MEI/PJ conforme o regime (busca aplicar_acrescimos ativo via Supabase).
+  var _aplicarAcr = true;
+  if (_tipoV === 'mei' || _tipoV === 'pj') {
+    try {
+      var _rr = await sb.from('regime_colaborador').select('aplicar_acrescimos')
+        .eq('colaborador_id', _colab.id).eq('ativo', true)
+        .order('vigencia_inicio', { ascending:false, nullsFirst:false }).limit(1);
+      if (!_rr.error && _rr.data && _rr.data[0] && _rr.data[0].aplicar_acrescimos === false) _aplicarAcr = false;
+    } catch(e) {}
+  }
+  var _full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var calc = _aplicarAcr ? _full : _semAcrescimosN(_full, vh);
 
   var row = Object.assign({
     empresa_id: empId,
@@ -1551,7 +1584,7 @@ async function salvarNovoApt() {
     colaborador_id: _colab.id,
     data: data,
     tipo_dia: tipoDia,
-    regime_jornada: jornada,
+    regime_jornada: 'custom',
     jornada_inicio: jIni,
     jornada_fim: jFim,
     hora_entrada: entrada,
@@ -1659,11 +1692,12 @@ async function corrigirReenviarApt(id) {
   document.getElementById('nProposta').value = a.proposta_id || '';
   document.getElementById('nData').value     = a.data || '';
   document.getElementById('nTipoDia').value  = a.tipo_dia || 'util';
-  document.getElementById('nJornada').value  = a.regime_jornada || '08-18';
   document.getElementById('nEntrada').value  = a.hora_entrada || '08:00';
   document.getElementById('nSaida').value    = a.hora_saida || '18:00';
   document.getElementById('nIntIni').value   = a.intervalo_inicio || '12:00';
   document.getElementById('nIntFim').value   = a.intervalo_fim || '13:00';
+  var vhEl2 = document.getElementById('nValorHora');
+  if (vhEl2 && a.valor_hora_base != null && Number(a.valor_hora_base) > 0) vhEl2.value = a.valor_hora_base;
   document.getElementById('nDesc').value     = a.descricao || '';
   calcNovo();
 
