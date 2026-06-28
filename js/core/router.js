@@ -33,7 +33,7 @@
         { label: 'Reunião 1:1',     icon: '💬', emBreve: true },
         { separator: true, label: 'Reuniões' },
         { label: 'Diárias',     icon: '📅', emBreve: true },
-        { label: 'Semanais',    icon: '🗓️', action: "Router.ir('reuniao-radar')" },
+        { label: '↳ Semanais',  icon: '🗓️', action: "Router.ir('reuniao-radar')" },
         { label: 'Quinzenais',  icon: '📆', emBreve: true },
         { label: 'Trimestrais', icon: '📊', emBreve: true },
         { label: 'Anuais',      icon: '🎯', emBreve: true },
