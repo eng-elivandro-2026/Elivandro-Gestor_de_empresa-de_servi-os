@@ -284,6 +284,7 @@ function showTab(id, btn) {
   if (el) el.classList.add('on');
   if (btn) btn.classList.add('on');
   if (id === 'horas' && _colabAtivo) carregarHorasColab(_colabAtivo.id);
+  if (id === 'regime' && _colabAtivo) carregarAbaRegime(_colabAtivo.id);
   if (id === 'documentos' && _colabAtivo) carregarDocs(_colabAtivo.id);
   if (id === 'saude' && _colabAtivo) carregarSaude(_colabAtivo.id);
   if (id === 'epis' && _colabAtivo) carregarEpis(_colabAtivo.id);
@@ -5171,6 +5172,96 @@ async function rejeitarDespesa(id) {
       if(btn){ btn.disabled=false; btn.textContent='🔄 Recalcular apontamentos pendentes com este regime'; }
     }
   }
+  // ════════════════════════════════════════════════════════════
+  // PARTE C — Aba "Regime" (somente leitura) no perfil do colaborador
+  // ════════════════════════════════════════════════════════════
+  var _regEscalaLabel = { '5x2adm':'5x2 (administrativo)', '5x2':'5x2', '6x1':'6x1', '6x2':'6x2', '12x36':'12x36', '24x72':'24x72', 'custom':'Personalizada' };
+  var _regChipMap = {
+    work:     { txt:'Normal',      bg:'rgba(37,99,235,.14)', bd:'rgba(37,99,235,.4)', cor:'#3b82f6' },
+    extra50:  { txt:'Extra 50%',   bg:'rgba(217,119,6,.14)', bd:'rgba(217,119,6,.4)', cor:'#d97706' },
+    extra100: { txt:'Extra 100%',  bg:'rgba(220,38,38,.14)', bd:'rgba(220,38,38,.4)', cor:'#ef4444' },
+    off:      { txt:'Folga',       bg:'var(--bg3)',          bd:'var(--border)',      cor:'var(--text3)' }
+  };
+  function _regAbaChip(tipo){
+    var c=_regChipMap[tipo]||_regChipMap.work;
+    return '<span style="display:inline-block;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:.12rem .55rem;border-radius:10px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.cor+'">'+c.txt+'</span>';
+  }
+  function _regAbaHora(v){ return v ? String(v).slice(0,5) : '—'; }
+  function _regAbaFmtH(min){ return (min/60).toFixed(1).replace('.',',')+'h'; }
+  // Renderiza a aba Regime para o colaborador (somente leitura).
+  async function carregarAbaRegime(colabId){
+    var box=document.getElementById('regimeAbaConteudo'); if(!box) return;
+    box.innerHTML='<div style="color:var(--text3);font-size:.8rem;padding:1rem 0">Carregando regime…</div>';
+    var reg=null; try{ reg=await window.rhGetRegime(colabId); }catch(e){ reg=null; }
+    if(!reg){
+      box.innerHTML=''
+        + '<div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:1rem 0">'
+        +   '<span style="display:inline-block;font-size:.74rem;font-weight:700;padding:.32rem .7rem;border-radius:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text3)">Sem regime configurado</span>'
+        +   '<button class="btn bs bsm" onclick="abrirModalRegime()">⚙️ Configurar regime</button>'
+        + '</div>';
+      return;
+    }
+    var refeicao=(reg.refeicao_minutos!=null)?Number(reg.refeicao_minutos):60;
+    // Jornada diária = 1ª jornada de um dia trabalhado; turno padrão = entrada–saída desse dia.
+    var jornadaMin=0, turnoEnt='—', turnoSai='—';
+    for(var d=0; d<7; d++){
+      var min=_regMinDia(reg['dia_'+d+'_tipo'], _regAbaHora(reg['dia_'+d+'_entrada']), _regAbaHora(reg['dia_'+d+'_saida']), refeicao);
+      if(min>0 && jornadaMin===0){ jornadaMin=min; turnoEnt=_regAbaHora(reg['dia_'+d+'_entrada']); turnoSai=_regAbaHora(reg['dia_'+d+'_saida']); }
+    }
+    // a) Badge verde + botão editar
+    var html=''
+      + '<div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem">'
+      +   '<span style="display:inline-block;font-size:.74rem;font-weight:700;padding:.32rem .7rem;border-radius:12px;background:rgba(22,163,74,.14);border:1px solid rgba(22,163,74,.4);color:#16a34a">● Regime ativo desde '+fmtData(reg.vigencia_inicio)+'</span>'
+      +   '<button class="btn bg bsm" onclick="abrirModalRegime()">✏️ Editar regime</button>'
+      + '</div>';
+    // b) Card resumo
+    function _resItem(lbl,val){ return '<div style="flex:1 1 140px"><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:700;margin-bottom:.15rem">'+lbl+'</div><div style="font-size:.9rem;font-weight:600;color:var(--text)">'+val+'</div></div>'; }
+    html += '<div style="display:flex;flex-wrap:wrap;gap:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.85rem 1rem;margin-bottom:1rem">'
+      + _resItem('Escala', _regEscalaLabel[reg.escala]||reg.escala||'—')
+      + _resItem('Turno padrão', (turnoEnt!=='—'?turnoEnt+'–'+turnoSai:'—'))
+      + _resItem('Intervalo de refeição', (refeicao>0?refeicao+' min':'sem intervalo'))
+      + _resItem('Jornada diária', _regAbaFmtH(jornadaMin))
+      + '</div>';
+    // c) Tabela dias (somente leitura)
+    var linhas='';
+    for(var d2=0; d2<7; d2++){
+      var tipo=reg['dia_'+d2+'_tipo']||'work';
+      var hor=(tipo==='off')?'—':(_regAbaHora(reg['dia_'+d2+'_entrada'])+'–'+_regAbaHora(reg['dia_'+d2+'_saida']));
+      linhas += '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td class="reg-dia-nome" style="padding:.45rem .55rem;font-weight:600">'+_regDIAS[d2]+'</td>'
+        + '<td data-label="Tipo" style="padding:.45rem .55rem">'+_regAbaChip(tipo)+'</td>'
+        + '<td data-label="Horário" style="padding:.45rem .55rem;color:var(--text2)">'+hor+'</td>'
+        + '</tr>';
+    }
+    html += '<table class="reg-aba-tbl" style="width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem">'
+      + '<thead><tr style="border-bottom:1px solid var(--border)">'
+      +   '<th style="text-align:left;padding:.45rem .55rem;color:var(--text3);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em">Dia</th>'
+      +   '<th style="text-align:left;padding:.45rem .55rem;color:var(--text3);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em">Tipo</th>'
+      +   '<th style="text-align:left;padding:.45rem .55rem;color:var(--text3);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em">Horário</th>'
+      + '</tr></thead><tbody>'+linhas+'</tbody></table>';
+    // d) Acréscimos
+    function _acrItem(lbl,pct){ return '<div style="flex:1 1 130px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.5rem .7rem"><div style="font-size:.68rem;color:var(--text3);margin-bottom:.1rem">'+lbl+'</div><div style="font-size:.85rem;font-weight:700;color:var(--text)">+'+(pct!=null?pct:0)+'%</div></div>'; }
+    html += '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:700;margin-bottom:.45rem">Acréscimos</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">'
+      + _acrItem('Além da jornada', reg.acresc_alem_jornada)
+      + _acrItem('Sábado', reg.acresc_sabado)
+      + _acrItem('Domingo', reg.acresc_domingo)
+      + _acrItem('Feriado', reg.acresc_feriado)
+      + _acrItem('Folga', reg.acresc_folga)
+      + '</div>';
+    // e) Adicional noturno
+    var notOn=(reg.noturno_ativo!==false);
+    var notTxt=notOn
+      ? 'ativo — '+_regAbaHora(reg.noturno_inicio)+' às '+_regAbaHora(reg.noturno_fim)+' · +'+(reg.noturno_pct!=null?reg.noturno_pct:0)+'%'
+      : 'inativo';
+    html += '<div style="display:flex;align-items:center;gap:.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .85rem">'
+      + '<span style="font-size:1.1rem">🌙</span>'
+      + '<div><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:700">Adicional noturno</div>'
+      + '<div style="font-size:.82rem;font-weight:600;color:'+(notOn?'var(--text)':'var(--text3)')+'">'+notTxt+'</div></div>'
+      + '</div>';
+    box.innerHTML=html;
+  }
+  window.carregarAbaRegime = carregarAbaRegime;
   window.abrirModalRegime = abrirModalRegime;
   window.fecharModalRegime = fecharModalRegime;
   window.regimeAplicarEscala = regimeAplicarEscala;
