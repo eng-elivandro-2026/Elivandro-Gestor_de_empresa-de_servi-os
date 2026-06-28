@@ -576,7 +576,7 @@ body{
 
       <div class="f">
         <label>Data *</label>
-        <input type="date" id="nData" onchange="calcNovo();detectarTipoDia()">
+        <input type="date" id="nData" onchange="calcNovo();detectarTipoDia();preencherNovoAptPorRegime()">
       </div>
 
       <div class="f">
@@ -1397,6 +1397,7 @@ function prepararNovoApt() {
   document.getElementById('nData').value = new Date().toISOString().split('T')[0];
   detectarTipoDia();
   aplicarJornadaN();
+  preencherNovoAptPorRegime(); // PARTE D — sugere campos a partir do regime (se houver)
   document.getElementById('nDesc').value = '';
   document.getElementById('calcBox').classList.remove('on');
 
@@ -1423,6 +1424,63 @@ function aplicarJornadaN() {
   calcNovo();
 }
 
+// ── PARTE D — pré-preenchimento pelo regime do colaborador ─────────────
+// Este portal é página standalone (não é iframe do index.html), então o
+// app-core (rhPreencherApontamento) não está disponível: consultamos o regime
+// diretamente pelo cliente sb desta página, com a mesma lógica da Parte A.
+function _hmN(s){ if(!s) return null; var p=String(s).slice(0,5).split(':'); if(p.length<2) return null; var h=parseInt(p[0],10),m=parseInt(p[1],10); if(isNaN(h)||isNaN(m)) return null; return h*60+m; }
+function _intervaloPorRegimeN(ini, fim, minutos){
+  var m = Number(minutos) || 0;
+  var a = _hmN(ini), b = _hmN(fim);
+  if(a == null || b == null) return null;
+  if(b < a) b += 1440;
+  var mid = Math.round((a + b) / 2); // meio da jornada
+  function fmt(x){ x = ((x % 1440) + 1440) % 1440; var h = Math.floor(x/60), mm = x % 60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+  return { inicio: fmt(mid), fim: fmt(mid + m) }; // refeição 0 → início = fim ⇒ não desconta
+}
+async function preencherNovoAptPorRegime(){
+  if (!_colab || !_colab.id || !sb) return;
+  var dataEl = document.getElementById('nData');
+  var dataStr = String((dataEl && dataEl.value) || new Date().toISOString().slice(0,10)).slice(0,10);
+  // Regime ativo do colaborador logado
+  var regime = null;
+  try {
+    var r = await sb.from('regime_colaborador').select('*')
+      .eq('colaborador_id', _colab.id).eq('ativo', true)
+      .order('vigencia_inicio', { ascending:false, nullsFirst:false }).limit(1);
+    if (!r.error && r.data) regime = r.data[0] || null;
+  } catch(e) { regime = null; }
+  if (!regime) return; // sem regime → mantém comportamento atual
+  var dd = new Date(dataStr + 'T12:00:00');
+  if (isNaN(dd.getTime())) return;
+  var idx = (dd.getDay() + 6) % 7; // 0=segunda … 6=domingo
+  // Feriado da empresa nessa data?
+  var ehFeriado = false;
+  try {
+    var empId = empresaAtualId();
+    if (empId) {
+      var fr = await sb.from('feriados_empresa').select('data')
+        .eq('empresa_id', empId).eq('data', dataStr).limit(1);
+      ehFeriado = !fr.error && fr.data && fr.data.length > 0;
+    }
+  } catch(e) {}
+  var tipoRegime = ehFeriado ? 'feriado' : (regime['dia_'+idx+'_tipo'] || 'work');
+  var mapTipo = { work:'util', extra50:'sabado', extra100:'domingo', feriado:'feriado', off:'feriado' };
+  var ini = regime['dia_'+idx+'_entrada'] ? String(regime['dia_'+idx+'_entrada']).slice(0,5) : '08:00';
+  var fim = regime['dia_'+idx+'_saida']   ? String(regime['dia_'+idx+'_saida']).slice(0,5)   : '18:00';
+  var refeic = (regime.refeicao_minutos != null) ? Number(regime.refeicao_minutos) : 60;
+  var td = document.getElementById('nTipoDia'); if(td) td.value = mapTipo[tipoRegime] || 'util';
+  var jsel = document.getElementById('nJornada'); if(jsel) jsel.value = 'custom';
+  var ent = document.getElementById('nEntrada'); if(ent) ent.value = ini;
+  var sai = document.getElementById('nSaida');   if(sai) sai.value = fim;
+  var iv = _intervaloPorRegimeN(ini, fim, refeic);
+  if(iv){
+    var ii = document.getElementById('nIntIni'); if(ii) ii.value = iv.inicio;
+    var jf = document.getElementById('nIntFim'); if(jf) jf.value = iv.fim;
+  }
+  calcNovo();
+}
+
 function calcNovo() {
   var entrada = document.getElementById('nEntrada').value;
   var saida   = document.getElementById('nSaida').value;
@@ -1435,6 +1493,7 @@ function calcNovo() {
   var jIni='08:00', jFim='18:00';
   if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
+  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
 
   var vh = valorHoraAtual();
   var r = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
@@ -1475,6 +1534,7 @@ async function salvarNovoApt() {
   var jIni='08:00', jFim='18:00';
   if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
+  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
 
   var vh = valorHoraAtual();
 

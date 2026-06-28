@@ -15849,7 +15849,7 @@ async function rhPreencherApontamento(colaboradorId, dataStr){
   var idx = rhDiaSemana(dia);
   var ini = '08:00', fim = '18:00', intervalo = 60;
   if(regime){
-    if(regime.refeicao_minutos != null) intervalo = Number(regime.refeicao_minutos) || 60;
+    if(regime.refeicao_minutos != null) intervalo = (regime.refeicao_minutos != null ? Number(regime.refeicao_minutos) : 60);
     if(idx != null){
       var e = regime['dia_'+idx+'_entrada'], s = regime['dia_'+idx+'_saida'];
       if(e) ini = String(e).slice(0,5);
