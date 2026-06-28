@@ -5236,6 +5236,7 @@ function guiaAba(n){
           <div style="margin-top:.4rem;display:flex;gap:.3rem;flex-wrap:wrap" id="detBadges"></div>
         </div>
         <div class="br" style="margin-left:auto">
+          <button class="btn bg bsm" onclick="abrirModalRegime()">⚙️ Regime de trabalho</button>
           <button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>
           <button class="btn bd bsm" onclick="desativarColab()">Desativar</button>
           <button class="btn bd bsm" onclick="excluirColabAtivo()" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149">🗑️ Excluir</button>
@@ -5953,6 +5954,96 @@ function guiaAba(n){
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalApt()">Cancelar</button>
       <button class="btn bs" onclick="salvarApontamento()">💾 Salvar Apontamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL REGIME DE TRABALHO ════════════════════════════ -->
+<div class="modal-overlay" id="modalRegime" onclick="if(event.target===this)fecharModalRegime()">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-hdr">
+      <span class="modal-tit" id="regTitulo">Regime de trabalho</span>
+      <button class="btn bd bsm" onclick="fecharModalRegime()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="regBadge" style="display:none;background:rgba(63,185,80,.14);border:1px solid rgba(63,185,80,.4);color:var(--green,#3fb950);border-radius:var(--r2);padding:.35rem .6rem;font-size:.78rem;font-weight:700;margin-bottom:.85rem"></div>
+
+      <!-- Escala e refeição -->
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Tipo de escala</label>
+          <select id="regEscala" onchange="regimeAplicarEscala()">
+            <option value="5x2adm">5x2 Administrativo</option>
+            <option value="5x2">5x2 Segunda a sexta</option>
+            <option value="6x1">6x1</option>
+            <option value="6x2">6x2</option>
+            <option value="12x36">12x36</option>
+            <option value="24x72">24x72</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="f"><label>Intervalo de refeição</label>
+          <select id="regRefeicao" onchange="regimeCalc()">
+            <option value="0">Não descontar</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hora</option>
+            <option value="90">1h30</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Horário e tipo por dia -->
+      <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:.9rem 0 .35rem">Horário por dia da semana</div>
+      <div style="overflow-x:auto">
+        <table class="reg-tbl" style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:.3rem .4rem;font-size:.66rem;text-transform:uppercase;color:var(--text3)">Dia</th>
+            <th style="text-align:left;padding:.3rem .4rem;font-size:.66rem;text-transform:uppercase;color:var(--text3)">Tipo</th>
+            <th style="text-align:left;padding:.3rem .4rem;font-size:.66rem;text-transform:uppercase;color:var(--text3)">Entrada</th>
+            <th style="text-align:left;padding:.3rem .4rem;font-size:.66rem;text-transform:uppercase;color:var(--text3)">Saída</th>
+            <th style="text-align:right;padding:.3rem .4rem;font-size:.66rem;text-transform:uppercase;color:var(--text3)">Úteis</th>
+          </tr></thead>
+          <tbody id="regDiasBody"></tbody>
+          <tfoot><tr style="border-top:2px solid var(--border)">
+            <td colspan="4" style="text-align:right;padding:.4rem .4rem;font-weight:700" id="regTotalLabel">Total semanal (com refeição)</td>
+            <td style="text-align:right;padding:.4rem .4rem;font-weight:800;color:var(--accent)" id="regTotal">0,0h</td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <div id="regTotalAviso" style="font-size:.74rem;font-weight:700;margin-top:.3rem"></div>
+
+      <!-- Acréscimos -->
+      <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:1rem 0 .35rem">Acréscimos (%)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem">
+        <div class="f"><label>Além da jornada</label><input type="number" id="regAcAlem" min="0" value="50"></div>
+        <div class="f"><label>Sábado</label><input type="number" id="regAcSab" min="0" value="50"></div>
+        <div class="f"><label>Domingo</label><input type="number" id="regAcDom" min="0" value="100"></div>
+        <div class="f"><label>Feriado</label><input type="number" id="regAcFer" min="0" value="100"></div>
+        <div class="f"><label>Folga trabalhada</label><input type="number" id="regAcFolga" min="0" value="100"></div>
+      </div>
+
+      <!-- Adicional noturno -->
+      <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:1rem 0 .35rem">Adicional noturno</div>
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.84rem;margin-bottom:.5rem">
+        <input type="checkbox" id="regNotAtivo" checked onchange="regimeToggleNoturno()" style="width:auto"> Ativar adicional noturno
+      </label>
+      <div class="g2" id="regNotCampos" style="gap:.85rem">
+        <div class="f"><label>Início</label><input type="time" id="regNotIni" value="22:00"></div>
+        <div class="f"><label>Fim</label><input type="time" id="regNotFim" value="05:00"></div>
+        <div class="f"><label>Percentual (%)</label><input type="number" id="regNotPct" min="0" value="20"></div>
+      </div>
+
+      <!-- Vigência -->
+      <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:1rem 0 .35rem">Vigência</div>
+      <div class="g2" style="gap:.85rem">
+        <div class="f"><label>Início de vigência</label><input type="date" id="regVigIni"></div>
+        <div class="f"><label>Fim de vigência (opcional)</label><input type="date" id="regVigFim"></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <button class="btn bg bsm" id="regRecalcBtn" style="display:none;margin-right:auto" onclick="recalcularApontamentosPendentes()">🔄 Recalcular apontamentos pendentes com este regime</button>
+      <span id="regSucesso" style="display:none;background:rgba(63,185,80,.16);border:1px solid rgba(63,185,80,.45);color:var(--green,#3fb950);border-radius:var(--r2);padding:.35rem .7rem;font-size:.82rem;font-weight:700"></span>
+      <button class="btn bg" onclick="fecharModalRegime()">Cancelar</button>
+      <button class="btn bs" id="regSalvarBtn" onclick="salvarRegime()">💾 Salvar regime</button>
     </div>
   </div>
 </div>
@@ -10254,7 +10345,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=13"></script>
+<script src="js/modules/rh-inline.js?v=20"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
