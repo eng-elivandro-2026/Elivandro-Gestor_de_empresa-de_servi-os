@@ -1045,17 +1045,17 @@ async function carregarHorasColab(colabId) {
     var bolNum = mapaAptBolPreview[String(a.id)];
     var bolCell = bolNum ? '<span style="font-size:.7rem;color:var(--accent)">' + bolNum + '</span>' : '—';
     return '<tr>'
-      + '<td>' + fmtData(a.data) + _aptDiaSemanaBadge(a.data, a.tipo_dia) + '</td>'
-      + '<td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
-      + '<td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
-      + '<td>' + (a.hora_entrada||'—') + '</td>'
-      + '<td>' + (a.hora_saida||'—') + '</td>'
-      + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
-      + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
-      + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
-      + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
-      + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
-      + '<td>' + bolCell + '</td>'
+      + '<td data-label="Data">' + fmtData(a.data) + _aptDiaSemanaBadge(a.data, a.tipo_dia) + '</td>'
+      + '<td data-label="Projeto" style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
+      + '<td data-label="Descrição" class="apt-col-desc" style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
+      + '<td data-label="Entrada">' + (a.hora_entrada||'—') + '</td>'
+      + '<td data-label="Saída">' + (a.hora_saida||'—') + '</td>'
+      + '<td data-label="Normal">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
+      + '<td data-label="Extra 50%">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
+      + '<td data-label="Extra 100%">' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td data-label="Total" style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
+      + '<td data-label="Status"><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
+      + '<td data-label="Boletim" class="apt-col-bol">' + bolCell + '</td>'
     + '</tr>';
   }).join('');
 
@@ -4947,13 +4947,13 @@ async function rejeitarDespesa(id) {
     var html='';
     for(var d=0; d<7; d++){
       html += '<tr style="border-bottom:1px solid var(--border)">'
-        + '<td style="padding:.3rem .4rem;font-weight:600">'+_regDIAS[d]+'</td>'
-        + '<td style="padding:.3rem .4rem"><select id="regD'+d+'Tipo" onchange="regimeCalc()" style="width:100%">'
+        + '<td class="reg-dia-nome" style="padding:.3rem .4rem;font-weight:600">'+_regDIAS[d]+'</td>'
+        + '<td data-label="Tipo" style="padding:.3rem .4rem"><select id="regD'+d+'Tipo" onchange="regimeCalc()" style="width:100%">'
           + '<option value="work">Normal</option><option value="extra50">Extra 50%</option>'
           + '<option value="extra100">Extra 100%</option><option value="off">Folga</option></select></td>'
-        + '<td style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Ent" onchange="regimeCalc()"></td>'
-        + '<td style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Sai" onchange="regimeCalc()"></td>'
-        + '<td style="padding:.3rem .4rem;text-align:right;color:var(--text2)" id="regD'+d+'Horas">0,0h</td>'
+        + '<td data-label="Entrada" style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Ent" onchange="regimeCalc()"></td>'
+        + '<td data-label="Saída" style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Sai" onchange="regimeCalc()"></td>'
+        + '<td data-label="Úteis" style="padding:.3rem .4rem;text-align:right;color:var(--text2)" id="regD'+d+'Horas">0,0h</td>'
         + '</tr>';
     }
     tb.innerHTML=html;

@@ -5083,6 +5083,41 @@ function guiaAba(n){
 #rh-wrap .apt-table tr:last-child td{border-bottom:none}
 #rh-wrap .apt-table tr:hover td{background:rgba(88,166,255,.04)}
 #rh-wrap .apt-nome{font-weight:600;color:var(--text)}
+/* ── Mobile (<600px): modal de regime e aba Horas viram cards empilhados ── */
+@media (max-width:600px){
+  /* Abas do perfil do colaborador: quebram em linhas (3 por linha) em vez de cortar/rolar */
+  #rh-wrap #sec-detalhe .tabs{ flex-wrap:wrap; }
+  #rh-wrap #sec-detalhe .tabs .tab-btn{ flex:1 1 calc(33.333% - 3px); text-align:center; justify-content:center; }
+  /* Lista de colaboradores: card em coluna — avatar+info em cima, botões embaixo */
+  #rh-wrap .colab-card{ flex-wrap:wrap; }
+  #rh-wrap .colab-acoes{ flex-basis:100%; justify-content:flex-end; margin-top:.55rem; }
+  /* Perfil do colaborador: cabeçalho em coluna — avatar+nome em cima, botões embaixo */
+  #rh-wrap .detalhe-hdr{ flex-direction:column; align-items:flex-start; }
+  #rh-wrap .detalhe-hdr .br{ margin-left:0 !important; width:100%; margin-top:.25rem; }
+  /* Regime — tabela de dias → cards */
+  #modalRegime .reg-tbl thead{ display:none; }
+  #modalRegime .reg-tbl, #modalRegime .reg-tbl tbody, #modalRegime .reg-tbl tr, #modalRegime .reg-tbl td{ display:block; width:auto; }
+  #modalRegime .reg-tbl tbody tr{ border:1px solid var(--border) !important; border-radius:var(--r2); margin-bottom:.6rem; padding:.4rem .6rem; background:var(--bg3); }
+  #modalRegime .reg-tbl tbody td{ border:none !important; padding:.25rem 0 !important; display:flex; justify-content:space-between; align-items:center; gap:.6rem; }
+  #modalRegime .reg-tbl tbody td::before{ content:attr(data-label); font-size:.66rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  #modalRegime .reg-tbl td.reg-dia-nome{ display:block; color:var(--accent); font-weight:800; border-bottom:1px solid var(--border); margin-bottom:.3rem; padding:0 0 .3rem !important; }
+  #modalRegime .reg-tbl td.reg-dia-nome::before{ content:''; }
+  #modalRegime .reg-tbl td select, #modalRegime .reg-tbl td input{ width:auto !important; flex:1; max-width:62%; }
+  #modalRegime .reg-tbl tfoot{ display:block; }
+  #modalRegime .reg-tbl tfoot tr{ display:flex; justify-content:space-between; align-items:center; }
+  #modalRegime .reg-tbl tfoot td{ display:inline-block; border:none !important; padding:.2rem 0 !important; }
+  /* Acréscimos: 2 colunas; noturno e vigência: empilhados */
+  #modalRegime .reg-acrescimos{ grid-template-columns:1fr 1fr !important; }
+  #modalRegime #regNotCampos{ grid-template-columns:1fr !important; }
+  #modalRegime .reg-vigencia{ grid-template-columns:1fr !important; }
+  /* Aba Horas — tabela de apontamentos → cards */
+  #tab-horas .apt-table thead{ display:none; }
+  #tab-horas .apt-table, #tab-horas .apt-table tbody, #tab-horas .apt-table tr, #tab-horas .apt-table td{ display:block; width:auto; }
+  #rh-wrap #tab-horas .apt-table tbody tr{ border:1px solid var(--border); border-radius:var(--r2); margin-bottom:.6rem; padding:.45rem .65rem; background:var(--bg3); }
+  #rh-wrap #tab-horas .apt-table td{ border:none !important; padding:.22rem 0 !important; display:flex; justify-content:space-between; align-items:center; gap:.8rem; max-width:none !important; white-space:normal !important; }
+  #tab-horas .apt-table td::before{ content:attr(data-label); font-size:.66rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  #tab-horas .apt-table td.apt-col-desc, #tab-horas .apt-table td.apt-col-bol{ display:none !important; }
+}
 #rh-wrap /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px}
 #rh-wrap .modal-overlay.on{display:flex}
@@ -6013,7 +6048,7 @@ function guiaAba(n){
 
       <!-- Acréscimos -->
       <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:1rem 0 .35rem">Acréscimos (%)</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem">
+      <div class="reg-acrescimos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem">
         <div class="f"><label>Além da jornada</label><input type="number" id="regAcAlem" min="0" value="50"></div>
         <div class="f"><label>Sábado</label><input type="number" id="regAcSab" min="0" value="50"></div>
         <div class="f"><label>Domingo</label><input type="number" id="regAcDom" min="0" value="100"></div>
@@ -6034,7 +6069,7 @@ function guiaAba(n){
 
       <!-- Vigência -->
       <div style="font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:1rem 0 .35rem">Vigência</div>
-      <div class="g2" style="gap:.85rem">
+      <div class="g2 reg-vigencia" style="gap:.85rem">
         <div class="f"><label>Início de vigência</label><input type="date" id="regVigIni"></div>
         <div class="f"><label>Fim de vigência (opcional)</label><input type="date" id="regVigFim"></div>
       </div>
@@ -10345,7 +10380,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=20"></script>
+<script src="js/modules/rh-inline.js?v=21"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
