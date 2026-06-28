@@ -5118,6 +5118,14 @@ function guiaAba(n){
   #rh-wrap #tab-horas .apt-table td{ border:none !important; padding:.22rem 0 !important; display:flex; justify-content:space-between; align-items:center; gap:.8rem; max-width:none !important; white-space:normal !important; }
   #tab-horas .apt-table td::before{ content:attr(data-label); font-size:.66rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
   #tab-horas .apt-table td.apt-col-desc, #tab-horas .apt-table td.apt-col-bol{ display:none !important; }
+  /* Aba Regime — tabela de dias → cards */
+  #tab-regime .reg-aba-tbl thead{ display:none; }
+  #tab-regime .reg-aba-tbl, #tab-regime .reg-aba-tbl tbody, #tab-regime .reg-aba-tbl tr, #tab-regime .reg-aba-tbl td{ display:block; width:auto; }
+  #rh-wrap #tab-regime .reg-aba-tbl tbody tr{ border:1px solid var(--border); border-radius:var(--r2); margin-bottom:.6rem; padding:.45rem .65rem; background:var(--bg3); }
+  #rh-wrap #tab-regime .reg-aba-tbl td{ border:none !important; padding:.22rem 0 !important; display:flex; justify-content:space-between; align-items:center; gap:.8rem; white-space:normal !important; }
+  #tab-regime .reg-aba-tbl td::before{ content:attr(data-label); font-size:.66rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  #rh-wrap #tab-regime .reg-aba-tbl td.reg-dia-nome{ display:block !important; font-size:.9rem; padding-bottom:.35rem !important; margin-bottom:.2rem; border-bottom:1px solid var(--border) !important; }
+  #tab-regime .reg-aba-tbl td.reg-dia-nome::before{ display:none; }
 }
 #rh-wrap /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px}
@@ -5285,6 +5293,7 @@ function guiaAba(n){
         <button class="tab-btn" onclick="showTab('saude',this)">🏥 Saúde/NRs</button>
         <button class="tab-btn" onclick="showTab('epis',this)">🦺 EPIs</button>
         <button class="tab-btn" onclick="showTab('horas',this)">⏱️ Horas</button>
+        <button class="tab-btn" onclick="showTab('regime',this)">⚙️ Regime</button>
         <button class="tab-btn" id="tabBtnFerias" style="display:none" onclick="showTab('ferias',this)">🌴 Férias</button>
         <button class="tab-btn" onclick="showTab('integracoes-colab',this)">🏭 Integrações</button>
       </div>
@@ -5341,6 +5350,11 @@ function guiaAba(n){
             <tbody id="horasColabBody"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- Tab Regime de trabalho (somente leitura) -->
+      <div class="tab-sec" id="tab-regime">
+        <div id="regimeAbaConteudo" style="margin-top:.75rem"></div>
       </div>
 
       <!-- Tab Férias (CLT) -->
@@ -10381,7 +10395,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=21"></script>
+<script src="js/modules/rh-inline.js?v=22"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
