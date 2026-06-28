@@ -148,6 +148,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .tbl textarea.rad-act{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.78rem;line-height:1.4;padding:.35rem .45rem;resize:vertical;min-height:38px}
 .rad-legenda{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.74rem;color:var(--text2);margin-top:.6rem}
 
+/* ── Mobile (<600px): tabela do Radar vira cards verticais ── */
+@media(max-width:600px){
+  .tbl{table-layout:auto;border:none;font-size:.85rem}
+  .tbl colgroup,.tbl thead{display:none}
+  .tbl,.tbl tbody{display:block;width:100%}
+  .tbl tr{display:block;border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.7rem;padding:.5rem .7rem;background:var(--bg2)}
+  .tbl td{display:block;border:none;padding:.3rem 0;white-space:normal;word-break:break-word}
+  .tbl td::before{content:attr(data-label);display:block;font-size:.62rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text2);font-weight:700;margin-bottom:.1rem}
+  /* Proposta/Cliente vira o título do card, em destaque, sem rótulo ::before */
+  .tbl td.rad-ref{background:transparent;padding:0 0 .45rem;margin-bottom:.35rem;border-bottom:1px solid var(--border)}
+  .tbl td.rad-ref::before{display:none}
+  .tbl td.rad-ref .rad-ref-nome{font-size:1rem;font-weight:800;line-height:1.25}
+  /* Linha de TOTAL/MÉDIA também vira card */
+  .tbl tr.media{background:#2563eb}
+  .tbl tr.media td{border:none;color:#fff}
+  .tbl tr.media td::before{color:rgba(255,255,255,.78)}
+}
+
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:1.5rem 1rem;z-index:1000;overflow-y:auto}
 .modal-bg.on{display:flex}
@@ -954,14 +972,14 @@ function _renderRadar(m){
   var tipo=_radarTipo(m);
   // Sem registros: estrutura visível com 7 linhas vazias + rodapé, colunas conforme o tipo
   if(!_radar.length){
-    var midEmpty = tipo==='dias'  ? '<td></td><td></td><td>—</td><td>—</td><td></td>'
-                 : tipo==='valor' ? '<td></td><td>—</td><td></td>'
-                 :                  '<td></td><td></td>';   // contagem
+    var midEmpty = tipo==='dias'  ? '<td data-label="Data início"></td><td data-label="Data fim"></td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
+                 : tipo==='valor' ? '<td data-label="Data do registro"></td><td data-label="Valor (R$)">—</td><td data-label="Causa/Ação"></td>'
+                 :                  '<td data-label="Data do registro"></td><td data-label="Causa/Ação"></td>';   // contagem
     var vazias='';
     for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
-    var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'
-                  : tipo==='valor' ? '<td>TOTAL</td><td>—</td><td>—</td><td>—</td>'
-                  :                  '<td>TOTAL</td><td>—</td><td>—</td>';
+    var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
+                  : tipo==='valor' ? '<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">—</td><td data-label="Bateu?">—</td>'
+                  :                  '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>';
     var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
       vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
@@ -977,26 +995,26 @@ function _renderRadar(m){
       var dias=_diasEntre(r.data_inicio,r.data_fim);
       if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
       if(dias!=null){ soma+=dias; cont++; }
-      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+_dataBR(r.data_fim)+'</td><td>'+(dias==null?'—':dias)+'</td><td>'+_bateuTxt(_bateu(dias,m))+'</td><td>'+actCell+'</td></tr>';
+      return '<tr>'+refCell+'<td data-label="Data início">'+_dataBR(r.data_inicio)+'</td><td data-label="Data fim">'+_dataBR(r.data_fim)+'</td><td data-label="Dias">'+(dias==null?'—':dias)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(dias,m))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
     } else if(tipo==='valor'){
       var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
       if(v!=null){ soma+=v; cont++; }
-      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+(v==null?'—':_money(v))+'</td><td>'+actCell+'</td></tr>';
+      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Valor (R$)">'+(v==null?'—':_money(v))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
     } else { // contagem — cada linha vale 1
       cont++;
-      return '<tr>'+refCell+'<td>'+_dataBR(r.data_inicio)+'</td><td>'+actCell+'</td></tr>';
+      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
     }
   }).join('');
   var footRow;
   if(tipo==='dias'){
     var media = cont? (soma/cont) : null;
-    footRow='<td>MÉDIA</td><td>—</td><td>—</td><td>'+(media==null?'—':_fmtNum(media))+'</td><td>'+_bateuTxt(_bateu(media,m))+'</td><td>—</td>';
+    footRow='<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">'+(media==null?'—':_fmtNum(media))+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(media,m))+'</td><td data-label="Causa/Ação">—</td>';
   } else if(tipo==='valor'){
     var totalV = cont? soma : null;
-    footRow='<td>TOTAL</td><td>—</td><td>'+(totalV==null?'—':_money(totalV))+'</td><td>'+_bateuTxt(_bateu(totalV,m))+'</td>';
+    footRow='<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">'+(totalV==null?'—':_money(totalV))+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(totalV,m))+'</td>';
   } else { // contagem
     var nLinhas=_radar.length;
-    footRow='<td>TOTAL</td><td><b>'+nLinhas+'</b></td><td>'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
+    footRow='<td>TOTAL</td><td data-label="Total"><b>'+nLinhas+'</b></td><td data-label="Bateu?">'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
   }
   var h='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+
     '</tr></thead><tbody>'+linhas+'<tr class="media">'+footRow+'</tr></tbody></table></div>';
