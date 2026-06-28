@@ -813,6 +813,7 @@ async function abrirDetalhe(id) {
   var btnAcoes = document.querySelector('#sec-detalhe .detalhe-hdr .br');
   if (btnAcoes) {
     btnAcoes.innerHTML =
+      (inativoDetalhe ? '' : '<button class="btn bg bsm" onclick="abrirModalRegime()">⚙️ Regime de trabalho</button>') +
       '<button class="btn ba bsm" onclick="editarColab()">✏️ Editar</button>' +
       (inativoDetalhe
         ? '<button class="btn bs bsm" onclick="reativarColabById(\'' + _colabAtivo.id + '\',\'' + (_colabAtivo.nome||'').replace(/'/g,"\\'") + '\');rhShowSec(\'colaboradores\',null)">🔄 Reativar</button>'
@@ -978,6 +979,21 @@ function limparFiltroHoras() {
   if (_colabAtivo) carregarHorasColab(_colabAtivo.id);
 }
 
+// Badge do dia da semana / tipo sob a data do apontamento (cores conforme o tipo).
+function _aptDiaSemanaBadge(dataStr, tipoDia){
+  var nomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  var txt, cor;
+  if(tipoDia==='feriado'){ txt='Feriado'; cor='#f59e0b'; }
+  else{
+    var d=new Date(String(dataStr||'').slice(0,10)+'T12:00:00');
+    var wd=isNaN(d.getTime())?-1:d.getDay(); // 0=Dom … 6=Sáb
+    if(wd===0){ txt='Dom'; cor='#dc2626'; }
+    else if(wd===6){ txt='Sáb'; cor='#d97706'; }
+    else if(wd>=1&&wd<=5){ txt=nomes[wd]; cor='var(--text3)'; }
+    else { return ''; }
+  }
+  return '<div style="font-size:.68rem;font-weight:700;color:'+cor+';margin-top:.1rem">'+txt+'</div>';
+}
 async function carregarHorasColab(colabId) {
   var empId = await getEmpresaId();
   var q = sb.from('apontamentos')
@@ -1029,7 +1045,7 @@ async function carregarHorasColab(colabId) {
     var bolNum = mapaAptBolPreview[String(a.id)];
     var bolCell = bolNum ? '<span style="font-size:.7rem;color:var(--accent)">' + bolNum + '</span>' : '—';
     return '<tr>'
-      + '<td>' + fmtData(a.data) + '</td>'
+      + '<td>' + fmtData(a.data) + _aptDiaSemanaBadge(a.data, a.tipo_dia) + '</td>'
       + '<td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + projLabel + '">' + projLabel + '</td>'
       + '<td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + desc + '">' + desc + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
@@ -4909,6 +4925,260 @@ async function rejeitarDespesa(id) {
   // SOMENTE quando o modulo RH e aberto (window.rRH), evitando travar a plataforma
   // de quem nunca abriu o RH. Ver window.rRH abaixo.
 })();
+
+  // ════════════════════════════════════════════════════════════
+  // Regime de trabalho por colaborador (PARTE B) — tabela regime_colaborador
+  // ════════════════════════════════════════════════════════════
+  var _regDIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  var _regSucessoTimer = null;
+  // Presets de escala: 7 dias [tipo, entrada, saída]
+  var _regPresets = {
+    '5x2adm': [['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','16:00'],['off','',''],['off','','']],
+    '5x2':    [['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','17:00'],['work','08:00','17:00'],['off','',''],['off','','']],
+    '6x1':    [['work','07:00','15:00'],['work','07:00','15:00'],['work','07:00','15:00'],['work','07:00','15:00'],['work','07:00','15:00'],['work','07:00','15:00'],['off','','']],
+    '6x2':    [['work','06:00','14:00'],['work','06:00','14:00'],['work','06:00','14:00'],['work','06:00','14:00'],['work','06:00','14:00'],['extra50','06:00','14:00'],['extra100','06:00','14:00']],
+    '12x36':  [['work','07:00','19:00'],['off','',''],['work','07:00','19:00'],['off','',''],['work','07:00','19:00'],['off','',''],['work','07:00','19:00']]
+  };
+  function _regV(id){ var el=document.getElementById(id); return el?el.value:''; }
+  function _regSet(id,v){ var el=document.getElementById(id); if(el) el.value=(v==null?'':v); }
+  // Monta as 7 linhas da tabela de dias (uma vez).
+  function _regRenderDias(){
+    var tb=document.getElementById('regDiasBody'); if(!tb || tb.children.length) return;
+    var html='';
+    for(var d=0; d<7; d++){
+      html += '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:.3rem .4rem;font-weight:600">'+_regDIAS[d]+'</td>'
+        + '<td style="padding:.3rem .4rem"><select id="regD'+d+'Tipo" onchange="regimeCalc()" style="width:100%">'
+          + '<option value="work">Normal</option><option value="extra50">Extra 50%</option>'
+          + '<option value="extra100">Extra 100%</option><option value="off">Folga</option></select></td>'
+        + '<td style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Ent" onchange="regimeCalc()"></td>'
+        + '<td style="padding:.3rem .4rem"><input type="time" id="regD'+d+'Sai" onchange="regimeCalc()"></td>'
+        + '<td style="padding:.3rem .4rem;text-align:right;color:var(--text2)" id="regD'+d+'Horas">0,0h</td>'
+        + '</tr>';
+    }
+    tb.innerHTML=html;
+  }
+  // Minutos úteis de um dia (desconta refeição se trabalhado). Trata virada da meia-noite.
+  function _regMinDia(tipo, ent, sai, refeicao){
+    if(tipo==='off' || !ent || !sai) return 0;
+    var a=timeToMin(ent), b=timeToMin(sai); if(a==null||b==null) return 0;
+    var m=b-a; if(m<0) m+=1440;
+    m -= (Number(refeicao)||0);
+    return m>0?m:0;
+  }
+  // Escalas rotativas: a folga "roda", então somar os 7 dias não representa a semana.
+  // Para elas mostramos a jornada diária; o total semanal + aviso de 44h só valem
+  // para escalas fixas (5x2adm, 5x2, custom).
+  function _regEscalaRotativa(esc){ return esc==='6x1'||esc==='6x2'||esc==='12x36'||esc==='24x72'; }
+  function regimeCalc(){
+    var refeicao = Number(_regV('regRefeicao')||0);
+    var rotativa = _regEscalaRotativa(_regV('regEscala'));
+    var totalMin=0, jornadaMin=0;
+    for(var d=0; d<7; d++){
+      var min=_regMinDia(_regV('regD'+d+'Tipo'), _regV('regD'+d+'Ent'), _regV('regD'+d+'Sai'), refeicao);
+      totalMin += min;
+      if(min>0 && jornadaMin===0) jornadaMin=min; // 1ª jornada de um dia trabalhado
+      var cel=document.getElementById('regD'+d+'Horas');
+      if(cel) cel.textContent=(min/60).toFixed(1).replace('.',',')+'h';
+    }
+    var lbl=document.getElementById('regTotalLabel');
+    var tEl=document.getElementById('regTotal');
+    var av=document.getElementById('regTotalAviso');
+    if(rotativa){
+      if(lbl) lbl.textContent='Jornada diária (com refeição)';
+      if(tEl) tEl.textContent=(jornadaMin/60).toFixed(1).replace('.',',')+'h';
+      if(av){ av.textContent=''; av.style.color=''; } // sem aviso de 44h em escala rotativa
+    } else {
+      if(lbl) lbl.textContent='Total semanal (com refeição)';
+      var totH=totalMin/60;
+      if(tEl) tEl.textContent=totH.toFixed(1).replace('.',',')+'h';
+      if(av){
+        if(totH > 44.0001){ av.textContent='⚠ Acima de 44h semanais'; av.style.color='var(--red,#dc2626)'; }
+        else if(Math.abs(totH-44) > 0.01){ av.textContent='⚠ Diferente de 44h semanais'; av.style.color='var(--orange,#d97706)'; }
+        else { av.textContent='✓ 44h semanais'; av.style.color='var(--green,#16a34a)'; }
+      }
+    }
+  }
+  function regimeAplicarEscala(){
+    var preset=_regPresets[_regV('regEscala')];
+    if(!preset) return; // custom / 24x72: mantém o que está
+    for(var d=0; d<7; d++){
+      _regSet('regD'+d+'Tipo', preset[d][0]);
+      _regSet('regD'+d+'Ent',  preset[d][1]);
+      _regSet('regD'+d+'Sai',  preset[d][2]);
+    }
+    regimeCalc();
+  }
+  function regimeToggleNoturno(){
+    var on=document.getElementById('regNotAtivo'); var box=document.getElementById('regNotCampos');
+    var ativo=!!(on&&on.checked);
+    if(box) box.style.opacity=ativo?'1':'.45';
+    ['regNotIni','regNotFim','regNotPct'].forEach(function(id){ var el=document.getElementById(id); if(el) el.disabled=!ativo; });
+  }
+  async function abrirModalRegime(){
+    if(!_colabAtivo) return;
+    _regRenderDias();
+    if(_regSucessoTimer) clearTimeout(_regSucessoTimer);
+    var sc=document.getElementById('regSucesso'); if(sc) sc.style.display='none';
+    var rb0=document.getElementById('regRecalcBtn'); if(rb0) rb0.style.display='none';
+    var tit=document.getElementById('regTitulo'); if(tit) tit.textContent='Regime de trabalho — '+(_colabAtivo.nome||'colaborador');
+    var reg=null; try{ reg=await window.rhGetRegime(_colabAtivo.id); }catch(e){ reg=null; }
+    var badge=document.getElementById('regBadge');
+    if(reg){
+      _regSet('regEscala', reg.escala||'custom');
+      _regSet('regRefeicao', reg.refeicao_minutos!=null?reg.refeicao_minutos:60);
+      for(var d=0; d<7; d++){
+        _regSet('regD'+d+'Tipo', reg['dia_'+d+'_tipo']||'work');
+        _regSet('regD'+d+'Ent', String(reg['dia_'+d+'_entrada']||'').slice(0,5));
+        _regSet('regD'+d+'Sai', String(reg['dia_'+d+'_saida']||'').slice(0,5));
+      }
+      _regSet('regAcAlem', reg.acresc_alem_jornada); _regSet('regAcSab', reg.acresc_sabado);
+      _regSet('regAcDom', reg.acresc_domingo); _regSet('regAcFer', reg.acresc_feriado); _regSet('regAcFolga', reg.acresc_folga);
+      var n=document.getElementById('regNotAtivo'); if(n) n.checked=(reg.noturno_ativo!==false);
+      _regSet('regNotIni', String(reg.noturno_inicio||'22:00').slice(0,5));
+      _regSet('regNotFim', String(reg.noturno_fim||'05:00').slice(0,5));
+      _regSet('regNotPct', reg.noturno_pct!=null?reg.noturno_pct:20);
+      _regSet('regVigIni', String(reg.vigencia_inicio||'').slice(0,10));
+      _regSet('regVigFim', String(reg.vigencia_fim||'').slice(0,10));
+      if(badge){ badge.style.display=''; badge.textContent='● Regime ativo desde '+fmtData(reg.vigencia_inicio); }
+    } else {
+      _regSet('regEscala','5x2adm'); _regSet('regRefeicao',60); regimeAplicarEscala();
+      _regSet('regAcAlem',50); _regSet('regAcSab',50); _regSet('regAcDom',100); _regSet('regAcFer',100); _regSet('regAcFolga',100);
+      var n2=document.getElementById('regNotAtivo'); if(n2) n2.checked=true;
+      _regSet('regNotIni','22:00'); _regSet('regNotFim','05:00'); _regSet('regNotPct',20);
+      _regSet('regVigIni', new Date().toISOString().slice(0,10)); _regSet('regVigFim','');
+      if(badge) badge.style.display='none';
+    }
+    regimeToggleNoturno(); regimeCalc();
+    var m=document.getElementById('modalRegime'); if(m) m.classList.add('on');
+  }
+  function fecharModalRegime(){ var m=document.getElementById('modalRegime'); if(m) m.classList.remove('on'); }
+  async function salvarRegime(){
+    if(!_colabAtivo || !_colabAtivo.id){ alert('Selecione um colaborador antes de salvar o regime.'); return; }
+    var eid=(typeof getEmpresaAtivaId==='function'?getEmpresaAtivaId():null) || (window._empresaAtiva&&window._empresaAtiva.id) || _empresaId;
+    if(!sb || !eid){ alert('Sem conexão com a empresa ativa.'); return; }
+    var hoje=new Date().toISOString().slice(0,10);
+    // Campos time/date: vazio (ou só espaços) → null (string vazia '' é time inválido no Postgres → 400).
+    function t(v){ return (v && String(v).trim()) ? v : null; }
+    var notOn=document.getElementById('regNotAtivo'); notOn=!!(notOn&&notOn.checked);
+    var row={
+      colaborador_id:_colabAtivo.id, empresa_id:eid,
+      escala:_regV('regEscala')||'custom',
+      refeicao_minutos:parseInt(_regV('regRefeicao'),10)||0,
+      acresc_alem_jornada:parseInt(_regV('regAcAlem'),10)||0,
+      acresc_sabado:parseInt(_regV('regAcSab'),10)||0,
+      acresc_domingo:parseInt(_regV('regAcDom'),10)||0,
+      acresc_feriado:parseInt(_regV('regAcFer'),10)||0,
+      acresc_folga:parseInt(_regV('regAcFolga'),10)||0,
+      noturno_ativo:notOn,
+      noturno_inicio:_regV('regNotIni')||'22:00',
+      noturno_fim:_regV('regNotFim')||'05:00',
+      noturno_pct:parseInt(_regV('regNotPct'),10)||0,
+      vigencia_inicio:_regV('regVigIni')||hoje,
+      vigencia_fim:t(_regV('regVigFim')),
+      ativo:true
+    };
+    for(var d=0; d<7; d++){
+      var tipo=_regV('regD'+d+'Tipo')||'work';
+      row['dia_'+d+'_tipo']=tipo;
+      // Folga não carrega horário; horário vazio também vira null.
+      row['dia_'+d+'_entrada']=(tipo==='off')?null:t(_regV('regD'+d+'Ent'));
+      row['dia_'+d+'_saida']  =(tipo==='off')?null:t(_regV('regD'+d+'Sai'));
+    }
+    console.log('[salvarRegime] payload →', JSON.parse(JSON.stringify(row)));
+    var btn=document.getElementById('regSalvarBtn'); if(btn){ btn.disabled=true; btn.textContent='Salvando…'; }
+    try{
+      // Encerra o regime ativo anterior (vigência fecha hoje). Sem updated_at p/ não depender da coluna.
+      var upd=await sb.from('regime_colaborador')
+        .update({ ativo:false, vigencia_fim:hoje })
+        .eq('colaborador_id', _colabAtivo.id).eq('ativo', true);
+      if(upd.error) throw upd.error;
+      var ins=await sb.from('regime_colaborador').insert(row);
+      if(ins.error) throw ins.error;
+      // Mantém o modal aberto; mostra confirmação por 3s e atualiza o badge de vigência.
+      var sucesso=document.getElementById('regSucesso');
+      if(sucesso){
+        sucesso.textContent='✓ Regime salvo com sucesso!';
+        sucesso.style.display='';
+        if(_regSucessoTimer) clearTimeout(_regSucessoTimer);
+        _regSucessoTimer=setTimeout(function(){ var s=document.getElementById('regSucesso'); if(s) s.style.display='none'; }, 3000);
+      }
+      var badge=document.getElementById('regBadge');
+      if(badge){ badge.style.display=''; badge.textContent='● Regime ativo desde '+fmtData(row.vigencia_inicio); }
+      var rb=document.getElementById('regRecalcBtn'); if(rb) rb.style.display=''; // libera o recálculo dos pendentes
+    }catch(e){
+      console.error('[salvarRegime] erro:', e);
+      var msg=(e&&e.message)||String(e);
+      if(e&&e.details) msg+='\n'+e.details;
+      if(e&&e.hint) msg+='\nDica: '+e.hint;
+      if(e&&e.code) msg+='\n(código '+e.code+')';
+      alert('Erro ao salvar regime:\n'+msg);
+    }finally{
+      if(btn){ btn.disabled=false; btn.textContent='💾 Salvar regime'; }
+    }
+  }
+  // Mapeia o tipo de dia do regime → vocabulário do calcularHorasCLT.
+  var _regTipoParaCLT = { work:'util', extra50:'sabado', extra100:'domingo', feriado:'feriado', off:'feriado' };
+  // 'HH:MM' + minutos → 'HH:MM' (usado p/ montar o intervalo de refeição a partir de refeicao_minutos).
+  function _addMinToTime(hhmm, mins){
+    var base=timeToMin(hhmm); if(base==null||isNaN(base)) base=720;
+    var t=(((base+(Number(mins)||0))%1440)+1440)%1440;
+    var h=Math.floor(t/60), m=t%60;
+    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  }
+  // Recalcula os apontamentos PENDENTES do colaborador com o regime salvo,
+  // reaproveitando calcularHorasCLT (mesmas fórmulas do lançamento).
+  async function recalcularApontamentosPendentes(){
+    if(!_colabAtivo || !_colabAtivo.id || !sb){ return; }
+    var eid=(typeof getEmpresaAtivaId==='function'?getEmpresaAtivaId():null) || (window._empresaAtiva&&window._empresaAtiva.id) || _empresaId;
+    var btn=document.getElementById('regRecalcBtn');
+    if(btn){ btn.disabled=true; btn.textContent='Recalculando…'; }
+    var msg=document.getElementById('regSucesso');
+    try{
+      var regime=await window.rhGetRegime(_colabAtivo.id);
+      if(!regime){ alert('Salve um regime antes de recalcular.'); return; }
+      var feriados=await window.rhGetFeriados(eid, null);
+      var q=await sb.from('apontamentos').select('*').eq('colaborador_id', _colabAtivo.id).eq('status','pendente');
+      if(q.error) throw q.error;
+      var lista=q.data||[]; var ok=0;
+      for(var i=0;i<lista.length;i++){
+        var a=lista[i];
+        var idx=window.rhDiaSemana(a.data);
+        var tipoDia=_regTipoParaCLT[window.rhTipoDia(a.data, regime, feriados)] || 'util';
+        var jIni=(idx!=null && regime['dia_'+idx+'_entrada']) ? String(regime['dia_'+idx+'_entrada']).slice(0,5) : (a.jornada_inicio||'08:00');
+        var jFim=(idx!=null && regime['dia_'+idx+'_saida'])   ? String(regime['dia_'+idx+'_saida']).slice(0,5)   : (a.jornada_fim||'18:00');
+        // Refeição conforme o regime: refeicao_minutos=0 → intervalo nulo (mesmo horário) = não desconta.
+        var refeic=(regime.refeicao_minutos!=null)?Number(regime.refeicao_minutos):60;
+        var intStart=a.intervalo_inicio ? String(a.intervalo_inicio).slice(0,5) : '12:00';
+        var intIni=intStart, intFim=(refeic>0)?_addMinToTime(intStart, refeic):intStart;
+        var calc=calcularHorasCLT(a.hora_entrada, a.hora_saida, intIni, intFim, tipoDia, jIni, jFim, a.valor_hora_base||0, a.periculoso, a.perc_periculosidade, a.periculosidade_base);
+        var upd=await sb.from('apontamentos')
+          .update(Object.assign({ tipo_dia:tipoDia, jornada_inicio:jIni, jornada_fim:jFim }, calc))
+          .eq('id', a.id);
+        if(upd.error) console.error('[recalc] apt', a.id, upd.error.message); else ok++;
+      }
+      if(typeof carregarApontamentos==='function'){ try{ carregarApontamentos(); }catch(e){} }
+      if(msg){
+        msg.textContent='✓ '+ok+' apontamento(s) recalculado(s) com sucesso';
+        msg.style.display='';
+        if(_regSucessoTimer) clearTimeout(_regSucessoTimer);
+        _regSucessoTimer=setTimeout(function(){ var s=document.getElementById('regSucesso'); if(s) s.style.display='none'; }, 4000);
+      } else { alert(ok+' apontamentos recalculados com sucesso.'); }
+    }catch(e){
+      console.error('[recalcularApontamentosPendentes]', e);
+      alert('Erro ao recalcular: '+((e&&e.message)||e));
+    }finally{
+      if(btn){ btn.disabled=false; btn.textContent='🔄 Recalcular apontamentos pendentes com este regime'; }
+    }
+  }
+  window.abrirModalRegime = abrirModalRegime;
+  window.fecharModalRegime = fecharModalRegime;
+  window.regimeAplicarEscala = regimeAplicarEscala;
+  window.regimeCalc = regimeCalc;
+  window.regimeToggleNoturno = regimeToggleNoturno;
+  window.salvarRegime = salvarRegime;
+  window.recalcularApontamentosPendentes = recalcularApontamentosPendentes;
+
   // Expor funções globais necessárias para onclick handlers
   window.rhShowSec = rhShowSec;
   window.rhSairDaPlataforma = rhSairDaPlataforma;
