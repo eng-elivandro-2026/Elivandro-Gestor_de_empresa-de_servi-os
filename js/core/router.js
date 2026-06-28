@@ -76,7 +76,7 @@
     },
     {
       id: 'gestao-a-vista',
-      label: 'Gestão à Vista',
+      label: 'MPE',
       icon: '📊',
       tipo: 'iframe',
       src: 'pages/gestao-a-vista.html',
