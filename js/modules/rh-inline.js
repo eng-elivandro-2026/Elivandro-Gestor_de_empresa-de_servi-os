@@ -171,7 +171,7 @@ function bloquearAcessoRH() {
     + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
     + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
     + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="window.location.href=\'/pages/colaborador.html\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pd\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
     + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
     + '</div></div></div>';
 }
@@ -187,7 +187,7 @@ async function rhSairDaPlataforma() {
 // em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
 async function _bloquearOuRedirRH(authUser, ehColabKnown) {
   var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
-  if (ehColab) { window.location.href = '/pages/colaborador.html'; return; }
+  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pd'; return; }
   bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {
@@ -1416,7 +1416,7 @@ async function carregarApontamentos() {
     var trStyle = isCancelado ? ' style="opacity:.55;text-decoration:line-through"' : '';
     return '<tr' + trStyle + '>'
       + '<td><span class="apt-nome">' + nome + '</span></td>'
-      + '<td>' + fmtData(a.data) + '</td>'
+      + '<td>' + fmtData(a.data) + _aptDiaSemanaBadge(a.data, a.tipo_dia) + '</td>'
       + '<td>' + numProp + '</td>'
       + '<td>' + (a.hora_entrada||'—') + '</td>'
       + '<td>' + (a.hora_saida||'—') + '</td>'
@@ -2195,6 +2195,7 @@ function calcularHorasApt() {
   var jIni = '08:00', jFim = '18:00';
   if (jornada === '07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada === '08-1730') { jIni='08:00'; jFim='17:30'; }
+  else if (jornada === 'custom') { jIni = entrada; jFim = saida; } // regime/personalizado: jornada normal = turno informado
 
   // Pegar valor/hora e periculosidade do colaborador selecionado
   var colab = _colabs.find(function(c){ return c.id === colabId; });
@@ -3269,10 +3270,71 @@ async function abrirModalApontamento() {
 async function abrirModalAptColab(colabId) {
   await abrirModalApontamento();
   document.getElementById('aptColab').value = colabId;
-  calcularHorasApt();
+  await preencherAptPorRegime();
 }
 
-function fecharModalApt() { document.getElementById('modalApt').classList.remove('on'); }
+// PARTE D — pré-preenche o modal de apontamento a partir do regime do colaborador.
+// Regime e feriados ficam em cache em memória (preenchidos na 1ª vez) para que
+// mudar a data NÃO dispare consulta ao Supabase. O cache é limpo ao fechar o modal.
+var _regimeCache = {};      // colaboradorId → regime (ou null se não tem regime)
+var _feriadosCache = null;  // feriados da empresa (carregados 1x)
+function _aptIntervaloPorRegime(ini, fim, minutos){
+  var m = Number(minutos) || 0;
+  var a = timeToMin(ini), b = timeToMin(fim);
+  if(a == null || b == null) return null;
+  if(b < a) b += 1440; // jornada vira a meia-noite
+  var mid = Math.round((a + b) / 2); // meio da jornada
+  function fmt(x){ x = ((x % 1440) + 1440) % 1440; var h = Math.floor(x/60), mm = x % 60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+  // refeição 0 → início = fim (mesmo horário) ⇒ não desconta intervalo.
+  return { inicio: fmt(mid), fim: fmt(mid + m) };
+}
+async function preencherAptPorRegime(){
+  var selColab = document.getElementById('aptColab');
+  var colabId = selColab ? selColab.value : '';
+  if(!colabId) return; // sem colaborador selecionado → nada a sugerir
+  if(typeof window.rhGetRegime !== 'function') return;
+  var dataEl = document.getElementById('aptData');
+  var dataStr = (dataEl && dataEl.value) ? dataEl.value : new Date().toISOString().slice(0,10);
+  // Regime em cache por colaborador — só vai ao Supabase na 1ª vez (memoiza inclusive null).
+  var regime;
+  if(Object.prototype.hasOwnProperty.call(_regimeCache, colabId)){
+    regime = _regimeCache[colabId];
+  } else {
+    try{ regime = await window.rhGetRegime(colabId); }catch(e){ regime = null; }
+    _regimeCache[colabId] = regime;
+  }
+  if(!regime) return; // sem regime → mantém comportamento atual
+  // Feriados em cache (carregados 1x) — evita consulta ao mudar a data.
+  if(_feriadosCache == null && typeof window.rhGetFeriados === 'function'){
+    try{ _feriadosCache = (await window.rhGetFeriados(null, null)) || []; }catch(e){ _feriadosCache = []; }
+  }
+  var feriados = _feriadosCache || [];
+  // Calcula localmente a partir do regime em cache (sem Supabase) — mesma lógica da Parte A.
+  var idx = (typeof window.rhDiaSemana === 'function') ? window.rhDiaSemana(dataStr) : null;
+  var tipoReg = (typeof window.rhTipoDia === 'function')
+    ? window.rhTipoDia(dataStr, regime, feriados)
+    : ((idx != null) ? (regime['dia_'+idx+'_tipo'] || 'work') : 'work');
+  var jIni = (idx != null && regime['dia_'+idx+'_entrada']) ? String(regime['dia_'+idx+'_entrada']).slice(0,5) : '08:00';
+  var jFim = (idx != null && regime['dia_'+idx+'_saida'])   ? String(regime['dia_'+idx+'_saida']).slice(0,5)   : '18:00';
+  var intervaloMin = (regime.refeicao_minutos != null) ? Number(regime.refeicao_minutos) : 60;
+  var mapTipo = { work:'util', extra50:'sabado', extra100:'domingo', feriado:'feriado', off:'feriado' };
+  var td = document.getElementById('aptTipoDia'); if(td) td.value = mapTipo[tipoReg] || 'util';
+  var jsel = document.getElementById('aptJornada'); if(jsel) jsel.value = 'custom'; // horário do regime → personalizado
+  var ent = document.getElementById('aptEntrada'); if(ent) ent.value = jIni;
+  var sai = document.getElementById('aptSaida');   if(sai) sai.value = jFim;
+  var iv = _aptIntervaloPorRegime(jIni, jFim, intervaloMin);
+  if(iv){
+    var ii = document.getElementById('aptIntInicio'); if(ii) ii.value = iv.inicio;
+    var jf = document.getElementById('aptIntFim');    if(jf) jf.value = iv.fim;
+  }
+  if(typeof calcularHorasApt === 'function') calcularHorasApt();
+}
+
+function fecharModalApt() {
+  document.getElementById('modalApt').classList.remove('on');
+  _regimeCache = {};      // limpa o cache ao fechar — reabrir busca dados frescos (ex.: após editar regime)
+  _feriadosCache = null;
+}
 
 async function salvarApontamento() {
   var empId = await getEmpresaId();
@@ -3294,6 +3356,7 @@ async function salvarApontamento() {
   var jIni='08:00', jFim='18:00';
   if (jornada==='07-17') { jIni='07:00'; jFim='17:00'; }
   else if (jornada==='08-1730') { jIni='08:00'; jFim='17:30'; }
+  else if (jornada==='custom') { jIni=entrada; jFim=saida; } // regime/personalizado: jornada normal = turno informado
 
   var colab = _colabs.find(function(c){ return c.id===colabId; });
   var vh        = colab ? (colab.valor_hora||0) : 0;
@@ -5327,6 +5390,7 @@ async function rejeitarDespesa(id) {
   // Apontamentos
   window.abrirModalApontamento = abrirModalApontamento;
   window.abrirModalAptColab = abrirModalAptColab;
+  window.preencherAptPorRegime = preencherAptPorRegime;
   window.fecharModalApt = fecharModalApt;
   window.salvarApontamento = salvarApontamento;
   window.aprovarApt = aprovarApt;

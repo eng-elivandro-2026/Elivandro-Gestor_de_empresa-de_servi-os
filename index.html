@@ -5954,12 +5954,12 @@ function guiaAba(n){
     <div class="modal-body">
       <div class="g2" style="gap:.85rem">
         <div class="f"><label>Colaborador *</label>
-          <select id="aptColab"><option value="">Selecione...</option></select>
+          <select id="aptColab" onchange="preencherAptPorRegime()"><option value="">Selecione...</option></select>
         </div>
         <div class="f"><label>Proposta / Projeto *</label>
           <select id="aptProposta"><option value="">Selecione...</option></select>
         </div>
-        <div class="f"><label>Data *</label><input type="date" id="aptData"></div>
+        <div class="f"><label>Data *</label><input type="date" id="aptData" onchange="preencherAptPorRegime()"></div>
         <div class="f"><label>Tipo do dia *</label>
           <select id="aptTipoDia" onchange="calcularHorasApt()">
             <option value="util">Dia útil (Seg–Sex)</option>
@@ -10381,7 +10381,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=22"></script>
+<script src="js/core/app-core.js?v=23"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=7"></script>
 <script src="js/modules/multi-empresa.js"></script>
@@ -10395,7 +10395,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=22"></script>
+<script src="js/modules/rh-inline.js?v=23"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
@@ -10471,7 +10471,7 @@ async function iniciarPlataforma() {
           }
         }
         if (_ehColab) {
-          window.location.href = '/pages/colaborador.html'; return;
+          window.location.href = '/pages/colaborador.html?v=pd'; return;
         }
       }
     }
