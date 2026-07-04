@@ -1490,6 +1490,18 @@ async function preencherNovoAptPorRegime(){
   calcNovo();
 }
 
+// Limite da jornada NORMAL (jIni/jFim) a partir do regime, para a data do apontamento.
+// Sem regime, dia 'off' (folga trabalhada) ou horário não configurado → usa entrada/saída (fallback).
+function _jornadaRegimeN(regime, dataStr, entradaFb, saidaFb){
+  if (!regime || !dataStr) return { jIni: entradaFb, jFim: saidaFb };
+  var dd = new Date(String(dataStr).slice(0,10) + 'T12:00:00');
+  if (isNaN(dd.getTime())) return { jIni: entradaFb, jFim: saidaFb };
+  var idx = (dd.getDay() + 6) % 7; // 0=segunda … 6=domingo
+  var tipo = regime['dia_'+idx+'_tipo'] || 'work';
+  var e = regime['dia_'+idx+'_entrada'], s = regime['dia_'+idx+'_saida'];
+  if (tipo === 'off' || !e || !s) return { jIni: entradaFb, jFim: saidaFb };
+  return { jIni: String(e).slice(0,5), jFim: String(s).slice(0,5) };
+}
 function calcNovo() {
   var entrada = document.getElementById('nEntrada').value;
   var saida   = document.getElementById('nSaida').value;
@@ -1498,8 +1510,9 @@ function calcNovo() {
   var tipoDia = document.getElementById('nTipoDia').value;
   if (!entrada || !saida) return;
 
-  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
-  var jIni=entrada, jFim=saida;
+  // Jornada NORMAL vem do regime (limite normal vs extra); fallback entrada/saída.
+  var _jr = _jornadaRegimeN(_regimeColab, document.getElementById('nData').value || '', entrada, saida);
+  var jIni=_jr.jIni, jFim=_jr.jFim;
 
   // Título com o tipo de vínculo do colaborador logado
   var tipo = tipoColabAtual();
@@ -1553,8 +1566,9 @@ async function salvarNovoApt() {
     toast('Selecione um projeto da empresa atual.','err'); return;
   }
 
-  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
-  var jIni=entrada, jFim=saida;
+  // Jornada NORMAL vem do regime (limite normal vs extra); fallback entrada/saída.
+  var _jrS = _jornadaRegimeN(_regimeColab, data, entrada, saida);
+  var jIni=_jrS.jIni, jFim=_jrS.jFim;
 
   var vhEl = document.getElementById('nValorHora');
   var vh = (vhEl && vhEl.value !== '') ? (Number(vhEl.value) || 0) : valorHoraAtual();

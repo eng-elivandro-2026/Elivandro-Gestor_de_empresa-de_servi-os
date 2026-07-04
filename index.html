@@ -6095,7 +6095,8 @@ function guiaAba(n){
       </div>
     </div>
     <div class="modal-footer" style="flex-wrap:wrap">
-      <button class="btn bg bsm" id="regRecalcBtn" style="display:none;margin-right:auto" onclick="recalcularApontamentosPendentes()">🔄 Recalcular apontamentos pendentes com este regime</button>
+      <button class="btn bg bsm" id="regRecalcBtn" style="display:none" onclick="recalcularApontamentosPendentes()">🔄 Recalcular pendentes</button>
+      <button class="btn bg bsm" id="regRecalcTodosBtn" style="display:none;margin-right:auto" onclick="recalcularApontamentosTodos()">🔄 Recalcular todos (pendentes e aprovados)</button>
       <span id="regSucesso" style="display:none;background:rgba(63,185,80,.16);border:1px solid rgba(63,185,80,.45);color:var(--green,#3fb950);border-radius:var(--r2);padding:.35rem .7rem;font-size:.82rem;font-weight:700"></span>
       <button class="btn bg" onclick="fecharModalRegime()">Cancelar</button>
       <button class="btn bs" id="regSalvarBtn" onclick="salvarRegime()">💾 Salvar regime</button>
@@ -10400,7 +10401,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=27"></script>
+<script src="js/modules/rh-inline.js?v=31"></script>
 <script src="js/shared/ajuda-conteudo.js?v=1"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
@@ -10476,7 +10477,7 @@ async function iniciarPlataforma() {
           }
         }
         if (_ehColab) {
-          window.location.href = '/pages/colaborador.html?v=ph'; return;
+          window.location.href = '/pages/colaborador.html?v=pi'; return;
         }
       }
     }
