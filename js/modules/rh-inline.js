@@ -173,7 +173,7 @@ function bloquearAcessoRH() {
     + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
     + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
     + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=ph\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pi\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
     + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
     + '</div></div></div>';
 }
@@ -189,7 +189,7 @@ async function rhSairDaPlataforma() {
 // em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
 async function _bloquearOuRedirRH(authUser, ehColabKnown) {
   var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
-  if (ehColab) { window.location.href = '/pages/colaborador.html?v=ph'; return; }
+  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pi'; return; }
   bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {
@@ -2200,6 +2200,20 @@ async function aptColabSelecionado(){
   calcularHorasApt();              // garante recálculo mesmo sem regime
 }
 
+// Limite da jornada NORMAL (jIni/jFim) a partir do regime, para a data do apontamento.
+// Define o que é "dentro da jornada" vs "extra". Sem regime, dia 'off' (folga trabalhada)
+// ou horário não configurado → usa entrada/saída informadas (fallback).
+function _jornadaRegime(regime, dataStr, entradaFb, saidaFb){
+  if (!regime || !dataStr) return { jIni: entradaFb, jFim: saidaFb };
+  var dd = new Date(String(dataStr).slice(0,10) + 'T12:00:00');
+  if (isNaN(dd.getTime())) return { jIni: entradaFb, jFim: saidaFb };
+  var idx = (dd.getDay() + 6) % 7; // 0=segunda … 6=domingo
+  var tipo = regime['dia_'+idx+'_tipo'] || 'work';
+  var e = regime['dia_'+idx+'_entrada'], s = regime['dia_'+idx+'_saida'];
+  if (tipo === 'off' || !e || !s) return { jIni: entradaFb, jFim: saidaFb };
+  return { jIni: String(e).slice(0,5), jFim: String(s).slice(0,5) };
+}
+
 function calcularHorasApt() {
   var entrada  = document.getElementById('aptEntrada').value;
   var saida    = document.getElementById('aptSaida').value;
@@ -2210,8 +2224,11 @@ function calcularHorasApt() {
 
   if (!entrada || !saida) return;
 
-  // Jornada normal = turno informado (entrada/saída). O regime define entrada/saída no pré-preenchimento.
-  var jIni = entrada, jFim = saida;
+  // Jornada NORMAL vem do regime do colaborador (limite p/ separar normal vs extra);
+  // fallback para entrada/saída quando não há regime / dia 'off' / horário não configurado.
+  var _dataApt = (document.getElementById('aptData')||{}).value || '';
+  var _jr = _jornadaRegime(colabId && _regimeCache[colabId], _dataApt, entrada, saida);
+  var jIni = _jr.jIni, jFim = _jr.jFim;
 
   var colab = _colabs.find(function(c){ return c.id === colabId; });
   // Título do card mostra o tipo de vínculo real do colaborador
@@ -3383,8 +3400,9 @@ async function salvarApontamento() {
     toast('Preencha todos os campos obrigatórios.','err'); return;
   }
 
-  // Jornada normal = turno informado (entrada/saída); o regime define entrada/saída no pré-preenchimento.
-  var jIni=entrada, jFim=saida;
+  // Jornada NORMAL vem do regime do colaborador (limite normal vs extra); fallback entrada/saída.
+  var _jrS = _jornadaRegime(colabId && _regimeCache[colabId], data, entrada, saida);
+  var jIni=_jrS.jIni, jFim=_jrS.jFim;
 
   var colab = _colabs.find(function(c){ return c.id===colabId; });
   // Valor/hora editável (campo) com fallback ao valor do colaborador — salvo em valor_hora_base.
@@ -5115,6 +5133,7 @@ async function rejeitarDespesa(id) {
     if(_regSucessoTimer) clearTimeout(_regSucessoTimer);
     var sc=document.getElementById('regSucesso'); if(sc) sc.style.display='none';
     var rb0=document.getElementById('regRecalcBtn'); if(rb0) rb0.style.display='none';
+    var rbt0=document.getElementById('regRecalcTodosBtn'); if(rbt0) rbt0.style.display='none';
     var tit=document.getElementById('regTitulo'); if(tit) tit.textContent='Regime de trabalho — '+(_colabAtivo.nome||'colaborador');
     var reg=null; try{ reg=await window.rhGetRegime(_colabAtivo.id); }catch(e){ reg=null; }
     var badge=document.getElementById('regBadge');
@@ -5197,6 +5216,8 @@ async function rejeitarDespesa(id) {
       if(upd.error) throw upd.error;
       var ins=await sb.from('regime_colaborador').insert(row);
       if(ins.error) throw ins.error;
+      // Regime mudou → invalida o cache do colaborador (próximo acesso busca do banco).
+      if(_colabAtivo && _colabAtivo.id) delete _regimeCache[_colabAtivo.id];
       // Mantém o modal aberto; mostra confirmação por 3s e atualiza o badge de vigência.
       var sucesso=document.getElementById('regSucesso');
       if(sucesso){
@@ -5207,7 +5228,8 @@ async function rejeitarDespesa(id) {
       }
       var badge=document.getElementById('regBadge');
       if(badge){ badge.style.display=''; badge.textContent='● Regime ativo desde '+fmtData(row.vigencia_inicio); }
-      var rb=document.getElementById('regRecalcBtn'); if(rb) rb.style.display=''; // libera o recálculo dos pendentes
+      var rb=document.getElementById('regRecalcBtn'); if(rb) rb.style.display=''; // libera o recálculo
+      var rbt=document.getElementById('regRecalcTodosBtn'); if(rbt) rbt.style.display='';
     }catch(e){
       console.error('[salvarRegime] erro:', e);
       var msg=(e&&e.message)||String(e);
@@ -5228,27 +5250,33 @@ async function rejeitarDespesa(id) {
     var h=Math.floor(t/60), m=t%60;
     return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
   }
-  // Recalcula os apontamentos PENDENTES do colaborador com o regime salvo,
-  // reaproveitando calcularHorasCLT (mesmas fórmulas do lançamento).
-  async function recalcularApontamentosPendentes(){
+  // Recalcula os apontamentos do colaborador com o regime salvo, reaproveitando
+  // calcularHorasCLT (mesmas fórmulas do lançamento). incluirAprovados=false → só
+  // 'pendente'; true → 'pendente' e 'aprovado'. Usa o mesmo _jornadaRegime do lançamento.
+  async function _recalcularApontamentos(incluirAprovados){
     if(!_colabAtivo || !_colabAtivo.id || !sb){ return; }
     var eid=(typeof getEmpresaAtivaId==='function'?getEmpresaAtivaId():null) || (window._empresaAtiva&&window._empresaAtiva.id) || _empresaId;
-    var btn=document.getElementById('regRecalcBtn');
-    if(btn){ btn.disabled=true; btn.textContent='Recalculando…'; }
+    var b1=document.getElementById('regRecalcBtn'), b2=document.getElementById('regRecalcTodosBtn');
+    var alvo=incluirAprovados?b2:b1; var alvoTxt=alvo?alvo.textContent:'';
+    if(b1) b1.disabled=true; if(b2) b2.disabled=true;
+    if(alvo) alvo.textContent='Recalculando…';
     var msg=document.getElementById('regSucesso');
     try{
+      // Busca o regime FRESCO no banco (não usa cache) e atualiza o cache com o resultado.
       var regime=await window.rhGetRegime(_colabAtivo.id);
       if(!regime){ alert('Salve um regime antes de recalcular.'); return; }
+      _regimeCache[_colabAtivo.id]=regime;
       var feriados=await window.rhGetFeriados(eid, null);
-      var q=await sb.from('apontamentos').select('*').eq('colaborador_id', _colabAtivo.id).eq('status','pendente');
+      var statusAlvo = incluirAprovados ? ['pendente','aprovado'] : ['pendente'];
+      var q=await sb.from('apontamentos').select('*').eq('colaborador_id', _colabAtivo.id).in('status', statusAlvo);
       if(q.error) throw q.error;
       var lista=q.data||[]; var ok=0;
       for(var i=0;i<lista.length;i++){
         var a=lista[i];
-        var idx=window.rhDiaSemana(a.data);
         var tipoDia=_regTipoParaCLT[window.rhTipoDia(a.data, regime, feriados)] || 'util';
-        var jIni=(idx!=null && regime['dia_'+idx+'_entrada']) ? String(regime['dia_'+idx+'_entrada']).slice(0,5) : (a.jornada_inicio||'08:00');
-        var jFim=(idx!=null && regime['dia_'+idx+'_saida'])   ? String(regime['dia_'+idx+'_saida']).slice(0,5)   : (a.jornada_fim||'18:00');
+        // Limite da jornada normal pelo regime (mesmo helper do lançamento); fallback à jornada gravada.
+        var _jr=_jornadaRegime(regime, a.data, (a.jornada_inicio||'08:00'), (a.jornada_fim||'18:00'));
+        var jIni=_jr.jIni, jFim=_jr.jFim;
         // Refeição conforme o regime: refeicao_minutos=0 → intervalo nulo (mesmo horário) = não desconta.
         var refeic=(regime.refeicao_minutos!=null)?Number(regime.refeicao_minutos):60;
         var intStart=a.intervalo_inicio ? String(a.intervalo_inicio).slice(0,5) : '12:00';
@@ -5259,7 +5287,9 @@ async function rejeitarDespesa(id) {
           .eq('id', a.id);
         if(upd.error) console.error('[recalc] apt', a.id, upd.error.message); else ok++;
       }
+      // Atualiza as duas telas que listam apontamentos (lista geral + aba Horas do perfil).
       if(typeof carregarApontamentos==='function'){ try{ carregarApontamentos(); }catch(e){} }
+      if(typeof carregarHorasColab==='function' && _colabAtivo){ try{ carregarHorasColab(_colabAtivo.id); }catch(e){} }
       if(msg){
         msg.textContent='✓ '+ok+' apontamento(s) recalculado(s) com sucesso';
         msg.style.display='';
@@ -5267,12 +5297,15 @@ async function rejeitarDespesa(id) {
         _regSucessoTimer=setTimeout(function(){ var s=document.getElementById('regSucesso'); if(s) s.style.display='none'; }, 4000);
       } else { alert(ok+' apontamentos recalculados com sucesso.'); }
     }catch(e){
-      console.error('[recalcularApontamentosPendentes]', e);
+      console.error('[recalcularApontamentos]', e);
       alert('Erro ao recalcular: '+((e&&e.message)||e));
     }finally{
-      if(btn){ btn.disabled=false; btn.textContent='🔄 Recalcular apontamentos pendentes com este regime'; }
+      if(b1) b1.disabled=false; if(b2) b2.disabled=false;
+      if(alvo) alvo.textContent=alvoTxt;
     }
   }
+  function recalcularApontamentosPendentes(){ return _recalcularApontamentos(false); }
+  function recalcularApontamentosTodos(){ return _recalcularApontamentos(true); }
   // ════════════════════════════════════════════════════════════
   // PARTE C — Aba "Regime" (somente leitura) no perfil do colaborador
   // ════════════════════════════════════════════════════════════
@@ -5370,6 +5403,7 @@ async function rejeitarDespesa(id) {
   window.regimeToggleNoturno = regimeToggleNoturno;
   window.salvarRegime = salvarRegime;
   window.recalcularApontamentosPendentes = recalcularApontamentosPendentes;
+  window.recalcularApontamentosTodos = recalcularApontamentosTodos;
 
   // Expor funções globais necessárias para onclick handlers
   window.rhShowSec = rhShowSec;
