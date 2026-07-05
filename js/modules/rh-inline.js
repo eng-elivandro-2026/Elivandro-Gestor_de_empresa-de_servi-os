@@ -173,7 +173,7 @@ function bloquearAcessoRH() {
     + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
     + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
     + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pi\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pk\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
     + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
     + '</div></div></div>';
 }
@@ -189,7 +189,7 @@ async function rhSairDaPlataforma() {
 // em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
 async function _bloquearOuRedirRH(authUser, ehColabKnown) {
   var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
-  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pi'; return; }
+  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pk'; return; }
   bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {

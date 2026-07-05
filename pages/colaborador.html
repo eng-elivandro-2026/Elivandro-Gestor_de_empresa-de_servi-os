@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Portal do Prestador</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../js/shared/ajuda-conteudo.js?v=1"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoTopo');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
+<script src="../js/shared/ajuda-conteudo.js?v=3"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoTopo');if(!e)return;if(window.AJUDA)e.innerHTML=window.AJUDA.wrap(window.AJUDA.fluxo+window.AJUDA.faqHeader+window.AJUDA.colaborador);else if(window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -444,10 +444,12 @@ body{
       <div class="help-step">
         <h4>Registrar horas</h4>
         <ol>
-          <li>Escolha o projeto correto.</li>
-          <li>Confira a data do serviço.</li>
-          <li>Confira entrada e saída.</li>
-          <li>Confira o horário do almoço.</li>
+          <li>Escolha o projeto correto (obra onde você trabalhou).</li>
+          <li>Confirme a data do serviço.</li>
+          <li>O tipo do dia é preenchido automaticamente (Dia útil, Sábado, Domingo, Feriado) — ajuste se necessário.</li>
+          <li>A entrada e saída já vêm preenchidas com seu horário de trabalho configurado — ajuste se aquele dia foi diferente.</li>
+          <li>Confira o intervalo de refeição — ajuste se necessário.</li>
+          <li>Confira o valor da hora — ajuste se foi combinado diferente para aquele dia.</li>
           <li>Escreva, com poucas palavras, o que você fez.</li>
           <li>Toque em Salvar Apontamento.</li>
         </ol>
