@@ -1062,46 +1062,76 @@ function irPara(tela) {
 function irParaNovoApt() { irPara('novo'); }
 
 // ══ ENGINE CLT ════════════════════════════════════════════════
-function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, valorHora) {
+// PARTE E — percentuais de acréscimo lidos do regime (param opcional `acrescimos`).
+// Fallback (sem regime): além jornada/sábado 50%, domingo/feriado/folga 100%,
+// adicional noturno 20% (padrão CLT / default do regime), janela noturna 22:00–05:00.
+function calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, valorHora, acrescimos) {
   var entMin = timeToMin(entrada), saiMin = timeToMin(saida);
   var iIMin = timeToMin(intIni||'12:00'), iFMin = timeToMin(intFim||'13:00');
   var jIMin = timeToMin(jIni), jFMin = timeToMin(jFim);
   var FATOR_NOT = 60/52.5;
-  var normal=0, extra50=0, extra100=0, noturno=0;
 
+  var ac = acrescimos || {};
+  function _num(v, d){ return (v == null || isNaN(Number(v))) ? d : Number(v); }
+  var pAlem  = _num(ac.alem_jornada, 50);
+  var pSab   = _num(ac.sabado, 50);
+  var pDom   = _num(ac.domingo, 100);
+  var pFer   = _num(ac.feriado, 100);
+  var pFolga = _num(ac.folga, 100);
+  var pNot   = _num(ac.noturno_pct, 20);
+  var notAtivo  = (ac.noturno_ativo != null) ? (ac.noturno_ativo !== false) : true;
+  var notIniMin = timeToMin(ac.noturno_inicio || '22:00');
+  var notFimMin = timeToMin(ac.noturno_fim    || '05:00');
+  function ehNoturno(m){
+    if(!notAtivo || notIniMin == null || notFimMin == null) return false;
+    var mm = ((m % 1440) + 1440) % 1440;
+    return (notIniMin <= notFimMin) ? (mm >= notIniMin && mm < notFimMin) : (mm >= notIniMin || mm < notFimMin);
+  }
+
+  var h_normal=0, h_alem=0, h_sab=0, h_dom=0, h_fer=0, h_folga=0, noturno=0;
   for (var m = entMin; m < saiMin; m++) {
     if (m >= iIMin && m < iFMin) continue;
-    if (tipoDia === 'domingo' || tipoDia === 'feriado') {
-      if (m >= 22*60 || m < 5*60) { extra100 += FATOR_NOT/60; noturno += (FATOR_NOT-1)/60; }
-      else extra100 += 1/60;
-    } else if (tipoDia === 'sabado') {
-      if (m >= 22*60 || m < 5*60) { extra50 += FATOR_NOT/60; noturno += (FATOR_NOT-1)/60; }
-      else extra50 += 1/60;
-    } else {
-      if (m < jIMin) {
-        if (m >= 22*60 || m < 5*60) { extra50 += FATOR_NOT/60; noturno += (FATOR_NOT-1)/60; }
-        else extra50 += 1/60;
-      } else if (m < jFMin) {
-        if (m >= 22*60 || m < 5*60) { normal += FATOR_NOT/60; noturno += (FATOR_NOT-1)/60; }
-        else normal += 1/60;
-      } else {
-        if (m >= 22*60 || m < 5*60) { extra50 += FATOR_NOT/60; noturno += (FATOR_NOT-1)/60; }
-        else extra50 += 1/60;
-      }
+    var isNot = ehNoturno(m);
+    var add = isNot ? FATOR_NOT/60 : 1/60;
+    if (isNot) noturno += (FATOR_NOT-1)/60;
+    if (tipoDia === 'domingo')      h_dom   += add;
+    else if (tipoDia === 'feriado') h_fer   += add;
+    else if (tipoDia === 'folga')   h_folga += add;
+    else if (tipoDia === 'sabado')  h_sab   += add;
+    else {
+      if (m < jIMin)      h_alem += add;
+      else if (m < jFMin) h_normal += add;
+      else                h_alem += add;
     }
   }
   var vb = Number(valorHora||0);
+  var extra50  = h_alem + h_sab;
+  var extra100 = h_dom + h_fer + h_folga;
+  var vNormal   = h_normal * vb;
+  var vExtra50  = (h_alem * (1 + pAlem/100) + h_sab * (1 + pSab/100)) * vb;
+  var vExtra100 = (h_dom * (1 + pDom/100) + h_fer * (1 + pFer/100) + h_folga * (1 + pFolga/100)) * vb;
+  var vNoturno  = noturno * vb * (pNot/100);
   return {
-    horas_normal: parseFloat(normal.toFixed(2)),
+    horas_normal: parseFloat(h_normal.toFixed(2)),
     horas_extra_50: parseFloat(extra50.toFixed(2)),
     horas_extra_100: parseFloat(extra100.toFixed(2)),
     horas_noturno: parseFloat(noturno.toFixed(2)),
-    horas_total: parseFloat((normal+extra50+extra100).toFixed(2)),
-    valor_normal: parseFloat((normal*vb).toFixed(2)),
-    valor_extra_50: parseFloat((extra50*vb*1.5).toFixed(2)),
-    valor_extra_100: parseFloat((extra100*vb*2).toFixed(2)),
-    valor_noturno: parseFloat((noturno*vb*0.3).toFixed(2)),
-    valor_total: parseFloat((normal*vb + extra50*vb*1.5 + extra100*vb*2 + noturno*vb*0.3).toFixed(2))
+    horas_total: parseFloat((h_normal+extra50+extra100).toFixed(2)),
+    valor_normal: parseFloat(vNormal.toFixed(2)),
+    valor_extra_50: parseFloat(vExtra50.toFixed(2)),
+    valor_extra_100: parseFloat(vExtra100.toFixed(2)),
+    valor_noturno: parseFloat(vNoturno.toFixed(2)),
+    valor_total: parseFloat((vNormal+vExtra50+vExtra100+vNoturno).toFixed(2))
+  };
+}
+// Monta o objeto de acréscimos a partir do regime (ou null p/ fallback aos valores fixos).
+function _acrescimosDoRegime(regime){
+  if(!regime) return null;
+  return {
+    alem_jornada: regime.acresc_alem_jornada, sabado: regime.acresc_sabado,
+    domingo: regime.acresc_domingo, feriado: regime.acresc_feriado, folga: regime.acresc_folga,
+    noturno_pct: regime.noturno_pct, noturno_ativo: regime.noturno_ativo,
+    noturno_inicio: regime.noturno_inicio, noturno_fim: regime.noturno_fim
   };
 }
 
@@ -1526,7 +1556,7 @@ function calcNovo() {
   // Acréscimos: CLT sempre aplica; MEI/PJ conforme o regime (aplicar_acrescimos, default true).
   var ehMeiPj = (tipo === 'mei' || tipo === 'pj');
   var aplicarAcr = !(ehMeiPj && _regimeColab && _regimeColab.aplicar_acrescimos === false);
-  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, _acrescimosDoRegime(_regimeColab)); // percentuais do regime (Parte E)
   var r = aplicarAcr ? full : _semAcrescimosN(full, vh);
 
   document.getElementById('calcBox').classList.add('on');
@@ -1591,7 +1621,7 @@ async function salvarNovoApt() {
       if (!_rr.error && _rr.data && _rr.data[0] && _rr.data[0].aplicar_acrescimos === false) _aplicarAcr = false;
     } catch(e) {}
   }
-  var _full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh);
+  var _full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, _acrescimosDoRegime(_regimeColab)); // percentuais do regime (Parte E)
   var calc = _aplicarAcr ? _full : _semAcrescimosN(_full, vh);
 
   var row = Object.assign({
