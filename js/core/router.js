@@ -40,6 +40,19 @@
       ]
     },
     {
+      id: 'planejamento-estrategico',
+      label: 'Planejamento Estratégico',
+      icon: '🧭',
+      badge: 'DONO',
+      tipo: 'iframe',
+      src: 'pages/planejamento-estrategico.html',
+      nav: [
+        { label: 'Planos Estratégicos',       icon: '🗂️', action: "Router.iframeMsg('planejamento-estrategico','SHOW_SECTION','planos');Router._setNavAtivo(this)" },
+        { label: 'Criar Plano',               icon: '➕', action: "Router.iframeMsg('planejamento-estrategico','SHOW_SECTION','criar');Router._setNavAtivo(this)" },
+        { label: 'Biblioteca de Ferramentas', icon: '🧰', action: "Router.iframeMsg('planejamento-estrategico','SHOW_SECTION','ferramentas');Router._setNavAtivo(this)" },
+      ]
+    },
+    {
       id: 'reuniao-radar',
       label: 'Reunião de Radar',
       icon: '🗓️',
