@@ -85,7 +85,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .gut-tbl select{background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.35rem .3rem;font-size:.82rem;font-family:inherit}
 .gut-score{font-weight:800;color:var(--emp-cor);text-align:center}
 .gut-x{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:.2rem .4rem}
-.th-help{cursor:help;border-bottom:1px dotted var(--text3)}
+.th-help{cursor:help}
+.th-sub{display:block;font-size:.56rem;font-weight:600;color:var(--text3);text-transform:none;letter-spacing:0;margin-top:.12rem}
+/* Escala de pontuação (recolhível) */
+.escala-toggle{display:inline-block;background:none;border:none;color:var(--emp-cor);font-size:.76rem;font-weight:700;font-family:inherit;cursor:pointer;padding:.15rem 0;margin:-.5rem 0 .7rem}
+.escala-toggle:hover{filter:brightness(1.1)}
+.escala-panel{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1);border:1px solid transparent;border-radius:var(--r2)}
+.escala-panel.on{max-height:640px;border-color:var(--border);background:var(--bg2);margin-bottom:1rem}
+.escala-inner{padding:.85rem}
+.escala-crit{font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:.75rem}
+.escala-tbl{width:100%;border-collapse:collapse;font-size:.74rem}
+.escala-tbl th,.escala-tbl td{border:1px solid var(--border);padding:.35rem .5rem;text-align:left}
+.escala-tbl th{background:var(--bg3);color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.03em}
+.escala-tbl td:first-child,.escala-tbl th:first-child{text-align:center}
+.escala-tbl td:first-child{font-weight:800;color:var(--emp-cor)}
+.escala-foot{font-size:.74rem;color:var(--text3);margin-top:.65rem}
 
 /* Ranking */
 .rank-wrap{margin-top:1.3rem}
@@ -217,14 +231,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       Liste os problemas e dê nota de <b>1 a 5</b> em cada critério. A prioridade é <b>G × U × T</b> (máx. 125):
       quanto maior, mais urgente resolver.
     </div>
+    <button class="escala-toggle" id="escalaToggle" onclick="toggleEscala()">▸ Ver escala de pontuação</button>
+    <div class="escala-panel" id="escalaPanel"><div class="escala-inner">
+      <div class="escala-crit">
+        <b>Significado dos critérios:</b><br>
+        <b>G — Gravidade:</b> impacto/estrago que o problema causa se não for resolvido.<br>
+        <b>U — Urgência:</b> o quão rápido é preciso agir sobre o problema.<br>
+        <b>T — Tendência:</b> como o problema evolui com o tempo se nada for feito.
+      </div>
+      <table class="escala-tbl">
+        <thead><tr><th>Nota</th><th>Gravidade</th><th>Urgência</th><th>Tendência</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Sem gravidade</td><td>Pode esperar</td><td>Não muda</td></tr>
+          <tr><td>2</td><td>Pouco grave</td><td>Pouco urgente</td><td>Piora a longo prazo</td></tr>
+          <tr><td>3</td><td>Grave</td><td>Merece atenção</td><td>Piora a médio prazo</td></tr>
+          <tr><td>4</td><td>Muito grave</td><td>Muito urgente</td><td>Piora a curto prazo</td></tr>
+          <tr><td>5</td><td>Extremamente grave</td><td>Ação imediata</td><td>Piora rapidamente</td></tr>
+        </tbody>
+      </table>
+      <div class="escala-foot"><b>GUT = G × U × T</b> (mín. 1, máx. 125). Quanto maior, mais prioritário.</div>
+    </div></div>
     <div class="f" style="max-width:460px"><label>Título da análise</label><input type="text" id="gutTitulo" placeholder="Ex.: GUT — Priorização Comercial"></div>
     <div style="overflow-x:auto">
       <table class="gut-tbl">
         <thead><tr>
           <th style="min-width:180px">Problema</th>
-          <th class="th-help" title="Gravidade — tamanho do estrago se não resolver (1=quase nada, 5=gravíssimo)">G</th>
-          <th class="th-help" title="Urgência — o quão rápido precisa agir (1=pode esperar, 5=é pra ontem)">U</th>
-          <th class="th-help" title="Tendência — se tende a piorar com o tempo (1=estável, 5=piora rápido)">T</th>
+          <th class="th-help" title="Gravidade — impacto/estrago que o problema causa se não for resolvido">G<span class="th-sub">Gravidade</span></th>
+          <th class="th-help" title="Urgência — o quão rápido é preciso agir sobre o problema">U<span class="th-sub">Urgência</span></th>
+          <th class="th-help" title="Tendência — como o problema evolui com o tempo se nada for feito">T<span class="th-sub">Tendência</span></th>
           <th style="text-align:center">GUT</th>
           <th></th>
         </tr></thead>
@@ -273,7 +307,20 @@ function showSection(id){
   if(el) el.classList.add('on');
   if(id === 'planos') carregarPlanos();
   if(id === 'ferramentas') carregarGutAvulsas();
+  if(id === 'gut'){ // escala sempre inicia recolhida
+    var _ep=document.getElementById('escalaPanel'); if(_ep) _ep.classList.remove('on');
+    var _et=document.getElementById('escalaToggle'); if(_et) _et.textContent='▸ Ver escala de pontuação';
+  }
   try{ window.scrollTo(0,0); }catch(e){}
+}
+
+// Escala de pontuação (recolhível — estado só em memória)
+function toggleEscala(){
+  var p = document.getElementById('escalaPanel');
+  var b = document.getElementById('escalaToggle');
+  if(!p || !b) return;
+  var aberto = p.classList.toggle('on');
+  b.textContent = aberto ? '▾ Ocultar escala' : '▸ Ver escala de pontuação';
 }
 
 // ── GUT: lógica pura (testável) ────────────────────────────────
