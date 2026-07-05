@@ -173,7 +173,7 @@ function bloquearAcessoRH() {
     + '<div style="max-width:380px"><h2 style="font-size:1.1rem;margin-bottom:.6rem">Acesso restrito</h2>'
     + '<p style="color:var(--text2);font-size:.9rem;line-height:1.45;margin-bottom:1.1rem">Esta área é exclusiva para dono e gestor autorizado. Use o portal do colaborador.</p>'
     + '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pk\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
+    + '<button onclick="window.location.href=\'/pages/colaborador.html?v=pl\'" style="padding:.5rem .9rem;border:none;border-radius:7px;background:var(--accent);color:#000;font-weight:700;cursor:pointer">➡️ Ir para o portal do colaborador</button>'
     + '<button onclick="rhSairDaPlataforma()" style="padding:.5rem .9rem;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-weight:700;cursor:pointer">Sair</button>'
     + '</div></div></div>';
 }
@@ -189,7 +189,7 @@ async function rhSairDaPlataforma() {
 // em vez de mostrar a barreira. Caso contrario, mostra a barreira (agora com saidas).
 async function _bloquearOuRedirRH(authUser, ehColabKnown) {
   var ehColab = (ehColabKnown === true) ? true : await usuarioEhColaboradorRH(authUser);
-  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pk'; return; }
+  if (ehColab) { window.location.href = '/pages/colaborador.html?v=pl'; return; }
   bloquearAcessoRH();
 }
 async function validarAcessoRHAdministrativo() {
@@ -1009,7 +1009,7 @@ async function carregarHorasColab(colabId) {
   _horasColabCache = data || [];
   var tbody = document.getElementById('horasColabBody');
   if (!_horasColabCache.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:1.5rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     document.getElementById('kpiHorasColab').innerHTML = '';
     return;
   }
@@ -1056,6 +1056,7 @@ async function carregarHorasColab(colabId) {
       + '<td data-label="Normal">' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td data-label="Extra 50%">' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td data-label="Extra 100%">' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td data-label="Noturno">' + Number(a.horas_noturno||0).toFixed(1) + 'h</td>'
       + '<td data-label="Total" style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
       + '<td data-label="Status"><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
       + '<td data-label="Boletim" class="apt-col-bol">' + bolCell + '</td>'
@@ -1371,7 +1372,7 @@ async function carregarApontamentos() {
   var { data, error } = await q;
   var tbody = document.getElementById('aptBody');
   if (error || !data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text3)">Nenhum apontamento encontrado.</td></tr>';
     return;
   }
   // Buscar propostas — no modo "Meus" busca de todas as empresas
@@ -1425,6 +1426,7 @@ async function carregarApontamentos() {
       + '<td>' + Number(a.horas_normal||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_50||0).toFixed(1) + 'h</td>'
       + '<td>' + Number(a.horas_extra_100||0).toFixed(1) + 'h</td>'
+      + '<td>' + Number(a.horas_noturno||0).toFixed(1) + 'h</td>'
       + '<td style="color:var(--green)">' + fmtMoeda(a.valor_total) + '</td>'
       + '<td><span class="bdg ' + sBdg + '">' + (a.status||'—') + '</span></td>'
       + '<td><div class="br">' + acoes + '</div></td>'
@@ -2071,7 +2073,10 @@ function timeToMin(t) {
 }
 function minToH(m) { return (m/60).toFixed(2)*1; }
 
-function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora, periculoso, percPericulosidade, periculosidadeBase) {
+// PARTE E — percentuais de acréscimo lidos do regime (param opcional `acrescimos`).
+// Fallback (sem regime) mantém os valores fixos: além jornada/sábado 50%, domingo/feriado/folga 100%,
+// adicional noturno 20% (padrão CLT / default do regime), janela noturna 22:00–05:00.
+function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni, jornadaFim, valorHora, periculoso, percPericulosidade, periculosidadeBase, acrescimos) {
   var entMin  = timeToMin(entrada);
   var saiMin  = timeToMin(saida);
   var intIMin = timeToMin(intInicio || '12:00');
@@ -2082,91 +2087,82 @@ function calcularHorasCLT(entrada, saida, intInicio, intFim, tipoDia, jornadaIni
   // CLT: hora noturna = 52min30s = fator 60/52.5
   var FATOR_NOT = 60/52.5;
 
-  var normal=0, extra50=0, extra100=0, noturno=0;
-  var INTERVALO = Math.max(intFMin - intIMin, 60); // mínimo 1h
+  // Percentuais de acréscimo — do regime (acrescimos) com fallback aos valores fixos.
+  var ac = acrescimos || {};
+  function _num(v, d){ return (v == null || isNaN(Number(v))) ? d : Number(v); }
+  var pAlem  = _num(ac.alem_jornada, 50);
+  var pSab   = _num(ac.sabado, 50);
+  var pDom   = _num(ac.domingo, 100);
+  var pFer   = _num(ac.feriado, 100);
+  var pFolga = _num(ac.folga, 100);
+  var pNot   = _num(ac.noturno_pct, 20);
+  var notAtivo  = (ac.noturno_ativo != null) ? (ac.noturno_ativo !== false) : true;
+  var notIniMin = timeToMin(ac.noturno_inicio || '22:00');
+  var notFimMin = timeToMin(ac.noturno_fim    || '05:00');
+  function ehNoturno(m){
+    if(!notAtivo || notIniMin == null || notFimMin == null) return false;
+    var mm = ((m % 1440) + 1440) % 1440;
+    return (notIniMin <= notFimMin) ? (mm >= notIniMin && mm < notFimMin) : (mm >= notIniMin || mm < notFimMin);
+  }
 
-  // Para cada minuto trabalhado
+  // Horas por categoria (para aplicar o % configurado de cada uma).
+  var h_normal=0, h_alem=0, h_sab=0, h_dom=0, h_fer=0, h_folga=0, noturno=0;
+
   for (var m = entMin; m < saiMin; m++) {
-    // Pular intervalo de almoço
-    if (m >= intIMin && m < intFMin) continue;
-
-    var hExtra = 0, hNormal = 0, hNoturno = 0;
-
-    if (tipoDia === 'domingo' || tipoDia === 'feriado') {
-      // 100% o dia todo
-      if (m >= 22*60 || m < 5*60) {
-        // Noturno + 100%
-        extra100 += (1/60) * FATOR_NOT;
-        noturno  += (1/60) * (FATOR_NOT - 1);
-      } else {
-        extra100 += 1/60;
-      }
-    } else if (tipoDia === 'sabado') {
-      // 50% o dia todo
-      if (m >= 22*60 || m < 5*60) {
-        extra50 += (1/60) * FATOR_NOT;
-        noturno += (1/60) * (FATOR_NOT - 1);
-      } else {
-        extra50 += 1/60;
-      }
-    } else {
-      // Dia útil
-      // Antes da jornada → extra 50%
-      if (m < jIniMin) {
-        if (m >= 22*60 || m < 5*60) {
-          extra50 += (1/60) * FATOR_NOT;
-          noturno += (1/60) * (FATOR_NOT - 1);
-        } else {
-          extra50 += 1/60;
-        }
-      }
-      // Dentro da jornada normal CLT (até 18:00 seg-qui / 17:00 sex)
-      else if (m >= jIniMin && m < jFimMin) {
-        if (m >= 22*60 || m < 5*60) {
-          normal  += (1/60) * FATOR_NOT;
-          noturno += (1/60) * (FATOR_NOT - 1);
-        } else {
-          normal += 1/60;
-        }
-      }
-      // Após jornada → extra 50%
-      else {
-        if (m >= 22*60 || m < 5*60) {
-          extra50 += (1/60) * FATOR_NOT;
-          noturno += (1/60) * (FATOR_NOT - 1);
-        } else {
-          extra50 += 1/60;
-        }
-      }
+    if (m >= intIMin && m < intFMin) continue; // pula intervalo de almoço
+    var isNot = ehNoturno(m);
+    var add = isNot ? (1/60) * FATOR_NOT : (1/60);
+    if (isNot) noturno += (1/60) * (FATOR_NOT - 1);
+    if (tipoDia === 'domingo')      h_dom   += add;
+    else if (tipoDia === 'feriado') h_fer   += add;
+    else if (tipoDia === 'folga')   h_folga += add;
+    else if (tipoDia === 'sabado')  h_sab   += add;
+    else { // dia útil: antes/depois da jornada = extra (além da jornada); dentro = normal
+      if (m < jIniMin)      h_alem += add;
+      else if (m < jFimMin) h_normal += add;
+      else                  h_alem += add;
     }
   }
 
   var vBase = Number(valorHora || 0);
-  var vNormal  = normal   * vBase;
-  var vExtra50 = extra50  * vBase * 1.5;
-  var vExtra100= extra100 * vBase * 2.0;
-  var vNoturno = noturno  * vBase * 0.3; // adicional noturno
+  // Buckets de saída (compatibilidade): tier "50" = além jornada + sábado; tier "100" = domingo + feriado + folga.
+  var extra50  = h_alem + h_sab;
+  var extra100 = h_dom + h_fer + h_folga;
+  var vNormal   = h_normal * vBase;
+  var vExtra50  = (h_alem * (1 + pAlem/100) + h_sab * (1 + pSab/100)) * vBase;
+  var vExtra100 = (h_dom * (1 + pDom/100) + h_fer * (1 + pFer/100) + h_folga * (1 + pFolga/100)) * vBase;
+  var vNoturno  = noturno * vBase * (pNot/100); // adicional noturno
 
   // Adicional de periculosidade (opcional — CLT art. 193 / TST OJ 259)
   var perc  = (periculoso === true) ? (Number(percPericulosidade) || 30) : 0;
   var base  = periculosidadeBase || 'normal';
   // 'normal': aplica sobre horas normais apenas (padrão CLT)
   // 'total':  aplica sobre horas totais trabalhadas (opção comercial)
-  var horasPerig = (base === 'total') ? (normal + extra50 + extra100) : normal;
+  var horasPerig = (base === 'total') ? (h_normal + extra50 + extra100) : h_normal;
   var vPerig = horasPerig * vBase * (perc / 100);
 
   return {
-    horas_normal:            parseFloat(normal.toFixed(2)),
+    horas_normal:            parseFloat(h_normal.toFixed(2)),
     horas_extra_50:          parseFloat(extra50.toFixed(2)),
     horas_extra_100:         parseFloat(extra100.toFixed(2)),
     horas_noturno:           parseFloat(noturno.toFixed(2)),
-    horas_total:             parseFloat((normal+extra50+extra100).toFixed(2)),
+    horas_total:             parseFloat((h_normal+extra50+extra100).toFixed(2)),
     valor_normal:            parseFloat(vNormal.toFixed(2)),
     valor_extra_50:          parseFloat(vExtra50.toFixed(2)),
     valor_extra_100:         parseFloat(vExtra100.toFixed(2)),
     valor_noturno:           parseFloat(vNoturno.toFixed(2)),
     valor_periculosidade:    parseFloat(vPerig.toFixed(2)),
     valor_total:             parseFloat((vNormal+vExtra50+vExtra100+vNoturno+vPerig).toFixed(2))
+  };
+}
+// Monta o objeto de acréscimos a partir do regime (ou null p/ fallback aos valores fixos).
+function _acrescimosDoRegime(regime){
+  if(!regime) return null;
+  return {
+    alem_jornada: regime.acresc_alem_jornada, sabado: regime.acresc_sabado,
+    domingo: regime.acresc_domingo, feriado: regime.acresc_feriado, folga: regime.acresc_folga,
+    noturno_pct: regime.noturno_pct, noturno_ativo: regime.noturno_ativo,
+    noturno_inicio: regime.noturno_inicio, noturno_fim: regime.noturno_fim
   };
 }
 
@@ -2179,8 +2175,8 @@ function _aptAplicarAcrescimos(colab){
   return !(reg && reg.aplicar_acrescimos === false); // default (sem regime / campo ausente) = aplica
 }
 // Calcula com ou sem acréscimos. Sem acréscimos: horas totais × valor/hora (sem split normal/extra/noturno).
-function _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr){
-  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig);
+function _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr, acrescimos){
+  var full = calcularHorasCLT(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, acrescimos);
   if (aplicarAcr) return full;
   var tot = full.horas_total;
   return {
@@ -2243,7 +2239,8 @@ function calcularHorasApt() {
   var basePerig  = colab ? (colab.periculosidade_base || 'normal') : 'normal';
 
   var aplicarAcr = _aptAplicarAcrescimos(colab);
-  var r = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr);
+  var _acr = _acrescimosDoRegime(colabId && _regimeCache[colabId]); // percentuais do regime (Parte E)
+  var r = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, aplicarAcr, _acr);
 
   document.getElementById('horasPrevia').style.display = 'block';
   // Info (somente leitura) do % de extras — só relevante para MEI/PJ; estado vem do regime.
@@ -2253,6 +2250,27 @@ function calcularHorasApt() {
   if (acrInfoRow && acrInfoVal) {
     if (ehMeiPj) { acrInfoRow.style.display = ''; acrInfoVal.textContent = aplicarAcr ? 'Aplicados' : 'Não aplicados'; }
     else { acrInfoRow.style.display = 'none'; }
+  }
+  // Labels dinâmicos + % aplicado — refletem os percentuais do regime p/ o tipo de dia (Parte E).
+  var acrP = _acr || {};
+  function _pn(v, d){ return (v == null || isNaN(Number(v))) ? d : Number(v); }
+  var pAlem = _pn(acrP.alem_jornada, 50), pSab = _pn(acrP.sabado, 50);
+  var pDom = _pn(acrP.domingo, 100), pFer = _pn(acrP.feriado, 100), pFolga = _pn(acrP.folga, 100);
+  var p50  = (tipoDia === 'sabado') ? pSab : pAlem; // tier "50" (além jornada / sábado)
+  var p100 = (tipoDia === 'domingo') ? pDom : (tipoDia === 'feriado') ? pFer : (tipoDia === 'folga') ? pFolga : 100; // tier "100"
+  var l50 = document.getElementById('pvExtra50Label'); if (l50) l50.textContent = 'Extra ' + p50 + '%';
+  var l100 = document.getElementById('pvExtra100Label'); if (l100) l100.textContent = 'Extra ' + p100 + '%';
+  // Label do adicional noturno com o % do regime (ou sem %, se noturno inativo).
+  var pNot = _pn(acrP.noturno_pct, 20);
+  var notAtivo = (acrP.noturno_ativo != null) ? (acrP.noturno_ativo !== false) : true;
+  var lNot = document.getElementById('pvNoturnoLabel'); if (lNot) lNot.textContent = notAtivo ? ('Adicional noturno (+' + pNot + '%)') : 'Adicional noturno';
+  // Linha "Acréscimo aplicado: +X%" — percentual do tipo de dia selecionado.
+  var pctAtual = (tipoDia === 'sabado') ? pSab : (tipoDia === 'domingo') ? pDom : (tipoDia === 'feriado') ? pFer : (tipoDia === 'folga') ? pFolga : pAlem;
+  var lblTipo = (tipoDia === 'sabado') ? 'sábado' : (tipoDia === 'domingo') ? 'domingo' : (tipoDia === 'feriado') ? 'feriado' : (tipoDia === 'folga') ? 'folga' : 'além da jornada';
+  var pctRow = document.getElementById('pvAcrescPctRow'), pctLbl = document.getElementById('pvAcrescPctLabel'), pctVal = document.getElementById('pvAcrescPctVal');
+  if (pctRow && pctVal) {
+    if (aplicarAcr) { pctRow.style.display = ''; if (pctLbl) pctLbl.textContent = 'Acréscimo (' + lblTipo + ')'; pctVal.textContent = '+' + pctAtual + '%'; }
+    else { pctRow.style.display = 'none'; }
   }
   document.getElementById('pvNormal').textContent    = r.horas_normal.toFixed(1) + 'h → ' + fmtMoeda(r.valor_normal);
   document.getElementById('pvExtra50').textContent   = r.horas_extra_50.toFixed(1) + 'h → ' + fmtMoeda(r.valor_extra_50);
@@ -3417,7 +3435,8 @@ async function salvarApontamento() {
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
-  var calc = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, _aptAplicarAcrescimos(colab));
+  var _acrS = _acrescimosDoRegime(colabId && _regimeCache[colabId]); // percentuais do regime (Parte E)
+  var calc = _aptCalcComToggle(entrada, saida, intIni, intFim, tipoDia, jIni, jFim, vh, perig, percPerig, basePerig, _aptAplicarAcrescimos(colab), _acrS);
 
   var row = Object.assign({
     empresa_id:          empId,
@@ -5281,7 +5300,7 @@ async function rejeitarDespesa(id) {
         var refeic=(regime.refeicao_minutos!=null)?Number(regime.refeicao_minutos):60;
         var intStart=a.intervalo_inicio ? String(a.intervalo_inicio).slice(0,5) : '12:00';
         var intIni=intStart, intFim=(refeic>0)?_addMinToTime(intStart, refeic):intStart;
-        var calc=calcularHorasCLT(a.hora_entrada, a.hora_saida, intIni, intFim, tipoDia, jIni, jFim, a.valor_hora_base||0, a.periculoso, a.perc_periculosidade, a.periculosidade_base);
+        var calc=calcularHorasCLT(a.hora_entrada, a.hora_saida, intIni, intFim, tipoDia, jIni, jFim, a.valor_hora_base||0, a.periculoso, a.perc_periculosidade, a.periculosidade_base, _acrescimosDoRegime(regime));
         var upd=await sb.from('apontamentos')
           .update(Object.assign({ tipo_dia:tipoDia, jornada_inicio:jIni, jornada_fim:jFim }, calc))
           .eq('id', a.id);

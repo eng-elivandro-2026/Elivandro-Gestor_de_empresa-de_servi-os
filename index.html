@@ -5345,7 +5345,7 @@ function guiaAba(n){
           <table class="apt-table">
             <thead><tr>
               <th>Data</th><th>Projeto</th><th>Descrição</th><th>Entrada</th><th>Saída</th>
-              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Boletim</th>
+              <th>Normal</th><th>Extra 50%</th><th>Extra 100%</th><th>Noturno</th><th>Total R$</th><th>Status</th><th>Boletim</th>
             </tr></thead>
             <tbody id="horasColabBody"></tbody>
           </table>
@@ -5585,10 +5585,10 @@ function guiaAba(n){
           <thead><tr>
             <th>Colaborador</th><th>Data</th><th>Projeto</th>
             <th>Entrada</th><th>Saída</th><th>Normal</th><th>Extra 50%</th>
-            <th>Extra 100%</th><th>Total R$</th><th>Status</th><th>Ações</th>
+            <th>Extra 100%</th><th>Noturno</th><th>Total R$</th><th>Status</th><th>Ações</th>
           </tr></thead>
           <tbody id="aptBody">
-            <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
+            <tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text3)">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -5979,9 +5979,10 @@ function guiaAba(n){
       <div class="horas-calc" id="horasPrevia" style="display:none">
         <div id="pvTitulo" style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">⚡ Cálculo automático CLT</div>
         <div class="horas-linha"><span class="horas-tipo">Horas normais</span><span class="horas-val" id="pvNormal">—</span></div>
-        <div class="horas-linha"><span class="horas-tipo">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
-        <div class="horas-linha"><span class="horas-tipo">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
-        <div class="horas-linha"><span class="horas-tipo">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo" id="pvExtra50Label">Extra 50%</span><span class="horas-val" id="pvExtra50">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo" id="pvExtra100Label">Extra 100%</span><span class="horas-val" id="pvExtra100">—</span></div>
+        <div class="horas-linha"><span class="horas-tipo" id="pvNoturnoLabel">Adicional noturno</span><span class="horas-val" id="pvNoturno">—</span></div>
+        <div class="horas-linha" id="pvAcrescPctRow" style="display:none"><span class="horas-tipo" style="color:var(--text3);font-size:.72rem" id="pvAcrescPctLabel">Acréscimo aplicado</span><span class="horas-val" style="color:var(--text3);font-size:.72rem;font-weight:600" id="pvAcrescPctVal">—</span></div>
         <div class="horas-linha" id="pvPerigRow" style="display:none"><span class="horas-tipo" style="color:var(--orange)">Periculosidade</span><span class="horas-val" id="pvPericulosidade">—</span></div>
         <div class="horas-linha">
           <span class="horas-tipo" style="color:var(--text)">TOTAL</span>
@@ -10401,7 +10402,7 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=33"></script>
+<script src="js/modules/rh-inline.js?v=36"></script>
 <script src="js/shared/ajuda-conteudo.js?v=3"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(!e)return;if(window.AJUDA)e.innerHTML=window.AJUDA.wrap(window.AJUDA.fluxo+window.AJUDA.faqHeader+window.AJUDA.gestor+window.AJUDA.colaborador);else if(window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
@@ -10477,7 +10478,7 @@ async function iniciarPlataforma() {
           }
         }
         if (_ehColab) {
-          window.location.href = '/pages/colaborador.html?v=pk'; return;
+          window.location.href = '/pages/colaborador.html?v=pl'; return;
         }
       }
     }
