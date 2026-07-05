@@ -10401,9 +10401,9 @@ function rExecTimeline(){
 <script src="js/modules/gestao-inline.js?v=11"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=31"></script>
-<script src="js/shared/ajuda-conteudo.js?v=1"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(e&&window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
+<script src="js/modules/rh-inline.js?v=33"></script>
+<script src="js/shared/ajuda-conteudo.js?v=3"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(!e)return;if(window.AJUDA)e.innerHTML=window.AJUDA.wrap(window.AJUDA.fluxo+window.AJUDA.faqHeader+window.AJUDA.gestor+window.AJUDA.colaborador);else if(window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>
 <script src="js/modules/avisos-inline.js?v=1"></script>
 <script src="js/config/supabase-financeiro.js"></script>
@@ -10477,7 +10477,7 @@ async function iniciarPlataforma() {
           }
         }
         if (_ehColab) {
-          window.location.href = '/pages/colaborador.html?v=pi'; return;
+          window.location.href = '/pages/colaborador.html?v=pk'; return;
         }
       }
     }
