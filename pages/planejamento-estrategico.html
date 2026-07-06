@@ -147,6 +147,25 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
 .pq-nivel textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.83rem;font-family:inherit;min-height:44px;outline:none}
 .pq-nivel textarea:focus{border-color:var(--emp-cor)}
 
+/* BSC */
+.g-bsc-ctx{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+@media(max-width:640px){ .g-bsc-ctx{grid-template-columns:1fr} }
+.bsc-persp{border:1px solid var(--border);border-left:4px solid var(--border);border-radius:var(--r2);background:var(--bg2);padding:.7rem .85rem;margin-bottom:.8rem}
+.bsc-persp.p-fin{border-left-color:var(--green)} .bsc-persp.p-cli{border-left-color:var(--blue)}
+.bsc-persp.p-proc{border-left-color:var(--accent)} .bsc-persp.p-apr{border-left-color:var(--purple)}
+.bsc-persp-nome{font-size:.9rem;font-weight:800}
+.p-fin .bsc-persp-nome{color:var(--green)} .p-cli .bsc-persp-nome{color:var(--blue)}
+.p-proc .bsc-persp-nome{color:var(--accent)} .p-apr .bsc-persp-nome{color:var(--purple)}
+.bsc-persp-dica{font-size:.7rem;color:var(--text3);margin:.15rem 0 .55rem}
+.bsc-tbl{width:100%;border-collapse:collapse;font-size:.8rem}
+.bsc-tbl th{text-align:left;padding:.35rem .45rem;color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);white-space:nowrap}
+.bsc-tbl td{padding:.3rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
+.bsc-tbl textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.35rem .45rem;font-size:.8rem;font-family:inherit;min-height:38px;resize:vertical}
+.bsc-tbl textarea:focus{border-color:var(--emp-cor);outline:none}
+.bsc-tbl .bsc-x{background:none;border:none;color:var(--red);cursor:pointer;font-size:.95rem;padding:.2rem .3rem}
+.bsc-add{background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit;padding:.3rem .6rem;margin-top:.5rem}
+.bsc-add:hover{border-color:var(--emp-cor)}
+
 .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--emp-bdr);color:var(--text);padding:.6rem 1rem;border-radius:var(--r2);font-size:.82rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
 
@@ -215,6 +234,7 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
       <div class="sec-tit" style="font-size:.9rem">Ferramentas deste plano</div>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap">
         <button class="btn btn-g btn-sm" onclick="abrirSwot(null, _detPlanoId)">+ Nova análise SWOT</button>
+        <button class="btn btn-g btn-sm" onclick="abrirBsc(null, _detPlanoId)">+ Nova análise BSC</button>
         <button class="btn btn-g btn-sm" onclick="abrir5pq(null, _detPlanoId)">+ Nova análise 5 Porquês</button>
         <button class="btn btn-p btn-sm" onclick="abrirGut(null, _detPlanoId)">+ Nova análise GUT</button>
       </div>
@@ -263,10 +283,10 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
         <div class="ferr-desc">Forças, fraquezas, oportunidades e ameaças.</div>
         <span class="ferr-tag on">Disponível</span>
       </div>
-      <div class="ferr-card embreve">
+      <div class="ferr-card ativa" onclick="abrirBsc(null, null)">
         <div class="ferr-ico">📊</div><div class="ferr-nome">BSC</div>
         <div class="ferr-desc">Balanced Scorecard — indicadores por perspectiva.</div>
-        <span class="ferr-tag soon">Em breve</span>
+        <span class="ferr-tag on">Disponível</span>
       </div>
       <div class="ferr-card embreve">
         <div class="ferr-ico">📝</div><div class="ferr-nome">5W2H</div>
@@ -285,6 +305,8 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
     <div id="swotAvulsasLista"></div>
     <div class="sec-tit" style="font-size:.9rem;margin:1.1rem 0 .5rem">Análises 5 Porquês salvas (avulsas)</div>
     <div id="pqAvulsasLista"></div>
+    <div class="sec-tit" style="font-size:.9rem;margin:1.1rem 0 .5rem">Análises BSC salvas (avulsas)</div>
+    <div id="bscAvulsasLista"></div>
   </section>
 
   <!-- ── GUT EDITOR ── -->
@@ -418,6 +440,26 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
       <button class="btn btn-p" id="pqSalvar" onclick="salvar5pq()">Salvar análise</button>
     </div>
   </section>
+
+  <!-- ── BSC EDITOR ── -->
+  <section class="sec" id="sec-bsc">
+    <button class="btn btn-g btn-sm" onclick="voltarDaBsc()" style="margin-bottom:.8rem">← Voltar</button>
+    <div class="sec-tit">📊 Balanced Scorecard (BSC)</div>
+    <div class="gut-help">
+      O BSC organiza a estratégia em 4 perspectivas conectadas: o <b>aprendizado</b> sustenta os
+      <b>processos</b>, que encantam o <b>cliente</b>, que geram o <b>resultado financeiro</b>. Preencha de cima para baixo.
+    </div>
+    <div class="f" style="max-width:460px"><label>Título da análise</label><input type="text" id="bscTitulo" placeholder="Ex.: BSC — Estratégia 2026"></div>
+    <div class="g-bsc-ctx">
+      <div class="f"><label>Visão</label><textarea id="bscVisao" placeholder="Onde queremos chegar" style="min-height:48px"></textarea></div>
+      <div class="f"><label>Missão</label><textarea id="bscMissao" placeholder="Nosso propósito" style="min-height:48px"></textarea></div>
+      <div class="f"><label>Prioridades estratégicas</label><textarea id="bscPrioridades" placeholder="Focos principais do período" style="min-height:48px"></textarea></div>
+    </div>
+    <div id="bscPerspectivas"></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem">
+      <button class="btn btn-p" id="bscSalvar" onclick="salvarBsc()">Salvar análise</button>
+    </div>
+  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -453,6 +495,16 @@ var _SWOT_QUADS = ['forcas','fraquezas','oportunidades','ameacas'];
 var _pqEditId = null;            // id da ferramenta 5 Porquês em edição (null = nova)
 var _pqPlanoId = null;           // plano ao qual o 5 Porquês pertence (null = avulsa)
 var _pqOrigem = 'ferramentas';   // seção para onde "voltar" ao sair do 5 Porquês
+var _bscEditId = null;           // id da ferramenta BSC em edição (null = nova)
+var _bscPlanoId = null;          // plano ao qual o BSC pertence (null = avulsa)
+var _bscOrigem = 'ferramentas';  // seção para onde "voltar" ao sair do BSC
+var _bscDados = { financeira:[], cliente:[], processos:[], aprendizado:[] };
+var _BSC_PERSP = [
+  { key:'financeira',  nome:'💰 Financeira',                 cls:'p-fin',  dica:'Que resultado financeiro queremos alcançar?' },
+  { key:'cliente',     nome:'🤝 Cliente',                    cls:'p-cli',  dica:'Como o cliente precisa nos ver para chegarmos lá?' },
+  { key:'processos',   nome:'⚙️ Processos Internos',          cls:'p-proc', dica:'Em que processos precisamos ser excelentes?' },
+  { key:'aprendizado', nome:'🌱 Aprendizado & Crescimento',   cls:'p-apr',  dica:'O que precisamos aprender/estruturar como base?' }
+];
 var TIPO_LABEL = { gut:'GUT', swot:'SWOT', '5porques':'5 Porquês', bsc:'BSC', '5w2h':'5W2H' };
 
 function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : null; }catch(e){ return null; } }
@@ -472,7 +524,7 @@ function showSection(id){
   var el = document.getElementById('sec-' + id);
   if(el) el.classList.add('on');
   if(id === 'planos') carregarPlanos();
-  if(id === 'ferramentas'){ carregarGutAvulsas(); carregarSwotAvulsas(); carregar5pqAvulsas(); }
+  if(id === 'ferramentas'){ carregarGutAvulsas(); carregarSwotAvulsas(); carregar5pqAvulsas(); carregarBscAvulsas(); }
   if(id === 'gut'){ // escala sempre inicia recolhida
     var _ep=document.getElementById('escalaPanel'); if(_ep) _ep.classList.remove('on');
     var _et=document.getElementById('escalaToggle'); if(_et) _et.textContent='▸ Ver escala de pontuação';
@@ -697,6 +749,7 @@ function _ferramentaCard(f){
     + (f.tipo === 'gut' ? '<button class="btn btn-g btn-sm" onclick="abrirGutEdit(\'' + f.id + '\')">Abrir</button>' : '')
     + (f.tipo === 'swot' ? '<button class="btn btn-g btn-sm" onclick="abrirSwotEdit(\'' + f.id + '\')">Abrir</button>' : '')
     + (f.tipo === '5porques' ? '<button class="btn btn-g btn-sm" onclick="abrir5pqEdit(\'' + f.id + '\')">Abrir</button>' : '')
+    + (f.tipo === 'bsc' ? '<button class="btn btn-g btn-sm" onclick="abrirBscEdit(\'' + f.id + '\')">Abrir</button>' : '')
   + '</div>';
 }
 
@@ -1104,6 +1157,118 @@ async function puxarProblemaGut(){
   if(!top){ toast('Nenhum problema encontrado nas GUTs deste plano'); return; }
   if(probEl) probEl.value = top.nome;
   toast('Problema puxado da GUT: ' + top.nome);
+}
+
+// ── BSC EDITOR ─────────────────────────────────────────────────
+function _bscEmptyRow(){ return { objetivo:'', indicador:'', meta:'', plano:'' }; }
+// dados_json do BSC (pura — testável). Descarta linhas totalmente vazias em cada perspectiva.
+function montarBscDados(titulo, visao, missao, prioridades, dados){
+  function t(x){ return String(x==null?'':x).trim(); }
+  function rows(arr){
+    return (Array.isArray(arr)?arr:[]).map(function(r){
+      return { objetivo:t(r&&r.objetivo), indicador:t(r&&r.indicador), meta:t(r&&r.meta), plano:t(r&&r.plano) };
+    }).filter(function(r){ return r.objetivo || r.indicador || r.meta || r.plano; });
+  }
+  return {
+    titulo:t(titulo), visao:t(visao), missao:t(missao), prioridades:t(prioridades),
+    financeira:rows(dados.financeira), cliente:rows(dados.cliente), processos:rows(dados.processos), aprendizado:rows(dados.aprendizado)
+  };
+}
+
+function bscRowRender(persp, r, i){
+  function cell(campo, val){ return '<td><textarea oninput="bscSet(\'' + persp + '\',' + i + ',\'' + campo + '\',this.value)" placeholder="—">' + esc(val || '') + '</textarea></td>'; }
+  return '<tr>' + cell('objetivo', r.objetivo) + cell('indicador', r.indicador) + cell('meta', r.meta) + cell('plano', r.plano)
+    + '<td><button class="bsc-x" title="Remover" onclick="bscRemove(\'' + persp + '\',' + i + ')">✕</button></td></tr>';
+}
+function bscRenderPerspectivas(){
+  var box = document.getElementById('bscPerspectivas'); if(!box) return;
+  box.innerHTML = _BSC_PERSP.map(function(p){
+    var rows = _bscDados[p.key] || [];
+    var body = rows.map(function(r, i){ return bscRowRender(p.key, r, i); }).join('');
+    return '<div class="bsc-persp ' + p.cls + '">'
+      + '<div class="bsc-persp-nome">' + p.nome + '</div>'
+      + '<div class="bsc-persp-dica">' + p.dica + '</div>'
+      + '<div style="overflow-x:auto"><table class="bsc-tbl"><thead><tr>'
+        + '<th style="min-width:150px">Objetivo</th><th style="min-width:130px">Indicador</th><th style="min-width:90px">Meta</th><th style="min-width:150px">Plano de ação / Iniciativa</th><th></th>'
+      + '</tr></thead><tbody>' + body + '</tbody></table></div>'
+      + '<button class="bsc-add" onclick="bscAddLinha(\'' + p.key + '\')">+ adicionar objetivo</button>'
+    + '</div>';
+  }).join('');
+}
+function bscSet(persp, i, campo, valor){ if(_bscDados[persp] && _bscDados[persp][i]) _bscDados[persp][i][campo] = valor; }
+function bscAddLinha(persp){ if(!Array.isArray(_bscDados[persp])) _bscDados[persp] = []; _bscDados[persp].push(_bscEmptyRow()); bscRenderPerspectivas(); }
+function bscRemove(persp, i){ if(_bscDados[persp]) _bscDados[persp].splice(i,1); bscRenderPerspectivas(); }
+
+function abrirBsc(ferramentaId, planoId){
+  _bscEditId = ferramentaId || null;
+  _bscPlanoId = planoId || null;
+  _bscOrigem = planoId ? 'detalhe' : 'ferramentas';
+  document.getElementById('bscTitulo').value = '';
+  document.getElementById('bscVisao').value = '';
+  document.getElementById('bscMissao').value = '';
+  document.getElementById('bscPrioridades').value = '';
+  _bscDados = { financeira:[_bscEmptyRow()], cliente:[_bscEmptyRow()], processos:[_bscEmptyRow()], aprendizado:[_bscEmptyRow()] };
+  bscRenderPerspectivas();
+  showSection('bsc');
+}
+
+async function abrirBscEdit(id){
+  var sb = _sb(); if(!sb) return;
+  var r = await sb.from('plano_ferramentas').select('*').eq('id', id).maybeSingle();
+  if(r.error || !r.data){ toast('Análise não encontrada.'); return; }
+  var f = r.data;
+  _bscEditId = f.id;
+  _bscPlanoId = f.plano_id || null;
+  _bscOrigem = f.plano_id ? 'detalhe' : 'ferramentas';
+  var d = f.dados_json || {};
+  document.getElementById('bscTitulo').value = f.titulo || d.titulo || '';
+  document.getElementById('bscVisao').value = d.visao || '';
+  document.getElementById('bscMissao').value = d.missao || '';
+  document.getElementById('bscPrioridades').value = d.prioridades || '';
+  function load(arr){
+    arr = Array.isArray(arr) ? arr : [];
+    return arr.length ? arr.map(function(r){ return { objetivo:r.objetivo||'', indicador:r.indicador||'', meta:r.meta||'', plano:r.plano||'' }; }) : [_bscEmptyRow()];
+  }
+  _bscDados = { financeira:load(d.financeira), cliente:load(d.cliente), processos:load(d.processos), aprendizado:load(d.aprendizado) };
+  bscRenderPerspectivas();
+  showSection('bsc');
+}
+
+function voltarDaBsc(){
+  if(_bscOrigem === 'detalhe' && _detPlanoId){ showSection('detalhe'); carregarFerramentasPlano(_detPlanoId); }
+  else showSection('ferramentas');
+}
+
+async function salvarBsc(){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
+  var titulo = (document.getElementById('bscTitulo').value || '').trim() || 'BSC sem título';
+  var dados = montarBscDados(titulo, document.getElementById('bscVisao').value, document.getElementById('bscMissao').value, document.getElementById('bscPrioridades').value, _bscDados);
+  var btn = document.getElementById('bscSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  var payload = {
+    empresa_id: _empresaAtiva.id, plano_id: _bscPlanoId, tipo: 'bsc',
+    titulo: titulo, dados_json: dados, status: 'rascunho', updated_at: new Date().toISOString()
+  };
+  try{
+    var rr;
+    if(_bscEditId){ rr = await sb.from('plano_ferramentas').update(payload).eq('id', _bscEditId); }
+    else { rr = await sb.from('plano_ferramentas').insert(payload); }
+    if(rr.error) throw rr.error;
+    toast('Análise salva!');
+    voltarDaBsc();
+  }catch(e){ toast('Erro ao salvar: ' + ((e && e.message) || e)); }
+  btn.disabled = false; btn.textContent = 'Salvar análise';
+}
+
+async function carregarBscAvulsas(){
+  var box = document.getElementById('bscAvulsasLista');
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">—</div>'; return; }
+  var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','bsc').is('plano_id', null).order('created_at', { ascending:false });
+  var lista = (r.data || []);
+  if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise BSC avulsa salva ainda.</div>'; return; }
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
 }
 
 // ── Recebe empresa / tema / navegação do portal ────────────────
