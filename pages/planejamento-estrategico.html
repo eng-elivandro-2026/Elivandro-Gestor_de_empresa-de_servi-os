@@ -753,6 +753,14 @@ async function salvarSwot(){
   if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
   var sb = _sb();
   if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
+  // Auto-adiciona texto pendente nos inputs (usuário digitou mas não clicou "+") para não perder nada.
+  _SWOT_QUADS.forEach(function(q){
+    var input = document.getElementById('swotInput-' + q);
+    if(!input) return;
+    var v = (input.value || '').trim();
+    if(v){ if(!Array.isArray(_swotDados[q])) _swotDados[q] = []; _swotDados[q].push(v); input.value = ''; }
+  });
+  swotRender();
   var titulo = (document.getElementById('swotTitulo').value || '').trim() || 'SWOT sem título';
   var dados = montarSwotDados(titulo, _swotDados);
   var btn = document.getElementById('swotSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
