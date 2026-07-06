@@ -301,6 +301,7 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
       </table>
     </div>
     <button class="btn btn-g btn-sm" onclick="gutAddLinha()">+ Adicionar problema</button>
+    <button class="btn btn-g btn-sm" id="gutImportBtn" style="display:none;margin-left:.4rem" onclick="importarDaSwot()">📥 Importar problemas da SWOT</button>
 
     <div class="rank-wrap">
       <div class="sec-tit" style="font-size:.9rem;margin-bottom:.6rem">Ranking de prioridade</div>
@@ -539,6 +540,52 @@ function abrirGut(ferramentaId, planoId){
   _gutProblemas = [ {nome:'',g:3,u:3,t:3} ];
   gutRender();
   showSection('gut');
+  _atualizarBotaoImportSwot();
+}
+
+// Cruzamento SWOT → GUT (só dentro de plano) — lógica pura testável.
+function _normTxt(s){ return String(s==null?'':s).trim().toLowerCase(); }
+function montarImportSwot(swots, problemasAtuais){
+  var atuais = {}, vistos = {}, novos = [];
+  (problemasAtuais||[]).forEach(function(p){ var k=_normTxt(p && p.nome); if(k) atuais[k]=true; });
+  (swots||[]).forEach(function(s){
+    var itens = ((s && s.fraquezas) || []).concat((s && s.ameacas) || []);
+    itens.forEach(function(txt){
+      var nome = String(txt==null?'':txt).trim();
+      var k = _normTxt(nome);
+      if(!k) return;                        // ignora vazios
+      if(atuais[k] || vistos[k]) return;    // dedup vs atuais e entre si
+      vistos[k] = true;
+      novos.push({ nome:nome, g:3, u:3, t:3, origem:'swot' });
+    });
+  });
+  return novos;
+}
+
+// Mostra o botão de importar só quando a GUT está num plano que tem ao menos 1 SWOT salva.
+async function _atualizarBotaoImportSwot(){
+  var btn = document.getElementById('gutImportBtn'); if(!btn) return;
+  btn.style.display = 'none';
+  if(!_gutPlanoId) return; // avulsa → sem importação
+  var sb = _sb(); if(!sb) return;
+  try{
+    var r = await sb.from('plano_ferramentas').select('id').eq('plano_id', _gutPlanoId).eq('tipo','swot').limit(1);
+    if(!r.error && r.data && r.data.length) btn.style.display = '';
+  }catch(e){}
+}
+
+async function importarDaSwot(){
+  var sb = _sb(); if(!sb || !_gutPlanoId) return;
+  var r = await sb.from('plano_ferramentas').select('dados_json').eq('plano_id', _gutPlanoId).eq('tipo','swot');
+  if(r.error){ toast('Erro ao ler SWOT: ' + esc(r.error.message)); return; }
+  var swots = (r.data||[]).map(function(f){ var d=f.dados_json||{}; return { fraquezas:d.fraquezas||[], ameacas:d.ameacas||[] }; });
+  var novos = montarImportSwot(swots, _gutProblemas);
+  if(!novos.length){ toast('Nenhuma fraqueza ou ameaça encontrada na SWOT deste plano'); return; }
+  // remove a linha vazia inicial (sem nome) antes de anexar os importados
+  _gutProblemas = _gutProblemas.filter(function(p){ return (p.nome||'').trim() !== ''; });
+  novos.forEach(function(n){ _gutProblemas.push(n); });
+  gutRender();
+  toast(novos.length + ' problema(s) importado(s) da SWOT');
 }
 
 async function abrirGutEdit(id){
@@ -551,9 +598,10 @@ async function abrirGutEdit(id){
   _gutOrigem = f.plano_id ? 'detalhe' : 'ferramentas';
   var dados = f.dados_json || {};
   document.getElementById('gutTitulo').value = f.titulo || dados.titulo || '';
-  _gutProblemas = Array.isArray(dados.problemas) && dados.problemas.length ? dados.problemas.map(function(p){ return {nome:p.nome||'',g:p.g,u:p.u,t:p.t}; }) : [ {nome:'',g:3,u:3,t:3} ];
+  _gutProblemas = Array.isArray(dados.problemas) && dados.problemas.length ? dados.problemas.map(function(p){ return {nome:p.nome||'',g:p.g,u:p.u,t:p.t,origem:p.origem}; }) : [ {nome:'',g:3,u:3,t:3} ];
   gutRender();
   showSection('gut');
+  _atualizarBotaoImportSwot();
 }
 
 function voltarDaGut(){
@@ -567,7 +615,7 @@ function gutRender(){
   var tb = document.getElementById('gutBody');
   tb.innerHTML = _gutProblemas.map(function(p, i){
     return '<tr>'
-      + '<td><input type="text" value="' + esc(p.nome) + '" placeholder="Descreva o problema" oninput="gutSet(' + i + ',\'nome\',this.value)"></td>'
+      + '<td><div class="gut-nome-cell"><input type="text" value="' + esc(p.nome) + '" placeholder="Descreva o problema" oninput="gutSet(' + i + ',\'nome\',this.value)">' + (p.origem === 'swot' ? '<span class="badge-swot" title="Importado da SWOT">SWOT</span>' : '') + '</div></td>'
       + '<td><select onchange="gutSet(' + i + ',\'g\',this.value)">' + _opts(p.g) + '</select></td>'
       + '<td><select onchange="gutSet(' + i + ',\'u\',this.value)">' + _opts(p.u) + '</select></td>'
       + '<td><select onchange="gutSet(' + i + ',\'t\',this.value)">' + _opts(p.t) + '</select></td>'
@@ -606,7 +654,7 @@ async function salvarGut(){
   if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
   var titulo = (document.getElementById('gutTitulo').value || '').trim() || 'GUT sem título';
   var problemas = _gutProblemas.filter(function(p){ return (p.nome||'').trim() !== ''; })
-    .map(function(p){ return { nome:p.nome.trim(), g:clamp15(p.g), u:clamp15(p.u), t:clamp15(p.t) }; });
+    .map(function(p){ var o = { nome:p.nome.trim(), g:clamp15(p.g), u:clamp15(p.u), t:clamp15(p.t) }; if(p.origem) o.origem = p.origem; return o; });
   var btn = document.getElementById('gutSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
   var payload = {
     empresa_id: _empresaAtiva.id,
