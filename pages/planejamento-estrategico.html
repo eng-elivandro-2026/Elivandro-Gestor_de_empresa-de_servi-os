@@ -476,6 +476,20 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
   </div>
 </div>
 
+<!-- Modal de vínculo (mover/copiar análise avulsa para um plano) -->
+<div class="modal-ov" id="vincModal" onclick="if(event.target===this)_fecharVinc()">
+  <div class="modal-bx">
+    <div class="modal-tit">Vincular a um plano</div>
+    <div class="modal-msg">Escolha o plano de destino. <b>Mover</b> tira a análise da biblioteca e a coloca no plano. <b>Copiar</b> cria uma cópia no plano e mantém a avulsa.</div>
+    <div class="f"><label>Plano de destino</label><select id="vincPlano"></select></div>
+    <div class="modal-acts" style="flex-wrap:wrap">
+      <button class="btn btn-g" onclick="_fecharVinc()">Cancelar</button>
+      <button class="btn btn-g" onclick="_vincularExec('copiar')">Copiar para o plano</button>
+      <button class="btn btn-p" onclick="_vincularExec('mover')">Mover para o plano</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Estado / integração com o portal (iframe) ──────────────────
 var _empresaAtiva = null;
@@ -483,6 +497,7 @@ var _detPlanoId = null;          // plano aberto no detalhe
 var _detPlano = null;            // objeto do plano aberto (para editar/duplicar sem refetch)
 var _planoEditId = null;         // id do plano em edição no form (null = criar novo)
 var _confirmCb = null;           // callback do modal de confirmação
+var _vincFerramentaId = null;    // ferramenta avulsa sendo vinculada a um plano
 var _gutEditId = null;           // id da ferramenta GUT em edição (null = nova)
 var _gutPlanoId = null;          // plano ao qual a GUT pertence (null = avulsa)
 var _gutOrigem = 'ferramentas';  // seção para onde "voltar" ao sair da GUT
@@ -738,19 +753,122 @@ async function carregarFerramentasPlano(planoId){
   var r = await sb.from('plano_ferramentas').select('*').eq('plano_id', planoId).order('created_at', { ascending:false });
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma ferramenta neste plano ainda.</div>'; return; }
-  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f, 'plano'); }).join('');
 }
 
-function _ferramentaCard(f){
+// Mapa tipo → função de "Abrir" no editor (bsc incluso p/ compatibilidade quando existir).
+var _ABRIR_FN = { gut:'abrirGutEdit', swot:'abrirSwotEdit', '5porques':'abrir5pqEdit', bsc:'abrirBscEdit' };
+// contexto: 'avulsa' (biblioteca) | 'plano' (detalhe do plano). Define o refresh e mostra "Vincular" só nas avulsas.
+function _ferramentaCard(f, contexto){
   var tipo = TIPO_LABEL[f.tipo] || (f.tipo || '').toUpperCase();
+  var ctx = contexto || (f.plano_id ? 'plano' : 'avulsa');
+  var acoes = '';
+  if(_ABRIR_FN[f.tipo]) acoes += '<button class="btn btn-g btn-sm" onclick="' + _ABRIR_FN[f.tipo] + '(\'' + f.id + '\')">Abrir</button>';
+  acoes += '<button class="btn btn-g btn-sm" onclick="duplicarFerramenta(\'' + f.id + '\',\'' + ctx + '\')" title="Duplicar análise">⧉</button>';
+  if(ctx === 'avulsa') acoes += '<button class="btn btn-g btn-sm" onclick="abrirVincular(\'' + f.id + '\')" title="Vincular a um plano">🔗</button>';
+  acoes += '<button class="btn btn-danger btn-sm" onclick="excluirFerramenta(\'' + f.id + '\',\'' + ctx + '\')" title="Excluir análise">🗑</button>';
   return '<div class="plano-card">'
     + '<div class="plano-info"><div class="plano-tit">' + esc(f.titulo || (tipo + ' sem título')) + '</div>'
     + '<div class="plano-meta"><span>' + tipo + '</span><span>📅 ' + fmtData(f.created_at) + '</span></div></div>'
-    + (f.tipo === 'gut' ? '<button class="btn btn-g btn-sm" onclick="abrirGutEdit(\'' + f.id + '\')">Abrir</button>' : '')
-    + (f.tipo === 'swot' ? '<button class="btn btn-g btn-sm" onclick="abrirSwotEdit(\'' + f.id + '\')">Abrir</button>' : '')
-    + (f.tipo === '5porques' ? '<button class="btn btn-g btn-sm" onclick="abrir5pqEdit(\'' + f.id + '\')">Abrir</button>' : '')
-    + (f.tipo === 'bsc' ? '<button class="btn btn-g btn-sm" onclick="abrirBscEdit(\'' + f.id + '\')">Abrir</button>' : '')
+    + acoes
   + '</div>';
+}
+
+// ── CRUD de ferramentas: builders puros (testáveis) ────────────
+// Cópia para DUPLICAR: mantém o mesmo plano_id da origem (avulsa→avulsa, plano→mesmo plano) e acrescenta " (cópia)".
+function montarFerramentaCopia(orig, empresaId){
+  var tipo = orig && orig.tipo;
+  return { empresa_id: empresaId, plano_id: (orig && orig.plano_id) || null, tipo: tipo,
+    titulo: String((orig && orig.titulo) || (TIPO_LABEL[tipo] || 'Análise')) + ' (cópia)',
+    dados_json: (orig && orig.dados_json) || {}, status: 'rascunho' };
+}
+// Vincular-MOVER: payload de UPDATE só troca o plano_id.
+function montarVincularMover(planoId, agoraIso){ return { plano_id: planoId, updated_at: agoraIso }; }
+// Vincular-COPIAR: nova linha no plano de destino, título preservado (sem " (cópia)").
+function montarVincularCopia(orig, empresaId, planoId){
+  var tipo = orig && orig.tipo;
+  return { empresa_id: empresaId, plano_id: planoId, tipo: tipo,
+    titulo: (orig && orig.titulo) || (TIPO_LABEL[tipo] || 'Análise'),
+    dados_json: (orig && orig.dados_json) || {}, status: 'rascunho' };
+}
+
+// Recarrega a lista de onde a ação partiu.
+function _recarregarAvulsas(){
+  ['carregarGutAvulsas','carregarSwotAvulsas','carregar5pqAvulsas','carregarBscAvulsas'].forEach(function(fn){
+    try{ if(typeof window[fn] === 'function') window[fn](); }catch(e){}
+  });
+}
+function _recarregarFerramentas(contexto){
+  if(contexto === 'plano' && _detPlanoId){ carregarFerramentasPlano(_detPlanoId); }
+  else { _recarregarAvulsas(); }
+}
+
+// ── Excluir ferramenta (destrutivo, com confirmação) ───────────
+async function excluirFerramenta(id, contexto){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb(); if(!sb || !id) return;
+  var ro = await sb.from('plano_ferramentas').select('titulo,tipo').eq('id', id).maybeSingle();
+  var titulo = (ro.data && ro.data.titulo) || 'sem título';
+  var tipo = TIPO_LABEL[ro.data && ro.data.tipo] || ((ro.data && ro.data.tipo) || '').toUpperCase();
+  confirmar('Excluir análise', 'Excluir a análise "' + titulo + '" (' + tipo + ')? Esta ação não pode ser desfeita.',
+    function(){ _executarExclusaoFerramenta(id, contexto); }, { okLabel:'Excluir', danger:true });
+}
+async function _executarExclusaoFerramenta(id, contexto){
+  var sb = _sb(); if(!sb || !id) return;
+  var r = await sb.from('plano_ferramentas').delete().eq('id', id);
+  if(r.error){ toast('Erro ao excluir: ' + esc(r.error.message)); return; }
+  toast('Análise excluída');
+  _recarregarFerramentas(contexto);
+}
+
+// ── Duplicar ferramenta ────────────────────────────────────────
+async function duplicarFerramenta(id, contexto){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb(); if(!sb || !_empresaAtiva || !id) return;
+  try{
+    var ro = await sb.from('plano_ferramentas').select('*').eq('id', id).maybeSingle();
+    if(ro.error || !ro.data) throw (ro.error || new Error('Análise não encontrada.'));
+    var ins = await sb.from('plano_ferramentas').insert(montarFerramentaCopia(ro.data, _empresaAtiva.id));
+    if(ins.error) throw ins.error;
+    toast('Análise duplicada');
+    _recarregarFerramentas(contexto);
+  }catch(e){ toast('Erro ao duplicar: ' + ((e && e.message) || e)); }
+}
+
+// ── Vincular ferramenta avulsa a um plano (mover/copiar) ───────
+async function abrirVincular(id){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb(); if(!sb || !_empresaAtiva || !id) return;
+  var r = await sb.from('planos_estrategicos').select('id,titulo').eq('empresa_id', _empresaAtiva.id).order('created_at', { ascending:false });
+  var planos = (r.data || []);
+  if(!planos.length){ toast('Crie um plano primeiro para vincular esta análise'); return; }
+  _vincFerramentaId = id;
+  document.getElementById('vincPlano').innerHTML = planos.map(function(p){ return '<option value="' + p.id + '">' + esc(p.titulo) + '</option>'; }).join('');
+  document.getElementById('vincModal').classList.add('on');
+}
+function _fecharVinc(){ _vincFerramentaId = null; document.getElementById('vincModal').classList.remove('on'); }
+async function _vincularExec(modo){
+  var sb = _sb(); if(!sb || !_empresaAtiva || !_vincFerramentaId) return;
+  var sel = document.getElementById('vincPlano');
+  var planoId = sel.value;
+  if(!planoId){ toast('Escolha um plano.'); return; }
+  var planoNome = (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || 'plano';
+  var id = _vincFerramentaId;
+  try{
+    if(modo === 'mover'){
+      var upd = await sb.from('plano_ferramentas').update(montarVincularMover(planoId, new Date().toISOString())).eq('id', id);
+      if(upd.error) throw upd.error;
+      toast('Análise movida para o plano ' + planoNome);
+    } else {
+      var ro = await sb.from('plano_ferramentas').select('*').eq('id', id).maybeSingle();
+      if(ro.error || !ro.data) throw (ro.error || new Error('Análise não encontrada.'));
+      var ins = await sb.from('plano_ferramentas').insert(montarVincularCopia(ro.data, _empresaAtiva.id, planoId));
+      if(ins.error) throw ins.error;
+      toast('Cópia adicionada ao plano ' + planoNome);
+    }
+    _fecharVinc();
+    _recarregarAvulsas();
+  }catch(e){ toast('Erro ao vincular: ' + ((e && e.message) || e)); }
 }
 
 // ── BIBLIOTECA: análises GUT avulsas ───────────────────────────
@@ -761,7 +879,7 @@ async function carregarGutAvulsas(){
   var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','gut').is('plano_id', null).order('created_at', { ascending:false });
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise GUT avulsa salva ainda.</div>'; return; }
-  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f, 'avulsa'); }).join('');
 }
 
 // ── GUT EDITOR ─────────────────────────────────────────────────
@@ -1024,7 +1142,7 @@ async function carregarSwotAvulsas(){
   var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','swot').is('plano_id', null).order('created_at', { ascending:false });
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise SWOT avulsa salva ainda.</div>'; return; }
-  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f, 'avulsa'); }).join('');
 }
 
 // ── 5 PORQUÊS EDITOR ───────────────────────────────────────────
@@ -1129,7 +1247,7 @@ async function carregar5pqAvulsas(){
   var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','5porques').is('plano_id', null).order('created_at', { ascending:false });
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise 5 Porquês avulsa salva ainda.</div>'; return; }
-  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f, 'avulsa'); }).join('');
 }
 
 // Cruzamento GUT → 5 Porquês (só dentro de plano).
@@ -1268,7 +1386,7 @@ async function carregarBscAvulsas(){
   var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','bsc').is('plano_id', null).order('created_at', { ascending:false });
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise BSC avulsa salva ainda.</div>'; return; }
-  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f, 'avulsa'); }).join('');
 }
 
 // ── Recebe empresa / tema / navegação do portal ────────────────
