@@ -109,6 +109,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .rank-bar{height:100%;background:linear-gradient(90deg,var(--emp-cor),#7bd275);border-radius:10px;width:0;transition:width .6s cubic-bezier(.4,0,.2,1)}
 .rank-val{flex:0 0 3.2rem;text-align:right;font-weight:800;color:var(--emp-cor);font-size:.85rem}
 
+/* SWOT — matriz clássica com eixos */
+.swot-matrix{display:grid;grid-template-columns:auto 1fr 1fr;gap:.5rem;margin-bottom:1rem}
+.swot-corner{}
+.swot-colh{text-align:center;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:.3rem;border-radius:var(--r2)}
+.swot-colh.pos{color:var(--green);background:rgba(63,185,80,.10)}
+.swot-colh.neg{color:var(--red);background:rgba(248,81,73,.10)}
+.swot-rowh{display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:.2rem}
+.swot-quad{border:1px solid var(--border);border-top:3px solid var(--border);border-radius:var(--r2);background:var(--bg2);padding:.7rem;min-height:150px}
+.swot-quad.q-forcas{border-top-color:var(--green)}
+.swot-quad.q-fraquezas{border-top-color:var(--red)}
+.swot-quad.q-oportunidades{border-top-color:var(--blue)}
+.swot-quad.q-ameacas{border-top-color:var(--accent)}
+.swot-q-nome{font-size:.86rem;font-weight:800}
+.q-forcas .swot-q-nome{color:var(--green)} .q-fraquezas .swot-q-nome{color:var(--red)}
+.q-oportunidades .swot-q-nome{color:var(--blue)} .q-ameacas .swot-q-nome{color:var(--accent)}
+.swot-q-dica{font-size:.68rem;color:var(--text3);margin:.15rem 0 .55rem;line-height:1.35}
+.swot-item{display:flex;align-items:center;gap:.4rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.3rem .5rem;margin-bottom:.35rem;font-size:.8rem}
+.swot-item span{flex:1;word-break:break-word}
+.swot-item button{background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:0 .1rem}
+.swot-q-add{display:flex;gap:.35rem;margin-top:.4rem}
+.swot-q-add input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.35rem .5rem;font-size:.78rem;font-family:inherit}
+.swot-q-add button{background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer;font-weight:800;padding:0 .6rem;font-size:.9rem}
+.swot-q-add button:hover{border-color:var(--emp-cor)}
+@media(max-width:640px){ .swot-matrix{grid-template-columns:1fr} .swot-corner,.swot-colh,.swot-rowh{display:none} }
+
+/* Selo de origem SWOT nos problemas da GUT */
+.gut-nome-cell{display:flex;align-items:center;gap:.4rem}
+.badge-swot{flex:0 0 auto;font-size:.55rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:.05rem .35rem}
+body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,6,.4)}
+
 .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--emp-bdr);color:var(--text);padding:.6rem 1rem;border-radius:var(--r2);font-size:.82rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
 </style>
@@ -157,7 +187,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:1rem 0 .6rem">
       <div class="sec-tit" style="font-size:.9rem">Ferramentas deste plano</div>
-      <button class="btn btn-p btn-sm" onclick="abrirGut(null, _detPlanoId)">+ Nova análise GUT</button>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn btn-g btn-sm" onclick="abrirSwot(null, _detPlanoId)">+ Nova análise SWOT</button>
+        <button class="btn btn-p btn-sm" onclick="abrirGut(null, _detPlanoId)">+ Nova análise GUT</button>
+      </div>
     </div>
     <div id="detFerramentas"></div>
   </section>
@@ -198,10 +231,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="ferr-desc">Priorize problemas por Gravidade × Urgência × Tendência.</div>
         <span class="ferr-tag on">Disponível</span>
       </div>
-      <div class="ferr-card embreve">
+      <div class="ferr-card ativa" onclick="abrirSwot(null, null)">
         <div class="ferr-ico">🧩</div><div class="ferr-nome">SWOT</div>
         <div class="ferr-desc">Forças, fraquezas, oportunidades e ameaças.</div>
-        <span class="ferr-tag soon">Em breve</span>
+        <span class="ferr-tag on">Disponível</span>
       </div>
       <div class="ferr-card embreve">
         <div class="ferr-ico">📊</div><div class="ferr-nome">BSC</div>
@@ -221,6 +254,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div class="sec-tit" style="font-size:.9rem;margin-bottom:.5rem">Análises GUT salvas (avulsas)</div>
     <div id="gutAvulsasLista"></div>
+    <div class="sec-tit" style="font-size:.9rem;margin:1.1rem 0 .5rem">Análises SWOT salvas (avulsas)</div>
+    <div id="swotAvulsasLista"></div>
   </section>
 
   <!-- ── GUT EDITOR ── -->
@@ -276,6 +311,53 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="btn btn-p" id="gutSalvar" onclick="salvarGut()">Salvar análise</button>
     </div>
   </section>
+
+  <!-- ── SWOT EDITOR ── -->
+  <section class="sec" id="sec-swot">
+    <button class="btn btn-g btn-sm" onclick="voltarDaSwot()" style="margin-bottom:.8rem">← Voltar</button>
+    <div class="sec-tit">🧩 Análise SWOT</div>
+    <div class="gut-help">
+      Mapeie o cenário em 4 quadrantes. <b>Forças</b> e <b>Fraquezas</b> são <b>internas</b> (dependem de você);
+      <b>Oportunidades</b> e <b>Ameaças</b> são <b>externas</b> (o mercado/ambiente).
+    </div>
+    <div class="f" style="max-width:460px"><label>Título da análise</label><input type="text" id="swotTitulo" placeholder="Ex.: SWOT — Área Comercial"></div>
+    <div class="swot-matrix">
+      <div class="swot-corner"></div>
+      <div class="swot-colh pos">Positivos</div>
+      <div class="swot-colh neg">Negativos</div>
+
+      <div class="swot-rowh">Internos</div>
+      <div class="swot-quad q-forcas">
+        <div class="swot-q-nome">💪 Forças</div>
+        <div class="swot-q-dica">O que fazemos bem, nossos diferenciais</div>
+        <div id="swotLista-forcas"></div>
+        <div class="swot-q-add"><input type="text" id="swotInput-forcas" placeholder="Adicionar força" onkeydown="if(event.key==='Enter')swotAddInput('forcas')"><button onclick="swotAddInput('forcas')">+</button></div>
+      </div>
+      <div class="swot-quad q-fraquezas">
+        <div class="swot-q-nome">⚠️ Fraquezas</div>
+        <div class="swot-q-dica">O que precisamos melhorar, nossos limites</div>
+        <div id="swotLista-fraquezas"></div>
+        <div class="swot-q-add"><input type="text" id="swotInput-fraquezas" placeholder="Adicionar fraqueza" onkeydown="if(event.key==='Enter')swotAddInput('fraquezas')"><button onclick="swotAddInput('fraquezas')">+</button></div>
+      </div>
+
+      <div class="swot-rowh">Externos</div>
+      <div class="swot-quad q-oportunidades">
+        <div class="swot-q-nome">🚀 Oportunidades</div>
+        <div class="swot-q-dica">Fatores externos que podemos aproveitar</div>
+        <div id="swotLista-oportunidades"></div>
+        <div class="swot-q-add"><input type="text" id="swotInput-oportunidades" placeholder="Adicionar oportunidade" onkeydown="if(event.key==='Enter')swotAddInput('oportunidades')"><button onclick="swotAddInput('oportunidades')">+</button></div>
+      </div>
+      <div class="swot-quad q-ameacas">
+        <div class="swot-q-nome">🌩️ Ameaças</div>
+        <div class="swot-q-dica">Fatores externos que podem nos prejudicar</div>
+        <div id="swotLista-ameacas"></div>
+        <div class="swot-q-add"><input type="text" id="swotInput-ameacas" placeholder="Adicionar ameaça" onkeydown="if(event.key==='Enter')swotAddInput('ameacas')"><button onclick="swotAddInput('ameacas')">+</button></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.4rem">
+      <button class="btn btn-p" id="swotSalvar" onclick="salvarSwot()">Salvar análise</button>
+    </div>
+  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -287,7 +369,12 @@ var _detPlanoId = null;          // plano aberto no detalhe
 var _gutEditId = null;           // id da ferramenta GUT em edição (null = nova)
 var _gutPlanoId = null;          // plano ao qual a GUT pertence (null = avulsa)
 var _gutOrigem = 'ferramentas';  // seção para onde "voltar" ao sair da GUT
-var _gutProblemas = [];          // [{nome,g,u,t}]
+var _gutProblemas = [];          // [{nome,g,u,t,origem?}]
+var _swotEditId = null;          // id da ferramenta SWOT em edição (null = nova)
+var _swotPlanoId = null;         // plano ao qual a SWOT pertence (null = avulsa)
+var _swotOrigem = 'ferramentas'; // seção para onde "voltar" ao sair da SWOT
+var _swotDados = { forcas:[], fraquezas:[], oportunidades:[], ameacas:[] };
+var _SWOT_QUADS = ['forcas','fraquezas','oportunidades','ameacas'];
 
 function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : null; }catch(e){ return null; } }
 function _email(){ try{ return (window.parent && window.parent._userEmail) || null; }catch(e){ return null; } }
@@ -306,7 +393,7 @@ function showSection(id){
   var el = document.getElementById('sec-' + id);
   if(el) el.classList.add('on');
   if(id === 'planos') carregarPlanos();
-  if(id === 'ferramentas') carregarGutAvulsas();
+  if(id === 'ferramentas'){ carregarGutAvulsas(); carregarSwotAvulsas(); }
   if(id === 'gut'){ // escala sempre inicia recolhida
     var _ep=document.getElementById('escalaPanel'); if(_ep) _ep.classList.remove('on');
     var _et=document.getElementById('escalaToggle'); if(_et) _et.textContent='▸ Ver escala de pontuação';
@@ -428,6 +515,7 @@ function _ferramentaCard(f){
     + '<div class="plano-info"><div class="plano-tit">' + esc(f.titulo || (tipo + ' sem título')) + '</div>'
     + '<div class="plano-meta"><span>' + tipo + '</span><span>📅 ' + fmtData(f.created_at) + '</span></div></div>'
     + (f.tipo === 'gut' ? '<button class="btn btn-g btn-sm" onclick="abrirGutEdit(\'' + f.id + '\')">Abrir</button>' : '')
+    + (f.tipo === 'swot' ? '<button class="btn btn-g btn-sm" onclick="abrirSwotEdit(\'' + f.id + '\')">Abrir</button>' : '')
   + '</div>';
 }
 
@@ -538,6 +626,116 @@ async function salvarGut(){
     voltarDaGut();
   }catch(e){ toast('Erro ao salvar: ' + ((e && e.message) || e)); }
   btn.disabled = false; btn.textContent = 'Salvar análise';
+}
+
+// ── SWOT EDITOR ────────────────────────────────────────────────
+var _SWOT_META = {
+  forcas:        { nome:'💪 Forças',         dica:'O que fazemos bem, nossos diferenciais',    add:'Adicionar força' },
+  fraquezas:     { nome:'⚠️ Fraquezas',      dica:'O que precisamos melhorar, nossos limites', add:'Adicionar fraqueza' },
+  oportunidades: { nome:'🚀 Oportunidades',  dica:'Fatores externos que podemos aproveitar',   add:'Adicionar oportunidade' },
+  ameacas:       { nome:'🌩️ Ameaças',        dica:'Fatores externos que podem nos prejudicar',  add:'Adicionar ameaça' }
+};
+// dados_json da SWOT a partir do estado atual (pura — testável).
+function montarSwotDados(titulo, dados){
+  function lim(a){ return (Array.isArray(a) ? a : []).map(function(x){ return String(x==null?'':x).trim(); }).filter(function(x){ return x !== ''; }); }
+  return { titulo: titulo, forcas: lim(dados.forcas), fraquezas: lim(dados.fraquezas), oportunidades: lim(dados.oportunidades), ameacas: lim(dados.ameacas) };
+}
+
+function abrirSwot(ferramentaId, planoId){
+  _swotEditId = ferramentaId || null;
+  _swotPlanoId = planoId || null;
+  _swotOrigem = planoId ? 'detalhe' : 'ferramentas';
+  document.getElementById('swotTitulo').value = '';
+  _swotDados = { forcas:[], fraquezas:[], oportunidades:[], ameacas:[] };
+  swotRender();
+  showSection('swot');
+}
+
+async function abrirSwotEdit(id){
+  var sb = _sb(); if(!sb) return;
+  var r = await sb.from('plano_ferramentas').select('*').eq('id', id).maybeSingle();
+  if(r.error || !r.data){ toast('Análise não encontrada.'); return; }
+  var f = r.data;
+  _swotEditId = f.id;
+  _swotPlanoId = f.plano_id || null;
+  _swotOrigem = f.plano_id ? 'detalhe' : 'ferramentas';
+  var d = f.dados_json || {};
+  document.getElementById('swotTitulo').value = f.titulo || d.titulo || '';
+  _swotDados = {
+    forcas: Array.isArray(d.forcas) ? d.forcas.slice() : [],
+    fraquezas: Array.isArray(d.fraquezas) ? d.fraquezas.slice() : [],
+    oportunidades: Array.isArray(d.oportunidades) ? d.oportunidades.slice() : [],
+    ameacas: Array.isArray(d.ameacas) ? d.ameacas.slice() : []
+  };
+  swotRender();
+  showSection('swot');
+}
+
+function voltarDaSwot(){
+  if(_swotOrigem === 'detalhe' && _detPlanoId){ showSection('detalhe'); carregarFerramentasPlano(_detPlanoId); }
+  else showSection('ferramentas');
+}
+
+function swotRender(){
+  _SWOT_QUADS.forEach(function(q){
+    var box = document.getElementById('swotLista-' + q);
+    if(!box) return;
+    var itens = _swotDados[q] || [];
+    if(!itens.length){ box.innerHTML = '<div style="font-size:.72rem;color:var(--text3);padding:.2rem 0">Nenhum item ainda.</div>'; return; }
+    box.innerHTML = itens.map(function(txt, i){
+      return '<div class="swot-item"><span>' + esc(txt) + '</span><button title="Remover" onclick="swotRemove(\'' + q + '\',' + i + ')">✕</button></div>';
+    }).join('');
+  });
+}
+
+function swotAddInput(q){
+  var input = document.getElementById('swotInput-' + q);
+  if(!input) return;
+  var v = (input.value || '').trim();
+  if(!v) return;
+  if(!Array.isArray(_swotDados[q])) _swotDados[q] = [];
+  _swotDados[q].push(v);
+  input.value = '';
+  swotRender();
+  input.focus();
+}
+function swotRemove(q, i){ if(_swotDados[q]) _swotDados[q].splice(i,1); swotRender(); }
+
+async function salvarSwot(){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
+  var titulo = (document.getElementById('swotTitulo').value || '').trim() || 'SWOT sem título';
+  var dados = montarSwotDados(titulo, _swotDados);
+  var btn = document.getElementById('swotSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  var payload = {
+    empresa_id: _empresaAtiva.id,
+    plano_id: _swotPlanoId,
+    tipo: 'swot',
+    titulo: titulo,
+    dados_json: dados,
+    status: 'rascunho',
+    updated_at: new Date().toISOString()
+  };
+  try{
+    var r;
+    if(_swotEditId){ r = await sb.from('plano_ferramentas').update(payload).eq('id', _swotEditId); }
+    else { r = await sb.from('plano_ferramentas').insert(payload); }
+    if(r.error) throw r.error;
+    toast('Análise salva!');
+    voltarDaSwot();
+  }catch(e){ toast('Erro ao salvar: ' + ((e && e.message) || e)); }
+  btn.disabled = false; btn.textContent = 'Salvar análise';
+}
+
+async function carregarSwotAvulsas(){
+  var box = document.getElementById('swotAvulsasLista');
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">—</div>'; return; }
+  var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','swot').is('plano_id', null).order('created_at', { ascending:false });
+  var lista = (r.data || []);
+  if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise SWOT avulsa salva ainda.</div>'; return; }
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
 }
 
 // ── Recebe empresa / tema / navegação do portal ────────────────
