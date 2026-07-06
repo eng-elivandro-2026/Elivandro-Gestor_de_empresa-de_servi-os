@@ -139,6 +139,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .badge-swot{flex:0 0 auto;font-size:.55rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:.05rem .35rem}
 body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,6,.4)}
 
+/* 5 Porquês — cadeia de níveis */
+.pq-cadeia{max-width:640px;margin:.4rem 0 .2rem;border-left:2px solid var(--emp-bdr);padding-left:.85rem}
+.pq-nivel{position:relative;margin-bottom:.7rem}
+.pq-nivel-num{position:absolute;left:-1.62rem;top:.1rem;width:1.35rem;height:1.35rem;border-radius:50%;background:var(--emp-cor);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800}
+.pq-nivel label{display:block;font-size:.76rem;font-weight:600;color:var(--text2);margin-bottom:.25rem}
+.pq-nivel textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.83rem;font-family:inherit;min-height:44px;outline:none}
+.pq-nivel textarea:focus{border-color:var(--emp-cor)}
+
 .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--emp-bdr);color:var(--text);padding:.6rem 1rem;border-radius:var(--r2);font-size:.82rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
 </style>
@@ -189,6 +197,7 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
       <div class="sec-tit" style="font-size:.9rem">Ferramentas deste plano</div>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap">
         <button class="btn btn-g btn-sm" onclick="abrirSwot(null, _detPlanoId)">+ Nova análise SWOT</button>
+        <button class="btn btn-g btn-sm" onclick="abrir5pq(null, _detPlanoId)">+ Nova análise 5 Porquês</button>
         <button class="btn btn-p btn-sm" onclick="abrirGut(null, _detPlanoId)">+ Nova análise GUT</button>
       </div>
     </div>
@@ -246,16 +255,18 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
         <div class="ferr-desc">Plano de ação: o quê, por quê, quem, quando, como.</div>
         <span class="ferr-tag soon">Em breve</span>
       </div>
-      <div class="ferr-card embreve">
+      <div class="ferr-card ativa" onclick="abrir5pq(null, null)">
         <div class="ferr-ico">❓</div><div class="ferr-nome">5 Porquês</div>
         <div class="ferr-desc">Análise de causa raiz perguntando "por quê" 5 vezes.</div>
-        <span class="ferr-tag soon">Em breve</span>
+        <span class="ferr-tag on">Disponível</span>
       </div>
     </div>
     <div class="sec-tit" style="font-size:.9rem;margin-bottom:.5rem">Análises GUT salvas (avulsas)</div>
     <div id="gutAvulsasLista"></div>
     <div class="sec-tit" style="font-size:.9rem;margin:1.1rem 0 .5rem">Análises SWOT salvas (avulsas)</div>
     <div id="swotAvulsasLista"></div>
+    <div class="sec-tit" style="font-size:.9rem;margin:1.1rem 0 .5rem">Análises 5 Porquês salvas (avulsas)</div>
+    <div id="pqAvulsasLista"></div>
   </section>
 
   <!-- ── GUT EDITOR ── -->
@@ -359,6 +370,36 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
       <button class="btn btn-p" id="swotSalvar" onclick="salvarSwot()">Salvar análise</button>
     </div>
   </section>
+
+  <!-- ── 5 PORQUÊS EDITOR ── -->
+  <section class="sec" id="sec-5pq">
+    <button class="btn btn-g btn-sm" onclick="voltarDa5pq()" style="margin-bottom:.8rem">← Voltar</button>
+    <div class="sec-tit">❓ 5 Porquês (causa raiz)</div>
+    <div class="gut-help">
+      Os 5 Porquês ajudam a achar a causa raiz de um problema. Pergunte "por quê?" sucessivamente
+      até chegar à origem real — não pare no sintoma.
+    </div>
+    <div class="f" style="max-width:460px"><label>Título da análise</label><input type="text" id="pqTitulo" placeholder="Ex.: 5 Porquês — Atraso nas entregas"></div>
+    <div class="f" style="max-width:640px">
+      <label>Problema investigado</label>
+      <div style="display:flex;gap:.5rem;align-items:flex-start">
+        <textarea id="pqProblema" placeholder="Descreva o problema que será investigado" style="min-height:60px;flex:1"></textarea>
+      </div>
+      <button class="btn btn-g btn-sm" id="pqImportBtn" style="display:none;margin-top:.4rem;align-self:flex-start" onclick="puxarProblemaGut()">🎯 Puxar problema prioritário da GUT</button>
+    </div>
+    <div class="pq-cadeia" id="pqCadeia"></div>
+    <div class="f" style="max-width:640px;margin-top:.4rem">
+      <label style="color:var(--emp-cor);font-weight:800">🎯 Causa raiz identificada</label>
+      <textarea id="pqCausaRaiz" placeholder="A causa real por trás do problema" style="min-height:56px;border-color:var(--emp-bdr)"></textarea>
+    </div>
+    <div class="f" style="max-width:640px">
+      <label>Conclusão / próximo passo <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+      <textarea id="pqConclusao" placeholder="O que fazer a partir dessa causa raiz" style="min-height:50px"></textarea>
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.4rem">
+      <button class="btn btn-p" id="pqSalvar" onclick="salvar5pq()">Salvar análise</button>
+    </div>
+  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -376,6 +417,10 @@ var _swotPlanoId = null;         // plano ao qual a SWOT pertence (null = avulsa
 var _swotOrigem = 'ferramentas'; // seção para onde "voltar" ao sair da SWOT
 var _swotDados = { forcas:[], fraquezas:[], oportunidades:[], ameacas:[] };
 var _SWOT_QUADS = ['forcas','fraquezas','oportunidades','ameacas'];
+var _pqEditId = null;            // id da ferramenta 5 Porquês em edição (null = nova)
+var _pqPlanoId = null;           // plano ao qual o 5 Porquês pertence (null = avulsa)
+var _pqOrigem = 'ferramentas';   // seção para onde "voltar" ao sair do 5 Porquês
+var TIPO_LABEL = { gut:'GUT', swot:'SWOT', '5porques':'5 Porquês', bsc:'BSC', '5w2h':'5W2H' };
 
 function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : null; }catch(e){ return null; } }
 function _email(){ try{ return (window.parent && window.parent._userEmail) || null; }catch(e){ return null; } }
@@ -394,7 +439,7 @@ function showSection(id){
   var el = document.getElementById('sec-' + id);
   if(el) el.classList.add('on');
   if(id === 'planos') carregarPlanos();
-  if(id === 'ferramentas'){ carregarGutAvulsas(); carregarSwotAvulsas(); }
+  if(id === 'ferramentas'){ carregarGutAvulsas(); carregarSwotAvulsas(); carregar5pqAvulsas(); }
   if(id === 'gut'){ // escala sempre inicia recolhida
     var _ep=document.getElementById('escalaPanel'); if(_ep) _ep.classList.remove('on');
     var _et=document.getElementById('escalaToggle'); if(_et) _et.textContent='▸ Ver escala de pontuação';
@@ -511,12 +556,13 @@ async function carregarFerramentasPlano(planoId){
 }
 
 function _ferramentaCard(f){
-  var tipo = (f.tipo || '').toUpperCase();
+  var tipo = TIPO_LABEL[f.tipo] || (f.tipo || '').toUpperCase();
   return '<div class="plano-card">'
     + '<div class="plano-info"><div class="plano-tit">' + esc(f.titulo || (tipo + ' sem título')) + '</div>'
     + '<div class="plano-meta"><span>' + tipo + '</span><span>📅 ' + fmtData(f.created_at) + '</span></div></div>'
     + (f.tipo === 'gut' ? '<button class="btn btn-g btn-sm" onclick="abrirGutEdit(\'' + f.id + '\')">Abrir</button>' : '')
     + (f.tipo === 'swot' ? '<button class="btn btn-g btn-sm" onclick="abrirSwotEdit(\'' + f.id + '\')">Abrir</button>' : '')
+    + (f.tipo === '5porques' ? '<button class="btn btn-g btn-sm" onclick="abrir5pqEdit(\'' + f.id + '\')">Abrir</button>' : '')
   + '</div>';
 }
 
@@ -792,6 +838,138 @@ async function carregarSwotAvulsas(){
   var lista = (r.data || []);
   if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise SWOT avulsa salva ainda.</div>'; return; }
   box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+}
+
+// ── 5 PORQUÊS EDITOR ───────────────────────────────────────────
+// dados_json a partir do estado (pura — testável). porques mantém 5 posições (vazias permitidas).
+function montar5pqDados(titulo, problema, porques, causaRaiz, conclusao){
+  function t(x){ return String(x==null?'':x).trim(); }
+  var arr = [];
+  for(var i=0;i<5;i++){ arr.push(t(porques && porques[i])); }
+  return { titulo:t(titulo), problema:t(problema), porques:arr, causaRaiz:t(causaRaiz), conclusao:t(conclusao) };
+}
+// Encontra o problema de maior GUT (G*U*T) entre todas as GUTs. Empate = o primeiro. Vazio = null. (pura)
+function acharProblemaTopGut(guts){
+  var best = null;
+  (guts||[]).forEach(function(g){
+    (((g && g.problemas) || [])).forEach(function(p){
+      var nome = String((p && p.nome) || '').trim();
+      if(!nome) return;
+      var score = clamp15(p.g) * clamp15(p.u) * clamp15(p.t);
+      if(best === null || score > best.score){ best = { nome:nome, score:score }; }
+    });
+  });
+  return best;
+}
+
+var _PQ_LABELS = ['Por que o problema acontece?','Por que a resposta 1 acontece?','Por que a resposta 2 acontece?','Por que a resposta 3 acontece?','Por que a resposta 4 acontece?'];
+function pqRenderCadeia(valores){
+  var box = document.getElementById('pqCadeia'); if(!box) return;
+  var h = '';
+  for(var i=0;i<5;i++){
+    h += '<div class="pq-nivel"><div class="pq-nivel-num">' + (i+1) + '</div>'
+      + '<label>' + (i+1) + '. ' + _PQ_LABELS[i] + '</label>'
+      + '<textarea id="pqPorque' + i + '" placeholder="Opcional">' + esc((valores && valores[i]) || '') + '</textarea></div>';
+  }
+  box.innerHTML = h;
+}
+
+function abrir5pq(ferramentaId, planoId){
+  _pqEditId = ferramentaId || null;
+  _pqPlanoId = planoId || null;
+  _pqOrigem = planoId ? 'detalhe' : 'ferramentas';
+  document.getElementById('pqTitulo').value = '';
+  document.getElementById('pqProblema').value = '';
+  document.getElementById('pqCausaRaiz').value = '';
+  document.getElementById('pqConclusao').value = '';
+  pqRenderCadeia(['','','','','']);
+  showSection('5pq');
+  _atualizarBotaoImportGut();
+}
+
+async function abrir5pqEdit(id){
+  var sb = _sb(); if(!sb) return;
+  var r = await sb.from('plano_ferramentas').select('*').eq('id', id).maybeSingle();
+  if(r.error || !r.data){ toast('Análise não encontrada.'); return; }
+  var f = r.data;
+  _pqEditId = f.id;
+  _pqPlanoId = f.plano_id || null;
+  _pqOrigem = f.plano_id ? 'detalhe' : 'ferramentas';
+  var d = f.dados_json || {};
+  document.getElementById('pqTitulo').value = f.titulo || d.titulo || '';
+  document.getElementById('pqProblema').value = d.problema || '';
+  document.getElementById('pqCausaRaiz').value = d.causaRaiz || '';
+  document.getElementById('pqConclusao').value = d.conclusao || '';
+  var pq = Array.isArray(d.porques) ? d.porques : [];
+  pqRenderCadeia([pq[0]||'', pq[1]||'', pq[2]||'', pq[3]||'', pq[4]||'']);
+  showSection('5pq');
+  _atualizarBotaoImportGut();
+}
+
+function voltarDa5pq(){
+  if(_pqOrigem === 'detalhe' && _detPlanoId){ showSection('detalhe'); carregarFerramentasPlano(_detPlanoId); }
+  else showSection('ferramentas');
+}
+
+async function salvar5pq(){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
+  var titulo = (document.getElementById('pqTitulo').value || '').trim() || '5 Porquês sem título';
+  var porques = [];
+  for(var i=0;i<5;i++){ var el = document.getElementById('pqPorque' + i); porques.push(el ? el.value : ''); }
+  var dados = montar5pqDados(titulo, document.getElementById('pqProblema').value, porques, document.getElementById('pqCausaRaiz').value, document.getElementById('pqConclusao').value);
+  var btn = document.getElementById('pqSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  var payload = {
+    empresa_id: _empresaAtiva.id, plano_id: _pqPlanoId, tipo: '5porques',
+    titulo: titulo, dados_json: dados, status: 'rascunho', updated_at: new Date().toISOString()
+  };
+  try{
+    var r;
+    if(_pqEditId){ r = await sb.from('plano_ferramentas').update(payload).eq('id', _pqEditId); }
+    else { r = await sb.from('plano_ferramentas').insert(payload); }
+    if(r.error) throw r.error;
+    toast('Análise salva!');
+    voltarDa5pq();
+  }catch(e){ toast('Erro ao salvar: ' + ((e && e.message) || e)); }
+  btn.disabled = false; btn.textContent = 'Salvar análise';
+}
+
+async function carregar5pqAvulsas(){
+  var box = document.getElementById('pqAvulsasLista');
+  var sb = _sb();
+  if(!sb || !_empresaAtiva){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">—</div>'; return; }
+  var r = await sb.from('plano_ferramentas').select('*').eq('empresa_id', _empresaAtiva.id).eq('tipo','5porques').is('plano_id', null).order('created_at', { ascending:false });
+  var lista = (r.data || []);
+  if(!lista.length){ box.innerHTML = '<div class="vazio" style="padding:1.5rem">Nenhuma análise 5 Porquês avulsa salva ainda.</div>'; return; }
+  box.innerHTML = lista.map(function(f){ return _ferramentaCard(f); }).join('');
+}
+
+// Cruzamento GUT → 5 Porquês (só dentro de plano).
+// Botão visível só quando o 5 Porquês está num plano com >=1 GUT que tenha >=1 problema.
+async function _atualizarBotaoImportGut(){
+  var btn = document.getElementById('pqImportBtn'); if(!btn) return;
+  btn.style.display = 'none';
+  if(!_pqPlanoId) return;
+  var sb = _sb(); if(!sb) return;
+  try{
+    var r = await sb.from('plano_ferramentas').select('dados_json').eq('plano_id', _pqPlanoId).eq('tipo','gut');
+    var tem = (r.data||[]).some(function(f){ var d=f.dados_json||{}; return Array.isArray(d.problemas) && d.problemas.some(function(p){ return String((p&&p.nome)||'').trim() !== ''; }); });
+    if(tem) btn.style.display = '';
+  }catch(e){}
+}
+
+async function puxarProblemaGut(){
+  var sb = _sb(); if(!sb || !_pqPlanoId) return;
+  var probEl = document.getElementById('pqProblema');
+  if(probEl && (probEl.value || '').trim() !== ''){ toast('O campo Problema já está preenchido'); return; }
+  var r = await sb.from('plano_ferramentas').select('dados_json').eq('plano_id', _pqPlanoId).eq('tipo','gut');
+  if(r.error){ toast('Erro ao ler GUT: ' + esc(r.error.message)); return; }
+  var guts = (r.data||[]).map(function(f){ var d=f.dados_json||{}; return { problemas:d.problemas||[] }; });
+  var top = acharProblemaTopGut(guts);
+  if(!top){ toast('Nenhum problema encontrado nas GUTs deste plano'); return; }
+  if(probEl) probEl.value = top.nome;
+  toast('Problema puxado da GUT: ' + top.nome);
 }
 
 // ── Recebe empresa / tema / navegação do portal ────────────────
