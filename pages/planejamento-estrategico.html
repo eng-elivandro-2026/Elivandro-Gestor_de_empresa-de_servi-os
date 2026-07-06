@@ -149,6 +149,19 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
 
 .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--emp-bdr);color:var(--text);padding:.6rem 1rem;border-radius:var(--r2);font-size:.82rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
+
+/* Botão de ação destrutiva */
+.btn-d{background:transparent;color:var(--red);border:1px solid rgba(248,81,73,.4)}
+.btn-d:hover{background:rgba(248,81,73,.12)}
+/* Modal de confirmação */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:center;justify-content:center;padding:1rem}
+.modal-ov.on{display:flex}
+.modal-bx{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);max-width:420px;width:100%;padding:1.1rem 1.2rem;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.modal-tit{font-size:1rem;font-weight:800;color:var(--text);margin-bottom:.5rem}
+.modal-msg{font-size:.84rem;color:var(--text2);line-height:1.5;margin-bottom:1.1rem}
+.modal-acts{display:flex;gap:.5rem;justify-content:flex-end}
+.btn-danger{background:var(--red);color:#fff;border:1px solid var(--red)}
+.btn-danger:hover{filter:brightness(1.06)}
 </style>
 </head>
 <body>
@@ -168,7 +181,7 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
         <div class="sec-tit">Planos Estratégicos</div>
         <div class="sec-desc" style="margin-bottom:0">Seus planos de ação, organizados por horizonte de tempo.</div>
       </div>
-      <button class="btn btn-p" onclick="showSection('criar')">+ Novo plano</button>
+      <button class="btn btn-p" onclick="novoPlano()">+ Novo plano</button>
     </div>
     <div id="planosLista"></div>
   </section>
@@ -192,6 +205,11 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
           </select>
         </div>
       </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.85rem;padding-top:.75rem;border-top:1px solid var(--border)">
+        <button class="btn btn-g btn-sm" onclick="abrirEdicaoPlano()">✏️ Editar plano</button>
+        <button class="btn btn-g btn-sm" onclick="duplicarPlano(_detPlanoId)">⧉ Duplicar plano</button>
+        <button class="btn btn-d btn-sm" onclick="excluirPlano()" style="margin-left:auto">🗑️ Excluir plano</button>
+      </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:1rem 0 .6rem">
       <div class="sec-tit" style="font-size:.9rem">Ferramentas deste plano</div>
@@ -204,10 +222,10 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
     <div id="detFerramentas"></div>
   </section>
 
-  <!-- ── CRIAR ── -->
+  <!-- ── CRIAR / EDITAR ── -->
   <section class="sec" id="sec-criar">
-    <div class="sec-tit">Criar Plano</div>
-    <div class="sec-desc">Defina o tema e o horizonte. O plano nasce como rascunho — você adiciona ferramentas e ativa quando quiser.</div>
+    <div class="sec-tit" id="npSecTit">Criar Plano</div>
+    <div class="sec-desc" id="npSecDesc">Defina o tema e o horizonte. O plano nasce como rascunho — você adiciona ferramentas e ativa quando quiser.</div>
     <div class="card" style="max-width:560px">
       <div class="f"><label>Título do plano *</label><input type="text" id="npTitulo" placeholder="Ex.: Expansão comercial 2026"></div>
       <div class="f"><label>Tema / assunto</label><input type="text" id="npTema" placeholder="Ex.: Aumentar carteira de clientes"></div>
@@ -404,10 +422,25 @@ body.light .badge-swot{background:rgba(217,119,6,.12);border-color:rgba(217,119,
 
 <div class="toast" id="toast"></div>
 
+<!-- Modal de confirmação -->
+<div class="modal-ov" id="confirmModal" onclick="if(event.target===this)_fecharConfirm()">
+  <div class="modal-bx">
+    <div class="modal-tit" id="confirmTit">Confirmar</div>
+    <div class="modal-msg" id="confirmMsg"></div>
+    <div class="modal-acts">
+      <button class="btn btn-g" onclick="_fecharConfirm()">Cancelar</button>
+      <button class="btn btn-p" id="confirmOk" onclick="_confirmarOk()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Estado / integração com o portal (iframe) ──────────────────
 var _empresaAtiva = null;
 var _detPlanoId = null;          // plano aberto no detalhe
+var _detPlano = null;            // objeto do plano aberto (para editar/duplicar sem refetch)
+var _planoEditId = null;         // id do plano em edição no form (null = criar novo)
+var _confirmCb = null;           // callback do modal de confirmação
 var _gutEditId = null;           // id da ferramenta GUT em edição (null = nova)
 var _gutPlanoId = null;          // plano ao qual a GUT pertence (null = avulsa)
 var _gutOrigem = 'ferramentas';  // seção para onde "voltar" ao sair da GUT
@@ -475,7 +508,7 @@ async function carregarPlanos(){
   if(r.error){ box.innerHTML = '<div class="vazio">Erro ao carregar: ' + esc(r.error.message) + '</div>'; return; }
   var lista = r.data || [];
   if(!lista.length){
-    box.innerHTML = '<div class="vazio"><div class="vazio-ico">🧭</div>Nenhum plano ainda — crie o primeiro.<br><button class="btn btn-p" style="margin-top:.8rem" onclick="showSection(\'criar\')">+ Novo plano</button></div>';
+    box.innerHTML = '<div class="vazio"><div class="vazio-ico">🧭</div>Nenhum plano ainda — crie o primeiro.<br><button class="btn btn-p" style="margin-top:.8rem" onclick="novoPlano()">+ Novo plano</button></div>';
     return;
   }
   box.innerHTML = lista.map(function(p){
@@ -490,9 +523,40 @@ async function carregarPlanos(){
         + '</div>'
       + '</div>'
       + '<span class="bdg bdg-' + st + '">' + (STATUS_LABEL[st] || st) + '</span>'
+      + '<button class="btn btn-g btn-sm" onclick="duplicarPlano(\'' + p.id + '\')" title="Duplicar plano">⧉</button>'
       + '<button class="btn btn-g btn-sm" onclick="abrirPlano(\'' + p.id + '\')">Abrir</button>'
     + '</div>';
   }).join('');
+}
+
+// Entra no form em modo "criar" (limpo).
+function novoPlano(){
+  _planoEditId = null;
+  document.getElementById('npSecTit').textContent = 'Criar Plano';
+  document.getElementById('npSecDesc').textContent = 'Defina o tema e o horizonte. O plano nasce como rascunho — você adiciona ferramentas e ativa quando quiser.';
+  document.getElementById('npTitulo').value = '';
+  document.getElementById('npTema').value = '';
+  document.getElementById('npHorizonte').value = '1a';
+  var b = document.getElementById('npSalvar'); if(b) b.textContent = 'Salvar plano';
+  showSection('criar');
+}
+
+// Entra no form em modo "editar" com os dados do plano aberto.
+function abrirEdicaoPlano(){
+  if(!_detPlano) return;
+  _planoEditId = _detPlano.id;
+  document.getElementById('npSecTit').textContent = 'Editar Plano';
+  document.getElementById('npSecDesc').textContent = 'Altere título, tema e horizonte. As ferramentas do plano não são afetadas.';
+  document.getElementById('npTitulo').value = _detPlano.titulo || '';
+  document.getElementById('npTema').value = _detPlano.tema || '';
+  document.getElementById('npHorizonte').value = _detPlano.horizonte || '1a';
+  var b = document.getElementById('npSalvar'); if(b) b.textContent = 'Salvar alterações';
+  showSection('criar');
+}
+
+// Payload de UPDATE do plano (pura — testável).
+function montarPayloadUpdatePlano(titulo, tema, horizonte, agoraIso){
+  return { titulo: String(titulo||'').trim(), tema: (String(tema||'').trim() || null), horizonte: horizonte || '1a', updated_at: agoraIso };
 }
 
 async function salvarPlano(){
@@ -501,24 +565,26 @@ async function salvarPlano(){
   if(!sb || !_empresaAtiva){ toast('Sem conexão com a empresa.'); return; }
   var titulo = (document.getElementById('npTitulo').value || '').trim();
   if(!titulo){ toast('Informe o título do plano.'); return; }
-  var btn = document.getElementById('npSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
-  var row = {
-    empresa_id: _empresaAtiva.id,
-    titulo: titulo,
-    tema: (document.getElementById('npTema').value || '').trim() || null,
-    horizonte: document.getElementById('npHorizonte').value || '1a',
-    status: 'rascunho',
-    criado_por: _email()
-  };
+  var tema = (document.getElementById('npTema').value || '').trim() || null;
+  var horizonte = document.getElementById('npHorizonte').value || '1a';
+  var btn = document.getElementById('npSalvar'); var editando = !!_planoEditId; btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    var ins = await sb.from('planos_estrategicos').insert(row);
-    if(ins.error) throw ins.error;
-    document.getElementById('npTitulo').value = '';
-    document.getElementById('npTema').value = '';
-    toast('Plano criado!');
-    showSection('planos');
+    if(editando){
+      var upd = await sb.from('planos_estrategicos').update(montarPayloadUpdatePlano(titulo, tema, horizonte, new Date().toISOString())).eq('id', _planoEditId);
+      if(upd.error) throw upd.error;
+      var idEdit = _planoEditId; _planoEditId = null;
+      toast('Plano atualizado!');
+      abrirPlano(idEdit); // volta ao detalhe com os dados novos
+    } else {
+      var ins = await sb.from('planos_estrategicos').insert({ empresa_id:_empresaAtiva.id, titulo:titulo, tema:tema, horizonte:horizonte, status:'rascunho', criado_por:_email() });
+      if(ins.error) throw ins.error;
+      document.getElementById('npTitulo').value = '';
+      document.getElementById('npTema').value = '';
+      toast('Plano criado!');
+      showSection('planos');
+    }
   }catch(e){ toast('Erro ao salvar: ' + ((e && e.message) || e)); }
-  btn.disabled = false; btn.textContent = 'Salvar plano';
+  btn.disabled = false; btn.textContent = editando ? 'Salvar alterações' : 'Salvar plano';
 }
 
 async function abrirPlano(id){
@@ -527,6 +593,7 @@ async function abrirPlano(id){
   if(r.error || !r.data){ toast('Plano não encontrado.'); return; }
   var p = r.data;
   _detPlanoId = p.id;
+  _detPlano = p;
   document.getElementById('detTitulo').textContent = p.titulo;
   document.getElementById('detMeta').innerHTML =
     (p.tema ? '<span>' + esc(p.tema) + '</span>' : '')
@@ -544,6 +611,73 @@ async function mudarStatusDetalhe(){
   var r = await sb.from('planos_estrategicos').update({ status: novo, updated_at: new Date().toISOString() }).eq('id', _detPlanoId);
   if(r.error){ toast('Erro: ' + esc(r.error.message)); return; }
   toast('Status atualizado.');
+}
+
+// ── Modal de confirmação ───────────────────────────────────────
+function confirmar(titulo, msg, onOk, opts){
+  opts = opts || {};
+  _confirmCb = onOk;
+  document.getElementById('confirmTit').textContent = titulo;
+  document.getElementById('confirmMsg').textContent = msg;
+  var ok = document.getElementById('confirmOk');
+  ok.textContent = opts.okLabel || 'Confirmar';
+  ok.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-p');
+  document.getElementById('confirmModal').classList.add('on');
+}
+function _fecharConfirm(){ _confirmCb = null; document.getElementById('confirmModal').classList.remove('on'); }
+function _confirmarOk(){ var cb = _confirmCb; _fecharConfirm(); if(typeof cb === 'function') cb(); }
+
+// ── Excluir plano (destrutivo, com confirmação) ────────────────
+async function excluirPlano(){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb(); if(!sb || !_detPlanoId || !_detPlano) return;
+  // conta as ferramentas para a mensagem
+  var n = 0;
+  try{ var c = await sb.from('plano_ferramentas').select('id', { count:'exact', head:true }).eq('plano_id', _detPlanoId); n = c.count || 0; }catch(e){}
+  var msg = 'Excluir o plano "' + (_detPlano.titulo || '') + '" e todas as suas ferramentas (' + n + ' ' + (n === 1 ? 'análise' : 'análises') + ')? Esta ação não pode ser desfeita.';
+  confirmar('Excluir plano', msg, function(){ _executarExclusaoPlano(); }, { okLabel:'Excluir', danger:true });
+}
+async function _executarExclusaoPlano(){
+  var sb = _sb(); if(!sb || !_detPlanoId) return;
+  // ON DELETE CASCADE (migration 052) remove as plano_ferramentas junto com o plano.
+  var r = await sb.from('planos_estrategicos').delete().eq('id', _detPlanoId);
+  if(r.error){ toast('Erro ao excluir: ' + esc(r.error.message)); return; }
+  _detPlanoId = null; _detPlano = null;
+  toast('Plano excluído');
+  showSection('planos');
+}
+
+// ── Duplicar plano (+ todas as ferramentas) ────────────────────
+// Builders puros (testáveis).
+function montarPlanoCopia(orig, empresaId, email){
+  return { empresa_id: empresaId, titulo: String((orig && orig.titulo) || '') + ' (cópia)', tema: (orig && orig.tema) || null, horizonte: (orig && orig.horizonte) || '1a', status: 'rascunho', criado_por: email };
+}
+function montarFerramentasCopia(ferramentas, novoPlanoId, empresaId){
+  return (ferramentas || []).map(function(f){
+    return { empresa_id: empresaId, plano_id: novoPlanoId, tipo: f.tipo, titulo: f.titulo, dados_json: f.dados_json, status: f.status || 'rascunho' };
+  });
+}
+async function duplicarPlano(planoId){
+  if(!_pode('editar')){ toast('Sem permissão para editar.'); return; }
+  var sb = _sb(); if(!sb || !_empresaAtiva || !planoId) return;
+  try{
+    // 1) plano original
+    var ro = await sb.from('planos_estrategicos').select('*').eq('id', planoId).maybeSingle();
+    if(ro.error || !ro.data) throw (ro.error || new Error('Plano não encontrado.'));
+    // 2) cria a cópia do plano e pega o novo id
+    var ins = await sb.from('planos_estrategicos').insert(montarPlanoCopia(ro.data, _empresaAtiva.id, _email())).select('id').maybeSingle();
+    if(ins.error || !ins.data) throw (ins.error || new Error('Falha ao criar a cópia.'));
+    var novoId = ins.data.id;
+    // 3) copia todas as ferramentas do original
+    var rf = await sb.from('plano_ferramentas').select('*').eq('plano_id', planoId);
+    var copias = montarFerramentasCopia((rf.data || []), novoId, _empresaAtiva.id);
+    if(copias.length){
+      var insF = await sb.from('plano_ferramentas').insert(copias);
+      if(insF.error) throw insF.error;
+    }
+    toast('Plano duplicado');
+    abrirPlano(novoId);
+  }catch(e){ toast('Erro ao duplicar: ' + ((e && e.message) || e)); }
 }
 
 async function carregarFerramentasPlano(planoId){
