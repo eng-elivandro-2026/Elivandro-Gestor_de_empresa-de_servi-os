@@ -54,6 +54,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;margin-bottom:1.1rem}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
 .ct{font-size:.82rem;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:.35rem;text-transform:uppercase;letter-spacing:.04em}
+/* Fase 1 (Dados): igualar os títulos de seção ao cabeçalho dos cards da Fase 2 (.dim-block-title). Escopado a #s1 — não afeta o .ct global do resto do app. */
+#s1 .ct{color:var(--text);font-size:13px;font-weight:500;text-transform:none}
 
 /* GRID/FORM */
 .g{display:grid;gap:.8rem}
