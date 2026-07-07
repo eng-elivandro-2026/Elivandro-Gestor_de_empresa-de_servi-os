@@ -165,15 +165,16 @@
     // Evita que dados não-sincronizados (save interrompido) sejam perdidos ao recarregar.
     var local = LS('tf_props') || [];
     var merged = nuvem.slice();
+    // Decisão de merge INALTERADA (tsSaved manda). Aqui só COLETAMOS as propostas
+    // locais que precisam voltar à nuvem, em vez de disparar todas em paralelo.
+    var _syncQueue = [];
     local.forEach(function(lp) {
       if (!lp || !lp.id) return;
       var idx = merged.findIndex(function(sp) { return sp.id === lp.id; });
       if (idx < 0) {
-        // Proposta local não está no Supabase — preserve e salve em background
+        // Proposta local não está no Supabase — preserve e reenvie (via fila)
         merged.push(lp);
-        setTimeout(function() {
-          if (typeof sbSalvarProposta === 'function') sbSalvarProposta(lp);
-        }, 500);
+        _syncQueue.push(lp);
         console.warn('[supabase-sync] Proposta local não encontrada na nuvem, preservando:', lp.id, lp.num||'');
       } else {
         // Ambas existem — mantém a mais recente pelo tsSaved
@@ -181,12 +182,26 @@
         var sTs = Number(merged[idx].tsSaved) || 0;
         if (lTs > sTs) {
           merged[idx] = lp;
-          setTimeout(function() {
-            if (typeof sbSalvarProposta === 'function') sbSalvarProposta(lp);
-          }, 500);
+          _syncQueue.push(lp);
         }
       }
     });
+    // FILA SEQUENCIAL: processa 1 upsert por vez, aguardando cada um terminar, com
+    // intervalo mínimo de 300ms entre eles. Elimina a rajada de POSTs paralelos que
+    // esgotava as conexões do navegador (ERR_INSUFFICIENT_RESOURCES) e o Disk IO do
+    // Supabase. Roda em background — não bloqueia o retorno de sbCarregarNuvem.
+    if (_syncQueue.length) {
+      (async function _drenarFilaSync() {
+        for (var qi = 0; qi < _syncQueue.length; qi++) {
+          try {
+            if (typeof sbSalvarProposta === 'function') await sbSalvarProposta(_syncQueue[qi]);
+          } catch (e) {
+            console.warn('[supabase-sync] fila de sync: erro no item', (_syncQueue[qi]||{}).id, e && e.message);
+          }
+          await new Promise(function(r){ setTimeout(r, 300); });
+        }
+      })();
+    }
     var props = merged;
     if (props.length) {
       LS('tf_props', props);
