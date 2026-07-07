@@ -139,6 +139,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* AUTO NUM */
 .an-box{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;background:rgba(240,165,0,.05);border:1px solid rgba(240,165,0,.2);border-radius:var(--r);padding:.8rem 1rem;margin-bottom:1rem}
+/* Fase 1 (Dados): igualar espaçamento entre seções ao gap .7rem dos cards da Fase 2 e remover a linha sob os títulos. Escopado a #s1 — não afeta .card/.ch/.an-box globais nem outras telas. */
+#s1 .card{margin-bottom:.7rem}
+#s1 .an-box{margin-bottom:.7rem}
+#s1 .ch{border-bottom:none;padding-bottom:0;margin-bottom:.7rem}
 .an-disp{font-family:monospace;font-size:1.1rem;font-weight:600;color:var(--accent);background:var(--bg);border:1px solid rgba(240,165,0,.35);padding:.28rem .7rem;border-radius:5px}
 
 /* TEMPLATES SEL */
