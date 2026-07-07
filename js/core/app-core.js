@@ -1217,8 +1217,44 @@ var _dimSaveBound=false;
 var _dimBlocksMO=null;
 var _dimSortable=null;
 var _dimPendingBlocos=null;
+// Config do MutationObserver (compartilhada entre o setup e as pausas do _dimMute).
+var _dimMOconf={childList:true, subtree:true, attributes:true, characterData:true};
 // Agenda o autosave da proposta (mesmo debounce usado pelo restante do formulário).
 function _dimTouch(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
+// Executa uma alteração PURAMENTE VISUAL (recolher/expandir) sem disparar o autosave:
+// pausa o observer, aplica a mudança e RECONECTA no finally (garante o reconnect mesmo
+// se fn lançar — caso contrário o autosave pararia silenciosamente).
+function _dimMute(fn){
+  var host=_dimBlocksEl();
+  var mo=_dimBlocksMO;
+  if(mo) mo.disconnect();
+  try{ fn(); }
+  finally{ if(mo && host) mo.observe(host, _dimMOconf); }
+}
+// Atualiza o caret ▾/▸ conforme o estado recolhido do card.
+function _dimSyncCaret(wrap){
+  if(!wrap) return;
+  var c=wrap.querySelector('.dim-block-caret');
+  if(c) c.textContent = wrap.classList.contains('dim-collapsed') ? '▸' : '▾';
+}
+// Alterna um card (visual, em memória — não serializado, não marca a proposta como alterada).
+function _dimToggleCollapse(wrap){
+  if(!wrap) return;
+  _dimMute(function(){ wrap.classList.toggle('dim-collapsed'); _dimSyncCaret(wrap); });
+}
+// Recolhe/expande TODOS os cards da Fase 2 de uma vez.
+function dimCollapseAll(){
+  var host=_dimBlocksEl(); if(!host) return;
+  _dimMute(function(){
+    host.querySelectorAll('.dim-block').forEach(function(w){ w.classList.add('dim-collapsed'); _dimSyncCaret(w); });
+  });
+}
+function dimExpandAll(){
+  var host=_dimBlocksEl(); if(!host) return;
+  _dimMute(function(){
+    host.querySelectorAll('.dim-block').forEach(function(w){ w.classList.remove('dim-collapsed'); _dimSyncCaret(w); });
+  });
+}
 
 function dimInit(){
   var host=_dimBlocksEl(); if(!host) return;
@@ -1230,7 +1266,7 @@ function dimInit(){
   // Autosave: observa qualquer edição dentro dos blocos (inserir/remover, texto, estilo).
   if(!_dimSaveBound && typeof MutationObserver!=='undefined'){
     _dimBlocksMO=new MutationObserver(_dimTouch);
-    _dimBlocksMO.observe(host, {childList:true, subtree:true, attributes:true, characterData:true});
+    _dimBlocksMO.observe(host, _dimMOconf);
     _dimSaveBound=true;
   }
   // Reordenar blocos por drag-and-drop (SortableJS via CDN — já carregado no projeto).
@@ -1273,6 +1309,8 @@ function _dimWrap(kind, label, savedTitle, editable){
   var head=document.createElement('div'); head.className='dim-block-h';
   var grip=document.createElement('span'); grip.className='dim-block-drag'; grip.title='Arraste para reordenar'; grip.textContent='⠿';
   head.appendChild(grip);
+  var caret=document.createElement('span'); caret.className='dim-block-caret'; caret.title='Recolher/expandir'; caret.textContent='▾';
+  head.appendChild(caret);
   if(editable===false){
     var t=document.createElement('span'); t.className='dim-block-t'; t.textContent=label||''; head.appendChild(t);
   } else {
@@ -1287,6 +1325,12 @@ function _dimWrap(kind, label, savedTitle, editable){
     if(wrap.parentNode){ wrap.parentNode.removeChild(wrap); if(typeof _dimTouch==='function') _dimTouch(); }
   });
   head.appendChild(x);
+  // Clique no cabeçalho recolhe/expande — exceto no handle de arraste, no input de
+  // título (segue editável no clique) e no botão remover.
+  head.addEventListener('click', function(e){
+    if(e.target && e.target.closest && e.target.closest('.dim-block-drag, .dim-block-title, .dim-x')) return;
+    _dimToggleCollapse(wrap);
+  });
   var body=document.createElement('div'); body.className='dim-block-b';
   wrap.appendChild(head); wrap.appendChild(body);
   return {wrap:wrap, body:body};
@@ -2398,7 +2442,7 @@ function step(n){
   var _secMap={1:'s1',2:'s2dim',3:'s2',4:'s3',5:'s4',6:'s5'};
   var _sec=Q(_secMap[n]||('s'+n)); if(_sec) _sec.classList.add('on');
   for(var i=1;i<=6;i++){var el=Q('ws'+i);if(!el)continue;if(i<n)el.classList.add('dn');else if(i===n)el.classList.add('on')}
-  if(n===2){try{dimInit();}catch(e){console.error('dimInit:',e);}}
+  if(n===2){try{dimInit(); dimCollapseAll();}catch(e){console.error('dimInit:',e);}}
   if(n===3){rTplSel();rEsc();if(Q('escTplModal'))Q('escTplModal').style.display='none';}
   if(n===4){refBudg();rEsc();try{beLoadDB();beInlineAtualizarGrupos();beInlineRender();}catch(e){}setTimeout(function(){refreshValorSecEscopo();},30);}
   if(n===5)cTot();

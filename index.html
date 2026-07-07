@@ -839,6 +839,16 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 .dim-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;line-height:1;padding:.1rem .3rem;border-radius:4px}
 .dim-x:hover{color:var(--red,#dc2626);background:rgba(220,38,38,.1)}
 .dim-block-b{padding:.6rem}
+/* Recolher/expandir cada card (visual, em memória) */
+.dim-block-h{cursor:pointer}
+.dim-block-caret{flex:0 0 auto;cursor:pointer;color:var(--text2);font-size:.72rem;padding:0 4px;user-select:none;transition:color .12s}
+.dim-block-caret:hover{color:var(--text)}
+.dim-block-title{cursor:text}
+.dim-block.dim-collapsed .dim-block-b{display:none}
+/* Barra "recolher/expandir todos" */
+#dimBulkBar{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 .2rem}
+/* Cabeçalho da Fase 2 fixo (congelar como no Excel) — gruda no topo do scroll (#area-inline) */
+.dim-sticky-head{position:sticky;top:0;z-index:10;background:var(--bg2);margin:-1.1rem -1.1rem .7rem;padding:1.1rem 1.1rem .3rem}
 .dim-tbl{border-collapse:collapse;width:100%;font-size:.82rem}
 .dim-tbl th,.dim-tbl td{border:1px solid var(--border);padding:.3rem .45rem;min-width:60px;color:var(--text)}
 .dim-tbl th{background:var(--bg2);font-weight:700;text-align:left;position:relative}
@@ -1590,17 +1600,23 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
   <!-- S2DIM — DIMENSIONAMENTO (Etapa 2) -->
   <div id="s2dim" class="sp">
     <div class="card">
-      <div class="ch"><span class="ct">📐 Dimensionamento</span></div>
-      <p class="hint" style="margin-bottom:.6rem">Espaço livre para a memória de cálculo do dimensionamento: blocos de texto, tabelas (inclusive coladas do Excel), desenhos à mão livre, checklists e imagens. Arraste pelo ⠿ para reordenar. Tudo é salvo junto da proposta.</p>
-      <div id="dimInsertBar">
-        <button type="button" class="btn bg bsm" onclick="dimAddText()">📝 Bloco de texto</button>
-        <button type="button" class="btn bg bsm" onclick="dimAddTable()">▦ Tabela vazia</button>
-        <button type="button" class="btn bg bsm" onclick="dimAddExcel()">📋 Colar do Excel</button>
-        <button type="button" class="btn bg bsm" onclick="dimAddCanvas()">✏️ Área de desenho</button>
-        <button type="button" class="btn bg bsm" onclick="dimAddChecklist()">☑ Checklist</button>
-        <button type="button" class="btn bg bsm" onclick="dimImgPick()">🖼️ Imagem</button>
-        <button type="button" class="btn bg bsm" onclick="dimAddDivider()">— Divisor</button>
-        <input type="file" id="dimImgInput" accept="image/*" style="display:none" onchange="dimImgFromInput(event)">
+      <div class="dim-sticky-head">
+        <div class="ch"><span class="ct">📐 Dimensionamento</span></div>
+        <p class="hint" style="margin-bottom:.6rem">Espaço livre para a memória de cálculo do dimensionamento: blocos de texto, tabelas (inclusive coladas do Excel), desenhos à mão livre, checklists e imagens. Arraste pelo ⠿ para reordenar. Tudo é salvo junto da proposta.</p>
+        <div id="dimInsertBar">
+          <button type="button" class="btn bg bsm" onclick="dimAddText()">📝 Bloco de texto</button>
+          <button type="button" class="btn bg bsm" onclick="dimAddTable()">▦ Tabela vazia</button>
+          <button type="button" class="btn bg bsm" onclick="dimAddExcel()">📋 Colar do Excel</button>
+          <button type="button" class="btn bg bsm" onclick="dimAddCanvas()">✏️ Área de desenho</button>
+          <button type="button" class="btn bg bsm" onclick="dimAddChecklist()">☑ Checklist</button>
+          <button type="button" class="btn bg bsm" onclick="dimImgPick()">🖼️ Imagem</button>
+          <button type="button" class="btn bg bsm" onclick="dimAddDivider()">— Divisor</button>
+          <input type="file" id="dimImgInput" accept="image/*" style="display:none" onchange="dimImgFromInput(event)">
+        </div>
+        <div id="dimBulkBar">
+          <button type="button" class="btn bg bsm" onclick="dimCollapseAll()" title="Recolher todos os cards">▸ Recolher todos</button>
+          <button type="button" class="btn bg bsm" onclick="dimExpandAll()" title="Expandir todos os cards">▾ Expandir todos</button>
+        </div>
       </div>
       <div id="dimBlocks"></div>
     </div>
