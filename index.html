@@ -896,6 +896,16 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 .dim-chk.done .dim-chk-t{color:#16a34a;text-decoration:line-through}
 .dim-chk-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.75rem;flex-shrink:0}
 .dim-hr{border:none;border-top:2px solid var(--border);margin:.3rem 0}
+/* Responsividade tablet/mobile (≤768px): declutter da barra superior + evitar sobreposição
+   com a barra de edição de proposta. Colocado após os demais @media para vencer no cascade
+   sobre as regras .hdr dos breakpoints 1024px/768px. Desktop (≥769px) intocado. */
+@media (max-width:768px){
+  #hdr-data{display:none}   /* data/hora */
+  #btn-tema{display:none}   /* tema/lua 🌙 */
+  /* header volta a uma linha horizontal enxuta (desfaz o flex-direction:column herdado
+     do breakpoint 1024px) → cabe na altura reservada e o #actionBar fica logo abaixo */
+  .hdr{flex-direction:row;flex-wrap:wrap;align-items:center;align-content:center}
+}
 </style>
 <!-- Quill 1.3.7 (editor de texto rico — Etapa 2 Dimensionamento) -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
