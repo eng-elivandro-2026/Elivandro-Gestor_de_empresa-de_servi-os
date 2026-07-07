@@ -10927,7 +10927,9 @@ var autoDraftTimer=null;
 function scheduleDraftSave(){
   if(_vizModeState) return; // não salva enquanto em modo leitura
   clearTimeout(autoDraftTimer);
-  autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 350);
+  // Debounce de 1500ms: em propostas com dim_blocos grandes (tabelas/desenhos), o upsert
+  // do dados_json pode causar statement timeout no Supabase; espaçar os disparos reduz isso.
+  autoDraftTimer=setTimeout(function(){ upsertCurrentDraft(true); }, 1500);
 }
 var _FAS_LOG=['cancelada','virou_outra_proposta'];
 // Controle da exigência de data de envio na EDIÇÃO (#pFas → 'enviada').
