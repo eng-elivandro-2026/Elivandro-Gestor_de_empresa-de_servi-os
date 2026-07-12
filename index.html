@@ -7429,6 +7429,12 @@ function carregarCeoDash(){
   // Respeita o filtro de ano global da aba Comercial (propsComercial); 'all' = tudo.
   var pc=(typeof propsComercial==='function')?propsComercial():props;
 
+  // Status OPERACIONAIS ativos (SEM 'ganho') — usado APENAS na lista "Serviços Fechados —
+  // Fase Operacional" (#ceoTopCli). Não afeta pipeline/KPIs/gráficos, que seguem em
+  // FAS_VISAO_EXEC_ATIVA (com 'ganho').
+  var FAS_OPERACIONAL_ATIVA=['aprovado','andamento','taf','sat','atrasado',
+    'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
   // lista "Serviços Fechados — Fase OPERACIONAL" usam esta base (não as fases abertas).
@@ -7504,7 +7510,10 @@ function carregarCeoDash(){
 
   var cliEl=Q('ceoTopCli');
   if(cliEl){
-    var pipeSorted=pipeline.slice().sort(function(a,b){return n2(b.val)-n2(a.val);});
+    // Lista "Serviços Fechados — Fase Operacional": só status operacionais ativos (sem 'ganho').
+    var pipeSorted=pipeline
+      .filter(function(p){return FAS_OPERACIONAL_ATIVA.indexOf(p.fas||p.fase||'')>=0;})
+      .sort(function(a,b){return n2(b.val)-n2(a.val);});
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
     var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
     var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
