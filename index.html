@@ -910,14 +910,12 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 }
 /* Tablet (≤1024px): header em UMA linha só. O @media(max-width:1024px) existente empilha
    o .hdr em coluna (flex-direction:column) → 2 linhas; aqui voltamos a linha única e
-   ocultamos o que não é essencial. Mantidos: ☰ + logo + seletor de empresa + Sair
-   (o logout só existe no header). Bloco após todos os demais @media para vencer no cascade.
-   Desktop (≥1025px) intocado. */
+   ocultamos apenas o que ocupa espaço de texto longo. Mantidos na mesma linha: ☰ + logo +
+   seletor de empresa + tema + ícones (empresa/usuários/permissões) + avatar + Sair.
+   Bloco após todos os demais @media para vencer no cascade. Desktop (≥1025px) intocado. */
 @media (max-width:1024px){
   .hdr{flex-direction:row; flex-wrap:nowrap; align-items:center; height:auto}
   #hdr-data{display:none}                 /* data/hora */
-  #btn-tema{display:none}                 /* tema/lua 🌙 */
-  #hdr-avatar{display:none}               /* avatar */
   #hdr-email{display:none}                /* nome do usuário */
   #hdr-logo-sub{display:none}             /* subtítulo do logo */
   #seletor-empresa-container{min-width:0} /* deixa o seletor encolher */
