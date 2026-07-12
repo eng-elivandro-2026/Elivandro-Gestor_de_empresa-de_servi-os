@@ -7589,10 +7589,26 @@ function carregarCeoDash(){
       {v:taxaGanho+'%',l:'📈 Taxa de Ganho',c:corTaxa,tip:'% de propostas finalizadas que viraram negócio (ganhos ÷ finalizadas)',modal:null},
       {v:money(ticketMedio),l:'🎯 Ticket Médio Exec.',c:'var(--cyan)',tip:'Valor médio de cada obra ativa no operacional',modal:null}
     ].map(function(k){
-      var clk=k.modal?' kpi-click" onclick="abrirCeoModal(\''+k.modal+'\')"':'"';
-      var info='<button type="button" class="kpi-info" data-tip="'+esc(k.tip)+'" onmouseenter="ceoShowTip(this)" onmouseleave="ceoHideTip()" onclick="event.stopPropagation();ceoTipToggle(this)">ⓘ</button>';
-      return '<div class="kpi'+clk+'>'+info+'<span class="kpi-v" style="color:'+k.c+'">'+k.v+'</span><div class="kpi-l">'+k.l+'</div></div>';
+      // Sem handlers inline (on*): um listener externo de captura em runtime estava
+      // interceptando o onclick inline. Guardamos o tipo/tip em data-* e ligamos via
+      // addEventListener depois do innerHTML (mais resiliente).
+      var cls='kpi'+(k.modal?' kpi-click':'');
+      var dm=k.modal?' data-modal="'+esc(k.modal)+'"':'';
+      var info='<button type="button" class="kpi-info" data-tip="'+esc(k.tip)+'">ⓘ</button>';
+      return '<div class="'+cls+'"'+dm+'>'+info+'<span class="kpi-v" style="color:'+k.c+'">'+k.v+'</span><div class="kpi-l">'+k.l+'</div></div>';
     }).join('');
+    // Liga os eventos por addEventListener (após o innerHTML) — não usa on* inline.
+    kpiEl.querySelectorAll('.kpi-click').forEach(function(card){
+      card.addEventListener('click', function(e){
+        if(e.target && e.target.closest && e.target.closest('.kpi-info')) return;
+        abrirCeoModal(card.dataset.modal);
+      });
+    });
+    kpiEl.querySelectorAll('.kpi-info').forEach(function(ic){
+      ic.addEventListener('mouseenter', function(){ ceoShowTip(ic); });
+      ic.addEventListener('mouseleave', function(){ ceoHideTip(); });
+      ic.addEventListener('click', function(e){ e.stopPropagation(); ceoTipToggle(ic); });
+    });
   }
 
   var barsEl=Q('ceoPhaseBars');
