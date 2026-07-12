@@ -97,6 +97,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1rem;text-align:center;min-width:0;overflow:hidden}
 .kpi-v{font-size:clamp(.72rem,1.6vw,1.25rem);font-weight:700;color:var(--accent);line-height:1.2;white-space:normal;word-break:break-word;overflow-wrap:break-word;display:block;overflow:hidden}
 .kpi-l{font-size:.72rem;color:var(--text3);margin-top:.25rem;text-transform:uppercase;letter-spacing:.05em}
+/* KPI da Visão Executiva: ⓘ (tooltip) + card clicável (modal) */
+.kpi{position:relative}
+.kpi-click{cursor:pointer;transition:border-color .15s}
+.kpi-click:hover{border-color:var(--accent)}
+.kpi-info{position:absolute;top:.3rem;right:.35rem;width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:var(--bg2);color:var(--text3);font-size:.6rem;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0;z-index:2}
+.kpi-info:hover{color:var(--text);border-color:var(--accent)}
+#ceoTip{position:fixed;display:none;max-width:230px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:.45rem .6rem;font-size:.7rem;color:var(--text2);line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.45);z-index:9999;pointer-events:none}
+.ceo-mrow{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.ceo-mrow:last-child{border-bottom:none}
+.ceo-mrow-num{font-weight:700;color:var(--text2);font-size:.72rem;white-space:nowrap}
+.ceo-mrow-tit{color:var(--text);font-size:.8rem;flex:1;min-width:0;word-break:break-word}
+.ceo-mrow-val{font-weight:700;color:var(--accent);font-size:.78rem;white-space:nowrap}
 /* Visão Geral — font menor no desktop para valores monetários não quebrarem */
 #visaoGeralBody .kpi-v{font-size:clamp(.70rem,1.2vw,.82rem);word-break:normal;overflow-wrap:break-word}
 /* Visão Executiva KPIs — prevenir quebra de valores */
@@ -4245,6 +4257,15 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 
 
 
+<!-- Tooltip flutuante + Modal de listas dos KPIs (Visão Executiva) -->
+<div id="ceoTip"></div>
+<div class="modal-bg" id="ceoKpiModal" onclick="if(event.target===this)fecharCeoModal()">
+  <div class="modal" style="width:min(560px,98vw)">
+    <div class="modal-hdr"><div class="modal-title" id="ceoKpiModalTit"></div><button class="modal-close" onclick="fecharCeoModal()">✕</button></div>
+    <div class="modal-body" id="ceoKpiModalBody"></div>
+  </div>
+</div>
+
 <!-- Modal Backup -->
 
 <div class="modal-bg" id="m-backup">
@@ -7451,6 +7472,55 @@ function _ceoStatusEfetivo(p){
   return st;
 }
 
+// ── KPIs da Visão Executiva: tooltip (ⓘ) + modal com lista de propostas ──────
+// Listas guardadas no render para o modal consultar ao clicar (UI apenas).
+var _ceoKpiListas={ pipeline:[], negoc:[], fechMes:[] };
+var _CEO_MODAL={
+  pipeline:{ k:'pipeline', tit:'Pipeline Ativo — Obras em Andamento' },
+  execucao:{ k:'pipeline', tit:'Em Execução — Obras Ativas' },
+  negoc:{    k:'negoc',    tit:'Em Negociação — Propostas Enviadas' },
+  fechMes:{  k:'fechMes',  tit:'Fechado no Mês — Propostas Ganhas' }
+};
+function _ceoTipEl(){ return document.getElementById('ceoTip'); }
+function ceoShowTip(icon){
+  var t=_ceoTipEl(); if(!t||!icon) return;
+  t.textContent=icon.getAttribute('data-tip')||'';
+  t.style.display='block';
+  var r=icon.getBoundingClientRect();
+  var w=t.offsetWidth, h=t.offsetHeight;
+  var left=Math.max(6, Math.min(r.right-w, window.innerWidth-w-6));
+  var top=r.bottom+6; if(top+h>window.innerHeight-6) top=Math.max(6, r.top-h-6);
+  t.style.left=left+'px'; t.style.top=top+'px';
+}
+function ceoHideTip(){ var t=_ceoTipEl(); if(t) t.style.display='none'; }
+function ceoTipToggle(icon){ // toque (tablet): alterna
+  var t=_ceoTipEl(); if(!t) return;
+  if(t.style.display==='block' && t._for===icon){ ceoHideTip(); t._for=null; }
+  else { ceoShowTip(icon); t._for=icon; }
+}
+document.addEventListener('click', function(e){
+  if(e.target && e.target.classList && e.target.classList.contains('kpi-info')) return;
+  ceoHideTip();
+}, true);
+
+function abrirCeoModal(tipo){
+  var cfg=_CEO_MODAL[tipo]; if(!cfg) return;
+  var lista=(_ceoKpiListas[cfg.k]||[]).slice().sort(function(a,b){return n2(b.val)-n2(a.val);});
+  var body=document.getElementById('ceoKpiModalBody');
+  var tit=document.getElementById('ceoKpiModalTit');
+  if(tit) tit.textContent=cfg.tit;
+  if(body){
+    body.innerHTML=lista.length ? lista.map(function(p){
+      var num=esc((p.num||'—')); var desc=esc((p.tit||p.loc||p.cli||'—'));
+      return '<div class="ceo-mrow"><span class="ceo-mrow-num">'+num+'</span>'
+        +'<span class="ceo-mrow-tit">'+desc+'</span>'
+        +'<span class="ceo-mrow-val">'+money(n2(p.val))+'</span></div>';
+    }).join('') : '<p style="font-size:.78rem;color:var(--text3)">Nenhuma proposta.</p>';
+  }
+  var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.display='flex';
+}
+function fecharCeoModal(){ var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.display='none'; }
+
 function carregarCeoDash(){
   var b=Q('ceoDashBody');
   if(!b) return;
@@ -7482,6 +7552,7 @@ function carregarCeoDash(){
   var negoc=pc.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
   var valNegoc=negoc.reduce(function(s,p){return s+n2(p.val);},0);
   var cntNegoc=negoc.length;
+  _ceoKpiListas.negoc=negoc;   // p/ modal "Em Negociação"
 
   var atrasadas=pc.filter(function(p){return p.fas==='atrasado';});
 
@@ -7491,6 +7562,7 @@ function carregarCeoDash(){
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });
   var valFechMes=fechMes.reduce(function(s,p){return s+n2(p.val);},0);
+  _ceoKpiListas.fechMes=fechMes;   // p/ modal "Fechado no Mês"
 
   var novasMes=pc.filter(function(p){
     if(p.fas==='em_elaboracao') return false;
@@ -7510,14 +7582,16 @@ function carregarCeoDash(){
     var tGanho=parseFloat(taxaGanho);
     var corTaxa=tGanho>=50?'var(--green)':(tGanho>=25?'var(--accent)':'var(--red)');
     kpiEl.innerHTML=[
-      {v:money(valPipeline),l:'💰 Pipeline Ativo',c:'var(--accent)'},
-      {v:cntPipeline,l:'🔧 Em Execução',c:'var(--blue)'},
-      {v:cntNegoc+' prop. / '+money(valNegoc),l:'⏳ Em Negociação',c:'var(--purple)'},
-      {v:fechMes.length+' / '+money(valFechMes),l:'✅ Fechado no Mês',c:'var(--green)'},
-      {v:taxaGanho+'%',l:'📈 Taxa de Ganho',c:corTaxa},
-      {v:money(ticketMedio),l:'🎯 Ticket Médio Exec.',c:'var(--cyan)'}
+      {v:money(valPipeline),l:'💰 Pipeline Ativo',c:'var(--accent)',tip:'Soma dos valores das obras em andamento no operacional',modal:'pipeline'},
+      {v:cntPipeline,l:'🔧 Em Execução',c:'var(--blue)',tip:'Quantidade de obras ativas no operacional agora',modal:'execucao'},
+      {v:cntNegoc+' prop. / '+money(valNegoc),l:'⏳ Em Negociação',c:'var(--purple)',tip:'Propostas enviadas ao cliente ainda sem decisão',modal:'negoc'},
+      {v:fechMes.length+' / '+money(valFechMes),l:'✅ Fechado no Mês',c:'var(--green)',tip:'Propostas ganhas neste mês e valor total fechado',modal:'fechMes'},
+      {v:taxaGanho+'%',l:'📈 Taxa de Ganho',c:corTaxa,tip:'% de propostas finalizadas que viraram negócio (ganhos ÷ finalizadas)',modal:null},
+      {v:money(ticketMedio),l:'🎯 Ticket Médio Exec.',c:'var(--cyan)',tip:'Valor médio de cada obra ativa no operacional',modal:null}
     ].map(function(k){
-      return '<div class="kpi"><span class="kpi-v" style="color:'+k.c+'">'+k.v+'</span><div class="kpi-l">'+k.l+'</div></div>';
+      var clk=k.modal?' kpi-click" onclick="abrirCeoModal(\''+k.modal+'\')':'"';
+      var info='<button type="button" class="kpi-info" data-tip="'+esc(k.tip)+'" onmouseenter="ceoShowTip(this)" onmouseleave="ceoHideTip()" onclick="event.stopPropagation();ceoTipToggle(this)">ⓘ</button>';
+      return '<div class="kpi'+clk+'>'+info+'<span class="kpi-v" style="color:'+k.c+'">'+k.v+'</span><div class="kpi-l">'+k.l+'</div></div>';
     }).join('');
   }
 
@@ -7552,6 +7626,7 @@ function carregarCeoDash(){
     var pipeSorted=pipeline
       .filter(function(p){ return FAS_OPERACIONAL_ATIVA.indexOf(_ceoStatusEfetivo(p))>=0; })
       .sort(function(a,b){return n2(b.val)-n2(a.val);});
+    _ceoKpiListas.pipeline=pipeSorted;   // p/ modais "Pipeline Ativo" e "Em Execução"
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
     var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
     var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
