@@ -4257,15 +4257,6 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
 
 
 
-<!-- Tooltip flutuante + Modal de listas dos KPIs (Visão Executiva) -->
-<div id="ceoTip"></div>
-<div class="modal-bg" id="ceoKpiModal" onclick="if(event.target===this)fecharCeoModal()">
-  <div class="modal" style="width:min(560px,98vw)">
-    <div class="modal-hdr"><div class="modal-title" id="ceoKpiModalTit"></div><button class="modal-close" onclick="fecharCeoModal()">✕</button></div>
-    <div class="modal-body" id="ceoKpiModalBody"></div>
-  </div>
-</div>
-
 <!-- Modal Backup -->
 
 <div class="modal-bg" id="m-backup">
@@ -12908,6 +12899,16 @@ document.addEventListener('keydown', function(e) {
       </div>
     </div>
     <div class="modal-footer"><button class="btn bg" onclick="fecharModalTipoProposta()">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- Tooltip flutuante + Modal de listas dos KPIs (Visão Executiva) — filhos diretos do <body>
+     para o position:fixed não ser limitado por ancestral com transform/contain/dimensão. -->
+<div id="ceoTip"></div>
+<div class="modal-bg" id="ceoKpiModal" onclick="if(event.target===this)fecharCeoModal()">
+  <div class="modal" style="width:min(560px,98vw)">
+    <div class="modal-hdr"><div class="modal-title" id="ceoKpiModalTit"></div><button class="modal-close" onclick="fecharCeoModal()">✕</button></div>
+    <div class="modal-body" id="ceoKpiModalBody"></div>
   </div>
 </div>
 
