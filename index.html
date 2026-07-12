@@ -7545,6 +7545,9 @@ function carregarCeoDash(){
   var pipeline=pc.filter(function(p){return isVisaoExecutivaAtiva(p);});
   var valPipeline=pipeline.reduce(function(s,p){return s+n2(p.val);},0);
   var cntPipeline=pipeline.length;
+  // Modais "Pipeline Ativo" e "Em Execução": mesma coleção que alimenta o KPI
+  // (cntPipeline/valPipeline) — para bater a quantidade e a soma exibidas no card.
+  _ceoKpiListas.pipeline=pipeline;
 
   // Em Negociação = oportunidades abertas em negociação (contexto do funil, mantém FAS_NEGOC).
   var negoc=pc.filter(function(p){return FAS_NEGOC.indexOf(p.fas)>=0;});
@@ -7640,7 +7643,6 @@ function carregarCeoDash(){
     var pipeSorted=pipeline
       .filter(function(p){ return FAS_OPERACIONAL_ATIVA.indexOf(_ceoStatusEfetivo(p))>=0; })
       .sort(function(a,b){return n2(b.val)-n2(a.val);});
-    _ceoKpiListas.pipeline=pipeSorted;   // p/ modais "Pipeline Ativo" e "Em Execução"
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
     var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
     var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
