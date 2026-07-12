@@ -7508,9 +7508,16 @@ function abrirCeoModal(tipo){
         +'<span class="ceo-mrow-val">'+money(n2(p.val))+'</span></div>';
     }).join('') : '<p style="font-size:.78rem;color:var(--text3)">Nenhuma proposta.</p>';
   }
-  var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.display='flex';
+  var mv=document.getElementById('ceoKpiModal');
+  if(mv){
+    // Portal: garante que o overlay é filho direto do <body> (fora de qualquer
+    // container que limite o layout) e força position:fixed viewport-relative
+    // via estilo inline (vence a classe .modal-bg, que não estava sendo aplicada).
+    if(mv.parentNode!==document.body) document.body.appendChild(mv);
+    mv.style.cssText='display:flex;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:100000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:12px;overflow:auto';
+  }
 }
-function fecharCeoModal(){ var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.display='none'; }
+function fecharCeoModal(){ var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.cssText='display:none'; }
 
 function carregarCeoDash(){
   var b=Q('ceoDashBody');
