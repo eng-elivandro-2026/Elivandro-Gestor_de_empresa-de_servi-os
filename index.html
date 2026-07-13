@@ -7739,12 +7739,25 @@ function carregarCeoDash(){
 
   var barsEl=Q('ceoPhaseBars');
   if(barsEl){
-    // Distribuição por Fase: SOMENTE fases de negócio ganho / execução ativa
-    // (FAS_DISTRIBUICAO_EXECUCAO), não as oportunidades abertas (enviada/follows).
-    var phData=FAS_DISTRIBUICAO_EXECUCAO.map(function(f){
-      var ps=pc.filter(function(p){return (p.fas||p.fase)===f;});
-      return {f:f,n:(FASE[f]||{n:f}).n,i:(FASE[f]||{i:''}).i,cnt:ps.length,val:ps.reduce(function(s,p){return s+n2(p.val);},0)};
-    }).filter(function(d){return d.cnt>0;});
+    // Distribuição por STATUS OPERACIONAL REAL: agrupa por _ceoStatusEfetivo (a obra manda
+    // p/ 'ganho' que virou obra) e exclui terminais — mesma base do 'pipeline' dos KPIs.
+    // 'ganho' sem obra vira uma barra própria "Ganho (sem obra)" (pipeline aguardando início).
+    var _dist={};
+    pipeline.forEach(function(p){
+      var k=_ceoStatusEfetivo(p);   // aprovado/andamento/taf/... ou 'ganho' (sem obra)
+      if(!_dist[k]) _dist[k]={f:k,cnt:0,val:0};
+      _dist[k].cnt++; _dist[k].val+=n2(p.val);
+    });
+    var phData=Object.keys(_dist).map(function(k){
+      var d=_dist[k];
+      var lbl=(k==='ganho') ? 'Ganho (sem obra)'
+        : ((FASE[k]&&FASE[k].n) || (window.OP_STATUS_LABELS&&window.OP_STATUS_LABELS[k]) || k);
+      return {f:k, n:lbl, i:(FASE[k]||{i:''}).i, cnt:d.cnt, val:d.val};
+    }).sort(function(a,b){
+      var ia=FAS_DISTRIBUICAO_EXECUCAO.indexOf(a.f); if(ia<0) ia=99;
+      var ib=FAS_DISTRIBUICAO_EXECUCAO.indexOf(b.f); if(ib<0) ib=99;
+      return ia-ib;
+    });
     var maxV=phData.reduce(function(mx,d){return Math.max(mx,d.val);},1);
     barsEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Distribuição por Fase</div>'
       +phData.map(function(d){
