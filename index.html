@@ -1101,6 +1101,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
         <div id="ceoTopCli"></div>
         <div id="ceoMes"></div>
       </div>
+      <div id="ceoGaps" style="margin-top:1rem"></div>
     </div>
   </div>
 
@@ -7468,6 +7469,76 @@ function _ceoStatusEfetivo(p){
 var _CEO_TERMINAIS=['finalizado','entregue_ao_cliente','em_garantia','encerrada','cancelada'];
 function _ceoTerminal(st){ return _CEO_TERMINAIS.indexOf(String(st||'').trim().toLowerCase())>=0; }
 
+// ── Fechamento Pendente — obras finalizadas com gaps (aceite / entrega / NF) ──
+// Mapa proposta_app_id → { status_operacional, data_entrega_real } (query slim de obras).
+var _ceoObraGapMap=null, _ceoObraGapEmp=null;
+function _ceoCarregarObrasGap(){
+  if(!window.sbClient) return;
+  var eid=_ceoEmpAtualId(); if(!eid) return;
+  var depois=function(m){
+    _ceoObraGapMap=m; _ceoObraGapEmp=eid;
+    // Garante as datas de aceite (gestao_negocio → window._opExecDatasMap) antes de re-renderizar.
+    if(typeof window.opCarregarDatasExecucao==='function'){
+      Promise.resolve(window.opCarregarDatasExecucao(eid)).catch(function(){}).then(function(){ try{ carregarCeoDash(); }catch(e){} });
+    } else { try{ carregarCeoDash(); }catch(e){} }
+  };
+  window.sbClient.from('obras').select('proposta_app_id,status_operacional,data_entrega_real').eq('empresa_id',eid)
+    .then(function(res){
+      var m={};
+      ((res&&res.data)||[]).forEach(function(o){
+        if(o&&o.proposta_app_id) m[String(o.proposta_app_id)]={ status_operacional:String(o.status_operacional||'').trim().toLowerCase(), data_entrega_real:o.data_entrega_real||'' };
+      });
+      depois(m);
+    }).catch(function(){ depois({}); });
+}
+// PURO/testável: gaps de fechamento de uma obra FINALIZADA. Retorna null se não é finalizada
+// ou se está 100% completa; senão {aceite,entrega,nf} (true = FALTA).
+// aceiteOficial = window._opExecDatasMap[id].ace (gestao_negocio). Aceite presente se
+// aceiteOficial OU proposta.tl.dtAceite.
+function _ceoGapsFechamento(p, obra, aceiteOficial){
+  if(!obra || !_ceoTerminal(obra.status_operacional)) return null;
+  var tl=(p&&p.tl)||{};
+  var semAceite=!(aceiteOficial || tl.dtAceite);
+  var semEntrega=!(obra.data_entrega_real);
+  var semNF=!(((tl.nfs)||[]).length>0);
+  if(!(semAceite||semEntrega||semNF)) return null;
+  return { aceite:semAceite, entrega:semEntrega, nf:semNF };
+}
+// Renderiza a seção #ceoGaps. Respeita o filtro de ano: só propostas presentes em pc.
+function _ceoRenderGaps(pc){
+  var el=Q('ceoGaps'); if(!el) return;
+  var map=_ceoObraGapMap||{}, _op=window._opExecDatasMap||{};
+  var byId={};
+  (pc||[]).forEach(function(p){ if(p&&p.id) byId[String(p.id)]=p; if(p&&p.app_id) byId[String(p.app_id)]=p; });
+  var itens=[];
+  Object.keys(map).forEach(function(pid){
+    var p=byId[String(pid)]; if(!p) return;            // sem proposta em memória (filtro de ano) → pula
+    var ace=(_op[String(pid)]||{}).ace||'';
+    var g=_ceoGapsFechamento(p, map[pid], ace);
+    if(g) itens.push({p:p, g:g});
+  });
+  itens.sort(function(a,b){ return n2(b.p.val)-n2(a.p.val); });
+  var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
+  el.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .5rem">⚠️ Fechamento Pendente — Obras Finalizadas</div>'
+    +(itens.length?itens.map(function(it){
+      var p=it.p, g=it.g;
+      var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
+      var tit=(p.tit||p.num||'—').trim();
+      var selos='';
+      if(g.aceite)  selos+=_bdg('#d4a017','⚠️ sem aceite');
+      if(g.entrega) selos+=_bdg('#d4a017','⚠️ sem entrega');
+      if(g.nf)      selos+=_bdg('#f85149','🔴 sem NF');
+      return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">'
+        +'<div style="font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;word-break:break-word">'+esc(tit)+'</div>'
+        +'<div style="font-size:.66rem;color:var(--text3);margin-top:.1rem;line-height:1.3;word-break:break-word">'+(p.num?esc(p.num)+' · ':'')+esc(cli)+'</div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.22rem;gap:.4rem;flex-wrap:wrap">'
+        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.1rem;flex:1;min-width:0">'+selos+'</div>'
+        +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;white-space:nowrap">'+money(n2(p.val))+'</div>'
+        +'</div>'
+      +'</div>';
+    }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Nenhuma obra finalizada com pendências de fechamento.</p>');
+}
+
 // ── KPIs da Visão Executiva: tooltip (ⓘ) + modal com lista de propostas ──────
 // Listas guardadas no render para o modal consultar ao clicar (UI apenas).
 var _ceoKpiListas={ pipeline:[], negoc:[], fechMes:[] };
@@ -7543,6 +7614,9 @@ function carregarCeoDash(){
   // negócios 'ganho' que viraram obra e re-renderiza quando chega. Guard evita refetch/loop.
   var _eidNow=_ceoEmpAtualId();
   if(_ceoObraStatusMap===null || _ceoObraStatusEmp!==_eidNow){ _ceoObraStatusMap=_ceoObraStatusMap||{}; _ceoObraStatusEmp=_eidNow; _ceoCarregarObraStatus(); }
+  // Fechamento pendente: carrega (1× por empresa, async) o mapa de obras (status+entrega) e
+  // as datas de aceite; re-renderiza quando chega. Guard evita refetch/loop.
+  if(_ceoObraGapMap===null || _ceoObraGapEmp!==_eidNow){ _ceoObraGapMap=_ceoObraGapMap||{}; _ceoObraGapEmp=_eidNow; _ceoCarregarObrasGap(); }
 
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
@@ -7719,6 +7793,9 @@ function carregarCeoDash(){
           +'</div>';
       }).join('');
   }
+
+  // Seção "Fechamento Pendente — Obras Finalizadas" (respeita o filtro de ano via pc).
+  _ceoRenderGaps(pc);
 }
 
 function togPropostas(){
