@@ -7462,6 +7462,11 @@ function _ceoStatusEfetivo(p){
   }
   return st;
 }
+// Status OPERACIONAIS terminais (obra concluída) — 'ganho' com obra nesses status NÃO é
+// pipeline ativo. 'ganho' SEM obra permanece ('ganho' não é terminal). 'cancelada' já vira
+// obra=null no Operacional; incluída por segurança.
+var _CEO_TERMINAIS=['finalizado','entregue_ao_cliente','em_garantia','encerrada','cancelada'];
+function _ceoTerminal(st){ return _CEO_TERMINAIS.indexOf(String(st||'').trim().toLowerCase())>=0; }
 
 // ── KPIs da Visão Executiva: tooltip (ⓘ) + modal com lista de propostas ──────
 // Listas guardadas no render para o modal consultar ao clicar (UI apenas).
@@ -7542,7 +7547,9 @@ function carregarCeoDash(){
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
   // lista "Serviços Fechados — Fase OPERACIONAL" usam esta base (não as fases abertas).
-  var pipeline=pc.filter(function(p){return isVisaoExecutivaAtiva(p);});
+  // Exclui 'ganho' cuja OBRA já está terminal (finalizado/entregue/encerrada/…): a proposta
+  // continua 'ganho' no banco, mas a execução acabou → fora do pipeline ativo.
+  var pipeline=pc.filter(function(p){return isVisaoExecutivaAtiva(p) && !_ceoTerminal(_ceoStatusEfetivo(p));});
   var valPipeline=pipeline.reduce(function(s,p){return s+n2(p.val);},0);
   var cntPipeline=pipeline.length;
   // Modais "Pipeline Ativo" e "Em Execução": mesma coleção que alimenta o KPI
