@@ -7492,15 +7492,6 @@ function _ceoStatusEfetivo(p){
 var _CEO_TERMINAIS=['finalizado','entregue_ao_cliente','em_garantia','encerrada','cancelada'];
 function _ceoTerminal(st){ return _CEO_TERMINAIS.indexOf(String(st||'').trim().toLowerCase())>=0; }
 
-// Ícones SVG inline (estilo Tabler, monocromáticos via currentColor). Sem dependência externa.
-var _CEO_ICO_NF="<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z\"/><path d=\"M9 7l1 0\"/><path d=\"M9 13l6 0\"/><path d=\"M13 17l2 0\"/>";
-var _CEO_ICO_ACEITE="<path d=\"M3 17c3.333 -3.333 5 -6 5 -8c0 -3 -1 -3 -2 -3s-2.032 1.085 -2 3c.034 2.048 1.658 4.877 2.5 6c1.5 2 2.5 2.5 3.5 1l2 -3c.667 2.667 2 4 4 4c1.047 0 1.799 -.687 2.5 -1.5\"/>";
-var _CEO_ICO_ENTREGA="<path d=\"M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5\"/>";
-function _ceoIco(paths, cor, title){
-  return '<span class="ceo-ico" title="'+esc(title||'')+'" style="color:'+cor+'">'
-    +'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+paths+'</svg></span>';
-}
-
 // ── Fechamento Pendente — obras finalizadas com gaps (aceite / entrega / NF) ──
 // Mapa proposta_app_id → { status_operacional, data_entrega_real } (query slim de obras).
 var _ceoObraGapMap=null, _ceoObraGapEmp=null;
@@ -7782,6 +7773,12 @@ function carregarCeoDash(){
       .filter(function(p){ return FAS_OPERACIONAL_ATIVA.indexOf(_ceoStatusEfetivo(p))>=0; })
       .sort(function(a,b){return n2(b.val)-n2(a.val);});
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
+    // Pastilhas (mesmo estilo da coluna direita). Cor do selo de dias por faixa: verde/âmbar/vermelho.
+    var _pillStyle={ g:'color:#3fb950;border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.14)',
+                     a:'color:#d4a017;border-color:rgba(212,160,23,.5);background:rgba(212,160,23,.14)',
+                     r:'color:#f85149;border-color:rgba(248,81,73,.5);background:rgba(248,81,73,.14)' };
+    var _pill=function(k,txt){ return '<span class="ceo-pill" style="'+(_pillStyle[k]||_pillStyle.g)+'">'+txt+'</span>'; };
+    var _semPill=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _pill(d<=bom?'g':d<=ok?'a':'r', d+'d '+lbl); };
     // Cartão de resumo (só conta/soma o que já está na lista).
     var totalAtivo=pipeSorted.reduce(function(s,p){return s+n2(p.val);},0);
     var resumoA='<div class="ceo-sum"><div class="ceo-sum-hd">'
@@ -7797,15 +7794,33 @@ function carregarCeoDash(){
         var isAtr=fas==='atrasado';
         var isPausa=fas.indexOf('em_pausa')===0;
         var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
-        var dExec=_dd(tl.dtInicioExec||p.dtFech||p.dat2);
-        var sub='<span style="color:'+corFase+'">'+(fase.i?fase.i+' ':'')+esc(fase.n)+'</span>'+(dExec!==null?' · '+dExec+'d':'');
-        var icoNF=(nfs.length===0)?_ceoIco(_CEO_ICO_NF,'#f85149','Sem nota fiscal'):'';
+        // Selos-pastilha de dias/NF por fase (mesma lógica de faixas da versão anterior).
+        var dtI=tl.dtInicioExec||'', dtA=tl.dtAceite||'', dtT=tl.dtTermino||'', dtF=p.dtFech||'';
+        var kpi='';
+        if(fas==='aprovado') kpi+=_semPill(_dd(dtF),15,30,'pré-obra');
+        if(fas==='ganho'){
+          if(dtF) kpi+=_semPill(_dd(dtF),15,30,'pré-obra');
+          var dExG=_dd(dtI);
+          if(dExG!==null) kpi+=_semPill(dExG,30,60,'execução');
+          if(dtA||dtT) kpi+=_semPill(_dd(dtA||dtT),3,7,'→ NF');
+          else if(dExG!==null&&dExG>30&&nfs.length===0) kpi+=_pill('r','sem NF '+dExG+'d');
+        }
+        if(['andamento','taf','sat'].indexOf(fas)>=0){
+          var dEx=_dd(dtI||dtF||p.dat2);
+          if(dEx!==null) kpi+=_semPill(dEx,30,60,'execução');
+          if(dtA||dtT) kpi+=_semPill(_dd(dtA||dtT),3,7,'→ NF');
+          else if(dEx!==null&&dEx>30&&nfs.length===0) kpi+=_pill('r','sem NF '+dEx+'d');
+        }
+        if(isPausa) kpi+=_semPill(_dd(dtF||p.dat2),15,30,'pausa');
+        if(isAtr)   kpi+=_pill('r','ATRASADA');
+        var statusTxt='<span style="color:'+corFase+'">'+(fase.i?fase.i+' ':'')+esc(fase.n)+'</span>';
         return '<div class="ceo-row">'
           +'<div class="ceo-row-main">'
             +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
-            +'<div class="ceo-row-sub">'+sub+'</div>'
+            +'<div class="ceo-row-sub">'+statusTxt+'</div>'
+            +(kpi?'<div class="ceo-row-pills">'+kpi+'</div>':'')
           +'</div>'
-          +'<div class="ceo-row-right">'+icoNF+'<span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
+          +'<div class="ceo-row-right"><span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
         +'</div>';
       }).join(''):'<p class="ceo-empty">Nenhum serviço em fase operacional.</p>');
   }
