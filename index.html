@@ -301,6 +301,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .conv-bad{color:var(--red);font-weight:700}
 .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 #ceoBottom{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+#ceoExecTop{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1rem}
+/* Visão Executiva — colunas de listas (Obras em andamento / Fechamento pendente) */
+.ceo-col-tit{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 .5rem;color:var(--green)}
+.ceo-sum{border:1px solid var(--border);border-radius:var(--r2);padding:.5rem .65rem;margin-bottom:.55rem;background:var(--bg3)}
+.ceo-sum-amber{background:rgba(212,160,23,.12);border-color:rgba(212,160,23,.35)}
+.ceo-sum-hd{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+.ceo-sum-n{font-size:.72rem;color:var(--text3);font-weight:600}
+.ceo-sum-v{font-size:.9rem;font-weight:800;color:var(--accent);white-space:nowrap}
+.ceo-pills{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.4rem}
+.ceo-pill{font-size:.6rem;font-weight:700;padding:.1rem .45rem;border-radius:20px;white-space:nowrap;border:1px solid}
+.ceo-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.38rem 0;border-bottom:1px solid var(--border)}
+.ceo-row:last-child{border-bottom:none}
+.ceo-row-main{min-width:0;flex:1}
+.ceo-row-tit{font-size:.76rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ceo-row-sub{font-size:.64rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
+.ceo-row-right{display:flex;align-items:center;gap:.35rem;flex-shrink:0}
+.ceo-row-val{font-size:.74rem;font-weight:700;color:var(--accent);white-space:nowrap}
+.ceo-ico{display:inline-flex;align-items:center;vertical-align:-3px;margin-right:.25rem}
+.ceo-empty{font-size:.74rem;color:var(--text3);margin-top:.3rem}
 #deAlertasGrid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem}
 .metric-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem}
 .metric-label{font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.18rem}
@@ -616,6 +635,7 @@ body.sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
 
   /* ── Visão Executiva mobile ── */
   #ceoBottom      { grid-template-columns: 1fr; }
+  #ceoExecTop     { grid-template-columns: 1fr; }
   #ceoKpis.kpi-g  { grid-template-columns: repeat(2,1fr) !important; }
   /* ── Motor de Decisão mobile ── */
   #deAlertasGrid  { grid-template-columns: 1fr; }
@@ -1096,12 +1116,14 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
     </div>
     <div id="ceoDashBody" style="padding-top:.9rem">
       <div class="kpi-g" id="ceoKpis" style="margin-bottom:.9rem"></div>
-      <div id="ceoPhaseBars" style="margin-bottom:1rem"></div>
-      <div id="ceoBottom">
-        <div id="ceoTopCli"></div>
+      <div id="ceoExecTop">
+        <div id="ceoPhaseBars"></div>
         <div id="ceoMes"></div>
       </div>
-      <div id="ceoGaps" style="margin-top:1rem"></div>
+      <div id="ceoBottom">
+        <div id="ceoTopCli"></div>
+        <div id="ceoGaps"></div>
+      </div>
     </div>
   </div>
 
@@ -7469,6 +7491,15 @@ function _ceoStatusEfetivo(p){
 var _CEO_TERMINAIS=['finalizado','entregue_ao_cliente','em_garantia','encerrada','cancelada'];
 function _ceoTerminal(st){ return _CEO_TERMINAIS.indexOf(String(st||'').trim().toLowerCase())>=0; }
 
+// Ícones SVG inline (estilo Tabler, monocromáticos via currentColor). Sem dependência externa.
+var _CEO_ICO_NF="<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z\"/><path d=\"M9 7l1 0\"/><path d=\"M9 13l6 0\"/><path d=\"M13 17l2 0\"/>";
+var _CEO_ICO_ACEITE="<path d=\"M3 17c3.333 -3.333 5 -6 5 -8c0 -3 -1 -3 -2 -3s-2.032 1.085 -2 3c.034 2.048 1.658 4.877 2.5 6c1.5 2 2.5 2.5 3.5 1l2 -3c.667 2.667 2 4 4 4c1.047 0 1.799 -.687 2.5 -1.5\"/>";
+var _CEO_ICO_ENTREGA="<path d=\"M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5\"/>";
+function _ceoIco(paths, cor, title){
+  return '<span class="ceo-ico" title="'+esc(title||'')+'" style="color:'+cor+'">'
+    +'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+paths+'</svg></span>';
+}
+
 // ── Fechamento Pendente — obras finalizadas com gaps (aceite / entrega / NF) ──
 // Mapa proposta_app_id → { status_operacional, data_entrega_real } (query slim de obras).
 var _ceoObraGapMap=null, _ceoObraGapEmp=null;
@@ -7518,25 +7549,36 @@ function _ceoRenderGaps(pc){
     if(g) itens.push({p:p, g:g});
   });
   itens.sort(function(a,b){ return n2(b.p.val)-n2(a.p.val); });
-  var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
-  el.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .5rem">⚠️ Fechamento Pendente — Obras Finalizadas</div>'
+  // Cartão de resumo (só conta/soma o que já está na lista).
+  var totalVal=itens.reduce(function(s,it){return s+n2(it.p.val);},0);
+  var cAce=itens.filter(function(it){return it.g.aceite;}).length;
+  var cEnt=itens.filter(function(it){return it.g.entrega;}).length;
+  var cNF =itens.filter(function(it){return it.g.nf;}).length;
+  var _pillA='color:#d4a017;border-color:rgba(212,160,23,.5);background:rgba(212,160,23,.14)';
+  var _pillR='color:#f85149;border-color:rgba(248,81,73,.5);background:rgba(248,81,73,.14)';
+  var resumo='<div class="ceo-sum ceo-sum-amber">'
+    +'<div class="ceo-sum-hd"><span class="ceo-sum-n">'+itens.length+' obra'+(itens.length===1?'':'s')+' · valor parado</span><span class="ceo-sum-v">'+money(totalVal)+'</span></div>'
+    +'<div class="ceo-pills">'
+      +'<span class="ceo-pill" style="'+_pillA+'">'+cAce+' sem aceite</span>'
+      +'<span class="ceo-pill" style="'+_pillA+'">'+cEnt+' sem entrega</span>'
+      +'<span class="ceo-pill" style="'+_pillR+'">'+cNF+' sem NF</span>'
+    +'</div></div>';
+  el.innerHTML='<div class="ceo-col-tit">⚠️ Fechamento Pendente — Obras Finalizadas</div>'+resumo
     +(itens.length?itens.map(function(it){
       var p=it.p, g=it.g;
-      var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
       var tit=(p.tit||p.num||'—').trim();
-      var selos='';
-      if(g.aceite)  selos+=_bdg('#d4a017','⚠️ sem aceite');
-      if(g.entrega) selos+=_bdg('#d4a017','⚠️ sem entrega');
-      if(g.nf)      selos+=_bdg('#f85149','🔴 sem NF');
-      return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">'
-        +'<div style="font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;word-break:break-word">'+esc(tit)+'</div>'
-        +'<div style="font-size:.66rem;color:var(--text3);margin-top:.1rem;line-height:1.3;word-break:break-word">'+(p.num?esc(p.num)+' · ':'')+esc(cli)+'</div>'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.22rem;gap:.4rem;flex-wrap:wrap">'
-        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.1rem;flex:1;min-width:0">'+selos+'</div>'
-        +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;white-space:nowrap">'+money(n2(p.val))+'</div>'
+      var icos='';
+      if(g.aceite)  icos+=_ceoIco(_CEO_ICO_ACEITE,'#d4a017','Sem data de aceite');
+      if(g.entrega) icos+=_ceoIco(_CEO_ICO_ENTREGA,'#d4a017','Sem entrega ao cliente');
+      if(g.nf)      icos+=_ceoIco(_CEO_ICO_NF,'#f85149','Sem nota fiscal');
+      return '<div class="ceo-row">'
+        +'<div class="ceo-row-main">'
+          +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+          +'<div class="ceo-row-sub">'+(p.num?esc(p.num)+' ':'')+icos+'</div>'
         +'</div>'
+        +'<div class="ceo-row-right"><span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
       +'</div>';
-    }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Nenhuma obra finalizada com pendências de fechamento.</p>');
+    }).join(''):'<p class="ceo-empty">Nenhuma obra finalizada com pendências de fechamento.</p>');
 }
 
 // ── KPIs da Visão Executiva: tooltip (ⓘ) + modal com lista de propostas ──────
@@ -7725,53 +7767,32 @@ function carregarCeoDash(){
       .filter(function(p){ return FAS_OPERACIONAL_ATIVA.indexOf(_ceoStatusEfetivo(p))>=0; })
       .sort(function(a,b){return n2(b.val)-n2(a.val);});
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
-    var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
-    var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
-
-    cliEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔧 Serviços Fechados — Fase OPERACIONAL</div>'
+    // Cartão de resumo (só conta/soma o que já está na lista).
+    var totalAtivo=pipeSorted.reduce(function(s,p){return s+n2(p.val);},0);
+    var resumoA='<div class="ceo-sum"><div class="ceo-sum-hd">'
+      +'<span class="ceo-sum-n">'+pipeSorted.length+' obra'+(pipeSorted.length===1?'':'s')+' ativa'+(pipeSorted.length===1?'':'s')+'</span>'
+      +'<span class="ceo-sum-v">'+money(totalAtivo)+'</span></div></div>';
+    cliEl.innerHTML='<div class="ceo-col-tit">🔧 Obras em Andamento</div>'+resumoA
       +(pipeSorted.length?pipeSorted.map(function(p){
-        var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
         var tit=(p.tit||p.num||'—').trim();
-        // Opção A: exibe o status EFETIVO (obra manda p/ 'ganho'+obra) no badge e nos selos.
-        var fas=_ceoStatusEfetivo(p);
+        var fas=_ceoStatusEfetivo(p);                 // status EFETIVO (obra manda p/ 'ganho'+obra)
         var fase=FASE[fas]||{n:fas,i:''};
         var tl=p.tl||{};
         var nfs=tl.nfs||[];
         var isAtr=fas==='atrasado';
         var isPausa=fas.indexOf('em_pausa')===0;
         var corFase=isAtr?'var(--red)':(isPausa?'var(--accent)':'var(--green)');
-        // Badge de KPI ao lado do status
-        var kpi='';
-        var dtI=tl.dtInicioExec||'', dtA=tl.dtAceite||'', dtT=tl.dtTermino||'', dtF=p.dtFech||'';
-        if(fas==='aprovado')  kpi=_sem(_dd(dtF),15,30,'pré-obra');
-        // Ganho: mostra TODOS os selos cujas datas existirem (pré-obra + execução + → NF / sem NF)
-        if(fas==='ganho'){
-          if(dtF) kpi+=_sem(_dd(dtF),15,30,'pré-obra');
-          var dExG=_dd(dtI);
-          if(dExG!==null) kpi+=_sem(dExG,30,60,'execução');
-          if(dtA||dtT) kpi+=_sem(_dd(dtA||dtT),3,7,'→ NF');
-          else if(dExG!==null&&dExG>30&&nfs.length===0) kpi+=_bdg('#f85149','🔴 sem NF '+dExG+'d');
-        }
-        if(['andamento','taf','sat'].indexOf(fas)>=0){
-          var dEx=_dd(dtI||dtF||p.dat2);
-          if(dEx!==null) kpi+=_sem(dEx,30,60,'execução');
-          if(dtA||dtT) kpi+=_sem(_dd(dtA||dtT),3,7,'→ NF');
-          else if(dEx!==null&&dEx>30&&nfs.length===0) kpi+=_bdg('#f85149','🔴 sem NF '+dEx+'d');
-        }
-        if(isPausa) kpi+=_sem(_dd(dtF||p.dat2),15,30,'pausa');
-        if(isAtr)   kpi+=_bdg('#f85149','🔴 ATRASADA');
-        return '<div style="padding:.4rem 0;border-bottom:1px solid var(--border)">'
-          +'<div style="font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;word-break:break-word">'+esc(tit)+'</div>'
-          +'<div style="font-size:.66rem;color:var(--text3);margin-top:.1rem;line-height:1.3;word-break:break-word">'+esc(cli)+'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.22rem;gap:.4rem;flex-wrap:wrap">'
-          +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:.1rem;flex:1;min-width:0">'
-          +'<span style="font-size:.65rem;color:'+corFase+'">'+(fase.i?fase.i+' ':'')+fase.n+'</span>'
-          +kpi
+        var dExec=_dd(tl.dtInicioExec||p.dtFech||p.dat2);
+        var sub='<span style="color:'+corFase+'">'+(fase.i?fase.i+' ':'')+esc(fase.n)+'</span>'+(dExec!==null?' · '+dExec+'d':'');
+        var icoNF=(nfs.length===0)?_ceoIco(_CEO_ICO_NF,'#f85149','Sem nota fiscal'):'';
+        return '<div class="ceo-row">'
+          +'<div class="ceo-row-main">'
+            +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+            +'<div class="ceo-row-sub">'+sub+'</div>'
           +'</div>'
-          +'<div style="font-size:.74rem;font-weight:700;color:var(--accent);flex-shrink:0;white-space:nowrap">'+money(n2(p.val))+'</div>'
-          +'</div>'
-          +'</div>';
-      }).join(''):'<p style="font-size:.74rem;color:var(--text3);margin-top:.3rem">Nenhum serviço em fase operacional.</p>');
+          +'<div class="ceo-row-right">'+icoNF+'<span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
+        +'</div>';
+      }).join(''):'<p class="ceo-empty">Nenhum serviço em fase operacional.</p>');
   }
 
   var mesEl=Q('ceoMes');
