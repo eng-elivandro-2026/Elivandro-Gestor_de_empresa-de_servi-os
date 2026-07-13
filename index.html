@@ -315,6 +315,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ceo-row:last-child{border-bottom:none}
 .ceo-row-main{min-width:0;flex:1}
 .ceo-row-tit{font-size:.76rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ceo-row-num{color:var(--text3);font-weight:700}
 .ceo-row-sub{font-size:.64rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
 .ceo-row-pills{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.2rem}
 .ceo-row-right{display:flex;align-items:center;gap:.35rem;flex-shrink:0}
@@ -7486,6 +7487,12 @@ function _ceoStatusEfetivo(p){
   }
   return st;
 }
+// Título de linha das listas: número da proposta (discreto) + descrição, mesmo padrão nas 2 colunas.
+function _ceoNumDesc(p){
+  var num=String((p&&p.num)||'').trim(), desc=String((p&&p.tit)||'').trim();
+  return { txt:(num&&desc)?(num+' — '+desc):(desc||num||'—'),
+           html:(num?'<span class="ceo-row-num">'+esc(num)+'</span>'+(desc?' — '+esc(desc):''):esc(desc||num||'—')) };
+}
 // Status OPERACIONAIS terminais (obra concluída) — 'ganho' com obra nesses status NÃO é
 // pipeline ativo. 'ganho' SEM obra permanece ('ganho' não é terminal). 'cancelada' já vira
 // obra=null no Operacional; incluída por segurança.
@@ -7558,7 +7565,7 @@ function _ceoRenderGaps(pc){
   el.innerHTML='<div class="ceo-col-tit">⚠️ Fechamento Pendente — Obras Finalizadas</div>'+resumo
     +(itens.length?itens.map(function(it){
       var p=it.p, g=it.g;
-      var tit=(p.tit||p.num||'—').trim();
+      var nd=_ceoNumDesc(p);
       // Selos-pastilha de texto (mesmo estilo das pílulas do dashboard) — 1 por gap.
       var pills='';
       if(g.aceite)  pills+='<span class="ceo-pill" style="'+_pillA+'">sem aceite</span>';
@@ -7566,7 +7573,7 @@ function _ceoRenderGaps(pc){
       if(g.nf)      pills+='<span class="ceo-pill" style="'+_pillR+'">sem NF</span>';
       return '<div class="ceo-row">'
         +'<div class="ceo-row-main">'
-          +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+          +'<div class="ceo-row-tit" title="'+esc(nd.txt)+'">'+nd.html+'</div>'
           +'<div class="ceo-row-pills">'+pills+'</div>'
         +'</div>'
         +'<div class="ceo-row-right"><span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
@@ -7786,7 +7793,7 @@ function carregarCeoDash(){
       +'<span class="ceo-sum-v">'+money(totalAtivo)+'</span></div></div>';
     cliEl.innerHTML='<div class="ceo-col-tit">🔧 Obras em Andamento</div>'+resumoA
       +(pipeSorted.length?pipeSorted.map(function(p){
-        var tit=(p.tit||p.num||'—').trim();
+        var nd=_ceoNumDesc(p);
         var fas=_ceoStatusEfetivo(p);                 // status EFETIVO (obra manda p/ 'ganho'+obra)
         var fase=FASE[fas]||{n:fas,i:''};
         var tl=p.tl||{};
@@ -7816,7 +7823,7 @@ function carregarCeoDash(){
         var statusTxt='<span style="color:'+corFase+'">'+(fase.i?fase.i+' ':'')+esc(fase.n)+'</span>';
         return '<div class="ceo-row">'
           +'<div class="ceo-row-main">'
-            +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
+            +'<div class="ceo-row-tit" title="'+esc(nd.txt)+'">'+nd.html+'</div>'
             +'<div class="ceo-row-sub">'+statusTxt+'</div>'
             +(kpi?'<div class="ceo-row-pills">'+kpi+'</div>':'')
           +'</div>'
@@ -7838,8 +7845,8 @@ function carregarCeoDash(){
     ];
     mesEl.innerHTML='<div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📅 '+nomeMes+' / '+anoAtual+'</div>'
       +rows.map(function(r){
-        return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.4rem;font-size:.74rem;padding:.22rem 0;border-bottom:1px solid var(--border);min-width:0">'
-          +'<span style="color:var(--text3);flex:1;white-space:nowrap">'+r[0]+'</span>'
+        return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.4rem;font-size:.88rem;padding:.34rem 0;border-bottom:1px solid var(--border);min-width:0">'
+          +'<span style="color:var(--text2);flex:1;white-space:nowrap">'+r[0]+'</span>'
           +'<span style="color:'+r[2]+';font-weight:700;flex-shrink:0;text-align:right;white-space:nowrap">'+r[1]+'</span>'
           +'</div>';
       }).join('');
