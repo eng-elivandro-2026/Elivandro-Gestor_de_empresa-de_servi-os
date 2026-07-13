@@ -316,6 +316,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ceo-row-main{min-width:0;flex:1}
 .ceo-row-tit{font-size:.76rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ceo-row-sub{font-size:.64rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
+.ceo-row-pills{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.2rem}
 .ceo-row-right{display:flex;align-items:center;gap:.35rem;flex-shrink:0}
 .ceo-row-val{font-size:.74rem;font-weight:700;color:var(--accent);white-space:nowrap}
 .ceo-ico{display:inline-flex;align-items:center;vertical-align:-3px;margin-right:.25rem}
@@ -7567,14 +7568,15 @@ function _ceoRenderGaps(pc){
     +(itens.length?itens.map(function(it){
       var p=it.p, g=it.g;
       var tit=(p.tit||p.num||'—').trim();
-      var icos='';
-      if(g.aceite)  icos+=_ceoIco(_CEO_ICO_ACEITE,'#d4a017','Sem data de aceite');
-      if(g.entrega) icos+=_ceoIco(_CEO_ICO_ENTREGA,'#d4a017','Sem entrega ao cliente');
-      if(g.nf)      icos+=_ceoIco(_CEO_ICO_NF,'#f85149','Sem nota fiscal');
+      // Selos-pastilha de texto (mesmo estilo das pílulas do dashboard) — 1 por gap.
+      var pills='';
+      if(g.aceite)  pills+='<span class="ceo-pill" style="'+_pillA+'">sem aceite</span>';
+      if(g.entrega) pills+='<span class="ceo-pill" style="'+_pillA+'">sem entrega</span>';
+      if(g.nf)      pills+='<span class="ceo-pill" style="'+_pillR+'">sem NF</span>';
       return '<div class="ceo-row">'
         +'<div class="ceo-row-main">'
           +'<div class="ceo-row-tit" title="'+esc(tit)+'">'+esc(tit)+'</div>'
-          +'<div class="ceo-row-sub">'+(p.num?esc(p.num)+' ':'')+icos+'</div>'
+          +'<div class="ceo-row-pills">'+pills+'</div>'
         +'</div>'
         +'<div class="ceo-row-right"><span class="ceo-row-val">'+money(n2(p.val))+'</span></div>'
       +'</div>';
