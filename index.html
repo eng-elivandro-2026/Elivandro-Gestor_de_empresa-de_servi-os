@@ -7419,6 +7419,38 @@ function togCeoDash(){
   ch.textContent=open?'▼ expandir':'▲';
 }
 
+// ── Visão Executiva × Operacional: status real da obra ───────────────────────
+// Negócios 'ganho' que viraram obra mantêm fase='ganho' na proposta; o status
+// operacional real vive em obras.status_operacional. Este mapa (proposta_app_id →
+// status_operacional) é preenchido lendo window.opListarNegociosOperacionais
+// (loader do módulo Operacional — apenas leitura; não altera o módulo nem a tabela).
+var _ceoObraStatusMap=null, _ceoObraStatusEmp=null;
+function _ceoEmpAtualId(){ try{ return (typeof getEmpresaAtivaId==='function')?getEmpresaAtivaId():((window._empresaAtiva&&window._empresaAtiva.id)||null); }catch(e){ return null; } }
+function _ceoCarregarObraStatus(){
+  if(typeof window.opListarNegociosOperacionais!=='function') return;
+  var eid=_ceoEmpAtualId(); if(!eid) return;
+  window.opListarNegociosOperacionais(eid).then(function(negs){
+    var m={};
+    (negs||[]).forEach(function(o){
+      if(o&&o.status_source==='obra'&&o.proposta_app_id)
+        m[String(o.proposta_app_id)]=String(o.status_operacional||'').trim().toLowerCase();
+    });
+    _ceoObraStatusMap=m; _ceoObraStatusEmp=eid;
+    try{ carregarCeoDash(); }catch(e){}   // re-render com o status fresco
+  }).catch(function(){});
+}
+// Status operacional EFETIVO da proposta: para 'ganho' que virou obra, usa o status
+// da obra; caso contrário, a fase da própria proposta.
+function _ceoStatusEfetivo(p){
+  var st=String((p&&(p.fas||p.fase))||'').trim().toLowerCase();
+  if(st==='ganho'){
+    var m=_ceoObraStatusMap||{};
+    var so=m[String(p.id)]||m[String(p.app_id)]||'';
+    if(so) return so;
+  }
+  return st;
+}
+
 function carregarCeoDash(){
   var b=Q('ceoDashBody');
   if(!b) return;
@@ -7428,6 +7460,16 @@ function carregarCeoDash(){
 
   // Respeita o filtro de ano global da aba Comercial (propsComercial); 'all' = tudo.
   var pc=(typeof propsComercial==='function')?propsComercial():props;
+
+  // Status OPERACIONAIS ativos (SEM 'ganho') — usado APENAS na lista "Serviços Fechados —
+  // Fase Operacional" (#ceoTopCli). Aplicado ao status EFETIVO (obra manda p/ 'ganho'+obra).
+  var FAS_OPERACIONAL_ATIVA=['aprovado','andamento','taf','sat','atrasado',
+    'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
+
+  // Cruzamento com a tabela obras: carrega (uma vez por empresa, async) o status real dos
+  // negócios 'ganho' que viraram obra e re-renderiza quando chega. Guard evita refetch/loop.
+  var _eidNow=_ceoEmpAtualId();
+  if(_ceoObraStatusMap===null || _ceoObraStatusEmp!==_eidNow){ _ceoObraStatusMap=_ceoObraStatusMap||{}; _ceoObraStatusEmp=_eidNow; _ceoCarregarObraStatus(); }
 
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
@@ -7504,7 +7546,12 @@ function carregarCeoDash(){
 
   var cliEl=Q('ceoTopCli');
   if(cliEl){
-    var pipeSorted=pipeline.slice().sort(function(a,b){return n2(b.val)-n2(a.val);});
+    // Lista "Serviços Fechados — Fase Operacional": só status operacionais ATIVOS.
+    // Usa o status EFETIVO — inclui 'ganho' que virou obra com status ativo (via obras) e
+    // exclui 'ganho' sem obra (ou com obra não-ativa). Fases operacionais na própria proposta seguem.
+    var pipeSorted=pipeline
+      .filter(function(p){ return FAS_OPERACIONAL_ATIVA.indexOf(_ceoStatusEfetivo(p))>=0; })
+      .sort(function(a,b){return n2(b.val)-n2(a.val);});
     var _dd=function(iso){ if(!iso) return null; var d=new Date(iso.length===10?iso+'T12:00:00':iso); return isNaN(d)?null:Math.floor((Date.now()-d.getTime())/86400000); };
     var _bdg=function(cor,txt){ return '<span style="display:inline-flex;align-items:center;background:'+cor+'22;border:1px solid '+cor+'66;border-radius:5px;padding:.08rem .38rem;font-size:.65rem;color:'+cor+';font-weight:700;white-space:nowrap;margin-left:.3rem">'+txt+'</span>'; };
     var _sem=function(d,bom,ok,lbl){ if(d===null||d<0) return ''; return _bdg(d<=bom?'#3fb950':d<=ok?'#d4a017':'#f85149',d+'d '+lbl); };
@@ -7513,7 +7560,8 @@ function carregarCeoDash(){
       +(pipeSorted.length?pipeSorted.map(function(p){
         var cli=((p.loc||'').trim()||(p.cli||'').trim()||'N/I');
         var tit=(p.tit||p.num||'—').trim();
-        var fas=p.fas||'';
+        // Opção A: exibe o status EFETIVO (obra manda p/ 'ganho'+obra) no badge e nos selos.
+        var fas=_ceoStatusEfetivo(p);
         var fase=FASE[fas]||{n:fas,i:''};
         var tl=p.tl||{};
         var nfs=tl.nfs||[];
