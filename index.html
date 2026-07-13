@@ -7498,6 +7498,17 @@ function _ceoNumDesc(p){
 // obra=null no Operacional; incluída por segurança.
 var _CEO_TERMINAIS=['finalizado','entregue_ao_cliente','em_garantia','encerrada','cancelada'];
 function _ceoTerminal(st){ return _CEO_TERMINAIS.indexOf(String(st||'').trim().toLowerCase())>=0; }
+// FINALIZADAS (obra concluída de verdade) — SEM 'cancelada'. Usado SÓ na seção
+// "Fechamento Pendente": obra cancelada/desfeita NÃO é fechamento pendente.
+// (O pipeline/KPIs seguem usando _CEO_TERMINAIS, que exclui 'cancelada' do ativo.)
+var _CEO_FINALIZADAS=['finalizado','entregue_ao_cliente','em_garantia','encerrada'];
+function _ceoFinalizada(st){ return _CEO_FINALIZADAS.indexOf(String(st||'').trim().toLowerCase())>=0; }
+// Proposta coerente com ter obra finalizada (ganha/operacional) — descarta órfãs cuja
+// proposta voltou ao comercial (em_elaboracao/enviada/perdido…).
+function _ceoPropostaAtivaOuGanha(p){
+  if(typeof window.isPropostaGanhaOuAprovada==='function'){ try{ return !!window.isPropostaGanhaOuAprovada(p); }catch(e){} }
+  return String((p&&(p.fas||p.fase))||'').trim().toLowerCase()==='ganho';
+}
 
 // ── Fechamento Pendente — obras finalizadas com gaps (aceite / entrega / NF) ──
 // Mapa proposta_app_id → { status_operacional, data_entrega_real } (query slim de obras).
@@ -7526,7 +7537,7 @@ function _ceoCarregarObrasGap(){
 // aceiteOficial = window._opExecDatasMap[id].ace (gestao_negocio). Aceite presente se
 // aceiteOficial OU proposta.tl.dtAceite.
 function _ceoGapsFechamento(p, obra, aceiteOficial){
-  if(!obra || !_ceoTerminal(obra.status_operacional)) return null;
+  if(!obra || !_ceoFinalizada(obra.status_operacional)) return null;   // 'cancelada' NÃO conta como finalizada
   var tl=(p&&p.tl)||{};
   var semAceite=!(aceiteOficial || tl.dtAceite);
   var semEntrega=!(obra.data_entrega_real);
@@ -7543,6 +7554,7 @@ function _ceoRenderGaps(pc){
   var itens=[];
   Object.keys(map).forEach(function(pid){
     var p=byId[String(pid)]; if(!p) return;            // sem proposta em memória (filtro de ano) → pula
+    if(!_ceoPropostaAtivaOuGanha(p)) return;           // obra órfã: proposta voltou ao comercial → pula
     var ace=(_op[String(pid)]||{}).ace||'';
     var g=_ceoGapsFechamento(p, map[pid], ace);
     if(g) itens.push({p:p, g:g});
