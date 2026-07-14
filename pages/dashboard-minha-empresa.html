@@ -139,9 +139,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .wiz-val-chip.on{background:var(--emp-cor);border-color:var(--emp-cor);color:#fff}
 .wiz-val-chip[disabled]{opacity:.4;cursor:not-allowed}
 .wiz-val-vazio{font-size:.85rem;color:var(--text3);font-style:italic;padding:1rem 0}
+/* Etapa Resumo — texto final + lembrete das respostas guiadas (2 colunas) */
+.wiz-resumo-bloco{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1rem}
+.wiz-resumo-campo label{display:block;font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.35rem}
+.wiz-resumo-campo textarea{width:100%;min-height:150px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.88rem;line-height:1.5;padding:.5rem .65rem;resize:vertical}
+.wiz-lembrete{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .7rem;max-height:260px;overflow-y:auto}
+.wiz-lembrete-tit{font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem}
+.wiz-lembrete-item{margin-bottom:.55rem}
+.wiz-lembrete-q{display:block;font-size:.72rem;font-weight:700;color:var(--emp-cor)}
+.wiz-lembrete-a{display:block;font-size:.8rem;color:var(--text2);line-height:1.45;white-space:pre-wrap}
+.wiz-lembrete-vazio{font-size:.8rem;color:var(--text3);font-style:italic}
+/* Versionamento */
+.ver-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .7rem;margin-bottom:.5rem}
+.ver-info{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;min-width:0}
+.ver-num{font-size:.9rem;font-weight:700;color:var(--text)}
+.ver-badge{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:.12rem .5rem;border-radius:999px;background:var(--bg2);border:1px solid var(--border2);color:var(--text3)}
+.ver-badge.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.ver-data{font-size:.74rem;color:var(--text3)}
+.ver-acoes{display:flex;gap:.4rem;flex-wrap:wrap}
+.conf-list{margin:.6rem 0;padding-left:1.2rem;font-size:.86rem;color:var(--text);line-height:1.6}
+.conf-mantem{font-size:.78rem;color:var(--text3);line-height:1.5;margin-top:.5rem}
 
 @media(max-width:680px){
   .val-grid{grid-template-columns:1fr}
+  .wiz-resumo-bloco{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -182,7 +203,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="sec">
     <div class="sec-head">
       <div class="sec-titulo"><span class="sec-icon">🎯</span> Missão</div>
-      <button class="btn btn-ghost btn-sm" id="btn-edit-missao" style="display:none" onclick="editarIdentidade('missao')">✏️ Editar</button>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="btn-versoes" style="display:none" onclick="abrirVersoes()">🗂️ Versões</button>
+        <button class="btn btn-ghost btn-sm" id="btn-edit-missao" style="display:none" onclick="editarIdentidade('missao')">✏️ Editar</button>
+      </div>
     </div>
     <div id="box-missao"><div class="sec-vazio">Carregando…</div></div>
   </div>
@@ -253,6 +277,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- Modal: versões da identidade -->
+<div class="modal-bg" id="modal-versoes">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-titulo">Versões da Identidade</div>
+      <button class="btn btn-ghost btn-sm" onclick="fecharVersoes()">✕</button>
+    </div>
+    <div id="versoes-lista"></div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharVersoes()">Fechar</button>
+      <button class="btn btn-emp" onclick="criarNovaVersao()">＋ Criar nova versão</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmação de ativação (projeção na tela) -->
+<div class="modal-bg" id="modal-confirmar">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-titulo">Ativar versão</div>
+      <button class="btn btn-ghost btn-sm" onclick="fecharConfirmar()">✕</button>
+    </div>
+    <div id="confirmar-body"></div>
+    <div class="modal-acoes">
+      <button class="btn btn-ghost" onclick="fecharConfirmar()">Cancelar</button>
+      <button class="btn btn-emp" id="btn-confirmar-ativar" onclick="confirmarAtivarVersao()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // Minha Empresa — Missão, Visão e Valores por empresa ativa.
@@ -273,21 +327,23 @@ var _valSel       = 0;      // índice do valor selecionado
 var _versoesDisponivel = null;  // null = ainda não sondado; true/false após carregar
 var _versaoAtual = null;        // linha da versão ativa/mais recente (ou null)
 var _wizStep = 0;               // etapa atual (0=Visão, 1=Missão, 2=Valores, 3=Resumo)
-var _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] } };  // rascunho em memória
+var _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] }, visao_final: '', missao_final: '' };  // rascunho em memória
 var _valNivel = 0;              // sub-nível da etapa Valores (0=sel20,1=sel10,2=sel5,3=vive/não-vive)
 var _valBusca = '';             // termo de busca do grid de valores (nível 0)
+var _versoes = [];              // lista de versões da empresa (modal Versões)
+var _ativarAlvo = null;         // versão pendente de ativação (aguardando confirmação)
 
 // Desativa o widget da extensão Grammarly nos campos de texto (evita o card
 // flutuante vazio que a extensão injeta perto de textarea/input). Só afeta o
 // Grammarly; não altera lógica, dados nem layout.
 var _GRAMM_OFF = ' data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"';
 
-// Etapas do assistente. 'soon' = placeholder (PR-3).
+// Etapas do assistente.
 var WIZ_ETAPAS = [
   { chave: 'visao',   nome: 'Visão' },
   { chave: 'missao',  nome: 'Missão' },
   { chave: 'valores', nome: 'Valores' },
-  { chave: 'resumo',  nome: 'Resumo',  soon: true }
+  { chave: 'resumo',  nome: 'Resumo' }
 ];
 
 // Catálogo de valores corporativos (lista de referência). Nomes neutros, sem
@@ -419,8 +475,8 @@ function _onTrocaEmpresa(dados){
   _valores = [];
   _valSel = 0;
   _versaoAtual = null;
-  _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] } };
-  _valNivel = 0; _valBusca = '';
+  _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] }, visao_final: '', missao_final: '' };
+  _valNivel = 0; _valBusca = ''; _versoes = []; _ativarAlvo = null;
   carregarMetricas(_empresaAtiva.id);
   carregarIdentidade(_empresaAtiva.id);
   carregarValores(_empresaAtiva.id);
@@ -432,6 +488,7 @@ function _aplicarGatesEdicao(){
   document.getElementById('btn-edit-missao').style.display  = show;
   document.getElementById('btn-edit-visao').style.display   = show;
   document.getElementById('btn-edit-valores').style.display = show;
+  var bv = document.getElementById('btn-versoes'); if (bv) bv.style.display = show;
 }
 
 // ── Métricas ──────────────────────────────────────────────────
@@ -546,7 +603,7 @@ async function carregarVersaoIdentidade(empId){
   if (!sb || !empId){ _versoesDisponivel = false; _versaoAtual = null; return; }
   try {
     var r = await sb.from('empresa_identidade_versoes')
-      .select('id, versao, status, visao_guiada, missao_guiada, valores_funil')
+      .select('id, versao, status, visao_guiada, missao_guiada, valores_funil, visao_final, missao_final')
       .eq('empresa_id', empId)
       .order('status', { ascending: true })   // 'ativo' antes de 'inativo'
       .order('versao', { ascending: false })
@@ -577,7 +634,9 @@ function abrirAssistente(campoInicial){
   _wizDraft = {
     visao_guiada:  Object.assign({}, (_versaoAtual && _versaoAtual.visao_guiada)  || {}),
     missao_guiada: Object.assign({}, (_versaoAtual && _versaoAtual.missao_guiada) || {}),
-    valores_funil: _valNormaliza(_versaoAtual && _versaoAtual.valores_funil)
+    valores_funil: _valNormaliza(_versaoAtual && _versaoAtual.valores_funil),
+    visao_final:   (_versaoAtual && _versaoAtual.visao_final)  || '',
+    missao_final:  (_versaoAtual && _versaoAtual.missao_final) || ''
   };
   _wizRender();
   document.getElementById('modal-assistente').classList.add('on');
@@ -590,6 +649,13 @@ function fecharAssistente(){
 // Lê as respostas da etapa atual para o rascunho em memória.
 function _wizColeta(){
   if (_wizStep === 2){ _wizColetaValores(); return; }
+  if (_wizStep === 3){
+    var vf = document.getElementById('wq-visao-final');
+    var mf = document.getElementById('wq-missao-final');
+    if (vf) _wizDraft.visao_final  = vf.value;
+    if (mf) _wizDraft.missao_final = mf.value;
+    return;
+  }
   var pergs = _wizPerguntas(_wizStep);
   if (!pergs) return;
   var key = _wizDraftKey(_wizStep);
@@ -624,6 +690,8 @@ function _wizRender(){
       }).join('');
   } else if (_wizStep === 2){
     _wizRenderValores();   // etapa Valores (funil 90→20→10→5 + vive/não-vive)
+  } else if (_wizStep === 3){
+    _wizRenderResumo();    // etapa Resumo (textos finais + lembrete das respostas)
   } else {
     body.innerHTML = '<div class="wiz-soon">A etapa <strong>' + esc(et.nome) +
       '</strong> chega em breve. A estrutura de dados já está pronta para ela.</div>';
@@ -654,6 +722,7 @@ function wizProximo(){
 }
 function wizVoltar(){
   _wizColeta();
+  if (_wizStep === 3){ _wizStep = 2; _valNivel = 3; _wizRender(); return; }  // Resumo → Valores (nível final)
   if (_wizStep === 2){
     if (_valNivel > 0){ _valNivel--; _wizRender(); return; }
     _wizStep = 1; _wizRender(); return;   // antes do 1º nível → volta para Missão
@@ -803,20 +872,23 @@ async function wizSalvarRascunho(){
       visao_guiada:  _wizDraft.visao_guiada  || {},
       missao_guiada: _wizDraft.missao_guiada || {},
       valores_funil: _valNormaliza(_wizDraft.valores_funil),
+      visao_final:   _wizDraft.visao_final  || null,
+      missao_final:  _wizDraft.missao_final || null,
       updated_at:    new Date().toISOString()
     };
+    var _selCols = 'id, versao, status, visao_guiada, missao_guiada, valores_funil, visao_final, missao_final';
     var res;
     if (_versaoAtual && _versaoAtual.id){
       res = await sb.from('empresa_identidade_versoes')
         .update(payload).eq('id', _versaoAtual.id)
-        .select('id, versao, status, visao_guiada, missao_guiada, valores_funil').single();
+        .select(_selCols).single();
     } else {
       payload.versao = 1;
       payload.status = 'inativo';
       payload.titulo = 'Construção 1';
       res = await sb.from('empresa_identidade_versoes')
         .insert(payload)
-        .select('id, versao, status, visao_guiada, missao_guiada, valores_funil').single();
+        .select(_selCols).single();
     }
     if (res.error){ throw res.error; }
     _versaoAtual = res.data;
@@ -825,6 +897,178 @@ async function wizSalvarRascunho(){
   } catch(e){
     if (btn){ btn.textContent = lbl || 'Salvar rascunho'; btn.disabled = false; }
     alert('Não foi possível salvar o rascunho: ' + ((e && e.message) || e));
+  }
+}
+
+// ── Etapa Resumo: textos finais + lembrete das respostas guiadas ──
+function _wizRenderResumo(){
+  var body = document.getElementById('wiz-body');
+  function lembrete(pergs, dados){
+    dados = dados || {};
+    var itens = pergs.filter(function(p){ return (dados[p.k] || '').trim(); }).map(function(p){
+      return '<div class="wiz-lembrete-item"><span class="wiz-lembrete-q">' + esc(p.q) + '</span>' +
+        '<span class="wiz-lembrete-a">' + esc(dados[p.k]) + '</span></div>';
+    }).join('');
+    return itens || '<div class="wiz-lembrete-vazio">Sem respostas nesta etapa.</div>';
+  }
+  body.innerHTML =
+    '<div class="wiz-intro">Escreva o texto final da Visão e da Missão (use as respostas ao lado como apoio). Salvar rascunho <strong>não</strong> altera a tela — a projeção só ocorre ao ativar uma versão em "Versões".</div>' +
+    '<div class="wiz-resumo-bloco">' +
+      '<div class="wiz-resumo-campo"><label>A visão da minha empresa é</label>' +
+        '<textarea id="wq-visao-final"' + _GRAMM_OFF + '>' + esc(_wizDraft.visao_final || '') + '</textarea></div>' +
+      '<div class="wiz-lembrete"><div class="wiz-lembrete-tit">Suas respostas de Visão</div>' + lembrete(PERGUNTAS_VISAO, _wizDraft.visao_guiada) + '</div>' +
+    '</div>' +
+    '<div class="wiz-resumo-bloco">' +
+      '<div class="wiz-resumo-campo"><label>A missão da minha empresa é</label>' +
+        '<textarea id="wq-missao-final"' + _GRAMM_OFF + '>' + esc(_wizDraft.missao_final || '') + '</textarea></div>' +
+      '<div class="wiz-lembrete"><div class="wiz-lembrete-tit">Suas respostas de Missão</div>' + lembrete(PERGUNTAS_MISSAO, _wizDraft.missao_guiada) + '</div>' +
+    '</div>';
+}
+
+// ── Versionamento (lista, criar, editar, ativar) ──────────────
+async function carregarVersoes(){
+  var sb = _sbClient();
+  if (!sb || !_empresaAtiva){ _versoes = []; return; }
+  try {
+    var r = await sb.from('empresa_identidade_versoes')
+      .select('id, versao, titulo, status, updated_at')
+      .eq('empresa_id', _empresaAtiva.id)
+      .order('versao', { ascending: false });
+    _versoes = (!r.error && Array.isArray(r.data)) ? r.data : [];
+  } catch(e){ _versoes = []; }
+}
+async function abrirVersoes(){
+  if (!_podeEditar()) return;
+  await carregarVersoes();
+  _renderVersoes();
+  document.getElementById('modal-versoes').classList.add('on');
+}
+function fecharVersoes(){ document.getElementById('modal-versoes').classList.remove('on'); }
+function _renderVersoes(){
+  var cont = document.getElementById('versoes-lista');
+  if (!_versoes.length){
+    cont.innerHTML = '<div class="sec-vazio">Nenhuma versão ainda. Crie a primeira em "Criar nova versão".</div>';
+    return;
+  }
+  cont.innerHTML = _versoes.map(function(v){
+    var ativa = v.status === 'ativo';
+    var data = v.updated_at ? new Date(v.updated_at).toLocaleDateString('pt-BR') : '';
+    return '<div class="ver-row">' +
+      '<div class="ver-info"><span class="ver-num">' + esc(v.titulo || ('Versão ' + v.versao)) + '</span>' +
+        '<span class="ver-badge' + (ativa ? ' on' : '') + '">' + (ativa ? 'Ativa' : 'Inativa') + '</span>' +
+        (data ? '<span class="ver-data">' + esc(data) + '</span>' : '') + '</div>' +
+      '<div class="ver-acoes">' +
+        '<button class="btn btn-ghost btn-sm" onclick="editarVersao(&quot;' + esc(v.id) + '&quot;)">Editar</button>' +
+        (ativa ? '' : '<button class="btn btn-emp btn-sm" onclick="pedirAtivarVersao(&quot;' + esc(v.id) + '&quot;)">Ativar</button>') +
+      '</div></div>';
+  }).join('');
+}
+async function criarNovaVersao(){
+  if (!_podeEditar() || !_empresaAtiva) return;
+  var sb = _sbClient(); if (!sb) return;
+  var prox = _versoes.reduce(function(m, v){ return Math.max(m, v.versao || 0); }, 0) + 1;
+  try {
+    var r = await sb.from('empresa_identidade_versoes').insert({
+      empresa_id: _empresaAtiva.id, versao: prox, status: 'inativo', titulo: 'Construção ' + prox,
+      visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] }
+    }).select('id, versao, status, visao_guiada, missao_guiada, valores_funil, visao_final, missao_final').single();
+    if (r.error) throw r.error;
+    _versaoAtual = r.data;
+    fecharVersoes();
+    abrirAssistente('visao');
+  } catch(e){ alert('Não foi possível criar a versão: ' + ((e && e.message) || e)); }
+}
+async function editarVersao(id){
+  if (!_podeEditar()) return;
+  var sb = _sbClient(); if (!sb) return;
+  try {
+    var r = await sb.from('empresa_identidade_versoes')
+      .select('id, versao, status, visao_guiada, missao_guiada, valores_funil, visao_final, missao_final')
+      .eq('id', id).single();
+    if (r.error) throw r.error;
+    _versaoAtual = r.data;
+    fecharVersoes();
+    abrirAssistente('visao');
+  } catch(e){ alert('Não foi possível abrir a versão: ' + ((e && e.message) || e)); }
+}
+// Confirmação explícita: lista o que muda na tela ANTES de projetar.
+async function pedirAtivarVersao(id){
+  if (!_podeEditar()) return;
+  var sb = _sbClient(); if (!sb) return;
+  var r = await sb.from('empresa_identidade_versoes')
+    .select('id, versao, titulo, visao_final, missao_final, valores_funil').eq('id', id).single();
+  if (r.error || !r.data){ alert('Não foi possível carregar a versão.'); return; }
+  var v = r.data; _ativarAlvo = v;
+  var vf = _valNormaliza(v.valores_funil);
+  var muda = [], mantem = [];
+  if ((v.visao_final || '').trim()) muda.push('<li><strong>Visão</strong> será substituída pelo texto da versão.</li>');
+  else mantem.push('Visão');
+  if ((v.missao_final || '').trim()) muda.push('<li><strong>Missão</strong> será substituída pelo texto da versão.</li>');
+  else mantem.push('Missão');
+  if (vf.sel5.length) muda.push('<li><strong>Valores</strong> passam a ser: ' + esc(vf.sel5.map(function(x){ return x.nome; }).join(', ')) + '.</li>');
+  else mantem.push('Valores');
+  var body = document.getElementById('confirmar-body');
+  body.innerHTML =
+    '<p style="font-size:.9rem;color:var(--text);line-height:1.5">Ativar <strong>' + esc(v.titulo || ('Versão ' + v.versao)) + '</strong> vai <strong>substituir na tela</strong>:</p>' +
+    (muda.length ? '<ul class="conf-list">' + muda.join('') + '</ul>' : '<p class="sec-vazio">Esta versão não tem nada preenchido para projetar.</p>') +
+    (mantem.length ? '<p class="conf-mantem">Mantido como está (a versão está vazia nestes itens, não serão apagados): <strong>' + esc(mantem.join(', ')) + '</strong>.</p>' : '');
+  document.getElementById('modal-confirmar').classList.add('on');
+}
+function fecharConfirmar(){ document.getElementById('modal-confirmar').classList.remove('on'); _ativarAlvo = null; }
+// Projeção (Estratégia B) com salvaguardas anti-vazio + substituição limpa dos valores.
+async function confirmarAtivarVersao(){
+  if (!_podeEditar() || !_empresaAtiva || !_ativarAlvo) return;
+  var sb = _sbClient(); if (!sb) return;
+  var v = _ativarAlvo, eid = _empresaAtiva.id;
+  var btn = document.getElementById('btn-confirmar-ativar');
+  if (btn){ btn.textContent = 'Ativando…'; btn.disabled = true; }
+  try {
+    // 1) Troca de status respeitando o índice único parcial (1 ativa/empresa):
+    //    limpa a ativa ANTES de setar a nova.
+    var u1 = await sb.from('empresa_identidade_versoes').update({ status: 'inativo' })
+      .eq('empresa_id', eid).eq('status', 'ativo');
+    if (u1.error) throw u1.error;
+    var u2 = await sb.from('empresa_identidade_versoes')
+      .update({ status: 'ativo', updated_at: new Date().toISOString() }).eq('id', v.id);
+    if (u2.error) throw u2.error;
+    // 2) Projeta Visão/Missão — GUARDA ANTI-VAZIO: campo vazio na versão NÃO
+    //    sobrescreve; preserva o que já está na tela (_identidade).
+    var vfin = (v.visao_final || '').trim(), mfin = (v.missao_final || '').trim();
+    if (vfin || mfin){
+      var payload = {
+        empresa_id: eid,
+        missao: mfin ? v.missao_final : (_identidade.missao || null),
+        visao:  vfin ? v.visao_final  : (_identidade.visao  || null),
+        updated_at: new Date().toISOString()
+      };
+      var up = await sb.from('empresa_identidade').upsert(payload, { onConflict: 'empresa_id' });
+      if (up.error) throw up.error;
+    }
+    // 3) Projeta Valores — só se a versão tiver os 5 (senão preserva os atuais).
+    //    Substituição LIMPA: delete-all por empresa + insert dos novos (sem duplicar/órfãos).
+    var vf = _valNormaliza(v.valores_funil);
+    if (vf.sel5.length){
+      var rows = vf.sel5.map(function(x, i){
+        return { empresa_id: eid, ordem: i + 1, nome: (x.nome || '').trim(),
+                 como_vivemos: x.vive || null, como_nao_vivemos: x.nao_vive || null };
+      }).filter(function(row){ return row.nome; });
+      if (rows.length){
+        var del = await sb.from('empresa_valores').delete().eq('empresa_id', eid);
+        if (del.error) throw del.error;
+        var ins = await sb.from('empresa_valores').insert(rows);
+        if (ins.error) throw ins.error;
+      }
+    }
+    // 4) Atualiza a tela a partir das tabelas de exibição (fonte inalterada).
+    fecharConfirmar();
+    fecharVersoes();
+    _versaoAtual = null;               // relê a versão ativa na próxima abertura
+    await carregarIdentidade(eid);
+    await carregarValores(eid);
+    if (btn){ btn.textContent = 'Confirmar'; btn.disabled = false; }
+  } catch(e){
+    if (btn){ btn.textContent = 'Confirmar'; btn.disabled = false; }
+    alert('Não foi possível ativar a versão: ' + ((e && e.message) || e));
   }
 }
 
