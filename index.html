@@ -7648,6 +7648,10 @@ function abrirCeoModal(tipo){
   }
 }
 function fecharCeoModal(){ var mv=document.getElementById('ceoKpiModal'); if(mv) mv.style.cssText='display:none'; }
+// Defensivo: ao trocar de módulo (sair da Visão Executiva), garante que o modal
+// de listas dos KPIs — que vive no <body> — volte a ficar oculto, evitando que
+// um modal aberto "vaze" para outras telas.
+window.addEventListener('router:change', function(){ if(typeof fecharCeoModal==='function') fecharCeoModal(); });
 
 function carregarCeoDash(){
   var b=Q('ceoDashBody');
@@ -13068,7 +13072,7 @@ document.addEventListener('keydown', function(e) {
 <!-- Tooltip flutuante + Modal de listas dos KPIs (Visão Executiva) — filhos diretos do <body>
      para o position:fixed não ser limitado por ancestral com transform/contain/dimensão. -->
 <div id="ceoTip"></div>
-<div class="modal-bg" id="ceoKpiModal" onclick="if(event.target===this)fecharCeoModal()">
+<div class="modal-bg" id="ceoKpiModal" style="display:none" onclick="if(event.target===this)fecharCeoModal()">
   <div class="modal" style="width:min(560px,98vw)">
     <div class="modal-hdr"><div class="modal-title" id="ceoKpiModalTit"></div><button class="modal-close" onclick="fecharCeoModal()">✕</button></div>
     <div class="modal-body" id="ceoKpiModalBody"></div>
