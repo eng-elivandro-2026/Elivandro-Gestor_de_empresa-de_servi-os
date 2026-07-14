@@ -94,6 +94,64 @@
     'em_pausa_aguardando_terceiro'
   ];
 
+  // ── Grupos de status para os filtros do menu lateral (PR-1) ──────────────
+  // A coluna obras.status_operacional convive HOJE com dois vocabularios:
+  //   • STATUS_OPERACIONAL (aguardando_recebimento, em_execucao, entregue_ao_cliente, ...)
+  //   • FASES_GESTAO_NEGOCIO (aprovado, andamento, finalizado, ...) — gravadas pelo card.
+  // Os itens "Status" do menu (Aguardando Recebimento / Planejamento / Em Execucao /
+  // Entregues) filtram por GRUPO, tolerando os dois vocabularios (traducao na leitura).
+  var GRUPOS_STATUS = {
+    recebimento: [
+      'aguardando_recebimento',
+      'recebimento_em_analise'
+    ],
+    planejamento: [
+      'planejamento_em_andamento',
+      'aguardando_compras',
+      'compras_em_andamento',
+      'aguardando_material',
+      'pronto_para_mobilizacao',
+      'em_mobilizacao',
+      'aprovado'                       // FASES legado -> planejamento
+    ],
+    execucao: [
+      'em_execucao',
+      'em_pausa',
+      'em_testes',
+      'em_comissionamento',
+      'em_taf',
+      'em_sat',
+      'aguardando_documentacao_final',
+      'aguardando_cliente',
+      'aguardando_terceiro',
+      'andamento',                     // FASES legado -> execucao
+      'taf',                           // FASES legado -> execucao
+      'sat',                           // FASES legado -> execucao
+      'atrasado',                      // FASES legado -> execucao
+      'em_pausa_falta_material',       // FASES legado -> execucao
+      'em_pausa_aguardando_cliente',   // FASES legado -> execucao
+      'em_pausa_aguardando_terceiro'   // FASES legado -> execucao
+    ],
+    entregues: [
+      'entregue_ao_cliente',
+      'em_garantia',
+      'encerrada',
+      'finalizado'                     // FASES legado -> entregues
+    ]
+  };
+
+  // Traduz qualquer status (STATUS_OPERACIONAL ou FASES legado) para a chave de grupo,
+  // ou '' quando nao pertence a nenhum grupo (ex.: 'cancelada').
+  function grupoStatusOperacional(status) {
+    var s = String(status || '').trim().toLowerCase();
+    if (!s) return '';
+    var chaves = Object.keys(GRUPOS_STATUS);
+    for (var i = 0; i < chaves.length; i++) {
+      if (GRUPOS_STATUS[chaves[i]].indexOf(s) >= 0) return chaves[i];
+    }
+    return '';
+  }
+
   // Fases COMERCIAIS permitidas ao "Voltar para Comercial" (desfazer obra).
   // Nunca inclui status operacionais nem faturado/recebido.
   var FASES_RETORNO_COMERCIAL = [
@@ -1174,9 +1232,17 @@
       if (obra && String(obra.status_operacional || '').trim().toLowerCase() === 'cancelada') obra = null;
       if (fase === 'ganho') {
         if (!obra) return; // 'ganho' so entra no Operacional apos Criar Obra
-        out.push(normalizarNegocioOperacional(p, obra));
+        var nGanho = normalizarNegocioOperacional(p, obra);
+        // Passo 1+3: obra e a fonte de verdade do status para AGRUPAMENTO/filtro.
+        nGanho.status_grupo = grupoStatusOperacional(obra.status_operacional || nGanho.status_operacional);
+        out.push(nGanho);
       } else if (faseOperacionalNegocio(fase)) {
-        out.push(normalizarNegocioOperacional(p, null));
+        // normalizarNegocioOperacional recebe null (display/gravacao inalterados),
+        // mas o AGRUPAMENTO usa a obra quando existe (fonte de verdade, Passo 1).
+        var nFase = normalizarNegocioOperacional(p, null);
+        var verdade = obra ? obra.status_operacional : nFase.status_operacional;
+        nFase.status_grupo = grupoStatusOperacional(verdade);
+        out.push(nFase);
       }
     });
     return out;
@@ -1345,7 +1411,15 @@
     var anoSel = (typeof window !== 'undefined') ? window._anoComercialSel : 'all';
     var anoNum = (anoSel && anoSel !== 'all') ? (parseInt(anoSel, 10) || null) : null;
     return (state.obras || []).filter(function (o) {
-      if (state.status && o.status_operacional !== state.status) return false;
+      if (state.status) {
+        if (GRUPOS_STATUS[state.status]) {
+          // Filtro do menu lateral: por GRUPO (obra e fonte de verdade via status_grupo).
+          if ((o.status_grupo || grupoStatusOperacional(o.status_operacional)) !== state.status) return false;
+        } else if (o.status_operacional !== state.status) {
+          // Filtro do select superior "Fase": valor exato (comportamento preservado).
+          return false;
+        }
+      }
       if (cliente && String(o.cliente_nome || '').toLowerCase().indexOf(cliente) < 0) return false;
       if (busca) {
         var hay = [o.codigo_obra, o.proposta_numero, o.titulo, o.cliente_nome].join(' ').toLowerCase();
@@ -2473,6 +2547,10 @@
   function rOperacional() {
     var root = $('operacional-root');
     if (!root) return;
+    // Passo 5: ao (re)entrar no modulo ("Obras" / troca de modulo) o filtro de status
+    // nao fica preso escondendo a lista. setFiltroStatus (menu lateral) NAO passa por
+    // aqui no caminho normal, entao o filtro por grupo continua funcionando.
+    state.status = '';
     root.innerHTML = shell();
     carregarObras();
   }
@@ -3865,14 +3943,24 @@
     if (holder) holder.remove();
   }
 
-  function setFiltroStatus(st) {
-    state.status = st || '';
-    if (window.Router) window.Router.ir('operacional');
-    setTimeout(function () {
+  // Filtro por GRUPO acionado pelo menu lateral (recebimento/planejamento/execucao/entregues).
+  function setFiltroStatus(grupo) {
+    grupo = String(grupo || '');
+    var aplicar = function () {
+      state.status = grupo;
+      // O select superior lista apenas FASES; um grupo nao existe la, entao fica "Todas".
       var sel = $('opStatus');
-      if (sel) sel.value = state.status;
+      if (sel) sel.value = '';
       renderLista();
-    }, 80);
+    };
+    if ($('opLista')) {
+      // Shell ja montado (caso normal: menu lateral so aparece com o modulo ativo):
+      // aplica direto, SEM passar por rOperacional (que reseta o filtro no Passo 5).
+      aplicar();
+    } else {
+      if (window.Router) window.Router.ir('operacional');
+      setTimeout(aplicar, 80);
+    }
   }
 
   function gestaoAtualizarPrintConfig() {

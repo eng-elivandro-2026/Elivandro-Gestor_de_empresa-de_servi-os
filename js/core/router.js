@@ -107,10 +107,10 @@
       nav: [
         { label: 'Obras', icon: 'OP', action: "go('operacional',this);rOperacional()" },
         { separator: true, label: 'Status' },
-        { label: 'Aguardando Recebimento', icon: 'AR', action: "go('operacional',this);opSetFiltroStatus('aguardando_recebimento')" },
-        { label: 'Planejamento', icon: 'PL', action: "go('operacional',this);opSetFiltroStatus('planejamento_em_andamento')" },
-        { label: 'Em Execucao', icon: 'EX', action: "go('operacional',this);opSetFiltroStatus('em_execucao')" },
-        { label: 'Entregues', icon: 'OK', action: "go('operacional',this);opSetFiltroStatus('entregue_ao_cliente')" },
+        { label: 'Aguardando Recebimento', icon: 'AR', action: "go('operacional',this);opSetFiltroStatus('recebimento')" },
+        { label: 'Planejamento', icon: 'PL', action: "go('operacional',this);opSetFiltroStatus('planejamento')" },
+        { label: 'Em Execucao', icon: 'EX', action: "go('operacional',this);opSetFiltroStatus('execucao')" },
+        { label: 'Entregues', icon: 'OK', action: "go('operacional',this);opSetFiltroStatus('entregues')" },
       ]
     },
     {
