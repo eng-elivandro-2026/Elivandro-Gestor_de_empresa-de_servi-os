@@ -394,7 +394,7 @@ function buildGanttPrev(g){
     // Layout em 2 linhas por fase: nome em linha própria (largura total, uma linha)
     // e, abaixo, a barra proporcional + o nº de dias à direita (fora da barra).
     return '<div style="margin-bottom:7px">'
-      +'<div style="font-size:8pt;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'
+      +'<div style="font-size:8pt;color:#1a1a1a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'
       +(rt?'<span style="font-size:6.5pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
       +esc(f.nome||'Tarefa')
       +'</div>'

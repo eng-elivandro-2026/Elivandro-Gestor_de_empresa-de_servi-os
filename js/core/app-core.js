@@ -8060,8 +8060,8 @@ function expWordDoc(){
           //   Linha 1: NOME (columnSpan 2, largura total, uma linha só)
           //   Linha 2: barra proporcional | nº de dias (à direita da barra)
           var _W=8748;
-          var _W1=6900;            // coluna da barra
-          var _W2=_W-_W1;          // coluna do nº de dias
+          var _W1=6248;            // coluna da barra
+          var _W2=_W-_W1;          // coluna do nº de dias (2500 DXA — cabe "4 dias" numa linha)
           var _tBrd={style:D.BorderStyle.NONE,size:0,color:'ffffff'};
           var _tBrds={top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd};
 
@@ -8122,6 +8122,16 @@ function expWordDoc(){
             rows:_gRows,
             borders:{top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd,insideH:_tBrd,insideV:_tBrd}
           }));
+          // Aviso do cronograma após a tabela (texto normal, itálico/cinza, sem o emoji ⚠️).
+          var _gNota=(_g.nota!=null ? _g.nota
+            : 'Esse cronograma é apenas uma referência, visão macro. Após recebimento do pedido de compra, as datas e sequências das tarefas sofrerão variações.');
+          _gNota=String(_gNota).replace(/^[^A-Za-zÀ-ÿ0-9]+/,'').trim();
+          if(_gNota){
+            children.push(new D.Paragraph({
+              children:[new D.TextRun({text:_gNota,font:'Calibri',size:16,italics:true,color:'888888'})],
+              spacing:{before:40,after:80,line:240}
+            }));
+          }
           children.push(para([],{after:80}));
         }
       }
