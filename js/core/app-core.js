@@ -8067,7 +8067,7 @@ function expWordDoc(){
           function _gHdrCell(txt,w,al){
             return new D.TableCell({borders:_cbs,shading:{fill:'1a472a'},width:{size:w,type:D.WidthType.DXA},
               margins:{top:50,bottom:50,left:80,right:80},
-              children:[new D.Paragraph({alignment:al,children:[new D.TextRun({text:txt,font:'Calibri',size:18,bold:true,color:'ffffff',italics:false})]})]});
+              children:[new D.Paragraph({alignment:al,children:[new D.TextRun({text:txt,font:'Calibri',size:22,bold:true,color:'ffffff',italics:false})]})]});
           }
           function _gCell(runs,w,al,marL){
             return new D.TableCell({borders:_cbs,width:{size:w,type:D.WidthType.DXA},
@@ -8091,13 +8091,13 @@ function expWordDoc(){
             var _empty=_barTotal-_fill;
 
             _gRows.push(new D.TableRow({children:[
-              _gCell([new D.TextRun({text:String(_fi+1),font:'Calibri',size:18,bold:false,color:'333333',italics:false})],_C1,_AL.CENTER),
-              _gCell([new D.TextRun({text:f.nome||'',font:'Calibri',size:18,bold:true,color:'222222',italics:false})],_C2,_AL.LEFT),
+              _gCell([new D.TextRun({text:String(_fi+1),font:'Calibri',size:22,bold:false,color:'333333',italics:false})],_C1,_AL.CENTER),
+              _gCell([new D.TextRun({text:f.nome||'',font:'Calibri',size:22,bold:true,color:'222222',italics:false})],_C2,_AL.LEFT),
               _gCell([
-                new D.TextRun({text:'█'.repeat(_fill),font:'Courier New',size:15,bold:false,color:_cor,italics:false}),
-                new D.TextRun({text:'░'.repeat(_empty),font:'Courier New',size:15,bold:false,color:'d9d9d9',italics:false})
+                new D.TextRun({text:'█'.repeat(_fill),font:'Courier New',size:22,bold:false,color:_cor,italics:false}),
+                new D.TextRun({text:'░'.repeat(_empty),font:'Courier New',size:22,bold:false,color:'d9d9d9',italics:false})
               ],_C3,_AL.LEFT,60),
-              _gCell([new D.TextRun({text:_diasLbl,font:'Calibri',size:16,bold:true,color:'333333',italics:false})],_C4,_AL.CENTER)
+              _gCell([new D.TextRun({text:_diasLbl,font:'Calibri',size:22,bold:true,color:'333333',italics:false})],_C4,_AL.CENTER)
             ]}));
           });
 
@@ -8113,7 +8113,7 @@ function expWordDoc(){
           _gNota=String(_gNota).replace(/^[^A-Za-zÀ-ÿ0-9]+/,'').trim();
           if(_gNota){
             children.push(new D.Paragraph({
-              children:[new D.TextRun({text:_gNota,font:'Calibri',size:16,italics:true,color:'888888'})],
+              children:[new D.TextRun({text:_gNota,font:'Calibri',size:22,italics:true,color:'888888'})],
               spacing:{before:40,after:80,line:240}
             }));
           }

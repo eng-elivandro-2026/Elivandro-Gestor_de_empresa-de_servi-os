@@ -373,24 +373,24 @@ function buildGanttPrev(g){
   // Tabela de 4 colunas (uma linha por fase): ID | Tarefa | Cronograma | Prazo.
   // A barra é proporcional à DURAÇÃO da fase relativa à mais longa (100%).
   var maxDur=1; fases.forEach(function(f){var d=ganttDurDias(f); if(d>maxDur)maxDur=d;});
-  var td='padding:3px 6px;border-bottom:1px solid #ddd;vertical-align:middle';
+  var td='padding:3px 6px;border-bottom:1px solid #ddd;vertical-align:middle;font-size:11pt';
   var trs=fases.map(function(f,fi){
     var cor=f.cor||'#2563eb';
     var durLbl=fmtDur(f);
     var rt=relTag(f,fi);
     var pct=Math.max(4,Math.min(100,(ganttDurDias(f)/maxDur*100))).toFixed(1);
     return '<tr>'
-      +'<td style="'+td+';text-align:center;font-size:7pt;color:#1a1a1a">'+(fi+1)+'</td>'
-      +'<td style="'+td+';font-size:7.5pt;font-weight:700;color:#1a1a1a">'
-        +(rt?'<span style="font-size:6pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
+      +'<td style="'+td+';text-align:center;color:#1a1a1a">'+(fi+1)+'</td>'
+      +'<td style="'+td+';font-weight:700;color:#1a1a1a">'
+        +(rt?'<span style="font-size:8pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
         +esc(f.nome||'Tarefa')+'</td>'
-      +'<td style="'+td+'"><div style="position:relative;height:13px;background:#e9ecef;border-radius:3px;overflow:hidden">'
+      +'<td style="'+td+'"><div style="position:relative;height:15px;background:#e9ecef;border-radius:3px;overflow:hidden">'
         +'<div style="position:absolute;left:0;width:'+pct+'%;height:100%;background:'+cor+';border-radius:3px"></div></div></td>'
-      +'<td style="'+td+';text-align:center;font-size:7pt;font-weight:700;color:#333;white-space:nowrap">'+durLbl+'</td>'
+      +'<td style="'+td+';text-align:center;font-weight:700;color:#333;white-space:nowrap">'+durLbl+'</td>'
       +'</tr>';
   }).join('');
-  var th='padding:4px 6px;font-size:6.8pt;font-weight:700;color:#fff;text-align:left';
-  var tabela='<table style="width:100%;border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-top:4px">'
+  var th='padding:4px 6px;font-size:11pt;font-weight:700;color:#fff;text-align:left';
+  var tabela='<table style="width:100%;border-collapse:collapse;font-family:\'Calibri\', Arial, sans-serif;margin-top:4px">'
     +'<thead><tr style="background:#1a472a">'
     +'<th style="'+th+';text-align:center;width:26px">ID</th>'
     +'<th style="'+th+';width:34%">Tarefa</th>'
