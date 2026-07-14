@@ -1159,13 +1159,15 @@
       cliente_cidade: textoLimpo(s.cid || s.csvc || ''),
       cliente_local: textoLimpo(s.loc || ''),
       titulo: titulo,
-      // Negocio 'ganho' que ja virou obra: status vive em obras.status_operacional.
-      // Demais (fases operacionais legadas): status vem de propostas.fase.
-      status_operacional: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra)
-        ? textoLimpo(obra.status_operacional || 'aprovado')
+      // PR-2: sempre que existe obra (nao-cancelada), ela e a FONTE UNICA de verdade
+      // do status operacional — independente da fase. O display usa a camada de
+      // legado (faseEfetivaOperacional) para exibir uma FASE valida no dropdown.
+      // Sem obra: status continua vindo de propostas.fase (caminho inalterado).
+      status_operacional: obra
+        ? (faseEfetivaOperacional(obra.status_operacional) || 'aprovado')
         : textoLimpo(p.fase || s.fas || ''),
       obra_id: obra ? (obra.id || '') : '',
-      status_source: (String(p.fase || '').trim().toLowerCase() === 'ganho' && obra) ? 'obra' : 'fase',
+      status_source: obra ? 'obra' : 'fase',
       valor_vendido: Number(p.valor_total || s.val || 0) || 0,
       data_aprovacao: valorSnapshot(s, ['dtFech', 'dat', 'data', 'data_proposta']),
       // Inicio real da obra (tabela obras) — fonte primaria do "ano de execucao".
@@ -1216,7 +1218,10 @@
         if (!obra) return; // 'ganho' so entra no Operacional apos Criar Obra
         out.push(normalizarNegocioOperacional(p, obra));
       } else if (faseOperacionalNegocio(fase)) {
-        out.push(normalizarNegocioOperacional(p, null));
+        // PR-2: quando existe obra (nao-cancelada), ela e a fonte de verdade do
+        // status — passamos a obra tambem para fases operacionais legadas. `obra`
+        // ja foi anulada acima quando 'cancelada'.
+        out.push(normalizarNegocioOperacional(p, obra));
       }
     });
     return out;
@@ -1495,10 +1500,49 @@
     renderLista();
     try {
       if (o.status_source === 'obra' && o.obra_id) {
-        // Negocio 'ganho' ja virou obra: status vive em obras.status_operacional.
-        // A proposta permanece 'ganho' no Comercial (nao alteramos propostas.fase).
+        // Existe obra: ela e a FONTE UNICA de verdade do status operacional.
         if (typeof window.sbAtualizarObra !== 'function') throw new Error('Atualizacao de obra indisponivel.');
         await window.sbAtualizarObra(o.obra_id, { status_operacional: novoStatus });
+        // OPCAO B (auto-cura): ter obra = negocio ganho. Se a proposta ainda nao e
+        // 'ganho' (fase operacional legada), promove fase/fas='ganho' no MESMO passo
+        // para o Comercial refletir e nao divergir. Propostas ja 'ganho' nao sao tocadas.
+        var pcG = Array.isArray(window.props)
+          ? window.props.find(function (x) { return x && (x.id === appId || x.app_id === appId); })
+          : null;
+        var faseComercial = pcG ? String(pcG.fas || '').trim().toLowerCase() : '';
+        if (!pcG || faseComercial !== 'ganho') {
+          var payloadG = { fase: 'ganho', updated_at: new Date().toISOString() };
+          if (pcG) {
+            pcG.fas = 'ganho';                              // cache em memoria
+            payloadG.dados_json = Object.assign({}, pcG);   // espelha fas no JSON
+          }
+          var resG = await window.sbClient
+            .from('propostas')
+            .update(payloadG)
+            .eq('app_id', appId)
+            .eq('empresa_id', empresaId)
+            .select('app_id, fase')
+            .single();
+          if (resG.error) throw resG.error;
+          // Fallback: proposta fora do cache — sincroniza dados_json.fas buscando do banco.
+          if (!pcG) {
+            var curG = await window.sbClient
+              .from('propostas')
+              .select('dados_json')
+              .eq('app_id', appId)
+              .eq('empresa_id', empresaId)
+              .single();
+            if (!curG.error && curG.data && curG.data.dados_json) {
+              var djG = curG.data.dados_json; djG.fas = 'ganho';
+              await window.sbClient
+                .from('propostas')
+                .update({ dados_json: djG })
+                .eq('app_id', appId)
+                .eq('empresa_id', empresaId);
+            }
+          }
+          try { localStorage.setItem('tf_props', JSON.stringify(window.props)); } catch (e) {}
+        }
       } else {
         // Reespelha o status na COLUNA fase E no dados_json.fas no MESMO update,
         // evitando desync entre coluna e JSON (Comercial le dados_json).
