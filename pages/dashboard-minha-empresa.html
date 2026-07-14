@@ -115,6 +115,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 .estado{padding:2rem;text-align:center;color:var(--text3);font-size:.9rem}
 
+/* Assistente de Identidade (wizard) */
+.wiz-steps{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.wiz-step{display:flex;align-items:center;gap:.4rem;font-size:.76rem;font-weight:700;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:.3rem .7rem}
+.wiz-step.on{color:#fff;background:var(--emp-cor);border-color:var(--emp-cor)}
+.wiz-step.done{color:var(--emp-cor);border-color:var(--emp-bdr)}
+.wiz-step.soon{opacity:.55}
+.wiz-step-num{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:.66rem}
+.wiz-intro{font-size:.84rem;color:var(--text2);line-height:1.5;margin-bottom:.9rem}
+.wiz-q{margin-bottom:.9rem}
+.wiz-q label{display:block;font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.35rem}
+.wiz-q textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.88rem;line-height:1.5;padding:.5rem .65rem;resize:vertical;min-height:70px}
+.wiz-soon{padding:2rem 1rem;text-align:center;color:var(--text3);font-style:italic;font-size:.9rem;border:1px dashed var(--border2);border-radius:var(--r)}
+.wiz-nav{display:flex;gap:.5rem;justify-content:space-between;align-items:center;margin-top:1rem;flex-wrap:wrap}
+.wiz-nav-r{display:flex;gap:.5rem;flex-wrap:wrap}
+
 @media(max-width:680px){
   .val-grid{grid-template-columns:1fr}
 }
@@ -193,6 +208,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
+<!-- Assistente de Identidade (wizard guiado) -->
+<div class="modal-bg" id="modal-assistente">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-titulo">Assistente de Identidade</div>
+      <button class="btn btn-ghost btn-sm" onclick="fecharAssistente()">✕</button>
+    </div>
+    <div class="wiz-steps" id="wiz-steps"></div>
+    <div id="wiz-body"></div>
+    <div class="wiz-nav">
+      <button class="btn btn-ghost btn-sm" id="wiz-voltar" onclick="wizVoltar()">← Voltar</button>
+      <div class="wiz-nav-r">
+        <button class="btn btn-ghost btn-sm" id="wiz-salvar" onclick="wizSalvarRascunho()">Salvar rascunho</button>
+        <button class="btn btn-emp btn-sm" id="wiz-proximo" onclick="wizProximo()">Próximo →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal editar valores -->
 <div class="modal-bg" id="modal-valores">
   <div class="modal">
@@ -220,6 +254,47 @@ var _empresaAtiva = null;   // { id, nome, nome_curto, ... }
 var _identidade   = { missao: '', visao: '' };
 var _valores      = [];     // [{ id, ordem, nome, como_vivemos, como_nao_vivemos }]
 var _valSel       = 0;      // índice do valor selecionado
+
+// ── Assistente de Identidade (wizard guiado) ──────────────────
+// Camada de versões (tabela empresa_identidade_versoes). A tela de
+// exibição (empresa_identidade/empresa_valores) NÃO depende disto:
+// se a tabela ainda não existir, _versoesDisponivel fica false e o
+// botão "Editar" cai no editor simples (degradação graciosa).
+var _versoesDisponivel = null;  // null = ainda não sondado; true/false após carregar
+var _versaoAtual = null;        // linha da versão ativa/mais recente (ou null)
+var _wizStep = 0;               // etapa atual (0=Visão, 1=Missão, 2=Valores, 3=Resumo)
+var _wizDraft = { visao_guiada: {}, missao_guiada: {} };  // rascunho em memória
+
+// Desativa o widget da extensão Grammarly nos campos de texto (evita o card
+// flutuante vazio que a extensão injeta perto de textarea/input). Só afeta o
+// Grammarly; não altera lógica, dados nem layout.
+var _GRAMM_OFF = ' data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"';
+
+// Etapas do assistente. 'soon' = placeholder (PR-2/PR-3).
+var WIZ_ETAPAS = [
+  { chave: 'visao',   nome: 'Visão' },
+  { chave: 'missao',  nome: 'Missão' },
+  { chave: 'valores', nome: 'Valores', soon: true },
+  { chave: 'resumo',  nome: 'Resumo',  soon: true }
+];
+
+// Perguntas guiadas — chaves jsonb ESTÁVEIS (não renomear: viram dados).
+var PERGUNTAS_VISAO = [
+  { k: 'colaboradores', q: 'Que tipo de colaboradores queremos atrair e reter?' },
+  { k: 'meios',         q: 'Quais processos, tecnologias e conhecimentos vão facilitar chegar lá?' },
+  { k: 'crescimento',   q: 'O quanto queremos crescer (faturamento, tamanho, novos mercados)?' },
+  { k: 'conquistas',    q: 'Quais conquistas queremos celebrar no caminho?' },
+  { k: 'alcance',       q: 'Qual será nosso alcance (local, nacional, internacional)?' },
+  { k: 'midia',         q: 'O que a mídia / o mercado dirá sobre nós?' },
+  { k: 'metafora',      q: 'Se a empresa fosse uma metáfora (imagem ou símbolo), qual seria?' }
+];
+var PERGUNTAS_MISSAO = [
+  { k: 'contribuicao',  q: 'Qual é a nossa contribuição e para quem?' },
+  { k: 'motivos',       q: 'Quais são os grandes motivos de existirmos?' },
+  { k: 'diferenca',     q: 'O que fazemos que gera a maior diferença positiva?' },
+  { k: 'melhora_vidas', q: 'Como melhoramos a vida das pessoas?' },
+  { k: 'mundo_onde',    q: 'Complete: "Nossa organização cria um mundo onde…"' }
+];
 
 // Fases consideradas "fechadas/ganhas" (espelho do app-core)
 var _FAS_FECHADO = ['ganho','aprovado','andamento','faturado','recebido','taf','sat',
@@ -305,9 +380,12 @@ function _onTrocaEmpresa(dados){
   _identidade = { missao: '', visao: '' };
   _valores = [];
   _valSel = 0;
+  _versaoAtual = null;
+  _wizDraft = { visao_guiada: {}, missao_guiada: {} };
   carregarMetricas(_empresaAtiva.id);
   carregarIdentidade(_empresaAtiva.id);
   carregarValores(_empresaAtiva.id);
+  carregarVersaoIdentidade(_empresaAtiva.id);
 }
 
 function _aplicarGatesEdicao(){
@@ -387,14 +465,26 @@ function _renderCampoIdentidade(campo, boxId, vazioMsg){
   }
 }
 
+// Dispatcher do botão "Editar": abre o Assistente guiado quando a estrutura de
+// versões existe; senão cai no editor simples (degradação graciosa).
 function editarIdentidade(campo){
+  if (!_podeEditar()) return;
+  if (_versoesDisponivel) {
+    abrirAssistente(campo);
+  } else {
+    editarIdentidadeSimples(campo);
+  }
+}
+
+// Editor simples (comportamento original) — mantido como fallback.
+function editarIdentidadeSimples(campo){
   if (!_podeEditar()) return;
   var boxId = campo === 'missao' ? 'box-missao' : 'box-visao';
   var box = document.getElementById(boxId);
   var atual = _identidade[campo] || '';
   box.innerHTML =
     '<div class="editor">' +
-      '<textarea id="ed-' + campo + '">' + esc(atual) + '</textarea>' +
+      '<textarea id="ed-' + campo + '"' + _GRAMM_OFF + '>' + esc(atual) + '</textarea>' +
       '<div class="editor-acoes">' +
         '<button class="btn btn-emp btn-sm" onclick="salvarIdentidade(\'' + campo + '\')">Salvar</button>' +
         '<button class="btn btn-ghost btn-sm" onclick="cancelarIdentidade(\'' + campo + '\')">Cancelar</button>' +
@@ -406,6 +496,148 @@ function editarIdentidade(campo){
 
 function cancelarIdentidade(campo){
   _renderIdentidade();
+}
+
+// ── Assistente de Identidade (wizard) ─────────────────────────
+// Carrega a versão ativa/mais recente. Qualquer erro (tabela ainda não
+// criada, RLS, rede) marca _versoesDisponivel=false → botão "Editar" usa o
+// editor simples. A tela de exibição não depende disto (nunca quebra).
+async function carregarVersaoIdentidade(empId){
+  var sb = _sbClient();
+  if (!sb || !empId){ _versoesDisponivel = false; _versaoAtual = null; return; }
+  try {
+    var r = await sb.from('empresa_identidade_versoes')
+      .select('id, versao, status, visao_guiada, missao_guiada')
+      .eq('empresa_id', empId)
+      .order('status', { ascending: true })   // 'ativo' antes de 'inativo'
+      .order('versao', { ascending: false })
+      .limit(1);
+    if (r.error){ _versoesDisponivel = false; _versaoAtual = null; return; }
+    _versoesDisponivel = true;
+    _versaoAtual = (Array.isArray(r.data) && r.data.length) ? r.data[0] : null;
+  } catch(e){
+    _versoesDisponivel = false;
+    _versaoAtual = null;
+  }
+}
+
+function _wizPerguntas(step){
+  if (step === 0) return PERGUNTAS_VISAO;
+  if (step === 1) return PERGUNTAS_MISSAO;
+  return null;
+}
+function _wizDraftKey(step){
+  return step === 1 ? 'missao_guiada' : 'visao_guiada';
+}
+
+function abrirAssistente(campoInicial){
+  if (!_podeEditar()) return;
+  _wizStep = (campoInicial === 'missao') ? 1 : 0;
+  // Parte do rascunho carregado da versão (ou vazio).
+  _wizDraft = {
+    visao_guiada:  Object.assign({}, (_versaoAtual && _versaoAtual.visao_guiada)  || {}),
+    missao_guiada: Object.assign({}, (_versaoAtual && _versaoAtual.missao_guiada) || {})
+  };
+  _wizRender();
+  document.getElementById('modal-assistente').classList.add('on');
+}
+
+function fecharAssistente(){
+  document.getElementById('modal-assistente').classList.remove('on');
+}
+
+// Lê as respostas da etapa atual para o rascunho em memória.
+function _wizColeta(){
+  var pergs = _wizPerguntas(_wizStep);
+  if (!pergs) return;
+  var key = _wizDraftKey(_wizStep);
+  var alvo = _wizDraft[key] || (_wizDraft[key] = {});
+  pergs.forEach(function(p){
+    var ta = document.getElementById('wq-' + key + '-' + p.k);
+    if (ta) alvo[p.k] = ta.value;
+  });
+}
+
+function _wizRender(){
+  var bar = document.getElementById('wiz-steps');
+  bar.innerHTML = WIZ_ETAPAS.map(function(et, i){
+    var cls = 'wiz-step' + (i === _wizStep ? ' on' : (i < _wizStep ? ' done' : '')) + (et.soon ? ' soon' : '');
+    return '<span class="' + cls + '"><span class="wiz-step-num">' + (i + 1) + '</span>' +
+      esc(et.nome) + (et.soon ? ' · em breve' : '') + '</span>';
+  }).join('');
+
+  var body = document.getElementById('wiz-body');
+  var et = WIZ_ETAPAS[_wizStep];
+  var pergs = _wizPerguntas(_wizStep);
+  if (pergs){
+    var key = _wizDraftKey(_wizStep);
+    var dados = _wizDraft[key] || {};
+    var intro = (_wizStep === 0)
+      ? 'Responda livremente — estas respostas guiam a construção da sua Visão. O texto final é montado na etapa Resumo.'
+      : 'Pense nos "porquês" da organização — estas respostas guiam a construção da sua Missão.';
+    body.innerHTML = '<div class="wiz-intro">' + esc(intro) + '</div>' +
+      pergs.map(function(p){
+        return '<div class="wiz-q"><label>' + esc(p.q) + '</label>' +
+          '<textarea id="wq-' + key + '-' + p.k + '"' + _GRAMM_OFF + '>' + esc(dados[p.k] || '') + '</textarea></div>';
+      }).join('');
+  } else {
+    body.innerHTML = '<div class="wiz-soon">A etapa <strong>' + esc(et.nome) +
+      '</strong> chega em breve. A estrutura de dados já está pronta para ela.</div>';
+  }
+
+  var bv = document.getElementById('wiz-voltar');
+  if (bv){ bv.disabled = (_wizStep === 0); bv.style.visibility = (_wizStep === 0) ? 'hidden' : 'visible'; }
+  var bp = document.getElementById('wiz-proximo');
+  if (bp){ bp.style.display = (_wizStep >= WIZ_ETAPAS.length - 1) ? 'none' : ''; }
+}
+
+function wizProximo(){
+  _wizColeta();
+  if (_wizStep < WIZ_ETAPAS.length - 1) _wizStep++;
+  _wizRender();
+}
+function wizVoltar(){
+  _wizColeta();
+  if (_wizStep > 0) _wizStep--;
+  _wizRender();
+}
+
+async function wizSalvarRascunho(){
+  if (!_podeEditar() || !_empresaAtiva) return;
+  var sb = _sbClient();
+  if (!sb) return;
+  _wizColeta();
+  var btn = document.getElementById('wiz-salvar');
+  var lbl = btn ? btn.textContent : '';
+  if (btn){ btn.textContent = 'Salvando…'; btn.disabled = true; }
+  try {
+    var payload = {
+      empresa_id:    _empresaAtiva.id,
+      visao_guiada:  _wizDraft.visao_guiada  || {},
+      missao_guiada: _wizDraft.missao_guiada || {},
+      updated_at:    new Date().toISOString()
+    };
+    var res;
+    if (_versaoAtual && _versaoAtual.id){
+      res = await sb.from('empresa_identidade_versoes')
+        .update(payload).eq('id', _versaoAtual.id)
+        .select('id, versao, status, visao_guiada, missao_guiada').single();
+    } else {
+      payload.versao = 1;
+      payload.status = 'inativo';
+      payload.titulo = 'Construção 1';
+      res = await sb.from('empresa_identidade_versoes')
+        .insert(payload)
+        .select('id, versao, status, visao_guiada, missao_guiada').single();
+    }
+    if (res.error){ throw res.error; }
+    _versaoAtual = res.data;
+    if (btn){ btn.textContent = 'Rascunho salvo ✓'; }
+    setTimeout(function(){ if (btn){ btn.textContent = lbl || 'Salvar rascunho'; btn.disabled = false; } }, 1500);
+  } catch(e){
+    if (btn){ btn.textContent = lbl || 'Salvar rascunho'; btn.disabled = false; }
+    alert('Não foi possível salvar o rascunho: ' + ((e && e.message) || e));
+  }
 }
 
 async function salvarIdentidade(campo){
@@ -542,13 +774,13 @@ function _renderModalValores(rows){
     return '<div class="mval">' +
       '<div class="mval-top">' +
         '<span class="val-num">' + (i + 1) + '</span>' +
-        '<input class="mv-nome" placeholder="Nome do valor" value="' + esc(r.nome) + '" style="flex:1">' +
+        '<input class="mv-nome" placeholder="Nome do valor" value="' + esc(r.nome) + '"' + _GRAMM_OFF + ' style="flex:1">' +
         '<button class="mval-rm" title="Remover" onclick="removerValorLinha(this)">🗑️</button>' +
       '</div>' +
       '<label>Como vivemos</label>' +
-      '<textarea class="mv-viv">' + esc(r.como_vivemos) + '</textarea>' +
+      '<textarea class="mv-viv"' + _GRAMM_OFF + '>' + esc(r.como_vivemos) + '</textarea>' +
       '<label>Como não vivemos</label>' +
-      '<textarea class="mv-nviv">' + esc(r.como_nao_vivemos) + '</textarea>' +
+      '<textarea class="mv-nviv"' + _GRAMM_OFF + '>' + esc(r.como_nao_vivemos) + '</textarea>' +
     '</div>';
   }).join('');
 }
