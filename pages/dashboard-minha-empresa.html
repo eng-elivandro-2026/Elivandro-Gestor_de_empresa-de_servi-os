@@ -265,6 +265,11 @@ var _versaoAtual = null;        // linha da versão ativa/mais recente (ou null)
 var _wizStep = 0;               // etapa atual (0=Visão, 1=Missão, 2=Valores, 3=Resumo)
 var _wizDraft = { visao_guiada: {}, missao_guiada: {} };  // rascunho em memória
 
+// Desativa o widget da extensão Grammarly nos campos de texto (evita o card
+// flutuante vazio que a extensão injeta perto de textarea/input). Só afeta o
+// Grammarly; não altera lógica, dados nem layout.
+var _GRAMM_OFF = ' data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"';
+
 // Etapas do assistente. 'soon' = placeholder (PR-2/PR-3).
 var WIZ_ETAPAS = [
   { chave: 'visao',   nome: 'Visão' },
@@ -479,7 +484,7 @@ function editarIdentidadeSimples(campo){
   var atual = _identidade[campo] || '';
   box.innerHTML =
     '<div class="editor">' +
-      '<textarea id="ed-' + campo + '">' + esc(atual) + '</textarea>' +
+      '<textarea id="ed-' + campo + '"' + _GRAMM_OFF + '>' + esc(atual) + '</textarea>' +
       '<div class="editor-acoes">' +
         '<button class="btn btn-emp btn-sm" onclick="salvarIdentidade(\'' + campo + '\')">Salvar</button>' +
         '<button class="btn btn-ghost btn-sm" onclick="cancelarIdentidade(\'' + campo + '\')">Cancelar</button>' +
@@ -573,7 +578,7 @@ function _wizRender(){
     body.innerHTML = '<div class="wiz-intro">' + esc(intro) + '</div>' +
       pergs.map(function(p){
         return '<div class="wiz-q"><label>' + esc(p.q) + '</label>' +
-          '<textarea id="wq-' + key + '-' + p.k + '">' + esc(dados[p.k] || '') + '</textarea></div>';
+          '<textarea id="wq-' + key + '-' + p.k + '"' + _GRAMM_OFF + '>' + esc(dados[p.k] || '') + '</textarea></div>';
       }).join('');
   } else {
     body.innerHTML = '<div class="wiz-soon">A etapa <strong>' + esc(et.nome) +
@@ -769,13 +774,13 @@ function _renderModalValores(rows){
     return '<div class="mval">' +
       '<div class="mval-top">' +
         '<span class="val-num">' + (i + 1) + '</span>' +
-        '<input class="mv-nome" placeholder="Nome do valor" value="' + esc(r.nome) + '" style="flex:1">' +
+        '<input class="mv-nome" placeholder="Nome do valor" value="' + esc(r.nome) + '"' + _GRAMM_OFF + ' style="flex:1">' +
         '<button class="mval-rm" title="Remover" onclick="removerValorLinha(this)">🗑️</button>' +
       '</div>' +
       '<label>Como vivemos</label>' +
-      '<textarea class="mv-viv">' + esc(r.como_vivemos) + '</textarea>' +
+      '<textarea class="mv-viv"' + _GRAMM_OFF + '>' + esc(r.como_vivemos) + '</textarea>' +
       '<label>Como não vivemos</label>' +
-      '<textarea class="mv-nviv">' + esc(r.como_nao_vivemos) + '</textarea>' +
+      '<textarea class="mv-nviv"' + _GRAMM_OFF + '>' + esc(r.como_nao_vivemos) + '</textarea>' +
     '</div>';
   }).join('');
 }
