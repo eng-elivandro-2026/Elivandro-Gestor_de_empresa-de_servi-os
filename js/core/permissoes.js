@@ -188,6 +188,34 @@
     });
   };
 
+  // ── Permissões individuais por usuário (migration 054) ────
+  // Lê usuario_empresas.permissoes_modulos, carregada no boot em
+  // window._empresaAtiva (multi-empresa.js). Formato:
+  //   { "modulo": { "acao": true|false } }
+  // Resolução:
+  //   1. superadmin / perfil dono → true (bypass, nunca restringidos)
+  //   2. true/false EXPLÍCITO no JSON → autoritativo (concede OU revoga)
+  //   3. módulo/ação ausente, ou coluna NULL → fallback podeAcao (perfil)
+  // Etapa 1: nenhum menu/botão/módulo consome esta função ainda.
+  window.getPermissoesUsuario = function (modulo, acao) {
+    if (_isSuperadmin()) return true;
+    if (_getPerfil() === 'dono') return true;
+    var emp = window._empresaAtiva;
+    var pm = emp && emp.permissoes_modulos;
+    if (pm && typeof pm === 'object' && pm[modulo] && typeof pm[modulo] === 'object') {
+      var v = pm[modulo][acao];
+      if (v === true || v === false) return v; // autoritativo
+      // Alias ver↔acesso (mesma convenção de podeAcessarModulo)
+      if (acao === 'ver' && (pm[modulo].acesso === true || pm[modulo].acesso === false)) {
+        return pm[modulo].acesso;
+      }
+      if (acao === 'acesso' && (pm[modulo].ver === true || pm[modulo].ver === false)) {
+        return pm[modulo].ver;
+      }
+    }
+    return window.podeAcao(modulo, acao); // fallback: matriz por perfil
+  };
+
   // Retorna a matriz ativa (usada pela tela G4B para carregar valores atuais)
   window.getMatrizAtiva = function () {
     return _getMatriz();

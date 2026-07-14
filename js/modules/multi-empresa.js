@@ -36,11 +36,24 @@
       window._perfilUsuario = usuario.perfil; // será sobrescrito em setEmpresaAtiva()
 
       // Buscar empresas vinculadas com perfil_empresa (migration 020)
+      // e permissoes_modulos (migration 054). Degradação graciosa: se a
+      // coluna nova ainda não existir no banco, refaz o select sem ela.
       var { data: vinculos, error: errV } = await window.sbClient
         .from('usuario_empresas')
-        .select('empresa_id, perfil_empresa, permissoes_json')
+        .select('empresa_id, perfil_empresa, permissoes_json, permissoes_modulos')
         .eq('usuario_id', usuario.id)
         .eq('ativo', true);
+
+      if (errV) {
+        console.warn('[multi-empresa] select com permissoes_modulos falhou (migration 054 aplicada?), tentando sem a coluna:', errV.message);
+        var retry = await window.sbClient
+          .from('usuario_empresas')
+          .select('empresa_id, perfil_empresa, permissoes_json')
+          .eq('usuario_id', usuario.id)
+          .eq('ativo', true);
+        vinculos = retry.data;
+        errV = retry.error;
+      }
 
       if (errV || !vinculos || !vinculos.length) {
         console.warn('[multi-empresa] sem vínculos de empresa');
@@ -52,7 +65,8 @@
       vinculos.forEach(function(v) {
         vinculoMap[v.empresa_id] = {
           perfil_empresa: v.perfil_empresa || null,
-          permissoes_json: v.permissoes_json || null
+          permissoes_json: v.permissoes_json || null,
+          permissoes_modulos: v.permissoes_modulos || null
         };
       });
 
@@ -70,7 +84,8 @@
         var vinculo = vinculoMap[emp.id] || {};
         return Object.assign({}, emp, {
           perfil_empresa: vinculo.perfil_empresa || usuario.perfil, // fallback para global
-          permissoes_json: vinculo.permissoes_json || null
+          permissoes_json: vinculo.permissoes_json || null,
+          permissoes_modulos: vinculo.permissoes_modulos || null // migration 054 — leitura via getPermissoesUsuario()
         });
       });
       console.log('%c[multi-empresa] ' + (empresas||[]).length + ' empresa(s) carregada(s) para ' + usuario.nome, 'color:#f0a500');
@@ -400,9 +415,13 @@
     var permissoesIndividuaisAtuais = window._empresaAtiva && window._empresaAtiva.id === empresaAtualizada.id
       ? (window._empresaAtiva.permissoes_json || null)
       : null;
+    var permissoesModulosAtuais = window._empresaAtiva && window._empresaAtiva.id === empresaAtualizada.id
+      ? (window._empresaAtiva.permissoes_modulos || null)
+      : null;
     var empresaCompleta = Object.assign({}, empresaAtualizada, {
       perfil_empresa: perfilEmpresaAtual,
-      permissoes_json: permissoesIndividuaisAtuais
+      permissoes_json: permissoesIndividuaisAtuais,
+      permissoes_modulos: permissoesModulosAtuais
     });
 
     // Atualizar no array global
