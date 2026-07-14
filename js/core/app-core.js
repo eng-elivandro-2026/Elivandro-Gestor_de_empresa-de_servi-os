@@ -8056,72 +8056,67 @@ function expWordDoc(){
             :'Cronograma — configure data de início para ver as datas';
           children.push(para([run(_legIni,{size:18,color:'555555'})],{after:80}));
 
-          // Tabela do Gantt — 3 colunas: Nome | Barra (texto) | Datas
-          var _W=8748;
-          var _W1=1800;
-          var _W2=5500;
-          var _W3=_W-_W1-_W2;
-          var _tBrd={style:D.BorderStyle.NONE,size:0,color:'ffffff'};
-          var _tBrds={top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd};
+          // Tabela do Gantt — 4 colunas, uma linha por fase:
+          //   ID | Tarefa | Cronograma (barra ASCII) | Prazo (X dias)
+          // A barra é proporcional à DURAÇÃO relativa à fase mais longa (100%).
+          var _C1=600, _C2=2500, _C3=5000, _C4=1200;   // DXA
+          var _WT=_C1+_C2+_C3+_C4;
+          var _AL=D.AlignmentType;
+          var _cb={style:D.BorderStyle.SINGLE,size:4,color:'cccccc'};
+          var _cbs={top:_cb,bottom:_cb,left:_cb,right:_cb};
+          function _gHdrCell(txt,w,al){
+            return new D.TableCell({borders:_cbs,shading:{fill:'1a472a'},width:{size:w,type:D.WidthType.DXA},
+              margins:{top:50,bottom:50,left:80,right:80},
+              children:[new D.Paragraph({alignment:al,children:[new D.TextRun({text:txt,font:'Calibri',size:22,bold:true,color:'ffffff',italics:false})]})]});
+          }
+          function _gCell(runs,w,al,marL){
+            return new D.TableCell({borders:_cbs,width:{size:w,type:D.WidthType.DXA},
+              margins:{top:40,bottom:40,left:(marL!=null?marL:80),right:80},
+              children:[new D.Paragraph({alignment:al,children:runs,spacing:{before:0,after:0,line:240}})]});
+          }
 
-          var _gRows=_gFases.map(function(f,_fi){
-            var _off=f.offset||0;
+          var _maxDur=1; _gFases.forEach(function(f){var d=f.dur||1; if(d>_maxDur)_maxDur=d;});
+          var _barTotal=40;
+
+          var _gRows=[new D.TableRow({tableHeader:true,children:[
+            _gHdrCell('ID',_C1,_AL.CENTER), _gHdrCell('Tarefa',_C2,_AL.LEFT),
+            _gHdrCell('Cronograma',_C3,_AL.LEFT), _gHdrCell('Prazo',_C4,_AL.CENTER)
+          ]})];
+
+          _gFases.forEach(function(f,_fi){
             var _dur=f.dur||1;
             var _cor=(f.cor||'#2563eb').replace('#','');
-            var _fd=_gDatas[_fi];
-            var _dtIni=_fd?_gFmt(_fd.dtIni):('D+'+_off);
-            var _dtFim=_fd?_gFmt(_fd.dtFim):('D+'+(_off+_dur-1));
-            // Posição da barra em dias corridos
-            var _offCorr=_fd&&_gInicio?diasCorridosEntre(_gInicio,_fd.dtIni):_off;
-            var _durCorr=_fd?Math.max(1,diasCorridosEntre(_fd.dtIni,_fd.dtFim)+1):_dur;
-            // Barra: blocos antes + blocos cheios + blocos depois (em dias corridos)
-            var _barTotal=40;
-            var _startChar=Math.round(_offCorr/_gTotalCorr*_barTotal);
-            var _durChar=Math.max(1,Math.round(_durCorr/_gTotalCorr*_barTotal));
-            var _endChar=_barTotal-_startChar-_durChar;
-            var _barStr=(' '.repeat(Math.max(0,_startChar)))+'█'.repeat(_durChar)+(' '.repeat(Math.max(0,_endChar)));
+            var _diasLbl=(f.unidade==='horas')?((f.durHoras||8)+'h'):(_dur+(_dur===1?' dia':' dias'));
+            var _fill=Math.max(1,Math.min(_barTotal,Math.round(_dur/_maxDur*_barTotal)));
+            var _empty=_barTotal-_fill;
 
-            return new D.TableRow({children:[
-              new D.TableCell({
-                borders:_tBrds,
-                width:{size:_W1,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:0,right:80},
-                children:[new D.Paragraph({
-                  children:[new D.TextRun({text:f.nome||'',font:'Calibri',size:18,bold:true,color:'333333',italics:false})],
-                  spacing:{before:0,after:30,line:240}
-                })]
-              }),
-              new D.TableCell({
-                borders:_tBrds,
-                shading:{fill:'f3f4f6'},
-                width:{size:_W2,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:40,right:40},
-                children:[new D.Paragraph({
-                  children:[new D.TextRun({text:_barStr,font:'Courier New',size:14,bold:false,color:_cor,italics:false})],
-                  spacing:{before:0,after:30,line:240}
-                })]
-              }),
-              new D.TableCell({
-                borders:_tBrds,
-                width:{size:_W3,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:60,right:0},
-                children:[new D.Paragraph({
-                  children:[
-                    new D.TextRun({text:(_dur)+'d',font:'Calibri',size:16,bold:true,color:'333333',italics:false}),
-                    new D.TextRun({text:'  '+_dtIni+' – '+_dtFim,font:'Calibri',size:14,bold:false,color:'777777',italics:false})
-                  ],
-                  spacing:{before:0,after:30,line:240}
-                })]
-              })
-            ]});
+            _gRows.push(new D.TableRow({children:[
+              _gCell([new D.TextRun({text:String(_fi+1),font:'Calibri',size:22,bold:false,color:'333333',italics:false})],_C1,_AL.CENTER),
+              _gCell([new D.TextRun({text:f.nome||'',font:'Calibri',size:22,bold:true,color:'222222',italics:false})],_C2,_AL.LEFT),
+              _gCell([
+                new D.TextRun({text:'█'.repeat(_fill),font:'Courier New',size:22,bold:false,color:_cor,italics:false}),
+                new D.TextRun({text:'░'.repeat(_empty),font:'Courier New',size:22,bold:false,color:'d9d9d9',italics:false})
+              ],_C3,_AL.LEFT,60),
+              _gCell([new D.TextRun({text:_diasLbl,font:'Calibri',size:22,bold:true,color:'333333',italics:false})],_C4,_AL.CENTER)
+            ]}));
           });
 
           children.push(new D.Table({
-            width:{size:_W,type:D.WidthType.DXA},
-            columnWidths:[_W1,_W2,_W3],
+            width:{size:_WT,type:D.WidthType.DXA},
+            columnWidths:[_C1,_C2,_C3,_C4],
             rows:_gRows,
-            borders:{top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd,insideH:_tBrd,insideV:_tBrd}
+            borders:{top:_cb,bottom:_cb,left:_cb,right:_cb,insideH:_cb,insideV:_cb}
           }));
+          // Aviso do cronograma após a tabela (texto normal, itálico/cinza, sem o emoji ⚠️).
+          var _gNota=(_g.nota!=null ? _g.nota
+            : 'Esse cronograma é apenas uma referência, visão macro. Após recebimento do pedido de compra, as datas e sequências das tarefas sofrerão variações.');
+          _gNota=String(_gNota).replace(/^[^A-Za-zÀ-ÿ0-9]+/,'').trim();
+          if(_gNota){
+            children.push(new D.Paragraph({
+              children:[new D.TextRun({text:_gNota,font:'Calibri',size:22,italics:true,color:'888888'})],
+              spacing:{before:40,after:80,line:240}
+            }));
+          }
           children.push(para([],{after:80}));
         }
       }
