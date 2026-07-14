@@ -391,16 +391,19 @@ function buildGanttPrev(g){
       durPct=(ganttDurDias(f)/totRaw*100).toFixed(1);
     }
 
-    return '<div style="display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;align-items:center;gap:5px;margin-bottom:5px">'
-      +'<div style="font-size:7.5pt;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
-      +(rt?'<span style="font-size:6pt;color:var(--accent);margin-right:2px">'+rt+'</span>':'')
+    // Layout em 2 linhas por fase: nome em linha própria (largura total, uma linha)
+    // e, abaixo, a barra proporcional + o nº de dias à direita (fora da barra).
+    return '<div style="margin-bottom:7px">'
+      +'<div style="font-size:8pt;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'
+      +(rt?'<span style="font-size:6.5pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
       +esc(f.nome||'Tarefa')
       +'</div>'
-      +'<div style="position:relative;height:18px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden">'
-      +'<div style="position:absolute;left:'+offPct+'%;width:'+durPct+'%;height:100%;background:'+cor+';border-radius:3px;display:flex;align-items:center;justify-content:center">'
-      +'<span style="font-size:6.5pt;color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;padding:0 3px">'+durLbl+'</span>'
-      +'</div></div>'
-      +'<div style="font-size:6.8pt;color:var(--text3);white-space:nowrap;text-align:right">'+(fd?dtIniStr+' → '+dtFimStr:'')+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 52px;align-items:center;gap:6px">'
+      +'<div style="position:relative;height:16px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden">'
+      +'<div style="position:absolute;left:'+offPct+'%;width:'+durPct+'%;height:100%;background:'+cor+';border-radius:3px"></div>'
+      +'</div>'
+      +'<div style="font-size:7pt;color:var(--text2);font-weight:700;white-space:nowrap;text-align:right">'+durLbl+'</div>'
+      +'</div>'
       +'</div>';
   }).join('');
 
@@ -419,8 +422,14 @@ function buildGanttPrev(g){
       +'</div>'
     :'<div style="font-size:7.5pt;color:var(--text3);margin-bottom:4px">Configure a data de início para ver as datas reais ↑</div>';
 
+  // Reserva a mesma calha de 52px à direita do cabeçalho de meses, para as barras
+  // ficarem alinhadas com os meses (a coluna de dias fica fora da escala).
+  var mesesHdrWrap = mesesHdr
+    ? '<div style="display:grid;grid-template-columns:1fr 52px;gap:6px"><div>'+mesesHdr+'</div><div></div></div>'
+    : '';
+
   return '<div style="border-top:1px solid var(--border);padding-top:.65rem">'
     +'<div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:.45rem">📊 Visualização</div>'
-    +legenda+mesesHdr+rows+notaHtml
+    +legenda+mesesHdrWrap+rows+notaHtml
     +'</div>';
 }

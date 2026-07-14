@@ -8056,69 +8056,69 @@ function expWordDoc(){
             :'Cronograma — configure data de início para ver as datas';
           children.push(para([run(_legIni,{size:18,color:'555555'})],{after:80}));
 
-          // Tabela do Gantt — 3 colunas: Nome | Barra (texto) | Datas
+          // Tabela do Gantt — 2 linhas por fase:
+          //   Linha 1: NOME (columnSpan 2, largura total, uma linha só)
+          //   Linha 2: barra proporcional | nº de dias (à direita da barra)
           var _W=8748;
-          var _W1=1800;
-          var _W2=5500;
-          var _W3=_W-_W1-_W2;
+          var _W1=6900;            // coluna da barra
+          var _W2=_W-_W1;          // coluna do nº de dias
           var _tBrd={style:D.BorderStyle.NONE,size:0,color:'ffffff'};
           var _tBrds={top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd};
 
-          var _gRows=_gFases.map(function(f,_fi){
+          var _gRows=[];
+          _gFases.forEach(function(f,_fi){
             var _off=f.offset||0;
             var _dur=f.dur||1;
             var _cor=(f.cor||'#2563eb').replace('#','');
             var _fd=_gDatas[_fi];
-            var _dtIni=_fd?_gFmt(_fd.dtIni):('D+'+_off);
-            var _dtFim=_fd?_gFmt(_fd.dtFim):('D+'+(_off+_dur-1));
             // Posição da barra em dias corridos
             var _offCorr=_fd&&_gInicio?diasCorridosEntre(_gInicio,_fd.dtIni):_off;
             var _durCorr=_fd?Math.max(1,diasCorridosEntre(_fd.dtIni,_fd.dtFim)+1):_dur;
-            // Barra: blocos antes + blocos cheios + blocos depois (em dias corridos)
-            var _barTotal=40;
+            var _barTotal=48;
             var _startChar=Math.round(_offCorr/_gTotalCorr*_barTotal);
             var _durChar=Math.max(1,Math.round(_durCorr/_gTotalCorr*_barTotal));
             var _endChar=_barTotal-_startChar-_durChar;
             var _barStr=(' '.repeat(Math.max(0,_startChar)))+'█'.repeat(_durChar)+(' '.repeat(Math.max(0,_endChar)));
+            // Rótulo de dias (só o número de dias; sem intervalo de datas)
+            var _diasLbl=(f.unidade==='horas')?((f.durHoras||8)+'h'):(_dur+(_dur===1?' dia':' dias'));
 
-            return new D.TableRow({children:[
+            // Linha 1 — nome (uma célula ocupando as 2 colunas)
+            _gRows.push(new D.TableRow({children:[
               new D.TableCell({
-                borders:_tBrds,
-                width:{size:_W1,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:0,right:80},
+                borders:_tBrds, columnSpan:2,
+                margins:{top:60,bottom:10,left:0,right:0},
                 children:[new D.Paragraph({
-                  children:[new D.TextRun({text:f.nome||'',font:'Calibri',size:18,bold:true,color:'333333',italics:false})],
-                  spacing:{before:0,after:30,line:240}
-                })]
-              }),
-              new D.TableCell({
-                borders:_tBrds,
-                shading:{fill:'f3f4f6'},
-                width:{size:_W2,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:40,right:40},
-                children:[new D.Paragraph({
-                  children:[new D.TextRun({text:_barStr,font:'Courier New',size:14,bold:false,color:_cor,italics:false})],
-                  spacing:{before:0,after:30,line:240}
-                })]
-              }),
-              new D.TableCell({
-                borders:_tBrds,
-                width:{size:_W3,type:D.WidthType.DXA},
-                margins:{top:40,bottom:40,left:60,right:0},
-                children:[new D.Paragraph({
-                  children:[
-                    new D.TextRun({text:(_dur)+'d',font:'Calibri',size:16,bold:true,color:'333333',italics:false}),
-                    new D.TextRun({text:'  '+_dtIni+' – '+_dtFim,font:'Calibri',size:14,bold:false,color:'777777',italics:false})
-                  ],
-                  spacing:{before:0,after:30,line:240}
+                  children:[new D.TextRun({text:f.nome||'',font:'Calibri',size:19,bold:true,color:'222222',italics:false})],
+                  spacing:{before:0,after:20,line:240}
                 })]
               })
-            ]});
+            ]}));
+            // Linha 2 — barra | dias
+            _gRows.push(new D.TableRow({children:[
+              new D.TableCell({
+                borders:_tBrds, shading:{fill:'f3f4f6'},
+                width:{size:_W1,type:D.WidthType.DXA},
+                margins:{top:0,bottom:50,left:40,right:40},
+                children:[new D.Paragraph({
+                  children:[new D.TextRun({text:_barStr,font:'Courier New',size:15,bold:false,color:_cor,italics:false})],
+                  spacing:{before:0,after:20,line:240}
+                })]
+              }),
+              new D.TableCell({
+                borders:_tBrds,
+                width:{size:_W2,type:D.WidthType.DXA},
+                margins:{top:0,bottom:50,left:60,right:0},
+                children:[new D.Paragraph({
+                  children:[new D.TextRun({text:_diasLbl,font:'Calibri',size:16,bold:true,color:'333333',italics:false})],
+                  spacing:{before:0,after:20,line:240}
+                })]
+              })
+            ]}));
           });
 
           children.push(new D.Table({
             width:{size:_W,type:D.WidthType.DXA},
-            columnWidths:[_W1,_W2,_W3],
+            columnWidths:[_W1,_W2],
             rows:_gRows,
             borders:{top:_tBrd,bottom:_tBrd,left:_tBrd,right:_tBrd,insideH:_tBrd,insideV:_tBrd}
           }));
