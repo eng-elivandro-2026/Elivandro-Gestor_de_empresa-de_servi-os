@@ -107,10 +107,15 @@
       nav: [
         { label: 'Obras', icon: 'OP', action: "go('operacional',this);rOperacional()" },
         { separator: true, label: 'Status' },
-        { label: 'Aguardando Recebimento', icon: 'AR', action: "go('operacional',this);opSetFiltroStatus('recebimento')" },
-        { label: 'Planejamento', icon: 'PL', action: "go('operacional',this);opSetFiltroStatus('planejamento')" },
-        { label: 'Em Execucao', icon: 'EX', action: "go('operacional',this);opSetFiltroStatus('execucao')" },
-        { label: 'Entregues', icon: 'OK', action: "go('operacional',this);opSetFiltroStatus('entregues')" },
+        { label: 'Aprovado', icon: '✅', action: "go('operacional',this);opSetFiltroStatus('aprovado')" },
+        { label: 'Em Andamento', icon: '🔧', action: "go('operacional',this);opSetFiltroStatus('andamento')" },
+        { label: 'TAF', icon: '🧪', action: "go('operacional',this);opSetFiltroStatus('taf')" },
+        { label: 'SAT', icon: '🛠️', action: "go('operacional',this);opSetFiltroStatus('sat')" },
+        { label: 'Finalizado', icon: '🏁', action: "go('operacional',this);opSetFiltroStatus('finalizado')" },
+        { label: 'Atrasado', icon: '⚠️', action: "go('operacional',this);opSetFiltroStatus('atrasado')" },
+        { label: 'Em Pausa Falta Material', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_falta_material')" },
+        { label: 'Em Pausa Ag. Cliente', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_cliente')" },
+        { label: 'Em Pausa Ag. Terceiro', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_terceiro')" },
       ]
     },
     {
