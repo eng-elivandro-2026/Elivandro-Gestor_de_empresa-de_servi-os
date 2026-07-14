@@ -18,7 +18,7 @@
       src: 'pages/dashboard-minha-empresa.html',
       nav: [
         { label: 'Missão, Visão e Valores', icon: '🏢', action: "Router.ir('dashboard-minha-empresa')" },
-        { label: 'PVE',             icon: '📈', emBreve: true },
+        { label: 'IE - Identidade da Empresa', icon: '🪪', action: "Router.iframeMsg('dashboard-minha-empresa','ABRIR_ASSISTENTE',null)" },
         { label: 'Cadeia de Valor', icon: '🔗', emBreve: true },
         { label: 'Macro-processo',  icon: '🗺️', emBreve: true },
         { label: 'Organograma',     icon: '🏛️', emBreve: true },

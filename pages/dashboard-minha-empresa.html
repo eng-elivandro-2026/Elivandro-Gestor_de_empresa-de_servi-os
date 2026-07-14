@@ -203,10 +203,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="sec">
     <div class="sec-head">
       <div class="sec-titulo"><span class="sec-icon">🎯</span> Missão</div>
-      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" id="btn-versoes" style="display:none" onclick="abrirVersoes()">🗂️ Versões</button>
-        <button class="btn btn-ghost btn-sm" id="btn-edit-missao" style="display:none" onclick="editarIdentidade('missao')">✏️ Editar</button>
-      </div>
     </div>
     <div id="box-missao"><div class="sec-vazio">Carregando…</div></div>
   </div>
@@ -215,7 +211,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="sec">
     <div class="sec-head">
       <div class="sec-titulo"><span class="sec-icon">🔭</span> Visão</div>
-      <button class="btn btn-ghost btn-sm" id="btn-edit-visao" style="display:none" onclick="editarIdentidade('visao')">✏️ Editar</button>
     </div>
     <div id="box-visao"><div class="sec-vazio">Carregando…</div></div>
   </div>
@@ -224,7 +219,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="sec">
     <div class="sec-head">
       <div class="sec-titulo"><span class="sec-icon">💎</span> Valores</div>
-      <button class="btn btn-ghost btn-sm" id="btn-edit-valores" style="display:none" onclick="abrirModalValores()">✏️ Editar valores</button>
     </div>
     <div id="box-valores"><div class="sec-vazio">Carregando…</div></div>
   </div>
@@ -247,7 +241,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="modal">
     <div class="modal-head">
       <div class="modal-titulo">Assistente de Identidade</div>
-      <button class="btn btn-ghost btn-sm" onclick="fecharAssistente()">✕</button>
+      <div style="display:flex;gap:.4rem;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="abrirVersoes()">🗂️ Versões</button>
+        <button class="btn btn-ghost btn-sm" onclick="fecharAssistente()">✕</button>
+      </div>
     </div>
     <div class="wiz-steps" id="wiz-steps"></div>
     <div id="wiz-body"></div>
@@ -484,11 +481,9 @@ function _onTrocaEmpresa(dados){
 }
 
 function _aplicarGatesEdicao(){
-  var show = _podeEditar() ? 'inline-flex' : 'none';
-  document.getElementById('btn-edit-missao').style.display  = show;
-  document.getElementById('btn-edit-visao').style.display   = show;
-  document.getElementById('btn-edit-valores').style.display = show;
-  var bv = document.getElementById('btn-versoes'); if (bv) bv.style.display = show;
+  // A tela principal é somente leitura. A edição da identidade acontece pelo
+  // item de menu "IE - Identidade da Empresa" (abre o assistente), gated no clique
+  // por _podeEditar. Sem botões de edição na tela para gatear aqui.
 }
 
 // ── Métricas ──────────────────────────────────────────────────
@@ -1274,7 +1269,18 @@ window.addEventListener('message', function(e){
   if (e.data.type === 'SET_TEMA'){
     document.body.classList.toggle('light', e.data.tema === 'light');
   }
+  if (e.data.type === 'ABRIR_ASSISTENTE'){
+    abrirIdentidade();
+  }
 });
+
+// Abre o Assistente de Identidade (wizard completo). Acionado pelo item de menu
+// "IE - Identidade da Empresa" (a tela principal ficou somente leitura).
+function abrirIdentidade(){
+  if (!_podeEditar()){ alert('Você não tem permissão para editar a identidade da empresa.'); return; }
+  if (_versoesDisponivel === false){ alert('A estrutura de identidade não está disponível no momento.'); return; }
+  abrirAssistente('visao');
+}
 
 // Sincronizar tema claro/escuro com o portal pai ao carregar
 try {
