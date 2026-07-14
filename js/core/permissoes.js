@@ -61,8 +61,8 @@
       ver: ['dono', 'admin']
     },
     'dashboard-minha-empresa': {
-      ver:    ['dono'],
-      editar: ['dono']
+      ver:    ['dono', 'gestor'],
+      editar: ['dono', 'gestor']
     },
     'planejamento-estrategico': {
       ver:    ['dono'],
