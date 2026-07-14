@@ -370,42 +370,33 @@ function buildGanttPrev(g){
     mesesHdr+='</div>';
   }
 
-  // Linhas
-  var rows=fases.map(function(f,fi){
+  // Tabela de 4 colunas (uma linha por fase): ID | Tarefa | Cronograma | Prazo.
+  // A barra é proporcional à DURAÇÃO da fase relativa à mais longa (100%).
+  var maxDur=1; fases.forEach(function(f){var d=ganttDurDias(f); if(d>maxDur)maxDur=d;});
+  var td='padding:3px 6px;border-bottom:1px solid #ddd;vertical-align:middle';
+  var trs=fases.map(function(f,fi){
     var cor=f.cor||'#2563eb';
-    var fd=faseDatas[fi];
-    var dtIniStr=fd?fmtDt(fd.dtIni):'D+'+(f.offset||0);
-    var dtFimStr=fd?fmtDt(fd.dtFim):'';
     var durLbl=fmtDur(f);
     var rt=relTag(f,fi);
-
-    var offPct=0,durPct=10;
-    if(inicio&&fd){
-      var offCorr=diasCorridosEntre(inicio,fd.dtIni);
-      var durCorr=Math.max(1,diasCorridosEntre(fd.dtIni,fd.dtFim)+1);
-      offPct=Math.max(0,(offCorr/totalCorridos*100)).toFixed(1);
-      durPct=Math.min(100-parseFloat(offPct),(durCorr/totalCorridos*100)).toFixed(1);
-    } else {
-      var totRaw=Math.max(1,(f.offset||0)+ganttDurDias(f));
-      offPct=((f.offset||0)/totRaw*100).toFixed(1);
-      durPct=(ganttDurDias(f)/totRaw*100).toFixed(1);
-    }
-
-    // Layout em 2 linhas por fase: nome em linha própria (largura total, uma linha)
-    // e, abaixo, a barra proporcional + o nº de dias à direita (fora da barra).
-    return '<div style="margin-bottom:7px">'
-      +'<div style="font-size:8pt;color:#1a1a1a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'
-      +(rt?'<span style="font-size:6.5pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
-      +esc(f.nome||'Tarefa')
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 52px;align-items:center;gap:6px">'
-      +'<div style="position:relative;height:16px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden">'
-      +'<div style="position:absolute;left:'+offPct+'%;width:'+durPct+'%;height:100%;background:'+cor+';border-radius:3px"></div>'
-      +'</div>'
-      +'<div style="font-size:7pt;color:var(--text2);font-weight:700;white-space:nowrap;text-align:right">'+durLbl+'</div>'
-      +'</div>'
-      +'</div>';
+    var pct=Math.max(4,Math.min(100,(ganttDurDias(f)/maxDur*100))).toFixed(1);
+    return '<tr>'
+      +'<td style="'+td+';text-align:center;font-size:7pt;color:#1a1a1a">'+(fi+1)+'</td>'
+      +'<td style="'+td+';font-size:7.5pt;font-weight:700;color:#1a1a1a">'
+        +(rt?'<span style="font-size:6pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
+        +esc(f.nome||'Tarefa')+'</td>'
+      +'<td style="'+td+'"><div style="position:relative;height:13px;background:#e9ecef;border-radius:3px;overflow:hidden">'
+        +'<div style="position:absolute;left:0;width:'+pct+'%;height:100%;background:'+cor+';border-radius:3px"></div></div></td>'
+      +'<td style="'+td+';text-align:center;font-size:7pt;font-weight:700;color:#333;white-space:nowrap">'+durLbl+'</td>'
+      +'</tr>';
   }).join('');
+  var th='padding:4px 6px;font-size:6.8pt;font-weight:700;color:#fff;text-align:left';
+  var tabela='<table style="width:100%;border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-top:4px">'
+    +'<thead><tr style="background:#1a472a">'
+    +'<th style="'+th+';text-align:center;width:26px">ID</th>'
+    +'<th style="'+th+';width:34%">Tarefa</th>'
+    +'<th style="'+th+'">Cronograma</th>'
+    +'<th style="'+th+';text-align:center;width:56px">Prazo</th>'
+    +'</tr></thead><tbody>'+trs+'</tbody></table>';
 
   var nota=g.nota||GANTT_NOTA_DEFAULT;
   var notaHtml=nota
@@ -422,14 +413,8 @@ function buildGanttPrev(g){
       +'</div>'
     :'<div style="font-size:7.5pt;color:var(--text3);margin-bottom:4px">Configure a data de início para ver as datas reais ↑</div>';
 
-  // Reserva a mesma calha de 52px à direita do cabeçalho de meses, para as barras
-  // ficarem alinhadas com os meses (a coluna de dias fica fora da escala).
-  var mesesHdrWrap = mesesHdr
-    ? '<div style="display:grid;grid-template-columns:1fr 52px;gap:6px"><div>'+mesesHdr+'</div><div></div></div>'
-    : '';
-
   return '<div style="border-top:1px solid var(--border);padding-top:.65rem">'
     +'<div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:.45rem">📊 Visualização</div>'
-    +legenda+mesesHdrWrap+rows+notaHtml
+    +legenda+tabela+notaHtml
     +'</div>';
 }
