@@ -94,62 +94,44 @@
     'em_pausa_aguardando_terceiro'
   ];
 
-  // ── Grupos de status para os filtros do menu lateral (PR-1) ──────────────
-  // A coluna obras.status_operacional convive HOJE com dois vocabularios:
-  //   • STATUS_OPERACIONAL (aguardando_recebimento, em_execucao, entregue_ao_cliente, ...)
-  //   • FASES_GESTAO_NEGOCIO (aprovado, andamento, finalizado, ...) — gravadas pelo card.
-  // Os itens "Status" do menu (Aguardando Recebimento / Planejamento / Em Execucao /
-  // Entregues) filtram por GRUPO, tolerando os dois vocabularios (traducao na leitura).
-  var GRUPOS_STATUS = {
-    recebimento: [
-      'aguardando_recebimento',
-      'recebimento_em_analise'
-    ],
-    planejamento: [
-      'planejamento_em_andamento',
-      'aguardando_compras',
-      'compras_em_andamento',
-      'aguardando_material',
-      'pronto_para_mobilizacao',
-      'em_mobilizacao',
-      'aprovado'                       // FASES legado -> planejamento
-    ],
-    execucao: [
-      'em_execucao',
-      'em_pausa',
-      'em_testes',
-      'em_comissionamento',
-      'em_taf',
-      'em_sat',
-      'aguardando_documentacao_final',
-      'aguardando_cliente',
-      'aguardando_terceiro',
-      'andamento',                     // FASES legado -> execucao
-      'taf',                           // FASES legado -> execucao
-      'sat',                           // FASES legado -> execucao
-      'atrasado',                      // FASES legado -> execucao
-      'em_pausa_falta_material',       // FASES legado -> execucao
-      'em_pausa_aguardando_cliente',   // FASES legado -> execucao
-      'em_pausa_aguardando_terceiro'   // FASES legado -> execucao
-    ],
-    entregues: [
-      'entregue_ao_cliente',
-      'em_garantia',
-      'encerrada',
-      'finalizado'                     // FASES legado -> entregues
-    ]
+  // ── Tradução de legado STATUS_OPERACIONAL -> FASE (filtros do menu lateral) ──
+  // O menu lateral "Status" espelha EXATAMENTE as fases do dropdown do card
+  // (FASES_GESTAO_NEGOCIO) e o filtro é match DIRETO por fase. Porém a coluna
+  // obras.status_operacional pode conter valores do vocabulário STATUS_OPERACIONAL
+  // (gravados pelo painel de edição opEdStatus/statusOptions ou por dados legados).
+  // Este mapa traduz esses valores para a FASE mais próxima — melhor esforço, apenas
+  // para que obras antigas NÃO SUMAM dos filtros (não é classificação canônica).
+  var MAPA_LEGADO_STATUS = {
+    aguardando_recebimento: 'aprovado',
+    recebimento_em_analise: 'aprovado',
+    planejamento_em_andamento: 'aprovado',
+    aguardando_compras: 'aprovado',
+    compras_em_andamento: 'aprovado',
+    pronto_para_mobilizacao: 'aprovado',
+    aguardando_material: 'em_pausa_falta_material',
+    aguardando_cliente: 'em_pausa_aguardando_cliente',
+    aguardando_terceiro: 'em_pausa_aguardando_terceiro',
+    em_mobilizacao: 'andamento',
+    em_execucao: 'andamento',
+    em_pausa: 'em_pausa_falta_material',
+    em_testes: 'taf',
+    em_taf: 'taf',
+    em_comissionamento: 'sat',
+    em_sat: 'sat',
+    aguardando_documentacao_final: 'sat',
+    entregue_ao_cliente: 'finalizado',
+    em_garantia: 'finalizado',
+    encerrada: 'finalizado'
+    // 'cancelada' é anulada antes de chegar à lista → intencionalmente fora do mapa.
   };
 
-  // Traduz qualquer status (STATUS_OPERACIONAL ou FASES legado) para a chave de grupo,
-  // ou '' quando nao pertence a nenhum grupo (ex.: 'cancelada').
-  function grupoStatusOperacional(status) {
+  // Retorna a FASE efetiva de um status: identidade quando já é uma FASE do dropdown;
+  // tradução quando é um valor legado STATUS_OPERACIONAL; '' quando não mapeia.
+  function faseEfetivaOperacional(status) {
     var s = String(status || '').trim().toLowerCase();
     if (!s) return '';
-    var chaves = Object.keys(GRUPOS_STATUS);
-    for (var i = 0; i < chaves.length; i++) {
-      if (GRUPOS_STATUS[chaves[i]].indexOf(s) >= 0) return chaves[i];
-    }
-    return '';
+    if (FASES_GESTAO_NEGOCIO.indexOf(s) >= 0) return s;      // já é fase do dropdown
+    return MAPA_LEGADO_STATUS[s] || '';                       // legado -> fase (ou '')
   }
 
   // Fases COMERCIAIS permitidas ao "Voltar para Comercial" (desfazer obra).
@@ -1232,17 +1214,9 @@
       if (obra && String(obra.status_operacional || '').trim().toLowerCase() === 'cancelada') obra = null;
       if (fase === 'ganho') {
         if (!obra) return; // 'ganho' so entra no Operacional apos Criar Obra
-        var nGanho = normalizarNegocioOperacional(p, obra);
-        // Passo 1+3: obra e a fonte de verdade do status para AGRUPAMENTO/filtro.
-        nGanho.status_grupo = grupoStatusOperacional(obra.status_operacional || nGanho.status_operacional);
-        out.push(nGanho);
+        out.push(normalizarNegocioOperacional(p, obra));
       } else if (faseOperacionalNegocio(fase)) {
-        // normalizarNegocioOperacional recebe null (display/gravacao inalterados),
-        // mas o AGRUPAMENTO usa a obra quando existe (fonte de verdade, Passo 1).
-        var nFase = normalizarNegocioOperacional(p, null);
-        var verdade = obra ? obra.status_operacional : nFase.status_operacional;
-        nFase.status_grupo = grupoStatusOperacional(verdade);
-        out.push(nFase);
+        out.push(normalizarNegocioOperacional(p, null));
       }
     });
     return out;
@@ -1411,15 +1385,10 @@
     var anoSel = (typeof window !== 'undefined') ? window._anoComercialSel : 'all';
     var anoNum = (anoSel && anoSel !== 'all') ? (parseInt(anoSel, 10) || null) : null;
     return (state.obras || []).filter(function (o) {
-      if (state.status) {
-        if (GRUPOS_STATUS[state.status]) {
-          // Filtro do menu lateral: por GRUPO (obra e fonte de verdade via status_grupo).
-          if ((o.status_grupo || grupoStatusOperacional(o.status_operacional)) !== state.status) return false;
-        } else if (o.status_operacional !== state.status) {
-          // Filtro do select superior "Fase": valor exato (comportamento preservado).
-          return false;
-        }
-      }
+      // Menu lateral e select superior "Fase" usam o MESMO vocabulario (FASES do
+      // dropdown). Match DIRETO por fase, traduzindo valores legados STATUS_OPERACIONAL
+      // para a fase mais proxima (obras antigas nao somem).
+      if (state.status && faseEfetivaOperacional(o.status_operacional) !== state.status) return false;
       if (cliente && String(o.cliente_nome || '').toLowerCase().indexOf(cliente) < 0) return false;
       if (busca) {
         var hay = [o.codigo_obra, o.proposta_numero, o.titulo, o.cliente_nome].join(' ').toLowerCase();
@@ -3943,14 +3912,14 @@
     if (holder) holder.remove();
   }
 
-  // Filtro por GRUPO acionado pelo menu lateral (recebimento/planejamento/execucao/entregues).
-  function setFiltroStatus(grupo) {
-    grupo = String(grupo || '');
+  // Filtro por FASE acionado pelo menu lateral (mesmas fases do dropdown do card).
+  function setFiltroStatus(fase) {
+    fase = String(fase || '');
     var aplicar = function () {
-      state.status = grupo;
-      // O select superior lista apenas FASES; um grupo nao existe la, entao fica "Todas".
+      state.status = fase;
+      // Espelha a selecao no select superior "Fase" (mesmo vocabulario que o menu).
       var sel = $('opStatus');
-      if (sel) sel.value = '';
+      if (sel) sel.value = fase;
       renderLista();
     };
     if ($('opLista')) {
