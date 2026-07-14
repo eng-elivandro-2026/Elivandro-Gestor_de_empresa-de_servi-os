@@ -148,19 +148,70 @@
     return false;
   }
 
+  // ── Permissões individuais por usuário (migration 054) ────
+  // O JSON do cliente usa vocabulário próprio (relacionamento, mpe,
+  // minha_empresa, quadro_avisos, ...) e ações uniformes
+  // ver/editar/excluir/aprovar. Mapas de tradução:
+
+  // ID do Router → chave de módulo no JSON.
+  // Sem entrada aqui = sem correspondente no JSON → fallback por perfil
+  // (reuniao-radar, dashboard-estrategico, cofre, configuracoes).
+  var MAPA_MODULO_JSON = {
+    'comercial':                'comercial',
+    'operacional':              'operacional',
+    'financeiro':               'financeiro',
+    'rh':                       'rh',
+    'historico':                'relacionamento',
+    'gestao':                   'gestao_ceo',
+    'gestao-a-vista':           'mpe',
+    'dashboard-minha-empresa':  'minha_empresa',
+    'planejamento-estrategico': 'planejamento',
+    'avisos':                   'quadro_avisos'
+  };
+
+  // Ações atuais → ações do JSON (ver/editar/excluir/aprovar).
+  var MAPA_ACAO_JSON_BASE = { ver: 'ver', acesso: 'ver', editar: 'editar', excluir: 'excluir', aprovar: 'aprovar' };
+  // Overrides por módulo. Ação sem mapeamento (ex.: financeiro.cofre,
+  // configuracoes.*) → fallback por perfil.
+  var MAPA_ACAO_JSON_MOD = {
+    'comercial':      { criar_proposta: 'editar', editar_margem: 'editar', aprovar_proposta: 'aprovar' },
+    'financeiro':     { criar_cp_cr: 'editar', editar_cp_cr: 'editar', importar_nf: 'editar', cancelar_cp_cr: 'excluir' },
+    'gestao-a-vista': { editar_pdca: 'editar' }
+  };
+
+  // Resolve a permissão individual explícita do usuário na empresa ativa.
+  // Retorna true/false (AUTORITATIVO — concede ou revoga) ou null
+  // (sem configuração explícita → chamador usa o fallback por perfil).
+  function _resolverIndividual(modulo, acao) {
+    var emp = window._empresaAtiva;
+    var pm = emp && emp.permissoes_modulos;
+    if (!pm || typeof pm !== 'object') return null;
+    var chave = MAPA_MODULO_JSON[modulo] || modulo; // aceita chave do JSON direta
+    var entry = pm[chave];
+    if ((!entry || typeof entry !== 'object') && chave !== modulo) entry = pm[modulo];
+    if (!entry || typeof entry !== 'object') return null;
+    var acaoJson = (MAPA_ACAO_JSON_MOD[modulo] && MAPA_ACAO_JSON_MOD[modulo][acao]) || MAPA_ACAO_JSON_BASE[acao] || null;
+    if (!acaoJson) return null;
+    var v = entry[acaoJson];
+    return (v === true || v === false) ? v : null;
+  }
+
   // ── API pública ──────────────────────────────────────────
 
   // Verifica se o perfil atual pode acessar um módulo (ação 'ver' / 'acesso')
   window.podeAcessarModulo = function (modulo) {
     if (_isSuperadmin()) return true;
-    // Quadro de Avisos: acesso restrito a Dono e ao gestor Adriano (por e-mail).
+    var perfil = _getPerfil();
+    if (perfil === 'dono') return true;
+    // Permissão individual explícita (migration 054) — autoritativa,
+    // inclusive para o Quadro de Avisos (substitui o hardcode por e-mail).
+    var ind = _resolverIndividual(modulo, 'ver');
+    if (ind === true || ind === false) return ind;
+    // Quadro de Avisos sem JSON: fallback hardcoded (gestor Adriano por e-mail).
     if (modulo === 'avisos') {
-      if (_getPerfil() === 'dono') return true;
       return !!(window._userEmail && String(window._userEmail).toLowerCase() === 'adriano@tecfusion.com.br');
     }
-    var perfil = _getPerfil();
     if (!perfil) return false;
-    if (perfil === 'dono') return true;
     if (_temPermissaoIndividual(modulo, 'ver') || _temPermissaoIndividual(modulo, 'acesso')) return true;
     var mat = _getMatrizMod(modulo);
     if (!mat) return false;
@@ -172,13 +223,33 @@
   window.podeAcao = function (modulo, acao) {
     if (_isSuperadmin()) return true;
     var perfil = _getPerfil();
-    if (!perfil) return false;
     if (perfil === 'dono') return true;
+    // Permissão individual explícita (migration 054) — autoritativa
+    var ind = _resolverIndividual(modulo, acao);
+    if (ind === true || ind === false) return ind;
+    if (!perfil) return false;
     if (_temPermissaoIndividual(modulo, acao)) return true;
     var mat = _getMatrizMod(modulo);
     if (!mat) return false;
     var permitidos = mat[acao] || [];
     return permitidos.indexOf(perfil) >= 0;
+  };
+
+  // Visibilidade de SUBSEÇÃO do menu (itens de nav com tag sub: no Router).
+  // Chaves do JSON sem módulo próprio: propostas, pipeline, banco_escopos,
+  // metas, analise_ia, ranking_clientes, visao_executiva, obras.
+  // true/false explícito governa; sem configuração → visível (a visibilidade
+  // do MÓDULO já foi decidida por podeAcessarModulo).
+  window.podeVerSubsecao = function (modulo, subKey) {
+    if (_isSuperadmin()) return true;
+    if (_getPerfil() === 'dono') return true;
+    var emp = window._empresaAtiva;
+    var pm = emp && emp.permissoes_modulos;
+    if (!pm || typeof pm !== 'object') return true;
+    var entry = pm[subKey];
+    if (!entry || typeof entry !== 'object') return true;
+    var v = entry.ver;
+    return (v === true || v === false) ? v : true;
   };
 
   // Retorna lista de IDs de módulos do Router acessíveis ao perfil atual
@@ -188,31 +259,19 @@
     });
   };
 
-  // ── Permissões individuais por usuário (migration 054) ────
+  // ── Leitor direto de permissão individual ─────────────────
   // Lê usuario_empresas.permissoes_modulos, carregada no boot em
-  // window._empresaAtiva (multi-empresa.js). Formato:
-  //   { "modulo": { "acao": true|false } }
+  // window._empresaAtiva (multi-empresa.js). Aceita tanto IDs do
+  // Router quanto chaves do JSON (tradução via _resolverIndividual).
   // Resolução:
   //   1. superadmin / perfil dono → true (bypass, nunca restringidos)
   //   2. true/false EXPLÍCITO no JSON → autoritativo (concede OU revoga)
   //   3. módulo/ação ausente, ou coluna NULL → fallback podeAcao (perfil)
-  // Etapa 1: nenhum menu/botão/módulo consome esta função ainda.
   window.getPermissoesUsuario = function (modulo, acao) {
     if (_isSuperadmin()) return true;
     if (_getPerfil() === 'dono') return true;
-    var emp = window._empresaAtiva;
-    var pm = emp && emp.permissoes_modulos;
-    if (pm && typeof pm === 'object' && pm[modulo] && typeof pm[modulo] === 'object') {
-      var v = pm[modulo][acao];
-      if (v === true || v === false) return v; // autoritativo
-      // Alias ver↔acesso (mesma convenção de podeAcessarModulo)
-      if (acao === 'ver' && (pm[modulo].acesso === true || pm[modulo].acesso === false)) {
-        return pm[modulo].acesso;
-      }
-      if (acao === 'acesso' && (pm[modulo].ver === true || pm[modulo].ver === false)) {
-        return pm[modulo].ver;
-      }
-    }
+    var ind = _resolverIndividual(modulo, acao);
+    if (ind === true || ind === false) return ind; // autoritativo
     return window.podeAcao(modulo, acao); // fallback: matriz por perfil
   };
 

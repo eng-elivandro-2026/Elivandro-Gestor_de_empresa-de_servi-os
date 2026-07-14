@@ -72,18 +72,18 @@
       nav: [
         { label: 'Dashboard',          icon: '📊', action: "go('dashboard',this);document.getElementById('area-inline').scrollTop=0" },
         { separator: true, label: 'Comercial' },
-        { label: '↳ Propostas',        icon: '📄', action: "go('dashboard',this);irParaPainel('propostasCard','togPropostas')" },
-        { label: '↳ Metas',            icon: '🎯', action: "irParaPainel('metaPanel','togMeta')" },
+        { label: '↳ Propostas',        icon: '📄', sub: 'propostas',        action: "go('dashboard',this);irParaPainel('propostasCard','togPropostas')" },
+        { label: '↳ Metas',            icon: '🎯', sub: 'metas',            action: "irParaPainel('metaPanel','togMeta')" },
         { label: '↳ Visão Geral',      icon: '📈', action: "irParaPainel('visaoGeralCard','togVisaoGeral')" },
-        { label: '↳ Análise IA',       icon: '🤖', action: "irParaPainel('analisePanel','togAnalise')" },
-        { label: '↳ Ranking',          icon: '🏢', action: "irParaPainel('rankingCard','togRanking')" },
+        { label: '↳ Análise IA',       icon: '🤖', sub: 'analise_ia',       action: "irParaPainel('analisePanel','togAnalise')" },
+        { label: '↳ Ranking',          icon: '🏢', sub: 'ranking_clientes', action: "irParaPainel('rankingCard','togRanking')" },
         { label: '↳ Fechamentos',      icon: '📅', action: "irParaPainel('fechMesCard','togFechMes')" },
         { label: '↳ Linha do Tempo',   icon: '📅', action: "irParaPainel('execTimelineCard','togExecTimeline')" },
         { separator: true, label: 'Ferramentas' },
         { label: 'Templates',          icon: '📋', action: "go('templates',this);beLoadDB();stplRenderLista()" },
-        { label: 'Banco de Escopos',   icon: '🗂️', action: "go('escopos',this);setTimeout(beInit,80)" },
+        { label: 'Banco de Escopos',   icon: '🗂️', sub: 'banco_escopos', action: "go('escopos',this);setTimeout(beInit,80)" },
         { label: 'Análise',            icon: '📈', action: "go('analise',this);rAnalise()" },
-        { label: 'Pipeline',           icon: '🔀', action: "go('registro',this);rRegistro()" },
+        { label: 'Pipeline',           icon: '🔀', sub: 'pipeline',      action: "go('registro',this);rRegistro()" },
         { label: 'Versões',            icon: '📋', action: "go('changelog',this)" },
       ]
     },
@@ -161,7 +161,7 @@
       nav: [
         { separator: true, label: 'Gestão Executiva' },
         { label: '↳ Motor de Decisão', icon: '🧠', action: "go('dashboard',this);irParaPainel('motorDecisaoCard','togMotorDecisao')" },
-        { label: '↳ Visão Executiva',  icon: '🏢', action: "go('dashboard',this);irParaPainel('ceoDashCard','togCeoDash')" },
+        { label: '↳ Visão Executiva',  icon: '🏢', sub: 'visao_executiva', action: "go('dashboard',this);irParaPainel('ceoDashCard','togCeoDash')" },
         { label: '↳ KPIs Ciclos',      icon: '📊', action: "go('dashboard',this);irParaPainel('ciclosCard','togCiclosDash')" },
         { label: '↳ Por Categoria',    icon: '📂', action: "go('dashboard',this);irParaPainel('catAnaliseCard','togCatAnalise')" },
         { separator: true, label: 'Planejamento' },
@@ -350,11 +350,19 @@
     _renderNavMod: function (mod) {
       var el = document.getElementById('sidebar-nav-mod');
       if (!el) return;
-      if (!mod.nav || !mod.nav.length) {
+      // Filtra subseções por permissão individual (permissoes_modulos).
+      // Itens sem tag sub: sempre visíveis quando o módulo é acessível.
+      var navVisivel = (mod.nav || []).filter(function (item) {
+        if (!item.sub) return true;
+        return typeof window.podeVerSubsecao === 'function'
+          ? window.podeVerSubsecao(mod.id, item.sub)
+          : true;
+      });
+      if (!navVisivel.length) {
         el.innerHTML = '<div class="nav-vazio">Nenhuma seção disponível</div>';
         return;
       }
-      el.innerHTML = mod.nav.map(function (item) {
+      el.innerHTML = navVisivel.map(function (item) {
         if (item.separator) {
           return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item.label + '</div>';
         }
