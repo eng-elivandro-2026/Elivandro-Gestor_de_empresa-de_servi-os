@@ -159,6 +159,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ver-acoes{display:flex;gap:.4rem;flex-wrap:wrap}
 .conf-list{margin:.6rem 0;padding-left:1.2rem;font-size:.86rem;color:var(--text);line-height:1.6}
 .conf-mantem{font-size:.78rem;color:var(--text3);line-height:1.5;margin-top:.5rem}
+/* Tela de gestão IE */
+.ie-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.ie-titulo{font-size:1.2rem;font-weight:800;color:var(--emp-cor)}
+.ie-meta{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-bottom:1rem}
+.ie-meta-num{font-size:.9rem;font-weight:700;color:var(--text)}
+.ie-valor{margin-bottom:1rem}
+.ie-valor-nome{font-size:1rem;font-weight:800;color:var(--emp-cor);margin-bottom:.5rem}
+.ie-acoes{display:flex;justify-content:flex-end;margin-top:1rem}
+.ie-vazio{text-align:center;padding:2.5rem 1rem;display:flex;flex-direction:column;align-items:center;gap:1rem}
+.ie-vazio-txt{font-size:.95rem;color:var(--text2)}
 
 @media(max-width:680px){
   .val-grid{grid-template-columns:1fr}
@@ -180,6 +190,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 
+  <div id="view-principal">
   <!-- Cards de métrica -->
   <div class="cards" id="cards">
     <div class="card card-link" onclick="abrirEnviadasMesDME()" tabindex="0" role="button">
@@ -221,6 +232,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="sec-titulo"><span class="sec-icon">💎</span> Valores</div>
     </div>
     <div id="box-valores"><div class="sec-vazio">Carregando…</div></div>
+  </div>
+  </div><!-- /view-principal -->
+
+  <!-- Tela de gestão da Identidade (mostra a versão ATIVA de empresa_identidade_versoes) -->
+  <div id="view-ie" style="display:none">
+    <div class="ie-header">
+      <div class="ie-titulo">Identidade da Empresa</div>
+      <button class="btn btn-emp btn-sm" id="ie-btn-nova" style="display:none" onclick="criarNovaVersao()">＋ Nova versão</button>
+    </div>
+    <div id="ie-conteudo"><div class="sec-vazio">Carregando…</div></div>
   </div>
 
 </div>
@@ -1060,6 +1081,8 @@ async function confirmarAtivarVersao(){
     _versaoAtual = null;               // relê a versão ativa na próxima abertura
     await carregarIdentidade(eid);
     await carregarValores(eid);
+    var _vi = document.getElementById('view-ie');   // se a tela IE está aberta, atualiza a versão ativa mostrada
+    if (_vi && _vi.style.display !== 'none' && typeof carregarIE === 'function') carregarIE();
     if (btn){ btn.textContent = 'Confirmar'; btn.disabled = false; }
   } catch(e){
     if (btn){ btn.textContent = 'Confirmar'; btn.disabled = false; }
@@ -1269,16 +1292,90 @@ window.addEventListener('message', function(e){
   if (e.data.type === 'SET_TEMA'){
     document.body.classList.toggle('light', e.data.tema === 'light');
   }
-  if (e.data.type === 'ABRIR_ASSISTENTE'){
+  if (e.data.type === 'SHOW_SECTION'){
+    if (e.data.payload === 'identidade') mostrarIE();
+    else mostrarPrincipal();
+  }
+  if (e.data.type === 'ABRIR_ASSISTENTE'){   // atalho programático (compat)
     abrirIdentidade();
   }
 });
 
-// Abre o Assistente de Identidade (wizard completo). Acionado pelo item de menu
-// "IE - Identidade da Empresa" (a tela principal ficou somente leitura).
+// Abre o Assistente de Identidade (wizard completo).
 function abrirIdentidade(){
   if (!_podeEditar()){ alert('Você não tem permissão para editar a identidade da empresa.'); return; }
   if (_versoesDisponivel === false){ alert('A estrutura de identidade não está disponível no momento.'); return; }
+  abrirAssistente('visao');
+}
+
+// ── Tela de gestão "IE - Identidade da Empresa" (view separada) ───
+var _ieVersaoAtiva = null;   // versão com status='ativo' (ou null)
+function mostrarPrincipal(){
+  var vp = document.getElementById('view-principal'), vi = document.getElementById('view-ie');
+  if (vp) vp.style.display = ''; if (vi) vi.style.display = 'none';
+}
+function mostrarIE(){
+  var vp = document.getElementById('view-principal'), vi = document.getElementById('view-ie');
+  if (vp) vp.style.display = 'none'; if (vi) vi.style.display = '';
+  var nb = document.getElementById('ie-btn-nova'); if (nb) nb.style.display = _podeEditar() ? 'inline-flex' : 'none';
+  carregarIE();
+}
+// Lê SÓ a versão ativa da tabela de versões.
+async function carregarIE(){
+  var cont = document.getElementById('ie-conteudo');
+  var sb = _sbClient();
+  if (!sb || !_empresaAtiva){ _ieVersaoAtiva = null; _renderIE(); return; }
+  if (cont) cont.innerHTML = '<div class="sec-vazio">Carregando…</div>';
+  try {
+    var r = await sb.from('empresa_identidade_versoes')
+      .select('id, versao, titulo, status, updated_at, visao_final, missao_final, valores_funil')
+      .eq('empresa_id', _empresaAtiva.id).eq('status', 'ativo').limit(1);
+    _ieVersaoAtiva = (!r.error && Array.isArray(r.data) && r.data.length) ? r.data[0] : null;
+  } catch(e){ _ieVersaoAtiva = null; }
+  _renderIE();
+}
+function _renderIE(){
+  var cont = document.getElementById('ie-conteudo'); if (!cont) return;
+  var v = _ieVersaoAtiva, podeEd = _podeEditar();
+  if (!v){
+    cont.innerHTML = '<div class="ie-vazio"><div class="ie-vazio-txt">Nenhuma identidade ativa ainda.</div>' +
+      (podeEd ? '<button class="btn btn-emp" onclick="editarIdentidadeAtiva()">Construir identidade</button>'
+              : '<div class="sec-vazio">Peça a um editor para construir a identidade.</div>') + '</div>';
+    return;
+  }
+  var data = v.updated_at ? new Date(v.updated_at).toLocaleDateString('pt-BR') : '';
+  var vf = _valNormaliza(v.valores_funil);
+  function bloco(icon, titulo, txt, vazio){
+    return '<div class="sec"><div class="sec-head"><div class="sec-titulo"><span class="sec-icon">' + icon + '</span> ' + titulo + '</div></div>' +
+      '<div>' + ((txt && txt.trim()) ? '<div class="sec-texto">' + esc(txt) + '</div>' : '<div class="sec-vazio">' + esc(vazio) + '</div>') + '</div></div>';
+  }
+  var valoresHtml = vf.sel5.length ? vf.sel5.map(function(x){
+    return '<div class="ie-valor"><div class="ie-valor-nome">' + esc(x.nome) + '</div>' +
+      '<div class="bloco bloco-viv"><div class="bloco-titulo">✓ Como vivo</div>' + esc(x.vive || '—') + '</div>' +
+      '<div class="bloco bloco-nviv"><div class="bloco-titulo">✕ Como NÃO vivo</div>' + esc(x.nao_vive || '—') + '</div></div>';
+  }).join('') : '<div class="sec-vazio">Nenhum valor definido nesta versão.</div>';
+  cont.innerHTML =
+    '<div class="ie-meta"><span class="ver-badge on">Ativa</span>' +
+      '<span class="ie-meta-num">' + esc(v.titulo || ('Versão ' + v.versao)) + '</span>' +
+      (data ? '<span class="ver-data">' + esc(data) + '</span>' : '') + '</div>' +
+    bloco('🔭', 'Visão', v.visao_final, 'Sem texto de visão nesta versão.') +
+    bloco('🎯', 'Missão', v.missao_final, 'Sem texto de missão nesta versão.') +
+    '<div class="sec"><div class="sec-head"><div class="sec-titulo"><span class="sec-icon">💎</span> Valores</div></div><div>' + valoresHtml + '</div></div>' +
+    (podeEd ? '<div class="ie-acoes"><button class="btn btn-emp" onclick="editarIdentidadeAtiva()">✏️ Editar / Construir</button></div>' : '');
+}
+// Abre o wizard editando a versão ativa (reusa abrirAssistente).
+async function editarIdentidadeAtiva(){
+  if (!_podeEditar()){ alert('Você não tem permissão para editar a identidade da empresa.'); return; }
+  if (_versoesDisponivel === false){ alert('A estrutura de identidade não está disponível no momento.'); return; }
+  var sb = _sbClient();
+  if (_ieVersaoAtiva && _ieVersaoAtiva.id && sb){
+    try {
+      var r = await sb.from('empresa_identidade_versoes')
+        .select('id, versao, status, visao_guiada, missao_guiada, valores_funil, visao_final, missao_final')
+        .eq('id', _ieVersaoAtiva.id).single();
+      if (!r.error && r.data) _versaoAtual = r.data;
+    } catch(e){}
+  }
   abrirAssistente('visao');
 }
 
