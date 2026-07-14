@@ -129,6 +129,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .wiz-soon{padding:2rem 1rem;text-align:center;color:var(--text3);font-style:italic;font-size:.9rem;border:1px dashed var(--border2);border-radius:var(--r)}
 .wiz-nav{display:flex;gap:.5rem;justify-content:space-between;align-items:center;margin-top:1rem;flex-wrap:wrap}
 .wiz-nav-r{display:flex;gap:.5rem;flex-wrap:wrap}
+/* Etapa Valores — funil (grid de chips toggle) */
+.wiz-val-search{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:inherit;font-size:.85rem;padding:.5rem .65rem;margin-bottom:.6rem}
+.wiz-val-count{font-size:.78rem;font-weight:700;color:var(--emp-cor);margin-bottom:.6rem}
+.wiz-val-count.warn{color:var(--red)}
+.wiz-val-grid{display:flex;flex-wrap:wrap;gap:.4rem;max-height:46vh;overflow-y:auto;padding:.1rem}
+.wiz-val-chip{font-family:inherit;font-size:.8rem;font-weight:600;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:.34rem .7rem;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.wiz-val-chip:hover:not([disabled]){border-color:var(--border2);color:var(--text)}
+.wiz-val-chip.on{background:var(--emp-cor);border-color:var(--emp-cor);color:#fff}
+.wiz-val-chip[disabled]{opacity:.4;cursor:not-allowed}
+.wiz-val-vazio{font-size:.85rem;color:var(--text3);font-style:italic;padding:1rem 0}
 
 @media(max-width:680px){
   .val-grid{grid-template-columns:1fr}
@@ -263,20 +273,48 @@ var _valSel       = 0;      // índice do valor selecionado
 var _versoesDisponivel = null;  // null = ainda não sondado; true/false após carregar
 var _versaoAtual = null;        // linha da versão ativa/mais recente (ou null)
 var _wizStep = 0;               // etapa atual (0=Visão, 1=Missão, 2=Valores, 3=Resumo)
-var _wizDraft = { visao_guiada: {}, missao_guiada: {} };  // rascunho em memória
+var _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] } };  // rascunho em memória
+var _valNivel = 0;              // sub-nível da etapa Valores (0=sel20,1=sel10,2=sel5,3=vive/não-vive)
+var _valBusca = '';             // termo de busca do grid de valores (nível 0)
 
 // Desativa o widget da extensão Grammarly nos campos de texto (evita o card
 // flutuante vazio que a extensão injeta perto de textarea/input). Só afeta o
 // Grammarly; não altera lógica, dados nem layout.
 var _GRAMM_OFF = ' data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"';
 
-// Etapas do assistente. 'soon' = placeholder (PR-2/PR-3).
+// Etapas do assistente. 'soon' = placeholder (PR-3).
 var WIZ_ETAPAS = [
   { chave: 'visao',   nome: 'Visão' },
   { chave: 'missao',  nome: 'Missão' },
-  { chave: 'valores', nome: 'Valores', soon: true },
+  { chave: 'valores', nome: 'Valores' },
   { chave: 'resumo',  nome: 'Resumo',  soon: true }
 ];
+
+// Catálogo de valores corporativos (lista de referência). Nomes neutros, sem
+// metodologia de terceiros. Usado no funil da etapa Valores (nível 1: escolher 20).
+var VALORES_CATALOGO = [
+  'Conquista', 'Diversidade', 'Conhecimento', 'Resultados', 'Adaptabilidade',
+  'Empatia', 'Liderança', 'Respeito', 'Progresso', 'Energia', 'Aprender',
+  'Assumir Riscos', 'Aventura', 'Entusiasmo', 'Ouvir', 'Segurança', 'Atenção',
+  'Senso de Dono', 'Visão de Longo Prazo', 'Estabilidade', 'Autoridade',
+  'Conscientização Ambiental', 'Amor', 'Servir', 'Equilíbrio', 'Ética',
+  'Lealdade', 'Socialização', 'Ser o Melhor', 'Fazer a Diferença',
+  'Espiritualidade', 'Pertencer', 'Fé', 'Dinheiro', 'Importar-se', 'Família',
+  'Oportunidades', 'Status', 'Cuidado', 'Amizade', 'Organização', 'Sucesso',
+  'Desafio', 'Foco', 'Parceria', 'Trabalho em Equipe', 'Coleguismo', 'Perdão',
+  'Paz', 'Tolerância', 'Colaboração', 'Honestidade', 'Positividade', 'Tradição',
+  'Comunidade', 'Humor/Divertir-se', 'Poder', 'Confiança', 'Comprometimento',
+  'Melhoria Contínua', 'Prestígio', 'União', 'Competição', 'Independência',
+  'Produtividade', 'Variedade', 'Confidencialidade', 'Influência', 'Lucro',
+  'Visão', 'Contribuição', 'Iniciativa', 'Propósito', 'Riqueza', 'Controle',
+  'Inovação', 'Qualidade', 'Vencer', 'Cooperação', 'Integridade',
+  'Reconhecimento', 'Sabedoria', 'Criatividade', 'Inteligência', 'Resiliência',
+  'Satisfação do Cliente', 'Envolvimento', 'Responsabilidade', 'Dignidade',
+  'Justiça'
+];
+
+// Limites do funil por nível (0=escolher 20, 1=escolher 10, 2=escolher 5).
+var VAL_CAPS = [20, 10, 5];
 
 // Perguntas guiadas — chaves jsonb ESTÁVEIS (não renomear: viram dados).
 var PERGUNTAS_VISAO = [
@@ -381,7 +419,8 @@ function _onTrocaEmpresa(dados){
   _valores = [];
   _valSel = 0;
   _versaoAtual = null;
-  _wizDraft = { visao_guiada: {}, missao_guiada: {} };
+  _wizDraft = { visao_guiada: {}, missao_guiada: {}, valores_funil: { sel20: [], sel10: [], sel5: [] } };
+  _valNivel = 0; _valBusca = '';
   carregarMetricas(_empresaAtiva.id);
   carregarIdentidade(_empresaAtiva.id);
   carregarValores(_empresaAtiva.id);
@@ -507,7 +546,7 @@ async function carregarVersaoIdentidade(empId){
   if (!sb || !empId){ _versoesDisponivel = false; _versaoAtual = null; return; }
   try {
     var r = await sb.from('empresa_identidade_versoes')
-      .select('id, versao, status, visao_guiada, missao_guiada')
+      .select('id, versao, status, visao_guiada, missao_guiada, valores_funil')
       .eq('empresa_id', empId)
       .order('status', { ascending: true })   // 'ativo' antes de 'inativo'
       .order('versao', { ascending: false })
@@ -533,10 +572,12 @@ function _wizDraftKey(step){
 function abrirAssistente(campoInicial){
   if (!_podeEditar()) return;
   _wizStep = (campoInicial === 'missao') ? 1 : 0;
+  _valNivel = 0; _valBusca = '';
   // Parte do rascunho carregado da versão (ou vazio).
   _wizDraft = {
     visao_guiada:  Object.assign({}, (_versaoAtual && _versaoAtual.visao_guiada)  || {}),
-    missao_guiada: Object.assign({}, (_versaoAtual && _versaoAtual.missao_guiada) || {})
+    missao_guiada: Object.assign({}, (_versaoAtual && _versaoAtual.missao_guiada) || {}),
+    valores_funil: _valNormaliza(_versaoAtual && _versaoAtual.valores_funil)
   };
   _wizRender();
   document.getElementById('modal-assistente').classList.add('on');
@@ -548,6 +589,7 @@ function fecharAssistente(){
 
 // Lê as respostas da etapa atual para o rascunho em memória.
 function _wizColeta(){
+  if (_wizStep === 2){ _wizColetaValores(); return; }
   var pergs = _wizPerguntas(_wizStep);
   if (!pergs) return;
   var key = _wizDraftKey(_wizStep);
@@ -580,6 +622,8 @@ function _wizRender(){
         return '<div class="wiz-q"><label>' + esc(p.q) + '</label>' +
           '<textarea id="wq-' + key + '-' + p.k + '"' + _GRAMM_OFF + '>' + esc(dados[p.k] || '') + '</textarea></div>';
       }).join('');
+  } else if (_wizStep === 2){
+    _wizRenderValores();   // etapa Valores (funil 90→20→10→5 + vive/não-vive)
   } else {
     body.innerHTML = '<div class="wiz-soon">A etapa <strong>' + esc(et.nome) +
       '</strong> chega em breve. A estrutura de dados já está pronta para ela.</div>';
@@ -593,13 +637,156 @@ function _wizRender(){
 
 function wizProximo(){
   _wizColeta();
-  if (_wizStep < WIZ_ETAPAS.length - 1) _wizStep++;
+  if (_wizStep === 2){
+    // Dentro da etapa Valores: avança pelos sub-níveis do funil.
+    if (_valNivel < 3){
+      // Guarda leve: precisa de ao menos 1 seleção para avançar de nível.
+      if (!_valPodeAvancar(_valNivel)){ _valAvisaFalta(); return; }
+      _valNivel++; _wizRender(); return;
+    }
+    _wizStep = 3; _wizRender(); return;   // sub-nível final → Resumo
+  }
+  if (_wizStep < WIZ_ETAPAS.length - 1){
+    _wizStep++;
+    if (_wizStep === 2) _valNivel = 0;    // entrando na etapa Valores → começa no nível 0
+  }
   _wizRender();
 }
 function wizVoltar(){
   _wizColeta();
+  if (_wizStep === 2){
+    if (_valNivel > 0){ _valNivel--; _wizRender(); return; }
+    _wizStep = 1; _wizRender(); return;   // antes do 1º nível → volta para Missão
+  }
   if (_wizStep > 0) _wizStep--;
   _wizRender();
+}
+
+// ── Etapa Valores: funil 90 → 20 → 10 → 5 + vive/não-vive ─────
+// Normaliza o objeto valores_funil para a forma esperada (defensivo p/ dados
+// antigos ou vazios). sel20/sel10 = nomes; sel5 = {nome, vive, nao_vive}.
+function _valNormaliza(vf){
+  vf = vf || {};
+  return {
+    sel20: Array.isArray(vf.sel20) ? vf.sel20.slice() : [],
+    sel10: Array.isArray(vf.sel10) ? vf.sel10.slice() : [],
+    sel5:  Array.isArray(vf.sel5)  ? vf.sel5.map(function(x){
+      x = x || {}; return { nome: x.nome || '', vive: x.vive || '', nao_vive: x.nao_vive || '' };
+    }) : []
+  };
+}
+function _valIdxSel5(vf, nome){
+  for (var i = 0; i < vf.sel5.length; i++){ if (vf.sel5[i].nome === nome) return i; }
+  return -1;
+}
+// Mantém a invariante do funil: sel10 ⊆ sel20 e sel5 ⊆ sel10.
+function _valCascade(vf){
+  vf.sel10 = vf.sel10.filter(function(n){ return vf.sel20.indexOf(n) >= 0; });
+  vf.sel5  = vf.sel5.filter(function(x){ return vf.sel10.indexOf(x.nome) >= 0; });
+}
+function _valSelCount(nivel){
+  var vf = _wizDraft.valores_funil;
+  return nivel === 0 ? vf.sel20.length : nivel === 1 ? vf.sel10.length : vf.sel5.length;
+}
+function _valPodeAvancar(nivel){ return _valSelCount(nivel) > 0; }
+function _valCountText(nivel){
+  var cnt = _valSelCount(nivel), cap = VAL_CAPS[nivel];
+  var t = cnt + '/' + cap + ' selecionados';
+  if (nivel === 0) t += ' (de ' + VALORES_CATALOGO.length + ')';
+  return t;
+}
+// Alterna a seleção de um valor no nível informado (com limite e cascata).
+function wizValToggle(nivel, nome){
+  var vf = _wizDraft.valores_funil;
+  if (nivel === 0){
+    var i = vf.sel20.indexOf(nome);
+    if (i >= 0) vf.sel20.splice(i, 1);
+    else { if (vf.sel20.length >= VAL_CAPS[0]) return; vf.sel20.push(nome); }
+  } else if (nivel === 1){
+    var j = vf.sel10.indexOf(nome);
+    if (j >= 0) vf.sel10.splice(j, 1);
+    else { if (vf.sel10.length >= VAL_CAPS[1]) return; vf.sel10.push(nome); }
+  } else if (nivel === 2){
+    var k = _valIdxSel5(vf, nome);
+    if (k >= 0) vf.sel5.splice(k, 1);
+    else { if (vf.sel5.length >= VAL_CAPS[2]) return; vf.sel5.push({ nome: nome, vive: '', nao_vive: '' }); }
+  }
+  _valCascade(vf);
+  _valAtualizaGrid();   // re-renderiza só o grid + contador (preserva a busca)
+}
+function _valGridHtml(nivel){
+  var vf = _wizDraft.valores_funil;
+  var items = nivel === 0 ? VALORES_CATALOGO : nivel === 1 ? vf.sel20 : vf.sel10;
+  var isSel = nivel === 0 ? function(n){ return vf.sel20.indexOf(n) >= 0; }
+            : nivel === 1 ? function(n){ return vf.sel10.indexOf(n) >= 0; }
+            : function(n){ return _valIdxSel5(vf, n) >= 0; };
+  var atCap = _valSelCount(nivel) >= VAL_CAPS[nivel];
+  var termo = (nivel === 0 && _valBusca) ? _valBusca.trim().toLowerCase() : '';
+  var lista = termo ? items.filter(function(n){ return n.toLowerCase().indexOf(termo) >= 0; }) : items;
+  if (!lista.length){
+    return '<div class="wiz-val-vazio">' + (termo ? 'Nenhum valor encontrado.' : 'Selecione valores no nível anterior.') + '</div>';
+  }
+  return '<div class="wiz-val-grid">' + lista.map(function(n){
+    var on = isSel(n), dis = (!on && atCap);
+    return '<button type="button" class="wiz-val-chip' + (on ? ' on' : '') + '"' + (dis ? ' disabled' : '') +
+      ' onclick="wizValToggle(' + nivel + ',&quot;' + esc(n) + '&quot;)">' + esc(n) + '</button>';
+  }).join('') + '</div>';
+}
+// Re-renderiza apenas grid + contador do nível atual (mantém foco/valor da busca).
+function _valAtualizaGrid(){
+  var wrap = document.getElementById('wiz-val-grid-wrap');
+  if (wrap) wrap.innerHTML = _valGridHtml(_valNivel);
+  var cnt = document.getElementById('wiz-val-count');
+  if (cnt){ cnt.textContent = _valCountText(_valNivel); cnt.classList.remove('warn'); }
+}
+function wizValBusca(){
+  var el = document.getElementById('wiz-val-busca');
+  _valBusca = el ? el.value : '';
+  _valAtualizaGrid();
+}
+function _valAvisaFalta(){
+  var cnt = document.getElementById('wiz-val-count');
+  if (cnt) cnt.classList.add('warn');
+}
+// Lê os textos vive/não-vive do sub-nível 3 para o rascunho.
+function _wizColetaValores(){
+  if (_valNivel !== 3) return;
+  var vf = _wizDraft.valores_funil;
+  if (!vf || !vf.sel5) return;
+  vf.sel5.forEach(function(v, i){
+    var a = document.getElementById('vv-' + i + '-vive');
+    var b = document.getElementById('vv-' + i + '-nao');
+    if (a) v.vive = a.value;
+    if (b) v.nao_vive = b.value;
+  });
+}
+function _wizRenderValores(){
+  var body = document.getElementById('wiz-body');
+  var vf = _wizDraft.valores_funil;
+  if (_valNivel <= 2){
+    var intro = ['Selecione até 20 valores que mais representam a empresa.',
+                 'Dos 20 escolhidos, marque os 10 mais importantes.',
+                 'Dos 10, escolha os 5 essenciais.'][_valNivel];
+    var html = '<div class="wiz-intro">' + esc(intro) + '</div>';
+    if (_valNivel === 0){
+      html += '<input id="wiz-val-busca" class="wiz-val-search" placeholder="Buscar valor…" value="' + esc(_valBusca || '') + '"' + _GRAMM_OFF + ' oninput="wizValBusca()">';
+    }
+    html += '<div class="wiz-val-count" id="wiz-val-count">' + esc(_valCountText(_valNivel)) + '</div>';
+    html += '<div id="wiz-val-grid-wrap">' + _valGridHtml(_valNivel) + '</div>';
+    body.innerHTML = html;
+  } else {
+    if (!vf.sel5.length){
+      body.innerHTML = '<div class="wiz-soon">Selecione 5 valores no nível anterior para descrever como você os vive.</div>';
+      return;
+    }
+    body.innerHTML = '<div class="wiz-intro">Para cada valor, descreva como você o vive e como NÃO o vive.</div>' +
+      vf.sel5.map(function(v, i){
+        return '<div class="wiz-q"><label>' + esc(v.nome) + ' — Como vivo este valor</label>' +
+                 '<textarea id="vv-' + i + '-vive"' + _GRAMM_OFF + '>' + esc(v.vive || '') + '</textarea></div>' +
+               '<div class="wiz-q"><label>' + esc(v.nome) + ' — Como NÃO vivo este valor</label>' +
+                 '<textarea id="vv-' + i + '-nao"' + _GRAMM_OFF + '>' + esc(v.nao_vive || '') + '</textarea></div>';
+      }).join('');
+  }
 }
 
 async function wizSalvarRascunho(){
@@ -615,20 +802,21 @@ async function wizSalvarRascunho(){
       empresa_id:    _empresaAtiva.id,
       visao_guiada:  _wizDraft.visao_guiada  || {},
       missao_guiada: _wizDraft.missao_guiada || {},
+      valores_funil: _valNormaliza(_wizDraft.valores_funil),
       updated_at:    new Date().toISOString()
     };
     var res;
     if (_versaoAtual && _versaoAtual.id){
       res = await sb.from('empresa_identidade_versoes')
         .update(payload).eq('id', _versaoAtual.id)
-        .select('id, versao, status, visao_guiada, missao_guiada').single();
+        .select('id, versao, status, visao_guiada, missao_guiada, valores_funil').single();
     } else {
       payload.versao = 1;
       payload.status = 'inativo';
       payload.titulo = 'Construção 1';
       res = await sb.from('empresa_identidade_versoes')
         .insert(payload)
-        .select('id, versao, status, visao_guiada, missao_guiada').single();
+        .select('id, versao, status, visao_guiada, missao_guiada, valores_funil').single();
     }
     if (res.error){ throw res.error; }
     _versaoAtual = res.data;
