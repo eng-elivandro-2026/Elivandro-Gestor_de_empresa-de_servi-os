@@ -48,17 +48,35 @@ textarea#txtColar:focus{border-color:var(--emp-cor)}
 
 .vazio{text-align:center;padding:2rem 1rem;color:var(--text3);font-size:.82rem}
 
-table#tblPrevia{width:100%;border-collapse:collapse;font-size:.74rem}
-table#tblPrevia th{text-align:left;padding:.45rem .5rem;color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--bg2)}
-table#tblPrevia td{padding:.35rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
+/* Tabela de prévia: Calibri 12, sem truncar/rolar dentro da célula —
+   conteúdo quebra linha e a célula cresce em altura para caber tudo. */
+table#tblPrevia{width:100%;border-collapse:collapse;table-layout:auto;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;font-size:12px}
+table#tblPrevia th{text-align:left;padding:.5rem .55rem;color:var(--text3);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);white-space:normal;background:var(--bg2)}
+table#tblPrevia td{padding:.45rem .5rem;border-bottom:1px solid var(--border);vertical-align:top}
 table#tblPrevia tr.erro td{background:rgba(248,81,73,.08)}
-table#tblPrevia input[type=text],table#tblPrevia input[type=time],table#tblPrevia select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .4rem;font-size:.74rem;font-family:inherit}
+table#tblPrevia th:nth-child(1),table#tblPrevia td:nth-child(1){min-width:190px}
+table#tblPrevia th:nth-child(2),table#tblPrevia td:nth-child(2),
+table#tblPrevia th:nth-child(3),table#tblPrevia td:nth-child(3){min-width:100px}
+table#tblPrevia th:nth-child(4),table#tblPrevia td:nth-child(4){min-width:80px}
+table#tblPrevia th:nth-child(5),table#tblPrevia td:nth-child(5){min-width:130px}
+table#tblPrevia th:nth-child(6),table#tblPrevia td:nth-child(6){min-width:140px}
+table#tblPrevia th:nth-child(7),table#tblPrevia td:nth-child(7),
+table#tblPrevia th:nth-child(8),table#tblPrevia td:nth-child(8){min-width:140px}
+table#tblPrevia th:nth-child(9),table#tblPrevia td:nth-child(9){min-width:120px}
+table#tblPrevia th:nth-child(10),table#tblPrevia td:nth-child(10){min-width:80px}
+table#tblPrevia th:nth-child(11),table#tblPrevia td:nth-child(11){min-width:280px;width:100%}
+table#tblPrevia input[type=text],table#tblPrevia input[type=time],table#tblPrevia select,table#tblPrevia textarea{
+  width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);
+  padding:.4rem .5rem;font-size:12px;font-family:inherit;line-height:1.4;
+  white-space:normal;overflow:visible;word-break:break-word;box-sizing:border-box
+}
+table#tblPrevia textarea{resize:vertical;min-height:2.6em}
 table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:var(--red)}
-.erro-msg{font-size:.62rem;color:var(--red);margin-top:.15rem;line-height:1.3}
-.linha-txt{font-size:.64rem;color:var(--text3);font-family:ui-monospace,monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dur-badge{font-size:.68rem;font-weight:700;color:var(--emp-cor);white-space:nowrap}
-.chk-receita{width:15px;height:15px;cursor:pointer;accent-color:var(--emp-cor)}
-.rm-linha{background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:.15rem .3rem}
+.erro-msg{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;color:var(--red);margin-top:.2rem;line-height:1.4}
+.linha-txt{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;color:var(--text3);white-space:normal;word-break:break-word;line-height:1.4}
+.dur-badge{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;font-weight:700;color:var(--emp-cor);white-space:nowrap}
+.chk-receita{width:16px;height:16px;cursor:pointer;accent-color:var(--emp-cor)}
+.rm-linha{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:.15rem .3rem}
 
 .resumo{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem;font-size:.72rem}
 .resumo span{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
@@ -392,7 +410,7 @@ function renderPrevia() {
       + '<td><input type="text" value="' + esc(c.clienteProjeto || '') + '" onchange="_onCampoEditado(' + idx + ',\'clienteProjeto\',this.value)"></td>'
       + '<td><input type="text" value="' + esc(c.propostaObraId || '') + '" onchange="_onCampoEditado(' + idx + ',\'propostaObraId\',this.value)"></td>'
       + '<td style="text-align:center"><input type="checkbox" class="chk-receita"' + (c.gerouReceita ? ' checked' : '') + ' onchange="_onCampoEditado(' + idx + ',\'gerouReceita\',this.checked)"></td>'
-      + '<td><input type="text" value="' + esc(c.descricao || '') + '" onchange="_onCampoEditado(' + idx + ',\'descricao\',this.value)" style="min-width:180px"></td>'
+      + '<td><textarea rows="2" onchange="_onCampoEditado(' + idx + ',\'descricao\',this.value)">' + esc(c.descricao || '') + '</textarea></td>'
       + '<td><button class="rm-linha" title="Remover linha" onclick="_removerLinha(' + idx + ')">✕</button></td>'
       + (temErro ? '</tr><tr class="erro"><td colspan="12" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
       + '</tr>';
