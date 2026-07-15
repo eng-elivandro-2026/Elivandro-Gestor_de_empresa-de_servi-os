@@ -2945,8 +2945,6 @@ function rDash(rankTarget, sortBy){
     // Zera o timestamp do cache para que o módulo de Gestão busque dados frescos
     if(window._deResult) window._deResult._ts=0;
   }
-  // Atualiza a seção ativa do módulo de Planejamento (Hoje/Semana/Mês/Trimestre)
-  if(typeof gestaoRefreshActive==='function') gestaoRefreshActive();
   rProps();
 }
 function flt(f,el){

@@ -153,24 +153,13 @@
       ]
     },
     {
-      id: 'gestao',
-      label: 'Gestão CEO',
-      icon: '🎯',
-      tipo: 'inline',
-      init: function () { go('gestao'); if (typeof rGestaoCeo === 'function') rGestaoCeo(); },
+      id: 'gestao-tempo',
+      label: 'Gestão do Tempo',
+      icon: '⏱️',
+      tipo: 'iframe',
+      src: 'pages/gestao-tempo.html',
       nav: [
-        { separator: true, label: 'Gestão Executiva' },
-        { label: '↳ Motor de Decisão', icon: '🧠', action: "go('dashboard',this);irParaPainel('motorDecisaoCard','togMotorDecisao')" },
-        { label: '↳ Visão Executiva',  icon: '🏢', sub: 'visao_executiva', action: "go('dashboard',this);irParaPainel('ceoDashCard','togCeoDash')" },
-        { label: '↳ KPIs Ciclos',      icon: '📊', action: "go('dashboard',this);irParaPainel('ciclosCard','togCiclosDash')" },
-        { label: '↳ Por Categoria',    icon: '📂', action: "go('dashboard',this);irParaPainel('catAnaliseCard','togCatAnalise')" },
-        { separator: true, label: 'Planejamento' },
-        { label: '↳ Hoje',       icon: '📅', action: "gestaoNav('dia')" },
-        { label: '↳ Semana',    icon: '📆', action: "gestaoNav('semana')" },
-        { label: '↳ Mês',       icon: '📊', action: "gestaoNav('mes')" },
-        { label: '↳ Trimestre', icon: '🎯', action: "gestaoNav('trimestre')" },
-        { label: '↳ Calendário',icon: '🗓️', action: "gestaoNav('calendario')" },
-        { label: '↳ Guia de Fluxo', icon: '❓', action: "abrirModal('m-guia')" },
+        { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo')" },
       ]
     },
     {

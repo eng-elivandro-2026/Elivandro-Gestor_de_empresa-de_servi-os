@@ -44,9 +44,12 @@
       ver:    ['dono', 'admin', 'gestor', 'colaborador', 'prestador', 'rh', 'operacional', 'leitura'],
       editar: ['dono', 'admin', 'gestor', 'colaborador', 'operacional']
     },
-    gestao: {
-      ver:    ['dono', 'admin', 'gestor'],
-      editar: ['dono', 'admin']
+    'gestao-tempo': {
+      // Diário pessoal de atividades — todo perfil autenticado pode registrar
+      // o próprio dia (RLS de registro_atividades já restringe cada um a ver
+      // só os próprios registros; 'leitura' só visualiza, não edita).
+      ver:    ['dono', 'admin', 'gestor', 'financeiro', 'comercial', 'rh', 'operacional', 'colaborador', 'leitura', 'prestador'],
+      editar: ['dono', 'admin', 'gestor', 'financeiro', 'comercial', 'rh', 'operacional', 'colaborador', 'prestador']
     },
     'gestao-a-vista': {
       ver:         ['dono', 'admin', 'gestor', 'financeiro', 'comercial', 'operacional', 'colaborador', 'leitura', 'prestador'],
@@ -83,7 +86,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'gestao-a-vista', 'operacional', 'historico', 'gestao', 'rh', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Helpers internos ─────────────────────────────────────
 
@@ -155,14 +158,14 @@
 
   // ID do Router → chave de módulo no JSON.
   // Sem entrada aqui = sem correspondente no JSON → fallback por perfil
-  // (reuniao-radar, dashboard-estrategico, cofre, configuracoes).
+  // (reuniao-radar, dashboard-estrategico, cofre, configuracoes,
+  // gestao-tempo — sem chave individual nesta etapa).
   var MAPA_MODULO_JSON = {
     'comercial':                'comercial',
     'operacional':              'operacional',
     'financeiro':               'financeiro',
     'rh':                       'rh',
     'historico':                'relacionamento',
-    'gestao':                   'gestao_ceo',
     'gestao-a-vista':           'mpe',
     'dashboard-minha-empresa':  'minha_empresa',
     'planejamento-estrategico': 'planejamento',
@@ -212,8 +215,12 @@
       { key: 'analise_ia',      label: 'Análise IA' },
       { key: 'ranking_clientes',label: 'Ranking de Clientes' }
     ]},
-    { label: '🎯 Gestão CEO', chaves: [
-      { key: 'gestao_ceo',      label: 'Gestão CEO (módulo)' },
+    { label: '📊 Comercial — painéis', chaves: [
+      // 'gestao_ceo' foi removida do módulo (Gestão CEO virou Gestão do
+      // Tempo). 'visao_executiva' segue viva: é uma subseção do próprio
+      // Comercial hoje (item "Visão Executiva" em renderMenuComercialOrganizado,
+      // index.html). Chaves antigas 'gestao_ceo' já gravadas no banco (seed)
+      // ficam inertes — nenhum módulo do Router aponta mais para elas.
       { key: 'visao_executiva', label: 'Visão Executiva' }
     ]},
     { label: '🏗️ Operacional', chaves: [

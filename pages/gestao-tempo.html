@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão do Tempo</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-tit{font-size:1.15rem;font-weight:800;color:var(--emp-cor);display:flex;align-items:center;gap:.45rem}
+.hdr-sub{font-size:.74rem;color:var(--text3);margin-top:.15rem}
+.hdr-emp{font-size:.72rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.8rem}
+.sec-tit{font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sec-desc{font-size:.78rem;color:var(--text3);margin-bottom:.8rem;line-height:1.45}
+
+.btn{border:none;border-radius:var(--r2);padding:.5rem .9rem;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s}
+.btn-p{background:var(--emp-cor);color:#fff}
+.btn-p:hover{filter:brightness(1.08)}
+.btn-g{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-g:hover{border-color:var(--emp-cor)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+textarea#txtColar{width:100%;min-height:220px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.7rem .8rem;font-size:.8rem;font-family:ui-monospace,'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical;outline:none}
+textarea#txtColar:focus{border-color:var(--emp-cor)}
+.exemplo{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.65rem .8rem;font-size:.7rem;color:var(--text3);font-family:ui-monospace,'SF Mono',Consolas,monospace;white-space:pre-wrap;line-height:1.5;margin-top:.6rem}
+
+.vazio{text-align:center;padding:2rem 1rem;color:var(--text3);font-size:.82rem}
+
+table#tblPrevia{width:100%;border-collapse:collapse;font-size:.74rem}
+table#tblPrevia th{text-align:left;padding:.45rem .5rem;color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--bg2)}
+table#tblPrevia td{padding:.35rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
+table#tblPrevia tr.erro td{background:rgba(248,81,73,.08)}
+table#tblPrevia input[type=text],table#tblPrevia input[type=time],table#tblPrevia select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.3rem .4rem;font-size:.74rem;font-family:inherit}
+table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:var(--red)}
+.erro-msg{font-size:.62rem;color:var(--red);margin-top:.15rem;line-height:1.3}
+.linha-txt{font-size:.64rem;color:var(--text3);font-family:ui-monospace,monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dur-badge{font-size:.68rem;font-weight:700;color:var(--emp-cor);white-space:nowrap}
+.chk-receita{width:15px;height:15px;cursor:pointer;accent-color:var(--emp-cor)}
+.rm-linha{background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;padding:.15rem .3rem}
+
+.resumo{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem;font-size:.72rem}
+.resumo span{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+.resumo .ok{color:var(--green)}
+.resumo .warn{color:var(--red)}
+
+#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:.6rem 1.1rem;border-radius:var(--r2);font-size:.8rem;box-shadow:0 4px 18px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:all .25s;z-index:999}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div>
+      <div class="hdr-tit">⏱️ Gestão do Tempo</div>
+      <div class="hdr-sub">Cole o bloco de texto do dia e revise antes de salvar.</div>
+    </div>
+    <div class="hdr-emp" id="empLabel">—</div>
+  </div>
+
+  <div class="card">
+    <div class="sec-tit">1. Colar bloco do dia</div>
+    <div class="sec-desc">Cole abaixo o texto gerado no formato padrão (uma linha <code>DATA:</code> seguida das linhas de atividade). Só os seus próprios registros ficam visíveis — cada usuário vê e edita apenas os que ele mesmo salvou.</div>
+    <textarea id="txtColar" placeholder="DATA: 17/07/2026&#10;09:00-10:40 | PESSOAL | Pessoal | Rotina | | | N | Descrição da atividade...&#10;10:40-12:37 | PROFISSIONAL | Comercial | Propostas | Cliente | 520A.26 | S | Descrição da atividade..."></textarea>
+    <div style="display:flex;gap:.6rem;margin-top:.7rem;align-items:center">
+      <button class="btn btn-p" onclick="processarTexto()">⚙️ Processar</button>
+      <button class="btn btn-g" onclick="document.getElementById('txtColar').value=''">Limpar</button>
+      <span id="msgProcessar" style="font-size:.76rem;color:var(--red)"></span>
+    </div>
+    <details style="margin-top:.7rem">
+      <summary style="cursor:pointer;font-size:.74rem;color:var(--text3)">Ver formato esperado</summary>
+      <div class="exemplo">DATA: DD/MM/AAAA
+HH:MM-HH:MM | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
+
+MACRO: PESSOAL ou PROFISSIONAL
+CATEGORIA: Comercial, Engenharia, Operacional, Gestão, Portal, Suporte, Administrativo, Pessoal
+SUBCATEGORIA, CLIENTE/PROJETO, PROPOSTA/OBRA: podem ficar em branco
+S/N: gerou receita (S) ou não (N)</div>
+    </details>
+  </div>
+
+  <div class="card" id="cardPrevia" style="display:none">
+    <div class="sec-tit">2. Prévia — revise antes de salvar</div>
+    <div class="sec-desc">Corrija diretamente na tabela qualquer campo que o parser não tenha entendido. Linhas com erro (destacadas) bloqueiam o salvamento até serem corrigidas.</div>
+    <div class="resumo" id="resumoPrevia"></div>
+    <div style="overflow-x:auto">
+      <table id="tblPrevia">
+        <thead><tr>
+          <th>Linha original</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Duração</th>
+          <th>Macro</th>
+          <th>Categoria</th>
+          <th>Subcategoria</th>
+          <th>Cliente/Projeto</th>
+          <th>Proposta/Obra</th>
+          <th>Receita?</th>
+          <th>Descrição</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tbodyPrevia"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:.6rem;margin-top:.9rem">
+      <button class="btn btn-p" id="btnSalvarTudo" onclick="salvarTudo()">💾 Salvar tudo</button>
+      <button class="btn btn-g" onclick="cancelarPrevia()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardVazio">
+    <div class="vazio">📋 Cole um bloco de texto acima e clique em "Processar" para começar.</div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Constantes do formato (têm que bater com os CHECK constraints
+// da migration 055_registro_atividades.sql)
+// ══════════════════════════════════════════════════════════════
+var MACROS_VALIDOS = ['PESSOAL', 'PROFISSIONAL'];
+var CATEGORIAS_VALIDAS = ['Comercial', 'Engenharia', 'Operacional', 'Gestão', 'Portal', 'Suporte', 'Administrativo', 'Pessoal'];
+
+// ══════════════════════════════════════════════════════════════
+// PARSER — lógica pura (testável sem DOM)
+// ══════════════════════════════════════════════════════════════
+
+// "17/07/2026" -> "2026-07-17" | null se inválido
+function parseData(linha) {
+  var m = String(linha || '').trim().match(/^DATA:\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/i);
+  if (!m) return null;
+  var dd = m[1], mm = m[2], aaaa = m[3];
+  var d = new Date(Number(aaaa), Number(mm) - 1, Number(dd));
+  if (d.getFullYear() != Number(aaaa) || d.getMonth() != Number(mm) - 1 || d.getDate() != Number(dd)) return null;
+  return aaaa + '-' + mm + '-' + dd;
+}
+
+// "09:00-10:40" -> { horaInicio:'09:00', horaFim:'10:40', duracaoMinutos:100 } | null se inválido
+function parseHorario(campo) {
+  var m = String(campo || '').trim().match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  var hi = Number(m[1]), mi = Number(m[2]), hf = Number(m[3]), mf = Number(m[4]);
+  if (hi > 23 || mi > 59 || hf > 23 || mf > 59) return null;
+  var minInicio = hi * 60 + mi;
+  var minFim = hf * 60 + mf;
+  return {
+    horaInicio: m[1] + ':' + m[2],
+    horaFim: m[3] + ':' + m[4],
+    duracaoMinutos: minFim - minInicio // pode vir <= 0 — validado à parte (sem cruzar meia-noite nesta etapa)
+  };
+}
+
+function normalizarCategoria(v) {
+  var alvo = String(v || '').trim().toLowerCase();
+  for (var i = 0; i < CATEGORIAS_VALIDAS.length; i++) {
+    if (CATEGORIAS_VALIDAS[i].toLowerCase() === alvo) return CATEGORIAS_VALIDAS[i];
+  }
+  return null;
+}
+
+// Uma linha de atividade -> { ok, campos:{...}, erros:[...] }
+function parseLinhaAtividade(linha) {
+  var erros = [];
+  var partes = String(linha || '').split('|').map(function (p) { return p.trim(); });
+
+  if (partes.length !== 8) {
+    return { ok: false, linhaOriginal: linha, erros: ['Esperado 8 campos separados por "|" (recebido ' + partes.length + ')'],
+      campos: { horaInicio: '', horaFim: '', duracaoMinutos: 0, macro: '', categoria: '', subcategoria: '', clienteProjeto: '', propostaObraId: '', gerouReceita: false, descricao: '' } };
+  }
+
+  var horarioRaw = partes[0], macroRaw = partes[1], categoriaRaw = partes[2], subcategoriaRaw = partes[3],
+      clienteRaw = partes[4], propostaRaw = partes[5], snRaw = partes[6], descricaoRaw = partes[7];
+
+  var horario = parseHorario(horarioRaw);
+  if (!horario) erros.push('Horário inválido (esperado HH:MM-HH:MM)');
+
+  var macro = String(macroRaw || '').trim().toUpperCase();
+  if (MACROS_VALIDOS.indexOf(macro) < 0) erros.push('MACRO inválido (esperado PESSOAL ou PROFISSIONAL)');
+
+  var categoria = normalizarCategoria(categoriaRaw);
+  if (!categoria) erros.push('Categoria inválida: "' + categoriaRaw + '"');
+
+  var snNorm = String(snRaw || '').trim().toUpperCase();
+  var gerouReceita = null;
+  if (snNorm === 'S') gerouReceita = true;
+  else if (snNorm === 'N') gerouReceita = false;
+  else erros.push('Campo S/N inválido (esperado S ou N)');
+
+  if (horario && horario.duracaoMinutos <= 0) erros.push('Duração inválida (fim deve ser depois do início)');
+
+  return {
+    ok: erros.length === 0,
+    linhaOriginal: linha,
+    erros: erros,
+    campos: {
+      horaInicio: horario ? horario.horaInicio : (horarioRaw.split('-')[0] || ''),
+      horaFim: horario ? horario.horaFim : (horarioRaw.split('-')[1] || ''),
+      duracaoMinutos: horario ? horario.duracaoMinutos : 0,
+      macro: macro || macroRaw,
+      categoria: categoria || categoriaRaw,
+      subcategoria: subcategoriaRaw || null,
+      clienteProjeto: clienteRaw || null,
+      propostaObraId: propostaRaw || null,
+      gerouReceita: gerouReceita === null ? false : gerouReceita,
+      descricao: descricaoRaw || ''
+    }
+  };
+}
+
+// Bloco completo colado -> { data, dataErro, linhas:[...] }
+function parseBloco(texto) {
+  var linhas = String(texto || '').split('\n');
+  var data = null, dataErro = null;
+  var linhasAtividade = [];
+  var achouData = false;
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    if (!linha.trim()) continue;
+    if (!achouData) {
+      var d = parseData(linha);
+      if (d) { data = d; achouData = true; continue; }
+      if (/^DATA:/i.test(linha.trim())) { dataErro = 'Linha "DATA:" encontrada mas em formato inválido (esperado DD/MM/AAAA): ' + linha; achouData = true; continue; }
+      dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada antes das linhas de atividade.';
+      continue;
+    }
+    linhasAtividade.push(parseLinhaAtividade(linha));
+  }
+
+  if (!achouData) dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada no texto colado.';
+
+  return { data: data, dataErro: dataErro, linhas: linhasAtividade };
+}
+
+function fmtDuracao(min) {
+  if (min == null || isNaN(min)) return '—';
+  var h = Math.floor(Math.abs(min) / 60), m = Math.abs(min) % 60;
+  var sinal = min < 0 ? '-' : '';
+  return sinal + (h ? h + 'h' : '') + (m || !h ? m + 'min' : '');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Estado da tela + ponte com o portal (padrão dos módulos iframe)
+// ══════════════════════════════════════════════════════════════
+var _empresaAtiva = null;
+var _usuarioIdCache = null;
+var _previaAtual = []; // array de { erros:[...], campos:{...} } — espelha as linhas em edição
+
+function _sb() { try { return (window.parent && window.parent.sbClient) ? window.parent.sbClient : null; } catch (e) { return null; } }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function toast(msg, tipo) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = tipo === 'err' ? 'on err' : 'on';
+  setTimeout(function () { t.className = ''; }, 2600);
+}
+
+async function _obterUsuarioId() {
+  if (_usuarioIdCache) return _usuarioIdCache;
+  var sb = _sb();
+  if (!sb) return null;
+  try {
+    var auth = await sb.auth.getUser();
+    if (!auth.data || !auth.data.user) return null;
+    var res = await sb.from('usuarios').select('id').eq('auth_id', auth.data.user.id).maybeSingle();
+    if (res.data) { _usuarioIdCache = res.data.id; return _usuarioIdCache; }
+  } catch (e) {}
+  return null;
+}
+
+// ── Processar texto colado ──────────────────────────────────────
+function processarTexto() {
+  var texto = document.getElementById('txtColar').value;
+  var msgEl = document.getElementById('msgProcessar');
+  msgEl.textContent = '';
+
+  var resultado = parseBloco(texto);
+  if (resultado.dataErro) {
+    msgEl.textContent = '❌ ' + resultado.dataErro;
+    return;
+  }
+  if (!resultado.linhas.length) {
+    msgEl.textContent = '❌ Nenhuma linha de atividade encontrada após a linha DATA:.';
+    return;
+  }
+
+  _previaAtual = resultado.linhas.map(function (l) {
+    return { data: resultado.data, erros: l.erros.slice(), campos: Object.assign({}, l.campos), linhaOriginal: l.linhaOriginal };
+  });
+
+  renderPrevia();
+}
+
+function cancelarPrevia() {
+  _previaAtual = [];
+  document.getElementById('cardPrevia').style.display = 'none';
+  document.getElementById('cardVazio').style.display = 'block';
+}
+
+// ── Revalida uma linha da prévia a partir dos campos atuais (após edição manual) ──
+function _revalidarLinha(row) {
+  var erros = [];
+  var c = row.campos;
+
+  if (!/^\d{2}:\d{2}$/.test(c.horaInicio || '')) erros.push('Hora início inválida');
+  if (!/^\d{2}:\d{2}$/.test(c.horaFim || '')) erros.push('Hora fim inválida');
+  if (/^\d{2}:\d{2}$/.test(c.horaInicio || '') && /^\d{2}:\d{2}$/.test(c.horaFim || '')) {
+    var pi = c.horaInicio.split(':').map(Number), pf = c.horaFim.split(':').map(Number);
+    c.duracaoMinutos = (pf[0] * 60 + pf[1]) - (pi[0] * 60 + pi[1]);
+    if (c.duracaoMinutos <= 0) erros.push('Duração inválida (fim deve ser depois do início)');
+  } else {
+    c.duracaoMinutos = 0;
+  }
+  if (MACROS_VALIDOS.indexOf(c.macro) < 0) erros.push('MACRO inválido');
+  if (CATEGORIAS_VALIDAS.indexOf(c.categoria) < 0) erros.push('Categoria inválida');
+
+  row.erros = erros;
+  return row;
+}
+
+function _onCampoEditado(idx, campo, valor) {
+  var row = _previaAtual[idx];
+  if (!row) return;
+  if (campo === 'gerouReceita') row.campos[campo] = !!valor;
+  else row.campos[campo] = valor;
+  _revalidarLinha(row);
+  renderPrevia();
+}
+
+function _removerLinha(idx) {
+  _previaAtual.splice(idx, 1);
+  if (!_previaAtual.length) { cancelarPrevia(); return; }
+  renderPrevia();
+}
+
+function renderPrevia() {
+  document.getElementById('cardVazio').style.display = 'none';
+  var cardPrevia = document.getElementById('cardPrevia');
+  cardPrevia.style.display = 'block';
+
+  var tbody = document.getElementById('tbodyPrevia');
+  var totalErros = 0, totalMin = 0;
+
+  tbody.innerHTML = _previaAtual.map(function (row, idx) {
+    var c = row.campos;
+    var temErro = row.erros.length > 0;
+    if (temErro) totalErros++;
+    totalMin += (c.duracaoMinutos > 0 ? c.duracaoMinutos : 0);
+
+    var macroOpts = MACROS_VALIDOS.map(function (m) {
+      return '<option value="' + m + '"' + (m === c.macro ? ' selected' : '') + '>' + m + '</option>';
+    }).join('');
+    var catOpts = CATEGORIAS_VALIDAS.map(function (cat) {
+      return '<option value="' + esc(cat) + '"' + (cat === c.categoria ? ' selected' : '') + '>' + esc(cat) + '</option>';
+    }).join('');
+
+    return '<tr class="' + (temErro ? 'erro' : '') + '">'
+      + '<td class="linha-txt" title="' + esc(row.linhaOriginal || '') + '">' + esc(row.linhaOriginal || '') + '</td>'
+      + '<td><input type="time" value="' + esc(c.horaInicio) + '" onchange="_onCampoEditado(' + idx + ',\'horaInicio\',this.value)"></td>'
+      + '<td><input type="time" value="' + esc(c.horaFim) + '" onchange="_onCampoEditado(' + idx + ',\'horaFim\',this.value)"></td>'
+      + '<td class="dur-badge">' + fmtDuracao(c.duracaoMinutos) + '</td>'
+      + '<td><select onchange="_onCampoEditado(' + idx + ',\'macro\',this.value)">' + macroOpts + '</select></td>'
+      + '<td><select onchange="_onCampoEditado(' + idx + ',\'categoria\',this.value)">' + catOpts + '</select></td>'
+      + '<td><input type="text" value="' + esc(c.subcategoria || '') + '" onchange="_onCampoEditado(' + idx + ',\'subcategoria\',this.value)"></td>'
+      + '<td><input type="text" value="' + esc(c.clienteProjeto || '') + '" onchange="_onCampoEditado(' + idx + ',\'clienteProjeto\',this.value)"></td>'
+      + '<td><input type="text" value="' + esc(c.propostaObraId || '') + '" onchange="_onCampoEditado(' + idx + ',\'propostaObraId\',this.value)"></td>'
+      + '<td style="text-align:center"><input type="checkbox" class="chk-receita"' + (c.gerouReceita ? ' checked' : '') + ' onchange="_onCampoEditado(' + idx + ',\'gerouReceita\',this.checked)"></td>'
+      + '<td><input type="text" value="' + esc(c.descricao || '') + '" onchange="_onCampoEditado(' + idx + ',\'descricao\',this.value)" style="min-width:180px"></td>'
+      + '<td><button class="rm-linha" title="Remover linha" onclick="_removerLinha(' + idx + ')">✕</button></td>'
+      + (temErro ? '</tr><tr class="erro"><td colspan="12" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
+      + '</tr>';
+  }).join('');
+
+  var resumoEl = document.getElementById('resumoPrevia');
+  resumoEl.innerHTML = '<span>' + _previaAtual.length + ' linha' + (_previaAtual.length !== 1 ? 's' : '') + '</span>'
+    + '<span class="' + (totalErros ? 'warn' : 'ok') + '">' + (totalErros ? '⚠️ ' + totalErros + ' com erro' : '✅ todas válidas') + '</span>'
+    + '<span>⏱️ ' + fmtDuracao(totalMin) + ' no total</span>';
+
+  var btnSalvar = document.getElementById('btnSalvarTudo');
+  btnSalvar.disabled = totalErros > 0;
+}
+
+// ── Salvar tudo ───────────────────────────────────────────────
+async function salvarTudo() {
+  if (!_previaAtual.length) return;
+  var temErro = _previaAtual.some(function (r) { return r.erros.length > 0; });
+  if (temErro) { toast('Corrija as linhas com erro antes de salvar.', 'err'); return; }
+  if (!_empresaAtiva || !_empresaAtiva.id) { toast('Nenhuma empresa ativa.', 'err'); return; }
+
+  var sb = _sb();
+  if (!sb) { toast('Sem conexão com o portal.', 'err'); return; }
+
+  var usuarioId = await _obterUsuarioId();
+  if (!usuarioId) { toast('Não foi possível identificar o usuário logado.', 'err'); return; }
+
+  var btnSalvar = document.getElementById('btnSalvarTudo');
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = 'Salvando...';
+
+  var registros = _previaAtual.map(function (row) {
+    var c = row.campos;
+    return {
+      empresa_id: _empresaAtiva.id,
+      usuario_id: usuarioId,
+      data: row.data,
+      hora_inicio: c.horaInicio,
+      hora_fim: c.horaFim,
+      duracao_minutos: c.duracaoMinutos,
+      macro: c.macro,
+      categoria: c.categoria,
+      subcategoria: c.subcategoria || null,
+      cliente_projeto: c.clienteProjeto || null,
+      proposta_obra_id: c.propostaObraId || null,
+      gerou_receita: !!c.gerouReceita,
+      descricao: c.descricao || ''
+    };
+  });
+
+  try {
+    var res = await sb.from('registro_atividades').insert(registros);
+    if (res.error) throw new Error(res.error.message);
+    toast('✅ ' + registros.length + ' registro(s) salvos.');
+    document.getElementById('txtColar').value = '';
+    _previaAtual = [];
+    document.getElementById('cardPrevia').style.display = 'none';
+    document.getElementById('cardVazio').style.display = 'block';
+  } catch (e) {
+    toast('❌ Erro ao salvar: ' + e.message, 'err');
+  } finally {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = '💾 Salvar tudo';
+  }
+}
+
+// ── Recebe empresa / tema do portal ─────────────────────────────
+function _onTrocaEmpresa(d) {
+  _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
+  _usuarioIdCache = null;
+  var el = document.getElementById('empLabel');
+  if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
+}
+window.addEventListener('message', function (e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if (e.data.type === 'SET_TEMA') document.body.classList.toggle('light', e.data.tema === 'light');
+});
+
+try { if (window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); } catch (e) {}
+try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'RH_PEDIR_EMPRESA' }, '*'); } catch (e) {}
+</script>
+</body>
+</html>
