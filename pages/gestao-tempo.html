@@ -96,7 +96,7 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
 .dash-filtros .nav-data{display:flex;align-items:center;gap:.35rem}
 .dash-filtros input[type=date]{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.4rem .5rem;font-size:.8rem;font-family:inherit}
 .periodo-label{font-size:.85rem;font-weight:700;color:var(--text);min-width:150px}
-.visao-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.15rem;margin-left:auto}
+.visao-toggle{display:flex;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.15rem;margin-left:auto}
 .visao-toggle button{background:none;border:none;border-radius:16px;color:var(--text3);font-size:.74rem;font-weight:700;font-family:inherit;cursor:pointer;padding:.3rem .8rem;transition:all .15s}
 .visao-toggle button.on{background:var(--emp-cor);color:#fff}
 
@@ -132,6 +132,25 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
 .tl-meta{font-size:.68rem;color:var(--text3);margin-top:.15rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
 .tl-cat{display:inline-block;font-size:.62rem;font-weight:700;border-radius:10px;padding:.08rem .5rem;color:#fff}
 .vazio-sm{font-size:.76rem;color:var(--text3);padding:.6rem 0;font-style:italic}
+
+/* ── Ações por registro (editar/excluir) ── */
+.tl-acoes{display:flex;gap:.2rem;flex-shrink:0;align-self:center}
+.icon-btn{background:var(--bg3);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.8rem;padding:.22rem .45rem;transition:all .15s}
+.icon-btn:hover{border-color:var(--emp-cor)}
+.icon-btn-red:hover{border-color:var(--red)}
+
+/* ── Modal de edição de registro ── */
+.modal-er{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;padding:1rem}
+.modal-er-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:1.1rem}
+.er-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+@media(max-width:560px){.er-grid{grid-template-columns:1fr}}
+.er-f{display:flex;flex-direction:column;gap:.25rem}
+.er-f label{font-size:.7rem;font-weight:600;color:var(--text3)}
+.er-f input,.er-f select,.er-f textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .55rem;font-size:.82rem;font-family:inherit}
+.er-f input:focus,.er-f select:focus,.er-f textarea:focus{border-color:var(--emp-cor);outline:none}
+.er-f textarea{resize:vertical;min-height:3.4em}
+.er-check{display:flex;align-items:center;gap:.45rem;font-size:.8rem;color:var(--text);padding-top:1.15rem}
+.er-check input{width:16px;height:16px;accent-color:var(--emp-cor);cursor:pointer}
 
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:.6rem 1.1rem;border-radius:var(--r2);font-size:.8rem;box-shadow:0 4px 18px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:all .25s;z-index:999}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -210,6 +229,18 @@ S/N: gerou receita (S) ou não (N)</div>
     <div class="vazio">📋 Cole um bloco de texto acima e clique em "Processar" para começar.</div>
   </div>
 
+  <div class="card">
+    <div class="sec-tit">📋 Registros salvos</div>
+    <div class="sec-desc">Registros já gravados no dia selecionado — clique em ✏️ para editar ou 🗑️ para excluir.</div>
+    <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.7rem;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="regNavegarDia(-1)" title="Dia anterior">←</button>
+      <input type="date" id="regDia" onchange="regSetDia(this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.4rem .5rem;font-size:.8rem;font-family:inherit">
+      <button class="btn btn-g" onclick="regNavegarDia(1)" title="Próximo dia">→</button>
+      <span class="periodo-label" id="regDiaLabel"></span>
+    </div>
+    <div id="listaRegsDia"></div>
+  </div>
+
   </div><!-- /sec-registrar -->
 
   <div id="sec-dashboard" class="sec">
@@ -224,7 +255,11 @@ S/N: gerou receita (S) ou não (N)</div>
       <div class="visao-toggle">
         <button id="vt-dia" class="on" onclick="dashSetVisao('dia')">Dia</button>
         <button id="vt-semana" onclick="dashSetVisao('semana')">Semana</button>
+        <button id="vt-quinzena" onclick="dashSetVisao('quinzena')">Quinzena</button>
         <button id="vt-mes" onclick="dashSetVisao('mes')">Mês</button>
+        <button id="vt-trimestre" onclick="dashSetVisao('trimestre')">Trimestre</button>
+        <button id="vt-semestre" onclick="dashSetVisao('semestre')">Semestre</button>
+        <button id="vt-ano" onclick="dashSetVisao('ano')">Ano</button>
       </div>
     </div>
 
@@ -278,6 +313,30 @@ S/N: gerou receita (S) ou não (N)</div>
 
   </div><!-- /sec-dashboard -->
 
+</div>
+
+<!-- Modal Editar Registro -->
+<div id="modalEditarReg" class="modal-er">
+  <div class="modal-er-box">
+    <div class="sec-tit">✏️ Editar registro</div>
+    <div class="sec-desc" id="erDataLabel"></div>
+    <div class="er-grid">
+      <div class="er-f"><label>Hora início</label><input type="time" id="erIni"></div>
+      <div class="er-f"><label>Hora fim</label><input type="time" id="erFim"></div>
+      <div class="er-f"><label>Macro</label><select id="erMacro"></select></div>
+      <div class="er-f"><label>Categoria</label><select id="erCategoria"></select></div>
+      <div class="er-f"><label>Subcategoria</label><input type="text" id="erSub"></div>
+      <div class="er-f"><label>Cliente/Projeto</label><input type="text" id="erCli"></div>
+      <div class="er-f"><label>Proposta/Obra</label><input type="text" id="erProp"></div>
+      <div class="er-check"><input type="checkbox" id="erReceita"><label for="erReceita" style="cursor:pointer">💰 Gerou receita</label></div>
+    </div>
+    <div class="er-f" style="margin-top:.6rem"><label>Descrição</label><textarea id="erDesc"></textarea></div>
+    <div id="erErro" style="color:var(--red);font-size:.76rem;margin:.5rem 0;min-height:1em"></div>
+    <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.4rem">
+      <button class="btn btn-g" onclick="fecharEditarRegistro()">Cancelar</button>
+      <button class="btn btn-p" id="btnSalvarEdicao" onclick="salvarEdicaoRegistro()">💾 Salvar alterações</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -464,26 +523,53 @@ function _isoDe(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).pad
 function _deIso(iso) { var p = String(iso).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
 
 // Intervalo [inicio, fim] (ISO) para a visão. Semana = segunda a domingo.
+// Quinzena = dias 1-15 ou 16-fim do mês. Trimestre/semestre = civis.
 function calcPeriodo(iso, visao) {
   var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
   if (visao === 'semana') {
     var dow = (d.getDay() + 6) % 7; // 0=segunda
     var ini = new Date(d); ini.setDate(d.getDate() - dow);
     var fim = new Date(ini); fim.setDate(ini.getDate() + 6);
     return { inicio: _isoDe(ini), fim: _isoDe(fim) };
   }
+  if (visao === 'quinzena') {
+    if (d.getDate() <= 15) return { inicio: _isoDe(new Date(y, m, 1)), fim: _isoDe(new Date(y, m, 15)) };
+    return { inicio: _isoDe(new Date(y, m, 16)), fim: _isoDe(new Date(y, m + 1, 0)) };
+  }
   if (visao === 'mes') {
-    return { inicio: _isoDe(new Date(d.getFullYear(), d.getMonth(), 1)), fim: _isoDe(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
+    return { inicio: _isoDe(new Date(y, m, 1)), fim: _isoDe(new Date(y, m + 1, 0)) };
+  }
+  if (visao === 'trimestre') {
+    var qm = Math.floor(m / 3) * 3; // Jan-Mar, Abr-Jun, Jul-Set, Out-Dez
+    return { inicio: _isoDe(new Date(y, qm, 1)), fim: _isoDe(new Date(y, qm + 3, 0)) };
+  }
+  if (visao === 'semestre') {
+    var sm = m < 6 ? 0 : 6; // Jan-Jun, Jul-Dez
+    return { inicio: _isoDe(new Date(y, sm, 1)), fim: _isoDe(new Date(y, sm + 6, 0)) };
+  }
+  if (visao === 'ano') {
+    return { inicio: y + '-01-01', fim: y + '-12-31' };
   }
   return { inicio: iso, fim: iso };
 }
 
 // Avança/retrocede a data-âncora conforme a visão (dir = +1 | -1).
-// Na visão mês, ancora no dia 1 do mês vizinho (evita estouro 31→fev).
+// Visões de calendário (quinzena/mês/trimestre/semestre/ano) ancoram no
+// primeiro dia do período vizinho (evita estouro 31→fev).
 function navegarData(iso, visao, dir) {
   var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
   if (visao === 'semana') d.setDate(d.getDate() + 7 * dir);
-  else if (visao === 'mes') d = new Date(d.getFullYear(), d.getMonth() + dir, 1);
+  else if (visao === 'quinzena') {
+    var primeira = d.getDate() <= 15;
+    if (dir > 0) d = primeira ? new Date(y, m, 16) : new Date(y, m + 1, 1);
+    else d = primeira ? new Date(y, m - 1, 16) : new Date(y, m, 1);
+  }
+  else if (visao === 'mes') d = new Date(y, m + dir, 1);
+  else if (visao === 'trimestre') d = new Date(y, Math.floor(m / 3) * 3 + 3 * dir, 1);
+  else if (visao === 'semestre') d = new Date(y, (m < 6 ? 0 : 6) + 6 * dir, 1);
+  else if (visao === 'ano') d = new Date(y + dir, 0, 1);
   else d.setDate(d.getDate() + dir);
   return _isoDe(d);
 }
@@ -492,14 +578,19 @@ function labelPeriodo(iso, visao) {
   var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
   if (visao === 'semana') {
     var p = calcPeriodo(iso, 'semana');
     var a = _deIso(p.inicio), b = _deIso(p.fim);
     var dd = function (x) { return String(x.getDate()).padStart(2, '0') + '/' + String(x.getMonth() + 1).padStart(2, '0'); };
     return dd(a) + ' – ' + dd(b) + '/' + b.getFullYear();
   }
-  if (visao === 'mes') return MESES[d.getMonth()] + ' de ' + d.getFullYear();
-  return DIAS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  if (visao === 'quinzena') return (d.getDate() <= 15 ? '1ª' : '2ª') + ' quinzena de ' + MESES[m] + '/' + y;
+  if (visao === 'mes') return MESES[m] + ' de ' + y;
+  if (visao === 'trimestre') return (Math.floor(m / 3) + 1) + 'º trimestre de ' + y;
+  if (visao === 'semestre') return (m < 6 ? 1 : 2) + 'º semestre de ' + y;
+  if (visao === 'ano') return String(y);
+  return DIAS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
 }
 
 // Donut SVG à mão (mesma técnica do dashboard-estrategico: circles com
@@ -743,6 +834,9 @@ async function salvarTudo() {
     _previaAtual = [];
     document.getElementById('cardPrevia').style.display = 'none';
     document.getElementById('cardVazio').style.display = 'block';
+    // Lista "Registros salvos" pula para o dia do bloco recém-gravado
+    if (registros.length && registros[0].data) _regDiaIso = registros[0].data;
+    carregarRegsDia();
   } catch (e) {
     toast('❌ Erro ao salvar: ' + e.message, 'err');
   } finally {
@@ -772,6 +866,7 @@ function mostrarSecao(id) {
   var tab = document.getElementById('tab-' + id);
   if (tab) tab.classList.add('on');
   if (id === 'dashboard') carregarDashboard();
+  if (id === 'registrar') carregarRegsDia();
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 
@@ -779,7 +874,7 @@ function dashNavegar(dir) { _dashIso = navegarData(_dashIso, _dashVisao, dir); c
 function dashSetData(v) { if (v) { _dashIso = v; carregarDashboard(); } }
 function dashSetVisao(v) {
   _dashVisao = v;
-  ['dia', 'semana', 'mes'].forEach(function (x) {
+  ['dia', 'semana', 'quinzena', 'mes', 'trimestre', 'semestre', 'ano'].forEach(function (x) {
     var b = document.getElementById('vt-' + x);
     if (b) b.classList.toggle('on', x === v);
   });
@@ -880,6 +975,28 @@ function _renderPropostas() {
   el.innerHTML = htmlBarras(aggPorCampo(_dashRows, 'proposta_obra_id', null));
 }
 
+function _fmtDataBr(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function _hhmm(t) { return String(t || '').slice(0, 5); }
+
+// Item de registro (compartilhado: Linha do Tempo do dashboard + lista
+// "Registros salvos" da aba Registrar), com botões editar/excluir.
+function _regItemHtml(x) {
+  return '<div class="tl-item">'
+    + '<div class="tl-hora">' + _hhmm(x.hora_inicio) + '–' + _hhmm(x.hora_fim) + '</div>'
+    + '<div class="tl-body">'
+    + '<div class="tl-desc">' + esc(x.descricao || '—') + (x.gerou_receita ? ' 💰' : '') + '</div>'
+    + '<div class="tl-meta">'
+    + '<span class="tl-cat" style="background:' + corDe(x.categoria, 0) + '">' + esc(x.categoria) + '</span>'
+    + (x.cliente_projeto ? '<span>🏢 ' + esc(x.cliente_projeto) + '</span>' : '')
+    + (x.proposta_obra_id ? '<span>📄 ' + esc(x.proposta_obra_id) + '</span>' : '')
+    + '<span>' + fmtDuracao(x.duracao_minutos) + '</span>'
+    + '</div></div>'
+    + '<div class="tl-acoes">'
+    + '<button class="icon-btn" title="Editar" onclick="abrirEditarRegistro(\'' + esc(x.id) + '\')">✏️</button>'
+    + '<button class="icon-btn icon-btn-red" title="Excluir" onclick="excluirRegistro(\'' + esc(x.id) + '\')">🗑️</button>'
+    + '</div></div>';
+}
+
 function _renderTimeline() {
   var el = document.getElementById('cardTimeline');
   var desc = document.getElementById('tlDesc');
@@ -888,35 +1005,182 @@ function _renderTimeline() {
     : 'Atividades do período, agrupadas por dia.';
   if (!_dashRows.length) { el.innerHTML = '<div class="vazio-sm">Nenhum registro no período.</div>'; return; }
 
-  function fmtDataBr(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-  function hhmm(t) { return String(t || '').slice(0, 5); }
-  function itemHtml(x) {
-    return '<div class="tl-item">'
-      + '<div class="tl-hora">' + hhmm(x.hora_inicio) + '–' + hhmm(x.hora_fim) + '</div>'
-      + '<div class="tl-body">'
-      + '<div class="tl-desc">' + esc(x.descricao || '—') + (x.gerou_receita ? ' 💰' : '') + '</div>'
-      + '<div class="tl-meta">'
-      + '<span class="tl-cat" style="background:' + corDe(x.categoria, 0) + '">' + esc(x.categoria) + '</span>'
-      + (x.cliente_projeto ? '<span>🏢 ' + esc(x.cliente_projeto) + '</span>' : '')
-      + (x.proposta_obra_id ? '<span>📄 ' + esc(x.proposta_obra_id) + '</span>' : '')
-      + '<span>' + fmtDuracao(x.duracao_minutos) + '</span>'
-      + '</div></div></div>';
-  }
-
   if (_dashVisao === 'dia') {
-    el.innerHTML = _dashRows.map(itemHtml).join('');
+    el.innerHTML = _dashRows.map(_regItemHtml).join('');
     return;
   }
-  // Semana/Mês: agrupar por dia (rows já vêm ordenadas por data + hora_inicio)
+  // Períodos maiores: agrupar por dia (rows já vêm ordenadas por data + hora_inicio)
   var html = '', diaAtual = null;
   _dashRows.forEach(function (x) {
     if (x.data !== diaAtual) {
       diaAtual = x.data;
-      html += '<div class="tl-dia">' + fmtDataBr(x.data) + '</div>';
+      html += '<div class="tl-dia">' + _fmtDataBr(x.data) + '</div>';
     }
-    html += itemHtml(x);
+    html += _regItemHtml(x);
   });
   el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════
+// REGISTROS SALVOS (aba Registrar) + EDITAR/EXCLUIR
+// ══════════════════════════════════════════════════════════════
+var _regDiaIso = _isoDe(new Date()); // dia selecionado na lista da aba Registrar
+var _regsDia = [];                   // cache da lista do dia
+
+function regNavegarDia(dir) { _regDiaIso = navegarData(_regDiaIso, 'dia', dir); carregarRegsDia(); }
+function regSetDia(v) { if (v) { _regDiaIso = v; carregarRegsDia(); } }
+
+async function carregarRegsDia() {
+  var inp = document.getElementById('regDia');
+  if (inp) inp.value = _regDiaIso;
+  var lbl = document.getElementById('regDiaLabel');
+  if (lbl) lbl.textContent = labelPeriodo(_regDiaIso, 'dia');
+
+  var el = document.getElementById('listaRegsDia');
+  if (!el) return;
+  var sb = _sb();
+  if (!sb || !_empresaAtiva || !_empresaAtiva.id) {
+    _regsDia = [];
+    el.innerHTML = '<div class="vazio-sm">Conecte-se a uma empresa para ver os registros.</div>';
+    return;
+  }
+  var res = await sb.from('registro_atividades')
+    .select('*')
+    .eq('empresa_id', _empresaAtiva.id)
+    .eq('data', _regDiaIso)
+    .order('hora_inicio', { ascending: true });
+  if (res.error) {
+    _regsDia = [];
+    el.innerHTML = '<div class="vazio-sm">Erro ao carregar: ' + esc(res.error.message) + '</div>';
+    return;
+  }
+  _regsDia = res.data || [];
+  el.innerHTML = _regsDia.length
+    ? _regsDia.map(_regItemHtml).join('')
+    : '<div class="vazio-sm">Nenhum registro salvo neste dia.</div>';
+}
+
+// Busca o registro nos caches das duas telas (lista do dia + dashboard)
+function _acharRegistro(id) {
+  return _regsDia.find(function (x) { return x.id === id; })
+    || _dashRows.find(function (x) { return x.id === id; })
+    || null;
+}
+
+// Após editar/excluir: atualiza as duas superfícies sem recarregar a página
+function _refreshAposCrud() {
+  carregarRegsDia();
+  var secDash = document.getElementById('sec-dashboard');
+  if (secDash && secDash.classList.contains('on')) carregarDashboard();
+}
+
+// ── Modal de edição ────────────────────────────────────────────
+var _editandoRegId = null;
+var _salvandoEdicao = false;
+
+function abrirEditarRegistro(id) {
+  var reg = _acharRegistro(id);
+  if (!reg) { toast('Registro não encontrado — recarregue a lista.', 'err'); return; }
+  _editandoRegId = id;
+
+  var selMacro = document.getElementById('erMacro');
+  selMacro.innerHTML = MACROS_VALIDOS.map(function (m) {
+    return '<option value="' + m + '"' + (m === reg.macro ? ' selected' : '') + '>' + m + '</option>';
+  }).join('');
+  var selCat = document.getElementById('erCategoria');
+  selCat.innerHTML = CATEGORIAS_VALIDAS.map(function (c) {
+    return '<option value="' + esc(c) + '"' + (c === reg.categoria ? ' selected' : '') + '>' + esc(c) + '</option>';
+  }).join('');
+
+  document.getElementById('erDataLabel').textContent = 'Registro do dia ' + _fmtDataBr(reg.data) + ' (a data não é editável).';
+  document.getElementById('erIni').value = _hhmm(reg.hora_inicio);
+  document.getElementById('erFim').value = _hhmm(reg.hora_fim);
+  document.getElementById('erSub').value = reg.subcategoria || '';
+  document.getElementById('erCli').value = reg.cliente_projeto || '';
+  document.getElementById('erProp').value = reg.proposta_obra_id || '';
+  document.getElementById('erReceita').checked = !!reg.gerou_receita;
+  document.getElementById('erDesc').value = reg.descricao || '';
+  document.getElementById('erErro').textContent = '';
+  var btn = document.getElementById('btnSalvarEdicao');
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar alterações'; }
+  document.getElementById('modalEditarReg').style.display = 'flex';
+}
+
+function fecharEditarRegistro() {
+  document.getElementById('modalEditarReg').style.display = 'none';
+  _editandoRegId = null;
+}
+
+// Guarda de reentrância (mesma lição do salvarTudo): flag na primeira
+// linha + botão desabilitado antes de qualquer await.
+async function salvarEdicaoRegistro() {
+  if (_salvandoEdicao) return;
+  _salvandoEdicao = true;
+  var btn = document.getElementById('btnSalvarEdicao');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+  var erroEl = document.getElementById('erErro');
+  erroEl.textContent = '';
+
+  try {
+    if (!_editandoRegId) return;
+    var ini = document.getElementById('erIni').value;
+    var fim = document.getElementById('erFim').value;
+    if (!/^\d{2}:\d{2}$/.test(ini) || !/^\d{2}:\d{2}$/.test(fim)) {
+      erroEl.textContent = '⚠️ Horários inválidos.'; return;
+    }
+    var pi = ini.split(':').map(Number), pf = fim.split(':').map(Number);
+    var duracao = (pf[0] * 60 + pf[1]) - (pi[0] * 60 + pi[1]);
+    if (duracao <= 0) { erroEl.textContent = '⚠️ A hora fim deve ser depois da hora início.'; return; }
+
+    var sb = _sb();
+    if (!sb) { erroEl.textContent = '⚠️ Sem conexão com o portal.'; return; }
+
+    var payload = {
+      hora_inicio: ini,
+      hora_fim: fim,
+      duracao_minutos: duracao,
+      macro: document.getElementById('erMacro').value,
+      categoria: document.getElementById('erCategoria').value,
+      subcategoria: document.getElementById('erSub').value.trim() || null,
+      cliente_projeto: document.getElementById('erCli').value.trim() || null,
+      proposta_obra_id: document.getElementById('erProp').value.trim() || null,
+      gerou_receita: document.getElementById('erReceita').checked,
+      descricao: document.getElementById('erDesc').value.trim()
+    };
+    var res = await sb.from('registro_atividades').update(payload).eq('id', _editandoRegId);
+    if (res.error) throw new Error(res.error.message);
+    toast('✅ Registro atualizado.');
+    fecharEditarRegistro();
+    _refreshAposCrud();
+  } catch (e) {
+    erroEl.textContent = '❌ Erro ao salvar: ' + e.message;
+  } finally {
+    _salvandoEdicao = false;
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar alterações'; }
+  }
+}
+
+var _excluindoReg = false;
+async function excluirRegistro(id) {
+  if (_excluindoReg) return;
+  var reg = _acharRegistro(id);
+  if (!reg) { toast('Registro não encontrado — recarregue a lista.', 'err'); return; }
+  var resumo = _hhmm(reg.hora_inicio) + '–' + _hhmm(reg.hora_fim) + ' · ' + (reg.descricao || '(sem descrição)');
+  if (!confirm('Excluir este registro?\n\n' + resumo)) return;
+
+  _excluindoReg = true;
+  try {
+    var sb = _sb();
+    if (!sb) { toast('Sem conexão com o portal.', 'err'); return; }
+    var res = await sb.from('registro_atividades').delete().eq('id', id);
+    if (res.error) throw new Error(res.error.message);
+    toast('🗑️ Registro excluído.');
+    _refreshAposCrud();
+  } catch (e) {
+    toast('❌ Erro ao excluir: ' + e.message, 'err');
+  } finally {
+    _excluindoReg = false;
+  }
 }
 
 // ── Recebe empresa / tema / navegação do portal ─────────────────
@@ -925,9 +1189,11 @@ function _onTrocaEmpresa(d) {
   _usuarioIdCache = null;
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
-  // Dashboard aberto → recarregar com a nova empresa
+  // Recarregar o que estiver visível com a nova empresa
   var secDash = document.getElementById('sec-dashboard');
   if (secDash && secDash.classList.contains('on')) carregarDashboard();
+  var secReg = document.getElementById('sec-registrar');
+  if (secReg && secReg.classList.contains('on')) carregarRegsDia();
 }
 window.addEventListener('message', function (e) {
   if (!e.data || !e.data.type) return;
