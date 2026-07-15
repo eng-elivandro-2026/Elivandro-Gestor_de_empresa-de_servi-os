@@ -54,17 +54,21 @@ table#tblPrevia{width:100%;border-collapse:collapse;table-layout:auto;font-famil
 table#tblPrevia th{text-align:left;padding:.5rem .55rem;color:var(--text3);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);white-space:normal;background:var(--bg2)}
 table#tblPrevia td{padding:.45rem .5rem;border-bottom:1px solid var(--border);vertical-align:top}
 table#tblPrevia tr.erro td{background:rgba(248,81,73,.08)}
+/* Colunas: 1 Linha original · 2 Data · 3 Início · 4 Fim · 5 Duração ·
+   6 Macro · 7 Categoria · 8 Subcategoria · 9 Cliente · 10 Proposta ·
+   11 Receita · 12 Descrição · 13 remover */
 table#tblPrevia th:nth-child(1),table#tblPrevia td:nth-child(1){min-width:190px}
-table#tblPrevia th:nth-child(2),table#tblPrevia td:nth-child(2),
-table#tblPrevia th:nth-child(3),table#tblPrevia td:nth-child(3){min-width:100px}
-table#tblPrevia th:nth-child(4),table#tblPrevia td:nth-child(4){min-width:80px}
-table#tblPrevia th:nth-child(5),table#tblPrevia td:nth-child(5){min-width:130px}
-table#tblPrevia th:nth-child(6),table#tblPrevia td:nth-child(6){min-width:140px}
+table#tblPrevia th:nth-child(2),table#tblPrevia td:nth-child(2){min-width:130px}
+table#tblPrevia th:nth-child(3),table#tblPrevia td:nth-child(3),
+table#tblPrevia th:nth-child(4),table#tblPrevia td:nth-child(4){min-width:100px}
+table#tblPrevia th:nth-child(5),table#tblPrevia td:nth-child(5){min-width:80px}
+table#tblPrevia th:nth-child(6),table#tblPrevia td:nth-child(6){min-width:130px}
 table#tblPrevia th:nth-child(7),table#tblPrevia td:nth-child(7),
 table#tblPrevia th:nth-child(8),table#tblPrevia td:nth-child(8){min-width:140px}
-table#tblPrevia th:nth-child(9),table#tblPrevia td:nth-child(9){min-width:120px}
-table#tblPrevia th:nth-child(10),table#tblPrevia td:nth-child(10){min-width:80px}
-table#tblPrevia th:nth-child(11),table#tblPrevia td:nth-child(11){min-width:280px;width:100%}
+table#tblPrevia th:nth-child(9),table#tblPrevia td:nth-child(9){min-width:140px}
+table#tblPrevia th:nth-child(10),table#tblPrevia td:nth-child(10){min-width:120px}
+table#tblPrevia th:nth-child(11),table#tblPrevia td:nth-child(11){min-width:80px}
+table#tblPrevia th:nth-child(12),table#tblPrevia td:nth-child(12){min-width:280px;width:100%}
 table#tblPrevia input[type=text],table#tblPrevia input[type=time],table#tblPrevia select,table#tblPrevia textarea{
   width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);
   padding:.4rem .5rem;font-size:12px;font-family:inherit;line-height:1.4;
@@ -190,11 +194,15 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
       <div class="exemplo">DATA: DD/MM/AAAA
 HH:MM-HH:MM | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
 
+PERÍODO: DD/MM/AAAA-DD/MM/AAAA
+DD/MM/AAAA-DD/MM/AAAA | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
+
 MACRO: PESSOAL ou PROFISSIONAL
 CATEGORIA: <span id="ajudaCategorias">Comercial, Engenharia, Operacional, Gestão, Portal, Suporte, Administrativo, Pessoal</span>
 SUBCATEGORIA, CLIENTE/PROJETO, PROPOSTA/OBRA: podem ficar em branco
 S/N: gerou receita (S) ou não (N)
-HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é calculada corretamente e o registro fica no dia do bloco</div>
+HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é calculada corretamente e o registro fica no dia do bloco
+PERÍODO gera 1 registro por DIA ÚTIL (seg-sex) do intervalo, 08:00-17:00 (9h) cada, editáveis na prévia. Pode misturar vários DATA:/PERÍODO: no mesmo colar — cada linha usa o último cabeçalho acima dela</div>
     </details>
   </div>
 
@@ -206,6 +214,7 @@ HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é 
       <table id="tblPrevia">
         <thead><tr>
           <th>Linha original</th>
+          <th>Data</th>
           <th>Início</th>
           <th>Fim</th>
           <th>Duração</th>
@@ -375,14 +384,63 @@ var CATEGORIAS_VALIDAS = ['Comercial', 'Engenharia', 'Operacional', 'Gestão', '
 // PARSER — lógica pura (testável sem DOM)
 // ══════════════════════════════════════════════════════════════
 
-// "17/07/2026" -> "2026-07-17" | null se inválido
-function parseData(linha) {
-  var m = String(linha || '').trim().match(/^DATA:\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/i);
-  if (!m) return null;
-  var dd = m[1], mm = m[2], aaaa = m[3];
+// "17","07","2026" -> "2026-07-17" | null se a data não existir (31/02 etc.)
+function _validaDataBr(dd, mm, aaaa) {
   var d = new Date(Number(aaaa), Number(mm) - 1, Number(dd));
   if (d.getFullYear() != Number(aaaa) || d.getMonth() != Number(mm) - 1 || d.getDate() != Number(dd)) return null;
   return aaaa + '-' + mm + '-' + dd;
+}
+
+// "DATA: 17/07/2026" -> "2026-07-17" | null se inválido
+function parseData(linha) {
+  var m = String(linha || '').trim().match(/^DATA:\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/i);
+  if (!m) return null;
+  return _validaDataBr(m[1], m[2], m[3]);
+}
+
+// Cabeçalho de bloco: "DATA: DD/MM/AAAA" (modo dia) ou
+// "PERÍODO: DD/MM/AAAA-DD/MM/AAAA" (modo período, com/sem acento).
+// -> {tipo:'data', data} | {tipo:'periodo', inicio, fim}
+// | {tipo:'invalido', motivo} (parece cabeçalho mas está quebrado) | null
+function parseCabecalho(linha) {
+  var txt = String(linha || '').trim();
+  if (/^DATA:/i.test(txt)) {
+    var d = parseData(txt);
+    return d ? { tipo: 'data', data: d } : { tipo: 'invalido', motivo: 'Cabeçalho DATA em formato inválido (esperado DD/MM/AAAA): ' + txt };
+  }
+  if (/^PER[IÍ]ODO:/i.test(txt)) {
+    var m = txt.match(/^PER[IÍ]ODO:\s*(\d{2})\/(\d{2})\/(\d{4})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/i);
+    if (!m) return { tipo: 'invalido', motivo: 'Cabeçalho PERÍODO em formato inválido (esperado DD/MM/AAAA-DD/MM/AAAA): ' + txt };
+    var ini = _validaDataBr(m[1], m[2], m[3]);
+    var fim = _validaDataBr(m[4], m[5], m[6]);
+    if (!ini || !fim) return { tipo: 'invalido', motivo: 'Cabeçalho PERÍODO com data inexistente: ' + txt };
+    if (ini > fim) return { tipo: 'invalido', motivo: 'Cabeçalho PERÍODO com início depois do fim: ' + txt };
+    return { tipo: 'periodo', inicio: ini, fim: fim };
+  }
+  return null;
+}
+
+// Campo 1 de linha no modo período: "13/02/2026-26/02/2026"
+// -> {inicio, fim} ISO | null
+function parseIntervaloDatas(campo) {
+  var m = String(campo || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  var ini = _validaDataBr(m[1], m[2], m[3]);
+  var fim = _validaDataBr(m[4], m[5], m[6]);
+  if (!ini || !fim || ini > fim) return null;
+  return { inicio: ini, fim: fim };
+}
+
+// Dias ÚTEIS (segunda a sexta) do intervalo [inicio, fim], em ISO.
+function diasUteis(inicioIso, fimIso) {
+  var dias = [];
+  var d = _deIso(inicioIso), fim = _deIso(fimIso);
+  while (d <= fim) {
+    var dow = d.getDay();
+    if (dow >= 1 && dow <= 5) dias.push(_isoDe(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return dias;
 }
 
 // "09:00-10:40" -> { horaInicio, horaFim, duracaoMinutos, cruzaMeiaNoite } | null se inválido.
@@ -418,7 +476,37 @@ function normalizarCategoria(v, lista) {
   return null;
 }
 
-// Uma linha de atividade -> { ok, campos:{...}, erros:[...] }
+// Campos 2-8 (MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE | PROPOSTA | S/N |
+// DESCRIÇÃO), idênticos nos modos dia e período. Empilha erros no array
+// recebido e retorna os campos normalizados.
+function _parseCamposComuns(partes, listaCategorias, erros) {
+  var macro = String(partes[1] || '').trim().toUpperCase();
+  if (MACROS_VALIDOS.indexOf(macro) < 0) erros.push('MACRO inválido (esperado PESSOAL ou PROFISSIONAL)');
+
+  var categoria = normalizarCategoria(partes[2], listaCategorias);
+  if (!categoria) erros.push('Categoria inválida: "' + partes[2] + '"');
+
+  var snNorm = String(partes[6] || '').trim().toUpperCase();
+  var gerouReceita = null;
+  if (snNorm === 'S') gerouReceita = true;
+  else if (snNorm === 'N') gerouReceita = false;
+  else erros.push('Campo S/N inválido (esperado S ou N)');
+
+  return {
+    macro: macro || partes[1],
+    categoria: categoria || partes[2],
+    subcategoria: partes[3] || null,
+    clienteProjeto: partes[4] || null,
+    propostaObraId: partes[5] || null,
+    gerouReceita: gerouReceita === null ? false : gerouReceita,
+    descricao: partes[7] || ''
+  };
+}
+
+var _CAMPOS_VAZIOS = { horaInicio: '', horaFim: '', duracaoMinutos: 0, macro: '', categoria: '', subcategoria: '', clienteProjeto: '', propostaObraId: '', gerouReceita: false, descricao: '' };
+
+// Uma linha de atividade (modo dia: campo 1 = HH:MM-HH:MM)
+// -> { ok, campos:{...}, erros:[...] }
 // listaCategorias opcional (default: 8 fixas) — em runtime recebe as ativas da empresa.
 function parseLinhaAtividade(linha, listaCategorias) {
   var erros = [];
@@ -426,26 +514,17 @@ function parseLinhaAtividade(linha, listaCategorias) {
 
   if (partes.length !== 8) {
     return { ok: false, linhaOriginal: linha, erros: ['Esperado 8 campos separados por "|" (recebido ' + partes.length + ')'],
-      campos: { horaInicio: '', horaFim: '', duracaoMinutos: 0, macro: '', categoria: '', subcategoria: '', clienteProjeto: '', propostaObraId: '', gerouReceita: false, descricao: '' } };
+      campos: Object.assign({}, _CAMPOS_VAZIOS) };
   }
 
-  var horarioRaw = partes[0], macroRaw = partes[1], categoriaRaw = partes[2], subcategoriaRaw = partes[3],
-      clienteRaw = partes[4], propostaRaw = partes[5], snRaw = partes[6], descricaoRaw = partes[7];
+  var horario = parseHorario(partes[0]);
+  if (!horario) {
+    // Dica específica quando a linha traz intervalo de datas sob cabeçalho DATA:
+    if (parseIntervaloDatas(partes[0])) erros.push('Intervalo de datas sob cabeçalho DATA: — use "PERÍODO: DD/MM/AAAA-DD/MM/AAAA" para atividades de período');
+    else erros.push('Horário inválido (esperado HH:MM-HH:MM)');
+  }
 
-  var horario = parseHorario(horarioRaw);
-  if (!horario) erros.push('Horário inválido (esperado HH:MM-HH:MM)');
-
-  var macro = String(macroRaw || '').trim().toUpperCase();
-  if (MACROS_VALIDOS.indexOf(macro) < 0) erros.push('MACRO inválido (esperado PESSOAL ou PROFISSIONAL)');
-
-  var categoria = normalizarCategoria(categoriaRaw, listaCategorias);
-  if (!categoria) erros.push('Categoria inválida: "' + categoriaRaw + '"');
-
-  var snNorm = String(snRaw || '').trim().toUpperCase();
-  var gerouReceita = null;
-  if (snNorm === 'S') gerouReceita = true;
-  else if (snNorm === 'N') gerouReceita = false;
-  else erros.push('Campo S/N inválido (esperado S ou N)');
+  var comuns = _parseCamposComuns(partes, listaCategorias, erros);
 
   // fim < início já foi tratado como travessia da meia-noite no parseHorario;
   // só resta inválido o caso início == fim (duração 0 — ambígua: 0 ou 24h?)
@@ -455,45 +534,111 @@ function parseLinhaAtividade(linha, listaCategorias) {
     ok: erros.length === 0,
     linhaOriginal: linha,
     erros: erros,
-    campos: {
-      horaInicio: horario ? horario.horaInicio : (horarioRaw.split('-')[0] || ''),
-      horaFim: horario ? horario.horaFim : (horarioRaw.split('-')[1] || ''),
-      duracaoMinutos: horario ? horario.duracaoMinutos : 0,
-      macro: macro || macroRaw,
-      categoria: categoria || categoriaRaw,
-      subcategoria: subcategoriaRaw || null,
-      clienteProjeto: clienteRaw || null,
-      propostaObraId: propostaRaw || null,
-      gerouReceita: gerouReceita === null ? false : gerouReceita,
-      descricao: descricaoRaw || ''
-    }
+    campos: Object.assign({
+      horaInicio: horario ? horario.horaInicio : (partes[0].split('-')[0] || ''),
+      horaFim: horario ? horario.horaFim : (partes[0].split('-')[1] || ''),
+      duracaoMinutos: horario ? horario.duracaoMinutos : 0
+    }, comuns)
   };
 }
 
+// Uma linha de atividade de PERÍODO (campo 1 = DD/MM/AAAA-DD/MM/AAAA)
+// -> { ok, erros, campos (sem horas), diasUteis:[ISO...] }
+function parseLinhaPeriodo(linha, listaCategorias) {
+  var erros = [];
+  var partes = String(linha || '').split('|').map(function (p) { return p.trim(); });
+
+  if (partes.length !== 8) {
+    return { ok: false, linhaOriginal: linha, erros: ['Esperado 8 campos separados por "|" (recebido ' + partes.length + ')'],
+      campos: Object.assign({}, _CAMPOS_VAZIOS), diasUteis: [] };
+  }
+
+  var intervalo = parseIntervaloDatas(partes[0]);
+  if (!intervalo) {
+    if (parseHorario(partes[0])) erros.push('Horário sob cabeçalho PERÍODO: — use um intervalo de datas (DD/MM/AAAA-DD/MM/AAAA) ou troque o cabeçalho para "DATA:"');
+    else erros.push('Intervalo de datas inválido (esperado DD/MM/AAAA-DD/MM/AAAA, com início ≤ fim)');
+  }
+
+  var comuns = _parseCamposComuns(partes, listaCategorias, erros);
+
+  var uteis = [];
+  if (intervalo) {
+    var nDias = Math.round((_deIso(intervalo.fim) - _deIso(intervalo.inicio)) / 86400000) + 1;
+    if (nDias > 366) {
+      erros.push('Intervalo suspeito (' + nDias + ' dias — mais de 1 ano). Confira o ano das datas.');
+    } else {
+      uteis = diasUteis(intervalo.inicio, intervalo.fim);
+      if (!uteis.length) erros.push('Nenhum dia útil (segunda a sexta) no intervalo');
+    }
+  }
+
+  return { ok: erros.length === 0, linhaOriginal: linha, erros: erros, campos: comuns, diasUteis: uteis };
+}
+
 // Bloco completo colado -> { data, dataErro, linhas:[...] }
+// Modelo "cabeçalho vigente": cada linha DATA:/PERÍODO: troca o contexto e
+// as linhas seguintes usam o último cabeçalho visto — um mesmo colar pode
+// misturar vários dias e períodos. Linhas de período são EXPANDIDAS aqui em
+// 1 item por dia útil (08:00-17:00, 9h) com os demais campos replicados.
+// Cada item de linhas[] carrega a própria .data.
 // listaCategorias opcional — repassada a cada linha.
 function parseBloco(texto, listaCategorias) {
   var linhas = String(texto || '').split('\n');
-  var data = null, dataErro = null;
-  var linhasAtividade = [];
-  var achouData = false;
+  var ctx = null;            // cabeçalho vigente
+  var achouCabecalho = false;
+  var dataErro = null;
+  var out = [];
+  var primeiraData = null;   // compat: 'data' do retorno = 1ª data de contexto
 
   for (var i = 0; i < linhas.length; i++) {
     var linha = linhas[i];
     if (!linha.trim()) continue;
-    if (!achouData) {
-      var d = parseData(linha);
-      if (d) { data = d; achouData = true; continue; }
-      if (/^DATA:/i.test(linha.trim())) { dataErro = 'Linha "DATA:" encontrada mas em formato inválido (esperado DD/MM/AAAA): ' + linha; achouData = true; continue; }
-      dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada antes das linhas de atividade.';
+
+    var cab = parseCabecalho(linha);
+    if (cab) {
+      achouCabecalho = true;
+      if (cab.tipo === 'invalido') {
+        dataErro = dataErro || cab.motivo;
+        ctx = null; // linhas seguintes ficam sem contexto até o próximo cabeçalho válido
+        continue;
+      }
+      ctx = cab;
+      if (primeiraData === null) primeiraData = (cab.tipo === 'data') ? cab.data : cab.inicio;
       continue;
     }
-    linhasAtividade.push(parseLinhaAtividade(linha, listaCategorias));
+
+    if (!ctx) {
+      dataErro = dataErro || 'Nenhum cabeçalho "DATA: DD/MM/AAAA" ou "PERÍODO: DD/MM/AAAA-DD/MM/AAAA" antes das linhas de atividade.';
+      continue;
+    }
+
+    if (ctx.tipo === 'data') {
+      var l = parseLinhaAtividade(linha, listaCategorias);
+      l.data = ctx.data;
+      out.push(l);
+    } else {
+      var lp = parseLinhaPeriodo(linha, listaCategorias);
+      if (!lp.ok) {
+        // Linha inválida entra UMA vez na prévia (corrigível), ancorada no início do período
+        out.push({
+          ok: false, erros: lp.erros, linhaOriginal: linha, data: ctx.inicio,
+          campos: Object.assign({ horaInicio: '08:00', horaFim: '17:00', duracaoMinutos: 540 }, lp.campos)
+        });
+      } else {
+        lp.diasUteis.forEach(function (dia, ix) {
+          out.push({
+            ok: true, erros: [], data: dia,
+            linhaOriginal: linha + '  ⤷ dia ' + (ix + 1) + ' de ' + lp.diasUteis.length + ' do período',
+            campos: Object.assign({ horaInicio: '08:00', horaFim: '17:00', duracaoMinutos: 540 }, lp.campos)
+          });
+        });
+      }
+    }
   }
 
-  if (!achouData) dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada no texto colado.';
+  if (!achouCabecalho) dataErro = 'Nenhum cabeçalho "DATA: DD/MM/AAAA" ou "PERÍODO: DD/MM/AAAA-DD/MM/AAAA" encontrado no texto colado.';
 
-  return { data: data, dataErro: dataErro, linhas: linhasAtividade };
+  return { data: primeiraData, dataErro: dataErro, linhas: out };
 }
 
 function fmtDuracao(min) {
@@ -780,7 +925,8 @@ function processarTexto() {
   }
 
   _previaAtual = resultado.linhas.map(function (l) {
-    return { data: resultado.data, erros: l.erros.slice(), campos: Object.assign({}, l.campos), linhaOriginal: l.linhaOriginal };
+    // cada linha carrega a PRÓPRIA data (cabeçalho vigente / dia expandido do período)
+    return { data: l.data, erros: l.erros.slice(), campos: Object.assign({}, l.campos), linhaOriginal: l.linhaOriginal };
   });
 
   renderPrevia();
@@ -797,6 +943,7 @@ function _revalidarLinha(row) {
   var erros = [];
   var c = row.campos;
 
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(row.data || '')) erros.push('Data inválida');
   if (!/^\d{2}:\d{2}$/.test(c.horaInicio || '')) erros.push('Hora início inválida');
   if (!/^\d{2}:\d{2}$/.test(c.horaFim || '')) erros.push('Hora fim inválida');
   if (/^\d{2}:\d{2}$/.test(c.horaInicio || '') && /^\d{2}:\d{2}$/.test(c.horaFim || '')) {
@@ -817,7 +964,8 @@ function _revalidarLinha(row) {
 function _onCampoEditado(idx, campo, valor) {
   var row = _previaAtual[idx];
   if (!row) return;
-  if (campo === 'gerouReceita') row.campos[campo] = !!valor;
+  if (campo === 'data') row.data = valor; // data vive no row, não em campos
+  else if (campo === 'gerouReceita') row.campos[campo] = !!valor;
   else row.campos[campo] = valor;
   _revalidarLinha(row);
   renderPrevia();
@@ -852,6 +1000,7 @@ function renderPrevia() {
 
     return '<tr class="' + (temErro ? 'erro' : '') + '">'
       + '<td class="linha-txt" title="' + esc(row.linhaOriginal || '') + '">' + esc(row.linhaOriginal || '') + '</td>'
+      + '<td><input type="date" value="' + esc(row.data || '') + '" onchange="_onCampoEditado(' + idx + ',\'data\',this.value)"></td>'
       + '<td><input type="time" value="' + esc(c.horaInicio) + '" onchange="_onCampoEditado(' + idx + ',\'horaInicio\',this.value)"></td>'
       + '<td><input type="time" value="' + esc(c.horaFim) + '" onchange="_onCampoEditado(' + idx + ',\'horaFim\',this.value)"></td>'
       + '<td class="dur-badge">' + fmtDuracao(c.duracaoMinutos) + '</td>'
@@ -863,7 +1012,7 @@ function renderPrevia() {
       + '<td style="text-align:center"><input type="checkbox" class="chk-receita"' + (c.gerouReceita ? ' checked' : '') + ' onchange="_onCampoEditado(' + idx + ',\'gerouReceita\',this.checked)"></td>'
       + '<td><textarea rows="2" onchange="_onCampoEditado(' + idx + ',\'descricao\',this.value)">' + esc(c.descricao || '') + '</textarea></td>'
       + '<td><button class="rm-linha" title="Remover linha" onclick="_removerLinha(' + idx + ')">✕</button></td>'
-      + (temErro ? '</tr><tr class="erro"><td colspan="12" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
+      + (temErro ? '</tr><tr class="erro"><td colspan="13" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
       + '</tr>';
   }).join('');
 
