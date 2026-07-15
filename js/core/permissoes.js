@@ -196,6 +196,46 @@
     return (v === true || v === false) ? v : null;
   }
 
+  // ── Grupos da tela "Permissões Individuais" (Etapa 3) ─────
+  // As 19 chaves reais do JSON usado no seed (supabase/seeds/
+  // seed_permissoes_modulos.sql), agrupadas apenas para exibição.
+  // Cada chave tem sempre as 4 ações uniformes ver/editar/excluir/
+  // aprovar — mesmo formato gravado em permissoes_modulos. Fonte
+  // única para a tela em index.html não duplicar esta lista.
+  window.PERMISSOES_INDIVIDUAIS_GRUPOS = [
+    { label: '📊 Comercial', chaves: [
+      { key: 'comercial',       label: 'Comercial (módulo)' },
+      { key: 'propostas',       label: 'Propostas' },
+      { key: 'pipeline',        label: 'Pipeline' },
+      { key: 'banco_escopos',   label: 'Banco de Escopos' },
+      { key: 'metas',           label: 'Metas' },
+      { key: 'analise_ia',      label: 'Análise IA' },
+      { key: 'ranking_clientes',label: 'Ranking de Clientes' }
+    ]},
+    { label: '🎯 Gestão CEO', chaves: [
+      { key: 'gestao_ceo',      label: 'Gestão CEO (módulo)' },
+      { key: 'visao_executiva', label: 'Visão Executiva' }
+    ]},
+    { label: '🏗️ Operacional', chaves: [
+      { key: 'operacional', label: 'Operacional (módulo)' },
+      { key: 'obras',       label: 'Obras' }
+    ]},
+    { label: '💰 Financeiro', chaves: [ { key: 'financeiro', label: 'Financeiro' } ] },
+    { label: '👷 RH', chaves: [ { key: 'rh', label: 'RH / Equipes' } ] },
+    { label: '💬 Relacionamento', chaves: [ { key: 'relacionamento', label: 'Relacionamento' } ] },
+    { label: '📊 MPE', chaves: [ { key: 'mpe', label: 'MPE' } ] },
+    { label: '🧭 Planejamento', chaves: [ { key: 'planejamento', label: 'Planejamento Estratégico' } ] },
+    { label: '🏢 Minha Empresa', chaves: [ { key: 'minha_empresa', label: 'Minha Empresa' } ] },
+    { label: '📌 Quadro de Avisos', chaves: [ { key: 'quadro_avisos', label: 'Quadro de Avisos' } ] },
+    { label: '🗄️ Backup', chaves: [ { key: 'backup', label: 'Backup (sem módulo no portal ainda)' } ] }
+  ];
+  window.PERMISSOES_INDIVIDUAIS_ACOES = [
+    { key: 'ver',     label: 'Ver' },
+    { key: 'editar',  label: 'Editar' },
+    { key: 'excluir', label: 'Excluir' },
+    { key: 'aprovar', label: 'Aprovar' }
+  ];
+
   // ── API pública ──────────────────────────────────────────
 
   // Verifica se o perfil atual pode acessar um módulo (ação 'ver' / 'acesso')

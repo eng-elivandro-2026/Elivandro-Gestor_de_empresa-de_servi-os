@@ -1000,6 +1000,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       <button class="btn-hdr" id="btn-empresa" onclick="abrirEditarEmpresa()" title="Cadastro da Empresa" style="display:none">🏢</button>
       <button class="btn-hdr" id="btn-usuarios" onclick="abrirGerenciarUsuarios()" title="Gerenciar Usuários" style="display:none">👥</button>
       <button class="btn-hdr" id="btn-permissoes" onclick="abrirPermissoes()" title="Permissões por Perfil" style="display:none">⚙️</button>
+      <button class="btn-hdr" id="btn-permissoes-individuais" onclick="abrirPermissoesIndividuais()" title="Permissões Individuais por Usuário" style="display:none">🛡️</button>
       <div style="display:flex;align-items:center;gap:.4rem">
         <div class="hdr-avatar" id="hdr-avatar">EE</div>
         <span id="hdr-email" style="font-size:.72rem;color:var(--text2)"></span>
@@ -10731,9 +10732,9 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=23"></script>
+<script src="js/core/app-core.js?v=24"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
-<script src="js/core/permissoes.js?v=9"></script>
+<script src="js/core/permissoes.js?v=10"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js?v=12"></script>
 <script src="js/modules/categoria-analise.js?v=4"></script>
@@ -10975,30 +10976,47 @@ function toggleCardSection(cardId, chevronId) {
   chevron.textContent = isHidden ? '▲ recolher' : '▼ expandir';
 }
 
+// Renderiza o menu combinado (Comercial + painéis de Gestão CEO exibidos
+// no mesmo dashboard). Complementa Router._renderNavMod — não o substitui:
+// tem itens (Motor de Decisão, Por Fase, Análise por Categoria, KPIs de
+// Ciclos) que router.js não lista para o módulo 'comercial'. Roda via
+// setTimeout(0) nos listeners 'router:change'/'DOMContentLoaded' abaixo,
+// ou seja, DEPOIS de Router._renderNavMod já ter pintado o menu filtrado
+// — por isso cada item com subseção equivalente ao vocabulário do JSON
+// individual (permissoes_modulos) precisa do MESMO gate podeVerSubsecao
+// que router.js aplica, senão ele reaparece incondicionalmente.
 function renderMenuComercialOrganizado() {
   var nav = document.getElementById('sidebar-nav-mod');
   if (!nav) return;
+  // [icone, label, action, subKey?] — subKey ausente = sempre visível
+  // (mesmo critério de router.js: item sem tag `sub:` não é filtrado).
   var itens = [
     ['🧠', 'Motor de Decisão', "irParaPainel('motorDecisaoCard','togMotorDecisao')"],
-    ['🏢', 'Visão Executiva', "irParaPainel('ceoDashCard','togCeoDash')"],
-    ['⭐', 'Propostas', "go('dashboard',this);irParaPainel('propostasCard','togPropostas')"],
+    ['🏢', 'Visão Executiva', "irParaPainel('ceoDashCard','togCeoDash')", 'visao_executiva'],
+    ['⭐', 'Propostas', "go('dashboard',this);irParaPainel('propostasCard','togPropostas')", 'propostas'],
     ['📈', 'Por Fase', "irParaPainel('porFaseCard','togPorFase')"],
-    ['🎯', 'Metas2026', "irParaPainel('metaPanel','togMeta')"],
+    ['🎯', 'Metas2026', "irParaPainel('metaPanel','togMeta')", 'metas'],
     ['📊', 'Visão Geral', "irParaPainel('visaoGeralCard','togVisaoGeral')"],
-    ['🤖', 'Análise IA', "irParaPainel('analisePanel','togAnalise')"],
-    ['🏢', 'Ranking de Clientes', "irParaPainel('rankingCard','togRanking')"],
+    ['🤖', 'Análise IA', "irParaPainel('analisePanel','togAnalise')", 'analise_ia'],
+    ['🏢', 'Ranking de Clientes', "irParaPainel('rankingCard','togRanking')", 'ranking_clientes'],
     ['📂', 'Análise por Categoria', "irParaPainel('catAnaliseCard','togCatAnalise')"],
     ['📊', 'KPIs de Ciclos — Média Geral', "irParaPainel('ciclosCard','togCiclosDash')"],
     ['📅', 'Linha do Tempo de Execução', "irParaPainel('execTimelineCard','togExecTimeline')"],
     ['📅', 'Fechamentos por Mês', "irParaPainel('fechMesCard','togFechMes')"],
     [null, 'Ferramentas', null],
-    ['🔀', 'Pipeline', "go('registro',this);rRegistro()"],
+    ['🔀', 'Pipeline', "go('registro',this);rRegistro()", 'pipeline'],
     ['📈', 'Análise de Proposta', "go('analise',this);rAnalise()"],
-    ['🗂️', 'Banco de Escopos', "go('escopos',this);setTimeout(beInit,80)"],
+    ['🗂️', 'Banco de Escopos', "go('escopos',this);setTimeout(beInit,80)", 'banco_escopos'],
     ['📋', 'Templates', "go('templates',this);beLoadDB();stplRenderLista()"],
     ['📋', 'Versões', "go('changelog',this)"]
   ];
-  nav.innerHTML = itens.map(function(item) {
+  var itensVisiveis = itens.filter(function(item) {
+    if (!item[3]) return true; // separador ou item sem subseção mapeada — sempre visível
+    return typeof window.podeVerSubsecao === 'function'
+      ? window.podeVerSubsecao('comercial', item[3])
+      : true;
+  });
+  nav.innerHTML = itensVisiveis.map(function(item) {
     if (!item[2]) {
       return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item[1] + '</div>';
     }
@@ -11138,6 +11156,13 @@ window.addEventListener('empresa:changed', function() {
   _sincronizarModalUsuariosEmpresaAtiva();
   _carregarListaUsuarios();
   _popularDropdownUsuarios();
+});
+
+// Fecha a tela de Permissões Individuais ao trocar de empresa: evita
+// salvar permissões do usuário selecionado contra a empresa errada.
+window.addEventListener('empresa:changed', function() {
+  var m = document.getElementById('modalPermissoesUsuario');
+  if (m && m.style.display !== 'none') fecharPermissoesIndividuais();
 });
 
 function _toggleGuAdicionar() {
@@ -11293,6 +11318,8 @@ async function _carregarListaUsuarios() {
       acoes = '<div style="display:flex;gap:.3rem">'
         + '<button class="nb" title="Editar usuário" onclick="_abrirEditarUsuario(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\',\'' + email + '\',\'' + nomeEmp + '\',\'' + ativoStr + '\',\'' + obs + '\')" '
         +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Editar">✏️</button>'
+        + (_podeAbrirPermissoesIndividuais() ? '<button class="nb" title="Permissões individuais" onclick="abrirPermissoesIndividuais(\'' + uid + '\')" '
+        +   'style="font-size:.78rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Permissões individuais">🛡️</button>' : '')
         + '<button class="nb" title="Envia um link para o usuario criar ou redefinir a senha" onclick="_enviarRedefinicaoSenhaUsuario(\'' + email + '\',\'' + nome + '\')" '
         +   'style="font-size:.76rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;color:var(--blue);cursor:pointer;background:var(--bg2)" aria-label="Reenviar acesso">Reenviar acesso</button>'
         + '<button class="nb" title="Desativar da empresa" onclick="_removerDaEmpresa(\'' + uid + '\',\'' + eid + '\',\'' + nome + '\',\'' + perfil + '\')" '
@@ -11315,6 +11342,15 @@ function _podeGerenciarUsuarios() {
   return typeof window.podeAcao === 'function'
     ? window.podeAcao('configuracoes', 'usuarios')
     : (window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
+}
+
+// Gate HARDCODED (não via podeAcao) — esta tela CONCEDE permissões
+// individuais; se o gate viesse do JSON configurável, um usuário
+// poderia se autoconceder acesso a ela. Só perfil 'dono' na empresa
+// ativa, ou o superadmin da plataforma.
+function _podeAbrirPermissoesIndividuais() {
+  if (window._userEmail && String(window._userEmail).toLowerCase() === 'nascimento.gaube@gmail.com') return true;
+  return !!(window.getPerfilUsuario && window.getPerfilUsuario() === 'dono');
 }
 
 function _normalizarPerfilUsuario(valor) {
@@ -12132,6 +12168,52 @@ async function _reativarDaEmpresa(usuarioId, empId, nome) {
   </div>
 </div>
 
+<!-- Modal Permissões Individuais por Usuário (Etapa 3) -->
+<div id="modalPermissoesUsuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10002;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:720px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--text)">🛡️ Permissões Individuais</div>
+        <div id="piSubtitulo" style="font-size:.7rem;color:var(--text3);margin-top:.15rem"></div>
+      </div>
+      <button class="nb" onclick="fecharPermissoesIndividuais()" style="font-size:.85rem;color:var(--text3);padding:.2rem .5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3)">✕</button>
+    </div>
+
+    <!-- Seletor de usuário -->
+    <div style="padding:.85rem 1.25rem 0;flex-shrink:0">
+      <div style="font-size:.65rem;color:var(--text3);margin-bottom:.25rem;font-weight:600">Usuário</div>
+      <select id="piSeletorUsuario" onchange="_piSelecionarUsuario(this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.42rem .55rem;font-size:.82rem">
+        <option value="">Selecione um usuário...</option>
+      </select>
+    </div>
+
+    <!-- Matriz -->
+    <div style="flex:1;overflow:auto;padding:.85rem 1.25rem">
+      <div id="piMatrizContainer"></div>
+    </div>
+
+    <!-- Confirmação obrigatória (só quando permissoes_modulos está NULL) -->
+    <div id="piConfirmWrap" style="display:none;align-items:center;gap:.5rem;padding:0 1.25rem .6rem;flex-shrink:0">
+      <input type="checkbox" id="piConfirmChk" onchange="_piToggleConfirm()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue);flex-shrink:0">
+      <label for="piConfirmChk" style="font-size:.72rem;color:var(--text2);cursor:pointer">Estou ciente de que isso cria uma configuração individual que substitui o acesso por perfil deste usuário.</label>
+    </div>
+
+    <!-- Resultado + Footer -->
+    <div id="piResultado" style="flex-shrink:0;padding:0 1.25rem"></div>
+    <div style="flex-shrink:0;padding:.8rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.6rem">
+      <span style="font-size:.68rem;color:var(--text3)">Salvo em <code style="background:var(--bg3);padding:.1rem .3rem;border-radius:3px">usuario_empresas.permissoes_modulos</code></span>
+      <div style="display:flex;gap:.6rem">
+        <button id="btnResetarPI" class="nb" onclick="_resetarPermissoesIndividuais()" style="display:none;padding:.42rem .9rem;border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:.82rem;cursor:pointer;background:var(--bg3);color:#ef4444">↺ Resetar para perfil padrão</button>
+        <button class="nb" onclick="fecharPermissoesIndividuais()" style="padding:.42rem .9rem;border:1px solid var(--border);border-radius:7px;font-size:.82rem;cursor:pointer;background:var(--bg3);color:var(--text2)">Cancelar</button>
+        <button id="btnSalvarPI" class="nb" onclick="_salvarPermissoesIndividuais()" style="display:none;padding:.42rem 1.1rem;background:var(--blue);color:#fff;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer" disabled>💾 Salvar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 // ══ PERMISSÕES POR PERFIL — G4B ══════════════════════════
 
@@ -12346,6 +12428,300 @@ async function salvarPermissoes() {
     btnS.disabled = false;
     btnS.textContent = '💾 Salvar Permissões';
   }
+}
+
+// ══ PERMISSÕES INDIVIDUAIS POR USUÁRIO (Etapa 3) ═══════════
+// Grava em usuario_empresas.permissoes_modulos (migration 054),
+// consumida por getPermissoesUsuario/podeAcao/podeAcessarModulo
+// (permissoes.js). NÃO usa permissoes_json (aquela é sobrescrita
+// inteira por _salvarEditarUsuario com {obs}).
+
+var _piUsuarioAtual = null; // { usuario_id, empresa_id, nome, perfil_empresa, permissoes_modulos }
+
+function abrirPermissoesIndividuais(usuarioIdPreSel) {
+  if (!_podeAbrirPermissoesIndividuais()) {
+    toast('Acesso negado. Apenas o Dono pode editar permissões individuais.', 'err');
+    return;
+  }
+  var m = document.getElementById('modalPermissoesUsuario');
+  if (!m) return;
+  var emp = window._empresaAtiva;
+  var sub = document.getElementById('piSubtitulo');
+  if (sub) sub.textContent = (emp ? 'Empresa: ' + (emp.nome_curto || emp.nome || '') : 'Nenhuma empresa ativa');
+
+  _piUsuarioAtual = null;
+  document.getElementById('piResultado').innerHTML = '';
+  document.getElementById('piMatrizContainer').innerHTML = '';
+  document.getElementById('piConfirmWrap').style.display = 'none';
+  var btnS = document.getElementById('btnSalvarPI');
+  if (btnS) { btnS.disabled = true; btnS.style.display = 'none'; }
+  var btnR = document.getElementById('btnResetarPI');
+  if (btnR) btnR.style.display = 'none';
+
+  m.style.display = 'flex';
+  _piCarregarSeletorUsuarios(usuarioIdPreSel);
+}
+
+function fecharPermissoesIndividuais() {
+  var m = document.getElementById('modalPermissoesUsuario');
+  if (m) m.style.display = 'none';
+  _piUsuarioAtual = null;
+}
+
+async function _piCarregarSeletorUsuarios(usuarioIdPreSel) {
+  var sel = document.getElementById('piSeletorUsuario');
+  if (!sel || !window.sbClient) return;
+  var emp = window._empresaAtiva;
+  if (!emp || !emp.id) {
+    sel.innerHTML = '<option value="">Nenhuma empresa ativa</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Carregando...</option>';
+
+  var res = await window.sbClient
+    .from('usuario_empresas')
+    .select('usuario_id, ativo, perfil_empresa, usuarios(id, nome, email)')
+    .eq('empresa_id', emp.id)
+    .eq('ativo', true);
+
+  if (res.error || !res.data || !res.data.length) {
+    sel.innerHTML = '<option value="">Nenhum usuário ativo nesta empresa</option>';
+    return;
+  }
+
+  var lista = res.data.filter(function (ue) { return ue.usuarios; }).sort(function (a, b) {
+    return (a.usuarios.nome || '').localeCompare(b.usuarios.nome || '');
+  });
+
+  sel.innerHTML = '<option value="">Selecione um usuário...</option>' + lista.map(function (ue) {
+    return '<option value="' + ue.usuario_id + '">' + esc(ue.usuarios.nome || ue.usuarios.email || '—')
+      + ' (' + esc(ue.perfil_empresa || '—') + ')</option>';
+  }).join('');
+
+  if (usuarioIdPreSel && lista.some(function (ue) { return ue.usuario_id === usuarioIdPreSel; })) {
+    sel.value = usuarioIdPreSel;
+    _piSelecionarUsuario(usuarioIdPreSel);
+  }
+}
+
+async function _piSelecionarUsuario(usuarioId) {
+  var container = document.getElementById('piMatrizContainer');
+  var confirmWrap = document.getElementById('piConfirmWrap');
+  var btnS = document.getElementById('btnSalvarPI');
+  var btnR = document.getElementById('btnResetarPI');
+  document.getElementById('piResultado').innerHTML = '';
+
+  if (!usuarioId) {
+    _piUsuarioAtual = null;
+    container.innerHTML = '';
+    confirmWrap.style.display = 'none';
+    if (btnS) { btnS.disabled = true; btnS.style.display = 'none'; }
+    if (btnR) btnR.style.display = 'none';
+    return;
+  }
+
+  var emp = window._empresaAtiva;
+  container.innerHTML = '<div style="color:var(--text3);font-size:.8rem;padding:.5rem 0">Carregando...</div>';
+
+  var res = await window.sbClient
+    .from('usuario_empresas')
+    .select('usuario_id, empresa_id, perfil_empresa, permissoes_modulos, usuarios(nome, email)')
+    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', emp.id)
+    .maybeSingle();
+
+  if (res.error || !res.data) {
+    container.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar vínculo do usuário.</div>';
+    return;
+  }
+
+  _piUsuarioAtual = {
+    usuario_id: res.data.usuario_id,
+    empresa_id: res.data.empresa_id,
+    nome: (res.data.usuarios && res.data.usuarios.nome) || '—',
+    perfil_empresa: res.data.perfil_empresa || '',
+    permissoes_modulos: res.data.permissoes_modulos || null
+  };
+
+  _renderMatrizPI(_piUsuarioAtual);
+  if (btnS) { btnS.style.display = 'inline-block'; }
+  if (btnR) { btnR.style.display = _piUsuarioAtual.permissoes_modulos ? 'inline-block' : 'none'; }
+
+  // Opção A: grade sempre abre desmarcada quando NULL — exige
+  // confirmação explícita antes de habilitar Salvar. Quando já há
+  // configuração salva, o Salvar já reflete o estado carregado.
+  var jaConfigurado = !!_piUsuarioAtual.permissoes_modulos;
+  confirmWrap.style.display = jaConfigurado ? 'none' : 'flex';
+  var chk = document.getElementById('piConfirmChk');
+  if (chk) chk.checked = false;
+  if (btnS) btnS.disabled = !jaConfigurado; // já configurado: pode salvar direto; NULL: exige confirmação
+}
+
+function _piToggleConfirm() {
+  var chk = document.getElementById('piConfirmChk');
+  var btnS = document.getElementById('btnSalvarPI');
+  if (btnS) btnS.disabled = !(chk && chk.checked);
+}
+
+function _renderMatrizPI(usuarioSel) {
+  var container = document.getElementById('piMatrizContainer');
+  var grupos = window.PERMISSOES_INDIVIDUAIS_GRUPOS || [];
+  var acoes  = window.PERMISSOES_INDIVIDUAIS_ACOES || [];
+  var pm = usuarioSel.permissoes_modulos || null;
+
+  var html = '<div style="font-size:.72rem;color:var(--text2);margin-bottom:.6rem">'
+    + '<strong>' + esc(usuarioSel.nome) + '</strong> · perfil nesta empresa: <strong>' + esc(usuarioSel.perfil_empresa || '—') + '</strong>'
+    + '</div>';
+
+  if (!pm) {
+    html += '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:.55rem .75rem;margin-bottom:.7rem;font-size:.75rem;color:#f59e0b">'
+      + '⚠️ Este usuário ainda não tem permissões individuais configuradas — está usando o acesso do perfil padrão <strong>' + esc(usuarioSel.perfil_empresa || '—') + '</strong>. '
+      + 'A grade abaixo começa toda desmarcada. Marcar e salvar aqui cria uma configuração individual que passa a mandar (concede OU revoga, mesmo o que o perfil já daria).'
+      + '</div>';
+  }
+
+  html += '<table style="width:100%;border-collapse:collapse;font-size:.72rem;min-width:520px">';
+  html += '<thead><tr>';
+  html += '<th style="text-align:left;padding:.5rem .7rem;background:var(--bg3);border:1px solid var(--border);'
+    + 'font-size:.7rem;font-weight:700;color:var(--text2);min-width:200px;position:sticky;left:0;z-index:2">Módulo / Subseção</th>';
+  acoes.forEach(function (a) {
+    html += '<th style="text-align:center;padding:.38rem .5rem;background:var(--bg3);border:1px solid var(--border);'
+      + 'font-size:.65rem;font-weight:700;color:var(--text2);min-width:70px">' + a.label + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  grupos.forEach(function (grupo) {
+    html += '<tr><td colspan="' + (acoes.length + 1) + '" style="padding:.4rem .7rem;'
+      + 'background:rgba(88,166,255,.05);border:1px solid var(--border);font-weight:700;'
+      + 'color:var(--text);font-size:.73rem">' + grupo.label + '</td></tr>';
+
+    grupo.chaves.forEach(function (chave) {
+      var entry = pm && pm[chave.key];
+      html += '<tr>';
+      html += '<td style="padding:.28rem .7rem .28rem 1.2rem;border:1px solid var(--border);'
+        + 'color:var(--text2);background:var(--bg1);position:sticky;left:0;z-index:1">↳ ' + esc(chave.label) + '</td>';
+      acoes.forEach(function (a) {
+        var checked = !!(entry && entry[a.key] === true);
+        var cbId = 'cbpi_' + chave.key + '_' + a.key;
+        html += '<td style="text-align:center;padding:.28rem;border:1px solid var(--border);background:var(--bg1)">'
+          + '<input type="checkbox" id="' + cbId + '" data-chave="' + chave.key + '" data-acao="' + a.key + '"'
+          + (checked ? ' checked' : '') + ' style="width:14px;height:14px;cursor:pointer;accent-color:var(--blue)">'
+          + '</td>';
+      });
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _piMsg(msg, tipo) {
+  var bg  = tipo === 'ok' ? 'rgba(34,197,94,.1)'  : 'rgba(239,68,68,.1)';
+  var brd = tipo === 'ok' ? 'rgba(34,197,94,.3)'  : 'rgba(239,68,68,.3)';
+  var cl  = tipo === 'ok' ? 'var(--green)' : '#ef4444';
+  return '<div style="background:' + bg + ';border:1px solid ' + brd + ';border-radius:8px;'
+    + 'padding:.55rem .8rem;margin:.4rem 0;font-size:.78rem;color:' + cl + '">' + msg + '</div>';
+}
+
+async function _salvarPermissoesIndividuais() {
+  var res = document.getElementById('piResultado');
+  var btnS = document.getElementById('btnSalvarPI');
+  res.innerHTML = '';
+  if (!_piUsuarioAtual) { res.innerHTML = _piMsg('❌ Nenhum usuário selecionado.', 'err'); return; }
+
+  var grupos = window.PERMISSOES_INDIVIDUAIS_GRUPOS || [];
+  var acoes  = window.PERMISSOES_INDIVIDUAIS_ACOES || [];
+  var novoPm = {};
+  grupos.forEach(function (grupo) {
+    grupo.chaves.forEach(function (chave) {
+      novoPm[chave.key] = {};
+      acoes.forEach(function (a) {
+        var cb = document.getElementById('cbpi_' + chave.key + '_' + a.key);
+        novoPm[chave.key][a.key] = !!(cb && cb.checked);
+      });
+    });
+  });
+
+  btnS.disabled = true;
+  btnS.textContent = 'Salvando...';
+
+  try {
+    var upd = await window.sbClient
+      .from('usuario_empresas')
+      .update({ permissoes_modulos: novoPm })
+      .eq('usuario_id', _piUsuarioAtual.usuario_id)
+      .eq('empresa_id', _piUsuarioAtual.empresa_id);
+    if (upd.error) throw new Error(upd.error.message);
+
+    _piUsuarioAtual.permissoes_modulos = novoPm;
+    _piSincronizarSeEhUsuarioLogado(_piUsuarioAtual.usuario_id, _piUsuarioAtual.empresa_id, novoPm);
+
+    res.innerHTML = _piMsg('✅ Permissões individuais salvas.', 'ok');
+    btnS.disabled = false;
+    btnS.textContent = '💾 Salvar';
+    var btnR = document.getElementById('btnResetarPI');
+    if (btnR) btnR.style.display = 'inline-block';
+    document.getElementById('piConfirmWrap').style.display = 'none';
+  } catch (e) {
+    res.innerHTML = _piMsg('❌ Erro ao salvar: ' + e.message, 'err');
+    btnS.disabled = false;
+    btnS.textContent = '💾 Salvar';
+  }
+}
+
+async function _resetarPermissoesIndividuais() {
+  var res = document.getElementById('piResultado');
+  res.innerHTML = '';
+  if (!_piUsuarioAtual) { res.innerHTML = _piMsg('❌ Nenhum usuário selecionado.', 'err'); return; }
+  if (!confirm('Remover todas as permissões individuais de ' + _piUsuarioAtual.nome + '? O acesso volta a seguir o perfil padrão (' + (_piUsuarioAtual.perfil_empresa || '—') + ').')) return;
+
+  var btnR = document.getElementById('btnResetarPI');
+  if (btnR) { btnR.disabled = true; btnR.textContent = 'Resetando...'; }
+
+  try {
+    var upd = await window.sbClient
+      .from('usuario_empresas')
+      .update({ permissoes_modulos: null })
+      .eq('usuario_id', _piUsuarioAtual.usuario_id)
+      .eq('empresa_id', _piUsuarioAtual.empresa_id);
+    if (upd.error) throw new Error(upd.error.message);
+
+    _piUsuarioAtual.permissoes_modulos = null;
+    _piSincronizarSeEhUsuarioLogado(_piUsuarioAtual.usuario_id, _piUsuarioAtual.empresa_id, null);
+    _renderMatrizPI(_piUsuarioAtual);
+
+    res.innerHTML = _piMsg('✅ Permissões individuais removidas — usuário voltou ao perfil padrão.', 'ok');
+    if (btnR) { btnR.style.display = 'none'; btnR.disabled = false; btnR.textContent = '↺ Resetar para perfil padrão'; }
+    document.getElementById('piConfirmWrap').style.display = 'flex';
+    var chk = document.getElementById('piConfirmChk');
+    if (chk) chk.checked = false;
+    var btnS = document.getElementById('btnSalvarPI');
+    if (btnS) btnS.disabled = true;
+  } catch (e) {
+    res.innerHTML = _piMsg('❌ Erro ao resetar: ' + e.message, 'err');
+    if (btnR) { btnR.disabled = false; btnR.textContent = '↺ Resetar para perfil padrão'; }
+  }
+}
+
+// Se o usuário editado é o próprio usuário logado nesta empresa,
+// atualiza a sessão em memória e recalcula os menus imediatamente
+// (mesmo padrão de _salvarEditarUsuario).
+async function _piSincronizarSeEhUsuarioLogado(usuarioId, empresaId, novoPm) {
+  try {
+    var empAtiva = window._empresaAtiva;
+    if (!empAtiva || empAtiva.id !== empresaId) return;
+    var { data: me } = await window.sbClient.auth.getUser();
+    if (!me || !me.user) return;
+    var { data: meRow } = await window.sbClient.from('usuarios').select('id').eq('auth_id', me.user.id).maybeSingle();
+    if (!meRow || meRow.id !== usuarioId) return;
+    empAtiva.permissoes_modulos = novoPm;
+    var idx = (window._empresasUsuario || []).findIndex(function (e) { return e.id === empresaId; });
+    if (idx >= 0) window._empresasUsuario[idx].permissoes_modulos = novoPm;
+    if (typeof window.Router !== 'undefined' && typeof window.Router.atualizarMenus === 'function') {
+      window.Router.atualizarMenus();
+    }
+  } catch (e2) {}
 }
 
 // ══ LOGO DE EMPRESA ══════════════════════════════════════════

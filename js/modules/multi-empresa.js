@@ -385,12 +385,19 @@
     var podeModulos  = typeof window.podeAcao === 'function'
       ? window.podeAcao('configuracoes', 'modulos')
       : (window._perfilUsuario === 'dono');
-    var btnU = document.getElementById('btn-usuarios');
-    var btnE = document.getElementById('btn-empresa');
-    var btnP = document.getElementById('btn-permissoes');
-    if (btnU) btnU.style.display = podeUsuarios ? '' : 'none';
-    if (btnE) btnE.style.display = podeEmpresa  ? '' : 'none';
-    if (btnP) btnP.style.display = podeModulos  ? '' : 'none';
+    // Permissões individuais (Etapa 3): gate HARDCODED em perfil 'dono'
+    // (ou superadmin), nunca via podeAcao — esta tela concede permissões,
+    // então seu próprio acesso não pode ser configurável via JSON individual.
+    var podeIndividuais = window._perfilUsuario === 'dono'
+      || (window._userEmail && String(window._userEmail).toLowerCase() === 'nascimento.gaube@gmail.com');
+    var btnU  = document.getElementById('btn-usuarios');
+    var btnE  = document.getElementById('btn-empresa');
+    var btnP  = document.getElementById('btn-permissoes');
+    var btnPI = document.getElementById('btn-permissoes-individuais');
+    if (btnU)  btnU.style.display  = podeUsuarios    ? '' : 'none';
+    if (btnE)  btnE.style.display  = podeEmpresa     ? '' : 'none';
+    if (btnP)  btnP.style.display  = podeModulos     ? '' : 'none';
+    if (btnPI) btnPI.style.display = podeIndividuais ? '' : 'none';
     console.log('%c[multi-empresa] perfil na empresa ativa: ' + window._perfilUsuario, 'color:#f0a500');
   };
 
