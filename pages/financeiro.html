@@ -3720,6 +3720,10 @@ function _onTrocaEmpresa(dados) {
     email_financeiro: dados.empresaEmailFin || null
   };
 
+  // Pré-carrega o set de obras finalizadas da nova empresa (critério dos
+  // dropdowns de "Proposta vinculada") — cache invalidado na troca.
+  try { _nfObrasFinalizadasEmp = null; _nfCarregarObrasFinalizadas(true); } catch(e) {}
+
   _aplicarTema(_empresaAtiva.nome_curto || _empresaAtiva.nome);
   _atualizarBadge(_empresaAtiva);
   _atualizarBadgeNF(_empresaAtiva);
@@ -11700,12 +11704,118 @@ var _nfPropostaAtual  = null; // proposta selecionada no momento
 var _nfNFsExistentes  = [];   // NFs já lançadas (Financeiro) para a proposta selecionada
 var _nfFormAberto     = false;
 
-// Fases que permitem emissão de NF
-var _NF_FASES_FATURAVEL = [
-  'aprovado','andamento','faturado','recebido',
-  'em_pausa_falta_material','em_pausa_aguardando_cliente',
-  'em_pausa_aguardando_terceiro','taf','sat','finalizado','atrasado'
+// ── Elegibilidade para vincular NF (critério do dono) ─────────────
+// Proposta entra nos dropdowns quando:
+//   (GANHO no Comercial  OU  obra correspondente FINALIZADA no Operacional)
+//   E  ano da proposta = ano selecionado na tela do Comercial (se ≠ 'all')
+//   E  val > 0
+// "Ganho no Comercial" = mesma projeção da tela (faseComercial do portal):
+// fas 'ganho' + status operacionais legados que o Comercial exibe como Ganho.
+var _NF_FAS_GANHO_COMERCIAL = [
+  'ganho','aprovado','andamento','faturado','recebido','taf','sat','finalizado','atrasado',
+  'em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'
 ];
+function _nfFaseComercialGanho(p) {
+  try {
+    if (window.parent && typeof window.parent.faseComercial === 'function') {
+      return window.parent.faseComercial(p) === 'ganho';
+    }
+  } catch(e) {}
+  // Fallback standalone: réplica de FAS_FECHADO (faseComercial) do portal
+  return _NF_FAS_GANHO_COMERCIAL.indexOf(String((p && (p.fas || p.fase)) || '').trim().toLowerCase()) >= 0;
+}
+
+// Obras finalizadas da empresa ativa (fonte de verdade pós-Opção B: a
+// proposta fica fas='ganho' enquanto a OBRA evolui — por isso o cruzamento).
+// Vocabulário legado de obras.status_operacional que significa finalizado:
+var _OBRA_STATUS_FINALIZADO = ['finalizado','entregue_ao_cliente','em_garantia','encerrada'];
+var _nfObrasFinalizadasSet = {};   // { proposta_app_id: true }
+var _nfObrasFinalizadasEmp = null; // empresa do cache
+var _nfObrasFinalizadasPromise = null;
+
+function _nfCarregarObrasFinalizadas(force) {
+  var empId = _empresaAtivaId();
+  if (!empId) { _nfObrasFinalizadasSet = {}; _nfObrasFinalizadasEmp = null; return null; }
+  if (!force && _nfObrasFinalizadasEmp === empId) return null; // cache válido
+  if (_nfObrasFinalizadasPromise) return _nfObrasFinalizadasPromise;
+  _nfObrasFinalizadasPromise = (async function() {
+    try {
+      var sb = null;
+      try { sb = (window.parent && window.parent.sbClient) || null; } catch(e) {}
+      if (!sb) sb = window.sbClient || null;
+      if (!sb) return;
+      var res = await sb.from('obras')
+        .select('proposta_app_id, status_operacional')
+        .eq('empresa_id', empId);
+      var novo = {};
+      (res.data || []).forEach(function(o) {
+        var st = String(o.status_operacional || '').trim().toLowerCase();
+        if (o.proposta_app_id && _OBRA_STATUS_FINALIZADO.indexOf(st) >= 0) {
+          novo[String(o.proposta_app_id)] = true;
+        }
+      });
+      _nfObrasFinalizadasSet = novo;
+      _nfObrasFinalizadasEmp = empId;
+    } catch(e) {} finally { _nfObrasFinalizadasPromise = null; }
+  })();
+  return _nfObrasFinalizadasPromise;
+}
+
+// Dispara o refresh das obras e, se o set mudar, re-renderiza o dropdown
+// (os builders são síncronos — primeiro render usa o cache atual).
+function _nfRefreshObrasEntaoRerender(rerender) {
+  var antes = _nfObrasFinalizadasEmp + '|' + Object.keys(_nfObrasFinalizadasSet).sort().join(',');
+  var pr = _nfCarregarObrasFinalizadas();
+  if (pr && pr.then) pr.then(function() {
+    var depois = _nfObrasFinalizadasEmp + '|' + Object.keys(_nfObrasFinalizadasSet).sort().join(',');
+    if (antes !== depois) { try { rerender(); } catch(e) {} }
+  });
+}
+
+// Ano selecionado na tela do Comercial (global do portal pai; 'all' = sem filtro)
+function _nfAnoComercial() {
+  try {
+    if (window.parent && window.parent._anoComercialSel != null) return window.parent._anoComercialSel;
+  } catch(e) {}
+  return new Date().getFullYear();
+}
+// Ano "dono" da proposta — usa a função oficial do portal; fallback = réplica
+// da regra (ganha com dtFech → ano do fechamento; senão criação dat2/dat).
+function _nfAnoDaProposta(p) {
+  try {
+    if (window.parent && typeof window.parent._anoDaProposta === 'function') return window.parent._anoDaProposta(p);
+  } catch(e) {}
+  if (!p) return null;
+  if (_nfFaseComercialGanho(p) && p.dtFech) {
+    var df = new Date(p.dtFech + 'T12:00:00');
+    if (!isNaN(df.getTime())) return df.getFullYear();
+  }
+  if (p.dat2) {
+    var dc = new Date(p.dat2 + 'T12:00:00');
+    if (!isNaN(dc.getTime())) return dc.getFullYear();
+  }
+  if (p.dat) {
+    var ps = String(p.dat).split('/');
+    if (ps.length === 3) {
+      var d2 = new Date(ps[2] + '-' + ps[1] + '-' + ps[0] + 'T12:00:00');
+      if (!isNaN(d2.getTime())) return d2.getFullYear();
+    }
+  }
+  return null;
+}
+
+// Predicado central dos dropdowns de "Proposta vinculada"
+function _nfPropostaElegivel(p) {
+  if (!p || !p.id || !(p.val > 0)) return false;
+  var ganho   = _nfFaseComercialGanho(p);
+  var obraFin = !!_nfObrasFinalizadasSet[String(p.id)];
+  if (!ganho && !obraFin) return false;
+  var ano = _nfAnoComercial();
+  if (ano !== 'all' && ano != null) {
+    if (_nfAnoDaProposta(p) !== parseInt(ano, 10)) return false;
+  }
+  return true;
+}
 
 // ── Ler dados do PDF ──────────────────────────────────────────────
 async function _nfLerDadosPDF() {
@@ -11890,8 +12000,13 @@ function _nfCarregarPropostas() {
   var todas = _propsFinanceiroEmpresaAtiva();
 
   _nfPropostasCache = {};
-  var faturavel = todas.filter(function(p) {
-    return p && p.id && p.fas && _NF_FASES_FATURAVEL.indexOf(p.fas) >= 0 && (p.val > 0);
+  // Critério do dono: ganho no Comercial OU obra finalizada, no ano do Comercial
+  var faturavel = todas.filter(_nfPropostaElegivel);
+  // Refresh assíncrono do set de obras; re-renderiza se mudar (1º render usa cache)
+  _nfRefreshObrasEntaoRerender(function() {
+    var atual = sel.value;
+    _nfCarregarPropostas();
+    if (atual) sel.value = atual;
   });
 
   faturavel.sort(function(a, b) {
@@ -12407,11 +12522,16 @@ function _meditCarregarPropostas(propIdAtual) {
   var todas = _propsFinanceiroEmpresaAtiva();
 
   _meditPropostasCache = {};
-  var faturavel = todas.filter(function(p) {
-    return p && p.id && p.fas && _NF_FASES_FATURAVEL.indexOf(p.fas) >= 0 && p.val > 0;
-  }).sort(function(a, b) { return (a.num || '').localeCompare(b.num || ''); });
+  // Critério do dono: ganho no Comercial OU obra finalizada, no ano do Comercial
+  var faturavel = todas.filter(_nfPropostaElegivel)
+    .sort(function(a, b) { return (a.num || '').localeCompare(b.num || ''); });
+  // Refresh assíncrono do set de obras; re-renderiza preservando a seleção
+  _nfRefreshObrasEntaoRerender(function() {
+    var atual = sel.value || propIdAtual || '';
+    _meditCarregarPropostas(atual);
+  });
 
-  // Garante que a proposta atual está na lista mesmo que fora dos status faturáveis
+  // Garante que a proposta atual está na lista mesmo que fora do critério
   var temAtual = faturavel.some(function(p) { return p.id === propIdAtual; });
   if (!temAtual && propIdAtual) {
     var pOrig = todas.find(function(p) { return p.id === propIdAtual; });
