@@ -159,7 +159,8 @@
       tipo: 'iframe',
       src: 'pages/gestao-tempo.html',
       nav: [
-        { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo')" },
+        { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','registrar')" },
+        { label: 'Dashboard',            icon: '📊', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','dashboard')" },
       ]
     },
     {
