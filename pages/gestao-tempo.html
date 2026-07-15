@@ -693,42 +693,49 @@ function renderPrevia() {
 }
 
 // ── Salvar tudo ───────────────────────────────────────────────
+// Guarda de reentrância: salvarTudo tem awaits ANTES do insert
+// (_obterUsuarioId faz 2 chamadas ao Supabase); sem a guarda, um
+// duplo clique dispara a função 2x em paralelo → inserts duplicados
+// (bug real observado em produção: cada registro do dia gravado 2x).
+var _salvandoTudo = false;
+
 async function salvarTudo() {
-  if (!_previaAtual.length) return;
-  var temErro = _previaAtual.some(function (r) { return r.erros.length > 0; });
-  if (temErro) { toast('Corrija as linhas com erro antes de salvar.', 'err'); return; }
-  if (!_empresaAtiva || !_empresaAtiva.id) { toast('Nenhuma empresa ativa.', 'err'); return; }
-
-  var sb = _sb();
-  if (!sb) { toast('Sem conexão com o portal.', 'err'); return; }
-
-  var usuarioId = await _obterUsuarioId();
-  if (!usuarioId) { toast('Não foi possível identificar o usuário logado.', 'err'); return; }
-
+  if (_salvandoTudo) return;
+  _salvandoTudo = true;
   var btnSalvar = document.getElementById('btnSalvarTudo');
-  btnSalvar.disabled = true;
-  btnSalvar.textContent = 'Salvando...';
-
-  var registros = _previaAtual.map(function (row) {
-    var c = row.campos;
-    return {
-      empresa_id: _empresaAtiva.id,
-      usuario_id: usuarioId,
-      data: row.data,
-      hora_inicio: c.horaInicio,
-      hora_fim: c.horaFim,
-      duracao_minutos: c.duracaoMinutos,
-      macro: c.macro,
-      categoria: c.categoria,
-      subcategoria: c.subcategoria || null,
-      cliente_projeto: c.clienteProjeto || null,
-      proposta_obra_id: c.propostaObraId || null,
-      gerou_receita: !!c.gerouReceita,
-      descricao: c.descricao || ''
-    };
-  });
+  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
 
   try {
+    if (!_previaAtual.length) return;
+    var temErro = _previaAtual.some(function (r) { return r.erros.length > 0; });
+    if (temErro) { toast('Corrija as linhas com erro antes de salvar.', 'err'); return; }
+    if (!_empresaAtiva || !_empresaAtiva.id) { toast('Nenhuma empresa ativa.', 'err'); return; }
+
+    var sb = _sb();
+    if (!sb) { toast('Sem conexão com o portal.', 'err'); return; }
+
+    var usuarioId = await _obterUsuarioId();
+    if (!usuarioId) { toast('Não foi possível identificar o usuário logado.', 'err'); return; }
+
+    var registros = _previaAtual.map(function (row) {
+      var c = row.campos;
+      return {
+        empresa_id: _empresaAtiva.id,
+        usuario_id: usuarioId,
+        data: row.data,
+        hora_inicio: c.horaInicio,
+        hora_fim: c.horaFim,
+        duracao_minutos: c.duracaoMinutos,
+        macro: c.macro,
+        categoria: c.categoria,
+        subcategoria: c.subcategoria || null,
+        cliente_projeto: c.clienteProjeto || null,
+        proposta_obra_id: c.propostaObraId || null,
+        gerou_receita: !!c.gerouReceita,
+        descricao: c.descricao || ''
+      };
+    });
+
     var res = await sb.from('registro_atividades').insert(registros);
     if (res.error) throw new Error(res.error.message);
     toast('✅ ' + registros.length + ' registro(s) salvos.');
@@ -739,8 +746,13 @@ async function salvarTudo() {
   } catch (e) {
     toast('❌ Erro ao salvar: ' + e.message, 'err');
   } finally {
-    btnSalvar.disabled = false;
-    btnSalvar.textContent = '💾 Salvar tudo';
+    _salvandoTudo = false;
+    if (btnSalvar) {
+      // Restaura respeitando o estado da prévia: se sobrou linha com erro
+      // (saída antecipada), o botão volta desabilitado como renderPrevia deixou.
+      btnSalvar.disabled = _previaAtual.some(function (r) { return r.erros.length > 0; });
+      btnSalvar.textContent = '💾 Salvar tudo';
+    }
   }
 }
 
