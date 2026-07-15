@@ -818,14 +818,19 @@ function loadAll(){
   saveCnt();
   eDB=LSE('tf_edb')||{titulos:[],subtitulos:[]};
 }
-function saveAll(){
+// cloudMode='throttle' (usado SÓ pelo autosave do editor): o save local (LS) continua
+// imediato, mas o upsert à nuvem respeita _CLOUD_MIN_MS entre disparos, com flush
+// em blur/saída do editor/salvar manual. Todos os demais chamadores (ações
+// deliberadas: mudança de fase, saveP, modais…) seguem com push imediato.
+function saveAll(cloudMode){
   LS('tf_props',props);
   try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
   // Sync com Supabase — salva a proposta em edição ou todas se não houver editId
   if(typeof sbSalvarProposta === 'function' && props.length){
     var _pToSync = editId ? props.find(function(x){return x.id===editId;}) : null;
     if(_pToSync){
-      sbSalvarProposta(_pToSync);
+      if(cloudMode==='throttle') _cloudPushProposta(_pToSync);
+      else _cloudPushImediato(_pToSync);
     } else {
       // Sem proposta ativa — sincroniza em lote via migração
       if(typeof sbMigrarLocal === 'function') sbMigrarLocal();
@@ -912,6 +917,7 @@ function _abrirVisualizacaoRevCompleta(propId, revId){
   // comparação de merge no reload sempre prefira o dado salvo pelo usuário.
   clearTimeout(autoDraftTimer);
   autoDraftTimer=null;
+  try{ _cloudFlushPendente(); }catch(e){}   // push pendente sai antes do modo leitura
   if(editId===propId){
     var _fi=props.findIndex(function(x){return x.id===propId;});
     var _pFlush=_fi>=0?props[_fi]:null;
@@ -1093,6 +1099,7 @@ function resetWizardState(){
   try{ rRevs(); }catch(e){}
 }
 function resetProposalForm(){
+  _lastDraftJson=null;   // proposta nova: sem baseline — o 1º autosave real grava
   var hoje=new Date();
   var dataIso=new Date(hoje.getTime()-hoje.getTimezoneOffset()*60000).toISOString().slice(0,10);
   ['pCli','pCnpj','pCid','pAC','pDep','pMail','pTel','pAC2','pDep2','pMail2','pTel2','pLoc','pLocCnpj','pCsv','pTit','pArea','pEquip','pTensVal','pTensCmd'].forEach(function(id){var el=Q(id); if(el) el.value='';});
@@ -1228,9 +1235,24 @@ var _dimBlocksMO=null;
 var _dimSortable=null;
 var _dimPendingBlocos=null;
 // Config do MutationObserver (compartilhada entre o setup e as pausas do _dimMute).
-var _dimMOconf={childList:true, subtree:true, attributes:true, characterData:true};
+// SEM 'attributes': mudanças puramente visuais (classes ql-active da toolbar do Quill,
+// zoom do canvas, estados de botão) não agendam mais autosave. Os estados SERIALIZADOS
+// que só mudam por atributo/property ganharam _dimTouch() explícito nos handlers:
+// resize de coluna, alinhamento/cor de célula, resize de altura do canvas e checkbox.
+var _dimMOconf={childList:true, subtree:true, characterData:true};
 // Agenda o autosave da proposta (mesmo debounce usado pelo restante do formulário).
 function _dimTouch(){ if(typeof scheduleDraftSave==='function') scheduleDraftSave(); }
+// Callback do observer: ignora mutações confinadas às UIs de controle — toolbar/
+// tooltip do Quill (dropdowns criam/removem nós) e toolbar do canvas (rótulos de
+// zoom/traço mudam textContent). Nada serializado vive nelas: desenho/undo/limpar
+// já chamam _dimTouch explicitamente.
+function _dimMOFiltro(muts){
+  for(var i=0;i<(muts||[]).length;i++){
+    var t=muts[i]&&muts[i].target;
+    var el=t&&(t.nodeType===1?t:t.parentElement);
+    if(!el||!el.closest||!el.closest('.ql-toolbar,.ql-tooltip,.dim-cv-tb')){ _dimTouch(); return; }
+  }
+}
 // Executa uma alteração PURAMENTE VISUAL (recolher/expandir) sem disparar o autosave:
 // pausa o observer, aplica a mudança e RECONECTA no finally (garante o reconnect mesmo
 // se fn lançar — caso contrário o autosave pararia silenciosamente).
@@ -1275,7 +1297,7 @@ function dimInit(){
   }
   // Autosave: observa qualquer edição dentro dos blocos (inserir/remover, texto, estilo).
   if(!_dimSaveBound && typeof MutationObserver!=='undefined'){
-    _dimBlocksMO=new MutationObserver(_dimTouch);
+    _dimBlocksMO=new MutationObserver(_dimMOFiltro);
     _dimBlocksMO.observe(host, _dimMOconf);
     _dimSaveBound=true;
   }
@@ -1399,7 +1421,7 @@ function _dimMakeTh(item){
     ev.preventDefault(); ev.stopPropagation();
     var sx=ev.clientX, sw=th.getBoundingClientRect().width;
     function mm(e){ th.style.width=Math.max(60, sw+(e.clientX-sx))+'px'; }
-    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); _dimTouch(); } // largura/altura são serializadas; sem 'attributes' no MO o touch é explícito
     document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
   });
   th.appendChild(rz); return th;
@@ -1445,15 +1467,15 @@ function _dimCellToolbar(table, body){
   var bar=document.createElement('div'); bar.className='dim-cell-tb'; bar.style.display='none';
   function ab(txt,al,title){ var b=document.createElement('button'); b.type='button'; b.className='btn bg bxs'; b.textContent=txt; b.title=title;
     b.addEventListener('mousedown',function(e){ e.preventDefault(); });
-    b.addEventListener('click',function(){ if(table._cur) table._cur.style.textAlign=al; }); return b; }
+    b.addEventListener('click',function(){ if(table._cur){ table._cur.style.textAlign=al; _dimTouch(); } }); return b; }
   bar.appendChild(ab('⬅','left','Alinhar à esquerda'));
   bar.appendChild(ab('↔','center','Centralizar'));
   bar.appendChild(ab('➡','right','Alinhar à direita'));
   var ci=document.createElement('input'); ci.type='color'; ci.className='dim-cell-color'; ci.title='Cor do texto'; ci.value='#111111';
-  ci.addEventListener('input',function(){ if(table._cur) table._cur.style.color=ci.value; });
+  ci.addEventListener('input',function(){ if(table._cur){ table._cur.style.color=ci.value; _dimTouch(); } });
   bar.appendChild(ci);
   var bi=document.createElement('input'); bi.type='color'; bi.className='dim-cell-bg'; bi.title='Cor de fundo'; bi.value='#ffffff';
-  bi.addEventListener('input',function(){ if(table._cur) table._cur.style.backgroundColor=bi.value; });
+  bi.addEventListener('input',function(){ if(table._cur){ table._cur.style.backgroundColor=bi.value; _dimTouch(); } });
   bar.appendChild(bi);
   body.appendChild(bar);
   function show(cell){
@@ -1687,7 +1709,7 @@ function dimAddCanvas(state){
   var rzh=document.createElement('div'); rzh.className='dim-cv-resize'; rzh.title='Arraste para ajustar a altura';
   rzh.addEventListener('mousedown', function(ev){ ev.preventDefault(); var sy=ev.clientY, sh=displayH;
     function mm(e){ var nh=Math.max(200,Math.min(800, sh+Math.round(e.clientY-sy))); if(nh!==displayH) resizeHeight(nh); }
-    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+    function mu(){ document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); _dimTouch(); } // largura/altura são serializadas; sem 'attributes' no MO o touch é explícito
     document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
   });
   wrap.appendChild(canvas);
@@ -1711,7 +1733,7 @@ function dimAddChecklist(state){
   function addItem(texto, checked){
     var row=document.createElement('div'); row.className='dim-chk'+(checked?' done':'');
     var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!checked;
-    cb.addEventListener('change',function(){ row.classList.toggle('done', cb.checked); });
+    cb.addEventListener('change',function(){ row.classList.toggle('done', cb.checked); _dimTouch(); }); // checked é property — o MO não vê nem via 'attributes'
     var sp=document.createElement('span'); sp.className='dim-chk-t'; sp.contentEditable='true'; sp.textContent=texto||'';
     var x=document.createElement('button'); x.type='button'; x.className='dim-chk-x'; x.title='Remover item'; x.textContent='✕';
     x.addEventListener('click',function(){ if(row.parentNode) row.parentNode.removeChild(row); });
@@ -2433,6 +2455,8 @@ function rAnaliseInt(){
 
 // NAV
 function go(id,btn){
+  // Saindo do editor: flush do rascunho/push pendente (dirty-check evita save vazio).
+  if(id!=='nova'){ try{ _cloudFlushDraft(); }catch(e){} }
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on')});
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('on')});
   if(id!=='nova') hideActionBar();
@@ -3429,6 +3453,10 @@ function dupProp(id){
 
 function editP(id){
   try{
+  // Flush do rascunho ANTERIOR antes de trocar de proposta: sem isso, um timer de
+  // autosave pendente dispararia após o form já repopulado — perdendo os últimos
+  // segundos de edição da proposta anterior.
+  try{ _cloudFlushDraft(); }catch(e){}
   var p=props.find(function(x){return x.id===id});if(!p){console.error('editP: proposta não encontrada id='+id);return;}
   editId=id;_tempGantt=null;
   Q('pNum').value=p.num||'';Q('pDat').value=p.dat2||'';Q('pCli').value=p.cli||'';
@@ -3567,6 +3595,9 @@ function editP(id){
     rBudg();   // renderiza tabela de itens do orçamento
     updBT();   // sincroniza totais do orçamento
     updKpi();  // atualiza KPIs com as alíquotas restauradas
+    // Baseline do dirty-check = estado recém-carregado: a tempestade de mutações do
+    // rebuild dos blocos não gera upsert de dados inalterados ao abrir a proposta.
+    try{ _lastDraftJson=_draftCanon(buildCurrentProposalSnapshot()); }catch(e){}
   }, 150);
   }catch(e){console.error('Erro em editP:',e);alert('Erro ao abrir proposta: '+e.message);}
 }
@@ -3603,7 +3634,12 @@ function saveP(){
     props.push(sn);
     advN(); // avança o contador; número do form muda, mas sn já foi salvo com o número correto
   }
-  editId=sn.id;saveAll();rDash();
+  editId=sn.id;
+  // Save manual: cobre o autosave pendente (timer local) e vira a baseline do
+  // dirty-check; o push imediato do saveAll() cancela pendência do mesmo id.
+  clearTimeout(autoDraftTimer); autoDraftTimer=null;
+  _lastDraftJson=_draftCanon(sn);
+  saveAll();rDash();
   // Atualiza o campo de número no form para refletir o que foi salvo (com letra da revisão)
   if(Q('pNum')&&sn.num) Q('pNum').value=sn.num;
   if(Q('pRevAtual')&&sn.revAtual) Q('pRevAtual').value=sn.revAtual;
@@ -10930,20 +10966,91 @@ function buildCurrentProposalSnapshot(){
     }
   };
 }
+// ── Push à nuvem com cadência mínima (autosave do editor) ────────────────────
+// O save local (LS) segue a cada debounce de 1,5s; o upsert do Supabase respeita
+// um intervalo mínimo entre disparos. Pendências coalescem (a mais recente vence).
+// A LINHA do upsert é capturada NO AGENDAMENTO (sbPropostaRow) — uma troca de
+// empresa com push pendente não carimba empresa_id errado.
+var _CLOUD_MIN_MS=10000;
+var _cloudLastPush=0, _cloudPendP=null, _cloudPendRow=null, _cloudPendTimer=null;
+function _cloudPushAgora(p, row){
+  _cloudLastPush=Date.now();
+  if(typeof sbSalvarProposta==='function') sbSalvarProposta(p, undefined, row||undefined);
+}
+// Push imediato (ações deliberadas): cancela pendência do MESMO id — o push atual
+// já leva o estado mais fresco. Pendência de OUTRA proposta sobrevive.
+function _cloudPushImediato(p){
+  if(_cloudPendP && p && String(_cloudPendP.id)===String(p.id)){
+    clearTimeout(_cloudPendTimer); _cloudPendTimer=null; _cloudPendP=null; _cloudPendRow=null;
+  }
+  _cloudPushAgora(p);
+}
+function _cloudPushProposta(p){
+  if(!p) return;
+  var agora=Date.now();
+  if(agora-_cloudLastPush>=_CLOUD_MIN_MS){ _cloudPushImediato(p); return; }
+  _cloudPendP=p;
+  _cloudPendRow=(typeof window.sbPropostaRow==='function')?window.sbPropostaRow(p):null;
+  if(!_cloudPendTimer){
+    _cloudPendTimer=setTimeout(function(){
+      _cloudPendTimer=null;
+      var pp=_cloudPendP, rr=_cloudPendRow; _cloudPendP=null; _cloudPendRow=null;
+      if(pp) _cloudPushAgora(pp, rr);
+    }, Math.max(50, _cloudLastPush+_CLOUD_MIN_MS-agora));
+  }
+}
+// Dispara AGORA o push pendente (se houver). Não mexe no timer local.
+function _cloudFlushPendente(){
+  if(_cloudPendTimer){ clearTimeout(_cloudPendTimer); _cloudPendTimer=null; }
+  var pp=_cloudPendP, rr=_cloudPendRow; _cloudPendP=null; _cloudPendRow=null;
+  if(pp) _cloudPushAgora(pp, rr);
+}
+// Flush completo: executa o autosave pendente (timer do debounce) e empurra o push
+// pendente. Chamado ao sair do editor/módulo, em blur/aba oculta e no save manual.
+function _cloudFlushDraft(){
+  try{
+    if(autoDraftTimer && !_vizModeState){
+      clearTimeout(autoDraftTimer); autoDraftTimer=null;
+      upsertCurrentDraft(true);
+    }
+  }catch(e){}
+  _cloudFlushPendente();
+}
+
+// ── Dirty-check do rascunho ──────────────────────────────────────────────────
+// Serialização canônica do snapshot com tsSaved neutralizado (o snapshot carimba
+// Date.now() a cada build — sem neutralizar, nunca haveria "igual").
+var _lastDraftJson=null;
+function _draftCanon(sn){ return JSON.stringify(Object.assign({}, sn, {tsSaved:0})); }
 function upsertCurrentDraft(silent){
   // Aguardando confirmação da data de envio: não persiste 'enviada' antes de confirmar.
   if(_aguardandoDataEnvio) return;
   if(!proposalFormHasMeaningfulData()) return;
   var sn=buildCurrentProposalSnapshot();
+  // Autosave sem mudança real (mutação visual, focus/blur, rebuild de blocos ao abrir):
+  // sai antes de qualquer efeito — sem upsert, sem badge, sem rDash.
+  var canon=_draftCanon(sn);
+  if(silent && _lastDraftJson!==null && canon===_lastDraftJson) return;
+  _lastDraftJson=canon;
   var idx=props.findIndex(function(x){return x.id===sn.id});
   if(idx>=0) props[idx]=sn; else props.push(sn);
   editId=sn.id;
   _tempGantt=null; // agora está em props[idx].gantt — libera temp
-  saveAll();
+  saveAll(silent?'throttle':undefined);
   rDash();
   if(!silent) toast('✔ Rascunho atualizado!','ok');
 }
 var autoDraftTimer=null;
+// Flush ao sair do contexto: troca de módulo (router), janela sem foco, aba oculta
+// ou fechando. Com dirty-check + pendência vazia, todos são no-ops baratos.
+if(typeof window!=='undefined'&&window.addEventListener){
+  window.addEventListener('router:change', function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  window.addEventListener('blur',          function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  window.addEventListener('pagehide',      function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='hidden'){ try{ _cloudFlushDraft(); }catch(e){} }
+  });
+}
 function scheduleDraftSave(){
   if(_vizModeState) return; // não salva enquanto em modo leitura
   clearTimeout(autoDraftTimer);
