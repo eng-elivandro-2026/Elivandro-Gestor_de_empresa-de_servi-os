@@ -50,8 +50,12 @@ const USERS = [
   { nome: 'Elivandro Tecfusion',       perfil: 'colaborador', pm: pmDe('517dd1a0') }
 ];
 
-const SUBSECOES_COMERCIAL = ['propostas', 'pipeline', 'banco_escopos', 'metas', 'analise_ia', 'ranking_clientes'];
-const LABEL_DE = { propostas:'Propostas', pipeline:'Pipeline', banco_escopos:'Banco de Escopos', metas:'Metas', analise_ia:'Análise IA', ranking_clientes:'Ranking' };
+// visao_executiva incluída aqui porque, desde a remoção do módulo Gestão
+// CEO, "Visão Executiva" só existe dentro do menu do Comercial
+// (renderMenuComercialOrganizado) — não há mais um módulo 'gestao'
+// separado para testar como grupo de controle.
+const SUBSECOES_COMERCIAL = ['propostas', 'pipeline', 'banco_escopos', 'metas', 'analise_ia', 'ranking_clientes', 'visao_executiva'];
+const LABEL_DE = { propostas:'Propostas', pipeline:'Pipeline', banco_escopos:'Banco de Escopos', metas:'Metas', analise_ia:'Análise IA', ranking_clientes:'Ranking', visao_executiva:'Visão Executiva' };
 // Itens do renderMenuComercialOrganizado SEM subKey — devem continuar
 // visíveis sempre (guarda contra a correção ter gateado item errado).
 const ITENS_SEM_GATE = ['Motor de Decisão', 'Por Fase', 'Análise por Categoria', 'KPIs de Ciclos'];
@@ -72,7 +76,6 @@ async function testarUsuario(browser, u) {
     window._empresasUsuario = [window._empresaAtiva];
 
     const podeComercial = window.podeAcessarModulo('comercial');
-    const podeGestao = window.podeAcessarModulo('gestao');
 
     // ── Fluxo REAL: Router.ir() -> dispatchEvent('router:change') ->
     // listener de index.html -> setTimeout(renderMenuComercialOrganizado,0).
@@ -83,22 +86,15 @@ async function testarUsuario(browser, u) {
     await new Promise(res => setTimeout(res, 80)); // espera o setTimeout(0) da fila
     const navFinal = document.getElementById('sidebar-nav-mod').innerHTML;
 
+    const LABELS = { propostas:'Propostas', pipeline:'Pipeline', banco_escopos:'Banco de Escopos', metas:'Metas', analise_ia:'Análise IA', ranking_clientes:'Ranking', visao_executiva:'Visão Executiva' };
     const subsFinal = {};
-    subs.forEach(s => { subsFinal[s] = navFinal.indexOf(({propostas:'Propostas',pipeline:'Pipeline',banco_escopos:'Banco de Escopos',metas:'Metas',analise_ia:'Análise IA',ranking_clientes:'Ranking'})[s]) >= 0; });
+    subs.forEach(s => { subsFinal[s] = navFinal.indexOf(LABELS[s]) >= 0; });
     const semGatePresentes = {};
     itensSemGate.forEach(label => { semGatePresentes[label] = navFinal.indexOf(label) >= 0; });
 
-    // ── Controle: Gestão CEO / Visão Executiva (não deve ser afetado) ──
-    document.getElementById('sidebar-nav-mod').innerHTML = '__SENTINELA__';
-    window.Router.ir('gestao');
-    const ativouGestao = window.Router.getAtivo() === 'gestao';
-    await new Promise(res => setTimeout(res, 80));
-    const navGestaoFinal = document.getElementById('sidebar-nav-mod').innerHTML;
-    const visaoExecFinal = navGestaoFinal.indexOf('Visão Executiva') >= 0;
-
     return {
-      podeComercial, podeGestao, ativouComercial, ativouGestao,
-      subsFinal, semGatePresentes, visaoExecFinal,
+      podeComercial, ativouComercial,
+      subsFinal, semGatePresentes,
       navFinalEraSentinela: navFinal === '__SENTINELA__'
     };
   }, { u: { perfil: u.perfil, pm: u.pm }, subs: SUBSECOES_COMERCIAL, itensSemGate: ITENS_SEM_GATE });
@@ -161,10 +157,6 @@ async function testarRenderSbPropsGate(browser) {
       ITENS_SEM_GATE.forEach(function (label) {
         T('"' + label + '" (sem subKey) continua visível — não regrediu', row.semGatePresentes[label] === true);
       });
-    }
-    if (row.podeGestao) {
-      const esperadoVE = row.pm.visao_executiva && row.pm.visao_executiva.ver === true;
-      T('[controle] Gestão CEO/Visão Executiva não afetado pelo fix do Comercial', row.visaoExecFinal === esperadoVE);
     }
     console.log('');
   }
