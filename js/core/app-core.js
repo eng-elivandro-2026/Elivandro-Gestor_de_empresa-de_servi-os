@@ -8083,8 +8083,15 @@ function expWordDoc(){
               children:[new D.Paragraph({alignment:al,children:runs,spacing:{before:0,after:0,line:240}})]});
           }
 
-          var _maxDur=1; _gFases.forEach(function(f){var d=f.dur||1; if(d>_maxDur)_maxDur=d;});
+          // Barra posicionada na LINHA DO TEMPO real (mesma regra do preview):
+          // blocos claros antes (offset) + blocos coloridos (duração) + claros
+          // depois. SS aparece com barras alinhadas; FS em escada.
+          // ganttTotalUteis/ganttBarSegmentos vêm de js/modules/gantt.js
+          // (mesma origem de faseInicio/faseFim já usadas acima).
+          var _totalU=(typeof ganttTotalUteis==='function')?ganttTotalUteis(_gFases):1;
+          var _durDe=(typeof ganttDurDias==='function')?ganttDurDias:function(f){return f.dur||1;};
           var _barTotal=40;
+          function _gFmtC(d){return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});}
 
           var _gRows=[new D.TableRow({tableHeader:true,children:[
             _gHdrCell('ID',_C1,_AL.CENTER), _gHdrCell('Tarefa',_C2,_AL.LEFT),
@@ -8095,17 +8102,27 @@ function expWordDoc(){
             var _dur=f.dur||1;
             var _cor=(f.cor||'#2563eb').replace('#','');
             var _diasLbl=(f.unidade==='horas')?((f.durHoras||8)+'h'):(_dur+(_dur===1?' dia':' dias'));
-            var _fill=Math.max(1,Math.min(_barTotal,Math.round(_dur/_maxDur*_barTotal)));
-            var _empty=_barTotal-_fill;
+            var _seg=(typeof ganttBarSegmentos==='function')
+              ?ganttBarSegmentos(f.offset||0,_durDe(f),_totalU,_barTotal)
+              :{pre:0,fill:Math.max(1,Math.round(_dur/_totalU*_barTotal)),empty:0};
+            if(_seg.pre+_seg.fill+_seg.empty!==_barTotal)_seg.empty=Math.max(0,_barTotal-_seg.pre-_seg.fill);
+
+            var _barRuns=[];
+            if(_seg.pre>0)_barRuns.push(new D.TextRun({text:'░'.repeat(_seg.pre),font:'Courier New',size:22,bold:false,color:'d9d9d9',italics:false}));
+            _barRuns.push(new D.TextRun({text:'█'.repeat(_seg.fill),font:'Courier New',size:22,bold:false,color:_cor,italics:false}));
+            if(_seg.empty>0)_barRuns.push(new D.TextRun({text:'░'.repeat(_seg.empty),font:'Courier New',size:22,bold:false,color:'d9d9d9',italics:false}));
+
+            // Prazo: duração + mini-datas ("13/07–17/07") quando há data de início
+            var _prazoRuns=[new D.TextRun({text:_diasLbl,font:'Calibri',size:22,bold:true,color:'333333',italics:false})];
+            if(_gDatas[_fi]){
+              _prazoRuns.push(new D.TextRun({text:_gFmtC(_gDatas[_fi].dtIni)+'–'+_gFmtC(_gDatas[_fi].dtFim),break:1,font:'Calibri',size:18,bold:false,color:'666666',italics:false}));
+            }
 
             _gRows.push(new D.TableRow({children:[
               _gCell([new D.TextRun({text:String(_fi+1),font:'Calibri',size:22,bold:false,color:'333333',italics:false})],_C1,_AL.CENTER),
               _gCell([new D.TextRun({text:f.nome||'',font:'Calibri',size:22,bold:true,color:'222222',italics:false})],_C2,_AL.LEFT),
-              _gCell([
-                new D.TextRun({text:'█'.repeat(_fill),font:'Courier New',size:22,bold:false,color:_cor,italics:false}),
-                new D.TextRun({text:'░'.repeat(_empty),font:'Courier New',size:22,bold:false,color:'d9d9d9',italics:false})
-              ],_C3,_AL.LEFT,60),
-              _gCell([new D.TextRun({text:_diasLbl,font:'Calibri',size:22,bold:true,color:'333333',italics:false})],_C4,_AL.CENTER)
+              _gCell(_barRuns,_C3,_AL.LEFT,60),
+              _gCell(_prazoRuns,_C4,_AL.CENTER)
             ]}));
           });
 

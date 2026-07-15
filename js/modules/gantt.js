@@ -89,6 +89,28 @@ function faseInicio(inicio,off,g){return addDiasUteis(inicio,off,g);}
 function faseFim(dtIni,dur,g){if(dur<=1)return new Date(dtIni);return addDiasUteis(dtIni,dur-1,g);}
 function diasCorridosEntre(d1,d2){return Math.round((d2-d1)/(1000*60*60*24));}
 
+// ── Barra na linha do tempo ───────────────────────────────────────────────────
+// Divide a barra em segmentos proporcionais ao TEMPO REAL: espaço antes do
+// início (offset), preenchimento (duração) e espaço restante. Usada pelo
+// preview (percentuais) e pelo export Word (blocos ASCII) — assim SS/FS/lag
+// ficam VISÍVEIS: barras SS começam alinhadas, FS em escada.
+// totalUteis = fim (em dias úteis) da fase que termina por último.
+function ganttTotalUteis(fases){
+  var t=1;
+  (fases||[]).forEach(function(f){
+    var fim=(f.offset||0)+ganttDurDias(f);
+    if(fim>t)t=fim;
+  });
+  return t;
+}
+// Segmentos inteiros para a barra ASCII do Word (barTotal blocos no total).
+function ganttBarSegmentos(offset,dur,totalUteis,barTotal){
+  var t=Math.max(1,totalUteis||1);
+  var pre=Math.max(0,Math.min(barTotal-1,Math.round((offset||0)/t*barTotal)));
+  var fill=Math.max(1,Math.min(barTotal-pre,Math.round((dur||1)/t*barTotal)));
+  return {pre:pre,fill:fill,empty:Math.max(0,barTotal-pre-fill)};
+}
+
 // ── Editor HTML ───────────────────────────────────────────────────────────────
 function ganttEditorHTML(si){
   var g=getGantt();
@@ -371,22 +393,31 @@ function buildGanttPrev(g){
   }
 
   // Tabela de 4 colunas (uma linha por fase): ID | Tarefa | Cronograma | Prazo.
-  // A barra é proporcional à DURAÇÃO da fase relativa à mais longa (100%).
-  var maxDur=1; fases.forEach(function(f){var d=ganttDurDias(f); if(d>maxDur)maxDur=d;});
+  // A barra é POSICIONADA na linha do tempo real: left = offset/totalUteis,
+  // largura = duração/totalUteis — SS aparece com barras alinhadas no início,
+  // FS em escada, lag como recuo/overlap. (Antes a barra era só proporcional
+  // à duração, ancorada em left:0 — SS ficava visualmente igual a FS.)
+  var totalUteis=ganttTotalUteis(fases);
+  function fmtDtCurto(d){return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});}
   var td='padding:3px 6px;border-bottom:1px solid #ddd;vertical-align:middle;font-size:11pt';
   var trs=fases.map(function(f,fi){
     var cor=f.cor||'#2563eb';
     var durLbl=fmtDur(f);
     var rt=relTag(f,fi);
-    var pct=Math.max(4,Math.min(100,(ganttDurDias(f)/maxDur*100))).toFixed(1);
+    var leftPct=Math.min(96,((f.offset||0)/totalUteis*100));
+    var wPct=Math.max(3,Math.min(100-leftPct,(ganttDurDias(f)/totalUteis*100)));
+    // Mini-datas (bônus): "13/07–17/07" abaixo da duração, quando há data de início
+    var datasLbl=faseDatas[fi]
+      ?'<div style="font-size:7.5pt;color:#666;font-weight:400;white-space:nowrap">'+fmtDtCurto(faseDatas[fi].dtIni)+'–'+fmtDtCurto(faseDatas[fi].dtFim)+'</div>'
+      :'';
     return '<tr>'
       +'<td style="'+td+';text-align:center;color:#1a1a1a">'+(fi+1)+'</td>'
       +'<td style="'+td+';font-weight:700;color:#1a1a1a">'
         +(rt?'<span style="font-size:8pt;color:var(--accent);margin-right:3px">'+rt+'</span>':'')
         +esc(f.nome||'Tarefa')+'</td>'
       +'<td style="'+td+'"><div style="position:relative;height:15px;background:#e9ecef;border-radius:3px;overflow:hidden">'
-        +'<div style="position:absolute;left:0;width:'+pct+'%;height:100%;background:'+cor+';border-radius:3px"></div></div></td>'
-      +'<td style="'+td+';text-align:center;font-weight:700;color:#333;white-space:nowrap">'+durLbl+'</td>'
+        +'<div style="position:absolute;left:'+leftPct.toFixed(1)+'%;width:'+wPct.toFixed(1)+'%;height:100%;background:'+cor+';border-radius:3px"></div></div></td>'
+      +'<td style="'+td+';text-align:center;font-weight:700;color:#333;white-space:nowrap">'+durLbl+datasLbl+'</td>'
       +'</tr>';
   }).join('');
   var th='padding:4px 6px;font-size:11pt;font-weight:700;color:#fff;text-align:left';
