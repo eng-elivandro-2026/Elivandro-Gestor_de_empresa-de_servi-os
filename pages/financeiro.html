@@ -2681,7 +2681,7 @@ function _somenteDigitos(v) {
 function _propPertenceEmpresaAtiva(prop) {
   if (!prop || !_empresaAtivaId()) return false;
   var empresaIds = [
-    prop.empresa_id,
+    prop.empresa_id,   // carimbo gravado pelo portal ao escrever tf_props (multi-empresa.js)
     prop.empresaId,
     prop.empresa_ref,
     prop.emp_id,
@@ -2711,7 +2711,16 @@ function _propPertenceEmpresaAtiva(prop) {
     prop.empresa && prop.empresa.nome_curto,
     prop.empresa && prop.empresa.razao_social
   ].map(_normalizarTextoSeguro).filter(Boolean);
-  return nomesProp.some(function(nome) { return nomesAtivos.indexOf(nome) >= 0; });
+  if (nomesProp.some(function(nome) { return nomesAtivos.indexOf(nome) >= 0; })) return true;
+
+  // Fallback seguro: o dados_json histórico NÃO carrega nenhum campo de
+  // identidade da empresa emissora (bug: o dropdown "Proposta vinculada"
+  // ficava 100% vazio). Como tf_props é gravado pelo portal JÁ filtrado
+  // por empresa na query (multi-empresa.js), uma proposta SEM nenhum
+  // campo de identidade pertence ao escopo da empresa ativa. Só rejeita
+  // quando existe identidade explícita e ela NÃO bate (checks acima).
+  var temIdentidade = empresaIds.length > 0 || cnpjs.length > 0 || nomesProp.length > 0;
+  return !temIdentidade;
 }
 
 function _propsFinanceiroEmpresaAtiva() {

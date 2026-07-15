@@ -269,6 +269,11 @@
       var propsFiltradas = (res.data || []).map(function (r) {
         var p = r.dados_json || {};
         if (!p.id && r.app_id) p.id = r.app_id;
+        // Carimbo de empresa: o dados_json não carrega a identidade da
+        // empresa emissora (ela vive só na COLUNA empresa_id da tabela).
+        // O financeiro refiltra tf_props por empresa e precisa deste campo
+        // — sem ele, o dropdown "Proposta vinculada" das NFs fica vazio.
+        p.empresa_id = empresaId;
         return p;
       });
 
