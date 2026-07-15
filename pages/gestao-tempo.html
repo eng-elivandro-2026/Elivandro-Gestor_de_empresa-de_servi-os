@@ -339,8 +339,10 @@ HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é 
 <div id="modalEditarReg" class="modal-er">
   <div class="modal-er-box">
     <div class="sec-tit" id="erTitulo">✏️ Editar registro</div>
-    <div class="sec-desc" id="erDataLabel"></div>
+    <div class="sec-desc">Ajuste os campos e salve. Mudar a data move o registro para o outro dia.</div>
     <div class="er-grid">
+      <div class="er-f"><label>Data</label><input type="date" id="erData"></div>
+      <div class="er-f"></div>
       <div class="er-f"><label>Hora início</label><input type="time" id="erIni"></div>
       <div class="er-f"><label>Hora fim</label><input type="time" id="erFim"></div>
       <div class="er-f"><label>Macro</label><select id="erMacro"></select></div>
@@ -1200,9 +1202,9 @@ function _abrirModalReg(reg) {
   }).join('');
 
   document.getElementById('erTitulo').textContent = reg ? '✏️ Editar registro' : '➕ Nova atividade';
-  document.getElementById('erDataLabel').textContent = reg
-    ? 'Registro do dia ' + _fmtDataBr(reg.data) + ' (a data não é editável).'
-    : 'Nova atividade no dia ' + _fmtDataBr(_regDiaIso) + ' (o dia vem do seletor da lista).';
+  // Data EDITÁVEL nos dois modos: edição pré-preenche com a data do
+  // registro; criação com o dia do seletor da lista (mudável na modal).
+  document.getElementById('erData').value = reg ? reg.data : _regDiaIso;
   document.getElementById('erIni').value = reg ? _hhmm(reg.hora_inicio) : '';
   document.getElementById('erFim').value = reg ? _hhmm(reg.hora_fim) : '';
   document.getElementById('erSub').value = (reg && reg.subcategoria) || '';
@@ -1247,6 +1249,8 @@ async function salvarEdicaoRegistro() {
   erroEl.textContent = '';
 
   try {
+    var dataSel = document.getElementById('erData').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataSel)) { erroEl.textContent = '⚠️ Data inválida.'; return; }
     var ini = document.getElementById('erIni').value;
     var fim = document.getElementById('erFim').value;
     if (!/^\d{2}:\d{2}$/.test(ini) || !/^\d{2}:\d{2}$/.test(fim)) {
@@ -1261,6 +1265,7 @@ async function salvarEdicaoRegistro() {
     if (!sb) { erroEl.textContent = '⚠️ Sem conexão com o portal.'; return; }
 
     var payload = {
+      data: dataSel, // editável nos dois modos — mudar move o registro de dia
       hora_inicio: ini,
       hora_fim: fim,
       duracao_minutos: duracao,
@@ -1281,7 +1286,6 @@ async function salvarEdicaoRegistro() {
       if (!usuarioId) { erroEl.textContent = '⚠️ Não foi possível identificar o usuário logado.'; return; }
       payload.empresa_id = _empresaAtiva.id;
       payload.usuario_id = usuarioId;
-      payload.data = _regDiaIso; // dia selecionado no seletor da lista
       res = await sb.from('registro_atividades').insert([payload]);
     } else {
       res = await sb.from('registro_atividades').update(payload).eq('id', _editandoRegId);
