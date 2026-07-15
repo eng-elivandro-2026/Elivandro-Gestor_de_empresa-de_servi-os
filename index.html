@@ -10732,7 +10732,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=23"></script>
+<script src="js/core/app-core.js?v=24"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=10"></script>
 <script src="js/modules/multi-empresa.js"></script>
@@ -10976,30 +10976,47 @@ function toggleCardSection(cardId, chevronId) {
   chevron.textContent = isHidden ? '▲ recolher' : '▼ expandir';
 }
 
+// Renderiza o menu combinado (Comercial + painéis de Gestão CEO exibidos
+// no mesmo dashboard). Complementa Router._renderNavMod — não o substitui:
+// tem itens (Motor de Decisão, Por Fase, Análise por Categoria, KPIs de
+// Ciclos) que router.js não lista para o módulo 'comercial'. Roda via
+// setTimeout(0) nos listeners 'router:change'/'DOMContentLoaded' abaixo,
+// ou seja, DEPOIS de Router._renderNavMod já ter pintado o menu filtrado
+// — por isso cada item com subseção equivalente ao vocabulário do JSON
+// individual (permissoes_modulos) precisa do MESMO gate podeVerSubsecao
+// que router.js aplica, senão ele reaparece incondicionalmente.
 function renderMenuComercialOrganizado() {
   var nav = document.getElementById('sidebar-nav-mod');
   if (!nav) return;
+  // [icone, label, action, subKey?] — subKey ausente = sempre visível
+  // (mesmo critério de router.js: item sem tag `sub:` não é filtrado).
   var itens = [
     ['🧠', 'Motor de Decisão', "irParaPainel('motorDecisaoCard','togMotorDecisao')"],
-    ['🏢', 'Visão Executiva', "irParaPainel('ceoDashCard','togCeoDash')"],
-    ['⭐', 'Propostas', "go('dashboard',this);irParaPainel('propostasCard','togPropostas')"],
+    ['🏢', 'Visão Executiva', "irParaPainel('ceoDashCard','togCeoDash')", 'visao_executiva'],
+    ['⭐', 'Propostas', "go('dashboard',this);irParaPainel('propostasCard','togPropostas')", 'propostas'],
     ['📈', 'Por Fase', "irParaPainel('porFaseCard','togPorFase')"],
-    ['🎯', 'Metas2026', "irParaPainel('metaPanel','togMeta')"],
+    ['🎯', 'Metas2026', "irParaPainel('metaPanel','togMeta')", 'metas'],
     ['📊', 'Visão Geral', "irParaPainel('visaoGeralCard','togVisaoGeral')"],
-    ['🤖', 'Análise IA', "irParaPainel('analisePanel','togAnalise')"],
-    ['🏢', 'Ranking de Clientes', "irParaPainel('rankingCard','togRanking')"],
+    ['🤖', 'Análise IA', "irParaPainel('analisePanel','togAnalise')", 'analise_ia'],
+    ['🏢', 'Ranking de Clientes', "irParaPainel('rankingCard','togRanking')", 'ranking_clientes'],
     ['📂', 'Análise por Categoria', "irParaPainel('catAnaliseCard','togCatAnalise')"],
     ['📊', 'KPIs de Ciclos — Média Geral', "irParaPainel('ciclosCard','togCiclosDash')"],
     ['📅', 'Linha do Tempo de Execução', "irParaPainel('execTimelineCard','togExecTimeline')"],
     ['📅', 'Fechamentos por Mês', "irParaPainel('fechMesCard','togFechMes')"],
     [null, 'Ferramentas', null],
-    ['🔀', 'Pipeline', "go('registro',this);rRegistro()"],
+    ['🔀', 'Pipeline', "go('registro',this);rRegistro()", 'pipeline'],
     ['📈', 'Análise de Proposta', "go('analise',this);rAnalise()"],
-    ['🗂️', 'Banco de Escopos', "go('escopos',this);setTimeout(beInit,80)"],
+    ['🗂️', 'Banco de Escopos', "go('escopos',this);setTimeout(beInit,80)", 'banco_escopos'],
     ['📋', 'Templates', "go('templates',this);beLoadDB();stplRenderLista()"],
     ['📋', 'Versões', "go('changelog',this)"]
   ];
-  nav.innerHTML = itens.map(function(item) {
+  var itensVisiveis = itens.filter(function(item) {
+    if (!item[3]) return true; // separador ou item sem subseção mapeada — sempre visível
+    return typeof window.podeVerSubsecao === 'function'
+      ? window.podeVerSubsecao('comercial', item[3])
+      : true;
+  });
+  nav.innerHTML = itensVisiveis.map(function(item) {
     if (!item[2]) {
       return '<div style="font-size:.58rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .6rem .2rem;margin-top:.2rem;border-top:1px solid var(--border)">' + item[1] + '</div>';
     }

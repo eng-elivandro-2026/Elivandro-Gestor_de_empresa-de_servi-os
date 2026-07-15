@@ -82,6 +82,16 @@ window._renderSbProps = function() {
   var nav = document.getElementById('sidebar-nav-mod');
   if (!nav) return;
 
+  // Escreve no mesmo #sidebar-nav-mod que Router._renderNavMod já filtra
+  // por permissão — mesma classe de bug do renderMenuComercialOrganizado
+  // (index.html). Sem chamador ativo hoje (abrirPainelPropostas não é
+  // invocada em nenhum lugar do código), mas o gate fica aqui por
+  // segurança para não reabrir a mesma brecha se algo passar a chamá-la.
+  if (typeof window.podeVerSubsecao === 'function' && !window.podeVerSubsecao('comercial', 'propostas')) {
+    nav.innerHTML = '<div class="nav-vazio">Sem acesso a Propostas</div>';
+    return;
+  }
+
   var fasesFiltro = [
     { k: 'all',               n: 'Todas' },
     { k: 'em_elaboracao',     n: 'Elaboração' },
