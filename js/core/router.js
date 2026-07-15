@@ -161,6 +161,7 @@
       nav: [
         { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','registrar')" },
         { label: 'Dashboard',            icon: '📊', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','dashboard')" },
+        { label: 'Categorias',           icon: '🏷️', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','categorias')" },
       ]
     },
     {

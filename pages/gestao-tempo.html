@@ -171,6 +171,7 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
   <div class="tabs">
     <button class="tab on" id="tab-registrar" onclick="mostrarSecao('registrar')">📝 Registrar Atividades</button>
     <button class="tab" id="tab-dashboard" onclick="mostrarSecao('dashboard')">📊 Dashboard</button>
+    <button class="tab" id="tab-categorias" onclick="mostrarSecao('categorias')">🏷️ Categorias</button>
   </div>
 
   <div id="sec-registrar" class="sec on">
@@ -190,9 +191,10 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
 HH:MM-HH:MM | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
 
 MACRO: PESSOAL ou PROFISSIONAL
-CATEGORIA: Comercial, Engenharia, Operacional, Gestão, Portal, Suporte, Administrativo, Pessoal
+CATEGORIA: <span id="ajudaCategorias">Comercial, Engenharia, Operacional, Gestão, Portal, Suporte, Administrativo, Pessoal</span>
 SUBCATEGORIA, CLIENTE/PROJETO, PROPOSTA/OBRA: podem ficar em branco
-S/N: gerou receita (S) ou não (N)</div>
+S/N: gerou receita (S) ou não (N)
+HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é calculada corretamente e o registro fica no dia do bloco</div>
     </details>
   </div>
 
@@ -230,7 +232,10 @@ S/N: gerou receita (S) ou não (N)</div>
   </div>
 
   <div class="card">
-    <div class="sec-tit">📋 Registros salvos</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+      <div class="sec-tit">📋 Registros salvos</div>
+      <button class="btn btn-p" onclick="abrirNovaAtividade()">➕ Nova Atividade</button>
+    </div>
     <div class="sec-desc">Registros já gravados no dia selecionado — clique em ✏️ para editar ou 🗑️ para excluir.</div>
     <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.7rem;flex-wrap:wrap">
       <button class="btn btn-g" onclick="regNavegarDia(-1)" title="Dia anterior">←</button>
@@ -313,14 +318,31 @@ S/N: gerou receita (S) ou não (N)</div>
 
   </div><!-- /sec-dashboard -->
 
+  <div id="sec-categorias" class="sec">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+        <div class="sec-tit">🏷️ Categorias da empresa</div>
+        <div id="catNovaWrap" style="display:none;gap:.4rem;align-items:center">
+          <input type="text" id="catNovaNome" placeholder="Nova categoria..." style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .55rem;font-size:.82rem;font-family:inherit">
+          <button class="btn btn-p" id="btnCatNova" onclick="criarCategoria()">➕ Adicionar</button>
+        </div>
+      </div>
+      <div class="sec-desc">Renomear propaga automaticamente para todos os registros (de todos os usuários). Desativar só esconde das opções novas — registros antigos continuam intactos. Gerenciamento restrito a Dono/Admin/Gestor.</div>
+      <div id="catAviso"></div>
+      <div id="listaCategorias"></div>
+    </div>
+  </div><!-- /sec-categorias -->
+
 </div>
 
 <!-- Modal Editar Registro -->
 <div id="modalEditarReg" class="modal-er">
   <div class="modal-er-box">
-    <div class="sec-tit">✏️ Editar registro</div>
-    <div class="sec-desc" id="erDataLabel"></div>
+    <div class="sec-tit" id="erTitulo">✏️ Editar registro</div>
+    <div class="sec-desc">Ajuste os campos e salve. Mudar a data move o registro para o outro dia.</div>
     <div class="er-grid">
+      <div class="er-f"><label>Data</label><input type="date" id="erData"></div>
+      <div class="er-f"></div>
       <div class="er-f"><label>Hora início</label><input type="time" id="erIni"></div>
       <div class="er-f"><label>Hora fim</label><input type="time" id="erFim"></div>
       <div class="er-f"><label>Macro</label><select id="erMacro"></select></div>
@@ -363,7 +385,9 @@ function parseData(linha) {
   return aaaa + '-' + mm + '-' + dd;
 }
 
-// "09:00-10:40" -> { horaInicio:'09:00', horaFim:'10:40', duracaoMinutos:100 } | null se inválido
+// "09:00-10:40" -> { horaInicio, horaFim, duracaoMinutos, cruzaMeiaNoite } | null se inválido.
+// fim < início = atividade que cruza a meia-noite (ex.: 18:00-01:40 = 7h40min).
+// fim == início = duração indefinida (0 ou 24h?) — fica 0 e é rejeitado na validação.
 function parseHorario(campo) {
   var m = String(campo || '').trim().match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
   if (!m) return null;
@@ -371,23 +395,32 @@ function parseHorario(campo) {
   if (hi > 23 || mi > 59 || hf > 23 || mf > 59) return null;
   var minInicio = hi * 60 + mi;
   var minFim = hf * 60 + mf;
+  var duracao = minFim - minInicio;
+  var cruzaMeiaNoite = duracao < 0;
+  if (cruzaMeiaNoite) duracao += 24 * 60;
   return {
     horaInicio: m[1] + ':' + m[2],
     horaFim: m[3] + ':' + m[4],
-    duracaoMinutos: minFim - minInicio // pode vir <= 0 — validado à parte (sem cruzar meia-noite nesta etapa)
+    duracaoMinutos: duracao,
+    cruzaMeiaNoite: cruzaMeiaNoite
   };
 }
 
-function normalizarCategoria(v) {
+// Valida o texto contra a lista de categorias (case-insensitive).
+// lista opcional: default = as 8 fixas (fallback pré-migration 056);
+// em runtime o chamador passa as categorias ATIVAS da empresa.
+function normalizarCategoria(v, lista) {
+  var nomes = lista || CATEGORIAS_VALIDAS;
   var alvo = String(v || '').trim().toLowerCase();
-  for (var i = 0; i < CATEGORIAS_VALIDAS.length; i++) {
-    if (CATEGORIAS_VALIDAS[i].toLowerCase() === alvo) return CATEGORIAS_VALIDAS[i];
+  for (var i = 0; i < nomes.length; i++) {
+    if (nomes[i].toLowerCase() === alvo) return nomes[i];
   }
   return null;
 }
 
 // Uma linha de atividade -> { ok, campos:{...}, erros:[...] }
-function parseLinhaAtividade(linha) {
+// listaCategorias opcional (default: 8 fixas) — em runtime recebe as ativas da empresa.
+function parseLinhaAtividade(linha, listaCategorias) {
   var erros = [];
   var partes = String(linha || '').split('|').map(function (p) { return p.trim(); });
 
@@ -405,7 +438,7 @@ function parseLinhaAtividade(linha) {
   var macro = String(macroRaw || '').trim().toUpperCase();
   if (MACROS_VALIDOS.indexOf(macro) < 0) erros.push('MACRO inválido (esperado PESSOAL ou PROFISSIONAL)');
 
-  var categoria = normalizarCategoria(categoriaRaw);
+  var categoria = normalizarCategoria(categoriaRaw, listaCategorias);
   if (!categoria) erros.push('Categoria inválida: "' + categoriaRaw + '"');
 
   var snNorm = String(snRaw || '').trim().toUpperCase();
@@ -414,7 +447,9 @@ function parseLinhaAtividade(linha) {
   else if (snNorm === 'N') gerouReceita = false;
   else erros.push('Campo S/N inválido (esperado S ou N)');
 
-  if (horario && horario.duracaoMinutos <= 0) erros.push('Duração inválida (fim deve ser depois do início)');
+  // fim < início já foi tratado como travessia da meia-noite no parseHorario;
+  // só resta inválido o caso início == fim (duração 0 — ambígua: 0 ou 24h?)
+  if (horario && horario.duracaoMinutos <= 0) erros.push('Duração inválida (início e fim iguais)');
 
   return {
     ok: erros.length === 0,
@@ -436,7 +471,8 @@ function parseLinhaAtividade(linha) {
 }
 
 // Bloco completo colado -> { data, dataErro, linhas:[...] }
-function parseBloco(texto) {
+// listaCategorias opcional — repassada a cada linha.
+function parseBloco(texto, listaCategorias) {
   var linhas = String(texto || '').split('\n');
   var data = null, dataErro = null;
   var linhasAtividade = [];
@@ -452,7 +488,7 @@ function parseBloco(texto) {
       dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada antes das linhas de atividade.';
       continue;
     }
-    linhasAtividade.push(parseLinhaAtividade(linha));
+    linhasAtividade.push(parseLinhaAtividade(linha, listaCategorias));
   }
 
   if (!achouData) dataErro = 'Nenhuma linha "DATA: DD/MM/AAAA" encontrada no texto colado.';
@@ -671,13 +707,69 @@ async function _obterUsuarioId() {
   return null;
 }
 
+// ── Categorias configuráveis (migration 056) ───────────────────
+var _categorias = []; // {id, nome, ativo} da empresa ativa
+
+// Nomes das categorias ATIVAS; fallback para as 8 fixas enquanto a
+// migration 056 não estiver aplicada (tabela ausente → lista vazia).
+function _categoriasAtivasNomes() {
+  var ativas = _categorias.filter(function (c) { return c.ativo; }).map(function (c) { return c.nome; });
+  return ativas.length ? ativas : CATEGORIAS_VALIDAS.slice();
+}
+
+function _idDaCategoria(nome) {
+  var alvo = String(nome || '').trim().toLowerCase();
+  var c = _categorias.find(function (x) { return x.nome.toLowerCase() === alvo; });
+  return c ? c.id : null;
+}
+
+// Nome exibido de um registro: FK primeiro (renomear propaga), com
+// fallback para o texto legado gravado na época.
+function _nomeCategoria(row) {
+  if (row.categoria_id) {
+    var c = _categorias.find(function (x) { return x.id === row.categoria_id; });
+    if (c) return c.nome;
+  }
+  return row.categoria || '—';
+}
+
+async function _carregarCategorias() {
+  _categorias = [];
+  var sb = _sb();
+  if (sb && _empresaAtiva && _empresaAtiva.id) {
+    try {
+      var res = await sb.from('gestao_tempo_categorias').select('*')
+        .eq('empresa_id', _empresaAtiva.id).order('nome', { ascending: true });
+      // Filtro defensivo de shape: só linhas com nome válido entram
+      if (!res.error && res.data) {
+        _categorias = res.data.filter(function (c) { return c && typeof c.nome === 'string' && c.nome; });
+      }
+    } catch (e) {}
+  }
+  _atualizarAjudaCategorias();
+}
+
+function _atualizarAjudaCategorias() {
+  var el = document.getElementById('ajudaCategorias');
+  if (el) el.textContent = _categoriasAtivasNomes().join(', ');
+}
+
+// Só dono/admin/gestor gerenciam categorias (RLS reforça no banco).
+function _podeGerirCategorias() {
+  try {
+    var p = window.parent && typeof window.parent.getPerfilUsuario === 'function'
+      ? window.parent.getPerfilUsuario() : null;
+    return ['dono', 'admin', 'gestor'].indexOf(p) >= 0;
+  } catch (e) { return false; }
+}
+
 // ── Processar texto colado ──────────────────────────────────────
 function processarTexto() {
   var texto = document.getElementById('txtColar').value;
   var msgEl = document.getElementById('msgProcessar');
   msgEl.textContent = '';
 
-  var resultado = parseBloco(texto);
+  var resultado = parseBloco(texto, _categoriasAtivasNomes());
   if (resultado.dataErro) {
     msgEl.textContent = '❌ ' + resultado.dataErro;
     return;
@@ -710,12 +802,13 @@ function _revalidarLinha(row) {
   if (/^\d{2}:\d{2}$/.test(c.horaInicio || '') && /^\d{2}:\d{2}$/.test(c.horaFim || '')) {
     var pi = c.horaInicio.split(':').map(Number), pf = c.horaFim.split(':').map(Number);
     c.duracaoMinutos = (pf[0] * 60 + pf[1]) - (pi[0] * 60 + pi[1]);
-    if (c.duracaoMinutos <= 0) erros.push('Duração inválida (fim deve ser depois do início)');
+    if (c.duracaoMinutos < 0) c.duracaoMinutos += 24 * 60; // cruza a meia-noite
+    if (c.duracaoMinutos <= 0) erros.push('Duração inválida (início e fim iguais)');
   } else {
     c.duracaoMinutos = 0;
   }
   if (MACROS_VALIDOS.indexOf(c.macro) < 0) erros.push('MACRO inválido');
-  if (CATEGORIAS_VALIDAS.indexOf(c.categoria) < 0) erros.push('Categoria inválida');
+  if (_categoriasAtivasNomes().indexOf(c.categoria) < 0) erros.push('Categoria inválida');
 
   row.erros = erros;
   return row;
@@ -753,7 +846,7 @@ function renderPrevia() {
     var macroOpts = MACROS_VALIDOS.map(function (m) {
       return '<option value="' + m + '"' + (m === c.macro ? ' selected' : '') + '>' + m + '</option>';
     }).join('');
-    var catOpts = CATEGORIAS_VALIDAS.map(function (cat) {
+    var catOpts = _categoriasAtivasNomes().map(function (cat) {
       return '<option value="' + esc(cat) + '"' + (cat === c.categoria ? ' selected' : '') + '>' + esc(cat) + '</option>';
     }).join('');
 
@@ -810,7 +903,7 @@ async function salvarTudo() {
 
     var registros = _previaAtual.map(function (row) {
       var c = row.campos;
-      return {
+      var reg = {
         empresa_id: _empresaAtiva.id,
         usuario_id: usuarioId,
         data: row.data,
@@ -825,6 +918,10 @@ async function salvarTudo() {
         gerou_receita: !!c.gerouReceita,
         descricao: c.descricao || ''
       };
+      // FK (migration 056): só quando as categorias da empresa carregaram
+      // (pré-migration a coluna nem existe — mandar a chave daria 400)
+      if (_categorias.length) reg.categoria_id = _idDaCategoria(c.categoria);
+      return reg;
     });
 
     var res = await sb.from('registro_atividades').insert(registros);
@@ -867,6 +964,7 @@ function mostrarSecao(id) {
   if (tab) tab.classList.add('on');
   if (id === 'dashboard') carregarDashboard();
   if (id === 'registrar') carregarRegsDia();
+  if (id === 'categorias') carregarTelaCategorias();
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 
@@ -950,8 +1048,11 @@ function _renderReceita() {
 function _renderDistribuicao() {
   var el = document.getElementById('cardDistr');
   if (!el) return;
-  var rows = _dashRows.filter(function (x) { return x.macro === _distMacroTab; });
-  el.innerHTML = htmlBarras(aggPorCampo(rows, 'categoria', '—'));
+  // Agrupa pelo nome resolvido via FK (renomear categoria reflete na hora),
+  // com fallback para o texto legado em registros pré-migration.
+  var rows = _dashRows.filter(function (x) { return x.macro === _distMacroTab; })
+    .map(function (x) { return Object.assign({}, x, { categoria_nome: _nomeCategoria(x) }); });
+  el.innerHTML = htmlBarras(aggPorCampo(rows, 'categoria_nome', '—'));
 }
 
 function _renderDistPessoal() {
@@ -981,12 +1082,13 @@ function _hhmm(t) { return String(t || '').slice(0, 5); }
 // Item de registro (compartilhado: Linha do Tempo do dashboard + lista
 // "Registros salvos" da aba Registrar), com botões editar/excluir.
 function _regItemHtml(x) {
+  var catNome = _nomeCategoria(x);
   return '<div class="tl-item">'
     + '<div class="tl-hora">' + _hhmm(x.hora_inicio) + '–' + _hhmm(x.hora_fim) + '</div>'
     + '<div class="tl-body">'
     + '<div class="tl-desc">' + esc(x.descricao || '—') + (x.gerou_receita ? ' 💰' : '') + '</div>'
     + '<div class="tl-meta">'
-    + '<span class="tl-cat" style="background:' + corDe(x.categoria, 0) + '">' + esc(x.categoria) + '</span>'
+    + '<span class="tl-cat" style="background:' + corDe(catNome, 0) + '">' + esc(catNome) + '</span>'
     + (x.cliente_projeto ? '<span>🏢 ' + esc(x.cliente_projeto) + '</span>' : '')
     + (x.proposta_obra_id ? '<span>📄 ' + esc(x.proposta_obra_id) + '</span>' : '')
     + '<span>' + fmtDuracao(x.duracao_minutos) + '</span>'
@@ -1074,36 +1176,59 @@ function _refreshAposCrud() {
   if (secDash && secDash.classList.contains('on')) carregarDashboard();
 }
 
-// ── Modal de edição ────────────────────────────────────────────
-var _editandoRegId = null;
+// ── Modal de edição / criação ──────────────────────────────────
+var _editandoRegId = null; // null com modal aberta = modo CRIAÇÃO
 var _salvandoEdicao = false;
+
+// Monta os selects e abre a modal. reg = registro existente (edição)
+// ou null (criação — campos em branco, data = dia do seletor da lista).
+function _abrirModalReg(reg) {
+  var selMacro = document.getElementById('erMacro');
+  var macroSel = reg ? reg.macro : 'PROFISSIONAL';
+  selMacro.innerHTML = MACROS_VALIDOS.map(function (m) {
+    return '<option value="' + m + '"' + (m === macroSel ? ' selected' : '') + '>' + m + '</option>';
+  }).join('');
+
+  // Select de categorias: só ativas; na edição, se o registro usa uma
+  // categoria inativa, ela entra marcada "(inativa)" para não forçar troca.
+  var catSel = reg ? _nomeCategoria(reg) : null;
+  var nomes = _categoriasAtivasNomes().slice();
+  var inativa = catSel && nomes.indexOf(catSel) < 0 && catSel !== '—';
+  if (inativa) nomes.push(catSel);
+  var selCat = document.getElementById('erCategoria');
+  selCat.innerHTML = nomes.map(function (c) {
+    var rotulo = esc(c) + (inativa && c === catSel ? ' (inativa)' : '');
+    return '<option value="' + esc(c) + '"' + (c === catSel ? ' selected' : '') + '>' + rotulo + '</option>';
+  }).join('');
+
+  document.getElementById('erTitulo').textContent = reg ? '✏️ Editar registro' : '➕ Nova atividade';
+  // Data EDITÁVEL nos dois modos: edição pré-preenche com a data do
+  // registro; criação com o dia do seletor da lista (mudável na modal).
+  document.getElementById('erData').value = reg ? reg.data : _regDiaIso;
+  document.getElementById('erIni').value = reg ? _hhmm(reg.hora_inicio) : '';
+  document.getElementById('erFim').value = reg ? _hhmm(reg.hora_fim) : '';
+  document.getElementById('erSub').value = (reg && reg.subcategoria) || '';
+  document.getElementById('erCli').value = (reg && reg.cliente_projeto) || '';
+  document.getElementById('erProp').value = (reg && reg.proposta_obra_id) || '';
+  document.getElementById('erReceita').checked = !!(reg && reg.gerou_receita);
+  document.getElementById('erDesc').value = (reg && reg.descricao) || '';
+  document.getElementById('erErro').textContent = '';
+  var btn = document.getElementById('btnSalvarEdicao');
+  if (btn) { btn.disabled = false; btn.textContent = reg ? '💾 Salvar alterações' : '💾 Criar atividade'; }
+  document.getElementById('modalEditarReg').style.display = 'flex';
+}
 
 function abrirEditarRegistro(id) {
   var reg = _acharRegistro(id);
   if (!reg) { toast('Registro não encontrado — recarregue a lista.', 'err'); return; }
   _editandoRegId = id;
+  _abrirModalReg(reg);
+}
 
-  var selMacro = document.getElementById('erMacro');
-  selMacro.innerHTML = MACROS_VALIDOS.map(function (m) {
-    return '<option value="' + m + '"' + (m === reg.macro ? ' selected' : '') + '>' + m + '</option>';
-  }).join('');
-  var selCat = document.getElementById('erCategoria');
-  selCat.innerHTML = CATEGORIAS_VALIDAS.map(function (c) {
-    return '<option value="' + esc(c) + '"' + (c === reg.categoria ? ' selected' : '') + '>' + esc(c) + '</option>';
-  }).join('');
-
-  document.getElementById('erDataLabel').textContent = 'Registro do dia ' + _fmtDataBr(reg.data) + ' (a data não é editável).';
-  document.getElementById('erIni').value = _hhmm(reg.hora_inicio);
-  document.getElementById('erFim').value = _hhmm(reg.hora_fim);
-  document.getElementById('erSub').value = reg.subcategoria || '';
-  document.getElementById('erCli').value = reg.cliente_projeto || '';
-  document.getElementById('erProp').value = reg.proposta_obra_id || '';
-  document.getElementById('erReceita').checked = !!reg.gerou_receita;
-  document.getElementById('erDesc').value = reg.descricao || '';
-  document.getElementById('erErro').textContent = '';
-  var btn = document.getElementById('btnSalvarEdicao');
-  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar alterações'; }
-  document.getElementById('modalEditarReg').style.display = 'flex';
+// Parte 1: "+ Nova Atividade" — mesma modal, vazia, data = dia selecionado
+function abrirNovaAtividade() {
+  _editandoRegId = null;
+  _abrirModalReg(null);
 }
 
 function fecharEditarRegistro() {
@@ -1113,16 +1238,19 @@ function fecharEditarRegistro() {
 
 // Guarda de reentrância (mesma lição do salvarTudo): flag na primeira
 // linha + botão desabilitado antes de qualquer await.
+// Com _editandoRegId → UPDATE; sem (modo criação) → INSERT.
 async function salvarEdicaoRegistro() {
   if (_salvandoEdicao) return;
   _salvandoEdicao = true;
+  var modoCriacao = !_editandoRegId;
   var btn = document.getElementById('btnSalvarEdicao');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
   var erroEl = document.getElementById('erErro');
   erroEl.textContent = '';
 
   try {
-    if (!_editandoRegId) return;
+    var dataSel = document.getElementById('erData').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataSel)) { erroEl.textContent = '⚠️ Data inválida.'; return; }
     var ini = document.getElementById('erIni').value;
     var fim = document.getElementById('erFim').value;
     if (!/^\d{2}:\d{2}$/.test(ini) || !/^\d{2}:\d{2}$/.test(fim)) {
@@ -1130,12 +1258,14 @@ async function salvarEdicaoRegistro() {
     }
     var pi = ini.split(':').map(Number), pf = fim.split(':').map(Number);
     var duracao = (pf[0] * 60 + pf[1]) - (pi[0] * 60 + pi[1]);
-    if (duracao <= 0) { erroEl.textContent = '⚠️ A hora fim deve ser depois da hora início.'; return; }
+    if (duracao < 0) duracao += 24 * 60; // cruza a meia-noite (ex.: 18:00-01:40)
+    if (duracao <= 0) { erroEl.textContent = '⚠️ Início e fim iguais — duração indefinida.'; return; }
 
     var sb = _sb();
     if (!sb) { erroEl.textContent = '⚠️ Sem conexão com o portal.'; return; }
 
     var payload = {
+      data: dataSel, // editável nos dois modos — mudar move o registro de dia
       hora_inicio: ini,
       hora_fim: fim,
       duracao_minutos: duracao,
@@ -1147,17 +1277,168 @@ async function salvarEdicaoRegistro() {
       gerou_receita: document.getElementById('erReceita').checked,
       descricao: document.getElementById('erDesc').value.trim()
     };
-    var res = await sb.from('registro_atividades').update(payload).eq('id', _editandoRegId);
+    if (_categorias.length) payload.categoria_id = _idDaCategoria(payload.categoria);
+
+    var res;
+    if (modoCriacao) {
+      if (!_empresaAtiva || !_empresaAtiva.id) { erroEl.textContent = '⚠️ Nenhuma empresa ativa.'; return; }
+      var usuarioId = await _obterUsuarioId();
+      if (!usuarioId) { erroEl.textContent = '⚠️ Não foi possível identificar o usuário logado.'; return; }
+      payload.empresa_id = _empresaAtiva.id;
+      payload.usuario_id = usuarioId;
+      res = await sb.from('registro_atividades').insert([payload]);
+    } else {
+      res = await sb.from('registro_atividades').update(payload).eq('id', _editandoRegId);
+    }
     if (res.error) throw new Error(res.error.message);
-    toast('✅ Registro atualizado.');
+    toast(modoCriacao ? '✅ Atividade criada.' : '✅ Registro atualizado.');
     fecharEditarRegistro();
     _refreshAposCrud();
   } catch (e) {
     erroEl.textContent = '❌ Erro ao salvar: ' + e.message;
   } finally {
     _salvandoEdicao = false;
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar alterações'; }
+    if (btn) { btn.disabled = false; btn.textContent = modoCriacao ? '💾 Criar atividade' : '💾 Salvar alterações'; }
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TELA CATEGORIAS — CRUD (renomear propaga via FK; desativar = soft)
+// ══════════════════════════════════════════════════════════════
+var _catOcupado = false; // guarda de reentrância para criar/renomear/toggle
+
+async function carregarTelaCategorias() {
+  await _carregarCategorias();
+  var wrapNova = document.getElementById('catNovaWrap');
+  if (wrapNova) wrapNova.style.display = _podeGerirCategorias() ? 'flex' : 'none';
+  var aviso = document.getElementById('catAviso');
+  var el = document.getElementById('listaCategorias');
+  if (!el) return;
+
+  if (!_sb() || !_empresaAtiva || !_empresaAtiva.id) {
+    el.innerHTML = '<div class="vazio-sm">Conecte-se a uma empresa.</div>';
+    return;
+  }
+
+  // Tabela ausente/vazia (migration 056 não aplicada ou empresa nova)
+  if (!_categorias.length) {
+    el.innerHTML = '<div class="vazio-sm">Nenhuma categoria cadastrada para esta empresa.'
+      + (_podeGerirCategorias()
+        ? ' <button class="btn btn-g" onclick="criarCategoriasPadrao()">Criar categorias padrão</button>'
+        : '')
+      + '<br><span style="font-size:.7rem">Se a migration 056 ainda não foi aplicada no Supabase, aplique-a primeiro — enquanto isso o módulo funciona com as 8 categorias fixas.</span></div>';
+    return;
+  }
+  if (aviso) aviso.innerHTML = '';
+
+  // Contagem de uso — só dos registros do PRÓPRIO usuário (a RLS não
+  // deixa ver os dos outros), por isso o rótulo diz "seus".
+  var usoPorCat = {};
+  try {
+    var resUso = await _sb().from('registro_atividades')
+      .select('categoria_id')
+      .eq('empresa_id', _empresaAtiva.id);
+    (resUso.data || []).forEach(function (r) {
+      if (r.categoria_id) usoPorCat[r.categoria_id] = (usoPorCat[r.categoria_id] || 0) + 1;
+    });
+  } catch (e) {}
+
+  var pode = _podeGerirCategorias();
+  el.innerHTML = _categorias.map(function (c) {
+    var uso = usoPorCat[c.id] || 0;
+    return '<div class="tl-item" style="' + (c.ativo ? '' : 'opacity:.55') + '">'
+      + '<div class="tl-body" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">'
+      + (pode
+        ? '<input type="text" id="catNome_' + esc(c.id) + '" value="' + esc(c.nome) + '" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.4rem .55rem;font-size:.82rem;font-family:inherit;min-width:180px">'
+        : '<span style="font-size:.85rem;font-weight:700">' + esc(c.nome) + '</span>')
+      + '<span class="tl-cat" style="background:' + corDe(c.nome, 0) + '">' + esc(c.nome) + '</span>'
+      + (c.ativo ? '' : '<span style="font-size:.68rem;color:var(--text3)">inativa</span>')
+      + '<span style="font-size:.68rem;color:var(--text3)">' + uso + ' registro' + (uso !== 1 ? 's' : '') + ' (seus)</span>'
+      + '</div>'
+      + (pode
+        ? '<div class="tl-acoes">'
+          + '<button class="icon-btn" title="Salvar novo nome" onclick="renomearCategoria(\'' + esc(c.id) + '\')">💾</button>'
+          + '<button class="icon-btn ' + (c.ativo ? 'icon-btn-red' : '') + '" title="' + (c.ativo ? 'Desativar' : 'Reativar') + '" onclick="toggleCategoriaAtiva(\'' + esc(c.id) + '\')">' + (c.ativo ? '🚫' : '♻️') + '</button>'
+          + '</div>'
+        : '')
+      + '</div>';
+  }).join('');
+}
+
+async function criarCategoria() {
+  if (_catOcupado) return;
+  var inp = document.getElementById('catNovaNome');
+  var nome = (inp.value || '').trim();
+  if (!nome) { toast('Digite o nome da categoria.', 'err'); return; }
+  if (_categorias.some(function (c) { return c.nome.toLowerCase() === nome.toLowerCase(); })) {
+    toast('Já existe uma categoria com esse nome.', 'err'); return;
+  }
+  _catOcupado = true;
+  try {
+    var res = await _sb().from('gestao_tempo_categorias')
+      .insert([{ empresa_id: _empresaAtiva.id, nome: nome }]);
+    if (res.error) throw new Error(res.error.message);
+    toast('✅ Categoria "' + nome + '" criada.');
+    inp.value = '';
+    await carregarTelaCategorias();
+  } catch (e) {
+    toast('❌ Erro ao criar: ' + e.message, 'err');
+  } finally { _catOcupado = false; }
+}
+
+async function renomearCategoria(id) {
+  if (_catOcupado) return;
+  var inp = document.getElementById('catNome_' + id);
+  var cat = _categorias.find(function (c) { return c.id === id; });
+  if (!inp || !cat) return;
+  var novo = (inp.value || '').trim();
+  if (!novo) { toast('O nome não pode ficar vazio.', 'err'); return; }
+  if (novo === cat.nome) { toast('Nome não mudou.', 'err'); return; }
+  if (_categorias.some(function (c) { return c.id !== id && c.nome.toLowerCase() === novo.toLowerCase(); })) {
+    toast('Já existe uma categoria com esse nome.', 'err'); return;
+  }
+  if (!confirm('Renomear "' + cat.nome + '" para "' + novo + '"?\n\nA mudança aparece automaticamente em TODOS os registros (de todos os usuários) que usam esta categoria.')) return;
+  _catOcupado = true;
+  try {
+    var res = await _sb().from('gestao_tempo_categorias').update({ nome: novo }).eq('id', id);
+    if (res.error) throw new Error(res.error.message);
+    toast('✅ Renomeada para "' + novo + '".');
+    await carregarTelaCategorias();
+    _refreshAposCrud(); // dashboards/listas refletem o novo nome
+  } catch (e) {
+    toast('❌ Erro ao renomear: ' + e.message, 'err');
+  } finally { _catOcupado = false; }
+}
+
+async function toggleCategoriaAtiva(id) {
+  if (_catOcupado) return;
+  var cat = _categorias.find(function (c) { return c.id === id; });
+  if (!cat) return;
+  if (cat.ativo && !confirm('Desativar "' + cat.nome + '"?\n\nEla some das opções para registros NOVOS. Registros antigos que já a usam continuam intactos.')) return;
+  _catOcupado = true;
+  try {
+    var res = await _sb().from('gestao_tempo_categorias').update({ ativo: !cat.ativo }).eq('id', id);
+    if (res.error) throw new Error(res.error.message);
+    toast(cat.ativo ? '🚫 Categoria desativada.' : '♻️ Categoria reativada.');
+    await carregarTelaCategorias();
+  } catch (e) {
+    toast('❌ Erro: ' + e.message, 'err');
+  } finally { _catOcupado = false; }
+}
+
+// Empresa nova (criada depois da migration 056): cria as 8 padrão
+async function criarCategoriasPadrao() {
+  if (_catOcupado) return;
+  _catOcupado = true;
+  try {
+    var linhas = CATEGORIAS_VALIDAS.map(function (n) { return { empresa_id: _empresaAtiva.id, nome: n }; });
+    var res = await _sb().from('gestao_tempo_categorias').insert(linhas);
+    if (res.error) throw new Error(res.error.message);
+    toast('✅ Categorias padrão criadas.');
+    await carregarTelaCategorias();
+  } catch (e) {
+    toast('❌ Erro: ' + e.message, 'err');
+  } finally { _catOcupado = false; }
 }
 
 var _excluindoReg = false;
@@ -1184,16 +1465,20 @@ async function excluirRegistro(id) {
 }
 
 // ── Recebe empresa / tema / navegação do portal ─────────────────
-function _onTrocaEmpresa(d) {
+async function _onTrocaEmpresa(d) {
   _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
   _usuarioIdCache = null;
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
+  // Categorias da empresa primeiro (parser/selects/dashboard dependem delas)
+  await _carregarCategorias();
   // Recarregar o que estiver visível com a nova empresa
   var secDash = document.getElementById('sec-dashboard');
   if (secDash && secDash.classList.contains('on')) carregarDashboard();
   var secReg = document.getElementById('sec-registrar');
   if (secReg && secReg.classList.contains('on')) carregarRegsDia();
+  var secCat = document.getElementById('sec-categorias');
+  if (secCat && secCat.classList.contains('on')) carregarTelaCategorias();
 }
 window.addEventListener('message', function (e) {
   if (!e.data || !e.data.type) return;
