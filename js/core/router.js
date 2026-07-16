@@ -179,6 +179,16 @@
       ]
     },
     {
+      id: 'recursos-produtividade',
+      label: 'Recursos & Produtividade',
+      icon: '📈',
+      tipo: 'iframe',
+      src: 'pages/recursos-produtividade.html',
+      nav: [
+        { label: 'Visão Geral', icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
+      ]
+    },
+    {
       id: 'financeiro',
       label: 'Financeiro',
       icon: '💰',
