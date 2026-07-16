@@ -75,6 +75,12 @@
       ver:    ['dono', 'admin', 'gestor', 'rh'],
       editar: ['dono', 'admin', 'rh']
     },
+    'recursos-produtividade': {
+      // Etapa 1 = só Visão Geral AGREGADA (mostra toda a equipe) —
+      // restrita a gestão. Quando houver visão por colaborador (Etapa 2),
+      // o módulo entra no vocabulário de permissões individuais.
+      ver: ['dono', 'admin', 'gestor']
+    },
     cofre: {
       acesso: ['dono', 'admin']
     },
@@ -86,7 +92,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Helpers internos ─────────────────────────────────────
 
@@ -159,7 +165,7 @@
   // ID do Router → chave de módulo no JSON.
   // Sem entrada aqui = sem correspondente no JSON → fallback por perfil
   // (reuniao-radar, dashboard-estrategico, cofre, configuracoes,
-  // gestao-tempo — sem chave individual nesta etapa).
+  // gestao-tempo e recursos-produtividade — sem chave individual nesta etapa).
   var MAPA_MODULO_JSON = {
     'comercial':                'comercial',
     'operacional':              'operacional',

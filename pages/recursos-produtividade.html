@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recursos & Produtividade</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-tit{font-size:1.15rem;font-weight:800;color:var(--emp-cor);display:flex;align-items:center;gap:.45rem}
+.hdr-sub{font-size:.74rem;color:var(--text3);margin-top:.15rem}
+.hdr-emp{font-size:.72rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.8rem}
+.sec-tit{font-size:.92rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sec-desc{font-size:.74rem;color:var(--text3);margin-bottom:.7rem;line-height:1.45}
+.vazio{text-align:center;padding:1.6rem 1rem;color:var(--text3);font-size:.8rem}
+
+/* Barra de período (mesmo padrão da Gestão do Tempo) */
+.per-bar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem}
+.per-tabs{display:flex;gap:.25rem;flex-wrap:wrap}
+.per-tabs button{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:.3rem .7rem;font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer}
+.per-tabs button.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.per-nav{display:flex;align-items:center;gap:.4rem;margin-left:auto}
+.per-nav button{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r2);width:30px;height:30px;font-size:.85rem;cursor:pointer}
+.per-nav button:hover{border-color:var(--emp-cor)}
+#perLabel{font-size:.8rem;font-weight:700;color:var(--text);min-width:150px;text-align:center}
+
+/* KPI cards */
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin-bottom:.8rem}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.8rem .95rem}
+.kpi .k-lab{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-val{font-size:1.45rem;font-weight:800;margin:.2rem 0 .1rem}
+.kpi .k-sub{font-size:.68rem;color:var(--text3)}
+
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:.8rem}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* Ocupação por colaborador */
+.oc-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem}
+.oc-nome{flex:0 0 32%;max-width:190px;font-size:.76rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oc-track{flex:1;background:var(--bg3);border-radius:5px;height:15px;overflow:hidden;position:relative}
+.oc-fill{height:100%;border-radius:5px;min-width:2px}
+.oc-pct{flex:0 0 92px;text-align:right;font-size:.74rem;font-weight:700;white-space:nowrap}
+
+/* Donut */
+.donut-box{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.donut-leg{flex:1;min-width:150px}
+.dl-item{display:flex;align-items:center;gap:.45rem;font-size:.74rem;color:var(--text2);margin-bottom:.3rem}
+.dl-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.dl-val{margin-left:auto;font-weight:700;color:var(--text);white-space:nowrap}
+
+/* Tabela previsto × realizado */
+table.pxr{width:100%;border-collapse:collapse;font-size:.78rem}
+table.pxr th{text-align:left;padding:.45rem .5rem;color:var(--text3);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+table.pxr td{padding:.42rem .5rem;border-bottom:1px solid var(--border)}
+table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
+
+/* Heatmap */
+.hm-grid{display:grid;gap:3px;font-size:.7rem}
+.hm-nome{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:.4rem;line-height:22px}
+.hm-cel{height:22px;border-radius:4px;background:var(--bg3);text-align:center;line-height:22px;color:var(--text3);font-size:.64rem}
+.hm-hdr{color:var(--text3);text-align:center;font-weight:700;font-size:.62rem;text-transform:uppercase}
+
+.bloqueio{max-width:520px;margin:14vh auto;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:2rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <div class="hdr-tit">📈 Recursos &amp; Produtividade</div>
+      <div class="hdr-sub">Visão Geral — horas, ocupação e previsto × realizado (apontamentos aprovados)</div>
+    </div>
+    <span class="hdr-emp" id="empLabel">—</span>
+  </div>
+
+  <div id="telaBloqueio" class="bloqueio" style="display:none">
+    <div style="font-size:2rem">🔒</div>
+    <div style="font-weight:800;margin:.5rem 0 .3rem">Acesso restrito</div>
+    <div style="font-size:.8rem;color:var(--text3);line-height:1.5">Esta tela mostra dados agregados de toda a equipe e está disponível apenas para os perfis dono, admin e gestor.</div>
+  </div>
+
+  <div id="telaGeral" style="display:none">
+    <!-- Barra de período -->
+    <div class="per-bar card" style="padding:.6rem .8rem">
+      <div class="per-tabs" id="perTabs">
+        <button id="vt-dia" onclick="rpSetVisao('dia')">Dia</button>
+        <button id="vt-semana" class="on" onclick="rpSetVisao('semana')">Semana</button>
+        <button id="vt-quinzena" onclick="rpSetVisao('quinzena')">Quinzena</button>
+        <button id="vt-mes" onclick="rpSetVisao('mes')">Mês</button>
+        <button id="vt-trimestre" onclick="rpSetVisao('trimestre')">Trimestre</button>
+        <button id="vt-semestre" onclick="rpSetVisao('semestre')">Semestre</button>
+        <button id="vt-ano" onclick="rpSetVisao('ano')">Ano</button>
+      </div>
+      <div class="per-nav">
+        <button onclick="rpNavegar(-1)" title="Período anterior">←</button>
+        <span id="perLabel">—</span>
+        <button onclick="rpNavegar(1)" title="Próximo período">→</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-g" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="sec-tit">👷 Ocupação por Colaborador</div>
+        <div class="sec-desc">Horas aprovadas ÷ jornada padrão do período (44h/semana). <span style="color:var(--red)">Vermelho</span> = sobrecarga (&gt;100%) · <span style="color:var(--amber)">âmbar</span> = ociosidade (&lt;50%).</div>
+        <div id="ocupacao"><div class="vazio">Carregando…</div></div>
+      </div>
+      <div class="card">
+        <div class="sec-tit">🏢 Distribuição por Cliente</div>
+        <div class="sec-desc">Horas do período agrupadas pelo cliente da proposta.</div>
+        <div id="donutCli" class="donut-box"><div class="vazio">Carregando…</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-tit">📐 Previsto × Realizado — maiores desvios</div>
+      <div class="sec-desc">Horas previstas do orçamento (téc × dias × h/dia dos itens de serviço) contra o realizado ACUMULADO da proposta. O período define quais propostas entram (as com apontamento no intervalo).</div>
+      <div id="tabelaPxr"><div class="vazio">Carregando…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-tit">🗓️ Semana atual — mapa de calor</div>
+      <div class="sec-desc">Horas aprovadas por colaborador e dia da semana corrente (independente do filtro acima).</div>
+      <div id="heatmap"><div class="vazio">Carregando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   Recursos & Produtividade — Etapa 1 (Visão Geral)
+   Somente leitura. Fontes: apontamentos (aprovados), propostas
+   (cliente + dados_json.bi p/ horas previstas), colaborador_empresas.
+   Agregação 100% client-side: volume típico é de poucos milhares de
+   apontamentos/ano (slim, 5 colunas). Se um dia passar de dezenas de
+   milhares por período, migrar para uma RPC agregada no banco.
+   ============================================================ */
+
+var JORNADA_SEMANAL = 44;                 // h/semana (configurável em etapa futura)
+var HORAS_DIA_UTIL  = JORNADA_SEMANAL / 5; // 8,8h por dia útil (seg–sex)
+var PERFIS_PERMITIDOS = ['dono', 'admin', 'gestor'];
+
+var _empresaAtiva = null;
+var _visao = 'semana';
+var _dataRef = (function () { var d = new Date(); return _isoDe(d); })();
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function _sb() { try { return (window.parent && window.parent.sbClient) ? window.parent.sbClient : (window.sbClient || null); } catch (e) { return window.sbClient || null; } }
+function fmtH(h) { var n = Number(h) || 0; return (Math.round(n * 10) / 10).toLocaleString('pt-BR') + 'h'; }
+function fmtMoeda(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function fmtPct(p) { return (Math.round(p) || 0) + '%'; }
+
+/* ── Períodos (mesmo modelo da Gestão do Tempo) ─────────────── */
+function _isoDe(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _deIso(iso) { var p = String(iso).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+
+// Intervalo [inicio, fim] (ISO). Semana = segunda a domingo; quinzena = 1-15 /
+// 16-fim; trimestre/semestre civis.
+function calcPeriodo(iso, visao) {
+  var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
+  if (visao === 'semana') {
+    var dow = (d.getDay() + 6) % 7;
+    var ini = new Date(d); ini.setDate(d.getDate() - dow);
+    var fim = new Date(ini); fim.setDate(ini.getDate() + 6);
+    return { inicio: _isoDe(ini), fim: _isoDe(fim) };
+  }
+  if (visao === 'quinzena') {
+    if (d.getDate() <= 15) return { inicio: _isoDe(new Date(y, m, 1)), fim: _isoDe(new Date(y, m, 15)) };
+    return { inicio: _isoDe(new Date(y, m, 16)), fim: _isoDe(new Date(y, m + 1, 0)) };
+  }
+  if (visao === 'mes') return { inicio: _isoDe(new Date(y, m, 1)), fim: _isoDe(new Date(y, m + 1, 0)) };
+  if (visao === 'trimestre') { var qm = Math.floor(m / 3) * 3; return { inicio: _isoDe(new Date(y, qm, 1)), fim: _isoDe(new Date(y, qm + 3, 0)) }; }
+  if (visao === 'semestre') { var sm = m < 6 ? 0 : 6; return { inicio: _isoDe(new Date(y, sm, 1)), fim: _isoDe(new Date(y, sm + 6, 0)) }; }
+  if (visao === 'ano') return { inicio: y + '-01-01', fim: y + '-12-31' };
+  return { inicio: iso, fim: iso };
+}
+function navegarData(iso, visao, dir) {
+  var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
+  if (visao === 'semana') d.setDate(d.getDate() + 7 * dir);
+  else if (visao === 'quinzena') {
+    var primeira = d.getDate() <= 15;
+    if (dir > 0) d = primeira ? new Date(y, m, 16) : new Date(y, m + 1, 1);
+    else d = primeira ? new Date(y, m - 1, 16) : new Date(y, m, 1);
+  }
+  else if (visao === 'mes') d = new Date(y, m + dir, 1);
+  else if (visao === 'trimestre') d = new Date(y, Math.floor(m / 3) * 3 + 3 * dir, 1);
+  else if (visao === 'semestre') d = new Date(y, (m < 6 ? 0 : 6) + 6 * dir, 1);
+  else if (visao === 'ano') d = new Date(y + dir, 0, 1);
+  else d.setDate(d.getDate() + dir);
+  return _isoDe(d);
+}
+function labelPeriodo(iso, visao) {
+  var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  var d = _deIso(iso);
+  var y = d.getFullYear(), m = d.getMonth();
+  if (visao === 'semana') {
+    var p = calcPeriodo(iso, 'semana');
+    var a = _deIso(p.inicio), b = _deIso(p.fim);
+    var dd = function (x) { return String(x.getDate()).padStart(2, '0') + '/' + String(x.getMonth() + 1).padStart(2, '0'); };
+    return dd(a) + ' – ' + dd(b) + '/' + b.getFullYear();
+  }
+  if (visao === 'quinzena') return (d.getDate() <= 15 ? '1ª' : '2ª') + ' quinzena de ' + MESES[m] + '/' + y;
+  if (visao === 'mes') return MESES[m] + ' de ' + y;
+  if (visao === 'trimestre') return (Math.floor(m / 3) + 1) + 'º trimestre de ' + y;
+  if (visao === 'semestre') return (m < 6 ? 1 : 2) + 'º semestre de ' + y;
+  if (visao === 'ano') return String(y);
+  return DIAS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
+}
+// Dias úteis (seg–sex) no intervalo ISO inclusivo.
+function diasUteisEntre(iniIso, fimIso) {
+  var d = _deIso(iniIso), fim = _deIso(fimIso), n = 0;
+  while (d <= fim) { var dw = d.getDay(); if (dw >= 1 && dw <= 5) n++; d.setDate(d.getDate() + 1); }
+  return n;
+}
+
+/* ── Agregações PURAS (testáveis) ───────────────────────────── */
+// apts = [{colaborador_id, proposta_id, data, horas_total, valor_total}]
+function rpAgregar(apts) {
+  var totalHoras = 0, totalCusto = 0, porColab = {}, porProposta = {};
+  (apts || []).forEach(function (a) {
+    if (!a) return;
+    var h = Number(a.horas_total) || 0, v = Number(a.valor_total) || 0;
+    totalHoras += h; totalCusto += v;
+    if (a.colaborador_id) porColab[a.colaborador_id] = (porColab[a.colaborador_id] || 0) + h;
+    if (a.proposta_id) porProposta[a.proposta_id] = (porProposta[a.proposta_id] || 0) + h;
+  });
+  return { totalHoras: totalHoras, totalCusto: totalCusto, porColab: porColab, porProposta: porProposta };
+}
+// Horas previstas do orçamento: Σ tec×dias×hpd sobre itens com horas
+// estruturadas (dias>0 e hpd>0; tec default 1). Itens de serviço lançados por
+// valor direto (sem horas) não contam — retorno 0 = "sem previsão".
+function rpHorasPrevistasBi(bi) {
+  var total = 0;
+  (Array.isArray(bi) ? bi : []).forEach(function (it) {
+    if (!it) return;
+    var dias = Number(it.dias) || 0, hpd = Number(it.hpd) || 0, tec = Number(it.tec) || 1;
+    if (dias > 0 && hpd > 0) total += tec * dias * hpd;
+  });
+  return total;
+}
+// Ocupação %: horas ÷ capacidade do período (dias úteis × 8,8h). Capacidade 0 → 0.
+function rpOcupacao(horas, horasCapacidade) {
+  if (!horasCapacidade || horasCapacidade <= 0) return 0;
+  return (Number(horas) || 0) / horasCapacidade * 100;
+}
+// Desvio %: (realizado − previsto) / previsto. previsto<=0 → null (sem previsão).
+function rpDesvio(previsto, realizado) {
+  if (!previsto || previsto <= 0) return null;
+  return ((Number(realizado) || 0) - previsto) / previsto * 100;
+}
+
+/* ── Estado / carga ─────────────────────────────────────────── */
+var _cacheColabs = [];      // [{id, nome}]
+function rpSetVisao(v) {
+  _visao = v;
+  document.querySelectorAll('.per-tabs button').forEach(function (b) { b.classList.remove('on'); });
+  var btn = document.getElementById('vt-' + v); if (btn) btn.classList.add('on');
+  carregarTudo();
+}
+function rpNavegar(dir) { _dataRef = navegarData(_dataRef, _visao, dir); carregarTudo(); }
+
+function _podeVer() {
+  try {
+    var p = (window.parent && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario()
+      : (typeof window.getPerfilUsuario === 'function' ? window.getPerfilUsuario() : null);
+    return PERFIS_PERMITIDOS.indexOf(String(p || '').toLowerCase()) >= 0;
+  } catch (e) { return false; }
+}
+function _aplicarGate() {
+  var ok = _podeVer();
+  document.getElementById('telaBloqueio').style.display = ok ? 'none' : 'block';
+  document.getElementById('telaGeral').style.display = ok ? 'block' : 'none';
+  return ok;
+}
+
+async function carregarTudo() {
+  var sb = _sb();
+  if (!_aplicarGate()) return;
+  var per = calcPeriodo(_dataRef, _visao);
+  document.getElementById('perLabel').textContent = labelPeriodo(_dataRef, _visao);
+  if (!sb || !_empresaAtiva || !_empresaAtiva.id) return;
+  var eid = _empresaAtiva.id;
+
+  try {
+    // 1. Apontamentos aprovados do período (slim)
+    var rApt = await sb.from('apontamentos')
+      .select('colaborador_id, proposta_id, data, horas_total, valor_total')
+      .eq('empresa_id', eid).eq('status', 'aprovado')
+      .gte('data', per.inicio).lte('data', per.fim);
+    var apts = (rApt && rApt.data) || [];
+
+    // 2. Colaboradores ativos (vínculo da empresa; nome do vínculo tem prioridade)
+    var rVin = await sb.from('colaborador_empresas')
+      .select('colaborador_id, nome, valor_hora, categoria_id')
+      .eq('empresa_id', eid).eq('ativo', true);
+    var vinculos = (rVin && rVin.data) || [];
+    var ids = vinculos.map(function (v) { return v.colaborador_id; });
+    var nomesBase = {};
+    if (ids.length) {
+      var rCol = await sb.from('colaboradores').select('id, nome').in('id', ids);
+      ((rCol && rCol.data) || []).forEach(function (c) { if (c) nomesBase[c.id] = c.nome; });
+    }
+    _cacheColabs = vinculos.map(function (v) {
+      return { id: v.colaborador_id, nome: v.nome || nomesBase[v.colaborador_id] || '—' };
+    }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
+
+    var ag = rpAgregar(apts);
+
+    // 3. Propostas tocadas no período (cliente + bi só do caminho JSON)
+    var propIds = Object.keys(ag.porProposta);
+    var propostas = [];
+    if (propIds.length) {
+      var rProp = await sb.from('propostas')
+        .select('app_id, numero_proposta, cliente, bi:dados_json->bi')
+        .eq('empresa_id', eid).in('app_id', propIds);
+      propostas = (rProp && rProp.data) || [];
+    }
+
+    // 4. Realizado ACUMULADO das propostas tocadas (desvio é da obra, não do período)
+    var acumPorProposta = {};
+    if (propIds.length) {
+      var rAcum = await sb.from('apontamentos')
+        .select('proposta_id, horas_total')
+        .eq('empresa_id', eid).eq('status', 'aprovado')
+        .in('proposta_id', propIds);
+      ((rAcum && rAcum.data) || []).forEach(function (a) {
+        if (a && a.proposta_id) acumPorProposta[a.proposta_id] = (acumPorProposta[a.proposta_id] || 0) + (Number(a.horas_total) || 0);
+      });
+    }
+
+    // 5. Semana corrente para o heatmap (independente do filtro)
+    var hoje = _isoDe(new Date());
+    var perSem = calcPeriodo(hoje, 'semana');
+    var aptsSemana = apts;
+    if (!(per.inicio <= perSem.inicio && per.fim >= perSem.fim)) {
+      var rSem = await sb.from('apontamentos')
+        .select('colaborador_id, data, horas_total')
+        .eq('empresa_id', eid).eq('status', 'aprovado')
+        .gte('data', perSem.inicio).lte('data', perSem.fim);
+      aptsSemana = (rSem && rSem.data) || [];
+    }
+
+    renderTudo(per, apts, ag, propostas, acumPorProposta, aptsSemana, perSem);
+  } catch (e) {
+    console.error('[R&P] carga:', e);
+  }
+}
+
+/* ── Renders ────────────────────────────────────────────────── */
+function renderTudo(per, apts, ag, propostas, acumPorProposta, aptsSemana, perSem) {
+  var capPorColab = diasUteisEntre(per.inicio, per.fim) * HORAS_DIA_UTIL;
+  renderKpis(ag, capPorColab, propostas, acumPorProposta);
+  renderOcupacao(ag.porColab, capPorColab);
+  renderDonut(ag.porProposta, propostas);
+  renderTabelaPxr(propostas, acumPorProposta);
+  renderHeatmap(aptsSemana, perSem);
+}
+
+function renderKpis(ag, capPorColab, propostas, acumPorProposta) {
+  var nColabs = _cacheColabs.length;
+  var ocupMedia = rpOcupacao(ag.totalHoras, capPorColab * nColabs);
+  // Desvio global: só propostas com previsão de horas
+  var prevTot = 0, realTot = 0;
+  (propostas || []).forEach(function (p) {
+    var prev = rpHorasPrevistasBi(p.bi);
+    if (prev > 0) { prevTot += prev; realTot += (acumPorProposta[p.app_id] || 0); }
+  });
+  var desvio = rpDesvio(prevTot, realTot);
+  function kpi(lab, val, cor, sub) {
+    return '<div class="kpi"><div class="k-lab">' + lab + '</div><div class="k-val" style="color:' + cor + '">' + val + '</div><div class="k-sub">' + sub + '</div></div>';
+  }
+  document.getElementById('kpis').innerHTML =
+    kpi('⏱️ Horas Trabalhadas', fmtH(ag.totalHoras), 'var(--emp-cor)', 'apontamentos aprovados no período')
+    + kpi('📊 Ocupação Média', fmtPct(ocupMedia), ocupMedia > 100 ? 'var(--red)' : (ocupMedia < 50 ? 'var(--amber)' : 'var(--green)'), nColabs + ' colaborador' + (nColabs === 1 ? '' : 'es') + ' × ' + fmtH(capPorColab) + ' de jornada')
+    + kpi('💰 Custo Mão de Obra', fmtMoeda(ag.totalCusto), 'var(--blue)', 'valor_total dos apontamentos')
+    + kpi('📐 Desvio Previsto×Realizado', desvio === null ? '—' : (desvio > 0 ? '+' : '') + fmtPct(desvio), desvio === null ? 'var(--text3)' : (desvio > 0 ? 'var(--red)' : 'var(--green)'), desvio === null ? 'nenhuma proposta com previsão de horas' : 'acumulado das propostas do período');
+}
+
+function renderOcupacao(porColab, capPorColab) {
+  var el = document.getElementById('ocupacao');
+  if (!_cacheColabs.length) { el.innerHTML = '<div class="vazio">Nenhum colaborador ativo nesta empresa.</div>'; return; }
+  el.innerHTML = _cacheColabs.map(function (c) {
+    var h = porColab[c.id] || 0;
+    var pct = rpOcupacao(h, capPorColab);
+    var cor = pct > 100 ? 'var(--red)' : (pct < 50 ? 'var(--amber)' : 'var(--green)');
+    var w = Math.max(1, Math.min(100, pct));
+    return '<div class="oc-row">'
+      + '<div class="oc-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>'
+      + '<div class="oc-track"><div class="oc-fill" style="width:' + w.toFixed(1) + '%;background:' + cor + '"></div></div>'
+      + '<div class="oc-pct" style="color:' + cor + '">' + fmtPct(pct) + ' · ' + fmtH(h) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+var _CORES_DONUT = ['#4DB748', '#58a6ff', '#f0a500', '#bc8cff', '#f85149', '#3fb950', '#d4a017', '#79c0ff', '#ffa657', '#d2a8ff'];
+function renderDonut(porProposta, propostas) {
+  var el = document.getElementById('donutCli');
+  var cliMap = {};
+  (propostas || []).forEach(function (p) { cliMap[p.app_id] = (p.cliente || '').trim() || '—'; });
+  var porCli = {};
+  Object.keys(porProposta || {}).forEach(function (pid) {
+    var cli = cliMap[pid] || '—';
+    porCli[cli] = (porCli[cli] || 0) + porProposta[pid];
+  });
+  var itens = Object.keys(porCli).map(function (c) { return { label: c, horas: porCli[c] }; })
+    .sort(function (a, b) { return b.horas - a.horas; });
+  var total = itens.reduce(function (s, i) { return s + i.horas; }, 0);
+  if (!total) { el.innerHTML = '<div class="vazio">Sem horas no período.</div>'; return; }
+  var C = 2 * Math.PI * 45, off = 0;
+  var segs = '';
+  itens.forEach(function (it, i) {
+    var frac = it.horas / total, len = frac * C;
+    segs += '<circle cx="60" cy="60" r="45" fill="none" stroke="' + _CORES_DONUT[i % _CORES_DONUT.length] + '" stroke-width="18" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 60 60)"/>';
+    off += len;
+  });
+  var svg = '<svg width="150" height="150" viewBox="0 0 120 120" role="img" aria-label="Horas por cliente">'
+    + '<circle cx="60" cy="60" r="45" fill="none" stroke="var(--bg3)" stroke-width="18"/>' + segs
+    + '<text x="60" y="57" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800">' + fmtH(total) + '</text>'
+    + '<text x="60" y="72" text-anchor="middle" fill="var(--text3)" font-size="8">no período</text></svg>';
+  var leg = '<div class="donut-leg">' + itens.map(function (it, i) {
+    return '<div class="dl-item"><span class="dl-dot" style="background:' + _CORES_DONUT[i % _CORES_DONUT.length] + '"></span>'
+      + '<span title="' + esc(it.label) + '">' + esc(it.label.length > 24 ? it.label.slice(0, 23) + '…' : it.label) + '</span>'
+      + '<span class="dl-val">' + fmtH(it.horas) + ' · ' + Math.round(it.horas / total * 100) + '%</span></div>';
+  }).join('') + '</div>';
+  el.innerHTML = svg + leg;
+}
+
+function renderTabelaPxr(propostas, acumPorProposta) {
+  var el = document.getElementById('tabelaPxr');
+  var comPrev = [], semPrev = [];
+  (propostas || []).forEach(function (p) {
+    var prev = rpHorasPrevistasBi(p.bi);
+    var real = acumPorProposta[p.app_id] || 0;
+    var d = rpDesvio(prev, real);
+    if (d === null) semPrev.push(p);
+    else comPrev.push({ p: p, prev: prev, real: real, desvio: d });
+  });
+  comPrev.sort(function (a, b) { return Math.abs(b.desvio) - Math.abs(a.desvio); });
+  var top = comPrev.slice(0, 10);
+  if (!top.length && !semPrev.length) { el.innerHTML = '<div class="vazio">Nenhuma proposta com apontamentos no período.</div>'; return; }
+  var html = '';
+  if (top.length) {
+    html += '<table class="pxr"><thead><tr><th>Proposta</th><th>Cliente</th><th class="num">Previsto</th><th class="num">Realizado</th><th class="num">Desvio</th></tr></thead><tbody>'
+      + top.map(function (r) {
+        var cor = r.desvio > 0 ? 'var(--red)' : 'var(--green)';
+        return '<tr><td>' + esc(r.p.numero_proposta || r.p.app_id) + '</td>'
+          + '<td>' + esc(r.p.cliente || '—') + '</td>'
+          + '<td class="num">' + fmtH(r.prev) + '</td>'
+          + '<td class="num">' + fmtH(r.real) + '</td>'
+          + '<td class="num" style="color:' + cor + ';font-weight:700">' + (r.desvio > 0 ? '+' : '') + fmtPct(r.desvio) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  if (semPrev.length) {
+    html += '<div style="font-size:.7rem;color:var(--text3);margin-top:.6rem">Sem previsão de horas no orçamento: '
+      + semPrev.map(function (p) { return esc(p.numero_proposta || p.app_id); }).join(', ') + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderHeatmap(aptsSemana, perSem) {
+  var el = document.getElementById('heatmap');
+  var DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  // horas[colabId][0..6]
+  var horas = {};
+  (aptsSemana || []).forEach(function (a) {
+    if (!a || !a.colaborador_id || !a.data) return;
+    var idx = Math.round((_deIso(String(a.data).slice(0, 10)) - _deIso(perSem.inicio)) / 86400000);
+    if (idx < 0 || idx > 6) return;
+    (horas[a.colaborador_id] = horas[a.colaborador_id] || [0, 0, 0, 0, 0, 0, 0])[idx] += Number(a.horas_total) || 0;
+  });
+  if (!_cacheColabs.length) { el.innerHTML = '<div class="vazio">Nenhum colaborador ativo.</div>'; return; }
+  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(7,1fr)">';
+  grid += '<div></div>' + DIAS.map(function (d) { return '<div class="hm-hdr">' + d + '</div>'; }).join('');
+  _cacheColabs.forEach(function (c) {
+    var linha = horas[c.id] || [0, 0, 0, 0, 0, 0, 0];
+    grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
+    linha.forEach(function (h) {
+      var alpha = h <= 0 ? 0 : Math.min(1, 0.18 + (h / 10) * 0.82);   // escala ~10h = cheio
+      var bg = h <= 0 ? 'var(--bg3)' : 'rgba(77,183,72,' + alpha.toFixed(2) + ')';
+      var txt = h > 0 ? (Math.round(h * 10) / 10) + '' : '';
+      grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + '">' + txt + '</div>';
+    });
+  });
+  grid += '</div>';
+  el.innerHTML = grid;
+}
+
+/* ── Integração com o portal (mesmo protocolo da Gestão do Tempo) ── */
+async function _onTrocaEmpresa(d) {
+  _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
+  var el = document.getElementById('empLabel');
+  if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
+  carregarTudo();
+}
+window.addEventListener('message', function (e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if (e.data.type === 'SET_TEMA') document.body.classList.toggle('light', e.data.tema === 'light');
+  if (e.data.type === 'SHOW_SECTION') { /* Etapa 1: seção única (Visão Geral) */ carregarTudo(); }
+});
+
+_aplicarGate();
+try { if (window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); } catch (e) {}
+try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'RH_PEDIR_EMPRESA' }, '*'); } catch (e) {}
+</script>
+</body>
+</html>
