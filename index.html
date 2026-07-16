@@ -3304,6 +3304,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
             <option value="mei">MEI</option>
             <option value="pj">PJ</option>
           </select>
+          <button class="btn bg bsm" id="btnColabCats" style="display:none" onclick="abrirModalColabCats()">🏷️ Categorias</button>
           <button class="btn bs bsm" onclick="abrirModalColab()">+ Novo</button>
         </div>
       </div>
@@ -3961,6 +3962,13 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
         </div>
         <div class="f">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
+            <span>Categoria</span>
+            <span style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(240,165,0,.45);background:rgba(240,165,0,.1);color:var(--accent);white-space:nowrap;font-weight:500" title="A categoria é sempre por empresa (vive no vínculo colaborador × empresa)">🏢 Só esta</span>
+          </label>
+          <select id="cCategoria"><option value="">— Sem categoria —</option></select>
+        </div>
+        <div class="f">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:.4rem">
             <span id="cAdmissaoLabel">Data de admissão</span>
             <button type="button" id="scopeBtn_admissao" class="scope-btn" onclick="toggleScope('admissao')" style="font-size:.61rem;padding:.08rem .3rem;border-radius:8px;border:1px solid rgba(88,166,255,.4);background:rgba(88,166,255,.1);color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:500">🔗 Todas</button>
           </label>
@@ -3985,6 +3993,30 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
     <div class="modal-footer">
       <button class="btn bg" onclick="fecharModalColab()">Cancelar</button>
       <button class="btn bs" onclick="salvarColab()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CATEGORIAS DE COLABORADOR (CRUD, gestor+) ═══════ -->
+<div class="modal-overlay" id="modalColabCats" onclick="if(event.target===this)fecharModalColabCats()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-tit">🏷️ Categorias de Colaborador</span>
+      <button class="btn bd bsm" onclick="fecharModalColabCats()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.74rem;color:var(--text3);margin:0 0 .7rem">Renomear propaga para todos os colaboradores da categoria. Desativar tira a opção do cadastro — quem já está classificado continua exibindo o nome.</p>
+      <div style="display:flex;gap:.5rem;margin-bottom:.8rem">
+        <input type="text" id="ccatNovoNome" placeholder="Nova categoria…" style="flex:1"
+          onkeydown="if(event.key==='Enter')criarColabCategoria()">
+        <button class="btn bs bsm" onclick="criarColabCategoria()">+ Criar</button>
+      </div>
+      <div id="ccatLista" style="display:flex;flex-direction:column;gap:.4rem">
+        <div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">Carregando…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn bg" onclick="fecharModalColabCats()">Fechar</button>
     </div>
   </div>
 </div>
@@ -8711,7 +8743,7 @@ function rExecTimeline(){
 <script src="js/modules/historico.js?v=6"></script>
 <script src="js/modules/dataguard.js"></script>
 <script src="js/modules/cadastro.js?v=14"></script>
-<script src="js/modules/rh-inline.js?v=36"></script>
+<script src="js/modules/rh-inline.js?v=37"></script>
 <script src="js/shared/ajuda-conteudo.js?v=3"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){var e=document.getElementById('ajudaFluxoRH');if(!e)return;if(window.AJUDA)e.innerHTML=window.AJUDA.wrap(window.AJUDA.fluxo+window.AJUDA.faqHeader+window.AJUDA.gestor+window.AJUDA.colaborador);else if(window.AJUDA_HTML)e.innerHTML=window.AJUDA_HTML;});</script>
 <script src="js/modules/operacional-inline.js?v=5"></script>

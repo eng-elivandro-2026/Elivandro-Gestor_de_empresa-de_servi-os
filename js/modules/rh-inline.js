@@ -226,6 +226,9 @@ async function validarAcessoRHAdministrativo() {
     document.body.classList.remove('master-admin');
   }
   atualizarBotaoValoresRH();
+  // Botão do modal de categorias (gestor+; a RLS reforça no banco)
+  var _btnCats = document.getElementById('btnColabCats');
+  if (_btnCats) _btnCats.style.display = perfilRHPermitido(_rhPerfil) ? '' : 'none';
   return true;
 }
 var _docEditId = null;
@@ -381,16 +384,44 @@ function setModoApt(modo) {
   carregarKpiApt();
 }
 
+// ── Categorias de colaborador (colaboradores_categorias, migration 058) ──
+// Cache por empresa; categoria vive no VÍNCULO (colaborador_empresas.categoria_id).
+var _colabCats = [];        // [{id, nome, ativo}]
+var _colabCatsEmp = null;
+async function carregarColabCategorias(force) {
+  var empId = await getEmpresaId();
+  if (!empId) return [];
+  if (!force && _colabCatsEmp === empId && _colabCats.length) return _colabCats;
+  var { data, error } = await sb
+    .from('colaboradores_categorias')
+    .select('id, nome, ativo')
+    .eq('empresa_id', empId)
+    .order('nome');
+  if (error) { console.warn('[RH] categorias:', error.message); return _colabCats; }
+  // Filtro defensivo de shape (mesmo padrão da Gestão do Tempo)
+  _colabCats = (data || []).filter(function(c){ return c && c.id && typeof c.nome === 'string' && c.nome; });
+  _colabCatsEmp = empId;
+  return _colabCats;
+}
+function _colabCatNome(catId) {
+  if (!catId) return '';
+  var c = _colabCats.find(function(x){ return x.id === catId; });
+  return c ? c.nome : '';
+}
+
 async function carregarColabs() {
   var gen = ++_colabsGen;
   var empId = await getEmpresaId();
   if (!empId) return;
   if (gen !== _colabsGen) return;
 
+  // Categorias primeiro (resolve nomes dos badges); falha não bloqueia a lista.
+  try { await carregarColabCategorias(); } catch (e) {}
+
   // Passo 1: buscar vínculos com tipo e valor_hora específicos desta empresa
   var { data: vinculos, error: errV } = await sb
     .from('colaborador_empresas')
-    .select('colaborador_id, nome, tipo, valor_hora, email, telefone, funcao, admissao, observacoes, documento, periculoso, fim_contrato')
+    .select('colaborador_id, nome, tipo, valor_hora, email, telefone, funcao, admissao, observacoes, documento, periculoso, fim_contrato, categoria_id')
     .eq('empresa_id', empId)
     .eq('ativo', true);
 
@@ -412,7 +443,8 @@ async function carregarColabs() {
       nome: v.nome, tipo: v.tipo, valor_hora: v.valor_hora,
       email: v.email, telefone: v.telefone,
       funcao: v.funcao, admissao: v.admissao, observacoes: v.observacoes,
-      documento: v.documento, periculoso: v.periculoso, fim_contrato: v.fim_contrato
+      documento: v.documento, periculoso: v.periculoso, fim_contrato: v.fim_contrato,
+      categoria_id: v.categoria_id
     };
   });
 
@@ -441,7 +473,8 @@ async function carregarColabs() {
       observacoes:  (o.observacoes  != null) ? o.observacoes  : c.observacoes,
       documento:    (o.documento    != null) ? o.documento    : c.documento,
       periculoso:   (o.periculoso   != null) ? o.periculoso   : c.periculoso,
-      fim_contrato: (o.fim_contrato != null) ? o.fim_contrato : c.fim_contrato
+      fim_contrato: (o.fim_contrato != null) ? o.fim_contrato : c.fim_contrato,
+      categoria_id:  o.categoria_id || null   // só existe no vínculo (por empresa)
     });
   });
 
@@ -488,6 +521,7 @@ function renderColabs(lista) {
           + '<span class="bdg ' + tipoBdg + '">' + tipoTxt + '</span>'
           + (inativo ? '<span class="bdg bdg-red">Desativado</span>' : '<span class="bdg bdg-green">Ativo</span>')
           + (c.valor_hora ? '<span class="bdg bdg-gray">' + fmtValorHoraRH(c.valor_hora) + '</span>' : '')
+          + (_colabCatNome(c.categoria_id) ? '<span class="bdg bdg-blue" title="Categoria">🏷️ ' + _colabCatNome(c.categoria_id) + '</span>' : '')
           + (c.periculoso ? '<span class="bdg bdg-yellow" title="Adicional de Periculosidade">⚡ ' + (c.perc_periculosidade||30) + '%</span>' : '')
         + '</div>'
       + '</div>'
@@ -835,6 +869,7 @@ async function abrirDetalhe(id) {
     campo('E-mail', _colabAtivo.email||'—') +
     campo('Telefone', _colabAtivo.telefone||'—') +
     campo('Valor/hora', _colabAtivo.valor_hora ? fmtMoeda(_colabAtivo.valor_hora) + '/h' : '—') +
+    campo('Categoria', _colabCatNome(_colabAtivo.categoria_id) || '—') +
     campo('Função', _colabAtivo.funcao||'—') +
     campo(admissaoLabel, fmtData(_colabAtivo.admissao)) +
     (!isClt && _colabAtivo.fim_contrato ? campo('Término do contrato', fmtData(_colabAtivo.fim_contrato)) : '') +
@@ -2362,8 +2397,25 @@ async function abrirModalColab(id) {
   _colabRawGlobal = {};
   _colabRawOverride = {};
 
+  // Popular o dropdown de categorias (ativas; a atual entra mesmo se desativada,
+  // para não sumir na edição). Sempre escopo empresa — vive no vínculo.
+  try {
+    await carregarColabCategorias();
+    var _catAtualId = null;
+    if (id) { var _cPrev = _colabs.find(function(x){ return x.id === id; }); _catAtualId = _cPrev ? _cPrev.categoria_id : null; }
+    var _selCat = document.getElementById('cCategoria');
+    if (_selCat) {
+      _selCat.innerHTML = '<option value="">— Sem categoria —</option>'
+        + _colabCats
+            .filter(function(c){ return c.ativo || c.id === _catAtualId; })
+            .map(function(c){ return '<option value="' + c.id + '">' + c.nome + (c.ativo ? '' : ' (desativada)') + '</option>'; })
+            .join('');
+    }
+  } catch (e) { console.warn('[RH] dropdown categorias:', e && e.message); }
+
   if (!id) {
     ['cNome','cDoc','cEmail','cTel','cValorHora','cFuncao','cAdmissao','cFimContrato','cObs'].forEach(function(f){ document.getElementById(f).value=''; });
+    if (document.getElementById('cCategoria')) document.getElementById('cCategoria').value = '';
     document.getElementById('cTipo').value                = 'mei';
     document.getElementById('cPericuloso').value          = 'false';
     document.getElementById('cPercPericulosidade').value  = '30';
@@ -2407,6 +2459,7 @@ async function abrirModalColab(id) {
       document.getElementById('cAdmissao').value            = c.admissao||'';
       document.getElementById('cFimContrato').value         = c.fim_contrato||'';
       document.getElementById('cObs').value                 = c.observacoes||'';
+      if (document.getElementById('cCategoria')) document.getElementById('cCategoria').value = c.categoria_id || '';
       document.getElementById('cPericuloso').value          = c.periculoso ? 'true' : 'false';
       document.getElementById('cPercPericulosidade').value  = c.perc_periculosidade || 30;
       document.getElementById('cPericulosidadeBase').value  = c.periculosidade_base || 'normal';
@@ -2451,6 +2504,76 @@ function fecharModalColab() {
   document.getElementById('modalColab').classList.remove('on');
   var box = document.querySelector('#modalColab .modal-box');
   if (box) box.scrollTop = 0;
+}
+
+// ══ CATEGORIAS DE COLABORADOR — modal CRUD (gestor+) ══════════
+// Mesmo padrão da Gestão do Tempo: criar / renomear (propaga via FK) /
+// desativar (soft-delete — some do cadastro, quem já tem continua exibindo).
+var _ccatSalvando = false;
+async function abrirModalColabCats() {
+  document.getElementById('modalColabCats').classList.add('on');
+  var inp = document.getElementById('ccatNovoNome'); if (inp) inp.value = '';
+  await renderColabCats(true);
+}
+function fecharModalColabCats() {
+  document.getElementById('modalColabCats').classList.remove('on');
+  carregarColabs();   // reflete renomes/desativações nos badges sem reload
+}
+async function renderColabCats(force) {
+  var el = document.getElementById('ccatLista'); if (!el) return;
+  var cats = await carregarColabCategorias(force);
+  if (!cats.length) {
+    el.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:.8rem">Nenhuma categoria. Crie a primeira acima.</div>';
+    return;
+  }
+  el.innerHTML = cats.map(function(c){
+    return '<div style="display:flex;align-items:center;gap:.5rem' + (c.ativo ? '' : ';opacity:.55') + '">'
+      + '<input type="text" value="' + String(c.nome).replace(/"/g, '&quot;') + '"'
+      + ' onchange="renomearColabCategoria(\'' + c.id + '\', this)" style="flex:1"' + (c.ativo ? '' : ' disabled') + '>'
+      + (c.ativo
+          ? '<button class="btn bg bsm" onclick="alternarColabCategoria(\'' + c.id + '\', false)" title="Desativar: some do cadastro; quem já está classificado continua">Desativar</button>'
+          : '<button class="btn bs bsm" onclick="alternarColabCategoria(\'' + c.id + '\', true)">Reativar</button>')
+      + '</div>';
+  }).join('');
+}
+async function criarColabCategoria() {
+  if (_ccatSalvando) return;   // guarda de reentrância (duplo clique/Enter)
+  _ccatSalvando = true;
+  try {
+    var inp = document.getElementById('ccatNovoNome');
+    var nome = (inp && inp.value || '').trim();
+    if (!nome) { toast('Informe o nome da categoria.', 'err'); return; }
+    if (_colabCats.some(function(c){ return c.nome.toLowerCase() === nome.toLowerCase(); })) {
+      toast('Já existe uma categoria com esse nome.', 'err'); return;
+    }
+    var empId = await getEmpresaId();
+    var { error } = await sb.from('colaboradores_categorias').insert({ empresa_id: empId, nome: nome });
+    if (error) { toast('Erro: ' + error.message, 'err'); return; }
+    if (inp) inp.value = '';
+    toast('Categoria criada!', 'ok');
+    await renderColabCats(true);
+  } finally { _ccatSalvando = false; }
+}
+async function renomearColabCategoria(id, inp) {
+  var nome = (inp && inp.value || '').trim();
+  var atual = _colabCats.find(function(c){ return c.id === id; });
+  if (!nome) { if (inp && atual) inp.value = atual.nome; return; }
+  if (atual && atual.nome === nome) return;
+  if (_colabCats.some(function(c){ return c.id !== id && c.nome.toLowerCase() === nome.toLowerCase(); })) {
+    toast('Já existe uma categoria com esse nome.', 'err');
+    if (inp && atual) inp.value = atual.nome;
+    return;
+  }
+  var { error } = await sb.from('colaboradores_categorias').update({ nome: nome }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message, 'err'); if (inp && atual) inp.value = atual.nome; return; }
+  toast('Categoria renomeada — propaga para todos os colaboradores.', 'ok');
+  await renderColabCats(true);
+}
+async function alternarColabCategoria(id, ativo) {
+  var { error } = await sb.from('colaboradores_categorias').update({ ativo: !!ativo }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast(ativo ? 'Categoria reativada.' : 'Categoria desativada.', 'ok');
+  await renderColabCats(true);
 }
 
 async function salvarColab() {
@@ -2528,7 +2651,9 @@ async function salvarColab() {
       observacoes: usarOverride('observacoes') ? observ      : null,
       documento:   usarOverride('documento')   ? docVal      : null,
       periculoso:  usarOverride('periculoso')  ? periculo    : null,
-      fim_contrato:usarOverride('fim_contrato')? fimContrato : null
+      fim_contrato:usarOverride('fim_contrato')? fimContrato : null,
+      // Categoria é SEMPRE por empresa (não tem versão global) — grava direto.
+      categoria_id:(document.getElementById('cCategoria')||{}).value || null
     };
     var { data: existingLink } = await sb.from('colaborador_empresas')
       .select('id').eq('colaborador_id', colabId).eq('empresa_id', empId).maybeSingle();
@@ -5451,6 +5576,12 @@ async function rejeitarDespesa(id) {
   window.abrirColab = abrirModalColab;
   window.fecharModalColab = fecharModalColab;
   window.salvarColab = salvarColab;
+  window.abrirModalColabCats = abrirModalColabCats;
+  window.fecharModalColabCats = fecharModalColabCats;
+  window.criarColabCategoria = criarColabCategoria;
+  window.renomearColabCategoria = renomearColabCategoria;
+  window.alternarColabCategoria = alternarColabCategoria;
+  window.carregarColabs = carregarColabs;
   window.editarColab = editarColab;
   window.desativarColab = desativarColab;
   window.excluirColabAtivo = excluirColabAtivo;
