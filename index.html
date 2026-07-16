@@ -5527,23 +5527,28 @@ function _ceoCarregarObrasGap(){
     }).catch(function(){ depois({}); });
 }
 // PURO/testável: gaps de fechamento de uma obra FINALIZADA. Retorna null se não é finalizada
-// ou se está 100% completa; senão {aceiteEntrega,nf} (true = FALTA).
+// ou se está 100% completa; senão {inicio,aceiteEntrega,nf} (true = FALTA).
 // ACEITE/ENTREGA é UM conceito só na origem: a Gestão do Negócio tem um único campo
 // "Data de Aceite / Entrega ao Cliente" (gestao_negocio.data_exec_aceite, preenchido
 // pela assinatura do cliente). Presente se houver aceite oficial (aceiteOficial =
 // window._opExecDatasMap[id].ace) OU tl.dtAceite (manual, Comercial) OU
 // obras.data_entrega_real (modal da obra).
-function _ceoGapsFechamento(p, obra, aceiteOficial){
+// INÍCIO: inicioOficial = window._opExecDatasMap[id].ini (gestao_negocio.data_exec_inicio).
+// Regra ESTRITA (mesma do card Obras em Andamento): o campo manual do Comercial NÃO
+// supre — cobra o preenchimento retroativo na Gestão do Negócio, mesmo em obra
+// finalizada às pressas (concluída fisicamente sem registrar as datas).
+function _ceoGapsFechamento(p, obra, aceiteOficial, inicioOficial){
   if(!obra || !_ceoFinalizada(obra.status_operacional)) return null;   // 'cancelada' NÃO conta como finalizada
   var tl=(p&&p.tl)||{};
+  var semInicio=!(inicioOficial);
   var semAceiteEntrega=!(aceiteOficial || tl.dtAceite || obra.data_entrega_real);
   // Regra única "tem NF": NF oficial (financeiro_notas_fiscais, via set do app-core)
   // OU NF manual da Linha do Tempo (tl.nfs). Fallback = comportamento antigo (só tl.nfs).
   var semNF=(typeof window.temNFOficialOuManual==='function')
     ? !window.temNFOficialOuManual(p)
     : !(((tl.nfs)||[]).length>0);
-  if(!(semAceiteEntrega||semNF)) return null;
-  return { aceiteEntrega:semAceiteEntrega, nf:semNF };
+  if(!(semInicio||semAceiteEntrega||semNF)) return null;
+  return { inicio:semInicio, aceiteEntrega:semAceiteEntrega, nf:semNF };
 }
 // Renderiza a seção #ceoGaps. Respeita o filtro de ano: só propostas presentes em pc.
 function _ceoRenderGaps(pc){
@@ -5556,12 +5561,14 @@ function _ceoRenderGaps(pc){
     var p=byId[String(pid)]; if(!p) return;            // sem proposta em memória (filtro de ano) → pula
     if(!_ceoPropostaAtivaOuGanha(p)) return;           // obra órfã: proposta voltou ao comercial → pula
     var ace=(_op[String(pid)]||{}).ace||'';
-    var g=_ceoGapsFechamento(p, map[pid], ace);
+    var ini=(_op[String(pid)]||{}).ini||'';
+    var g=_ceoGapsFechamento(p, map[pid], ace, ini);
     if(g) itens.push({p:p, g:g});
   });
   itens.sort(function(a,b){ return n2(b.p.val)-n2(a.p.val); });
   // Cartão de resumo (só conta/soma o que já está na lista).
   var totalVal=itens.reduce(function(s,it){return s+n2(it.p.val);},0);
+  var cIni=itens.filter(function(it){return it.g.inicio;}).length;
   var cAE=itens.filter(function(it){return it.g.aceiteEntrega;}).length;
   var cNF =itens.filter(function(it){return it.g.nf;}).length;
   var _pillA='color:#d4a017;border-color:rgba(212,160,23,.5);background:rgba(212,160,23,.14)';
@@ -5569,6 +5576,7 @@ function _ceoRenderGaps(pc){
   var resumo='<div class="ceo-sum ceo-sum-amber">'
     +'<div class="ceo-sum-hd"><span class="ceo-sum-n">'+itens.length+' obra'+(itens.length===1?'':'s')+' · valor parado</span><span class="ceo-sum-v">'+money(totalVal)+'</span></div>'
     +'<div class="ceo-pills">'
+      +'<span class="ceo-pill" style="'+_pillA+'">'+cIni+' sem data início</span>'
       +'<span class="ceo-pill" style="'+_pillA+'">'+cAE+' sem aceite/entrega</span>'
       +'<span class="ceo-pill" style="'+_pillR+'">'+cNF+' sem NF</span>'
     +'</div></div>';
@@ -5576,8 +5584,10 @@ function _ceoRenderGaps(pc){
     +(itens.length?itens.map(function(it){
       var p=it.p, g=it.g;
       var nd=_ceoNumDesc(p);
-      // Selos-pastilha de texto (mesmo estilo das pílulas do dashboard) — 1 por gap.
+      // Selos-pastilha de texto (mesmo estilo das pílulas do dashboard) — 1 por gap,
+      // em ordem cronológica do processo: início → aceite/entrega → NF.
       var pills='';
+      if(g.inicio)        pills+='<span class="ceo-pill" style="'+_pillA+'">sem data início</span>';
       if(g.aceiteEntrega) pills+='<span class="ceo-pill" style="'+_pillA+'">sem aceite/entrega</span>';
       if(g.nf)            pills+='<span class="ceo-pill" style="'+_pillR+'">sem NF</span>';
       return '<div class="ceo-row">'
