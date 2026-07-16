@@ -339,6 +339,46 @@ function execDatasOp(p){
   var d = (key!=null && m[key]) ? m[key] : null;
   return { ini:(d&&d.ini)||'', ter:(d&&d.ter)||'', ace:(d&&d.ace)||'' };
 }
+// ── NF OFICIAL (financeiro_notas_fiscais) — set compartilhado da empresa ativa ──
+// proposta_app_id → true para NFs oficiais NÃO canceladas (mesma fonte do Resumo
+// Financeiro Oficial; vínculo p.id === proposta_app_id). Exclui PO (tipo_nf='po'),
+// que não é NF de faturamento. Carregado 1× por empresa, async; ao chegar,
+// re-renderiza via rDash() (que cobre Visão Executiva + Motor de Decisão + cards).
+window._nfOficialSet=null;
+var _nfOficialEmp=null,_nfOficialBusy=false;
+function _nfOficialGarantir(){
+  if(!window.sbClient) return;
+  var eid=_lseEid(); if(!eid) return;
+  if(_nfOficialBusy) return;
+  if(window._nfOficialSet!==null && _nfOficialEmp===eid) return;
+  _nfOficialBusy=true;
+  var fim=function(s){
+    window._nfOficialSet=s; _nfOficialEmp=eid; _nfOficialBusy=false;
+    try{ if(typeof rDash==='function') rDash(); else if(typeof carregarCeoDash==='function') carregarCeoDash(); }catch(e){}
+  };
+  window.sbClient.from('financeiro_notas_fiscais').select('proposta_app_id,status,tipo_nf').eq('empresa_id',eid)
+    .then(function(res){
+      var s={};
+      (((res&&res.data)||[])).forEach(function(nf){
+        if(!nf||!nf.proposta_app_id) return;
+        var st=String(nf.status||'').trim().toLowerCase();
+        if(st==='cancelada'||st==='cancelado') return;                       // cancelada não conta
+        if(String(nf.tipo_nf||'').trim().toLowerCase()==='po') return;       // PO não é faturamento
+        s[String(nf.proposta_app_id)]=true;
+      });
+      fim(s);
+    }).catch(function(){ fim({}); });   // erro → {}: cai no comportamento antigo (só tl.nfs)
+}
+window._nfOficialGarantir=_nfOficialGarantir;
+// REGRA ÚNICA "tem NF" (4 pontos: card Fechamento Pendente + 3 alertas/selos):
+// NF oficial (set acima) OU NF manual da Linha do Tempo (tl.nfs).
+function temNFOficialOuManual(p){
+  var tl=(p&&p.tl)||{};
+  if(((tl.nfs)||[]).length>0) return true;
+  var s=window._nfOficialSet||{};
+  return !!(s[String(p&&p.id)]||s[String(p&&p.app_id)]);
+}
+window.temNFOficialOuManual=temNFOficialOuManual;
 // Fases consideradas "fechadas" (proposta convertida em negócio = ganha/aprovada)
 // 'ganho' = status comercial de venda aprovada (substituiu o antigo 'aprovado' comercial).
 // Os demais são status OPERACIONAIS de propostas que já foram ganhas e migraram para execução
@@ -2904,6 +2944,7 @@ function rDash(rankTarget, sortBy){
       +'<div class="metric-box"><div class="metric-label">Previsão de fechamento do ano</div><div class="metric-val" style="color:var(--green)">'+projFech+'</div><div class="metric-sub">Ritmo atual anualizado</div></div>';
   }
 
+  _nfOficialGarantir();   // set de NFs oficiais p/ alertas "sem NF" (async, 1× por empresa)
   if(typeof carregarCeoDash==='function') carregarCeoDash();
   function runDecisionEngine(){
   var elAlertas=Q('deAlertas'),elDecisoes=Q('deDecisoes'),elResumo=Q('deResumoExec'),elFoco=Q('deFocoSemana'),elOpor=Q('deOportunidades');
@@ -2930,8 +2971,8 @@ function rDash(rankTarget, sortBy){
     if(fas==='em_elaboracao'){ var d=dD(p.dat2); if(d!==null&&d>15){ alertasList.push({nivel:'atencao',html:deCard('atencao','📝 Parada em elaboração — '+d+' dias',nome+' em elaboração há '+d+' dias sem enviar.','Enviar ou descartar')}); atencao++; } }
     // Em decisão travada
     if(FAS_DECISAO.indexOf(fas)>=0){ var dtRef=tl.dtEnvio||p.dat2||''; var d=dD(dtRef); if(d!==null){ if(d>60){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Decisão travada — '+d+' dias',nome+' — '+money(val)+' aguardando decisão há '+d+' dias.','Follow-up executivo urgente ou mover para Budget')}); criticos++; } else if(d>30){ alertasList.push({nivel:'atencao',html:deCard('atencao','⚠️ Decisão demorada — '+d+' dias',nome+' — '+money(val)+' aguardando há '+d+' dias.','Fazer follow-up esta semana')}); atencao++; } } }
-    // Obra sem NF
-    if(FAS_EXEC.indexOf(fas)>=0){ var dtI=execDatasOp(p).ini; var nfs=tl.nfs||[]; var d=dD(dtI); if(d!==null&&d>30&&nfs.length===0){ alertasList.push({nivel:'critico',html:deCard('critico','⚠️ Obra sem NF — '+d+' dias',nome+' — obra iniciada há '+d+' dias sem NF emitida. Risco de caixa elevado.','Emitir NF imediatamente')}); criticos++; } }
+    // Obra sem NF (oficial OU manual — regra única temNFOficialOuManual)
+    if(FAS_EXEC.indexOf(fas)>=0){ var dtI=execDatasOp(p).ini; var d=dD(dtI); if(d!==null&&d>30&&!temNFOficialOuManual(p)){ alertasList.push({nivel:'critico',html:deCard('critico','⚠️ Obra sem NF — '+d+' dias',nome+' — obra iniciada há '+d+' dias sem NF emitida. Risco de caixa elevado.','Emitir NF imediatamente')}); criticos++; } }
     // Execução atrasada
     if(fas==='atrasado'){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Execução Atrasada',nome+' — '+money(val)+' marcada como ATRASADA.','Reagendar com cliente ou acionar equipe')}); criticos++; }
   });
@@ -2994,7 +3035,6 @@ function _propAlerts(p){
   var fas=p.fas||'',tl=p.tl||{},tags='';
   var dtC=p.dat2||'',dtV=tl.dtVisita||'',dtE=tl.dtEnvio||'',dtF=p.dtFech||'';
   var _opd=execDatasOp(p); var dtI=_opd.ini,dtT=_opd.ter,dtA=_opd.ace;
-  var nfs=tl.nfs||[];
 
   var FAS_DEC=['enviada','cliente_analisando','follow1','follow2','follow3','follow4'];
   var FAS_EXEC=['andamento','faturado','taf','sat','atrasado','em_pausa_falta_material','em_pausa_aguardando_cliente','em_pausa_aguardando_terceiro'];
@@ -3016,7 +3056,7 @@ function _propAlerts(p){
     if(dExG!==null) tags+=badge('var(--text3)',dExG+'d execução');
     var dtRefG=dtA||dtT;
     if(dtRefG) tags+=sem(dD(dtRefG),3,7,'→ NF');
-    else if(dExG!==null&&dExG>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+dExG+'d');
+    else if(dExG!==null&&dExG>30&&!temNFOficialOuManual(p)) tags+=badge('#f85149','🔴 sem NF '+dExG+'d');
   }
   // Duração da Execução (cinza) + alertas
   if(FAS_EXEC.indexOf(fas)>=0){
@@ -3024,7 +3064,7 @@ function _propAlerts(p){
     if(dExec!==null) tags+=badge('var(--text3)',dExec+'d execução');
     var dtRef=dtA||dtT;
     if(dtRef) tags+=sem(dD(dtRef),3,7,'→ NF');
-    else if(dExec!==null&&dExec>30&&nfs.length===0) tags+=badge('#f85149','🔴 sem NF '+dExec+'d');
+    else if(dExec!==null&&dExec>30&&!temNFOficialOuManual(p)) tags+=badge('#f85149','🔴 sem NF '+dExec+'d');
     if(fas==='atrasado') tags+=badge('#f85149','🔴 ATRASADA');
   }
   // Ciclo Comercial (propostas finalizadas)
@@ -3059,6 +3099,7 @@ function _propTextoBusca(p){
   return partes.filter(Boolean).join('  ');
 }
 function rProps(){
+  _nfOficialGarantir();   // selos "sem NF" dos cards usam o set oficial (guard barato)
   var q=_propBuscaNorm(Q('srch').value||'');
   var list=propsComercial();
   if(q)list=list.filter(function(p){return _propBuscaNorm(_propTextoBusca(p)).indexOf(q)>=0});

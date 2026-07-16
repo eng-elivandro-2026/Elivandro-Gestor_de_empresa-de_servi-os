@@ -5503,7 +5503,11 @@ function _ceoGapsFechamento(p, obra, aceiteOficial){
   var tl=(p&&p.tl)||{};
   var semAceite=!(aceiteOficial || tl.dtAceite);
   var semEntrega=!(obra.data_entrega_real);
-  var semNF=!(((tl.nfs)||[]).length>0);
+  // Regra única "tem NF": NF oficial (financeiro_notas_fiscais, via set do app-core)
+  // OU NF manual da Linha do Tempo (tl.nfs). Fallback = comportamento antigo (só tl.nfs).
+  var semNF=(typeof window.temNFOficialOuManual==='function')
+    ? !window.temNFOficialOuManual(p)
+    : !(((tl.nfs)||[]).length>0);
   if(!(semAceite||semEntrega||semNF)) return null;
   return { aceite:semAceite, entrega:semEntrega, nf:semNF };
 }
@@ -5637,6 +5641,8 @@ function carregarCeoDash(){
   // Fechamento pendente: carrega (1× por empresa, async) o mapa de obras (status+entrega) e
   // as datas de aceite; re-renderiza quando chega. Guard evita refetch/loop.
   if(_ceoObraGapMap===null || _ceoObraGapEmp!==_eidNow){ _ceoObraGapMap=_ceoObraGapMap||{}; _ceoObraGapEmp=_eidNow; _ceoCarregarObrasGap(); }
+  // NFs oficiais p/ o selo "sem NF" do Fechamento Pendente (guard interno: 1× por empresa).
+  if(typeof window._nfOficialGarantir==='function') window._nfOficialGarantir();
 
   // REGRA Visão Executiva: execução ATIVA = ganho + operacionais ativos (sem finalizado,
   // faturado, recebido). Os KPIs "Em Execução"/"Pipeline Ativo"/"Ticket Médio Exec." e a
@@ -8693,7 +8699,7 @@ function rExecTimeline(){
 <script src="js/config/supabase-obra-mobilizacao.js"></script>
 <script src="js/config/schema-proposta.js"></script>
 <script src="js/core/proposta-stages.js"></script>
-<script src="js/core/app-core.js?v=26"></script>
+<script src="js/core/app-core.js?v=27"></script>
 <script src="js/services/decision-engine/index.js?v=1"></script>
 <script src="js/core/permissoes.js?v=10"></script>
 <script src="js/modules/multi-empresa.js"></script>
