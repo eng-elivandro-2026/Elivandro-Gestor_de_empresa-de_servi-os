@@ -100,9 +100,16 @@
     if (state === 'ok') setTimeout(function() { el.style.display = 'none'; }, 3000);
   }
 
-  window.sbSalvarProposta = async function (p, _tentativa) {
+  // Expõe o builder da linha para captura antecipada (push adiado do autosave):
+  // a linha é montada NO AGENDAMENTO, com o empresa_id vigente — uma troca de
+  // empresa entre o agendamento e o disparo não contamina o upsert.
+  window.sbPropostaRow = function (p) { return propToRow(p); };
+
+  // _rowPronta (opcional): linha pré-capturada via sbPropostaRow. Os retries
+  // reusam a mesma linha — imune a trocas de empresa no meio do backoff.
+  window.sbSalvarProposta = async function (p, _tentativa, _rowPronta) {
     if (!window.sbClient || !p) return;
-    var row = propToRow(p);
+    var row = _rowPronta || propToRow(p);
     if (!row) return;
     _setCloudBadge('syncing');
     var res = await window.sbClient
@@ -114,7 +121,7 @@
       if (tentativa < 3) {
         var delay = tentativa * 2000;
         console.warn('[supabase-sync] Retry ' + tentativa + ' em ' + delay + 'ms…');
-        setTimeout(function() { window.sbSalvarProposta(p, tentativa + 1); }, delay);
+        setTimeout(function() { window.sbSalvarProposta(p, tentativa + 1, row); }, delay);
       } else {
         _setCloudBadge('err');
         console.error('[supabase-sync] Falha definitiva após 3 tentativas para proposta', p.num || p.id);
