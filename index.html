@@ -5835,6 +5835,14 @@ function carregarCeoDash(){
         }
         if(isPausa) kpi+=_semPill(_dd(dtF||p.dat2),15,30,'pausa');
         if(isAtr)   kpi+=_pill('r','ATRASADA');
+        // Obra em execução SEM a data de início oficial da Gestão do Negócio
+        // (gestao_negocio.data_exec_inicio, via _opExecDatasMap — mesma fonte do
+        // aceite oficial). Regra ESTRITA e proposital: o campo manual do Comercial
+        // (tl.dtInicioExec) NÃO supre — cobra o registro na tela certa. Obra ainda
+        // em 'aprovado' não é cobrada (execução nem começou).
+        var _iniOficial=((window._opExecDatasMap||{})[String(p.id)]||{}).ini
+                     ||((window._opExecDatasMap||{})[String(p.app_id)]||{}).ini||'';
+        if(fas!=='aprovado' && !_iniOficial) kpi+=_pill('a','sem data início');
         var statusTxt='<span style="color:'+corFase+'">'+(fase.i?fase.i+' ':'')+esc(fase.n)+'</span>';
         return '<div class="ceo-row">'
           +'<div class="ceo-row-main">'
