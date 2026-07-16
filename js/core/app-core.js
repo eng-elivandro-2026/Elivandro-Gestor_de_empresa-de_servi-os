@@ -1200,6 +1200,9 @@ var _tipoPropostaBtn=null;
 // Proposta Completa: fluxo atual, inalterado.
 function novaPropostaCompleta(btn){
   fecharModalTipoProposta();
+  // Flush ANTES de zerar editId: sem isso, um autosave pendente da proposta que
+  // estava aberta se perderia no reset do formulário (buraco pré-existente).
+  try{ _cloudFlushDraft(); }catch(e){}
   editId=null;
   hideActionBar();
   resetProposalForm();
@@ -1210,6 +1213,7 @@ function novaPropostaCompleta(btn){
 // Proposta Rápida: nasce no passo Dados com o escopo padrão pré-preenchido.
 function novaPropostaRapida(btn){
   fecharModalTipoProposta();
+  try{ _cloudFlushDraft(); }catch(e){}   // idem novaPropostaCompleta
   editId=null;
   hideActionBar();
   resetProposalForm();
@@ -10987,6 +10991,7 @@ function _cloudPushImediato(p){
 }
 function _cloudPushProposta(p){
   if(!p) return;
+  _cloudTokRefresh();   // mantém o token do keepalive fresco (async, barato)
   var agora=Date.now();
   if(agora-_cloudLastPush>=_CLOUD_MIN_MS){ _cloudPushImediato(p); return; }
   _cloudPendP=p;
@@ -11016,6 +11021,52 @@ function _cloudFlushDraft(){
   }catch(e){}
   _cloudFlushPendente();
 }
+// ── Última cartada no UNLOAD (fechar aba/refresh/navegar para fora) ──────────
+// O fetch normal do supabase-js é CANCELADO pelo navegador no unload; um fetch
+// com keepalive:true sobrevive (limite ~64KB de payload). Token de acesso é
+// cacheado de forma assíncrona — no beforeunload não dá para await.
+var _cloudTok=null;
+function _cloudTokRefresh(){
+  try{
+    if(window.sbClient&&window.sbClient.auth&&window.sbClient.auth.getSession){
+      window.sbClient.auth.getSession().then(function(s){
+        var t=s&&s.data&&s.data.session&&s.data.session.access_token;
+        if(t) _cloudTok=t;
+      }).catch(function(){});
+    }
+  }catch(e){}
+}
+// Upsert idempotente (on_conflict=app_id) — pode duplicar com o push normal sem
+// efeito colateral. Payload >60KB fica só no push normal + LS (keepalive rejeita).
+function _cloudKeepalivePush(row){
+  try{
+    if(!row||typeof fetch!=='function') return;
+    if(!window.SB_URL||!window.SB_KEY||!_cloudTok) return;
+    var body=JSON.stringify([row]);
+    if(body.length>60000) return;
+    fetch(window.SB_URL+'/rest/v1/propostas?on_conflict=app_id',{
+      method:'POST', keepalive:true,
+      headers:{ 'apikey':window.SB_KEY, 'Authorization':'Bearer '+_cloudTok,
+                'Content-Type':'application/json',
+                'Prefer':'resolution=merge-duplicates,return=minimal' },
+      body:body
+    }).catch(function(){});
+  }catch(e){}
+}
+// Flush de unload: o flush normal (pode ser abortado pelo navegador) + o envio
+// keepalive da linha mais fresca da proposta em edição (ou da pendência).
+function _cloudFlushUnload(){
+  var pendRow=_cloudPendRow;
+  _cloudFlushDraft();
+  var row=null;
+  try{
+    if(editId&&typeof window.sbPropostaRow==='function'){
+      var p=props.find(function(x){return x.id===editId;});
+      if(p) row=window.sbPropostaRow(p);
+    }
+  }catch(e){}
+  _cloudKeepalivePush(row||pendRow);
+}
 
 // ── Dirty-check do rascunho ──────────────────────────────────────────────────
 // Serialização canônica do snapshot com tsSaved neutralizado (o snapshot carimba
@@ -11041,15 +11092,19 @@ function upsertCurrentDraft(silent){
   if(!silent) toast('✔ Rascunho atualizado!','ok');
 }
 var autoDraftTimer=null;
-// Flush ao sair do contexto: troca de módulo (router), janela sem foco, aba oculta
-// ou fechando. Com dirty-check + pendência vazia, todos são no-ops baratos.
+// Flush ao sair do contexto. In-app (router/blur): flush normal. Classe UNLOAD
+// (beforeunload/pagehide/aba oculta): flush + keepalive — o fetch normal pode ser
+// cancelado pelo navegador ao fechar a aba. Com dirty-check + pendência vazia,
+// todos são no-ops baratos.
 if(typeof window!=='undefined'&&window.addEventListener){
-  window.addEventListener('router:change', function(){ try{ _cloudFlushDraft(); }catch(e){} });
-  window.addEventListener('blur',          function(){ try{ _cloudFlushDraft(); }catch(e){} });
-  window.addEventListener('pagehide',      function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  window.addEventListener('router:change',  function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  window.addEventListener('blur',           function(){ try{ _cloudFlushDraft(); }catch(e){} });
+  window.addEventListener('beforeunload',   function(){ try{ _cloudFlushUnload(); }catch(e){} });
+  window.addEventListener('pagehide',       function(){ try{ _cloudFlushUnload(); }catch(e){} });
   document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState==='hidden'){ try{ _cloudFlushDraft(); }catch(e){} }
+    if(document.visibilityState==='hidden'){ try{ _cloudFlushUnload(); }catch(e){} }
   });
+  _cloudTokRefresh();   // primeira carga do token (sessão já em memória no boot)
 }
 function scheduleDraftSave(){
   if(_vizModeState) return; // não salva enquanto em modo leitura
