@@ -79,7 +79,6 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
 .erro-msg{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;color:var(--red);margin-top:.2rem;line-height:1.4}
 .linha-txt{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;color:var(--text3);white-space:normal;word-break:break-word;line-height:1.4}
 .dur-badge{font-size:12px;font-family:Calibri,'Trebuchet MS',Candara,Corbel,sans-serif;font-weight:700;color:var(--emp-cor);white-space:nowrap}
-.chk-receita{width:16px;height:16px;cursor:pointer;accent-color:var(--emp-cor)}
 .rm-linha{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:.15rem .3rem}
 
 .resumo{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem;font-size:.72rem}
@@ -183,7 +182,7 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
   <div class="card">
     <div class="sec-tit">1. Colar bloco do dia</div>
     <div class="sec-desc">Cole abaixo o texto gerado no formato padrão (uma linha <code>DATA:</code> seguida das linhas de atividade). Só os seus próprios registros ficam visíveis — cada usuário vê e edita apenas os que ele mesmo salvou.</div>
-    <textarea id="txtColar" placeholder="DATA: 17/07/2026&#10;09:00-10:40 | PESSOAL | Pessoal | Rotina | | | N | Descrição da atividade...&#10;10:40-12:37 | PROFISSIONAL | Comercial | Propostas | Cliente | 520A.26 | S | Descrição da atividade..."></textarea>
+    <textarea id="txtColar" placeholder="DATA: 17/07/2026&#10;09:00-10:40 | PESSOAL | Pessoal | Rotina | | | Descrição da atividade...&#10;10:40-12:37 | PROFISSIONAL | Comercial | Propostas | Cliente | 520A.26 | Descrição da atividade..."></textarea>
     <div style="display:flex;gap:.6rem;margin-top:.7rem;align-items:center">
       <button class="btn btn-p" onclick="processarTexto()">⚙️ Processar</button>
       <button class="btn btn-g" onclick="document.getElementById('txtColar').value=''">Limpar</button>
@@ -192,15 +191,15 @@ table#tblPrevia input.campo-erro,table#tblPrevia select.campo-erro{border-color:
     <details style="margin-top:.7rem">
       <summary style="cursor:pointer;font-size:.74rem;color:var(--text3)">Ver formato esperado</summary>
       <div class="exemplo">DATA: DD/MM/AAAA
-HH:MM-HH:MM | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
+HH:MM-HH:MM | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | DESCRIÇÃO
 
 PERÍODO: DD/MM/AAAA-DD/MM/AAAA
-DD/MM/AAAA-DD/MM/AAAA | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | S/N | DESCRIÇÃO
+DD/MM/AAAA-DD/MM/AAAA | MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE/PROJETO | PROPOSTA/OBRA | DESCRIÇÃO
 
 MACRO: PESSOAL ou PROFISSIONAL
 CATEGORIA: <span id="ajudaCategorias">Comercial, Engenharia, Operacional, Gestão, Portal, Suporte, Administrativo, Pessoal</span>
 SUBCATEGORIA, CLIENTE/PROJETO, PROPOSTA/OBRA: podem ficar em branco
-S/N: gerou receita (S) ou não (N)
+(O campo S/N "gerou receita" do formato antigo foi descontinuado — se ainda vier na linha, é simplesmente ignorado. O Valor Gerado agora é classificado automaticamente pela categoria.)
 HORÁRIO que cruza a meia-noite (ex.: 18:00-01:40) é aceito — a duração é calculada corretamente e o registro fica no dia do bloco
 PERÍODO gera 1 registro por DIA ÚTIL (seg-sex) do intervalo, 08:00-17:00 (9h) cada, editáveis na prévia. Pode misturar vários DATA:/PERÍODO: no mesmo colar — cada linha usa o último cabeçalho acima dela</div>
     </details>
@@ -223,7 +222,6 @@ PERÍODO gera 1 registro por DIA ÚTIL (seg-sex) do intervalo, 08:00-17:00 (9h) 
           <th>Subcategoria</th>
           <th>Cliente/Projeto</th>
           <th>Proposta/Obra</th>
-          <th>Receita?</th>
           <th>Descrição</th>
           <th></th>
         </tr></thead>
@@ -284,10 +282,16 @@ PERÍODO gera 1 registro por DIA ÚTIL (seg-sex) do intervalo, 08:00-17:00 (9h) 
         <div id="cardResumo"></div>
       </div>
       <div class="card">
-        <div class="sec-tit">💰 Atividades que geram receita</div>
-        <div class="sec-desc">Tempo em atividades marcadas com "S" (gerou receita).</div>
-        <div id="cardReceita"></div>
+        <div class="sec-tit">🎯 Investimento do Tempo</div>
+        <div class="sec-desc">Tempo total do período e como ele se distribui por tipo de valor.</div>
+        <div id="cardInvestimento"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-tit">💎 Valor Gerado</div>
+      <div class="sec-desc">Horas por tipo de valor, classificadas automaticamente pela categoria da atividade.</div>
+      <div id="cardValorGerado"></div>
     </div>
 
     <div class="card">
@@ -359,7 +363,6 @@ PERÍODO gera 1 registro por DIA ÚTIL (seg-sex) do intervalo, 08:00-17:00 (9h) 
       <div class="er-f"><label>Subcategoria</label><input type="text" id="erSub"></div>
       <div class="er-f"><label>Cliente/Projeto</label><input type="text" id="erCli"></div>
       <div class="er-f"><label>Proposta/Obra</label><input type="text" id="erProp"></div>
-      <div class="er-check"><input type="checkbox" id="erReceita"><label for="erReceita" style="cursor:pointer">💰 Gerou receita</label></div>
     </div>
     <div class="er-f" style="margin-top:.6rem"><label>Descrição</label><textarea id="erDesc"></textarea></div>
     <div id="erErro" style="color:var(--red);font-size:.76rem;margin:.5rem 0;min-height:1em"></div>
@@ -476,7 +479,19 @@ function normalizarCategoria(v, lista) {
   return null;
 }
 
-// Campos 2-8 (MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE | PROPOSTA | S/N |
+// Compat transitória: o formato ANTIGO tinha 8 campos com S/N ("gerou
+// receita") no 7º. Se a linha vier com 8 campos e o 7º for S, N ou vazio,
+// o S/N é descartado silenciosamente (GPT do usuário pode demorar a ser
+// atualizado). O Valor Gerado agora deriva da CATEGORIA (migration 060).
+function _normalizarPartes(partes) {
+  if (partes.length === 8) {
+    var sn = String(partes[6] || '').trim().toUpperCase();
+    if (sn === 'S' || sn === 'N' || sn === '') return partes.slice(0, 6).concat([partes[7]]);
+  }
+  return partes;
+}
+
+// Campos 2-7 (MACRO | CATEGORIA | SUBCATEGORIA | CLIENTE | PROPOSTA |
 // DESCRIÇÃO), idênticos nos modos dia e período. Empilha erros no array
 // recebido e retorna os campos normalizados.
 function _parseCamposComuns(partes, listaCategorias, erros) {
@@ -486,34 +501,27 @@ function _parseCamposComuns(partes, listaCategorias, erros) {
   var categoria = normalizarCategoria(partes[2], listaCategorias);
   if (!categoria) erros.push('Categoria inválida: "' + partes[2] + '"');
 
-  var snNorm = String(partes[6] || '').trim().toUpperCase();
-  var gerouReceita = null;
-  if (snNorm === 'S') gerouReceita = true;
-  else if (snNorm === 'N') gerouReceita = false;
-  else erros.push('Campo S/N inválido (esperado S ou N)');
-
   return {
     macro: macro || partes[1],
     categoria: categoria || partes[2],
     subcategoria: partes[3] || null,
     clienteProjeto: partes[4] || null,
     propostaObraId: partes[5] || null,
-    gerouReceita: gerouReceita === null ? false : gerouReceita,
-    descricao: partes[7] || ''
+    descricao: partes[6] || ''
   };
 }
 
-var _CAMPOS_VAZIOS = { horaInicio: '', horaFim: '', duracaoMinutos: 0, macro: '', categoria: '', subcategoria: '', clienteProjeto: '', propostaObraId: '', gerouReceita: false, descricao: '' };
+var _CAMPOS_VAZIOS = { horaInicio: '', horaFim: '', duracaoMinutos: 0, macro: '', categoria: '', subcategoria: '', clienteProjeto: '', propostaObraId: '', descricao: '' };
 
 // Uma linha de atividade (modo dia: campo 1 = HH:MM-HH:MM)
 // -> { ok, campos:{...}, erros:[...] }
 // listaCategorias opcional (default: 8 fixas) — em runtime recebe as ativas da empresa.
 function parseLinhaAtividade(linha, listaCategorias) {
   var erros = [];
-  var partes = String(linha || '').split('|').map(function (p) { return p.trim(); });
+  var partes = _normalizarPartes(String(linha || '').split('|').map(function (p) { return p.trim(); }));
 
-  if (partes.length !== 8) {
-    return { ok: false, linhaOriginal: linha, erros: ['Esperado 8 campos separados por "|" (recebido ' + partes.length + ')'],
+  if (partes.length !== 7) {
+    return { ok: false, linhaOriginal: linha, erros: ['Esperado 7 campos separados por "|" (recebido ' + partes.length + ')'],
       campos: Object.assign({}, _CAMPOS_VAZIOS) };
   }
 
@@ -546,10 +554,10 @@ function parseLinhaAtividade(linha, listaCategorias) {
 // -> { ok, erros, campos (sem horas), diasUteis:[ISO...] }
 function parseLinhaPeriodo(linha, listaCategorias) {
   var erros = [];
-  var partes = String(linha || '').split('|').map(function (p) { return p.trim(); });
+  var partes = _normalizarPartes(String(linha || '').split('|').map(function (p) { return p.trim(); }));
 
-  if (partes.length !== 8) {
-    return { ok: false, linhaOriginal: linha, erros: ['Esperado 8 campos separados por "|" (recebido ' + partes.length + ')'],
+  if (partes.length !== 7) {
+    return { ok: false, linhaOriginal: linha, erros: ['Esperado 7 campos separados por "|" (recebido ' + partes.length + ')'],
       campos: Object.assign({}, _CAMPOS_VAZIOS), diasUteis: [] };
   }
 
@@ -689,15 +697,38 @@ function aggPorCampo(rows, campo, rotuloVazio) {
     .sort(function (a, b) { return b.minutos - a.minutos; });
 }
 
-// Tempo que gerou receita + % sobre o tempo PROFISSIONAL do período.
-function aggReceita(rows) {
-  var rec = 0, prof = 0;
+// ── Valor Gerado (migration 060) ─────────────────────────────
+// Classificação automática: a categoria da atividade carrega o campo
+// valor_gerado (gestao_tempo_categorias) e toda atividade herda dele.
+// Categoria sem definição (NULL) ou não encontrada → 'Sem Valor'.
+var CORES_VALOR = { 'Receita': '#3fb950', 'Operacional': '#58a6ff', 'Melhoria': '#f0a500',
+  'Estratégico': '#bc8cff', 'Desenvolvimento': '#39c5cf', 'Pessoal': '#8b949e', 'Sem Valor': '#f85149' };
+
+// Valor Gerado de um registro: FK primeiro (renomear categoria não quebra),
+// fallback para o nome legado gravado na época (registros pré-056).
+function _valorGeradoDe(row) {
+  var c = null;
+  if (row.categoria_id) c = _categorias.find(function (x) { return x.id === row.categoria_id; });
+  if (!c && row.categoria) {
+    var alvo = String(row.categoria).trim().toLowerCase();
+    c = _categorias.find(function (x) { return x.nome.toLowerCase() === alvo; });
+  }
+  return (c && c.valor_gerado) || 'Sem Valor';
+}
+
+// Agrega minutos por tipo de valor. → [{tipo, minutos, pct}] ordenado por
+// minutos desc; pct sobre o TOTAL do período.
+function aggValorGerado(rows) {
+  var map = {}, total = 0;
   (rows || []).forEach(function (x) {
     var m = x.duracao_minutos || 0;
-    if (x.gerou_receita) rec += m;
-    if (x.macro === 'PROFISSIONAL') prof += m;
+    total += m;
+    var t = _valorGeradoDe(x);
+    map[t] = (map[t] || 0) + m;
   });
-  return { minutos: rec, pctProfissional: prof > 0 ? Math.round(rec / prof * 100) : 0 };
+  return Object.keys(map).map(function (t) {
+    return { tipo: t, minutos: map[t], pct: total > 0 ? Math.round(map[t] / total * 100) : 0 };
+  }).sort(function (a, b) { return b.minutos - a.minutos; });
 }
 
 function _isoDe(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -965,7 +996,6 @@ function _onCampoEditado(idx, campo, valor) {
   var row = _previaAtual[idx];
   if (!row) return;
   if (campo === 'data') row.data = valor; // data vive no row, não em campos
-  else if (campo === 'gerouReceita') row.campos[campo] = !!valor;
   else row.campos[campo] = valor;
   _revalidarLinha(row);
   renderPrevia();
@@ -1009,10 +1039,9 @@ function renderPrevia() {
       + '<td><input type="text" value="' + esc(c.subcategoria || '') + '" onchange="_onCampoEditado(' + idx + ',\'subcategoria\',this.value)"></td>'
       + '<td><input type="text" value="' + esc(c.clienteProjeto || '') + '" onchange="_onCampoEditado(' + idx + ',\'clienteProjeto\',this.value)"></td>'
       + '<td><input type="text" value="' + esc(c.propostaObraId || '') + '" onchange="_onCampoEditado(' + idx + ',\'propostaObraId\',this.value)"></td>'
-      + '<td style="text-align:center"><input type="checkbox" class="chk-receita"' + (c.gerouReceita ? ' checked' : '') + ' onchange="_onCampoEditado(' + idx + ',\'gerouReceita\',this.checked)"></td>'
       + '<td><textarea rows="2" onchange="_onCampoEditado(' + idx + ',\'descricao\',this.value)">' + esc(c.descricao || '') + '</textarea></td>'
       + '<td><button class="rm-linha" title="Remover linha" onclick="_removerLinha(' + idx + ')">✕</button></td>'
-      + (temErro ? '</tr><tr class="erro"><td colspan="13" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
+      + (temErro ? '</tr><tr class="erro"><td colspan="12" class="erro-msg">⚠️ ' + esc(row.erros.join(' · ')) + '</td>' : '')
       + '</tr>';
   }).join('');
 
@@ -1064,7 +1093,6 @@ async function salvarTudo() {
         subcategoria: c.subcategoria || null,
         cliente_projeto: c.clienteProjeto || null,
         proposta_obra_id: c.propostaObraId || null,
-        gerou_receita: !!c.gerouReceita,
         descricao: c.descricao || ''
       };
       // FK (migration 056): só quando as categorias da empresa carregaram
@@ -1167,7 +1195,8 @@ async function carregarDashboard() {
 
 function _renderDashboard() {
   _renderResumo();
-  _renderReceita();
+  _renderInvestimento();
+  _renderValorGerado();
   _renderDistribuicao();
   _renderDistPessoal();
   _renderClientes();
@@ -1186,12 +1215,36 @@ function _renderResumo() {
   el.innerHTML = '<div class="donut-wrap">' + svgDonut(items, fmtDuracao(m.total)) + htmlLegenda(items) + '</div>';
 }
 
-function _renderReceita() {
-  var el = document.getElementById('cardReceita');
-  var r = aggReceita(_dashRows);
+// Resumo executivo: tempo total em destaque + distribuição % por tipo.
+function _renderInvestimento() {
+  var el = document.getElementById('cardInvestimento');
+  if (!el) return;
   if (!_dashRows.length) { el.innerHTML = '<div class="vazio-sm">Nenhum registro no período.</div>'; return; }
-  el.innerHTML = '<div class="stat-big">' + fmtDuracao(r.minutos) + '</div>'
-    + '<div class="stat-sub">' + r.pctProfissional + '% do tempo profissional do período gerou receita</div>';
+  var itens = aggValorGerado(_dashRows);
+  var total = itens.reduce(function (s, i) { return s + i.minutos; }, 0);
+  var dist = itens.map(function (i) {
+    return '<span style="white-space:nowrap"><span class="leg-dot" style="background:' + (CORES_VALOR[i.tipo] || '#8b949e') + ';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.3rem"></span>'
+      + i.pct + '% ' + esc(i.tipo) + '</span>';
+  }).join('<span style="color:var(--text3);margin:0 .45rem">·</span>');
+  el.innerHTML = '<div class="stat-big">' + fmtDuracao(total) + '</div>'
+    + '<div class="stat-sub" style="line-height:2">' + dist + '</div>';
+}
+
+// Barras por tipo de valor (horas + %), cores estáveis por tipo.
+function _renderValorGerado() {
+  var el = document.getElementById('cardValorGerado');
+  if (!el) return;
+  var itens = aggValorGerado(_dashRows);
+  if (!itens.length) { el.innerHTML = '<div class="vazio-sm">Nenhum registro no período.</div>'; return; }
+  var max = itens[0].minutos;
+  el.innerHTML = itens.map(function (i) {
+    var w = max > 0 ? Math.max(2, i.minutos / max * 100) : 0;
+    return '<div class="bar-row">'
+      + '<div class="bar-label" title="' + esc(i.tipo) + '">' + esc(i.tipo) + '</div>'
+      + '<div class="bar-bg"><div class="bar-fill" style="width:' + w.toFixed(1) + '%;background:' + (CORES_VALOR[i.tipo] || '#8b949e') + '"></div></div>'
+      + '<div class="bar-val">' + fmtDuracao(i.minutos) + ' · ' + i.pct + '%</div>'
+      + '</div>';
+  }).join('');
 }
 
 function _renderDistribuicao() {
@@ -1235,7 +1288,7 @@ function _regItemHtml(x) {
   return '<div class="tl-item">'
     + '<div class="tl-hora">' + _hhmm(x.hora_inicio) + '–' + _hhmm(x.hora_fim) + '</div>'
     + '<div class="tl-body">'
-    + '<div class="tl-desc">' + esc(x.descricao || '—') + (x.gerou_receita ? ' 💰' : '') + '</div>'
+    + '<div class="tl-desc">' + esc(x.descricao || '—') + '</div>'
     + '<div class="tl-meta">'
     + '<span class="tl-cat" style="background:' + corDe(catNome, 0) + '">' + esc(catNome) + '</span>'
     + (x.cliente_projeto ? '<span>🏢 ' + esc(x.cliente_projeto) + '</span>' : '')
@@ -1359,7 +1412,6 @@ function _abrirModalReg(reg) {
   document.getElementById('erSub').value = (reg && reg.subcategoria) || '';
   document.getElementById('erCli').value = (reg && reg.cliente_projeto) || '';
   document.getElementById('erProp').value = (reg && reg.proposta_obra_id) || '';
-  document.getElementById('erReceita').checked = !!(reg && reg.gerou_receita);
   document.getElementById('erDesc').value = (reg && reg.descricao) || '';
   document.getElementById('erErro').textContent = '';
   var btn = document.getElementById('btnSalvarEdicao');
@@ -1423,7 +1475,6 @@ async function salvarEdicaoRegistro() {
       subcategoria: document.getElementById('erSub').value.trim() || null,
       cliente_projeto: document.getElementById('erCli').value.trim() || null,
       proposta_obra_id: document.getElementById('erProp').value.trim() || null,
-      gerou_receita: document.getElementById('erReceita').checked,
       descricao: document.getElementById('erDesc').value.trim()
     };
     if (_categorias.length) payload.categoria_id = _idDaCategoria(payload.categoria);
