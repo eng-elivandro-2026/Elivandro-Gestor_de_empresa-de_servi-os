@@ -7783,7 +7783,6 @@ function expWordDoc(){
     rows: idRows
   }));
 
-  children.push(para([], {after:120}));
   children.push(hr());
 
   // Cover title block (abaixo da tabela)
@@ -7807,9 +7806,12 @@ function expWordDoc(){
   // Greeting
   children.push(para([run('Prezado(a) Sr(a). ', {size:22}), run(ac||'[Contato]', {size:22, bold:true}), run(',', {size:22})], {after:80}));
   children.push(para([run('Atendendo as suas solicitações, temos o prazer de apresentar nossa ', {size:22}), run('Proposta Técnica Comercial', {size:22, bold:true}), run(' para:', {size:22})], {after:80}));
-  if(res) children.push(para([run(res, {size:22})], {indent:360, after:80}));
+  if(res) children.push(para([run(res, {size:22, bold:true})], {after:80}));
   children.push(para([run('O serviço será realizado na planta ', {size:22}), run(loc||'[local]', {size:22, bold:true}), run(', na cidade de ', {size:22}), run(csvc||'[cidade]', {size:22, bold:true}), run('.', {size:22})], {after:80}));
   children.push(para([run('Colocamo-nos à disposição para quaisquer informações adicionais.', {size:22})], {after:160}));
+  // Espaço para assinatura física/digital
+  children.push(para([], {after:0}));
+  children.push(para([], {after:0}));
   children.push(para([run('Atenciosamente,', {size:22})], {after:160}));
   children.push(para([run('Eng. Elivandro J. Nascimento', {size:22, bold:true})], {after:20}));
   children.push(para([run('Engenheiro Eletricista | CREA SP: 5071802874', {size:18, color:GRAY})], {after:20}));
@@ -8374,7 +8376,10 @@ function expWordDoc(){
       properties: {
         page: {
           size: { width:11906, height:16838 },
-          margin: { top:1418, right:1134, bottom:1700, left:1134 }
+          // top 2200: o logo do cabeçalho (708 + ~1050 de altura + 60) termina
+          // em ~1818 twips — o corpo precisa começar abaixo disso, senão a
+          // tabela do cliente encosta/sobrepõe o logo.
+          margin: { top:2200, right:1134, bottom:1700, left:1134, header:708 }
         }
       },
       headers: { default: new D.Header({
