@@ -7743,7 +7743,9 @@ function expWordDoc(){
   var borders1 = { top:border1, bottom:border1, left:border1, right:border1 };
   var cellM = { top:80, bottom:80, left:120, right:120 };
   var W = 9026; // A4 content width DXA
-  var colLbl = 1600, colVal = 2913; // 2 pairs side by side
+  // Rótulo 2300: o maior ("Cliente do Serviço:", 10pt bold) ocupa ~2000 DXA
+  // + 240 de margens da célula — com 1600 quebrava em 2 linhas.
+  var colLbl = 2300, colVal = 2213; // 2 pares lado a lado (2×(2300+2213) = 9026)
 
   function iCell(text, bold){
     return new D.TableCell({
