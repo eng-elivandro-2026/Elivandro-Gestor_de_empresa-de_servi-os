@@ -83,6 +83,40 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
 .hm-hdr{color:var(--text3);text-align:center;font-weight:700;font-size:.62rem;text-transform:uppercase}
 
 .bloqueio{max-width:520px;margin:14vh auto;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:2rem}
+
+/* Abas (Etapa 2) */
+.rp-tabs{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.9rem}
+.rp-tabs button{background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:var(--r2);padding:.45rem .85rem;font-size:.78rem;font-weight:700;font-family:inherit;cursor:pointer}
+.rp-tabs button.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.rpsec{display:none}
+.rpsec.on{display:block}
+
+/* Seletores + mini-cards dos drill-downs */
+.sel-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem}
+.sel-row label{font-size:.74rem;color:var(--text3);font-weight:700}
+.sel-row select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.8rem;font-family:inherit;min-width:240px}
+.mini-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:.8rem}
+.mini{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .75rem}
+.mini .m-lab{font-size:.62rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.mini .m-val{font-size:1.05rem;font-weight:800;margin-top:.15rem}
+.nota{font-size:.68rem;color:var(--text3);margin-top:.55rem;line-height:1.4}
+
+/* Linha do tempo (Por Colaborador) */
+.tl-dia{font-size:.72rem;font-weight:800;color:var(--emp-cor);margin:.7rem 0 .3rem;text-transform:uppercase;letter-spacing:.04em}
+.tl-item{display:flex;align-items:center;gap:.6rem;padding:.35rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.3rem;font-size:.76rem}
+.tl-item .tl-prop{font-weight:700;color:var(--text)}
+.tl-item .tl-cli{color:var(--text3)}
+.tl-item .tl-h{margin-left:auto;font-weight:700;color:var(--emp-cor);white-space:nowrap}
+
+/* Barra dupla previsto × realizado (Por Proposta) */
+.bd-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem}
+.bd-lab{flex:0 0 84px;font-size:.72rem;color:var(--text3);font-weight:700;text-align:right}
+.bd-track{flex:1;background:var(--bg3);border-radius:5px;height:18px;overflow:hidden}
+.bd-fill{height:100%;border-radius:5px;min-width:2px}
+.bd-val{flex:0 0 70px;font-size:.76rem;font-weight:700;white-space:nowrap}
+
+.clicavel{cursor:pointer}
+.clicavel:hover{filter:brightness(1.15)}
 </style>
 </head>
 <body>
@@ -120,6 +154,15 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
       </div>
     </div>
 
+    <!-- Abas (Etapa 2) -->
+    <div class="rp-tabs" id="rpTabs">
+      <button id="tab-geral" class="on" onclick="mostrarSecao('geral')">📊 Visão Geral</button>
+      <button id="tab-colab" onclick="mostrarSecao('colab')">👤 Por Colaborador</button>
+      <button id="tab-cliente" onclick="mostrarSecao('cliente')">🏢 Por Cliente</button>
+      <button id="tab-proposta" onclick="mostrarSecao('proposta')">📁 Por Proposta</button>
+    </div>
+
+    <div id="sec-geral" class="rpsec on">
     <!-- KPIs -->
     <div class="kpi-g" id="kpis"></div>
 
@@ -146,6 +189,74 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
       <div class="sec-tit">🗓️ Semana atual — mapa de calor</div>
       <div class="sec-desc">Horas aprovadas por colaborador e dia da semana corrente (independente do filtro acima).</div>
       <div id="heatmap"><div class="vazio">Carregando…</div></div>
+    </div>
+    </div><!-- /sec-geral -->
+
+    <!-- ══ Por Colaborador ══ -->
+    <div id="sec-colab" class="rpsec">
+      <div class="card">
+        <div class="sel-row"><label>Colaborador:</label><select id="selColab" onchange="_selColab=this.value;renderSecColab()"></select></div>
+        <div class="mini-g" id="colabInfo"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="sec-tit">🕑 Linha do tempo do período</div>
+          <div id="colabTimeline"><div class="vazio">Selecione um colaborador.</div></div>
+        </div>
+        <div class="card">
+          <div class="sec-tit">📁 Onde alocou tempo</div>
+          <div class="sec-desc">Horas do período por proposta (cliente entre parênteses).</div>
+          <div id="colabDist"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sec-tit">🗓️ Mapa de calor do período</div>
+        <div class="sec-desc">Semanas do período (linhas) × dias (colunas).</div>
+        <div id="colabHeatmap"></div>
+      </div>
+    </div>
+
+    <!-- ══ Por Cliente ══ -->
+    <div id="sec-cliente" class="rpsec">
+      <div class="card">
+        <div class="sel-row"><label>Cliente:</label><select id="selCliente" onchange="_selCliente=this.value;renderSecCliente()"></select></div>
+        <div class="mini-g" id="clienteInfo"></div>
+        <div class="nota">* Margem s/ M.O. = (valor vendido − custo de mão de obra apontada) ÷ valor vendido — não inclui materiais nem terceiros. Valor vendido = valor da proposta, não o recebido.</div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="sec-tit">👷 Colaboradores envolvidos</div>
+          <div id="clienteColabs"></div>
+        </div>
+        <div class="card">
+          <div class="sec-tit">📁 Propostas do cliente</div>
+          <div class="sec-desc">Tocadas no período. Realizado = acumulado da proposta.</div>
+          <div id="clienteProps"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Por Proposta ══ -->
+    <div id="sec-proposta" class="rpsec">
+      <div class="card">
+        <div class="sel-row"><label>Proposta:</label><select id="selProposta" onchange="_selProposta=this.value;renderSecProposta()"></select></div>
+        <div class="mini-g" id="propostaInfo"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="sec-tit">📐 Previsto × Realizado (horas)</div>
+          <div id="propostaPxr"></div>
+        </div>
+        <div class="card">
+          <div class="sec-tit">💰 Custo × Receita × Margem</div>
+          <div class="mini-g" id="propostaFin"></div>
+          <div class="nota">* Margem s/ M.O. = (valor vendido − custo de mão de obra apontada) ÷ valor vendido — não inclui materiais nem terceiros.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sec-tit">👥 Equipe alocada (acumulado da proposta)</div>
+        <div id="propostaEquipe"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -279,6 +390,24 @@ function rpDesvio(previsto, realizado) {
 
 /* ── Estado / carga ─────────────────────────────────────────── */
 var _cacheColabs = [];      // [{id, nome}]
+var _ds = null;             // dataset da última carga (compartilhado pelas 4 abas)
+var _selColab = '', _selCliente = '', _selProposta = '';
+function _colabNome(id) { var c = _cacheColabs.find(function (x) { return x.id === id; }); return c ? c.nome : '—'; }
+
+// Alterna a aba visível; renderiza com o dataset já carregado (sem refetch).
+function mostrarSecao(id) {
+  ['geral', 'colab', 'cliente', 'proposta'].forEach(function (s) {
+    var sec = document.getElementById('sec-' + s); if (sec) sec.classList.toggle('on', s === id);
+    var tab = document.getElementById('tab-' + s); if (tab) tab.classList.toggle('on', s === id);
+  });
+}
+// Navegação cruzada: seleciona e abre a aba correspondente.
+function rpIrPara(aba, valor) {
+  if (aba === 'colab') { _selColab = valor; renderSecColab(); }
+  if (aba === 'cliente') { _selCliente = valor; renderSecCliente(); }
+  if (aba === 'proposta') { _selProposta = valor; renderSecProposta(); }
+  mostrarSecao(aba);
+}
 function rpSetVisao(v) {
   _visao = v;
   document.querySelectorAll('.per-tabs button').forEach(function (b) { b.classList.remove('on'); });
@@ -335,25 +464,33 @@ async function carregarTudo() {
 
     var ag = rpAgregar(apts);
 
-    // 3. Propostas tocadas no período (cliente + bi só do caminho JSON)
+    // 3. Propostas tocadas no período (cliente/valor/fase + bi só do caminho JSON)
     var propIds = Object.keys(ag.porProposta);
     var propostas = [];
     if (propIds.length) {
       var rProp = await sb.from('propostas')
-        .select('app_id, numero_proposta, cliente, bi:dados_json->bi')
+        .select('app_id, numero_proposta, cliente, valor_total, fase, bi:dados_json->bi')
         .eq('empresa_id', eid).in('app_id', propIds);
       propostas = (rProp && rProp.data) || [];
     }
 
-    // 4. Realizado ACUMULADO das propostas tocadas (desvio é da obra, não do período)
+    // 4. Realizado ACUMULADO das propostas tocadas (desvio/custo são da obra, não
+    // do período) — com colaborador p/ a equipe alocada e valor p/ custo/margem.
     var acumPorProposta = {};
     if (propIds.length) {
       var rAcum = await sb.from('apontamentos')
-        .select('proposta_id, horas_total')
+        .select('proposta_id, colaborador_id, horas_total, valor_total')
         .eq('empresa_id', eid).eq('status', 'aprovado')
         .in('proposta_id', propIds);
       ((rAcum && rAcum.data) || []).forEach(function (a) {
-        if (a && a.proposta_id) acumPorProposta[a.proposta_id] = (acumPorProposta[a.proposta_id] || 0) + (Number(a.horas_total) || 0);
+        if (!a || !a.proposta_id) return;
+        var e2 = acumPorProposta[a.proposta_id] = acumPorProposta[a.proposta_id] || { horas: 0, custo: 0, porColab: {} };
+        var h = Number(a.horas_total) || 0, v = Number(a.valor_total) || 0;
+        e2.horas += h; e2.custo += v;
+        if (a.colaborador_id) {
+          var pc = e2.porColab[a.colaborador_id] = e2.porColab[a.colaborador_id] || { horas: 0, custo: 0 };
+          pc.horas += h; pc.custo += v;
+        }
       });
     }
 
@@ -369,20 +506,31 @@ async function carregarTudo() {
       aptsSemana = (rSem && rSem.data) || [];
     }
 
-    renderTudo(per, apts, ag, propostas, acumPorProposta, aptsSemana, perSem);
+    // Dataset compartilhado pelas 4 abas — trocar de aba NÃO refaz queries.
+    _ds = {
+      per: per, apts: apts, ag: ag, propostas: propostas,
+      propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
+      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem,
+      capPorColab: diasUteisEntre(per.inicio, per.fim) * HORAS_DIA_UTIL
+    };
+    renderTudo();
   } catch (e) {
     console.error('[R&P] carga:', e);
   }
 }
 
 /* ── Renders ────────────────────────────────────────────────── */
-function renderTudo(per, apts, ag, propostas, acumPorProposta, aptsSemana, perSem) {
-  var capPorColab = diasUteisEntre(per.inicio, per.fim) * HORAS_DIA_UTIL;
-  renderKpis(ag, capPorColab, propostas, acumPorProposta);
-  renderOcupacao(ag.porColab, capPorColab);
-  renderDonut(ag.porProposta, propostas);
-  renderTabelaPxr(propostas, acumPorProposta);
-  renderHeatmap(aptsSemana, perSem);
+function renderTudo() {
+  if (!_ds) return;
+  renderKpis(_ds.ag, _ds.capPorColab, _ds.propostas, _ds.acum);
+  renderOcupacao(_ds.ag.porColab, _ds.capPorColab);
+  renderDonut(_ds.ag.porProposta, _ds.propostas);
+  renderTabelaPxr(_ds.propostas, _ds.acum);
+  renderHeatmap(_ds.aptsSemana, _ds.perSem);
+  popularSeletores();
+  renderSecColab();
+  renderSecCliente();
+  renderSecProposta();
 }
 
 function renderKpis(ag, capPorColab, propostas, acumPorProposta) {
@@ -392,7 +540,7 @@ function renderKpis(ag, capPorColab, propostas, acumPorProposta) {
   var prevTot = 0, realTot = 0;
   (propostas || []).forEach(function (p) {
     var prev = rpHorasPrevistasBi(p.bi);
-    if (prev > 0) { prevTot += prev; realTot += (acumPorProposta[p.app_id] || 0); }
+    if (prev > 0) { prevTot += prev; realTot += ((acumPorProposta[p.app_id] || {}).horas || 0); }
   });
   var desvio = rpDesvio(prevTot, realTot);
   function kpi(lab, val, cor, sub) {
@@ -413,7 +561,7 @@ function renderOcupacao(porColab, capPorColab) {
     var pct = rpOcupacao(h, capPorColab);
     var cor = pct > 100 ? 'var(--red)' : (pct < 50 ? 'var(--amber)' : 'var(--green)');
     var w = Math.max(1, Math.min(100, pct));
-    return '<div class="oc-row">'
+    return '<div class="oc-row clicavel" title="Clique para detalhar" onclick="rpIrPara(\'colab\',\'' + esc(c.id) + '\')">'
       + '<div class="oc-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>'
       + '<div class="oc-track"><div class="oc-fill" style="width:' + w.toFixed(1) + '%;background:' + cor + '"></div></div>'
       + '<div class="oc-pct" style="color:' + cor + '">' + fmtPct(pct) + ' · ' + fmtH(h) + '</div>'
@@ -422,6 +570,7 @@ function renderOcupacao(porColab, capPorColab) {
 }
 
 var _CORES_DONUT = ['#4DB748', '#58a6ff', '#f0a500', '#bc8cff', '#f85149', '#3fb950', '#d4a017', '#79c0ff', '#ffa657', '#d2a8ff'];
+var _donutItens = [];
 function renderDonut(porProposta, propostas) {
   var el = document.getElementById('donutCli');
   var cliMap = {};
@@ -446,8 +595,9 @@ function renderDonut(porProposta, propostas) {
     + '<circle cx="60" cy="60" r="45" fill="none" stroke="var(--bg3)" stroke-width="18"/>' + segs
     + '<text x="60" y="57" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800">' + fmtH(total) + '</text>'
     + '<text x="60" y="72" text-anchor="middle" fill="var(--text3)" font-size="8">no período</text></svg>';
+  _donutItens = itens;   // p/ navegação cruzada (labels podem ter aspas)
   var leg = '<div class="donut-leg">' + itens.map(function (it, i) {
-    return '<div class="dl-item"><span class="dl-dot" style="background:' + _CORES_DONUT[i % _CORES_DONUT.length] + '"></span>'
+    return '<div class="dl-item clicavel" title="Clique para detalhar" onclick="rpIrPara(\'cliente\', _donutItens[' + i + '].label)"><span class="dl-dot" style="background:' + _CORES_DONUT[i % _CORES_DONUT.length] + '"></span>'
       + '<span title="' + esc(it.label) + '">' + esc(it.label.length > 24 ? it.label.slice(0, 23) + '…' : it.label) + '</span>'
       + '<span class="dl-val">' + fmtH(it.horas) + ' · ' + Math.round(it.horas / total * 100) + '%</span></div>';
   }).join('') + '</div>';
@@ -459,7 +609,7 @@ function renderTabelaPxr(propostas, acumPorProposta) {
   var comPrev = [], semPrev = [];
   (propostas || []).forEach(function (p) {
     var prev = rpHorasPrevistasBi(p.bi);
-    var real = acumPorProposta[p.app_id] || 0;
+    var real = (acumPorProposta[p.app_id] || {}).horas || 0;
     var d = rpDesvio(prev, real);
     if (d === null) semPrev.push(p);
     else comPrev.push({ p: p, prev: prev, real: real, desvio: d });
@@ -472,7 +622,7 @@ function renderTabelaPxr(propostas, acumPorProposta) {
     html += '<table class="pxr"><thead><tr><th>Proposta</th><th>Cliente</th><th class="num">Previsto</th><th class="num">Realizado</th><th class="num">Desvio</th></tr></thead><tbody>'
       + top.map(function (r) {
         var cor = r.desvio > 0 ? 'var(--red)' : 'var(--green)';
-        return '<tr><td>' + esc(r.p.numero_proposta || r.p.app_id) + '</td>'
+        return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(r.p.app_id) + '\')"><td>' + esc(r.p.numero_proposta || r.p.app_id) + '</td>'
           + '<td>' + esc(r.p.cliente || '—') + '</td>'
           + '<td class="num">' + fmtH(r.prev) + '</td>'
           + '<td class="num">' + fmtH(r.real) + '</td>'
@@ -514,18 +664,229 @@ function renderHeatmap(aptsSemana, perSem) {
   el.innerHTML = grid;
 }
 
+/* ── Drill-downs (Etapa 2) ──────────────────────────────────── */
+function popularSeletores() {
+  if (!_ds) return;
+  function opts(sel, lista, val, placeholder) {
+    var el = document.getElementById(sel); if (!el) return;
+    el.innerHTML = '<option value="">' + placeholder + '</option>'
+      + lista.map(function (o) { return '<option value="' + esc(o.v) + '"' + (o.v === val ? ' selected' : '') + '>' + esc(o.t) + '</option>'; }).join('');
+  }
+  opts('selColab', _cacheColabs.map(function (c) { return { v: c.id, t: c.nome }; }), _selColab, '— Selecione o colaborador —');
+  var clientes = {};
+  _ds.propostas.forEach(function (p) { clientes[(p.cliente || '').trim() || '—'] = true; });
+  opts('selCliente', Object.keys(clientes).sort().map(function (c) { return { v: c, t: c }; }), _selCliente, '— Selecione o cliente —');
+  opts('selProposta', _ds.propostas.slice().sort(function (a, b) { return String(a.numero_proposta).localeCompare(String(b.numero_proposta)); })
+    .map(function (p) { return { v: p.app_id, t: (p.numero_proposta || p.app_id) + ' — ' + (p.cliente || '—') }; }), _selProposta, '— Selecione a proposta —');
+}
+
+function _mini(lab, val, cor) {
+  return '<div class="mini"><div class="m-lab">' + lab + '</div><div class="m-val"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div></div>';
+}
+// Margem s/ M.O. (ver nota nas telas): (valor vendido − custo M.O.) / valor vendido.
+function rpMargemMO(valorVendido, custoMO) {
+  var v = Number(valorVendido) || 0;
+  if (v <= 0) return null;
+  return (v - (Number(custoMO) || 0)) / v * 100;
+}
+function _fmtDataBr(iso) { var d = _deIso(String(iso).slice(0, 10)); var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']; return DIAS[d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+/* 👤 Por Colaborador */
+function renderSecColab() {
+  var sel = document.getElementById('selColab');
+  if (sel) sel.value = _selColab;   // estado é a fonte de verdade (onchange atualiza o estado)
+  var info = document.getElementById('colabInfo'), tl = document.getElementById('colabTimeline'),
+      dist = document.getElementById('colabDist'), hm = document.getElementById('colabHeatmap');
+  if (!_ds || !_selColab) {
+    if (info) info.innerHTML = '';
+    if (tl) tl.innerHTML = '<div class="vazio">Selecione um colaborador.</div>';
+    if (dist) dist.innerHTML = ''; if (hm) hm.innerHTML = '';
+    return;
+  }
+  var apts = _ds.apts.filter(function (a) { return a && a.colaborador_id === _selColab; });
+  var horas = 0, custo = 0;
+  apts.forEach(function (a) { horas += Number(a.horas_total) || 0; custo += Number(a.valor_total) || 0; });
+  var pct = rpOcupacao(horas, _ds.capPorColab);
+  var corOc = pct > 100 ? 'var(--red)' : (pct < 50 ? 'var(--amber)' : 'var(--green)');
+  info.innerHTML = _mini('Colaborador', esc(_colabNome(_selColab)))
+    + _mini('Ocupação no período', fmtPct(pct), corOc)
+    + _mini('Horas', fmtH(horas), 'var(--emp-cor)')
+    + _mini('Custo M.O.', fmtMoeda(custo), 'var(--blue)')
+    + _mini('Custo/hora médio', horas > 0 ? fmtMoeda(custo / horas) + '/h' : '—');
+
+  // Linha do tempo: agrupada por dia, mais recente primeiro
+  var porDia = {};
+  apts.forEach(function (a) { var d = String(a.data).slice(0, 10); (porDia[d] = porDia[d] || []).push(a); });
+  var dias = Object.keys(porDia).sort().reverse();
+  tl.innerHTML = dias.length ? dias.map(function (d) {
+    var itens = porDia[d].map(function (a) {
+      var p = _ds.propMap[a.proposta_id] || {};
+      return '<div class="tl-item"><span class="tl-prop">' + esc(p.numero_proposta || a.proposta_id || '—') + '</span>'
+        + '<span class="tl-cli">' + esc(p.cliente || '') + '</span>'
+        + '<span class="tl-h">' + fmtH(a.horas_total) + ' · ' + fmtMoeda(a.valor_total) + '</span></div>';
+    }).join('');
+    return '<div class="tl-dia">' + _fmtDataBr(d) + '</div>' + itens;
+  }).join('') : '<div class="vazio">Sem apontamentos no período.</div>';
+
+  // Distribuição por proposta (cliente entre parênteses)
+  var porProp = {};
+  apts.forEach(function (a) { if (a.proposta_id) porProp[a.proposta_id] = (porProp[a.proposta_id] || 0) + (Number(a.horas_total) || 0); });
+  var lista = Object.keys(porProp).map(function (pid) { return { pid: pid, h: porProp[pid] }; }).sort(function (a, b) { return b.h - a.h; });
+  var maxH = lista.length ? lista[0].h : 1;
+  dist.innerHTML = lista.length ? lista.map(function (it) {
+    var p = _ds.propMap[it.pid] || {};
+    var lbl = (p.numero_proposta || it.pid) + (p.cliente ? ' (' + p.cliente + ')' : '');
+    return '<div class="oc-row clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(it.pid) + '\')">'
+      + '<div class="oc-nome" title="' + esc(lbl) + '">' + esc(lbl) + '</div>'
+      + '<div class="oc-track"><div class="oc-fill" style="width:' + Math.max(2, it.h / maxH * 100).toFixed(1) + '%;background:var(--emp-cor)"></div></div>'
+      + '<div class="oc-pct">' + fmtH(it.h) + '</div></div>';
+  }).join('') : '<div class="vazio">Sem apontamentos no período.</div>';
+
+  // Heatmap: semanas do período (linhas) × Seg–Dom
+  var DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  var iniSemana = calcPeriodo(_ds.per.inicio, 'semana').inicio;
+  var fimPer = _deIso(_ds.per.fim);
+  var porDiaH = {};
+  apts.forEach(function (a) { var d = String(a.data).slice(0, 10); porDiaH[d] = (porDiaH[d] || 0) + (Number(a.horas_total) || 0); });
+  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(80px,120px) repeat(7,1fr)">'
+    + '<div></div>' + DIAS.map(function (d) { return '<div class="hm-hdr">' + d + '</div>'; }).join('');
+  var cur = _deIso(iniSemana), semanas = 0;
+  while (cur <= fimPer && semanas < 54) {
+    var lbl = String(cur.getDate()).padStart(2, '0') + '/' + String(cur.getMonth() + 1).padStart(2, '0');
+    grid += '<div class="hm-nome">' + lbl + '</div>';
+    for (var i = 0; i < 7; i++) {
+      var dIso = _isoDe(cur);
+      var h = porDiaH[dIso] || 0;
+      var dentro = dIso >= _ds.per.inicio && dIso <= _ds.per.fim;
+      var alpha = h <= 0 ? 0 : Math.min(1, 0.18 + (h / 10) * 0.82);
+      var bg = !dentro ? 'transparent' : (h <= 0 ? 'var(--bg3)' : 'rgba(77,183,72,' + alpha.toFixed(2) + ')');
+      grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + dIso + ' — ' + fmtH(h) + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
+      cur.setDate(cur.getDate() + 1);
+    }
+    semanas++;
+  }
+  hm.innerHTML = grid + '</div>';
+}
+
+/* 🏢 Por Cliente */
+function renderSecCliente() {
+  var sel = document.getElementById('selCliente');
+  if (sel) sel.value = _selCliente;
+  var info = document.getElementById('clienteInfo'), colabs = document.getElementById('clienteColabs'), props = document.getElementById('clienteProps');
+  if (!_ds || !_selCliente) {
+    if (info) info.innerHTML = '';
+    if (colabs) colabs.innerHTML = '<div class="vazio">Selecione um cliente.</div>';
+    if (props) props.innerHTML = '';
+    return;
+  }
+  var propsCli = _ds.propostas.filter(function (p) { return ((p.cliente || '').trim() || '—') === _selCliente; });
+  var pids = {}; propsCli.forEach(function (p) { pids[p.app_id] = true; });
+  var apts = _ds.apts.filter(function (a) { return a && pids[a.proposta_id]; });
+  var horas = 0, custoPeriodo = 0, porColab = {};
+  apts.forEach(function (a) {
+    var h = Number(a.horas_total) || 0; horas += h; custoPeriodo += Number(a.valor_total) || 0;
+    if (a.colaborador_id) porColab[a.colaborador_id] = (porColab[a.colaborador_id] || 0) + h;
+  });
+  var receita = 0, custoAcum = 0;
+  propsCli.forEach(function (p) { receita += Number(p.valor_total) || 0; custoAcum += (_ds.acum[p.app_id] || {}).custo || 0; });
+  var margem = rpMargemMO(receita, custoAcum);
+  info.innerHTML = _mini('Propostas no período', propsCli.length)
+    + _mini('Horas no período', fmtH(horas), 'var(--emp-cor)')
+    + _mini('Custo M.O. (acum.)', fmtMoeda(custoAcum), 'var(--blue)')
+    + _mini('Valor vendido', fmtMoeda(receita), 'var(--accent)')
+    + _mini('Margem s/ M.O. *', margem === null ? '—' : fmtPct(margem), margem === null ? 'var(--text3)' : (margem < 0 ? 'var(--red)' : 'var(--green)'));
+
+  var lista = Object.keys(porColab).map(function (cid) { return { cid: cid, h: porColab[cid] }; }).sort(function (a, b) { return b.h - a.h; });
+  var maxH = lista.length ? lista[0].h : 1;
+  colabs.innerHTML = lista.length ? lista.map(function (it) {
+    return '<div class="oc-row clicavel" title="Clique para detalhar" onclick="rpIrPara(\'colab\',\'' + esc(it.cid) + '\')">'
+      + '<div class="oc-nome">' + esc(_colabNome(it.cid)) + '</div>'
+      + '<div class="oc-track"><div class="oc-fill" style="width:' + Math.max(2, it.h / maxH * 100).toFixed(1) + '%;background:var(--blue)"></div></div>'
+      + '<div class="oc-pct">' + fmtH(it.h) + '</div></div>';
+  }).join('') : '<div class="vazio">Sem apontamentos no período.</div>';
+
+  props.innerHTML = '<table class="pxr"><thead><tr><th>Proposta</th><th class="num">Prev.</th><th class="num">Real. (acum.)</th><th class="num">Desvio</th><th class="num">Valor</th><th class="num">Margem *</th></tr></thead><tbody>'
+    + propsCli.map(function (p) {
+      var prev = rpHorasPrevistasBi(p.bi);
+      var e2 = _ds.acum[p.app_id] || { horas: 0, custo: 0 };
+      var d = rpDesvio(prev, e2.horas);
+      var m = rpMargemMO(p.valor_total, e2.custo);
+      return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(p.app_id) + '\')">'
+        + '<td>' + esc(p.numero_proposta || p.app_id) + '</td>'
+        + '<td class="num">' + (prev > 0 ? fmtH(prev) : '—') + '</td>'
+        + '<td class="num">' + fmtH(e2.horas) + '</td>'
+        + '<td class="num" style="color:' + (d === null ? 'var(--text3)' : (d > 0 ? 'var(--red)' : 'var(--green)')) + '">' + (d === null ? '—' : (d > 0 ? '+' : '') + fmtPct(d)) + '</td>'
+        + '<td class="num">' + fmtMoeda(p.valor_total) + '</td>'
+        + '<td class="num" style="color:' + (m === null ? 'var(--text3)' : (m < 0 ? 'var(--red)' : 'var(--green)')) + '">' + (m === null ? '—' : fmtPct(m)) + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+/* 📁 Por Proposta */
+function renderSecProposta() {
+  var sel = document.getElementById('selProposta');
+  if (sel) sel.value = _selProposta;
+  var info = document.getElementById('propostaInfo'), pxr = document.getElementById('propostaPxr'),
+      fin = document.getElementById('propostaFin'), eq = document.getElementById('propostaEquipe');
+  if (!_ds || !_selProposta || !_ds.propMap[_selProposta]) {
+    if (info) info.innerHTML = '';
+    if (pxr) pxr.innerHTML = '<div class="vazio">Selecione uma proposta.</div>';
+    if (fin) fin.innerHTML = ''; if (eq) eq.innerHTML = '';
+    return;
+  }
+  var p = _ds.propMap[_selProposta];
+  var e2 = _ds.acum[_selProposta] || { horas: 0, custo: 0, porColab: {} };
+  info.innerHTML = _mini('Proposta', esc(p.numero_proposta || p.app_id))
+    + '<div class="mini clicavel" title="Clique para ver o cliente" onclick="rpIrPara(\'cliente\', ((_ds.propMap[_selProposta]||{}).cliente||\'\').trim()||\'—\')"><div class="m-lab">Cliente</div><div class="m-val">' + esc(p.cliente || '—') + '</div></div>'
+    + _mini('Valor vendido', fmtMoeda(p.valor_total), 'var(--accent)')
+    + _mini('Fase', esc(String(p.fase || '—')));
+
+  var prev = rpHorasPrevistasBi(p.bi);
+  var d = rpDesvio(prev, e2.horas);
+  if (prev > 0) {
+    var maxB = Math.max(prev, e2.horas, 1);
+    var corReal = d !== null && d > 0 ? 'var(--red)' : 'var(--green)';
+    pxr.innerHTML =
+      '<div class="bd-row"><div class="bd-lab">Previsto</div><div class="bd-track"><div class="bd-fill" style="width:' + (prev / maxB * 100).toFixed(1) + '%;background:var(--border2)"></div></div><div class="bd-val">' + fmtH(prev) + '</div></div>'
+      + '<div class="bd-row"><div class="bd-lab">Realizado</div><div class="bd-track"><div class="bd-fill" style="width:' + Math.max(1, e2.horas / maxB * 100).toFixed(1) + '%;background:' + corReal + '"></div></div><div class="bd-val">' + fmtH(e2.horas) + '</div></div>'
+      + '<div style="text-align:center;margin-top:.6rem;font-size:1.35rem;font-weight:800;color:' + corReal + '">' + (d > 0 ? '+' : '') + fmtPct(d) + '<span style="font-size:.68rem;color:var(--text3);font-weight:400"> de desvio (acumulado)</span></div>';
+  } else {
+    pxr.innerHTML = '<div class="vazio">Sem previsão de horas no orçamento desta proposta.<br><span style="font-size:.7rem">O previsto vem dos itens de serviço com téc × dias × h/dia.</span></div>';
+  }
+
+  var margem = rpMargemMO(p.valor_total, e2.custo);
+  fin.innerHTML = _mini('Custo M.O. (acum.)', fmtMoeda(e2.custo), 'var(--blue)')
+    + _mini('Valor vendido', fmtMoeda(p.valor_total), 'var(--accent)')
+    + _mini('Margem s/ M.O. *', margem === null ? '—' : fmtPct(margem), margem === null ? 'var(--text3)' : (margem < 0 ? 'var(--red)' : 'var(--green)'));
+
+  var equipe = Object.keys(e2.porColab || {}).map(function (cid) { return { cid: cid, h: e2.porColab[cid].horas, c: e2.porColab[cid].custo }; })
+    .sort(function (a, b) { return b.h - a.h; });
+  var totH = equipe.reduce(function (s, x) { return s + x.h; }, 0);
+  eq.innerHTML = equipe.length
+    ? '<table class="pxr"><thead><tr><th>Colaborador</th><th class="num">Horas</th><th class="num">Custo</th><th class="num">% do total</th></tr></thead><tbody>'
+      + equipe.map(function (x) {
+        return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'colab\',\'' + esc(x.cid) + '\')">'
+          + '<td>' + esc(_colabNome(x.cid)) + '</td>'
+          + '<td class="num">' + fmtH(x.h) + '</td>'
+          + '<td class="num">' + fmtMoeda(x.c) + '</td>'
+          + '<td class="num">' + (totH > 0 ? Math.round(x.h / totH * 100) : 0) + '%</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<div class="vazio">Sem apontamentos nesta proposta.</div>';
+}
+
 /* ── Integração com o portal (mesmo protocolo da Gestão do Tempo) ── */
 async function _onTrocaEmpresa(d) {
   _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
+  _ds = null; _selColab = ''; _selCliente = ''; _selProposta = '';   // dataset/seleções são da empresa
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
   carregarTudo();
 }
+var _MAPA_SECAO = { geral: 'geral', colaborador: 'colab', colab: 'colab', cliente: 'cliente', proposta: 'proposta' };
 window.addEventListener('message', function (e) {
   if (!e.data || !e.data.type) return;
   if (e.data.type === 'SET_EMPRESA') _onTrocaEmpresa(e.data);
   if (e.data.type === 'SET_TEMA') document.body.classList.toggle('light', e.data.tema === 'light');
-  if (e.data.type === 'SHOW_SECTION') { /* Etapa 1: seção única (Visão Geral) */ carregarTudo(); }
+  if (e.data.type === 'SHOW_SECTION') mostrarSecao(_MAPA_SECAO[e.data.payload] || 'geral');
 });
 
 _aplicarGate();

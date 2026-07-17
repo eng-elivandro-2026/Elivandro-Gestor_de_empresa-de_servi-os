@@ -185,7 +185,10 @@
       tipo: 'iframe',
       src: 'pages/recursos-produtividade.html',
       nav: [
-        { label: 'Visão Geral', icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
+        { label: 'Visão Geral',     icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
+        { label: 'Por Colaborador', icon: '👤', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','colaborador')" },
+        { label: 'Por Cliente',     icon: '🏢', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','cliente')" },
+        { label: 'Por Proposta',    icon: '📁', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','proposta')" },
       ]
     },
     {
