@@ -117,6 +117,35 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
 
 .clicavel{cursor:pointer}
 .clicavel:hover{filter:brightness(1.15)}
+
+/* Marcador de meta nas barras de ocupação (Etapa 3) */
+.oc-meta{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--blue);opacity:.75}
+
+/* Mapa de Alocação (Etapa 3) */
+.mapa-toggle{display:flex;gap:.25rem;margin-bottom:.7rem}
+.mapa-toggle button{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:.3rem .8rem;font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer}
+.mapa-toggle button.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.mapa-scroll{overflow-x:auto}
+.mapa-scroll .hm-cel{min-width:26px;cursor:pointer}
+.mapa-scroll .hm-cel:hover{outline:1px solid var(--emp-cor)}
+
+/* Modal de detalhe da célula */
+.rp-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center}
+.rp-modal.on{display:flex}
+.rp-modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);max-width:440px;width:92%;max-height:80vh;overflow:auto;padding:1rem}
+.rp-modal-tit{font-size:.88rem;font-weight:800;margin-bottom:.7rem;display:flex;justify-content:space-between;align-items:center}
+
+.btn{border:none;border-radius:var(--r2);padding:.5rem .9rem;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s}
+.btn-p{background:var(--emp-cor);color:#fff}
+.btn-p:hover{filter:brightness(1.08)}
+.btn-g{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Configurações (Etapa 3) */
+.cfg-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem;margin-bottom:.8rem}
+.cfg-f label{display:block;font-size:.72rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
+.cfg-f input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .6rem;font-size:.85rem;font-family:inherit}
+.cfg-f .cfg-hint{font-size:.66rem;color:var(--text3);margin-top:.25rem}
 </style>
 </head>
 <body>
@@ -160,6 +189,8 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
       <button id="tab-colab" onclick="mostrarSecao('colab')">👤 Por Colaborador</button>
       <button id="tab-cliente" onclick="mostrarSecao('cliente')">🏢 Por Cliente</button>
       <button id="tab-proposta" onclick="mostrarSecao('proposta')">📁 Por Proposta</button>
+      <button id="tab-mapa" onclick="mostrarSecao('mapa')">🗺️ Mapa de Alocação</button>
+      <button id="tab-config" style="display:none" onclick="mostrarSecao('config')">⚙️ Configurações</button>
     </div>
 
     <div id="sec-geral" class="rpsec on">
@@ -258,6 +289,43 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
         <div id="propostaEquipe"></div>
       </div>
     </div>
+
+    <!-- ══ Mapa de Alocação (Etapa 3) ══ -->
+    <div id="sec-mapa" class="rpsec">
+      <div class="card">
+        <div class="sec-tit">🗺️ Mapa de Alocação</div>
+        <div class="sec-desc">Horas aprovadas por colaborador × dia. Clique numa célula para ver as propostas do dia. As setas ←/→ da barra acima navegam o período.</div>
+        <div class="mapa-toggle">
+          <button id="mv-semana" class="on" onclick="rpMapaVisao('semana')">Semana</button>
+          <button id="mv-mes" onclick="rpMapaVisao('mes')">Mês</button>
+        </div>
+        <div class="mapa-scroll" id="mapaGrid"><div class="vazio">Carregando…</div></div>
+      </div>
+    </div>
+
+    <!-- ══ Configurações (Etapa 3, só dono) ══ -->
+    <div id="sec-config" class="rpsec">
+      <div class="card">
+        <div class="sec-tit">⚙️ Configurações do módulo</div>
+        <div class="sec-desc">Valem para toda a empresa e afetam os cálculos de ocupação e as cores de alerta de todas as abas. Somente o dono edita.</div>
+        <div class="cfg-g">
+          <div class="cfg-f"><label>Jornada padrão (h/semana)</label><input type="number" id="cfgJornada" min="1" max="168" step="0.5"><div class="cfg-hint">Capacidade do período = dias úteis × jornada ÷ 5. Default 44h.</div></div>
+          <div class="cfg-f"><label>Meta de ocupação-alvo (%)</label><input type="number" id="cfgMeta" min="1" max="200" step="1"><div class="cfg-hint">Marcador visual nas barras de ocupação — referência, não faixa de cor. Default 85%.</div></div>
+          <div class="cfg-f"><label>Limite de sobrecarga (%)</label><input type="number" id="cfgSobre" min="1" max="500" step="1"><div class="cfg-hint">Acima disso a ocupação fica vermelha. Default 100%.</div></div>
+          <div class="cfg-f"><label>Limite de ociosidade (%)</label><input type="number" id="cfgOcio" min="0" max="200" step="1"><div class="cfg-hint">Abaixo disso a ocupação fica âmbar. Default 50%.</div></div>
+        </div>
+        <button class="btn btn-p" id="btnSalvarConfig" onclick="salvarConfig()">💾 Salvar configurações</button>
+        <span id="cfgMsg" style="font-size:.74rem;margin-left:.6rem"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de detalhe do dia (Mapa de Alocação) -->
+<div class="rp-modal" id="mapaModal" onclick="if(event.target===this)fecharMapaModal()">
+  <div class="rp-modal-box">
+    <div class="rp-modal-tit"><span id="mapaModalTit">—</span><button class="btn btn-g" style="padding:.2rem .55rem" onclick="fecharMapaModal()">✕</button></div>
+    <div id="mapaModalBody"></div>
   </div>
 </div>
 
@@ -272,9 +340,78 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
    milhares por período, migrar para uma RPC agregada no banco.
    ============================================================ */
 
-var JORNADA_SEMANAL = 44;                 // h/semana (configurável em etapa futura)
-var HORAS_DIA_UTIL  = JORNADA_SEMANAL / 5; // 8,8h por dia útil (seg–sex)
 var PERFIS_PERMITIDOS = ['dono', 'admin', 'gestor'];
+
+// ── Configurações do módulo (Etapa 3) ────────────────────────
+// Persistidas na tabela `configuracoes` (chave 'rp_config', 1 linha por
+// empresa). Defaults preservam o comportamento das Etapas 1/2. Só o dono
+// edita (gate de UI; a RLS de configuracoes cobre gestor+ no banco).
+var _CFG_DEFAULT = { jornada_semanal: 44, meta_ocupacao: 85, limite_sobrecarga: 100, limite_ociosidade: 50 };
+var _cfg = Object.assign({}, _CFG_DEFAULT);
+function _horasDiaUtil() { return _cfg.jornada_semanal / 5; }
+// Cor da ocupação pelas faixas CONFIGURADAS (helper único das 3 telas).
+function _corOcupacao(pct) {
+  if (pct > _cfg.limite_sobrecarga) return 'var(--red)';
+  if (pct < _cfg.limite_ociosidade) return 'var(--amber)';
+  return 'var(--green)';
+}
+// Escala de cor dos heatmaps (compartilhada: semana da Visão Geral,
+// individual do colaborador e Mapa de Alocação). ~10h = intensidade cheia.
+function _hmCor(h) {
+  if (h <= 0) return 'var(--bg3)';
+  var alpha = Math.min(1, 0.18 + (h / 10) * 0.82);
+  return 'rgba(77,183,72,' + alpha.toFixed(2) + ')';
+}
+async function carregarConfig() {
+  var sb = _sb();
+  _cfg = Object.assign({}, _CFG_DEFAULT);
+  if (!sb || !_empresaAtiva || !_empresaAtiva.id) return;
+  try {
+    var r = await sb.from('configuracoes').select('valor')
+      .eq('empresa_id', _empresaAtiva.id).eq('chave', 'rp_config').maybeSingle();
+    if (r && r.data && r.data.valor) {
+      Object.keys(_CFG_DEFAULT).forEach(function (k) {
+        var v = Number(r.data.valor[k]);
+        if (isFinite(v) && v > 0) _cfg[k] = v;
+      });
+    }
+  } catch (e) { /* fallback silencioso: defaults */ }
+  preencherFormConfig();
+}
+function preencherFormConfig() {
+  var m = { cfgJornada: 'jornada_semanal', cfgMeta: 'meta_ocupacao', cfgSobre: 'limite_sobrecarga', cfgOcio: 'limite_ociosidade' };
+  Object.keys(m).forEach(function (id) { var el = document.getElementById(id); if (el) el.value = _cfg[m[id]]; });
+}
+var _cfgSalvando = false;
+async function salvarConfig() {
+  if (_cfgSalvando) return;                    // guarda de reentrância
+  _cfgSalvando = true;
+  var btn = document.getElementById('btnSalvarConfig');
+  var msg = document.getElementById('cfgMsg');
+  if (btn) btn.disabled = true;
+  try {
+    var novo = {
+      jornada_semanal:   Number((document.getElementById('cfgJornada') || {}).value),
+      meta_ocupacao:     Number((document.getElementById('cfgMeta') || {}).value),
+      limite_sobrecarga: Number((document.getElementById('cfgSobre') || {}).value),
+      limite_ociosidade: Number((document.getElementById('cfgOcio') || {}).value)
+    };
+    if (!(novo.jornada_semanal >= 1 && novo.jornada_semanal <= 168)) { _cfgErro('Jornada deve estar entre 1 e 168 h/semana.'); return; }
+    if (!(novo.meta_ocupacao >= 1 && novo.meta_ocupacao <= 200)) { _cfgErro('Meta deve estar entre 1 e 200%.'); return; }
+    if (!(novo.limite_ociosidade >= 0 && novo.limite_sobrecarga > novo.limite_ociosidade)) { _cfgErro('Limite de sobrecarga deve ser maior que o de ociosidade.'); return; }
+    var sb = _sb();
+    if (!sb || !_empresaAtiva || !_empresaAtiva.id) { _cfgErro('Sem conexão/empresa ativa.'); return; }
+    var r = await sb.from('configuracoes').upsert({
+      chave: 'rp_config', empresa_id: _empresaAtiva.id, valor: novo,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'chave,empresa_id' });
+    if (r && r.error) { _cfgErro('Erro: ' + r.error.message); return; }
+    _cfg = Object.assign({}, _CFG_DEFAULT, novo);
+    if (msg) { msg.style.color = 'var(--green)'; msg.textContent = '✔ Salvo — telas atualizadas.'; }
+    carregarTudo();                            // re-render com os valores novos
+  } finally { _cfgSalvando = false; if (btn) btn.disabled = false; }
+}
+function _cfgErro(t) { var m = document.getElementById('cfgMsg'); if (m) { m.style.color = 'var(--red)'; m.textContent = t; } }
 
 var _empresaAtiva = null;
 var _visao = 'semana';
@@ -396,10 +533,13 @@ function _colabNome(id) { var c = _cacheColabs.find(function (x) { return x.id =
 
 // Alterna a aba visível; renderiza com o dataset já carregado (sem refetch).
 function mostrarSecao(id) {
-  ['geral', 'colab', 'cliente', 'proposta'].forEach(function (s) {
+  if (id === 'config' && !_ehDono()) id = 'geral';   // gate: Configurações é só dono
+  ['geral', 'colab', 'cliente', 'proposta', 'mapa', 'config'].forEach(function (s) {
     var sec = document.getElementById('sec-' + s); if (sec) sec.classList.toggle('on', s === id);
     var tab = document.getElementById('tab-' + s); if (tab) tab.classList.toggle('on', s === id);
   });
+  if (id === 'mapa') renderSecMapa();
+  if (id === 'config') preencherFormConfig();
 }
 // Navegação cruzada: seleciona e abre a aba correspondente.
 function rpIrPara(aba, valor) {
@@ -424,10 +564,24 @@ function _podeVer() {
     return PERFIS_PERMITIDOS.indexOf(String(p || '').toLowerCase()) >= 0;
   } catch (e) { return false; }
 }
+function _ehDono() {
+  try {
+    var p = (window.parent && typeof window.parent.getPerfilUsuario === 'function')
+      ? window.parent.getPerfilUsuario()
+      : (typeof window.getPerfilUsuario === 'function' ? window.getPerfilUsuario() : null);
+    return String(p || '').toLowerCase() === 'dono';
+  } catch (e) { return false; }
+}
 function _aplicarGate() {
   var ok = _podeVer();
   document.getElementById('telaBloqueio').style.display = ok ? 'none' : 'block';
   document.getElementById('telaGeral').style.display = ok ? 'block' : 'none';
+  // Aba Configurações: gate mais restrito (só dono). Se um não-dono estiver
+  // na aba (ex.: trocou de perfil), volta para a Visão Geral.
+  var tabCfg = document.getElementById('tab-config');
+  var dono = _ehDono();
+  if (tabCfg) tabCfg.style.display = dono ? '' : 'none';
+  if (!dono) { var sec = document.getElementById('sec-config'); if (sec && sec.classList.contains('on')) mostrarSecao('geral'); }
   return ok;
 }
 
@@ -511,7 +665,7 @@ async function carregarTudo() {
       per: per, apts: apts, ag: ag, propostas: propostas,
       propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
       acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem,
-      capPorColab: diasUteisEntre(per.inicio, per.fim) * HORAS_DIA_UTIL
+      capPorColab: diasUteisEntre(per.inicio, per.fim) * _horasDiaUtil()
     };
     renderTudo();
   } catch (e) {
@@ -531,6 +685,7 @@ function renderTudo() {
   renderSecColab();
   renderSecCliente();
   renderSecProposta();
+  renderSecMapa();
 }
 
 function renderKpis(ag, capPorColab, propostas, acumPorProposta) {
@@ -548,7 +703,7 @@ function renderKpis(ag, capPorColab, propostas, acumPorProposta) {
   }
   document.getElementById('kpis').innerHTML =
     kpi('⏱️ Horas Trabalhadas', fmtH(ag.totalHoras), 'var(--emp-cor)', 'apontamentos aprovados no período')
-    + kpi('📊 Ocupação Média', fmtPct(ocupMedia), ocupMedia > 100 ? 'var(--red)' : (ocupMedia < 50 ? 'var(--amber)' : 'var(--green)'), nColabs + ' colaborador' + (nColabs === 1 ? '' : 'es') + ' × ' + fmtH(capPorColab) + ' de jornada')
+    + kpi('📊 Ocupação Média', fmtPct(ocupMedia), _corOcupacao(ocupMedia), nColabs + ' colaborador' + (nColabs === 1 ? '' : 'es') + ' × ' + fmtH(capPorColab) + ' de jornada · meta ' + fmtPct(_cfg.meta_ocupacao))
     + kpi('💰 Custo Mão de Obra', fmtMoeda(ag.totalCusto), 'var(--blue)', 'valor_total dos apontamentos')
     + kpi('📐 Desvio Previsto×Realizado', desvio === null ? '—' : (desvio > 0 ? '+' : '') + fmtPct(desvio), desvio === null ? 'var(--text3)' : (desvio > 0 ? 'var(--red)' : 'var(--green)'), desvio === null ? 'nenhuma proposta com previsão de horas' : 'acumulado das propostas do período');
 }
@@ -559,11 +714,11 @@ function renderOcupacao(porColab, capPorColab) {
   el.innerHTML = _cacheColabs.map(function (c) {
     var h = porColab[c.id] || 0;
     var pct = rpOcupacao(h, capPorColab);
-    var cor = pct > 100 ? 'var(--red)' : (pct < 50 ? 'var(--amber)' : 'var(--green)');
+    var cor = _corOcupacao(pct);
     var w = Math.max(1, Math.min(100, pct));
     return '<div class="oc-row clicavel" title="Clique para detalhar" onclick="rpIrPara(\'colab\',\'' + esc(c.id) + '\')">'
       + '<div class="oc-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>'
-      + '<div class="oc-track"><div class="oc-fill" style="width:' + w.toFixed(1) + '%;background:' + cor + '"></div></div>'
+      + '<div class="oc-track"><div class="oc-fill" style="width:' + w.toFixed(1) + '%;background:' + cor + '"></div><div class="oc-meta" title="Meta ' + fmtPct(_cfg.meta_ocupacao) + '" style="left:' + Math.min(_cfg.meta_ocupacao, 100).toFixed(0) + '%"></div></div>'
       + '<div class="oc-pct" style="color:' + cor + '">' + fmtPct(pct) + ' · ' + fmtH(h) + '</div>'
       + '</div>';
   }).join('');
@@ -654,8 +809,7 @@ function renderHeatmap(aptsSemana, perSem) {
     var linha = horas[c.id] || [0, 0, 0, 0, 0, 0, 0];
     grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
     linha.forEach(function (h) {
-      var alpha = h <= 0 ? 0 : Math.min(1, 0.18 + (h / 10) * 0.82);   // escala ~10h = cheio
-      var bg = h <= 0 ? 'var(--bg3)' : 'rgba(77,183,72,' + alpha.toFixed(2) + ')';
+      var bg = _hmCor(h);
       var txt = h > 0 ? (Math.round(h * 10) / 10) + '' : '';
       grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + '">' + txt + '</div>';
     });
@@ -707,7 +861,7 @@ function renderSecColab() {
   var horas = 0, custo = 0;
   apts.forEach(function (a) { horas += Number(a.horas_total) || 0; custo += Number(a.valor_total) || 0; });
   var pct = rpOcupacao(horas, _ds.capPorColab);
-  var corOc = pct > 100 ? 'var(--red)' : (pct < 50 ? 'var(--amber)' : 'var(--green)');
+  var corOc = _corOcupacao(pct);
   info.innerHTML = _mini('Colaborador', esc(_colabNome(_selColab)))
     + _mini('Ocupação no período', fmtPct(pct), corOc)
     + _mini('Horas', fmtH(horas), 'var(--emp-cor)')
@@ -758,8 +912,7 @@ function renderSecColab() {
       var dIso = _isoDe(cur);
       var h = porDiaH[dIso] || 0;
       var dentro = dIso >= _ds.per.inicio && dIso <= _ds.per.fim;
-      var alpha = h <= 0 ? 0 : Math.min(1, 0.18 + (h / 10) * 0.82);
-      var bg = !dentro ? 'transparent' : (h <= 0 ? 'var(--bg3)' : 'rgba(77,183,72,' + alpha.toFixed(2) + ')');
+      var bg = !dentro ? 'transparent' : _hmCor(h);
       grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + dIso + ' — ' + fmtH(h) + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
       cur.setDate(cur.getDate() + 1);
     }
@@ -873,15 +1026,119 @@ function renderSecProposta() {
     : '<div class="vazio">Sem apontamentos nesta proposta.</div>';
 }
 
+/* 🗺️ Mapa de Alocação (Etapa 3) */
+var _mapaVisao = 'semana';           // 'semana' | 'mes' (ano fora — ilegível como heatmap diário)
+var _mapaCache = {};                 // range → {apts, propMap} quando fora do período global
+function rpMapaVisao(v) {
+  _mapaVisao = v;
+  document.querySelectorAll('.mapa-toggle button').forEach(function (b) { b.classList.remove('on'); });
+  var btn = document.getElementById('mv-' + v); if (btn) btn.classList.add('on');
+  renderSecMapa();
+}
+// Dados do range do mapa: reusa _ds.apts quando o range ⊆ período global;
+// senão 1 fetch slim extra (cacheado) + números das propostas p/ o modal.
+async function _mapaDados(range) {
+  if (_ds && _ds.per.inicio <= range.inicio && _ds.per.fim >= range.fim) {
+    return { apts: _ds.apts.filter(function (a) { return a && a.data >= range.inicio && a.data <= range.fim; }), propMap: _ds.propMap };
+  }
+  var key = range.inicio + '|' + range.fim;
+  if (_mapaCache[key]) return _mapaCache[key];
+  var sb = _sb();
+  if (!sb || !_empresaAtiva || !_empresaAtiva.id) return { apts: [], propMap: {} };
+  var r = await sb.from('apontamentos')
+    .select('colaborador_id, proposta_id, data, horas_total, valor_total')
+    .eq('empresa_id', _empresaAtiva.id).eq('status', 'aprovado')
+    .gte('data', range.inicio).lte('data', range.fim);
+  var apts = (r && r.data) || [];
+  var propMap = Object.assign({}, (_ds && _ds.propMap) || {});
+  var faltam = {};
+  apts.forEach(function (a) { if (a && a.proposta_id && !propMap[a.proposta_id]) faltam[a.proposta_id] = true; });
+  var ids = Object.keys(faltam);
+  if (ids.length) {
+    var rp = await sb.from('propostas').select('app_id, numero_proposta, cliente')
+      .eq('empresa_id', _empresaAtiva.id).in('app_id', ids);
+    ((rp && rp.data) || []).forEach(function (p) { propMap[p.app_id] = p; });
+  }
+  var out = { apts: apts, propMap: propMap };
+  _mapaCache[key] = out;
+  return out;
+}
+var _mapaAtual = null;               // {range, apts, propMap} do último render (p/ o modal)
+async function renderSecMapa() {
+  var el = document.getElementById('mapaGrid'); if (!el) return;
+  if (!_ds || !_cacheColabs.length) { el.innerHTML = '<div class="vazio">Sem dados carregados.</div>'; return; }
+  var range = calcPeriodo(_dataRef, _mapaVisao);
+  var d = await _mapaDados(range);
+  _mapaAtual = { range: range, apts: d.apts, propMap: d.propMap };
+  // horas[cid][iso]
+  var horas = {};
+  d.apts.forEach(function (a) {
+    if (!a || !a.colaborador_id) return;
+    var dia = String(a.data).slice(0, 10);
+    (horas[a.colaborador_id] = horas[a.colaborador_id] || {})[dia] = (horas[a.colaborador_id][dia] || 0) + (Number(a.horas_total) || 0);
+  });
+  var dias = [];
+  var cur = _deIso(range.inicio), fim = _deIso(range.fim);
+  while (cur <= fim) { dias.push(_isoDe(cur)); cur.setDate(cur.getDate() + 1); }
+  var DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(' + dias.length + ',1fr)">';
+  grid += '<div></div>' + dias.map(function (iso) {
+    var dd = _deIso(iso);
+    var lbl = _mapaVisao === 'semana' ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') : String(dd.getDate());
+    return '<div class="hm-hdr" title="' + iso + '">' + lbl + '</div>';
+  }).join('');
+  _cacheColabs.forEach(function (c) {
+    grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
+    dias.forEach(function (iso) {
+      var h = (horas[c.id] || {})[iso] || 0;
+      grid += '<div class="hm-cel" style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"'
+        + ' title="' + esc(c.nome) + ' — ' + iso + ' — ' + fmtH(h) + '"'
+        + ' onclick="abrirMapaModal(\'' + esc(c.id) + '\',\'' + iso + '\')">'
+        + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
+    });
+  });
+  el.innerHTML = grid + '</div>';
+}
+function abrirMapaModal(cid, iso) {
+  if (!_mapaAtual) return;
+  var itens = _mapaAtual.apts.filter(function (a) { return a && a.colaborador_id === cid && String(a.data).slice(0, 10) === iso; });
+  var tit = document.getElementById('mapaModalTit'), body = document.getElementById('mapaModalBody');
+  tit.textContent = _colabNome(cid) + ' — ' + _fmtDataBr(iso);
+  if (!itens.length) {
+    body.innerHTML = '<div class="vazio">Sem apontamentos neste dia.</div>';
+  } else {
+    // Agrupa por proposta (pode haver mais de um apontamento no dia)
+    var porProp = {};
+    itens.forEach(function (a) {
+      var e2 = porProp[a.proposta_id] = porProp[a.proposta_id] || { h: 0, v: 0 };
+      e2.h += Number(a.horas_total) || 0; e2.v += Number(a.valor_total) || 0;
+    });
+    var totH = 0;
+    var linhas = Object.keys(porProp).map(function (pid) {
+      var p = _mapaAtual.propMap[pid] || {};
+      totH += porProp[pid].h;
+      return '<div class="tl-item clicavel" title="Clique para detalhar" onclick="fecharMapaModal();rpIrPara(\'proposta\',\'' + esc(pid) + '\')">'
+        + '<span class="tl-prop">' + esc(p.numero_proposta || pid || '—') + '</span>'
+        + '<span class="tl-cli">' + esc(p.cliente || '') + '</span>'
+        + '<span class="tl-h">' + fmtH(porProp[pid].h) + ' · ' + fmtMoeda(porProp[pid].v) + '</span></div>';
+    }).join('');
+    body.innerHTML = linhas + '<div style="text-align:right;font-size:.76rem;font-weight:700;margin-top:.5rem;color:var(--emp-cor)">Total do dia: ' + fmtH(totH) + '</div>';
+  }
+  document.getElementById('mapaModal').classList.add('on');
+}
+function fecharMapaModal() { document.getElementById('mapaModal').classList.remove('on'); }
+
 /* ── Integração com o portal (mesmo protocolo da Gestão do Tempo) ── */
 async function _onTrocaEmpresa(d) {
   _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
   _ds = null; _selColab = ''; _selCliente = ''; _selProposta = '';   // dataset/seleções são da empresa
+  _mapaCache = {};                                                    // cache do mapa é por empresa
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
+  await carregarConfig();                                             // jornada/limiares antes dos cálculos
   carregarTudo();
 }
-var _MAPA_SECAO = { geral: 'geral', colaborador: 'colab', colab: 'colab', cliente: 'cliente', proposta: 'proposta' };
+var _MAPA_SECAO = { geral: 'geral', colaborador: 'colab', colab: 'colab', cliente: 'cliente', proposta: 'proposta', mapa: 'mapa', config: 'config', configuracoes: 'config' };
 window.addEventListener('message', function (e) {
   if (!e.data || !e.data.type) return;
   if (e.data.type === 'SET_EMPRESA') _onTrocaEmpresa(e.data);

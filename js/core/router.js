@@ -189,6 +189,8 @@
         { label: 'Por Colaborador', icon: '👤', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','colaborador')" },
         { label: 'Por Cliente',     icon: '🏢', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','cliente')" },
         { label: 'Por Proposta',    icon: '📁', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','proposta')" },
+        { label: 'Mapa de Alocação', icon: '🗺️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','mapa')" },
+        { label: 'Configurações',   icon: '⚙️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','config')" },
       ]
     },
     {
