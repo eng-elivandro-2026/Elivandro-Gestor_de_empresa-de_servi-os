@@ -678,22 +678,39 @@ async function carregarTudo() {
       ((rFer && rFer.data) || []).forEach(function (fr) { if (fr && fr.data) feriados[String(fr.data).slice(0, 10)] = fr.descricao || 'Feriado'; });
     } catch (e) {}
 
+    var propExtrasSemana = [];   // metadados só-da-semana (apenas p/ o propMap do modal)
+
     // 5. Semana corrente para o heatmap (independente do filtro)
     var hoje = _isoDe(new Date());
     var perSem = calcPeriodo(hoje, 'semana');
     var aptsSemana = apts;
     if (!(per.inicio <= perSem.inicio && per.fim >= perSem.fim)) {
       var rSem = await sb.from('apontamentos')
-        .select('colaborador_id, data, horas_total')
+        .select('colaborador_id, proposta_id, data, horas_total, valor_total')
         .eq('empresa_id', eid).eq('status', 'aprovado')
         .gte('data', perSem.inicio).lte('data', perSem.fim);
       aptsSemana = (rSem && rSem.data) || [];
+      // Top-up: metadados das propostas tocadas SÓ nesta semana (fora do período
+      // filtrado) — o modal do heatmap precisa de número/cliente/título/valor.
+      // Entram APENAS no propMap (não em `propostas` — seletores e tabela P×R
+      // continuam restritos ao período filtrado).
+      var faltamSem = {};
+      aptsSemana.forEach(function (a) { if (a && a.proposta_id && propIds.indexOf(a.proposta_id) < 0) faltamSem[a.proposta_id] = true; });
+      var idsSem = Object.keys(faltamSem);
+      if (idsSem.length) {
+        try {
+          var rPSem = await sb.from('propostas')
+            .select('app_id, numero_proposta, cliente, titulo, valor_total')
+            .eq('empresa_id', eid).in('app_id', idsSem);
+          ((rPSem && rPSem.data) || []).forEach(function (p) { if (p) propExtrasSemana.push(p); });
+        } catch (e) {}
+      }
     }
 
     // Dataset compartilhado pelas 4 abas — trocar de aba NÃO refaz queries.
     _ds = {
       per: per, apts: apts, ag: ag, propostas: propostas,
-      propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
+      propMap: (function () { var m = {}; propostas.concat(propExtrasSemana).forEach(function (p) { m[p.app_id] = p; }); return m; })(),
       acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem, feriados: feriados, obraStatus: obraStatus,
       capPorColab: diasUteisEntre(per.inicio, per.fim) * _horasDiaUtil()
     };
@@ -846,7 +863,7 @@ function renderHeatmap(aptsSemana, perSem) {
       var esp = _diaEspecial(isosSem[di]);
       var bg = _hmCor(h);
       var txt = h > 0 ? (Math.round(h * 10) / 10) + '' : '';
-      grid += '<div class="hm-cel' + (esp && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '') + '">' + txt + '</div>';
+      grid += '<div class="hm-cel clicavel' + (esp && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '') + ' — clique para detalhar" onclick="abrirMapaModal(\'' + esc(c.id) + '\',\'' + isosSem[di] + '\',\'semana\')">' + txt + '</div>';
     });
   });
   grid += '</div>';
@@ -1190,9 +1207,14 @@ function renderSecMapa() {
   });
   el.innerHTML = grid + '</div>';
 }
-function abrirMapaModal(cid, iso) {
-  if (!_mapaAtual) return;
-  var itens = _mapaAtual.apts.filter(function (a) { return a && a.colaborador_id === cid && String(a.data).slice(0, 10) === iso; });
+// fonte='semana' → dados do heatmap da Visão Geral (_ds.aptsSemana);
+// default → dataset do Mapa de Alocação (_mapaAtual). Mesmo modal para os dois.
+function abrirMapaModal(cid, iso, fonte) {
+  var base = fonte === 'semana'
+    ? (_ds ? { apts: _ds.aptsSemana || [], propMap: _ds.propMap || {} } : null)
+    : _mapaAtual;
+  if (!base) return;
+  var itens = base.apts.filter(function (a) { return a && a.colaborador_id === cid && String(a.data).slice(0, 10) === iso; });
   var tit = document.getElementById('mapaModalTit'), body = document.getElementById('mapaModalBody');
   tit.textContent = _colabNome(cid) + ' — ' + _fmtDataBr(iso);
   if (!itens.length) {
@@ -1206,7 +1228,7 @@ function abrirMapaModal(cid, iso) {
     });
     var totH = 0;
     var linhas = Object.keys(porProp).map(function (pid) {
-      var p = _mapaAtual.propMap[pid] || {};
+      var p = base.propMap[pid] || {};
       totH += porProp[pid].h;
       return '<div class="tl-item clicavel" title="Clique para detalhar" onclick="fecharMapaModal();rpIrPara(\'proposta\',\'' + esc(pid) + '\')">'
         + '<span class="tl-prop">' + esc(fmtProposta(p.app_id ? p : { app_id: pid })) + '</span>'
