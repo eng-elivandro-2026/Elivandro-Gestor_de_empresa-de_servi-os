@@ -654,6 +654,19 @@ async function carregarTudo() {
       });
     }
 
+    // 4c. Status operacional das obras das propostas tocadas (query slim, mesmo
+    // padrão da Visão Executiva: obras.proposta_app_id → status_operacional).
+    var obraStatus = {};
+    if (propIds.length) {
+      try {
+        var rOb = await sb.from('obras').select('proposta_app_id, status_operacional')
+          .eq('empresa_id', eid).in('proposta_app_id', propIds);
+        ((rOb && rOb.data) || []).forEach(function (o) {
+          if (o && o.proposta_app_id) obraStatus[String(o.proposta_app_id)] = String(o.status_operacional || '').trim().toLowerCase();
+        });
+      } catch (e) {}
+    }
+
     // 4b. Feriados da empresa (feriados_empresa — mesma fonte do regime do RH):
     // destaque visual nas colunas dos heatmaps. Falha → sem destaque (silencioso).
     var feriados = {};
@@ -678,7 +691,7 @@ async function carregarTudo() {
     _ds = {
       per: per, apts: apts, ag: ag, propostas: propostas,
       propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
-      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem, feriados: feriados,
+      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem, feriados: feriados, obraStatus: obraStatus,
       capPorColab: diasUteisEntre(per.inicio, per.fim) * _horasDiaUtil()
     };
     renderTudo();
@@ -889,6 +902,29 @@ function siglaCliente(nome) {
   if (sig.length === 1) return palavras[0].slice(0, 6);
   return sig.join('');
 }
+// Rótulo do estágio REAL da proposta: status operacional da obra vinculada
+// (traduzido) com fallback à fase comercial quando não há obra (ou cancelada).
+// Tradução: window.parent.OP_STATUS_LABELS (vocabulário novo do Operacional) →
+// mini-mapa dos status LEGADOS (andamento/aprovado/…, ausentes do mapa oficial)
+// → capitalização genérica.
+var _STATUS_LEGADO = { aprovado: 'Aprovado', andamento: 'Em Andamento', finalizado: 'Finalizado',
+  taf: 'Em TAF', sat: 'Em SAT', atrasado: 'Atrasada', faturado: 'Faturado', recebido: 'Recebido',
+  em_pausa_falta_material: 'Em pausa (falta de material)',
+  em_pausa_aguardando_cliente: 'Em pausa (aguardando cliente)',
+  em_pausa_aguardando_terceiro: 'Em pausa (aguardando terceiro)' };
+function _statusObraLabel(st) {
+  var mapa = null;
+  try { mapa = (window.parent && window.parent.OP_STATUS_LABELS) || window.OP_STATUS_LABELS || null; } catch (e) { mapa = window.OP_STATUS_LABELS || null; }
+  if (mapa && mapa[st]) return mapa[st];
+  if (_STATUS_LEGADO[st]) return _STATUS_LEGADO[st];
+  return st ? st.charAt(0).toUpperCase() + st.slice(1).replace(/_/g, ' ') : '—';
+}
+// {rotulo, deObra}: deObra=true quando veio de obras.status_operacional.
+function _statusProposta(p) {
+  var st = ((_ds && _ds.obraStatus) || {})[String(p && p.app_id)] || '';
+  if (st && st !== 'cancelada') return { rotulo: _statusObraLabel(st), deObra: true };
+  return { rotulo: String((p && p.fase) || '—'), deObra: false };
+}
 function fmtProposta(p, comValor) {
   if (!p) return '—';
   var partes = [String(p.numero_proposta || p.app_id || '—')];
@@ -1055,7 +1091,10 @@ function renderSecProposta() {
   info.innerHTML = '<div class="mini" style="grid-column:1/-1"><div class="m-lab">Proposta</div><div class="m-val" style="font-size:.92rem">' + esc(fmtProposta(p)) + '</div></div>'
     + '<div class="mini clicavel" title="Clique para ver o cliente" onclick="rpIrPara(\'cliente\', ((_ds.propMap[_selProposta]||{}).cliente||\'\').trim()||\'—\')"><div class="m-lab">Cliente</div><div class="m-val">' + esc(p.cliente || '—') + '</div></div>'
     + _mini('Valor vendido', fmtMoeda(p.valor_total), 'var(--accent)')
-    + _mini('Fase', esc(String(p.fase || '—')));
+    + (function () {
+        var st = _statusProposta(p);
+        return _mini(st.deObra ? 'Status da obra' : 'Fase (comercial)', esc(st.rotulo));
+      })();
 
   var prev = rpHorasPrevistasBi(p.bi);
   var d = rpDesvio(prev, e2.horas);
