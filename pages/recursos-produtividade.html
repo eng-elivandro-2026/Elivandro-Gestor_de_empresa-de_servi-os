@@ -120,8 +120,10 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
 
 /* Fim de semana / feriado nos heatmaps (célula vazia e cabeçalho; célula
    com horas mantém a escala verde) */
-.hm-cel.hm-fds{background:rgba(88,166,255,.09)}
-.hm-hdr.hm-fds{color:var(--blue);opacity:.85}
+.hm-cel.hm-fds{background:rgba(240,165,0,.15)}
+.hm-hdr.hm-fds{color:var(--accent);opacity:.9}
+.hm-cel.hm-hoje{outline:2px solid var(--emp-cor);outline-offset:-2px}
+.hm-hdr.hm-hoje{color:var(--emp-cor)}
 .hm-hdr .hm-dow{display:block;opacity:.65;font-size:.54rem;line-height:1.1}
 
 /* Marcador de meta nas barras de ocupação (Etapa 3) */
@@ -223,8 +225,8 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
     </div>
 
     <div class="card">
-      <div class="sec-tit">🗓️ Semana atual — mapa de calor</div>
-      <div class="sec-desc">Horas aprovadas por colaborador e dia da semana corrente (independente do filtro acima).</div>
+      <div class="sec-tit" id="hmTitulo">🗓️ Mapa de calor</div>
+      <div class="sec-desc" id="hmDesc">Horas aprovadas por colaborador no período selecionado.</div>
       <div id="heatmap"><div class="vazio">Carregando…</div></div>
     </div>
     </div><!-- /sec-geral -->
@@ -536,6 +538,9 @@ function rpDesvio(previsto, realizado) {
 
 /* ── Estado / carga ─────────────────────────────────────────── */
 var _cacheColabs = [];      // [{id, nome}]
+// Caches por EMPRESA (mudam raramente durante a sessão; invalidados no SET_EMPRESA)
+var _cacheVinculos = [], _cacheVinculosEmp = null;
+var _cacheFeriados = {}, _cacheFeriadosEmp = null;
 var _ds = null;             // dataset da última carga (compartilhado pelas 4 abas)
 var _selColab = '', _selCliente = '', _selProposta = '';
 function _colabNome(id) { var c = _cacheColabs.find(function (x) { return x.id === id; }); return c ? c.nome : '—'; }
@@ -603,98 +608,99 @@ async function carregarTudo() {
   var eid = _empresaAtiva.id;
 
   try {
-    // 1. Apontamentos aprovados do período (slim)
-    var rApt = await sb.from('apontamentos')
-      .select('colaborador_id, proposta_id, data, horas_total, valor_total')
-      .eq('empresa_id', eid).eq('status', 'aprovado')
-      .gte('data', per.inicio).lte('data', per.fim);
-    var apts = (rApt && rApt.data) || [];
-
-    // 2. Colaboradores ativos (vínculo da empresa; nome do vínculo tem prioridade)
-    var rVin = await sb.from('colaborador_empresas')
-      .select('colaborador_id, nome, valor_hora, categoria_id')
-      .eq('empresa_id', eid).eq('ativo', true);
-    var vinculos = (rVin && rVin.data) || [];
-    var ids = vinculos.map(function (v) { return v.colaborador_id; });
-    var nomesBase = {};
-    if (ids.length) {
-      var rCol = await sb.from('colaboradores').select('id, nome').in('id', ids);
-      ((rCol && rCol.data) || []).forEach(function (c) { if (c) nomesBase[c.id] = c.nome; });
+    // ── Onda A (paralela): apontamentos do período ∥ vínculos ∥ feriados.
+    // Vínculos e feriados mudam raramente → cache por EMPRESA (invalidado no
+    // SET_EMPRESA); com cache válido, trocar de período dispara só 1 query aqui.
+    var usarCacheVin = (_cacheVinculosEmp === eid);
+    var usarCacheFer = (_cacheFeriadosEmp === eid);
+    var ondaA = await Promise.all([
+      // 1. Apontamentos aprovados do período (slim)
+      sb.from('apontamentos')
+        .select('colaborador_id, proposta_id, data, horas_total, valor_total')
+        .eq('empresa_id', eid).eq('status', 'aprovado')
+        .gte('data', per.inicio).lte('data', per.fim),
+      // 2. Colaboradores ativos (vínculo da empresa; nome do vínculo tem prioridade)
+      usarCacheVin ? null : sb.from('colaborador_empresas')
+        .select('colaborador_id, nome, valor_hora, categoria_id')
+        .eq('empresa_id', eid).eq('ativo', true),
+      // 3. Feriados (feriados_empresa — mesma fonte do regime do RH):
+      // destaque visual nas colunas dos heatmaps. Falha → sem destaque (silencioso).
+      usarCacheFer ? null : Promise.resolve(
+        sb.from('feriados_empresa').select('data, descricao').eq('empresa_id', eid)
+      ).catch(function () { return null; })
+    ]);
+    var apts = (ondaA[0] && ondaA[0].data) || [];
+    var vinculos = usarCacheVin ? _cacheVinculos : ((ondaA[1] && ondaA[1].data) || []);
+    var feriados = _cacheFeriados;
+    if (!usarCacheFer) {
+      feriados = {};
+      ((ondaA[2] && ondaA[2].data) || []).forEach(function (fr) { if (fr && fr.data) feriados[String(fr.data).slice(0, 10)] = fr.descricao || 'Feriado'; });
+      _cacheFeriados = feriados; _cacheFeriadosEmp = eid;
     }
-    _cacheColabs = vinculos.map(function (v) {
-      return { id: v.colaborador_id, nome: v.nome || nomesBase[v.colaborador_id] || '—' };
-    }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
 
     var ag = rpAgregar(apts);
-
-    // 3. Propostas tocadas no período (cliente/valor/fase + bi só do caminho JSON)
     var propIds = Object.keys(ag.porProposta);
-    var propostas = [];
-    if (propIds.length) {
-      var rProp = await sb.from('propostas')
-        .select('app_id, numero_proposta, cliente, titulo, valor_total, fase, bi:dados_json->bi')
-        .eq('empresa_id', eid).in('app_id', propIds);
-      propostas = (rProp && rProp.data) || [];
-    }
+    // Nomes-base: fallback só p/ vínculos SEM nome próprio (dispensável no cache-hit).
+    var idsSemNome = usarCacheVin ? [] : vinculos
+      .filter(function (v) { return v && !v.nome; })
+      .map(function (v) { return v.colaborador_id; });
 
-    // 4. Realizado ACUMULADO das propostas tocadas (desvio/custo são da obra, não
-    // do período) — com colaborador p/ a equipe alocada e valor p/ custo/margem.
-    var acumPorProposta = {};
-    if (propIds.length) {
-      var rAcum = await sb.from('apontamentos')
+    // ── Onda B (paralela): propostas ∥ acumulado ∥ obras ∥ nomes-base ──
+    var ondaB = await Promise.all([
+      // 4. Propostas tocadas no período (cliente/valor/fase + bi só do caminho JSON)
+      propIds.length ? sb.from('propostas')
+        .select('app_id, numero_proposta, cliente, titulo, valor_total, fase, bi:dados_json->bi')
+        .eq('empresa_id', eid).in('app_id', propIds) : null,
+      // 5. Realizado ACUMULADO das propostas tocadas (desvio/custo são da obra, não
+      // do período) — com colaborador p/ a equipe alocada e valor p/ custo/margem.
+      propIds.length ? sb.from('apontamentos')
         .select('proposta_id, colaborador_id, horas_total, valor_total')
         .eq('empresa_id', eid).eq('status', 'aprovado')
-        .in('proposta_id', propIds);
-      ((rAcum && rAcum.data) || []).forEach(function (a) {
-        if (!a || !a.proposta_id) return;
-        var e2 = acumPorProposta[a.proposta_id] = acumPorProposta[a.proposta_id] || { horas: 0, custo: 0, porColab: {} };
-        var h = Number(a.horas_total) || 0, v = Number(a.valor_total) || 0;
-        e2.horas += h; e2.custo += v;
-        if (a.colaborador_id) {
-          var pc = e2.porColab[a.colaborador_id] = e2.porColab[a.colaborador_id] || { horas: 0, custo: 0 };
-          pc.horas += h; pc.custo += v;
-        }
-      });
-    }
+        .in('proposta_id', propIds) : null,
+      // 6. Status operacional das obras das propostas tocadas (query slim, mesmo
+      // padrão da Visão Executiva). Falha → sem status (silencioso).
+      propIds.length ? Promise.resolve(
+        sb.from('obras').select('proposta_app_id, status_operacional')
+          .eq('empresa_id', eid).in('proposta_app_id', propIds)
+      ).catch(function () { return null; }) : null,
+      // 7. Nomes-base dos vínculos sem nome
+      idsSemNome.length ? sb.from('colaboradores').select('id, nome').in('id', idsSemNome) : null
+    ]);
+    var propostas = (ondaB[0] && ondaB[0].data) || [];
 
-    // 4c. Status operacional das obras das propostas tocadas (query slim, mesmo
-    // padrão da Visão Executiva: obras.proposta_app_id → status_operacional).
+    var acumPorProposta = {};
+    ((ondaB[1] && ondaB[1].data) || []).forEach(function (a) {
+      if (!a || !a.proposta_id) return;
+      var e2 = acumPorProposta[a.proposta_id] = acumPorProposta[a.proposta_id] || { horas: 0, custo: 0, porColab: {} };
+      var h = Number(a.horas_total) || 0, v = Number(a.valor_total) || 0;
+      e2.horas += h; e2.custo += v;
+      if (a.colaborador_id) {
+        var pc = e2.porColab[a.colaborador_id] = e2.porColab[a.colaborador_id] || { horas: 0, custo: 0 };
+        pc.horas += h; pc.custo += v;
+      }
+    });
+
     var obraStatus = {};
-    if (propIds.length) {
-      try {
-        var rOb = await sb.from('obras').select('proposta_app_id, status_operacional')
-          .eq('empresa_id', eid).in('proposta_app_id', propIds);
-        ((rOb && rOb.data) || []).forEach(function (o) {
-          if (o && o.proposta_app_id) obraStatus[String(o.proposta_app_id)] = String(o.status_operacional || '').trim().toLowerCase();
-        });
-      } catch (e) {}
-    }
+    ((ondaB[2] && ondaB[2].data) || []).forEach(function (o) {
+      if (o && o.proposta_app_id) obraStatus[String(o.proposta_app_id)] = String(o.status_operacional || '').trim().toLowerCase();
+    });
 
-    // 4b. Feriados da empresa (feriados_empresa — mesma fonte do regime do RH):
-    // destaque visual nas colunas dos heatmaps. Falha → sem destaque (silencioso).
-    var feriados = {};
-    try {
-      var rFer = await sb.from('feriados_empresa').select('data, descricao').eq('empresa_id', eid);
-      ((rFer && rFer.data) || []).forEach(function (fr) { if (fr && fr.data) feriados[String(fr.data).slice(0, 10)] = fr.descricao || 'Feriado'; });
-    } catch (e) {}
-
-    // 5. Semana corrente para o heatmap (independente do filtro)
-    var hoje = _isoDe(new Date());
-    var perSem = calcPeriodo(hoje, 'semana');
-    var aptsSemana = apts;
-    if (!(per.inicio <= perSem.inicio && per.fim >= perSem.fim)) {
-      var rSem = await sb.from('apontamentos')
-        .select('colaborador_id, data, horas_total')
-        .eq('empresa_id', eid).eq('status', 'aprovado')
-        .gte('data', perSem.inicio).lte('data', perSem.fim);
-      aptsSemana = (rSem && rSem.data) || [];
+    if (!usarCacheVin) {
+      var nomesBase = {};
+      ((ondaB[3] && ondaB[3].data) || []).forEach(function (c) { if (c) nomesBase[c.id] = c.nome; });
+      _cacheColabs = vinculos.map(function (v) {
+        return { id: v.colaborador_id, nome: v.nome || nomesBase[v.colaborador_id] || '—' };
+      }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
+      _cacheVinculos = vinculos; _cacheVinculosEmp = eid;
     }
 
     // Dataset compartilhado pelas 4 abas — trocar de aba NÃO refaz queries.
+    // O heatmap da Visão Geral é adaptativo ao período → usa _ds.apts direto
+    // (a antiga query fixa da semana corrente foi eliminada).
     _ds = {
       per: per, apts: apts, ag: ag, propostas: propostas,
       propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
-      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem, feriados: feriados, obraStatus: obraStatus,
+      acum: acumPorProposta, feriados: feriados, obraStatus: obraStatus,
       capPorColab: diasUteisEntre(per.inicio, per.fim) * _horasDiaUtil()
     };
     renderTudo();
@@ -710,7 +716,7 @@ function renderTudo() {
   renderOcupacao(_ds.ag.porColab, _ds.capPorColab);
   renderDonut(_ds.ag.porProposta, _ds.propostas);
   renderTabelaPxr(_ds.propostas, _ds.acum);
-  renderHeatmap(_ds.aptsSemana, _ds.perSem);
+  renderHeatmap();
   popularSeletores();
   renderSecColab();
   renderSecCliente();
@@ -820,37 +826,121 @@ function renderTabelaPxr(propostas, acumPorProposta) {
   el.innerHTML = html;
 }
 
-function renderHeatmap(aptsSemana, perSem) {
+// ── Heatmap adaptativo da Visão Geral ─────────────────────────
+// As colunas seguem a granularidade do período global:
+//   dia                 → 7 colunas (semana do dia; a coluna do dia em destaque)
+//   semana/quinzena/mês → 1 coluna por DIA
+//   trimestre/semestre  → 1 coluna por SEMANA (seg–dom)
+//   ano                 → 12 colunas (meses)
+var _MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+function rpHeatmapBuckets(per, visao) {
+  var buckets = [];
+  if (visao === 'dia') {
+    // Semana inteira do dia de referência p/ contexto; só o dia tem dado
+    // carregado (_ds.apts) — as demais colunas ficam neutras ("fora").
+    var pd = calcPeriodo(per.inicio, 'semana');
+    var d = _deIso(pd.inicio);
+    for (var i = 0; i < 7; i++) {
+      var iso = _isoDe(d);
+      buckets.push({ ini: iso, fim: iso, hoje: iso === per.inicio, fora: iso !== per.inicio });
+      d.setDate(d.getDate() + 1);
+    }
+  } else if (visao === 'ano') {
+    var ano = _deIso(per.inicio).getFullYear();
+    for (var m = 0; m < 12; m++) buckets.push({ ini: _isoDe(new Date(ano, m, 1)), fim: _isoDe(new Date(ano, m + 1, 0)) });
+  } else if (visao === 'trimestre' || visao === 'semestre') {
+    // Semanas seg–dom a partir da segunda-feira da 1ª semana do período
+    var seg = _deIso(per.inicio);
+    seg.setDate(seg.getDate() - ((seg.getDay() + 6) % 7));
+    while (_isoDe(seg) <= per.fim) {
+      var fimS = new Date(seg); fimS.setDate(seg.getDate() + 6);
+      buckets.push({ ini: _isoDe(seg), fim: _isoDe(fimS) });
+      seg.setDate(seg.getDate() + 7);
+    }
+  } else {
+    // semana / quinzena / mês → 1 coluna por dia
+    var d2 = _deIso(per.inicio), fim2 = _deIso(per.fim);
+    while (d2 <= fim2) { var i2 = _isoDe(d2); buckets.push({ ini: i2, fim: i2 }); d2.setDate(d2.getDate() + 1); }
+  }
+  return buckets;
+}
+// Escala de cor de bucket AGREGADO (semana/mês): teto proporcional aos dias
+// úteis do bucket (~10h/dia útil — bucket de 1 dia ≡ _hmCor).
+function _hmCorAgg(h, diasUteisBucket) {
+  if (h <= 0) return 'var(--bg3)';
+  var teto = Math.max(1, diasUteisBucket) * 10;
+  var alpha = Math.min(1, 0.18 + (h / teto) * 0.82);
+  return 'rgba(77,183,72,' + alpha.toFixed(2) + ')';
+}
+
+function renderHeatmap() {
   var el = document.getElementById('heatmap');
-  var DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-  var isosSem = [];
-  for (var di = 0; di < 7; di++) { var dd0 = _deIso(perSem.inicio); dd0.setDate(dd0.getDate() + di); isosSem.push(_isoDe(dd0)); }
-  // horas[colabId][0..6]
-  var horas = {};
-  (aptsSemana || []).forEach(function (a) {
-    if (!a || !a.colaborador_id || !a.data) return;
-    var idx = Math.round((_deIso(String(a.data).slice(0, 10)) - _deIso(perSem.inicio)) / 86400000);
-    if (idx < 0 || idx > 6) return;
-    (horas[a.colaborador_id] = horas[a.colaborador_id] || [0, 0, 0, 0, 0, 0, 0])[idx] += Number(a.horas_total) || 0;
-  });
+  if (!el || !_ds) return;
+  var per = _ds.per;
+  var porDia = (_visao === 'dia' || _visao === 'semana' || _visao === 'quinzena' || _visao === 'mes');
+  var granu = porDia ? 'por dia' : (_visao === 'ano' ? 'por mês' : 'por semana');
+  var elT = document.getElementById('hmTitulo');
+  if (elT) elT.textContent = '🗓️ Mapa de calor — ' + labelPeriodo(_dataRef, _visao) + ' (' + granu + ')';
+  var elD = document.getElementById('hmDesc');
+  if (elD) elD.textContent = 'Horas aprovadas por colaborador, ' + granu + '. Clique numa célula para detalhar.';
   if (!_cacheColabs.length) { el.innerHTML = '<div class="vazio">Nenhum colaborador ativo.</div>'; return; }
-  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(7,1fr)">';
-  grid += '<div></div>' + DIAS.map(function (d, di) {
-    var esp = _diaEspecial(isosSem[di]);
-    return '<div class="hm-hdr' + (esp ? ' hm-fds' : '') + '"' + (esp && esp.tipo === 'feriado' ? ' title="🎉 ' + esc(esp.desc) + '"' : '') + '>' + d + '</div>';
+
+  var buckets = rpHeatmapBuckets(per, _visao);
+  // horas[cid][idxBucket] a partir de _ds.apts (sem query extra)
+  var idxDe = {};
+  function bucketIdx(dIso) {
+    if (idxDe[dIso] === undefined) {
+      var k = -1;
+      for (var i = 0; i < buckets.length; i++) { if (dIso >= buckets[i].ini && dIso <= buckets[i].fim) { k = i; break; } }
+      idxDe[dIso] = k;
+    }
+    return idxDe[dIso];
+  }
+  var horas = {};
+  (_ds.apts || []).forEach(function (a) {
+    if (!a || !a.colaborador_id || !a.data) return;
+    var idx = bucketIdx(String(a.data).slice(0, 10));
+    if (idx < 0) return;
+    (horas[a.colaborador_id] = horas[a.colaborador_id] || {})[idx] = (horas[a.colaborador_id][idx] || 0) + (Number(a.horas_total) || 0);
+  });
+
+  var DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(' + buckets.length + ',1fr)">';
+  grid += '<div></div>' + buckets.map(function (b) {
+    var cls = 'hm-hdr', tit = '', lbl;
+    if (porDia) {
+      var dd = _deIso(b.ini);
+      var esp = _diaEspecial(b.ini);
+      if (esp) { cls += ' hm-fds'; if (esp.tipo === 'feriado') tit = '🎉 ' + esp.desc; }
+      if (b.hoje) cls += ' hm-hoje';
+      lbl = '<span class="hm-dow">' + DIAS_SEM[dd.getDay()] + '</span>' + String(dd.getDate()).padStart(2, '0');
+    } else if (_visao === 'ano') {
+      lbl = _MESES_ABREV[_deIso(b.ini).getMonth()];
+    } else {
+      var di = _deIso(b.ini);
+      lbl = String(di.getDate()).padStart(2, '0') + '/' + String(di.getMonth() + 1).padStart(2, '0');
+      tit = 'semana de ' + b.ini + ' a ' + b.fim;
+    }
+    return '<div class="' + cls + '"' + (tit ? ' title="' + esc(tit) + '"' : '') + '>' + lbl + '</div>';
   }).join('');
   _cacheColabs.forEach(function (c) {
-    var linha = horas[c.id] || [0, 0, 0, 0, 0, 0, 0];
     grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
-    linha.forEach(function (h, di) {
-      var esp = _diaEspecial(isosSem[di]);
-      var bg = _hmCor(h);
-      var txt = h > 0 ? (Math.round(h * 10) / 10) + '' : '';
-      grid += '<div class="hm-cel' + (esp && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '') + '">' + txt + '</div>';
+    buckets.forEach(function (b, bi) {
+      if (b.fora) { grid += '<div class="hm-cel" style="background:transparent;cursor:default"></div>'; return; }
+      var h = (horas[c.id] || {})[bi] || 0;
+      var esp = porDia ? _diaEspecial(b.ini) : null;
+      var cls = 'hm-cel' + (esp && h <= 0 ? ' hm-fds' : '') + (b.hoje ? ' hm-hoje' : '');
+      // fds/feriado vazio: SEM background inline (senão o inline vence o laranja da classe)
+      var sty = (esp && h <= 0) ? ''
+        : ' style="background:' + (porDia ? _hmCor(h) : _hmCorAgg(h, diasUteisEntre(b.ini, b.fim))) + (h > 0 ? ';color:#fff' : '') + '"';
+      var tit = esc(c.nome) + ' — ' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '');
+      grid += '<div class="' + cls + '"' + sty + ' title="' + tit + '"'
+        + ' onclick="abrirRangeModal(\'' + esc(c.id) + '\',\'' + b.ini + '\',\'' + b.fim + '\')">'
+        + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
     });
   });
   grid += '</div>';
-  el.innerHTML = grid;
+  el.innerHTML = '<div class="mapa-scroll">' + grid + '</div>';
 }
 
 /* ── Drill-downs (Etapa 2) ──────────────────────────────────── */
@@ -1016,7 +1106,9 @@ function renderSecColab() {
       var dentro = dIso >= _ds.per.inicio && dIso <= _ds.per.fim;
       var espC = _diaEspecial(dIso);
       var bg = !dentro ? 'transparent' : _hmCor(h);
-      grid += '<div class="hm-cel' + (dentro && espC && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + dIso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
+      grid += '<div class="hm-cel' + (dentro && espC && h <= 0 ? ' hm-fds' : '') + '"'
+        + (dentro && espC && h <= 0 ? '' : ' style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '"')
+        + ' title="' + dIso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
       cur.setDate(cur.getDate() + 1);
     }
     semanas++;
@@ -1182,7 +1274,8 @@ function renderSecMapa() {
     dias.forEach(function (iso) {
       var h = (horas[c.id] || {})[iso] || 0;
       var espC = _diaEspecial(iso);
-      grid += '<div class="hm-cel' + (espC && h <= 0 ? ' hm-fds' : '') + '" style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"'
+      grid += '<div class="hm-cel' + (espC && h <= 0 ? ' hm-fds' : '') + '"'
+        + (espC && h <= 0 ? '' : ' style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"')
         + ' title="' + esc(c.nome) + ' — ' + iso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '"'
         + ' onclick="abrirMapaModal(\'' + esc(c.id) + '\',\'' + iso + '\')">'
         + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
@@ -1190,15 +1283,22 @@ function renderSecMapa() {
   });
   el.innerHTML = grid + '</div>';
 }
-function abrirMapaModal(cid, iso) {
-  if (!_mapaAtual) return;
-  var itens = _mapaAtual.apts.filter(function (a) { return a && a.colaborador_id === cid && String(a.data).slice(0, 10) === iso; });
+// Núcleo do modal de detalhe — genérico por RANGE [ini, fim] (1 dia, 1 semana
+// ou 1 mês). Usado pelo Mapa de Alocação (por dia) e pelo heatmap adaptativo
+// da Visão Geral (dia/semana/mês). Uma lógica, um modal.
+function _abrirDetalheRange(base, cid, ini, fim, rotulo) {
+  if (!base) return;
+  var itens = base.apts.filter(function (a) {
+    if (!a || a.colaborador_id !== cid) return false;
+    var d = String(a.data).slice(0, 10);
+    return d >= ini && d <= fim;
+  });
   var tit = document.getElementById('mapaModalTit'), body = document.getElementById('mapaModalBody');
-  tit.textContent = _colabNome(cid) + ' — ' + _fmtDataBr(iso);
+  tit.textContent = _colabNome(cid) + ' — ' + rotulo;
   if (!itens.length) {
-    body.innerHTML = '<div class="vazio">Sem apontamentos neste dia.</div>';
+    body.innerHTML = '<div class="vazio">Sem apontamentos neste intervalo.</div>';
   } else {
-    // Agrupa por proposta (pode haver mais de um apontamento no dia)
+    // Agrupa por proposta (pode haver mais de um apontamento no range)
     var porProp = {};
     itens.forEach(function (a) {
       var e2 = porProp[a.proposta_id] = porProp[a.proposta_id] || { h: 0, v: 0 };
@@ -1206,15 +1306,31 @@ function abrirMapaModal(cid, iso) {
     });
     var totH = 0;
     var linhas = Object.keys(porProp).map(function (pid) {
-      var p = _mapaAtual.propMap[pid] || {};
+      var p = base.propMap[pid] || {};
       totH += porProp[pid].h;
       return '<div class="tl-item clicavel" title="Clique para detalhar" onclick="fecharMapaModal();rpIrPara(\'proposta\',\'' + esc(pid) + '\')">'
         + '<span class="tl-prop">' + esc(fmtProposta(p.app_id ? p : { app_id: pid })) + '</span>'
         + '<span class="tl-h">' + fmtH(porProp[pid].h) + ' · ' + fmtMoeda(porProp[pid].v) + '</span></div>';
     }).join('');
-    body.innerHTML = linhas + '<div style="text-align:right;font-size:.76rem;font-weight:700;margin-top:.5rem;color:var(--emp-cor)">Total do dia: ' + fmtH(totH) + '</div>';
+    body.innerHTML = linhas + '<div style="text-align:right;font-size:.76rem;font-weight:700;margin-top:.5rem;color:var(--emp-cor)">Total: ' + fmtH(totH) + '</div>';
   }
   document.getElementById('mapaModal').classList.add('on');
+}
+// Mapa de Alocação: célula = 1 dia, dataset do mapa (_mapaAtual).
+function abrirMapaModal(cid, iso) {
+  _abrirDetalheRange(_mapaAtual, cid, iso, iso, _fmtDataBr(iso));
+}
+// Heatmap adaptativo da Visão Geral: bucket de 1 dia, 1 semana ou 1 mês,
+// dataset do período (_ds).
+function abrirRangeModal(cid, ini, fim) {
+  if (!_ds) return;
+  var dIni = _deIso(ini);
+  var ehMes = dIni.getDate() === 1 && fim === _isoDe(new Date(dIni.getFullYear(), dIni.getMonth() + 1, 0));
+  var rotulo = ini === fim ? _fmtDataBr(ini)
+    : (ehMes
+        ? _MESES_ABREV[dIni.getMonth()] + '/' + dIni.getFullYear()
+        : 'semana de ' + String(dIni.getDate()).padStart(2, '0') + '/' + String(dIni.getMonth() + 1).padStart(2, '0'));
+  _abrirDetalheRange({ apts: _ds.apts || [], propMap: _ds.propMap || {} }, cid, ini, fim, rotulo);
 }
 function fecharMapaModal() { document.getElementById('mapaModal').classList.remove('on'); }
 
@@ -1222,6 +1338,8 @@ function fecharMapaModal() { document.getElementById('mapaModal').classList.remo
 async function _onTrocaEmpresa(d) {
   _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
   _ds = null; _selColab = ''; _selCliente = ''; _selProposta = '';   // dataset/seleções são da empresa
+  _cacheVinculos = []; _cacheVinculosEmp = null;                      // caches são por empresa
+  _cacheFeriados = {}; _cacheFeriadosEmp = null;
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
   await carregarConfig();                                             // jornada/limiares antes dos cálculos
