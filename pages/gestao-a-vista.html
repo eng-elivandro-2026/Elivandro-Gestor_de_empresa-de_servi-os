@@ -333,7 +333,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld"><label>Unidade</label><input id="m-unidade" placeholder="ex: dias, propostas/mês"></div>
       <div class="fld"><label>Status</label><select id="m-status"><option value="ativa">Ativa</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select></div>
       <div class="fld full" style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.2rem"><label style="color:var(--emp-cor)">Configuração do Radar</label></div>
-      <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option></select></div>
+      <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option><option value="percentual">Percentual (0-100%)</option></select></div>
       <div class="fld"><label>Sentido da meta</label><select id="m-radar-sentido"><option value="menor">Menor é melhor (reduzir)</option><option value="maior">Maior é melhor (aumentar)</option></select></div>
       <div class="fld full"><label>S — Específico</label><textarea id="m-especifico"></textarea></div>
       <div class="fld full"><label>M — Mensurável</label><textarea id="m-mensuravel"></textarea></div>
@@ -378,7 +378,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld full"><label id="r-referencia-label">Proposta / Cliente</label><input id="r-referencia"></div>
       <div class="fld" id="r-grp-ini"><label id="r-ini-label">Data do registro</label><input id="r-data-inicio" type="date"></div>
       <div class="fld" id="r-grp-fim"><label>Data envio/entrega</label><input id="r-data-fim" type="date"></div>
-      <div class="fld" id="r-grp-valor"><label>Valor (R$)</label><input id="r-valor" type="number" step="any"></div>
+      <div class="fld" id="r-grp-valor"><label id="r-valor-label">Valor (R$)</label><input id="r-valor" type="number" step="any"></div>
       <div class="fld full"><label>Causa/Ação (ACT)</label><textarea id="r-anotacao"></textarea></div>
     </div>
     <div class="modal-acoes">
@@ -447,6 +447,7 @@ function _sv(id,v){ var e=document.getElementById(id); if(e) e.value = (v==null?
 function _numOrNull(v){ v=String(v).trim(); if(v==='') return null; var n=parseFloat(v.replace(',','.')); return isNaN(n)?null:n; }
 function _dataBR(d){ if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
 function _fmtNum(n){ if(n==null) return '—'; return (Math.round(n*100)/100).toLocaleString('pt-BR'); }
+function _fmtPct(n){ if(n==null) return '—'; return _fmtNum(n)+'%'; }
 
 // ── Tema / header ──
 function _aplicarTema(nc){ document.body.classList.remove('empresa-tema-tecfusion','empresa-tema-fortex'); var n=(nc||'').toLowerCase(); if(n.includes('tecfusion')) document.body.classList.add('empresa-tema-tecfusion'); else if(n.includes('fortex')) document.body.classList.add('empresa-tema-fortex'); }
@@ -951,15 +952,17 @@ function _diasEntre(ini,fim){
   return Math.round((b-a)/86400000);
 }
 function _radarCols(tipo){
-  if(tipo==='contagem') return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
-  if(tipo==='valor')    return ['Referência/Cliente','Data do registro','Valor (R$)','Causa/Ação (ACT)'];
+  if(tipo==='contagem')   return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
+  if(tipo==='valor')      return ['Referência/Cliente','Data do registro','Valor (R$)','Causa/Ação (ACT)'];
+  if(tipo==='percentual') return ['Referência/Cliente','Data do registro','Percentual (%)','Causa/Ação (ACT)'];
   return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)'];
 }
 function _radarHead(tipo){ return _radarCols(tipo).map(function(c){return '<th>'+c+'</th>';}).join(''); }
 function _radarColgroup(tipo){
-  var ws = tipo==='contagem' ? ['40%','20%','40%']
-         : tipo==='valor'    ? ['38%','16%','16%','30%']
-         :                     ['38%','12%','12%','8%','10%','20%']; // dias
+  var ws = tipo==='contagem'   ? ['40%','20%','40%']
+         : tipo==='valor'      ? ['38%','16%','16%','30%']
+         : tipo==='percentual' ? ['38%','16%','16%','30%']
+         :                       ['38%','12%','12%','8%','10%','20%']; // dias
   return '<colgroup>'+ws.map(function(w){return '<col style="width:'+w+'">';}).join('')+'</colgroup>';
 }
 function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—'); }
@@ -972,19 +975,21 @@ function _renderRadar(m){
   var tipo=_radarTipo(m);
   // Sem registros: estrutura visível com 7 linhas vazias + rodapé, colunas conforme o tipo
   if(!_radar.length){
-    var midEmpty = tipo==='dias'  ? '<td data-label="Data início"></td><td data-label="Data fim"></td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
-                 : tipo==='valor' ? '<td data-label="Data do registro"></td><td data-label="Valor (R$)">—</td><td data-label="Causa/Ação"></td>'
-                 :                  '<td data-label="Data do registro"></td><td data-label="Causa/Ação"></td>';   // contagem
+    var midEmpty = tipo==='dias'        ? '<td data-label="Data início"></td><td data-label="Data fim"></td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
+                 : tipo==='valor'       ? '<td data-label="Data do registro"></td><td data-label="Valor (R$)">—</td><td data-label="Causa/Ação"></td>'
+                 : tipo==='percentual'  ? '<td data-label="Data do registro"></td><td data-label="Percentual (%)">—</td><td data-label="Causa/Ação"></td>'
+                 :                        '<td data-label="Data do registro"></td><td data-label="Causa/Ação"></td>';   // contagem
     var vazias='';
     for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
-    var footEmpty = tipo==='dias'  ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
-                  : tipo==='valor' ? '<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">—</td><td data-label="Bateu?">—</td>'
-                  :                  '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>';
+    var footEmpty = tipo==='dias'        ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
+                  : tipo==='valor'       ? '<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">—</td><td data-label="Bateu?">—</td>'
+                  : tipo==='percentual'  ? '<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Percentual (%)">—</td><td data-label="Bateu?">—</td>'
+                  :                        '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>';
     var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
       vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
   }
-  var soma=0, cont=0;
+  var soma=0, cont=0, ultimoPct=null;   // ultimoPct: medição mais recente (radar vem asc por created_at)
   var linhas=_radar.map(function(r){
     var refCell='<td class="rad-ref"><div class="rad-ref-nome">'+esc(r.referencia||'—')+'</div>'+
       (_podeEditar()?'<div class="rad-ref-acoes"><button class="btn btn-ghost btn-sm" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️ Editar</button><button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button></div>':'')+'</td>';
@@ -1000,6 +1005,10 @@ function _renderRadar(m){
       var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
       if(v!=null){ soma+=v; cont++; }
       return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Valor (R$)">'+(v==null?'—':_money(v))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
+    } else if(tipo==='percentual'){
+      var p=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
+      if(p!=null){ ultimoPct=p; cont++; }   // último não-nulo (iteração asc)
+      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Percentual (%)">'+_fmtPct(p)+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
     } else { // contagem — cada linha vale 1
       cont++;
       return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
@@ -1012,6 +1021,9 @@ function _renderRadar(m){
   } else if(tipo==='valor'){
     var totalV = cont? soma : null;
     footRow='<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">'+(totalV==null?'—':_money(totalV))+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(totalV,m))+'</td>';
+  } else if(tipo==='percentual'){
+    // Rodapé = ÚLTIMA medição (o % atual); somar percentuais de períodos não faz sentido.
+    footRow='<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Percentual (%)">'+_fmtPct(ultimoPct)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(ultimoPct,m))+'</td>';
   } else { // contagem
     var nLinhas=_radar.length;
     footRow='<td>TOTAL</td><td data-label="Total"><b>'+nLinhas+'</b></td><td data-label="Bateu?">'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
@@ -1143,15 +1155,19 @@ function abrirModalRadar(id){
   // Mostrar/esconder campos conforme o tipo de medição (data_inicio é sempre exibido)
   _setDisp('r-grp-ini', true);
   _setDisp('r-grp-fim', tipo==='dias');
-  _setDisp('r-grp-valor', tipo==='valor');
+  _setDisp('r-grp-valor', tipo==='valor' || tipo==='percentual');
   var lblRef=document.getElementById('r-referencia-label');
   if(lblRef) lblRef.textContent = (tipo==='dias') ? 'Proposta / Cliente' : 'Referência / Cliente';
   var lblIni=document.getElementById('r-ini-label');
   if(lblIni) lblIni.textContent = (tipo==='dias') ? 'Data visita/contato' : 'Data do registro';
+  var lblVal=document.getElementById('r-valor-label');
+  if(lblVal) lblVal.textContent = (tipo==='percentual') ? 'Percentual (%) — 0 a 100' : 'Valor (R$)';
+  var inpVal=document.getElementById('r-valor');
+  if(inpVal){ if(tipo==='percentual'){ inpVal.min='0'; inpVal.max='100'; } else { inpVal.removeAttribute('min'); inpVal.removeAttribute('max'); } }
   // Popular valores
   _sv('r-referencia',r&&r.referencia); _sv('r-anotacao',r&&r.anotacao);
   _sv('r-data-fim',r&&r.data_fim);
-  _sv('r-valor', (r&&tipo==='valor')?r.valor_realizado:'');
+  _sv('r-valor', (r&&(tipo==='valor'||tipo==='percentual'))?r.valor_realizado:'');
   // data_inicio: registro existente usa o salvo; novo em contagem/valor assume hoje
   var _hoje=new Date().toISOString().slice(0,10);
   _sv('r-data-inicio', r ? r.data_inicio : (tipo==='dias' ? '' : _hoje));
@@ -1168,6 +1184,9 @@ async function salvarRadar(){
     bateu=_bateu(valor,m);              // bateu por registro só faz sentido em dias
   } else if(tipo==='valor'){
     valor=_numOrNull(_gv('r-valor'));   // valor monetário; data_inicio = data do registro
+  } else if(tipo==='percentual'){
+    valor=_numOrNull(_gv('r-valor'));
+    if(valor!=null) valor=Math.max(0, Math.min(100, valor));   // clamp 0-100
   }
   // contagem: cada linha vale 1 → valor_realizado fica null; agregado é calculado na exibição
   var payload={
