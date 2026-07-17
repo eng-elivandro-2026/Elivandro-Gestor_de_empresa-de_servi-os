@@ -118,6 +118,12 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
 .clicavel{cursor:pointer}
 .clicavel:hover{filter:brightness(1.15)}
 
+/* Fim de semana / feriado nos heatmaps (célula vazia e cabeçalho; célula
+   com horas mantém a escala verde) */
+.hm-cel.hm-fds{background:rgba(88,166,255,.09)}
+.hm-hdr.hm-fds{color:var(--blue);opacity:.85}
+.hm-hdr .hm-dow{display:block;opacity:.65;font-size:.54rem;line-height:1.1}
+
 /* Marcador de meta nas barras de ocupação (Etapa 3) */
 .oc-meta{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--blue);opacity:.75}
 
@@ -623,7 +629,7 @@ async function carregarTudo() {
     var propostas = [];
     if (propIds.length) {
       var rProp = await sb.from('propostas')
-        .select('app_id, numero_proposta, cliente, valor_total, fase, bi:dados_json->bi')
+        .select('app_id, numero_proposta, cliente, titulo, valor_total, fase, bi:dados_json->bi')
         .eq('empresa_id', eid).in('app_id', propIds);
       propostas = (rProp && rProp.data) || [];
     }
@@ -648,6 +654,14 @@ async function carregarTudo() {
       });
     }
 
+    // 4b. Feriados da empresa (feriados_empresa — mesma fonte do regime do RH):
+    // destaque visual nas colunas dos heatmaps. Falha → sem destaque (silencioso).
+    var feriados = {};
+    try {
+      var rFer = await sb.from('feriados_empresa').select('data, descricao').eq('empresa_id', eid);
+      ((rFer && rFer.data) || []).forEach(function (fr) { if (fr && fr.data) feriados[String(fr.data).slice(0, 10)] = fr.descricao || 'Feriado'; });
+    } catch (e) {}
+
     // 5. Semana corrente para o heatmap (independente do filtro)
     var hoje = _isoDe(new Date());
     var perSem = calcPeriodo(hoje, 'semana');
@@ -664,7 +678,7 @@ async function carregarTudo() {
     _ds = {
       per: per, apts: apts, ag: ag, propostas: propostas,
       propMap: (function () { var m = {}; propostas.forEach(function (p) { m[p.app_id] = p; }); return m; })(),
-      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem,
+      acum: acumPorProposta, aptsSemana: aptsSemana, perSem: perSem, feriados: feriados,
       capPorColab: diasUteisEntre(per.inicio, per.fim) * _horasDiaUtil()
     };
     renderTudo();
@@ -774,11 +788,10 @@ function renderTabelaPxr(propostas, acumPorProposta) {
   if (!top.length && !semPrev.length) { el.innerHTML = '<div class="vazio">Nenhuma proposta com apontamentos no período.</div>'; return; }
   var html = '';
   if (top.length) {
-    html += '<table class="pxr"><thead><tr><th>Proposta</th><th>Cliente</th><th class="num">Previsto</th><th class="num">Realizado</th><th class="num">Desvio</th></tr></thead><tbody>'
+    html += '<table class="pxr"><thead><tr><th>Proposta</th><th class="num">Previsto</th><th class="num">Realizado</th><th class="num">Desvio</th></tr></thead><tbody>'
       + top.map(function (r) {
         var cor = r.desvio > 0 ? 'var(--red)' : 'var(--green)';
-        return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(r.p.app_id) + '\')"><td>' + esc(r.p.numero_proposta || r.p.app_id) + '</td>'
-          + '<td>' + esc(r.p.cliente || '—') + '</td>'
+        return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(r.p.app_id) + '\')"><td>' + esc(fmtProposta(r.p)) + '</td>'
           + '<td class="num">' + fmtH(r.prev) + '</td>'
           + '<td class="num">' + fmtH(r.real) + '</td>'
           + '<td class="num" style="color:' + cor + ';font-weight:700">' + (r.desvio > 0 ? '+' : '') + fmtPct(r.desvio) + '</td></tr>';
@@ -786,7 +799,7 @@ function renderTabelaPxr(propostas, acumPorProposta) {
   }
   if (semPrev.length) {
     html += '<div style="font-size:.7rem;color:var(--text3);margin-top:.6rem">Sem previsão de horas no orçamento: '
-      + semPrev.map(function (p) { return esc(p.numero_proposta || p.app_id); }).join(', ') + '</div>';
+      + semPrev.map(function (p) { return esc(fmtProposta(p, false)); }).join(' · ') + '</div>';
   }
   el.innerHTML = html;
 }
@@ -794,6 +807,8 @@ function renderTabelaPxr(propostas, acumPorProposta) {
 function renderHeatmap(aptsSemana, perSem) {
   var el = document.getElementById('heatmap');
   var DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  var isosSem = [];
+  for (var di = 0; di < 7; di++) { var dd0 = _deIso(perSem.inicio); dd0.setDate(dd0.getDate() + di); isosSem.push(_isoDe(dd0)); }
   // horas[colabId][0..6]
   var horas = {};
   (aptsSemana || []).forEach(function (a) {
@@ -804,14 +819,18 @@ function renderHeatmap(aptsSemana, perSem) {
   });
   if (!_cacheColabs.length) { el.innerHTML = '<div class="vazio">Nenhum colaborador ativo.</div>'; return; }
   var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(7,1fr)">';
-  grid += '<div></div>' + DIAS.map(function (d) { return '<div class="hm-hdr">' + d + '</div>'; }).join('');
+  grid += '<div></div>' + DIAS.map(function (d, di) {
+    var esp = _diaEspecial(isosSem[di]);
+    return '<div class="hm-hdr' + (esp ? ' hm-fds' : '') + '"' + (esp && esp.tipo === 'feriado' ? ' title="🎉 ' + esc(esp.desc) + '"' : '') + '>' + d + '</div>';
+  }).join('');
   _cacheColabs.forEach(function (c) {
     var linha = horas[c.id] || [0, 0, 0, 0, 0, 0, 0];
     grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
-    linha.forEach(function (h) {
+    linha.forEach(function (h, di) {
+      var esp = _diaEspecial(isosSem[di]);
       var bg = _hmCor(h);
       var txt = h > 0 ? (Math.round(h * 10) / 10) + '' : '';
-      grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + '">' + txt + '</div>';
+      grid += '<div class="hm-cel' + (esp && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '') + '">' + txt + '</div>';
     });
   });
   grid += '</div>';
@@ -831,7 +850,7 @@ function popularSeletores() {
   _ds.propostas.forEach(function (p) { clientes[(p.cliente || '').trim() || '—'] = true; });
   opts('selCliente', Object.keys(clientes).sort().map(function (c) { return { v: c, t: c }; }), _selCliente, '— Selecione o cliente —');
   opts('selProposta', _ds.propostas.slice().sort(function (a, b) { return String(a.numero_proposta).localeCompare(String(b.numero_proposta)); })
-    .map(function (p) { return { v: p.app_id, t: (p.numero_proposta || p.app_id) + ' — ' + (p.cliente || '—') }; }), _selProposta, '— Selecione a proposta —');
+    .map(function (p) { return { v: p.app_id, t: fmtProposta(p) }; }), _selProposta, '— Selecione a proposta —');
 }
 
 function _mini(lab, val, cor) {
@@ -842,6 +861,51 @@ function rpMargemMO(valorVendido, custoMO) {
   var v = Number(valorVendido) || 0;
   if (v <= 0) return null;
   return (v - (Number(custoMO) || 0)) / v * 100;
+}
+// ── Formato padrão de proposta (TODO o módulo) ────────────────
+// Nº — SIGLA — Descrição — R$ valor  (comValor=false onde há coluna própria).
+// Não existe sigla de cliente cadastrada no sistema → geração automática:
+// corta a partir do primeiro sufixo societário/comercial (dali em diante é
+// juridiquês) e usa as iniciais de até 4 palavras significativas.
+// "JACOBS DOUWE EGBERTS BR COMERCIALIZACAO DE CAFES LTDA" → "JDE".
+var _SIGLA_CORTE = { br: 1, ltda: 1, sa: 1, me: 1, epp: 1, eireli: 1, cia: 1,
+  comercializacao: 1, comercio: 1, comercial: 1, industria: 1, ind: 1, servicos: 1 };
+var _SIGLA_STOP = { de: 1, da: 1, do: 1, das: 1, dos: 1, e: 1, em: 1, a: 1, o: 1 };
+function siglaCliente(nome) {
+  var limpo = String(nome || '').trim();
+  if (!limpo) return '—';
+  var norm = limpo.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  var palavras = norm.split(/[\s.,\/-]+/).filter(Boolean);
+  if (palavras.length === 1) return norm.length <= 6 ? norm : norm.slice(0, 6);
+  var sig = [];
+  for (var i = 0; i < palavras.length; i++) {
+    var w = palavras[i].toLowerCase();
+    if (_SIGLA_CORTE[w]) break;
+    if (_SIGLA_STOP[w]) continue;
+    sig.push(palavras[i][0]);
+    if (sig.length === 4) break;
+  }
+  if (!sig.length) return norm.slice(0, 4);
+  if (sig.length === 1) return palavras[0].slice(0, 6);
+  return sig.join('');
+}
+function fmtProposta(p, comValor) {
+  if (!p) return '—';
+  var partes = [String(p.numero_proposta || p.app_id || '—')];
+  var sig = siglaCliente(p.cliente);
+  if (sig !== '—') partes.push(sig);                                   // sem cliente → não mostra "—"
+  var tit = String(p.titulo || '').trim();
+  if (tit) partes.push(tit);
+  if (comValor !== false && p.valor_total != null) partes.push(fmtMoeda(p.valor_total));
+  return partes.join(' — ');
+}
+// Fim de semana ou feriado (feriados_empresa) — destaque nos heatmaps.
+function _diaEspecial(iso) {
+  var fer = ((_ds && _ds.feriados) || {})[iso];
+  if (fer) return { tipo: 'feriado', desc: fer };
+  var dw = _deIso(iso).getDay();
+  if (dw === 0 || dw === 6) return { tipo: 'fds', desc: dw === 6 ? 'Sábado' : 'Domingo' };
+  return null;
 }
 function _fmtDataBr(iso) { var d = _deIso(String(iso).slice(0, 10)); var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']; return DIAS[d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
 
@@ -875,8 +939,7 @@ function renderSecColab() {
   tl.innerHTML = dias.length ? dias.map(function (d) {
     var itens = porDia[d].map(function (a) {
       var p = _ds.propMap[a.proposta_id] || {};
-      return '<div class="tl-item"><span class="tl-prop">' + esc(p.numero_proposta || a.proposta_id || '—') + '</span>'
-        + '<span class="tl-cli">' + esc(p.cliente || '') + '</span>'
+      return '<div class="tl-item"><span class="tl-prop">' + esc(fmtProposta(p.app_id ? p : { app_id: a.proposta_id })) + '</span>'
         + '<span class="tl-h">' + fmtH(a.horas_total) + ' · ' + fmtMoeda(a.valor_total) + '</span></div>';
     }).join('');
     return '<div class="tl-dia">' + _fmtDataBr(d) + '</div>' + itens;
@@ -889,7 +952,7 @@ function renderSecColab() {
   var maxH = lista.length ? lista[0].h : 1;
   dist.innerHTML = lista.length ? lista.map(function (it) {
     var p = _ds.propMap[it.pid] || {};
-    var lbl = (p.numero_proposta || it.pid) + (p.cliente ? ' (' + p.cliente + ')' : '');
+    var lbl = fmtProposta(p.app_id ? p : { app_id: it.pid });
     return '<div class="oc-row clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(it.pid) + '\')">'
       + '<div class="oc-nome" title="' + esc(lbl) + '">' + esc(lbl) + '</div>'
       + '<div class="oc-track"><div class="oc-fill" style="width:' + Math.max(2, it.h / maxH * 100).toFixed(1) + '%;background:var(--emp-cor)"></div></div>'
@@ -912,8 +975,9 @@ function renderSecColab() {
       var dIso = _isoDe(cur);
       var h = porDiaH[dIso] || 0;
       var dentro = dIso >= _ds.per.inicio && dIso <= _ds.per.fim;
+      var espC = _diaEspecial(dIso);
       var bg = !dentro ? 'transparent' : _hmCor(h);
-      grid += '<div class="hm-cel" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + dIso + ' — ' + fmtH(h) + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
+      grid += '<div class="hm-cel' + (dentro && espC && h <= 0 ? ' hm-fds' : '') + '" style="background:' + bg + (h > 0 ? ';color:#fff' : '') + '" title="' + dIso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '">' + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
       cur.setDate(cur.getDate() + 1);
     }
     semanas++;
@@ -965,7 +1029,7 @@ function renderSecCliente() {
       var d = rpDesvio(prev, e2.horas);
       var m = rpMargemMO(p.valor_total, e2.custo);
       return '<tr class="clicavel" title="Clique para detalhar" onclick="rpIrPara(\'proposta\',\'' + esc(p.app_id) + '\')">'
-        + '<td>' + esc(p.numero_proposta || p.app_id) + '</td>'
+        + '<td>' + esc(fmtProposta(p, false)) + '</td>'
         + '<td class="num">' + (prev > 0 ? fmtH(prev) : '—') + '</td>'
         + '<td class="num">' + fmtH(e2.horas) + '</td>'
         + '<td class="num" style="color:' + (d === null ? 'var(--text3)' : (d > 0 ? 'var(--red)' : 'var(--green)')) + '">' + (d === null ? '—' : (d > 0 ? '+' : '') + fmtPct(d)) + '</td>'
@@ -988,7 +1052,7 @@ function renderSecProposta() {
   }
   var p = _ds.propMap[_selProposta];
   var e2 = _ds.acum[_selProposta] || { horas: 0, custo: 0, porColab: {} };
-  info.innerHTML = _mini('Proposta', esc(p.numero_proposta || p.app_id))
+  info.innerHTML = '<div class="mini" style="grid-column:1/-1"><div class="m-lab">Proposta</div><div class="m-val" style="font-size:.92rem">' + esc(fmtProposta(p)) + '</div></div>'
     + '<div class="mini clicavel" title="Clique para ver o cliente" onclick="rpIrPara(\'cliente\', ((_ds.propMap[_selProposta]||{}).cliente||\'\').trim()||\'—\')"><div class="m-lab">Cliente</div><div class="m-val">' + esc(p.cliente || '—') + '</div></div>'
     + _mini('Valor vendido', fmtMoeda(p.valor_total), 'var(--accent)')
     + _mini('Fase', esc(String(p.fase || '—')));
@@ -1063,15 +1127,21 @@ function renderSecMapa() {
   var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(' + dias.length + ',1fr)">';
   grid += '<div></div>' + dias.map(function (iso) {
     var dd = _deIso(iso);
-    var lbl = _visao === 'semana' ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') : String(dd.getDate());
-    return '<div class="hm-hdr" title="' + iso + '">' + lbl + '</div>';
+    var esp = _diaEspecial(iso);
+    // Mês: dia da semana abreviado ACIMA do número (2 linhas); Semana: "Seg 14".
+    var lbl = _visao === 'semana'
+      ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0')
+      : '<span class="hm-dow">' + DIAS_SEM[dd.getDay()].toUpperCase() + '</span>' + String(dd.getDate());
+    var tit = iso + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '');
+    return '<div class="hm-hdr' + (esp ? ' hm-fds' : '') + '" title="' + tit + '">' + lbl + '</div>';
   }).join('');
   _cacheColabs.forEach(function (c) {
     grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
     dias.forEach(function (iso) {
       var h = (horas[c.id] || {})[iso] || 0;
-      grid += '<div class="hm-cel" style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"'
-        + ' title="' + esc(c.nome) + ' — ' + iso + ' — ' + fmtH(h) + '"'
+      var espC = _diaEspecial(iso);
+      grid += '<div class="hm-cel' + (espC && h <= 0 ? ' hm-fds' : '') + '" style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"'
+        + ' title="' + esc(c.nome) + ' — ' + iso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '"'
         + ' onclick="abrirMapaModal(\'' + esc(c.id) + '\',\'' + iso + '\')">'
         + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
     });
@@ -1097,8 +1167,7 @@ function abrirMapaModal(cid, iso) {
       var p = _mapaAtual.propMap[pid] || {};
       totH += porProp[pid].h;
       return '<div class="tl-item clicavel" title="Clique para detalhar" onclick="fecharMapaModal();rpIrPara(\'proposta\',\'' + esc(pid) + '\')">'
-        + '<span class="tl-prop">' + esc(p.numero_proposta || pid || '—') + '</span>'
-        + '<span class="tl-cli">' + esc(p.cliente || '') + '</span>'
+        + '<span class="tl-prop">' + esc(fmtProposta(p.app_id ? p : { app_id: pid })) + '</span>'
         + '<span class="tl-h">' + fmtH(porProp[pid].h) + ' · ' + fmtMoeda(porProp[pid].v) + '</span></div>';
     }).join('');
     body.innerHTML = linhas + '<div style="text-align:right;font-size:.76rem;font-weight:700;margin-top:.5rem;color:var(--emp-cor)">Total do dia: ' + fmtH(totH) + '</div>';
