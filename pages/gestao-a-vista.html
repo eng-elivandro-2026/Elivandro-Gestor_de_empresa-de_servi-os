@@ -333,7 +333,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld"><label>Unidade</label><input id="m-unidade" placeholder="ex: dias, propostas/mês"></div>
       <div class="fld"><label>Status</label><select id="m-status"><option value="ativa">Ativa</option><option value="concluida">Concluída</option><option value="cancelada">Cancelada</option></select></div>
       <div class="fld full" style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.2rem"><label style="color:var(--emp-cor)">Configuração do Radar</label></div>
-      <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option><option value="percentual">Percentual (0-100%)</option></select></div>
+      <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo" onchange="_toggleEscala()"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option><option value="media">Média por período</option><option value="percentual">Percentual (0-100%)</option><option value="nota">Nota / Avaliação (0-5 ou 0-10)</option><option value="nps">NPS (-100 a +100)</option><option value="ranking">Ranking / Posição</option></select></div>
+      <div class="fld" id="m-grp-escala" style="display:none"><label>Escala da nota</label><select id="m-radar-escala"><option value="10">0 a 10</option><option value="5">0 a 5</option></select></div>
       <div class="fld"><label>Sentido da meta</label><select id="m-radar-sentido"><option value="menor">Menor é melhor (reduzir)</option><option value="maior">Maior é melhor (aumentar)</option></select></div>
       <div class="fld full"><label>S — Específico</label><textarea id="m-especifico"></textarea></div>
       <div class="fld full"><label>M — Mensurável</label><textarea id="m-mensuravel"></textarea></div>
@@ -951,18 +952,41 @@ function _diasEntre(ini,fim){
   if(isNaN(a)||isNaN(b)) return null;
   return Math.round((b-a)/86400000);
 }
-function _radarCols(tipo){
-  if(tipo==='contagem')   return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
-  if(tipo==='valor')      return ['Referência/Cliente','Data do registro','Valor (R$)','Causa/Ação (ACT)'];
-  if(tipo==='percentual') return ['Referência/Cliente','Data do registro','Percentual (%)','Bateu?','Causa/Ação (ACT)'];
-  return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)'];
+// ── Família "numérico por linha" do Radar (mapa de config) ─────
+// Cada registro é UM número em valor_realizado; os tipos diferem só em
+// rótulo, formatação, faixa (clamp), agregação do rodapé e se mostram
+// "Bateu?" por linha. dias (2 datas) e contagem (conta linhas) ficam fora.
+//   agg: 'total' | 'media' | 'ultimo'  → como o rodapé resume o período
+function _notaEscala(m){ var e=Number(m&&m.radar_escala); return (e===5||e===10)?e:10; }
+function _RADAR_NUM(tipo){
+  return ({
+    valor:      { lbl:function(){ return 'Valor (R$)'; },              fmt:_money,  agg:'total',  aggLbl:'TOTAL', bateuLinha:false, min:null, max:function(){ return null; } },
+    media:      { lbl:function(){ return 'Valor (R$)'; },              fmt:_money,  agg:'media',  aggLbl:'MÉDIA', bateuLinha:false, min:null, max:function(){ return null; } },
+    percentual: { lbl:function(){ return 'Percentual (%)'; },          fmt:_fmtPct, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true,  min:0,    max:function(){ return 100; } },
+    nps:        { lbl:function(){ return 'NPS'; },                     fmt:_fmtNum, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true,  min:-100, max:function(){ return 100; } },
+    nota:       { lbl:function(m){ return 'Nota (0-'+_notaEscala(m)+')'; }, fmt:_fmtNum, agg:'media', aggLbl:'MÉDIA', bateuLinha:true, min:0, max:function(m){ return _notaEscala(m); } },
+    ranking:    { lbl:function(){ return 'Posição'; }, fmt:function(n){ return n==null?'—':_fmtNum(n)+'º'; }, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true, min:1, max:function(){ return null; } }
+  })[tipo] || null;
 }
-function _radarHead(tipo){ return _radarCols(tipo).map(function(c){return '<th>'+c+'</th>';}).join(''); }
+// Agrega a família numérica conforme cfg.agg (soma/média/último não-nulo já acumulados).
+function _radarAgg(cfg, soma, cont, ultimo){
+  if(!cont) return null;
+  return cfg.agg==='total' ? soma : cfg.agg==='media' ? (soma/cont) : ultimo;
+}
+function _radarCols(tipo, m){
+  if(tipo==='contagem') return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
+  var cfg=_RADAR_NUM(tipo);
+  if(cfg) return ['Referência/Cliente','Data do registro', cfg.lbl(m)]
+    .concat(cfg.bateuLinha?['Bateu?']:[]).concat(['Causa/Ação (ACT)']);
+  return ['Proposta/Cliente','Data início','Data fim','Dias','Bateu?','Causa/Ação (ACT)']; // dias
+}
+function _radarHead(tipo, m){ return _radarCols(tipo, m).map(function(c){return '<th>'+c+'</th>';}).join(''); }
 function _radarColgroup(tipo){
-  var ws = tipo==='contagem'   ? ['40%','20%','40%']
-         : tipo==='valor'      ? ['38%','16%','16%','30%']
-         : tipo==='percentual' ? ['34%','16%','13%','11%','26%']
-         :                       ['38%','12%','12%','8%','10%','20%']; // dias
+  var cfg=_RADAR_NUM(tipo);
+  var ws = tipo==='contagem'          ? ['40%','20%','40%']
+         : (cfg && cfg.bateuLinha)    ? ['34%','16%','13%','11%','26%']
+         : cfg                        ? ['38%','16%','16%','30%']
+         :                              ['38%','12%','12%','8%','10%','20%']; // dias
   return '<colgroup>'+ws.map(function(w){return '<col style="width:'+w+'">';}).join('')+'</colgroup>';
 }
 function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—'); }
@@ -973,23 +997,23 @@ function _radarLegendaEAcao(){
 }
 function _renderRadar(m){
   var tipo=_radarTipo(m);
+  var cfg=_RADAR_NUM(tipo);   // família numérica (null p/ dias/contagem)
+  var lbl=cfg?cfg.lbl(m):'';  // rótulo da coluna de valor (nota inclui a escala)
   // Sem registros: estrutura visível com 7 linhas vazias + rodapé, colunas conforme o tipo
   if(!_radar.length){
-    var midEmpty = tipo==='dias'        ? '<td data-label="Data início"></td><td data-label="Data fim"></td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
-                 : tipo==='valor'       ? '<td data-label="Data do registro"></td><td data-label="Valor (R$)">—</td><td data-label="Causa/Ação"></td>'
-                 : tipo==='percentual'  ? '<td data-label="Data do registro"></td><td data-label="Percentual (%)">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
-                 :                        '<td data-label="Data do registro"></td><td data-label="Causa/Ação"></td>';   // contagem
+    var midEmpty = tipo==='dias'     ? '<td data-label="Data início"></td><td data-label="Data fim"></td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação"></td>'
+                 : tipo==='contagem' ? '<td data-label="Data do registro"></td><td data-label="Causa/Ação"></td>'
+                 :                      '<td data-label="Data do registro"></td><td data-label="'+esc(lbl)+'">—</td>'+(cfg.bateuLinha?'<td data-label="Bateu?">—</td>':'')+'<td data-label="Causa/Ação"></td>';
     var vazias='';
     for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
-    var footEmpty = tipo==='dias'        ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
-                  : tipo==='valor'       ? '<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">—</td><td data-label="Bateu?">—</td>'
-                  : tipo==='percentual'  ? '<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Percentual (%)">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
-                  :                        '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>';
-    var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+'</tr></thead><tbody>'+
+    var footEmpty = tipo==='dias'     ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
+                  : tipo==='contagem' ? '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>'
+                  :                      '<td>'+cfg.aggLbl+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">—</td><td data-label="Bateu?">—</td>'+(cfg.bateuLinha?'<td data-label="Causa/Ação">—</td>':'');
+    var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo,m)+'</tr></thead><tbody>'+
       vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
   }
-  var soma=0, cont=0, ultimoPct=null;   // ultimoPct: medição mais recente (radar vem asc por created_at)
+  var soma=0, cont=0, ultimo=null;   // ultimo: medição mais recente (radar vem asc por created_at)
   var linhas=_radar.map(function(r){
     var refCell='<td class="rad-ref"><div class="rad-ref-nome">'+esc(r.referencia||'—')+'</div>'+
       (_podeEditar()?'<div class="rad-ref-acoes"><button class="btn btn-ghost btn-sm" title="Editar" onclick="abrirModalRadar(\''+r.id+'\')">✏️ Editar</button><button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirRadar(\''+r.id+'\')">🗑️</button></div>':'')+'</td>';
@@ -1001,34 +1025,30 @@ function _renderRadar(m){
       if(dias==null && r.valor_realizado!=null) dias=Number(r.valor_realizado);
       if(dias!=null){ soma+=dias; cont++; }
       return '<tr>'+refCell+'<td data-label="Data início">'+_dataBR(r.data_inicio)+'</td><td data-label="Data fim">'+_dataBR(r.data_fim)+'</td><td data-label="Dias">'+(dias==null?'—':dias)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(dias,m))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
-    } else if(tipo==='valor'){
-      var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
-      if(v!=null){ soma+=v; cont++; }
-      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Valor (R$)">'+(v==null?'—':_money(v))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
-    } else if(tipo==='percentual'){
-      var p=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
-      if(p!=null){ ultimoPct=p; cont++; }   // último não-nulo (iteração asc)
-      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Percentual (%)">'+_fmtPct(p)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(p,m))+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
-    } else { // contagem — cada linha vale 1
+    } else if(tipo==='contagem'){ // cada linha vale 1
       cont++;
       return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="Causa/Ação">'+actCell+'</td></tr>';
+    } else { // família numérica (valor/media/percentual/nps/nota/ranking)
+      var v=(r.valor_realizado!=null)?Number(r.valor_realizado):null;
+      if(v!=null){ soma+=v; ultimo=v; cont++; }
+      return '<tr>'+refCell+'<td data-label="Data do registro">'+_dataBR(r.data_inicio)+'</td><td data-label="'+esc(lbl)+'">'+cfg.fmt(v)+'</td>'
+        +(cfg.bateuLinha?'<td data-label="Bateu?">'+_bateuTxt(_bateu(v,m))+'</td>':'')
+        +'<td data-label="Causa/Ação">'+actCell+'</td></tr>';
     }
   }).join('');
   var footRow;
   if(tipo==='dias'){
     var media = cont? (soma/cont) : null;
     footRow='<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">'+(media==null?'—':_fmtNum(media))+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(media,m))+'</td><td data-label="Causa/Ação">—</td>';
-  } else if(tipo==='valor'){
-    var totalV = cont? soma : null;
-    footRow='<td>TOTAL</td><td data-label="Data do registro">—</td><td data-label="Valor (R$)">'+(totalV==null?'—':_money(totalV))+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(totalV,m))+'</td>';
-  } else if(tipo==='percentual'){
-    // Rodapé = ÚLTIMA medição (o % atual); somar percentuais de períodos não faz sentido.
-    footRow='<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Percentual (%)">'+_fmtPct(ultimoPct)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(ultimoPct,m))+'</td><td data-label="Causa/Ação">—</td>';
-  } else { // contagem
+  } else if(tipo==='contagem'){
     var nLinhas=_radar.length;
     footRow='<td>TOTAL</td><td data-label="Total"><b>'+nLinhas+'</b></td><td data-label="Bateu?">'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
+  } else { // família numérica — rodapé conforme cfg.agg (total/média/último)
+    var agg=_radarAgg(cfg, soma, cont, ultimo);
+    footRow='<td>'+cfg.aggLbl+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">'+cfg.fmt(agg)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(agg,m))+'</td>'
+      +(cfg.bateuLinha?'<td data-label="Causa/Ação">—</td>':'');
   }
-  var h='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo)+
+  var h='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo,m)+
     '</tr></thead><tbody>'+linhas+'<tr class="media">'+footRow+'</tr></tbody></table></div>';
   h+=_radarLegendaEAcao();
   return h;
@@ -1045,9 +1065,11 @@ function abrirModalMeta(id){
   _sv('m-valor-atual',m&&m.valor_atual); _sv('m-valor-meta',m&&m.valor_meta); _sv('m-unidade',m&&m.unidade);
   _sv('m-status',(m&&m.status)||'ativa');
   _sv('m-radar-tipo',(m&&m.radar_tipo)||'dias'); _sv('m-radar-sentido',(m&&m.radar_sentido)||'menor');
+  _sv('m-radar-escala',(m&&m.radar_escala)||'10'); _toggleEscala();   // campo Escala só aparece p/ tipo=nota
   _sv('m-especifico',m&&m.especifico); _sv('m-mensuravel',m&&m.mensuravel); _sv('m-atingivel',m&&m.atingivel); _sv('m-relevante',m&&m.relevante); _sv('m-temporal',m&&m.temporal);
   abrirModal('modal-meta');
 }
+function _toggleEscala(){ _setDisp('m-grp-escala', _gv('m-radar-tipo')==='nota'); }
 async function salvarMeta(){
   if(!_podeEditar()||!_empresaAtiva) return;
   var sb=_sb(); if(!sb) return;
@@ -1065,6 +1087,9 @@ async function salvarMeta(){
     atingivel:_gv('m-atingivel')||null, relevante:_gv('m-relevante')||null, temporal:_gv('m-temporal')||null,
     updated_at:new Date().toISOString()
   };
+  // radar_escala (migration 061) só é enviado p/ tipo=nota — evita referenciar
+  // a coluna nos salvamentos comuns caso a migration ainda não tenha rodado.
+  if(_gv('m-radar-tipo')==='nota') payload.radar_escala=parseInt(_gv('m-radar-escala'),10)||10;
   // Criação: nova meta vai para o FIM da sequência. Sem isto a coluna cai no
   // DEFAULT 1 do banco, empatando com a Meta 01 e bagunçando a numeração
   // (que é posicional). Usa o MÁXIMO real (robusto a lacunas de exclusão),
@@ -1150,43 +1175,57 @@ function abrirModalRadar(id){
   if(!_podeEditar()||!_metaSelId) return;
   _editRadarId=id||null;
   var r = id? _radar.find(function(x){return x.id===id;}) : null;
-  var tipo=_radarTipo(_metaSel());
+  var mSel=_metaSel(); var tipo=_radarTipo(mSel); var cfg=_RADAR_NUM(tipo);
   document.getElementById('modal-radar-titulo').textContent = r? 'Editar registro':'Novo registro';
   // Mostrar/esconder campos conforme o tipo de medição (data_inicio é sempre exibido)
   _setDisp('r-grp-ini', true);
   _setDisp('r-grp-fim', tipo==='dias');
-  _setDisp('r-grp-valor', tipo==='valor' || tipo==='percentual');
+  _setDisp('r-grp-valor', !!cfg);   // família numérica usa o campo de valor
   var lblRef=document.getElementById('r-referencia-label');
   if(lblRef) lblRef.textContent = (tipo==='dias') ? 'Proposta / Cliente' : 'Referência / Cliente';
   var lblIni=document.getElementById('r-ini-label');
   if(lblIni) lblIni.textContent = (tipo==='dias') ? 'Data visita/contato' : 'Data do registro';
   var lblVal=document.getElementById('r-valor-label');
-  if(lblVal) lblVal.textContent = (tipo==='percentual') ? 'Percentual (%) — 0 a 100' : 'Valor (R$)';
+  if(lblVal) lblVal.textContent = _radarValLabel(tipo, mSel);
   var inpVal=document.getElementById('r-valor');
-  if(inpVal){ if(tipo==='percentual'){ inpVal.min='0'; inpVal.max='100'; } else { inpVal.removeAttribute('min'); inpVal.removeAttribute('max'); } }
+  if(inpVal && cfg){
+    var mn=cfg.min, mx=cfg.max(mSel);
+    if(mn!=null) inpVal.min=String(mn); else inpVal.removeAttribute('min');
+    if(mx!=null) inpVal.max=String(mx); else inpVal.removeAttribute('max');
+  }
   // Popular valores
   _sv('r-referencia',r&&r.referencia); _sv('r-anotacao',r&&r.anotacao);
   _sv('r-data-fim',r&&r.data_fim);
-  _sv('r-valor', (r&&(tipo==='valor'||tipo==='percentual'))?r.valor_realizado:'');
-  // data_inicio: registro existente usa o salvo; novo em contagem/valor assume hoje
+  _sv('r-valor', (r&&cfg)?r.valor_realizado:'');
+  // data_inicio: registro existente usa o salvo; novo (não-dias) assume hoje
   var _hoje=new Date().toISOString().slice(0,10);
   _sv('r-data-inicio', r ? r.data_inicio : (tipo==='dias' ? '' : _hoje));
   abrirModal('modal-radar');
 }
+// Rótulo do campo de valor no modal de registro, por tipo.
+function _radarValLabel(tipo, m){
+  if(tipo==='percentual') return 'Percentual (%) — 0 a 100';
+  if(tipo==='nps')        return 'NPS — -100 a 100';
+  if(tipo==='nota')       return 'Nota (0-'+_notaEscala(m)+')';
+  if(tipo==='ranking')    return 'Posição (1 = melhor)';
+  return 'Valor (R$)';   // valor, media
+}
 async function salvarRadar(){
   if(!_podeEditar()||!_metaSelId||!_empresaAtiva) return;
   var sb=_sb(); if(!sb) return;
-  var m=_metaSel(); var tipo=_radarTipo(m);
+  var m=_metaSel(); var tipo=_radarTipo(m); var cfg=_RADAR_NUM(tipo);
   var ini=_gv('r-data-inicio')||null, fim=null, valor=null, bateu=null;
   if(tipo==='dias'){
     fim=_gv('r-data-fim')||null;
     valor=_diasEntre(ini,fim);          // dias calculados
     bateu=_bateu(valor,m);              // bateu por registro só faz sentido em dias
-  } else if(tipo==='valor'){
-    valor=_numOrNull(_gv('r-valor'));   // valor monetário; data_inicio = data do registro
-  } else if(tipo==='percentual'){
+  } else if(cfg){                       // família numérica: valor/media/percentual/nps/nota/ranking
     valor=_numOrNull(_gv('r-valor'));
-    if(valor!=null) valor=Math.max(0, Math.min(100, valor));   // clamp 0-100
+    if(valor!=null){                    // clamp na faixa do tipo (nota usa a escala da meta)
+      var mn=cfg.min, mx=cfg.max(m);
+      if(mn!=null) valor=Math.max(mn, valor);
+      if(mx!=null) valor=Math.min(mx, valor);
+    }
   }
   // contagem: cada linha vale 1 → valor_realizado fica null; agregado é calculado na exibição
   var payload={
