@@ -8751,7 +8751,7 @@ function rExecTimeline(){
 <script src="js/core/app-core.js?v=28"></script>
 <script src="js/services/decision-engine/index.js?v=2"></script>
 <script src="js/services/decision-engine/rp-alertas.js?v=1"></script>
-<script src="js/core/permissoes.js?v=11"></script>
+<script src="js/core/permissoes.js?v=12"></script>
 <script src="js/modules/multi-empresa.js"></script>
 <script src="js/core/router.js?v=17"></script>
 <script src="js/modules/categoria-analise.js?v=4"></script>
@@ -10248,6 +10248,11 @@ var _PERM_GRUPOS = [
   { mod: 'rh', label: '👷 RH / Equipes', actions: [
     { key: 'ver',    label: 'Ver' },
     { key: 'editar', label: 'Editar' }
+  ]},
+  { mod: 'recursos-produtividade', label: '📈 Recursos & Produtividade', actions: [
+    // Dashboard puro: só 'ver'. A aba Configurações (rp_config) é SÓ DONO
+    // por decisão de produto (Etapa 3) e fica fora da matriz.
+    { key: 'ver', label: 'Ver' }
   ]},
   { mod: 'cofre', label: '🔐 Cofre', actions: [
     { key: 'acesso', label: 'Acesso' }
