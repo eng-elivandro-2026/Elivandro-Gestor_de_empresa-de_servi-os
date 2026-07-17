@@ -76,9 +76,10 @@
       editar: ['dono', 'admin', 'rh']
     },
     'recursos-produtividade': {
-      // Etapa 1 = só Visão Geral AGREGADA (mostra toda a equipe) —
-      // restrita a gestão. Quando houver visão por colaborador (Etapa 2),
-      // o módulo entra no vocabulário de permissões individuais.
+      // Dashboard agregado (mostra toda a equipe) — default restrito a
+      // gestão. Governável nas DUAS telas: por perfil (G4B, esta matriz)
+      // e individual (chave 'recursos_produtividade' no JSON). Só 'ver':
+      // a aba Configurações do módulo é só-dono por decisão de produto.
       ver: ['dono', 'admin', 'gestor']
     },
     cofre: {
@@ -164,8 +165,8 @@
 
   // ID do Router → chave de módulo no JSON.
   // Sem entrada aqui = sem correspondente no JSON → fallback por perfil
-  // (reuniao-radar, dashboard-estrategico, cofre, configuracoes,
-  // gestao-tempo e recursos-produtividade — sem chave individual nesta etapa).
+  // (reuniao-radar, dashboard-estrategico, cofre, configuracoes e
+  // gestao-tempo — sem chave individual nesta etapa).
   var MAPA_MODULO_JSON = {
     'comercial':                'comercial',
     'operacional':              'operacional',
@@ -175,6 +176,7 @@
     'gestao-a-vista':           'mpe',
     'dashboard-minha-empresa':  'minha_empresa',
     'planejamento-estrategico': 'planejamento',
+    'recursos-produtividade':   'recursos_produtividade',
     'avisos':                   'quadro_avisos'
   };
 
@@ -239,6 +241,9 @@
     { label: '📊 MPE', chaves: [ { key: 'mpe', label: 'MPE' } ] },
     { label: '🧭 Planejamento', chaves: [ { key: 'planejamento', label: 'Planejamento Estratégico' } ] },
     { label: '🏢 Minha Empresa', chaves: [ { key: 'minha_empresa', label: 'Minha Empresa' } ] },
+    // Só a ação 'ver' tem efeito (dashboard puro; editar/excluir/aprovar
+    // ficam gravadas mas inertes, como nos demais módulos ver-only).
+    { label: '📈 Recursos & Produtividade', chaves: [ { key: 'recursos_produtividade', label: 'Recursos & Produtividade' } ] },
     { label: '📌 Quadro de Avisos', chaves: [ { key: 'quadro_avisos', label: 'Quadro de Avisos' } ] },
     { label: '🗄️ Backup', chaves: [ { key: 'backup', label: 'Backup (sem módulo no portal ainda)' } ] }
   ];

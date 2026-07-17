@@ -342,7 +342,7 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
    milhares por período, migrar para uma RPC agregada no banco.
    ============================================================ */
 
-var PERFIS_PERMITIDOS = ['dono', 'admin', 'gestor'];
+var PERFIS_PERMITIDOS = ['dono', 'admin', 'gestor'];   // só FALLBACK (sem podeAcessarModulo)
 
 // ── Configurações do módulo (Etapa 3) ────────────────────────
 // Persistidas na tabela `configuracoes` (chave 'rp_config', 1 linha por
@@ -564,6 +564,15 @@ function rpSetVisao(v) {
 function rpNavegar(dir) { _dataRef = navegarData(_dataRef, _visao, dir); carregarTudo(); }
 
 function _podeVer() {
+  // Permissão real do portal (matriz por perfil + individual autoritativa,
+  // mesmo padrão dos módulos recentes). Sem podeAcessarModulo (iframe fora
+  // do portal / permissoes.js ausente) → fallback nos perfis de gestão.
+  try {
+    if (window.parent && typeof window.parent.podeAcessarModulo === 'function')
+      return !!window.parent.podeAcessarModulo('recursos-produtividade');
+    if (typeof window.podeAcessarModulo === 'function')
+      return !!window.podeAcessarModulo('recursos-produtividade');
+  } catch (e) {}
   try {
     var p = (window.parent && typeof window.parent.getPerfilUsuario === 'function')
       ? window.parent.getPerfilUsuario()
