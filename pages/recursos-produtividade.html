@@ -130,9 +130,6 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
 .oc-meta{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--blue);opacity:.75}
 
 /* Mapa de Alocação (Etapa 3) */
-.mapa-toggle{display:flex;gap:.25rem;margin-bottom:.7rem}
-.mapa-toggle button{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:.3rem .8rem;font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer}
-.mapa-toggle button.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
 .mapa-scroll{overflow-x:auto}
 .mapa-scroll .hm-cel{min-width:26px;cursor:pointer}
 .mapa-scroll .hm-cel:hover{outline:1px solid var(--emp-cor)}
@@ -302,11 +299,7 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
     <div id="sec-mapa" class="rpsec">
       <div class="card">
         <div class="sec-tit">🗺️ Mapa de Alocação</div>
-        <div class="sec-desc">Horas aprovadas por colaborador × dia. Clique numa célula para ver as propostas do dia. As setas ←/→ da barra acima navegam o período.</div>
-        <div class="mapa-toggle">
-          <button id="mv-semana" class="on" onclick="rpMapaVisao('semana')">Semana</button>
-          <button id="mv-mes" onclick="rpMapaVisao('mes')">Mês</button>
-        </div>
+        <div class="sec-desc">Horas aprovadas por colaborador ao longo do período selecionado na barra acima — colunas por dia, semana ou mês conforme a granularidade. Clique numa célula para detalhar.</div>
         <div class="mapa-scroll" id="mapaGrid"><div class="vazio">Carregando…</div></div>
       </div>
     </div>
@@ -873,19 +866,30 @@ function _hmCorAgg(h, diasUteisBucket) {
   return 'rgba(77,183,72,' + alpha.toFixed(2) + ')';
 }
 
+// Granularidade das colunas derivada da visão global (compartilhada pelo
+// heatmap da Visão Geral e pelo Mapa de Alocação).
+function _rpGranularidade() {
+  var porDia = (_visao === 'dia' || _visao === 'semana' || _visao === 'quinzena' || _visao === 'mes');
+  return { porDia: porDia, rotulo: porDia ? 'por dia' : (_visao === 'ano' ? 'por mês' : 'por semana') };
+}
+
 function renderHeatmap() {
   var el = document.getElementById('heatmap');
   if (!el || !_ds) return;
-  var per = _ds.per;
-  var porDia = (_visao === 'dia' || _visao === 'semana' || _visao === 'quinzena' || _visao === 'mes');
-  var granu = porDia ? 'por dia' : (_visao === 'ano' ? 'por mês' : 'por semana');
+  var granu = _rpGranularidade().rotulo;
   var elT = document.getElementById('hmTitulo');
   if (elT) elT.textContent = '🗓️ Mapa de calor — ' + labelPeriodo(_dataRef, _visao) + ' (' + granu + ')';
   var elD = document.getElementById('hmDesc');
   if (elD) elD.textContent = 'Horas aprovadas por colaborador, ' + granu + '. Clique numa célula para detalhar.';
   if (!_cacheColabs.length) { el.innerHTML = '<div class="vazio">Nenhum colaborador ativo.</div>'; return; }
+  el.innerHTML = '<div class="mapa-scroll">' + _hmGridAdaptativo() + '</div>';
+}
 
-  var buckets = rpHeatmapBuckets(per, _visao);
+// Grid adaptativo colaborador × bucket — UMA montagem, dois lugares:
+// Visão Geral (#heatmap) e Mapa de Alocação (#mapaGrid).
+function _hmGridAdaptativo() {
+  var porDia = _rpGranularidade().porDia;
+  var buckets = rpHeatmapBuckets(_ds.per, _visao);
   // horas[cid][idxBucket] a partir de _ds.apts (sem query extra)
   var idxDe = {};
   function bucketIdx(dIso) {
@@ -933,14 +937,15 @@ function renderHeatmap() {
       // fds/feriado vazio: SEM background inline (senão o inline vence o laranja da classe)
       var sty = (esp && h <= 0) ? ''
         : ' style="background:' + (porDia ? _hmCor(h) : _hmCorAgg(h, diasUteisEntre(b.ini, b.fim))) + (h > 0 ? ';color:#fff' : '') + '"';
-      var tit = esc(c.nome) + ' — ' + fmtH(h) + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '');
+      var tit = esc(c.nome) + ' — ' + (porDia ? _fmtDataBr(b.ini) : b.ini + ' a ' + b.fim) + ' — ' + fmtH(h)
+        + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '');
       grid += '<div class="' + cls + '"' + sty + ' title="' + tit + '"'
         + ' onclick="abrirRangeModal(\'' + esc(c.id) + '\',\'' + b.ini + '\',\'' + b.fim + '\')">'
         + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
     });
   });
   grid += '</div>';
-  el.innerHTML = '<div class="mapa-scroll">' + grid + '</div>';
+  return grid;
 }
 
 /* ── Drill-downs (Etapa 2) ──────────────────────────────────── */
@@ -1225,63 +1230,12 @@ function renderSecProposta() {
 }
 
 /* 🗺️ Mapa de Alocação (Etapa 3) */
-// ESTADO ÚNICO de período: o toggle Semana/Mês do mapa é um ATALHO para a
-// visão GLOBAL (rpSetVisao) — setas ←/→ e rótulo ficam sempre coerentes com
-// as colunas. Entrar no mapa com visão fora de semana/mês força 'semana'.
-var _MAPA_VISOES = ['semana', 'mes'];
-function rpMapaVisao(v) { rpSetVisao(v); }
-var _mapaAtual = null;               // {range, apts, propMap} do último render (p/ o modal)
+// ESTADO ÚNICO de período: o mapa segue a MESMA barra global (sem toggle
+// local) e reusa o MESMO grid adaptativo da Visão Geral.
 function renderSecMapa() {
   var el = document.getElementById('mapaGrid'); if (!el) return;
-  // Visão global fora de semana/mês: se o mapa está ativo, força 'semana'
-  // (recarrega e volta aqui); senão só exibe a dica.
-  if (_MAPA_VISOES.indexOf(_visao) < 0) {
-    var secAtiva = document.getElementById('sec-mapa').classList.contains('on');
-    if (secAtiva) { rpSetVisao('semana'); return; }
-    el.innerHTML = '<div class="vazio">O mapa é exibido nas visões Semana e Mês — abra a aba para ajustar.</div>';
-    return;
-  }
-  // Sincroniza o toggle com a visão global
-  document.querySelectorAll('.mapa-toggle button').forEach(function (b) { b.classList.remove('on'); });
-  var btnT = document.getElementById('mv-' + _visao); if (btnT) btnT.classList.add('on');
   if (!_ds || !_cacheColabs.length) { el.innerHTML = '<div class="vazio">Sem dados carregados.</div>'; return; }
-  var range = _ds.per;               // = calcPeriodo(_dataRef, _visao): mesmo período global
-  _mapaAtual = { range: range, apts: _ds.apts, propMap: _ds.propMap };
-  // horas[cid][iso]
-  var horas = {};
-  _ds.apts.forEach(function (a) {
-    if (!a || !a.colaborador_id) return;
-    var dia = String(a.data).slice(0, 10);
-    (horas[a.colaborador_id] = horas[a.colaborador_id] || {})[dia] = (horas[a.colaborador_id][dia] || 0) + (Number(a.horas_total) || 0);
-  });
-  var dias = [];
-  var cur = _deIso(range.inicio), fim = _deIso(range.fim);
-  while (cur <= fim) { dias.push(_isoDe(cur)); cur.setDate(cur.getDate() + 1); }
-  var DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(' + dias.length + ',1fr)">';
-  grid += '<div></div>' + dias.map(function (iso) {
-    var dd = _deIso(iso);
-    var esp = _diaEspecial(iso);
-    // Mês: dia da semana abreviado ACIMA do número (2 linhas); Semana: "Seg 14".
-    var lbl = _visao === 'semana'
-      ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0')
-      : '<span class="hm-dow">' + DIAS_SEM[dd.getDay()].toUpperCase() + '</span>' + String(dd.getDate());
-    var tit = iso + (esp && esp.tipo === 'feriado' ? ' — 🎉 ' + esc(esp.desc) : '');
-    return '<div class="hm-hdr' + (esp ? ' hm-fds' : '') + '" title="' + tit + '">' + lbl + '</div>';
-  }).join('');
-  _cacheColabs.forEach(function (c) {
-    grid += '<div class="hm-nome" title="' + esc(c.nome) + '">' + esc(c.nome) + '</div>';
-    dias.forEach(function (iso) {
-      var h = (horas[c.id] || {})[iso] || 0;
-      var espC = _diaEspecial(iso);
-      grid += '<div class="hm-cel' + (espC && h <= 0 ? ' hm-fds' : '') + '"'
-        + (espC && h <= 0 ? '' : ' style="background:' + _hmCor(h) + (h > 0 ? ';color:#fff' : '') + '"')
-        + ' title="' + esc(c.nome) + ' — ' + iso + ' — ' + fmtH(h) + (espC && espC.tipo === 'feriado' ? ' — 🎉 ' + esc(espC.desc) : '') + '"'
-        + ' onclick="abrirMapaModal(\'' + esc(c.id) + '\',\'' + iso + '\')">'
-        + (h > 0 ? (Math.round(h * 10) / 10) : '') + '</div>';
-    });
-  });
-  el.innerHTML = grid + '</div>';
+  el.innerHTML = _hmGridAdaptativo();
 }
 // Núcleo do modal de detalhe — genérico por RANGE [ini, fim] (1 dia, 1 semana
 // ou 1 mês). Usado pelo Mapa de Alocação (por dia) e pelo heatmap adaptativo
@@ -1316,10 +1270,8 @@ function _abrirDetalheRange(base, cid, ini, fim, rotulo) {
   }
   document.getElementById('mapaModal').classList.add('on');
 }
-// Mapa de Alocação: célula = 1 dia, dataset do mapa (_mapaAtual).
-function abrirMapaModal(cid, iso) {
-  _abrirDetalheRange(_mapaAtual, cid, iso, iso, _fmtDataBr(iso));
-}
+// Compat: célula de 1 dia (mesmo modal, rótulo com a data).
+function abrirMapaModal(cid, iso) { abrirRangeModal(cid, iso, iso); }
 // Heatmap adaptativo da Visão Geral: bucket de 1 dia, 1 semana ou 1 mês,
 // dataset do período (_ds).
 function abrirRangeModal(cid, ini, fim) {
