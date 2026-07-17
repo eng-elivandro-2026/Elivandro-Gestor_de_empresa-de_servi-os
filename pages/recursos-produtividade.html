@@ -1027,52 +1027,31 @@ function renderSecProposta() {
 }
 
 /* 🗺️ Mapa de Alocação (Etapa 3) */
-var _mapaVisao = 'semana';           // 'semana' | 'mes' (ano fora — ilegível como heatmap diário)
-var _mapaCache = {};                 // range → {apts, propMap} quando fora do período global
-function rpMapaVisao(v) {
-  _mapaVisao = v;
-  document.querySelectorAll('.mapa-toggle button').forEach(function (b) { b.classList.remove('on'); });
-  var btn = document.getElementById('mv-' + v); if (btn) btn.classList.add('on');
-  renderSecMapa();
-}
-// Dados do range do mapa: reusa _ds.apts quando o range ⊆ período global;
-// senão 1 fetch slim extra (cacheado) + números das propostas p/ o modal.
-async function _mapaDados(range) {
-  if (_ds && _ds.per.inicio <= range.inicio && _ds.per.fim >= range.fim) {
-    return { apts: _ds.apts.filter(function (a) { return a && a.data >= range.inicio && a.data <= range.fim; }), propMap: _ds.propMap };
-  }
-  var key = range.inicio + '|' + range.fim;
-  if (_mapaCache[key]) return _mapaCache[key];
-  var sb = _sb();
-  if (!sb || !_empresaAtiva || !_empresaAtiva.id) return { apts: [], propMap: {} };
-  var r = await sb.from('apontamentos')
-    .select('colaborador_id, proposta_id, data, horas_total, valor_total')
-    .eq('empresa_id', _empresaAtiva.id).eq('status', 'aprovado')
-    .gte('data', range.inicio).lte('data', range.fim);
-  var apts = (r && r.data) || [];
-  var propMap = Object.assign({}, (_ds && _ds.propMap) || {});
-  var faltam = {};
-  apts.forEach(function (a) { if (a && a.proposta_id && !propMap[a.proposta_id]) faltam[a.proposta_id] = true; });
-  var ids = Object.keys(faltam);
-  if (ids.length) {
-    var rp = await sb.from('propostas').select('app_id, numero_proposta, cliente')
-      .eq('empresa_id', _empresaAtiva.id).in('app_id', ids);
-    ((rp && rp.data) || []).forEach(function (p) { propMap[p.app_id] = p; });
-  }
-  var out = { apts: apts, propMap: propMap };
-  _mapaCache[key] = out;
-  return out;
-}
+// ESTADO ÚNICO de período: o toggle Semana/Mês do mapa é um ATALHO para a
+// visão GLOBAL (rpSetVisao) — setas ←/→ e rótulo ficam sempre coerentes com
+// as colunas. Entrar no mapa com visão fora de semana/mês força 'semana'.
+var _MAPA_VISOES = ['semana', 'mes'];
+function rpMapaVisao(v) { rpSetVisao(v); }
 var _mapaAtual = null;               // {range, apts, propMap} do último render (p/ o modal)
-async function renderSecMapa() {
+function renderSecMapa() {
   var el = document.getElementById('mapaGrid'); if (!el) return;
+  // Visão global fora de semana/mês: se o mapa está ativo, força 'semana'
+  // (recarrega e volta aqui); senão só exibe a dica.
+  if (_MAPA_VISOES.indexOf(_visao) < 0) {
+    var secAtiva = document.getElementById('sec-mapa').classList.contains('on');
+    if (secAtiva) { rpSetVisao('semana'); return; }
+    el.innerHTML = '<div class="vazio">O mapa é exibido nas visões Semana e Mês — abra a aba para ajustar.</div>';
+    return;
+  }
+  // Sincroniza o toggle com a visão global
+  document.querySelectorAll('.mapa-toggle button').forEach(function (b) { b.classList.remove('on'); });
+  var btnT = document.getElementById('mv-' + _visao); if (btnT) btnT.classList.add('on');
   if (!_ds || !_cacheColabs.length) { el.innerHTML = '<div class="vazio">Sem dados carregados.</div>'; return; }
-  var range = calcPeriodo(_dataRef, _mapaVisao);
-  var d = await _mapaDados(range);
-  _mapaAtual = { range: range, apts: d.apts, propMap: d.propMap };
+  var range = _ds.per;               // = calcPeriodo(_dataRef, _visao): mesmo período global
+  _mapaAtual = { range: range, apts: _ds.apts, propMap: _ds.propMap };
   // horas[cid][iso]
   var horas = {};
-  d.apts.forEach(function (a) {
+  _ds.apts.forEach(function (a) {
     if (!a || !a.colaborador_id) return;
     var dia = String(a.data).slice(0, 10);
     (horas[a.colaborador_id] = horas[a.colaborador_id] || {})[dia] = (horas[a.colaborador_id][dia] || 0) + (Number(a.horas_total) || 0);
@@ -1084,7 +1063,7 @@ async function renderSecMapa() {
   var grid = '<div class="hm-grid" style="grid-template-columns:minmax(90px,160px) repeat(' + dias.length + ',1fr)">';
   grid += '<div></div>' + dias.map(function (iso) {
     var dd = _deIso(iso);
-    var lbl = _mapaVisao === 'semana' ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') : String(dd.getDate());
+    var lbl = _visao === 'semana' ? DIAS_SEM[dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') : String(dd.getDate());
     return '<div class="hm-hdr" title="' + iso + '">' + lbl + '</div>';
   }).join('');
   _cacheColabs.forEach(function (c) {
@@ -1132,7 +1111,6 @@ function fecharMapaModal() { document.getElementById('mapaModal').classList.remo
 async function _onTrocaEmpresa(d) {
   _empresaAtiva = { id: d.empresaId, nome: d.empresaNome || '', nome_curto: d.empresaNomeCurto || '' };
   _ds = null; _selColab = ''; _selCliente = ''; _selProposta = '';   // dataset/seleções são da empresa
-  _mapaCache = {};                                                    // cache do mapa é por empresa
   var el = document.getElementById('empLabel');
   if (el) el.textContent = _empresaAtiva.nome_curto || _empresaAtiva.nome || '—';
   await carregarConfig();                                             // jornada/limiares antes dos cálculos
