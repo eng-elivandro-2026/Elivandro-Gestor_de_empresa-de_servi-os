@@ -319,6 +319,7 @@ table.pxr td.num,table.pxr th.num{text-align:right;white-space:nowrap}
           <div class="cfg-f"><label>Meta de ocupação-alvo (%)</label><input type="number" id="cfgMeta" min="1" max="200" step="1"><div class="cfg-hint">Marcador visual nas barras de ocupação — referência, não faixa de cor. Default 85%.</div></div>
           <div class="cfg-f"><label>Limite de sobrecarga (%)</label><input type="number" id="cfgSobre" min="1" max="500" step="1"><div class="cfg-hint">Acima disso a ocupação fica vermelha. Default 100%.</div></div>
           <div class="cfg-f"><label>Limite de ociosidade (%)</label><input type="number" id="cfgOcio" min="0" max="200" step="1"><div class="cfg-hint">Abaixo disso a ocupação fica âmbar. Default 50%.</div></div>
+          <div class="cfg-f"><label>Obra parada em Aprovado (dias úteis)</label><input type="number" id="cfgDiasParado" min="1" max="90" step="1"><div class="cfg-hint">Acima disso a obra gera alerta no Motor de Decisão. Default 5 dias úteis.</div></div>
         </div>
         <button class="btn btn-p" id="btnSalvarConfig" onclick="salvarConfig()">💾 Salvar configurações</button>
         <span id="cfgMsg" style="font-size:.74rem;margin-left:.6rem"></span>
@@ -352,7 +353,7 @@ var PERFIS_PERMITIDOS = ['dono', 'admin', 'gestor'];
 // Persistidas na tabela `configuracoes` (chave 'rp_config', 1 linha por
 // empresa). Defaults preservam o comportamento das Etapas 1/2. Só o dono
 // edita (gate de UI; a RLS de configuracoes cobre gestor+ no banco).
-var _CFG_DEFAULT = { jornada_semanal: 44, meta_ocupacao: 85, limite_sobrecarga: 100, limite_ociosidade: 50 };
+var _CFG_DEFAULT = { jornada_semanal: 44, meta_ocupacao: 85, limite_sobrecarga: 100, limite_ociosidade: 50, dias_parado_aprovado: 5 };
 var _cfg = Object.assign({}, _CFG_DEFAULT);
 function _horasDiaUtil() { return _cfg.jornada_semanal / 5; }
 // Cor da ocupação pelas faixas CONFIGURADAS (helper único das 3 telas).
@@ -385,7 +386,7 @@ async function carregarConfig() {
   preencherFormConfig();
 }
 function preencherFormConfig() {
-  var m = { cfgJornada: 'jornada_semanal', cfgMeta: 'meta_ocupacao', cfgSobre: 'limite_sobrecarga', cfgOcio: 'limite_ociosidade' };
+  var m = { cfgJornada: 'jornada_semanal', cfgMeta: 'meta_ocupacao', cfgSobre: 'limite_sobrecarga', cfgOcio: 'limite_ociosidade', cfgDiasParado: 'dias_parado_aprovado' };
   Object.keys(m).forEach(function (id) { var el = document.getElementById(id); if (el) el.value = _cfg[m[id]]; });
 }
 var _cfgSalvando = false;
@@ -400,11 +401,13 @@ async function salvarConfig() {
       jornada_semanal:   Number((document.getElementById('cfgJornada') || {}).value),
       meta_ocupacao:     Number((document.getElementById('cfgMeta') || {}).value),
       limite_sobrecarga: Number((document.getElementById('cfgSobre') || {}).value),
-      limite_ociosidade: Number((document.getElementById('cfgOcio') || {}).value)
+      limite_ociosidade: Number((document.getElementById('cfgOcio') || {}).value),
+      dias_parado_aprovado: Number((document.getElementById('cfgDiasParado') || {}).value)
     };
     if (!(novo.jornada_semanal >= 1 && novo.jornada_semanal <= 168)) { _cfgErro('Jornada deve estar entre 1 e 168 h/semana.'); return; }
     if (!(novo.meta_ocupacao >= 1 && novo.meta_ocupacao <= 200)) { _cfgErro('Meta deve estar entre 1 e 200%.'); return; }
     if (!(novo.limite_ociosidade >= 0 && novo.limite_sobrecarga > novo.limite_ociosidade)) { _cfgErro('Limite de sobrecarga deve ser maior que o de ociosidade.'); return; }
+    if (!(novo.dias_parado_aprovado >= 1 && novo.dias_parado_aprovado <= 90)) { _cfgErro('Dias de obra parada deve estar entre 1 e 90.'); return; }
     var sb = _sb();
     if (!sb || !_empresaAtiva || !_empresaAtiva.id) { _cfgErro('Sem conexão/empresa ativa.'); return; }
     var r = await sb.from('configuracoes').upsert({

@@ -2976,6 +2976,13 @@ function rDash(rankTarget, sortBy){
     // Execução atrasada
     if(fas==='atrasado'){ alertasList.push({nivel:'critico',html:deCard('critico','🔴 Execução Atrasada',nome+' — '+money(val)+' marcada como ATRASADA.','Reagendar com cliente ou acionar equipe')}); criticos++; }
   });
+  // Alertas do Recursos & Produtividade (pré-computados async — rp-alertas.js:
+  // obras paradas em Aprovado + ocupação fora dos limites de rp_config).
+  if(typeof window._rpAlertasGarantir==='function') window._rpAlertasGarantir();
+  ((window._rpAlertas)||[]).forEach(function(a){
+    alertasList.push({ nivel:a.nivel, html:deCard(a.nivel, a.titulo, a.msg, a.acao) });
+    if(a.nivel==='critico') criticos++; else atencao++;
+  });
   // Inteligência: PMR alto por cliente
   var pmrCli={};
   _pcDE.forEach(function(p){ var tl=p.tl||{},nfs=tl.nfs||[],dtRF=tl.dtRecebFinal||''; var ultNF=nfs.length>0?nfs.reduce(function(mx,nf){return nf.data>mx?nf.data:mx;},''):null; if(ultNF&&dtRF){ var d=typeof _difD==='function'?_difD(ultNF,dtRF):null; if(d!==null){ var k=(p.cnpj||p.cli||'').trim().toLowerCase(); if(!pmrCli[k]) pmrCli[k]={cli:p.cli,vals:[]}; pmrCli[k].vals.push(d); } } });

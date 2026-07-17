@@ -178,6 +178,17 @@
     });
 
     var ord = { critico: 0, alto: 1, medio: 2, baixo: 3 };
+    // Alertas do Recursos & Produtividade (pré-computados async — rp-alertas.js).
+    if (typeof window._rpAlertasGarantir === 'function') window._rpAlertasGarantir();
+    (window._rpAlertas || []).forEach(function (a) {
+      al.push({
+        tipo: a.nivel === 'critico' ? 'critico' : 'alerta',
+        icone: a.icone || '📈',
+        impacto: a.nivel === 'critico' ? 'alto' : 'medio',
+        mensagem: a.texto || ''
+      });
+    });
+
     al.sort(function (a, b) {
       return (ord[a.tipo === 'critico' ? 'critico' : a.impacto] || 3) -
              (ord[b.tipo === 'critico' ? 'critico' : b.impacto] || 3);
