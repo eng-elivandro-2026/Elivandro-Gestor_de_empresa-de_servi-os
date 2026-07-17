@@ -767,7 +767,7 @@ async function carregarTudo(){
   function q(p){ return p.then(function(r){ return (!r.error&&Array.isArray(r.data))?r.data:[]; }).catch(function(){ return []; }); }
   try{
     var res=await Promise.all([
-      q(sb.from('metas').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
+      q(sb.from('metas').select('*').eq('empresa_id',eid).order('ordem',{ascending:true}).order('created_at',{ascending:true})),
       q(sb.from('meta_acoes').select('*').eq('empresa_id',eid).order('ordem',{ascending:true})),
       q(sb.from('meta_pdca').select('*').eq('empresa_id',eid)),
       q(sb.from('meta_radar').select('*').eq('empresa_id',eid).order('created_at',{ascending:true}))
@@ -783,7 +783,7 @@ async function carregarTudo(){
 // Refetch pontual (invalidação) — só a meta/tabela afetada
 async function _recarregarMetas(){
   var sb=_sb(); if(!sb||!_empresaAtiva) return;
-  try{ var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}); if(!r.error&&Array.isArray(r.data)) _metas=r.data; }catch(e){}
+  try{ var r=await sb.from('metas').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('created_at',{ascending:true}); if(!r.error&&Array.isArray(r.data)) _metas=r.data; }catch(e){}
   renderLista();
 }
 async function _recarregarAcoes(id){
@@ -1053,6 +1053,14 @@ async function salvarMeta(){
     atingivel:_gv('m-atingivel')||null, relevante:_gv('m-relevante')||null, temporal:_gv('m-temporal')||null,
     updated_at:new Date().toISOString()
   };
+  // Criação: nova meta vai para o FIM da sequência. Sem isto a coluna cai no
+  // DEFAULT 1 do banco, empatando com a Meta 01 e bagunçando a numeração
+  // (que é posicional). Usa o MÁXIMO real (robusto a lacunas de exclusão),
+  // não o length. (Mesmo padrão do INSERT de ações.)
+  if(!id){
+    var _maxOrdem=(_metas||[]).reduce(function(mx,m){ var o=Number(m&&m.ordem)||0; return o>mx?o:mx; },0);
+    payload.ordem=_maxOrdem+1;
+  }
   var btn=document.getElementById('btn-salvar-meta'); btn.disabled=true; btn.textContent='Salvando…';
   try{
     var r = id ? await sb.from('metas').update(payload).eq('id',id) : await sb.from('metas').insert(payload);
