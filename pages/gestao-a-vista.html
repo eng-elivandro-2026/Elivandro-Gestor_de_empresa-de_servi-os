@@ -335,6 +335,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <div class="fld full" style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.2rem"><label style="color:var(--emp-cor)">Configuração do Radar</label></div>
       <div class="fld"><label>Tipo de medição</label><select id="m-radar-tipo" onchange="_onTipoMedicao()"><option value="dias">Dias entre duas datas</option><option value="contagem">Contagem por período</option><option value="valor">Valor monetário por período</option><option value="media">Média por período</option><option value="percentual">Percentual (0-100%)</option><option value="nota">Nota / Avaliação (0-5 ou 0-10)</option><option value="nps">NPS (-100 a +100)</option><option value="ranking">Ranking / Posição</option><option value="sim_nao">Sim/Não (marco cumprido)</option></select></div>
       <div class="fld" id="m-grp-escala" style="display:none"><label>Escala da nota</label><select id="m-radar-escala"><option value="10">0 a 10</option><option value="5">0 a 5</option></select></div>
+      <div class="fld" id="m-grp-agregacao" style="display:none"><label>Agregação</label><select id="m-radar-agregacao"><option value="ultimo">Item único (usa o último registro)</option><option value="checklist">Checklist de itens (agrega todos)</option></select></div>
       <div class="fld"><label>Sentido da meta</label><select id="m-radar-sentido"><option value="menor">Menor é melhor (reduzir)</option><option value="maior">Maior é melhor (aumentar)</option></select></div>
       <div class="fld full"><label>S — Específico</label><textarea id="m-especifico"></textarea></div>
       <div class="fld full"><label>M — Mensurável</label><textarea id="m-mensuravel"></textarea></div>
@@ -866,7 +867,7 @@ function _renderSmart(m){
     '<div class="det-linha">'+esc(m.area||'—')+' · Responsável: '+esc(m.responsavel_nome||'—')+'</div>'+
     '<div class="det-linha">Início: '+_dataBR(m.data_inicio)+' · Prazo: '+_dataBR(m.data_prazo)+' · <span class="badge" style="background:'+st.cor+'22;color:'+st.cor+'">'+st.label+'</span></div>'+
     (_radarTipo(m)==='sim_nao'
-      ? '<div class="valbox"><span>Marco</span><b>'+(m.valor_atual===1?'✅ Cumprido':'Pendente')+'</b></div>'
+      ? '<div class="valbox"><span>Marco</span><b>'+(_agregMode(m)==='checklist'?(_fmtNum(m.valor_atual)+'% cumprido'):(m.valor_atual===1?'✅ Cumprido':'Pendente'))+'</b></div>'
       : '<div class="valbox"><span>Atual</span><b>'+_fmtNum(m.valor_atual)+'</b><span>→ Meta</span><b>'+_fmtNum(m.valor_meta)+'</b><span>'+esc(m.unidade||'')+'</span></div>');
   if(_podeEditar()){
     h+='<div class="det-acoes">'+
@@ -929,7 +930,7 @@ function _renderPdca(m){
   function fld(id,label,val){ return '<div class="pdca-fld"><label>'+label+'</label>'+(ro?'<div class="pdca-ro">'+(val?esc(val):'—')+'</div>':'<textarea id="'+id+'">'+esc(val||'')+'</textarea>')+'</div>'; }
   function quad(cls,letter,name,sub,inner){ return '<div class="quad '+cls+'"><div class="quad-h"><span class="quad-letter">'+letter+'</span><span class="quad-name">'+name+'</span></div><div class="quad-body"><div class="quad-sub">'+sub+'</div>'+inner+'</div></div>'; }
   var planAcoes = _acoes.length? '<ul class="pdca-plan-list">'+_acoes.map(function(a){return '<li>'+esc(a.titulo||a.o_que||'(ação)')+'</li>';}).join('')+'</ul>' : '<div style="opacity:.85;font-size:.82rem;margin-top:.3rem">Sem ações cadastradas.</div>';
-  var bannerVals = _radarTipo(m)==='sim_nao' ? ' — '+(m.valor_atual===1?'✅ Cumprido':'Pendente')
+  var bannerVals = _radarTipo(m)==='sim_nao' ? ' — '+(_agregMode(m)==='checklist'?(_fmtNum(m.valor_atual)+'% cumprido'):(m.valor_atual===1?'✅ Cumprido':'Pendente'))
     : ((m.valor_atual!=null||m.valor_meta!=null) ? ' — '+_fmtNum(m.valor_atual)+' → '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'') : '');
   var h='<div class="pdca-banner">🎯 '+esc(m.titulo)+bannerVals+'</div>';
   // Ordem do DOM em grid 2 col: TL, TR, BL, BR → P, D, A, C (horário)
@@ -966,16 +967,22 @@ function _RADAR_NUM(tipo){
   return ({
     valor:      { lbl:function(){ return 'Valor (R$)'; },              fmt:_money,  agg:'total',  aggLbl:'TOTAL', bateuLinha:false, min:null, max:function(){ return null; } },
     media:      { lbl:function(){ return 'Valor (R$)'; },              fmt:_money,  agg:'media',  aggLbl:'MÉDIA', bateuLinha:false, min:null, max:function(){ return null; } },
-    percentual: { lbl:function(){ return 'Percentual (%)'; },          fmt:_fmtPct, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true,  min:0,    max:function(){ return 100; } },
+    percentual: { lbl:function(){ return 'Percentual (%)'; },          fmt:_fmtPct, agg:function(m){ return _agregMode(m)==='checklist'?'media':'ultimo'; }, aggLbl:function(m){ return _agregMode(m)==='checklist'?'GERAL':'ATUAL'; }, bateuLinha:true, min:0, max:function(){ return 100; } },
     nps:        { lbl:function(){ return 'NPS'; },                     fmt:_fmtNum, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true,  min:-100, max:function(){ return 100; } },
     nota:       { lbl:function(m){ return 'Nota (0-'+_notaEscala(m)+')'; }, fmt:_fmtNum, agg:'media', aggLbl:'MÉDIA', bateuLinha:true, min:0, max:function(m){ return _notaEscala(m); } },
     ranking:    { lbl:function(){ return 'Posição'; }, fmt:function(n){ return n==null?'—':_fmtNum(n)+'º'; }, agg:'ultimo', aggLbl:'ATUAL', bateuLinha:true, min:1, max:function(){ return null; } }
   })[tipo] || null;
 }
 // Agrega a família numérica conforme cfg.agg (soma/média/último não-nulo já acumulados).
-function _radarAgg(cfg, soma, cont, ultimo){
+// Modo de agregação da meta (percentual/sim_nao): 'checklist' agrega TODOS os
+// registros; 'ultimo' (default; metas antigas sem o campo) usa o mais recente.
+function _agregMode(m){ return (m && m.radar_agregacao==='checklist') ? 'checklist' : 'ultimo'; }
+// Resolve agg/aggLbl que podem ser string OU função de m (só o percentual usa função).
+function _cfgVal(v, m){ return typeof v==='function' ? v(m) : v; }
+function _radarAgg(cfg, m, soma, cont, ultimo){
   if(!cont) return null;
-  return cfg.agg==='total' ? soma : cfg.agg==='media' ? (soma/cont) : ultimo;
+  var agg=_cfgVal(cfg.agg, m);
+  return agg==='total' ? soma : agg==='media' ? (soma/cont) : ultimo;
 }
 function _radarCols(tipo, m){
   if(tipo==='contagem') return ['Referência/Cliente','Data do registro','Causa/Ação (ACT)'];
@@ -1002,10 +1009,21 @@ function _bateuTxt(b){ return b===true?'🟢 Sim':(b===false?'🔴 Não':'—');
 function _simnaoObjetivo(m){ return _radarSentido(m)==='maior' ? 1 : 0; }
 function _simnaoBateu(v, m){ return v==null ? null : (Number(v) === _simnaoObjetivo(m)); }
 function _simnaoStatusTxt(v){ return v==null ? '—' : (Number(v)===1 ? '✅ Sim' : '❌ Não'); }
+// Checklist do sim_nao: nº que cumpriram o objetivo / total → { ok, total, pct, txt "X de Y (Z%)" }.
+function _simnaoChecklist(radar, m){
+  var total=0, ok=0;
+  (radar||[]).forEach(function(r){ if(r && r.valor_realizado!=null){ total++; if(_simnaoBateu(r.valor_realizado, m)) ok++; } });
+  var pct = total ? Math.round(ok/total*100) : 0;
+  return { ok:ok, total:total, pct:pct, txt: total ? (ok+' de '+total+' ('+pct+'%)') : '—' };
+}
 // Texto "Atual → Meta" do card/valbox: p/ sim_nao vira Cumprido/Pendente
 // (valor_atual = objetivo cumprido? via auto-sync), senão os números.
 function _atualMetaTxt(m){
-  if(_radarTipo(m)==='sim_nao') return m.valor_atual===1 ? '✅ Cumprido' : 'Pendente';
+  if(_radarTipo(m)==='sim_nao'){
+    // checklist: valor_atual = % (0-100) via auto-sync; item único: 0/1 → Cumprido/Pendente
+    if(_agregMode(m)==='checklist') return _fmtNum(m.valor_atual)+'% cumprido';
+    return m.valor_atual===1 ? '✅ Cumprido' : 'Pendente';
+  }
   return _fmtNum(m.valor_atual)+' / '+_fmtNum(m.valor_meta)+' '+esc(m.unidade||'');
 }
 function _radarLegendaEAcao(){
@@ -1027,8 +1045,8 @@ function _renderRadar(m){
     for(var i=1;i<=7;i++){ vazias+='<tr><td class="rad-ref">Registro '+i+'</td>'+midEmpty+'</tr>'; }
     var footEmpty = tipo==='dias'     ? '<td>MÉDIA</td><td data-label="Data início">—</td><td data-label="Data fim">—</td><td data-label="Dias">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
                   : tipo==='contagem' ? '<td>TOTAL</td><td data-label="Total">—</td><td data-label="Bateu?">—</td>'
-                  : tipo==='sim_nao'  ? '<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Status">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
-                  :                      '<td>'+cfg.aggLbl+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">—</td><td data-label="Bateu?">—</td>'+(cfg.bateuLinha?'<td data-label="Causa/Ação">—</td>':'');
+                  : tipo==='sim_nao'  ? '<td>'+(_agregMode(m)==='checklist'?'GERAL':'ATUAL')+'</td><td data-label="Data do registro">—</td><td data-label="Status">—</td><td data-label="Bateu?">—</td><td data-label="Causa/Ação">—</td>'
+                  :                      '<td>'+_cfgVal(cfg.aggLbl, m)+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">—</td><td data-label="Bateu?">—</td>'+(cfg.bateuLinha?'<td data-label="Causa/Ação">—</td>':'');
     var hv='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo,m)+'</tr></thead><tbody>'+
       vazias+'<tr class="media">'+footEmpty+'</tr></tbody></table></div>';
     return hv+_radarLegendaEAcao();
@@ -1067,11 +1085,16 @@ function _renderRadar(m){
   } else if(tipo==='contagem'){
     var nLinhas=_radar.length;
     footRow='<td>TOTAL</td><td data-label="Total"><b>'+nLinhas+'</b></td><td data-label="Bateu?">'+_bateuTxt(_bateu(nLinhas,m))+'</td>';
-  } else if(tipo==='sim_nao'){ // rodapé = status ATUAL (registro mais recente)
-    footRow='<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Status">'+_simnaoStatusTxt(ultimo)+'</td><td data-label="Bateu?">'+_bateuTxt(_simnaoBateu(ultimo,m))+'</td><td data-label="Causa/Ação">—</td>';
-  } else { // família numérica — rodapé conforme cfg.agg (total/média/último)
-    var agg=_radarAgg(cfg, soma, cont, ultimo);
-    footRow='<td>'+cfg.aggLbl+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">'+cfg.fmt(agg)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(agg,m))+'</td>'
+  } else if(tipo==='sim_nao'){
+    if(_agregMode(m)==='checklist'){ // GERAL = "X de Y (Z%)" cumpriram o objetivo; verde só a 100%
+      var ck=_simnaoChecklist(_radar, m);
+      footRow='<td>GERAL</td><td data-label="Data do registro">—</td><td data-label="Status">'+ck.txt+'</td><td data-label="Bateu?">'+_bateuTxt(ck.total?(ck.pct===100):null)+'</td><td data-label="Causa/Ação">—</td>';
+    } else { // ATUAL = status do registro mais recente
+      footRow='<td>ATUAL</td><td data-label="Data do registro">—</td><td data-label="Status">'+_simnaoStatusTxt(ultimo)+'</td><td data-label="Bateu?">'+_bateuTxt(_simnaoBateu(ultimo,m))+'</td><td data-label="Causa/Ação">—</td>';
+    }
+  } else { // família numérica — rodapé conforme cfg.agg (total/média/último), aggLbl idem
+    var agg=_radarAgg(cfg, m, soma, cont, ultimo);
+    footRow='<td>'+_cfgVal(cfg.aggLbl, m)+'</td><td data-label="Data do registro">—</td><td data-label="'+esc(lbl)+'">'+cfg.fmt(agg)+'</td><td data-label="Bateu?">'+_bateuTxt(_bateu(agg,m))+'</td>'
       +(cfg.bateuLinha?'<td data-label="Causa/Ação">—</td>':'');
   }
   var h='<div style="overflow-x:auto"><table class="tbl">'+_radarColgroup(tipo)+'<thead><tr>'+_radarHead(tipo,m)+
@@ -1092,11 +1115,14 @@ function abrirModalMeta(id){
   _sv('m-status',(m&&m.status)||'ativa');
   _sv('m-radar-tipo',(m&&m.radar_tipo)||'dias'); _sv('m-radar-sentido',(m&&m.radar_sentido)||'menor');
   _sv('m-radar-escala',(m&&m.radar_escala)||'10'); _toggleEscala();   // campo Escala só aparece p/ tipo=nota
+  _sv('m-radar-agregacao',(m&&m.radar_agregacao)||'ultimo'); _toggleAgregacao();   // Agregação só p/ percentual/sim_nao
   _ajustarPorTipo();   // rótulos do sentido + esconder Valor atual/meta no sim_nao
   _sv('m-especifico',m&&m.especifico); _sv('m-mensuravel',m&&m.mensuravel); _sv('m-atingivel',m&&m.atingivel); _sv('m-relevante',m&&m.relevante); _sv('m-temporal',m&&m.temporal);
   abrirModal('modal-meta');
 }
 function _toggleEscala(){ _setDisp('m-grp-escala', _gv('m-radar-tipo')==='nota'); }
+// Agregação (Item único / Checklist) só faz sentido p/ percentual e sim_nao.
+function _toggleAgregacao(){ var t=_gv('m-radar-tipo'); _setDisp('m-grp-agregacao', t==='percentual'||t==='sim_nao'); }
 // Ajustes de UI dependentes do tipo (edição e troca): rótulos contextuais do
 // Sentido p/ sim_nao + esconder Valor atual/meta (auto-sincronizados nesse tipo).
 function _ajustarPorTipo(){
@@ -1113,6 +1139,7 @@ function _ajustarPorTipo(){
 var _SENTIDO_SUGERIDO = { dias:'menor', contagem:'maior', valor:'maior', percentual:'maior', nota:'maior', nps:'maior', ranking:'menor', sim_nao:'maior' };
 function _onTipoMedicao(){
   _toggleEscala();
+  _toggleAgregacao();
   _ajustarPorTipo();
   // Só sugere na criação (dataset.id vazio) — na edição preserva o sentido salvo.
   var editando = !!document.getElementById('btn-salvar-meta').dataset.id;
@@ -1140,9 +1167,13 @@ async function salvarMeta(){
   // radar_escala (migration 061) só é enviado p/ tipo=nota — evita referenciar
   // a coluna nos salvamentos comuns caso a migration ainda não tenha rodado.
   if(_gv('m-radar-tipo')==='nota') payload.radar_escala=parseInt(_gv('m-radar-escala'),10)||10;
-  // sim_nao: valor_atual/valor_meta são governados pelo auto-sync (barra 0%/100%).
-  // Normaliza já na criação p/ a barra ser coerente antes do 1º registro do Radar.
-  if(_gv('m-radar-tipo')==='sim_nao'){ payload.valor_meta=1; if(payload.valor_atual==null) payload.valor_atual=0; }
+  // radar_agregacao (migration 062) só p/ percentual/sim_nao — mesma cautela.
+  var _tipoSel=_gv('m-radar-tipo');
+  if(_tipoSel==='percentual'||_tipoSel==='sim_nao') payload.radar_agregacao=_gv('m-radar-agregacao')==='checklist'?'checklist':'ultimo';
+  // sim_nao: valor_atual/valor_meta são governados pelo auto-sync (barra).
+  // Normaliza já na criação p/ a barra ser coerente antes do 1º registro:
+  //   item único → meta 1 (0%/100%); checklist → meta 100 (% cumprido).
+  if(_tipoSel==='sim_nao'){ payload.valor_meta = (payload.radar_agregacao==='checklist'?100:1); if(payload.valor_atual==null) payload.valor_atual=0; }
   // Criação: nova meta vai para o FIM da sequência. Sem isto a coluna cai no
   // DEFAULT 1 do banco, empatando com a Meta 01 e bagunçando a numeração
   // (que é posicional). Usa o MÁXIMO real (robusto a lacunas de exclusão),
@@ -1302,17 +1333,27 @@ async function salvarRadar(){
   }catch(e){ alert('Erro ao salvar registro: '+(e&&e.message||'')); }
   btn.disabled=false; btn.textContent='Salvar';
 }
-// Auto-sync do marco: valor_atual = objetivo cumprido? (1/0), valor_meta = 1
-// → a barra de progresso da lista (via _progresso) mostra 0%/100% nos DOIS
-// sentidos, sem tocar _progresso. Chamado após salvar/excluir registro sim_nao.
+// Auto-sync do marco na barra de progresso (via _progresso), sem tocar _progresso:
+//   item único → valor_atual = objetivo cumprido? (1/0), valor_meta = 1 (0%/100%)
+//   checklist  → valor_atual = % de itens no objetivo (0-100), valor_meta = 100
+// Chamado após salvar/excluir registro sim_nao.
 async function _simnaoSync(m){
   if(!m || _radarTipo(m)!=='sim_nao') return;
   var sb=_sb(); if(!sb) return;
-  var latest=_radar.length ? _radar[_radar.length-1] : null;   // asc por created_at → último
-  var vAtual = latest ? (_simnaoBateu(latest.valor_realizado,m) ? 1 : 0) : 0;
+  // Lê do CACHE recém-recarregado (_recarregarRadar atualiza _cacheRadar, não a
+  // global _radar — que só é reatribuída no selecionarMeta, DEPOIS deste sync).
+  // Usar a global aqui deixaria valor_atual uma operação atrás do footer do Radar.
+  var reg=_cacheRadar[m.id]||[];
+  var vAtual, vMeta;
+  if(_agregMode(m)==='checklist'){
+    vAtual=_simnaoChecklist(reg, m).pct; vMeta=100;
+  } else {
+    var latest=reg.length ? reg[reg.length-1] : null;   // asc por created_at → último
+    vAtual = latest ? (_simnaoBateu(latest.valor_realizado,m) ? 1 : 0) : 0; vMeta=1;
+  }
   try{
-    var r=await sb.from('metas').update({valor_atual:vAtual, valor_meta:1, updated_at:new Date().toISOString()}).eq('id',m.id);
-    if(!r.error){ var mm=_metas.find(function(x){return x.id===m.id;}); if(mm){ mm.valor_atual=vAtual; mm.valor_meta=1; } }
+    var r=await sb.from('metas').update({valor_atual:vAtual, valor_meta:vMeta, updated_at:new Date().toISOString()}).eq('id',m.id);
+    if(!r.error){ var mm=_metas.find(function(x){return x.id===m.id;}); if(mm){ mm.valor_atual=vAtual; mm.valor_meta=vMeta; } }
   }catch(e){}
 }
 async function excluirRadar(id){
