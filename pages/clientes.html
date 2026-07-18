@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clientes</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-tit{font-size:1.15rem;font-weight:800;color:var(--emp-cor);display:flex;align-items:center;gap:.45rem}
+.hdr-sub{font-size:.74rem;color:var(--text3);margin-top:.15rem}
+.hdr-emp{font-size:.72rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.8rem}
+.sec-tit{font-size:.92rem;font-weight:800;color:var(--text)}
+.sec-desc{font-size:.74rem;color:var(--text3);margin-bottom:.7rem;line-height:1.45}
+.vazio{text-align:center;padding:1.6rem 1rem;color:var(--text3);font-size:.8rem}
+
+/* KPIs */
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.8rem}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.8rem .95rem}
+.kpi .k-lab{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-val{font-size:1.45rem;font-weight:800;margin:.2rem 0 .1rem}
+.kpi .k-sub{font-size:.68rem;color:var(--text3)}
+
+/* Banner de migração do cadastro antigo */
+.banner-mig{display:none;background:rgba(212,160,23,.09);border:1px solid rgba(212,160,23,.35);border-left:4px solid var(--amber);border-radius:var(--r);padding:.8rem .95rem;margin-bottom:.8rem}
+.banner-mig.on{display:block}
+.banner-mig .bm-tit{font-size:.85rem;font-weight:800;color:var(--amber);margin-bottom:.25rem}
+.banner-mig .bm-txt{font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:.6rem}
+
+/* Filtros */
+.filtros{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem;align-items:center}
+.filtros input,.filtros select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .6rem;font-size:.78rem;font-family:inherit}
+.filtros input{min-width:190px}
+
+/* Cards de cliente */
+.cli-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.7rem}
+.cli{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-bdr);border-radius:var(--r);padding:.75rem .85rem;cursor:pointer;transition:border-color .12s;text-align:left;font-family:inherit;color:var(--text)}
+.cli:hover{border-color:var(--emp-bdr)}
+.cli.inativo{border-left-color:var(--border2);opacity:.75}
+.cli-nome{font-size:.88rem;font-weight:700;margin-bottom:.1rem}
+.cli-razao{font-size:.7rem;color:var(--text2);margin-bottom:.25rem}
+.cli-meta{font-size:.7rem;color:var(--text3);display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem}
+.cli-badges{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;font-size:.63rem;font-weight:700;border-radius:20px;padding:.14rem .55rem;border:1px solid transparent}
+.pill.st-ativo{background:rgba(63,185,80,.12);color:var(--green);border-color:rgba(63,185,80,.32)}
+.pill.st-inativo{background:rgba(248,81,73,.12);color:var(--red);border-color:rgba(248,81,73,.32)}
+.pill.origem{background:var(--bg3);color:var(--text3);border-color:var(--border)}
+.pill.papel{background:rgba(88,166,255,.12);color:var(--blue);border-color:rgba(88,166,255,.32)}
+.pill.principal{background:rgba(240,165,0,.12);color:var(--accent);border-color:rgba(240,165,0,.35)}
+
+/* Botões */
+.btn{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:var(--r2);padding:.48rem .95rem;font-size:.8rem;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:hover{border-color:var(--border2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-emp{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.btn-red{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);color:var(--red)}
+.btn-sm{padding:.3rem .6rem;font-size:.72rem}
+
+/* Formulários */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem}
+.fld{display:flex;flex-direction:column;gap:.25rem}
+.fld.full{grid-column:1/-1}
+.fld label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.fld label .req{color:var(--red)}
+.fld input,.fld select,.fld textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .6rem;font-size:.8rem;font-family:inherit}
+.fld textarea{min-height:60px;resize:vertical}
+.fld-chk{display:flex;align-items:center;gap:.45rem;font-size:.76rem;color:var(--text2);cursor:pointer}
+.fld-chk input{width:15px;height:15px;accent-color:var(--emp-cor)}
+.aviso-req{font-size:.72rem;color:var(--red);margin-top:.4rem;text-align:right;display:none}
+
+/* Toast */
+#toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.55rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+#toast.on{opacity:1}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+#telaBloqueio{display:none;text-align:center;padding:4rem 1rem;color:var(--text3)}
+
+/* ── Ficha do cliente (painel lateral — padrão da Prospecção) ── */
+.split{display:grid;grid-template-columns:1fr;gap:.8rem;align-items:start;transition:grid-template-columns .15s}
+.split.com-ficha{grid-template-columns:1fr 420px}
+#fichaCliente{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem;position:sticky;top:.8rem;max-height:calc(100vh - 2rem);overflow-y:auto}
+.split.com-ficha #fichaCliente{display:block}
+@media(max-width:900px){
+  .split.com-ficha{grid-template-columns:1fr}
+  .split.com-ficha>.card{display:none}          /* overlay: ficha ocupa a tela */
+  #fichaCliente{position:static;max-height:none}
+}
+.fc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.fc-nome{font-size:.98rem;font-weight:800}
+.fc-tabs{display:flex;gap:.3rem;margin-bottom:.8rem;flex-wrap:wrap}
+.fc-tab{font-size:.68rem;font-weight:700;border-radius:20px;padding:.3rem .7rem;background:var(--bg3);color:var(--text3);border:1px solid var(--border);cursor:pointer;font-family:inherit}
+.fc-tab.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.fc-sec{margin-bottom:.75rem}
+.fc-sec-tit{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+.fc-kv{display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;padding:.22rem 0;border-bottom:1px solid var(--border)}
+.fc-kv span:first-child{color:var(--text3);flex:0 0 auto}
+.fc-kv span:last-child{text-align:right;font-weight:600;overflow-wrap:anywhere}
+.fc-acoes{display:flex;gap:.5rem;margin-top:.8rem;position:sticky;bottom:0;background:var(--bg2);padding-top:.5rem;flex-wrap:wrap}
+.ct-item{border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .65rem;margin-bottom:.5rem}
+.ct-nome{font-size:.8rem;font-weight:700}
+.ct-meta{font-size:.68rem;color:var(--text3);margin:.15rem 0 .3rem}
+.ct-canais{font-size:.7rem;color:var(--text2);line-height:1.5}
+.ct-acoes{display:flex;gap:.4rem;margin-top:.4rem}
+.hist-item{border-bottom:1px solid var(--border);padding:.45rem 0;font-size:.74rem}
+.hist-meta{color:var(--text3);font-size:.66rem;margin-top:.15rem}
+</style>
+</head>
+<body>
+
+<div id="telaBloqueio">
+  <div style="font-size:2rem;margin-bottom:.6rem">🔒</div>
+  <div style="font-size:.95rem;font-weight:700;color:var(--text)">Acesso restrito</div>
+  <div style="font-size:.8rem;margin-top:.35rem">Este módulo está disponível apenas para os perfis autorizados.</div>
+</div>
+
+<div class="wrap" id="telaGeral" style="display:none">
+
+  <div class="hdr">
+    <div>
+      <div class="hdr-tit">👥 Clientes</div>
+      <div class="hdr-sub">Cadastro central de clientes — empresas, contatos e relações</div>
+    </div>
+    <div class="hdr-emp" id="empLabel">—</div>
+  </div>
+
+  <!-- Banner: migração do cadastro antigo (1ª abertura) -->
+  <div class="banner-mig" id="bannerMig">
+    <div class="bm-tit">📦 Cadastro antigo encontrado</div>
+    <div class="bm-txt" id="bmTexto">—</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-emp btn-sm" id="btnMigrar" onclick="migrarCadastroAntigo()">Migrar agora</button>
+      <button class="btn btn-sm" onclick="dispensarMigracao()">Agora não</button>
+    </div>
+  </div>
+
+  <div class="kpi-g" id="kpis"></div>
+
+  <div class="split" id="splitClientes">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+      <div class="sec-tit">📋 Lista de clientes</div>
+      <button class="btn btn-emp btn-sm" id="btnNovoCliente" disabled
+        title="Em breve — o cadastro guiado (wizard) chega na próxima atualização.">＋ Novo cliente</button>
+    </div>
+    <div class="sec-desc">Clique num cliente para abrir a ficha completa.</div>
+
+    <div class="filtros">
+      <input id="fBusca" placeholder="🔍 Apelido, razão social ou CNPJ…" oninput="renderClientes()">
+      <select id="fCidade" onchange="renderClientes()"><option value="">Todas as cidades</option></select>
+      <select id="fSegmento" onchange="renderClientes()"><option value="">Todos os segmentos</option></select>
+      <select id="fAtivo" onchange="renderClientes()">
+        <option value="ativos">Ativos</option>
+        <option value="inativos">Inativos</option>
+        <option value="todos">Todos</option>
+      </select>
+    </div>
+
+    <div class="cli-g" id="listaClientes"><div class="vazio">Carregando…</div></div>
+  </div>
+
+  <!-- Ficha do cliente (painel lateral — 4 abas) -->
+  <div id="fichaCliente">
+    <div class="fc-head">
+      <div>
+        <div class="fc-nome" id="fcNome">—</div>
+        <div class="cli-badges" id="fcBadges" style="margin-top:.3rem"></div>
+      </div>
+      <button class="btn btn-sm" onclick="fecharFicha()">✕</button>
+    </div>
+    <div class="fc-tabs">
+      <button class="fc-tab" id="fcTab-R" onclick="_fichaSetVista('R')">Resumo</button>
+      <button class="fc-tab" id="fcTab-C" onclick="_fichaSetVista('C')">Contatos</button>
+      <button class="fc-tab" id="fcTab-O" onclick="_fichaSetVista('O')">Organograma</button>
+      <button class="fc-tab" id="fcTab-H" onclick="_fichaSetVista('H')">Histórico</button>
+    </div>
+    <div id="fcBody"><div class="vazio">Carregando…</div></div>
+    <div class="fc-acoes">
+      <button class="btn" style="flex:1" disabled
+        title="Em breve — a edição pelo cadastro guiado chega na próxima atualização.">✏️ Editar cliente</button>
+      <button class="btn btn-sm" id="fcBtnAtivo" onclick="toggleAtivoCliente()" style="display:none">⏸️</button>
+      <button class="btn btn-red btn-sm" id="fcBtnExcluir" onclick="excluirCliente()" style="display:none">🗑️</button>
+    </div>
+  </div>
+  </div><!-- /split -->
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   CLIENTES — PR-A: lista + ficha (Resumo/Contatos funcionais;
+   Organograma/Histórico chegam nos PRs seguintes) + migração do
+   cadastro antigo (localStorage/configuracoes → tabela clientes).
+   O wizard de cadastro/edição (7 passos) chega no PR-B — botão
+   "+ Novo cliente" fica visível porém desabilitado.
+
+   Padrão do portal (mesmo protocolo da Prospecção):
+   _sb() via parent, SET_EMPRESA / SET_TEMA / SHOW_SECTION, gate por
+   podeAcessarModulo('clientes') com fallback de perfis.
+   ============================================================ */
+
+var PERFIS_VER     = ['dono', 'admin', 'gestor', 'comercial'];  // só FALLBACK (sem podeAcessarModulo)
+var PERFIS_EDITAR  = ['dono', 'admin', 'gestor', 'comercial'];
+var PERFIS_EXCLUIR = ['dono', 'admin'];
+var _empresaAtiva = null;
+var _clientes = [];              // clientes da empresa (todas as vistas leem daqui)
+var _contatosByCli = {};         // cliente_id -> [contatos]
+var _usuarioIdCache = null;
+var _migPendentes = [];          // registros do cadastro antigo ainda não migrados
+var _migDispensada = false;      // "Agora não" — só nesta sessão
+
+function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : window.sbClient || null; }catch(e){ return window.sbClient || null; } }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, tipo){ var t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className=tipo==='err'?'on err':'on'; setTimeout(function(){ t.className=''; }, 2600); }
+// Normalização de CNPJ alfanumérico-ready (mesma expressão do índice único da 064)
+function _normCnpj(s){ return String(s||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase(); }
+
+async function _obterUsuarioId(){
+  if(_usuarioIdCache) return _usuarioIdCache;
+  var sb=_sb(); if(!sb) return null;
+  try{
+    var auth=await sb.auth.getUser();
+    if(!auth.data || !auth.data.user) return null;
+    var res=await sb.from('usuarios').select('id').eq('auth_id', auth.data.user.id).maybeSingle();
+    if(res.data){ _usuarioIdCache=res.data.id; return _usuarioIdCache; }
+  }catch(e){}
+  return null;
+}
+
+/* ── Gate e permissões ───────────────────────────────────────── */
+function _perfil(){
+  try{
+    return (window.parent && typeof window.parent.getPerfilUsuario==='function')
+      ? window.parent.getPerfilUsuario()
+      : (typeof window.getPerfilUsuario==='function' ? window.getPerfilUsuario() : null);
+  }catch(e){ return null; }
+}
+function _podeVer(){
+  try{
+    if(window.parent && typeof window.parent.podeAcessarModulo==='function')
+      return !!window.parent.podeAcessarModulo('clientes');
+    if(typeof window.podeAcessarModulo==='function')
+      return !!window.podeAcessarModulo('clientes');
+  }catch(e){}
+  return PERFIS_VER.indexOf(String(_perfil()||'').toLowerCase())>=0;
+}
+function _pode(acao, fallbackPerfis){
+  try{
+    if(window.parent && typeof window.parent.podeAcao==='function')
+      return !!window.parent.podeAcao('clientes', acao);
+    if(typeof window.podeAcao==='function')
+      return !!window.podeAcao('clientes', acao);
+  }catch(e){}
+  return (fallbackPerfis||[]).indexOf(String(_perfil()||'').toLowerCase())>=0;
+}
+function _podeEditar(){ return _pode('editar', PERFIS_EDITAR); }
+function _podeExcluir(){ return _pode('excluir', PERFIS_EXCLUIR); }
+function _aplicarGate(){
+  var ok=_podeVer();
+  document.getElementById('telaBloqueio').style.display = ok?'none':'block';
+  document.getElementById('telaGeral').style.display   = ok?'block':'none';
+  return ok;
+}
+
+/* ── Carga ───────────────────────────────────────────────────── */
+async function carregarTudo(){
+  if(!_aplicarGate()) return;
+  var sb=_sb(); if(!sb || !_empresaAtiva || !_empresaAtiva.id) return;
+  try{
+    var res=await Promise.all([
+      sb.from('clientes').select('*').eq('empresa_id', _empresaAtiva.id).order('apelido', {ascending:true}),
+      sb.from('cliente_contatos').select('*').eq('empresa_id', _empresaAtiva.id).order('criado_em', {ascending:true})
+    ]);
+    _clientes=(res[0] && res[0].data)||[];
+    _contatosByCli={};
+    ((res[1] && res[1].data)||[]).forEach(function(c){
+      (_contatosByCli[c.cliente_id]=_contatosByCli[c.cliente_id]||[]).push(c);
+    });
+  }catch(e){ _clientes=[]; _contatosByCli={}; }
+  _popularFiltros();
+  renderKpis();
+  renderClientes();
+  if(_ficha.cliente){
+    var atual=_clientes.find(function(c){ return c.id===_ficha.cliente.id; });
+    if(atual){ _ficha.cliente=atual; _fichaRender(); } else fecharFicha();
+  }
+  _verificarMigracao();
+}
+
+function _popularFiltros(){
+  function popular(selId, valores){
+    var sel=document.getElementById(selId); if(!sel) return;
+    var atual=sel.value;
+    while(sel.options.length>1) sel.remove(1);
+    valores.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+    if(valores.indexOf(atual)>=0) sel.value=atual;
+  }
+  popular('fCidade',   Array.from(new Set(_clientes.map(function(c){ return (c.cidade||'').trim(); }).filter(Boolean))).sort());
+  popular('fSegmento', Array.from(new Set(_clientes.map(function(c){ return (c.segmento||'').trim(); }).filter(Boolean))).sort());
+}
+
+/* ── KPIs ────────────────────────────────────────────────────── */
+function renderKpis(){
+  var ativos=_clientes.filter(function(c){ return c.ativo!==false; });
+  var cidades=new Set(ativos.map(function(c){ return (c.cidade||'').trim().toLowerCase(); }).filter(Boolean));
+  var segmentos=new Set(ativos.map(function(c){ return (c.segmento||'').trim().toLowerCase(); }).filter(Boolean));
+  function kpi(lab, val, sub){ return '<div class="kpi"><div class="k-lab">'+lab+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>'; }
+  document.getElementById('kpis').innerHTML=
+    kpi('Clientes', _clientes.length, 'cadastrados no total')+
+    kpi('Ativos', ativos.length, 'disponíveis para propostas')+
+    kpi('Cidades', cidades.size, 'entre os clientes ativos')+
+    kpi('Segmentos', segmentos.size, 'entre os clientes ativos');
+}
+
+/* ── Lista ───────────────────────────────────────────────────── */
+var ORIGEM_LABEL={ prospeccao:'Prospecção', indicacao:'Indicação', evento:'Evento', outro:'Outro', manual:'Manual' };
+
+function renderClientes(){
+  var busca=(document.getElementById('fBusca').value||'').trim().toLowerCase();
+  var buscaCnpj=_normCnpj(busca);
+  var cidade=document.getElementById('fCidade').value;
+  var segmento=document.getElementById('fSegmento').value;
+  var fAtivo=document.getElementById('fAtivo').value;
+  var lista=_clientes.filter(function(c){
+    if(fAtivo==='ativos' && c.ativo===false) return false;
+    if(fAtivo==='inativos' && c.ativo!==false) return false;
+    if(cidade && (c.cidade||'').trim()!==cidade) return false;
+    if(segmento && (c.segmento||'').trim()!==segmento) return false;
+    if(busca){
+      var alvoTxt=((c.apelido||'')+' '+(c.razao_social||'')).toLowerCase();
+      var porTexto=alvoTxt.indexOf(busca)>=0;
+      var porCnpj=buscaCnpj.length>=3 && _normCnpj(c.cnpj).indexOf(buscaCnpj)>=0;
+      if(!porTexto && !porCnpj) return false;
+    }
+    return true;
+  });
+  var el=document.getElementById('listaClientes');
+  if(!lista.length){
+    el.innerHTML='<div class="vazio">'+(_clientes.length?'Nenhum cliente com esses filtros.':'Nenhum cliente cadastrado ainda.')+'</div>';
+    return;
+  }
+  el.innerHTML=lista.map(function(c){
+    var nCts=(_contatosByCli[c.id]||[]).length;
+    var meta=[];
+    if(c.cidade) meta.push('📍 '+esc(c.cidade)+(c.estado?'/'+esc(c.estado):''));
+    if(c.segmento) meta.push('🏷️ '+esc(c.segmento));
+    meta.push('👤 '+nCts+' contato'+(nCts===1?'':'s'));
+    return '<button class="cli'+(c.ativo===false?' inativo':'')+'" onclick="abrirFicha(\''+c.id+'\')">'+
+      '<div class="cli-nome">'+esc(c.apelido)+'</div>'+
+      (c.razao_social?'<div class="cli-razao">'+esc(c.razao_social)+'</div>':'')+
+      '<div class="cli-meta">'+meta.join(' ')+'</div>'+
+      '<div class="cli-badges">'+
+        '<span class="pill '+(c.ativo===false?'st-inativo':'st-ativo')+'">'+(c.ativo===false?'Inativo':'Ativo')+'</span>'+
+        (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
+      '</div>'+
+    '</button>';
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FICHA DO CLIENTE — painel lateral, 4 abas.
+   Resumo e Contatos funcionais; Organograma (PR-C) e Histórico
+   (vínculo real no PR-D — aqui best-effort por nome) placeholders.
+   ══════════════════════════════════════════════════════════════ */
+var _ficha={ cliente:null, propostas:null };
+var _fichaVista='R';   // memória da vista POR SESSÃO (não persiste no banco)
+var _ctForm=null;      // null=fechado | 'novo' | id do contato em edição
+
+function abrirFicha(id){
+  var c=_clientes.find(function(x){ return x.id===id; });
+  if(!c) return;
+  _ficha.cliente=c; _ficha.propostas=null; _ctForm=null;
+  document.getElementById('splitClientes').classList.add('com-ficha');
+  _fichaRender();
+}
+function fecharFicha(){
+  _ficha.cliente=null; _ctForm=null;
+  document.getElementById('splitClientes').classList.remove('com-ficha');
+}
+function _fichaSetVista(v){ _fichaVista=v; _ctForm=null; if(_ficha.cliente) _fichaRender(); }
+
+function _fcKv(l, v){ return '<div class="fc-kv"><span>'+esc(l)+'</span><span>'+(v!=null && String(v).trim()!==''?esc(v):'—')+'</span></div>'; }
+function _fcSec(tit, inner){ return inner? '<div class="fc-sec"><div class="fc-sec-tit">'+tit+'</div>'+inner+'</div>' : ''; }
+function _dataBr(s){ if(!s) return '—'; var d=String(s).slice(0,10).split('-'); return d.length===3? d[2]+'/'+d[1]+'/'+d[0] : s; }
+
+var TIPO_ESTAB_LABEL={ matriz:'Matriz', filial:'Filial', unico:'Único' };
+var PORTE_LABEL={ mei:'MEI', micro:'Micro', pequena:'Pequena', media:'Média', grande:'Grande', demais:'Demais' };
+var SITUACAO_LABEL={ ativa:'Ativa', suspensa:'Suspensa', inapta:'Inapta', baixada:'Baixada', nula:'Nula' };
+var PAPEL_LABEL={ decisor_final:'Decisor final', aprovador_verba:'Aprovador de verba', influenciador_tecnico:'Influenciador técnico', usuario_servico:'Usuário do serviço', contato_operacional:'Contato operacional', porteiro:'Porteiro' };
+var VINCULO_LABEL={ funcionario:'Funcionário', socio:'Sócio', terceiro:'Terceiro', consultor:'Consultor' };
+var CANAL_LABEL={ whatsapp:'WhatsApp', ligacao:'Ligação', email:'E-mail', presencial:'Presencial' };
+
+function _fichaRender(){
+  var c=_ficha.cliente;
+  document.getElementById('fcNome').textContent=c.apelido;
+  document.getElementById('fcBadges').innerHTML=
+    '<span class="pill '+(c.ativo===false?'st-inativo':'st-ativo')+'">'+(c.ativo===false?'Inativo':'Ativo')+'</span>'+
+    (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
+    (c.dados_importados_cnpj?'<span class="pill papel" title="Dados importados do Comprovante de CNPJ">📄 CNPJ importado</span>':'');
+  ['R','C','O','H'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
+  var btnAtivo=document.getElementById('fcBtnAtivo');
+  btnAtivo.style.display=_podeEditar()?'':'none';
+  btnAtivo.textContent=c.ativo===false?'▶️ Reativar':'⏸️ Desativar';
+  btnAtivo.title=c.ativo===false?'Voltar a marcar este cliente como ativo':'Marcar como inativo (não aparece no filtro padrão)';
+  var btnExc=document.getElementById('fcBtnExcluir');
+  btnExc.style.display=_podeExcluir()?'':'none';
+  btnExc.title='Excluir cliente (remove também os contatos)';
+  var f={ R:_fichaVistaResumo, C:_fichaVistaContatos, O:_fichaVistaOrganograma, H:_fichaVistaHistorico }[_fichaVista]||_fichaVistaResumo;
+  document.getElementById('fcBody').innerHTML=f();
+  if(_fichaVista==='H' && _ficha.propostas===null) _fichaCarregarHistorico();
+}
+
+/* Aba Resumo */
+function _fichaVistaResumo(){
+  var c=_ficha.cliente;
+  var endereco=[c.logradouro, c.numero].filter(Boolean).join(', ')+(c.complemento?' — '+c.complemento:'');
+  var h=_fcSec('Identificação',
+    _fcKv('Razão social', c.razao_social)+
+    _fcKv('CNPJ', c.cnpj)+
+    _fcKv('Tipo', TIPO_ESTAB_LABEL[c.tipo_estabelecimento])+
+    _fcKv('Porte', PORTE_LABEL[c.porte])+
+    _fcKv('Situação cadastral', SITUACAO_LABEL[c.situacao_cadastral])+
+    _fcKv('Abertura', c.data_abertura?_dataBr(c.data_abertura):null));
+  h+=_fcSec('Atividade',
+    _fcKv('Segmento', c.segmento)+
+    _fcKv('CNAE principal', c.cnae_principal)+
+    _fcKv('Origem', ORIGEM_LABEL[c.origem]||c.origem));
+  h+=_fcSec('Contato da empresa',
+    _fcKv('E-mail', c.email)+
+    _fcKv('Telefone', c.telefone)+
+    _fcKv('Site', c.site));
+  h+=_fcSec('Endereço',
+    _fcKv('Logradouro', endereco.trim()? endereco : null)+
+    _fcKv('Bairro', c.bairro)+
+    _fcKv('Cidade', c.cidade?(c.cidade+(c.estado?'/'+c.estado:'')):null)+
+    _fcKv('CEP', c.cep));
+  var principal=(_contatosByCli[c.id]||[]).find(function(x){ return x.contato_principal; });
+  if(principal){
+    h+=_fcSec('Contato principal',
+      _fcKv('Nome', principal.nome)+
+      _fcKv('Cargo', principal.cargo)+
+      _fcKv('WhatsApp', principal.whatsapp)+
+      _fcKv('E-mail', principal.email_profissional));
+  }
+  if(c.observacoes) h+=_fcSec('Observações', '<div style="font-size:.76rem;color:var(--text2);line-height:1.5">'+esc(c.observacoes)+'</div>');
+  return h;
+}
+
+/* Aba Contatos (funcional: adicionar/editar/excluir) */
+function _fichaVistaContatos(){
+  var c=_ficha.cliente;
+  var cts=_contatosByCli[c.id]||[];
+  var h='';
+  if(!cts.length && _ctForm===null) h+='<div class="vazio">Nenhum contato cadastrado ainda.</div>';
+  h+=cts.map(function(ct){
+    if(_ctForm===ct.id) return _ctFormHtml(ct);
+    var canais=[];
+    if(ct.whatsapp) canais.push('📱 '+esc(ct.whatsapp));
+    if(ct.telefone) canais.push('☎️ '+esc(ct.telefone));
+    if(ct.email_profissional) canais.push('✉️ '+esc(ct.email_profissional));
+    if(ct.linkedin) canais.push('💼 '+esc(ct.linkedin));
+    return '<div class="ct-item">'+
+      '<div class="ct-nome">'+esc(ct.nome)+' '+
+        (ct.contato_principal?'<span class="pill principal">⭐ Principal</span>':'')+
+        (ct.papel_principal?'<span class="pill papel">'+(PAPEL_LABEL[ct.papel_principal]||esc(ct.papel_principal))+'</span>':'')+
+      '</div>'+
+      '<div class="ct-meta">'+[ct.cargo, ct.departamento, VINCULO_LABEL[ct.tipo_vinculo]].filter(Boolean).map(esc).join(' · ')+
+        (ct.canal_preferido?' · prefere '+CANAL_LABEL[ct.canal_preferido]:'')+'</div>'+
+      (canais.length?'<div class="ct-canais">'+canais.join('<br>')+'</div>':'')+
+      (ct.observacoes?'<div class="ct-canais" style="margin-top:.25rem;color:var(--text3)">'+esc(ct.observacoes)+'</div>':'')+
+      '<div class="ct-acoes">'+
+        (_podeEditar()?'<button class="btn btn-sm" onclick="abrirFormContato(\''+ct.id+'\')">✏️ Editar</button>':'')+
+        (_podeExcluir()?'<button class="btn btn-red btn-sm" onclick="excluirContato(\''+ct.id+'\')">🗑️ Excluir</button>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  if(_ctForm==='novo') h+=_ctFormHtml(null);
+  else if(_podeEditar()) h+='<button class="btn btn-emp btn-sm" onclick="abrirFormContato(\'novo\')" style="width:100%">＋ Adicionar contato</button>';
+  return h;
+}
+
+function _ctFormHtml(ct){
+  ct=ct||{};
+  function inp(id, label, val, req){
+    return '<div class="fld"><label>'+label+(req?' <span class="req">*</span>':'')+'</label><input id="'+id+'" value="'+esc(val||'')+'"></div>';
+  }
+  function sel(id, label, val, opts){
+    return '<div class="fld"><label>'+label+'</label><select id="'+id+'"><option value="">—</option>'+
+      opts.map(function(o){ return '<option value="'+o.v+'"'+(val===o.v?' selected':'')+'>'+o.t+'</option>'; }).join('')+'</select></div>';
+  }
+  return '<div class="ct-item" style="border-color:var(--emp-bdr)">'+
+    '<div class="fc-sec-tit">'+(ct.id?'Editar contato':'Novo contato')+'</div>'+
+    '<div class="fgrid">'+
+      inp('ctNome','Nome',ct.nome,true)+
+      inp('ctCargo','Cargo',ct.cargo)+
+      inp('ctDepartamento','Departamento',ct.departamento)+
+      sel('ctVinculo','Vínculo',ct.tipo_vinculo,[{v:'funcionario',t:'Funcionário'},{v:'socio',t:'Sócio'},{v:'terceiro',t:'Terceiro'},{v:'consultor',t:'Consultor'}])+
+      inp('ctWhatsapp','WhatsApp',ct.whatsapp)+
+      inp('ctTelefone','Telefone',ct.telefone)+
+      inp('ctEmailProf','E-mail profissional',ct.email_profissional)+
+      inp('ctEmailPess','E-mail pessoal',ct.email_pessoal)+
+      inp('ctLinkedin','LinkedIn',ct.linkedin)+
+      sel('ctPapel','Papel principal',ct.papel_principal,[{v:'decisor_final',t:'Decisor final'},{v:'aprovador_verba',t:'Aprovador de verba'},{v:'influenciador_tecnico',t:'Influenciador técnico'},{v:'usuario_servico',t:'Usuário do serviço'},{v:'contato_operacional',t:'Contato operacional'},{v:'porteiro',t:'Porteiro'}])+
+      sel('ctCanal','Canal preferido',ct.canal_preferido,[{v:'whatsapp',t:'WhatsApp'},{v:'ligacao',t:'Ligação'},{v:'email',t:'E-mail'},{v:'presencial',t:'Presencial'}])+
+      inp('ctHorario','Melhor horário',ct.melhor_horario)+
+      '<div class="fld full"><label>Observações (personalidade, como abordar, o que evitar)</label><textarea id="ctObs">'+esc(ct.observacoes||'')+'</textarea></div>'+
+      '<div class="fld full"><label class="fld-chk"><input type="checkbox" id="ctPrincipal"'+(ct.contato_principal?' checked':'')+'> Contato principal (quem você liga primeiro)</label></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:flex-end">'+
+      '<button class="btn btn-sm" onclick="fecharFormContato()">Cancelar</button>'+
+      '<button class="btn btn-emp btn-sm" id="btnSalvarContato" onclick="salvarContato()">💾 Salvar contato</button>'+
+    '</div>'+
+    '<div class="aviso-req" id="ctAviso">Preencha o nome do contato.</div>'+
+  '</div>';
+}
+
+function abrirFormContato(id){ _ctForm=id; _fichaRender(); }
+function fecharFormContato(){ _ctForm=null; _fichaRender(); }
+
+async function salvarContato(){
+  var c=_ficha.cliente; if(!c) return;
+  var nome=(document.getElementById('ctNome').value||'').trim();
+  if(!nome){ document.getElementById('ctAviso').style.display='block'; return; }
+  var sb=_sb(); if(!sb) return;
+  function v(id){ return (document.getElementById(id).value||'').trim()||null; }
+  var payload={
+    nome:nome, cargo:v('ctCargo'), departamento:v('ctDepartamento'), tipo_vinculo:v('ctVinculo'),
+    whatsapp:v('ctWhatsapp'), telefone:v('ctTelefone'),
+    email_profissional:v('ctEmailProf'), email_pessoal:v('ctEmailPess'), linkedin:v('ctLinkedin'),
+    papel_principal:v('ctPapel'), canal_preferido:v('ctCanal'), melhor_horario:v('ctHorario'),
+    observacoes:(document.getElementById('ctObs').value||'').trim()||null,
+    contato_principal:document.getElementById('ctPrincipal').checked,
+    atualizado_em:new Date().toISOString()
+  };
+  var btn=document.getElementById('btnSalvarContato'); if(btn) btn.disabled=true;
+  try{
+    var res, ctId=_ctForm==='novo'?null:_ctForm;
+    if(ctId){
+      res=await sb.from('cliente_contatos').update(payload).eq('id', ctId);
+    }else{
+      payload.cliente_id=c.id; payload.empresa_id=_empresaAtiva.id; payload.origem='manual';
+      res=await sb.from('cliente_contatos').insert(payload).select('id').maybeSingle();
+      if(res && res.data) ctId=res.data.id;
+    }
+    if(res && res.error) throw res.error;
+    // Só existe 1 contato principal por cliente
+    if(payload.contato_principal && ctId){
+      await sb.from('cliente_contatos').update({contato_principal:false})
+        .eq('cliente_id', c.id).neq('id', ctId);
+    }
+    _ctForm=null;
+    await _recarregarContatos(c.id);
+    toast('Contato salvo.');
+  }catch(e){ toast('Erro ao salvar contato.', 'err'); }
+  if(btn) btn.disabled=false;
+  _fichaRender(); renderClientes();
+}
+
+async function excluirContato(id){
+  var c=_ficha.cliente; if(!c) return;
+  if(!_podeExcluir()){ toast('Sem permissão para excluir.', 'err'); return; }
+  var ct=(_contatosByCli[c.id]||[]).find(function(x){ return x.id===id; });
+  if(!confirm('Excluir o contato "'+(ct?ct.nome:'')+'"? Esta ação não pode ser desfeita.')) return;
+  var sb=_sb(); if(!sb) return;
+  try{
+    var res=await sb.from('cliente_contatos').delete().eq('id', id);
+    if(res && res.error) throw res.error;
+    await _recarregarContatos(c.id);
+    toast('Contato excluído.');
+  }catch(e){ toast('Erro ao excluir contato.', 'err'); }
+  _fichaRender(); renderClientes();
+}
+
+async function _recarregarContatos(clienteId){
+  var sb=_sb(); if(!sb) return;
+  try{
+    var res=await sb.from('cliente_contatos').select('*').eq('cliente_id', clienteId).order('criado_em', {ascending:true});
+    _contatosByCli[clienteId]=(res && res.data)||[];
+  }catch(e){}
+}
+
+/* Aba Organograma — placeholder (PR-C) */
+function _fichaVistaOrganograma(){
+  return '<div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
+    'Em breve — o mapa de poder do cliente (quem manda em quem, quem influencia quem) chega numa próxima atualização.</div>';
+}
+
+/* Aba Histórico — best-effort por nome (o vínculo real por cliente_id chega na integração com o Comercial) */
+function _fichaVistaHistorico(){
+  if(_ficha.propostas===null) return '<div class="vazio">Buscando propostas…</div>';
+  if(!_ficha.propostas.length)
+    return '<div class="vazio">Nenhuma proposta encontrada com o nome deste cliente.<br>'+
+      '<span style="font-size:.68rem">Busca por nome/apelido — o vínculo definitivo chega na integração com o Comercial.</span></div>';
+  return '<div class="sec-desc" style="margin-bottom:.4rem">Propostas com nome de cliente parecido (busca por texto — o vínculo definitivo chega na integração com o Comercial).</div>'+
+    _ficha.propostas.map(function(p){
+      var val=p.valor_total!=null? Number(p.valor_total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '—';
+      return '<div class="hist-item"><b>'+esc(p.numero_proposta||'s/nº')+'</b> — '+esc(p.titulo||'(sem título)')+
+        '<div class="hist-meta">'+esc(p.fase||'—')+' · '+val+' · atualizada em '+_dataBr(p.updated_at)+'</div></div>';
+    }).join('');
+}
+
+async function _fichaCarregarHistorico(){
+  var c=_ficha.cliente, sb=_sb();
+  if(!sb || !c){ _ficha.propostas=[]; return; }
+  var props=[];
+  try{
+    var res=await sb.from('propostas')
+      .select('numero_proposta,titulo,cliente,valor_total,fase,updated_at')
+      .eq('empresa_id', _empresaAtiva.id);
+    var nomes=[c.apelido, c.razao_social].filter(Boolean).map(function(s){ return s.toLowerCase(); });
+    props=((res && res.data)||[]).filter(function(p){
+      var pc=(p.cliente||'').toLowerCase().trim();
+      if(!pc) return false;
+      return nomes.some(function(n){ return pc.indexOf(n)>=0 || n.indexOf(pc)>=0; });
+    });
+  }catch(e){}
+  _ficha.propostas=props;
+  if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='H') _fichaRender();
+}
+
+/* ── Ativar/desativar e excluir cliente ──────────────────────── */
+async function toggleAtivoCliente(){
+  var c=_ficha.cliente; if(!c) return;
+  if(!_podeEditar()){ toast('Sem permissão para editar.', 'err'); return; }
+  var sb=_sb(); if(!sb) return;
+  var novo=!(c.ativo!==false);
+  try{
+    var res=await sb.from('clientes').update({ativo:novo, atualizado_em:new Date().toISOString()}).eq('id', c.id);
+    if(res && res.error) throw res.error;
+    c.ativo=novo;
+    toast(novo?'Cliente reativado.':'Cliente desativado.');
+  }catch(e){ toast('Erro ao atualizar cliente.', 'err'); }
+  _fichaRender(); renderKpis(); renderClientes();
+}
+
+async function excluirCliente(){
+  var c=_ficha.cliente; if(!c) return;
+  if(!_podeExcluir()){ toast('Sem permissão para excluir.', 'err'); return; }
+  var nCts=(_contatosByCli[c.id]||[]).length;
+  if(!confirm('Excluir o cliente "'+c.apelido+'"'+(nCts?' e seus '+nCts+' contato(s)':'')+'? Esta ação não pode ser desfeita.')) return;
+  var sb=_sb(); if(!sb) return;
+  try{
+    var res=await sb.from('clientes').delete().eq('id', c.id);
+    if(res && res.error) throw res.error;
+    _clientes=_clientes.filter(function(x){ return x.id!==c.id; });
+    delete _contatosByCli[c.id];
+    fecharFicha();
+    toast('Cliente excluído.');
+  }catch(e){ toast('Erro ao excluir cliente.', 'err'); }
+  _popularFiltros(); renderKpis(); renderClientes();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MIGRAÇÃO DO CADASTRO ANTIGO (localStorage + configuracoes)
+   — NÃO apaga os dados antigos (rede de segurança / DataGuard).
+   — Flag tf_clientes_migrado em configuracoes: banner some.
+   — Log em configuracoes chave tf_clientes_migracao (contagem,
+     timestamp, usuário) — prospeccao_log exige alvo, não serve.
+   ══════════════════════════════════════════════════════════════ */
+async function _migLerAntigos(){
+  var eid=_empresaAtiva && _empresaAtiva.id; if(!eid) return [];
+  var sb=_sb(); var brutos=[];
+  // 1) espelho no Supabase (configuracoes, chave sufixada por empresa — idioma do cadastro antigo)
+  if(sb){
+    try{
+      var r=await sb.from('configuracoes').select('valor').eq('chave','tf_clientes_'+eid).eq('empresa_id', eid).maybeSingle();
+      if(r && r.data && Array.isArray(r.data.valor)) brutos=brutos.concat(r.data.valor);
+    }catch(e){}
+  }
+  // 2) localStorage (mesma origem do portal — storage compartilhado com o parent)
+  try{
+    var ls=JSON.parse(localStorage.getItem('tf_clientes_'+eid)||'[]');
+    if(Array.isArray(ls)) brutos=brutos.concat(ls);
+  }catch(e){}
+  // Dedup interna (mesmo registro nas duas fontes): por id, depois CNPJ normalizado, depois nome
+  var porId={}, vistosCnpj={}, vistosNome={}, unicos=[];
+  brutos.forEach(function(x){
+    if(!x || !String(x.nome||'').trim()) return;
+    if(x.id && porId[x.id]) return;
+    var cn=_normCnpj(x.cnpj), nm=String(x.nome).trim().toLowerCase();
+    if(cn && vistosCnpj[cn]) return;
+    if(!cn && vistosNome[nm]) return;
+    if(x.id) porId[x.id]=1;
+    if(cn) vistosCnpj[cn]=1; else vistosNome[nm]=1;
+    unicos.push(x);
+  });
+  // Remove os que já existem na tabela nova (CNPJ normalizado; sem CNPJ → apelido)
+  var cnpjsTab={}, nomesTab={};
+  _clientes.forEach(function(c){
+    var cn=_normCnpj(c.cnpj); if(cn) cnpjsTab[cn]=1;
+    nomesTab[String(c.apelido||'').trim().toLowerCase()]=1;
+  });
+  return unicos.filter(function(x){
+    var cn=_normCnpj(x.cnpj);
+    if(cn) return !cnpjsTab[cn];
+    return !nomesTab[String(x.nome).trim().toLowerCase()];
+  });
+}
+
+async function _verificarMigracao(){
+  var banner=document.getElementById('bannerMig');
+  banner.classList.remove('on');
+  if(_migDispensada || !_podeEditar()) return;
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    var flag=await sb.from('configuracoes').select('valor').eq('chave','tf_clientes_migrado').eq('empresa_id', _empresaAtiva.id).maybeSingle();
+    if(flag && flag.data && flag.data.valor && flag.data.valor.migrado) return;
+  }catch(e){}
+  _migPendentes=await _migLerAntigos();
+  if(!_migPendentes.length) return;
+  document.getElementById('bmTexto').innerHTML=
+    'Encontramos <b>'+_migPendentes.length+' cliente'+(_migPendentes.length===1?'':'s')+'</b> no cadastro antigo (Relacionamento) que ainda não '+
+    (_migPendentes.length===1?'está':'estão')+' aqui. Quer migrar agora? '+
+    'Os dados antigos <b>não serão apagados</b> — ficam como backup.';
+  banner.classList.add('on');
+}
+
+function dispensarMigracao(){
+  _migDispensada=true;
+  document.getElementById('bannerMig').classList.remove('on');
+}
+
+async function migrarCadastroAntigo(){
+  var sb=_sb(); if(!sb || !_empresaAtiva || !_migPendentes.length) return;
+  var btn=document.getElementById('btnMigrar'); if(btn) btn.disabled=true;
+  var usuarioId=await _obterUsuarioId();
+  var rows=_migPendentes.map(function(x){
+    return {
+      empresa_id:_empresaAtiva.id,
+      apelido:String(x.nome).trim(),
+      cnpj:(x.cnpj && String(x.cnpj).trim())||null,
+      cidade:(x.cidade && String(x.cidade).trim())||null,
+      origem:'manual',
+      criado_por:usuarioId
+    };
+  });
+  try{
+    var res=await sb.from('clientes').insert(rows).select('id');
+    if(res && res.error) throw res.error;
+    var quando=new Date().toISOString();
+    // Flag: banner não aparece mais. Log: rastreabilidade da migração.
+    // (upsert no idioma do projeto — onConflict chave+empresa)
+    await sb.from('configuracoes').upsert(
+      {chave:'tf_clientes_migrado', empresa_id:_empresaAtiva.id, valor:{migrado:true, quando:quando}, updated_at:quando},
+      {onConflict:'chave,empresa_id'});
+    await sb.from('configuracoes').upsert(
+      {chave:'tf_clientes_migracao', empresa_id:_empresaAtiva.id,
+       valor:{quando:quando, migrados:rows.length, usuario_id:usuarioId,
+              origem:'clientes.html PR-A', dados_antigos_apagados:false},
+       updated_at:quando},
+      {onConflict:'chave,empresa_id'});
+    _migPendentes=[];
+    document.getElementById('bannerMig').classList.remove('on');
+    toast(rows.length+' cliente'+(rows.length===1?'':'s')+' migrado'+(rows.length===1?'':'s')+' com sucesso.');
+    await carregarTudo();
+  }catch(e){
+    toast('Erro na migração — nada foi apagado. Tente novamente.', 'err');
+  }
+  if(btn) btn.disabled=false;
+}
+
+/* ── Integração com o portal ─────────────────────────────────── */
+function _onTrocaEmpresa(d){
+  _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
+  _clientes=[]; _contatosByCli={}; _migPendentes=[]; _migDispensada=false;
+  fecharFicha();
+  var el=document.getElementById('empLabel');
+  if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
+  carregarTudo();
+}
+window.addEventListener('message', function(e){
+  if(!e.data || !e.data.type) return;
+  if(e.data.type==='SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  // SHOW_SECTION: módulo tem tela única no PR-A (lista) — nada a alternar ainda
+});
+
+_aplicarGate();
+try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
+try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
+</script>
+</body>
+</html>
