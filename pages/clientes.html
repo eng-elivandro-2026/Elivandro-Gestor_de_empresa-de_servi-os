@@ -1109,10 +1109,13 @@ function _wizRenderCampos(){
   var el=document.getElementById('wzCampos');
   if(p.render){ el.innerHTML=p.render(_wz); return; }
   el.innerHTML=p.campos.map(function(c){
-    if(c.cond && !c.cond(_wz)) return '';
+    // Campos condicionais são SEMPRE renderizados e alternados por
+    // display (show/hide) — recriar o DOM a cada tecla rouba o foco.
+    var wrap='<div class="fld'+(c.full?' full':'')+'" id="fldwz_'+c.id+'"'+
+      (c.cond && !c.cond(_wz)?' style="display:none"':'')+'>';
     if(c.ro){
       var rv=typeof c.ro==='function'? c.ro(_wz) : (d[c.id]||'');
-      return '<div class="fld'+(c.full?' full':'')+'"><label>'+esc(c.label)+'</label><input value="'+esc(rv)+'" disabled></div>';
+      return wrap+'<label>'+esc(c.label)+'</label><input value="'+esc(rv)+'" disabled></div>';
     }
     var v=d[c.id]; v=v==null?'':v;
     var attrs=' id="wz_'+c.id+'" oninput="_wizCampoChange(\''+c.id+'\',this.value)" onchange="_wizCampoChange(\''+c.id+'\',this.value)"'+(c.list?' list="'+c.list+'"':'');
@@ -1130,14 +1133,23 @@ function _wizRenderCampos(){
     if(c.acao) inner='<div class="fld-linha">'+inner+'<button class="btn btn-sm" type="button" onclick="'+c.acao.fn+'">'+c.acao.label+'</button></div>';
     if(c.list==='dlGrupos')
       inner+='<datalist id="dlGrupos">'+_gruposExistentes().map(function(g){ return '<option value="'+esc(g)+'">'; }).join('')+'</datalist>';
-    return '<div class="fld'+(c.full?' full':'')+'"><label>'+esc(c.label)+(c.req?' <span class="req">*</span>':'')+'</label>'+inner+'</div>';
+    return wrap+'<label>'+esc(c.label)+(c.req?' <span class="req">*</span>':'')+'</label>'+inner+'</div>';
   }).join('');
+}
+// Só alterna a visibilidade dos condicionais — NÃO recria os campos
+// (renderização completa acontece apenas na troca de passo)
+function _wizAtualizarConds(){
+  var p=_wz.cfg.passos[_wz.passo-1];
+  (p.campos||[]).forEach(function(c){
+    if(!c.cond) return;
+    var el=document.getElementById('fldwz_'+c.id);
+    if(el) el.style.display=c.cond(_wz)?'':'none';
+  });
 }
 function _wizCampoChange(id, valor){
   _wzD()[id]=valor;
-  var p=_wz.cfg.passos[_wz.passo-1];
-  if((p.campos||[]).some(function(c){ return c.cond; })) _wizRenderCampos();   // condicionais (ex.: CNPJ matriz)
-  _wizValida();
+  _wizAtualizarConds();   // show/hide apenas — foco preservado
+  _wizValida();           // só o estado do botão Avançar
 }
 function _wizValida(){
   var p=_wz.cfg.passos[_wz.passo-1], d=_wzD(), ok;
