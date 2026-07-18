@@ -529,14 +529,14 @@ function renderClientes(){
    Resumo e Contatos funcionais; Organograma (PR-C) e Histórico
    (vínculo real no PR-D — aqui best-effort por nome) placeholders.
    ══════════════════════════════════════════════════════════════ */
-var _ficha={ cliente:null, propostas:null };
+var _ficha={ cliente:null, propostas:null, organo:null };
 var _fichaVista='R';   // memória da vista POR SESSÃO (não persiste no banco)
 var _ctForm=null;      // null=fechado | 'novo' | id do contato em edição
 
 function abrirFicha(id){
   var c=_clientes.find(function(x){ return x.id===id; });
   if(!c) return;
-  _ficha.cliente=c; _ficha.propostas=null; _ctForm=null;
+  _ficha.cliente=c; _ficha.propostas=null; _ficha.organo=null; _ctForm=null;
   document.getElementById('splitClientes').classList.add('com-ficha');
   _fichaRender();
 }
@@ -579,6 +579,7 @@ function _fichaRender(){
   var f={ R:_fichaVistaResumo, C:_fichaVistaContatos, O:_fichaVistaOrganograma, H:_fichaVistaHistorico }[_fichaVista]||_fichaVistaResumo;
   document.getElementById('fcBody').innerHTML=f();
   if(_fichaVista==='H' && _ficha.propostas===null) _fichaCarregarHistorico();
+  if(_fichaVista==='O' && _ficha.organo===null) _fichaCarregarOrganograma();
 }
 
 /* Aba Resumo */
@@ -753,10 +754,40 @@ async function _recarregarContatos(clienteId){
   }catch(e){}
 }
 
-/* Aba Organograma — placeholder (PR-C) */
+/* Aba Organograma — SVG em leitura + legenda + lista das relações */
 function _fichaVistaOrganograma(){
-  return '<div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
-    'Em breve — o mapa de poder do cliente (quem manda em quem, quem influencia quem) chega numa próxima atualização.</div>';
+  var c=_ficha.cliente;
+  if(_ficha.organo===null) return '<div class="vazio">Carregando organograma…</div>';
+  var cts=_contatosByCli[c.id]||[];
+  if(!cts.length)
+    return '<div class="vazio">Nenhum contato cadastrado — o organograma nasce dos contatos.</div>';
+  var nodes=cts.map(function(ct){ return { ref:ct.id, nome:ct.nome, papel:ct.papel_principal }; });
+  var arestas=_ficha.organo.arestas;
+  var h=_wzOrgSvg(nodes, arestas)+_orgLegendaHtml();
+  if(!arestas.length){
+    h+='<div class="vazio" style="padding:.8rem">Nenhuma relação mapeada ainda.<br>'+
+      '<span style="font-size:.68rem">Use ✏️ Editar cliente → passo 6 (Organograma) para montar o mapa de poder.</span></div>';
+  } else {
+    function nomeDe(id){ var ct=cts.filter(function(x){ return x.id===id; })[0]; return ct? ct.nome : '?'; }
+    h+='<div class="fc-sec" style="margin-top:.6rem"><div class="fc-sec-tit">Relações ('+arestas.length+')</div>'+
+      arestas.map(function(a){
+        return '<div class="fc-kv"><span>'+esc(nomeDe(a.de))+'</span><span>'+(REL_LABEL[a.tipo]||a.tipo)+' → '+esc(nomeDe(a.para))+'</span></div>';
+      }).join('')+'</div>';
+  }
+  return h;
+}
+async function _fichaCarregarOrganograma(){
+  var c=_ficha.cliente, sb=_sb();
+  if(!sb || !c){ _ficha.organo={arestas:[]}; return; }
+  var arestas=[];
+  try{
+    var r=await sb.from('cliente_organograma').select('*').eq('cliente_id', c.id);
+    arestas=((r && r.data)||[]).map(function(a){
+      return { de:a.contato_origem_id, para:a.contato_destino_id, tipo:a.tipo_relacao };
+    });
+  }catch(e){}
+  _ficha.organo={ arestas:arestas };
+  if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='O') _fichaRender();
 }
 
 /* Aba Histórico — best-effort por nome (o vínculo real por cliente_id chega na integração com o Comercial) */
@@ -1974,8 +2005,26 @@ async function _salvarClienteWizard(){
     try{
       var ru=await sb.from('clientes').update(row).eq('id', _wz.clienteId);
       if(ru && ru.error) throw ru.error;
-      return true;
     }catch(e){ toast('Erro ao salvar as alterações. Tente novamente.', 'err'); return false; }
+    // Organograma: REGRAVA as arestas (DELETE + INSERT — decisão aprovada;
+    // mais simples e à prova de drift que diff aresta a aresta)
+    try{
+      var rd=await sb.from('cliente_organograma').delete().eq('cliente_id', _wz.clienteId);
+      if(rd && rd.error) throw rd.error;
+      var ars=((_wz.dados.p6||{}).arestas||[]).filter(function(a){ return String(a.de)!==String(a.para); })
+        .map(function(a){
+          return { empresa_id:_empresaAtiva.id, cliente_id:_wz.clienteId,
+            contato_origem_id:a.de, contato_destino_id:a.para, tipo_relacao:a.tipo };
+        });
+      if(ars.length){
+        var ri2=await sb.from('cliente_organograma').insert(ars);
+        if(ri2 && ri2.error) throw ri2.error;
+      }
+      return true;
+    }catch(e){
+      toast('Dados salvos, mas o organograma não foi regravado — abra a edição e salve novamente o passo 6.', 'err');
+      return false;
+    }
   }
   row.empresa_id=_empresaAtiva.id; row.ativo=true;
   row.criado_por=await _obterUsuarioId();
@@ -1997,10 +2046,14 @@ async function _salvarClienteWizard(){
     }
   }
   if(!novo){ toast('Erro ao salvar o cliente. Tente novamente.', 'err'); return false; }
-  // Contatos (mínimo 1 garantido pelo P5; máximo 1 principal — 1º assume se nenhum)
-  var cts=_wzP5Contatos().filter(function(ct){ return String(ct.nome||'').trim()!==''; });
-  if(!cts.some(function(ct){ return ct.contato_principal; })) cts[0].contato_principal=true;
-  var rowsCt=cts.map(function(ct){
+  // Contatos (mínimo 1 garantido pelo P5; máximo 1 principal — 1º assume se
+  // nenhum). Guarda o ÍNDICE original do P5: as arestas do P6 referenciam
+  // por índice e precisam ser mapeadas para os ids gerados no INSERT.
+  var comNome=[];
+  _wzP5Contatos().forEach(function(ct,i){ if(String(ct.nome||'').trim()!=='') comNome.push({ i:i, ct:ct }); });
+  if(!comNome.some(function(x){ return x.ct.contato_principal; })) comNome[0].ct.contato_principal=true;
+  var rowsCt=comNome.map(function(x){
+    var ct=x.ct;
     return {
       cliente_id:novo.id, empresa_id:_empresaAtiva.id, origem:'manual',
       nome:String(ct.nome).trim(), cargo:tc(ct.cargo), departamento:tc(ct.departamento),
@@ -2015,12 +2068,27 @@ async function _salvarClienteWizard(){
     };
   });
   try{
-    var rc=await sb.from('cliente_contatos').insert(rowsCt);
+    var rc=await sb.from('cliente_contatos').insert(rowsCt).select('id');
     if(rc && rc.error) throw rc.error;
+    // Arestas do P6: índice do P5 → id inserido (mesma ordem do insert)
+    var ids=(rc && rc.data)||[];
+    var idPorIndice={};
+    comNome.forEach(function(x,k){ if(ids[k]) idPorIndice[x.i]=ids[k].id; });
+    var arestas=((_wz.dados.p6||{}).arestas||[]).filter(function(a){
+      return idPorIndice[a.de]!=null && idPorIndice[a.para]!=null && String(a.de)!==String(a.para);
+    }).map(function(a){
+      return { empresa_id:_empresaAtiva.id, cliente_id:novo.id,
+        contato_origem_id:idPorIndice[a.de], contato_destino_id:idPorIndice[a.para],
+        tipo_relacao:a.tipo };
+    });
+    if(arestas.length){
+      var ro=await sb.from('cliente_organograma').insert(arestas);
+      if(ro && ro.error) throw ro.error;
+    }
   }catch(e){
-    // ROLLBACK: nada fica pela metade — desfaz o cliente recém-criado
+    // ROLLBACK: o CASCADE da 064 derruba contatos e arestas junto do cliente
     try{ await sb.from('clientes').delete().eq('id', novo.id); }catch(e2){}
-    toast('Erro ao salvar os contatos — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
+    toast('Erro ao salvar contatos/organograma — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
     return false;
   }
   await _wizLimparRascunho();
