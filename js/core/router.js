@@ -152,28 +152,32 @@
         { label: 'Resolvidos', icon: '✅', action: "go('avisos',this);avAbrirResolvidos()" },
       ]
     },
-    {
-      id: 'historico',
-      label: 'Relacionamento',
-      icon: '💬',
-      tipo: 'inline',
-      init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
-      nav: [
-        { label: 'Visão Geral',        icon: '📊', action: "go('historico',this);rHistorico()" },
-        { separator: true, label: 'Ação Rápida' },
-        { label: '↳ Atrasados',        icon: '🔴', action: "go('historico',this);hFiltroRapido('atrasados')" },
-        { label: '↳ Alta Prioridade',  icon: '⚡', action: "go('historico',this);hFiltroRapido('alta')" },
-        { label: '↳ Em Andamento',     icon: '🔄', action: "go('historico',this);hFiltroRapido('em_andamento')" },
-        { label: '↳ Resolvidos',       icon: '✅', action: "go('historico',this);hFiltroRapido('resolvido')" },
-        { separator: true, label: 'Registros' },
-        { label: '↳ Todos',            icon: '📋', action: "go('historico',this);hFiltroRapido('todos')" },
-        { separator: true, label: 'Cadastros' },
-        { label: '↳ Empresas',         icon: '🏢', action: "go('historico',this);hShowSec('clientes');Router._setNavAtivo(this)" },
-        { label: '↳ Contatos',         icon: '👤', action: "go('historico',this);hShowSec('contatos');Router._setNavAtivo(this)" },
-        { separator: true, label: 'Ferramentas' },
-        { label: '↳ Recuperação',      icon: '🔧', action: "go('historico',this);hShowSec('recuperacao');Router._setNavAtivo(this)" },
-      ]
-    },
+    // ── Relacionamento ESCONDIDO do menu (ordem explícita de Elivandro,
+    // 18/07/2026 — fim do PR-D do módulo Clientes, que o substitui).
+    // TODO o código segue vivo (rHistorico, hShowSec, telas e dados) —
+    // para reativar, basta descomentar este bloco e bump do router.
+    // {
+    //   id: 'historico',
+    //   label: 'Relacionamento',
+    //   icon: '💬',
+    //   tipo: 'inline',
+    //   init: function () { go('historico'); if (typeof rHistorico === 'function') rHistorico(); },
+    //   nav: [
+    //     { label: 'Visão Geral',        icon: '📊', action: "go('historico',this);rHistorico()" },
+    //     { separator: true, label: 'Ação Rápida' },
+    //     { label: '↳ Atrasados',        icon: '🔴', action: "go('historico',this);hFiltroRapido('atrasados')" },
+    //     { label: '↳ Alta Prioridade',  icon: '⚡', action: "go('historico',this);hFiltroRapido('alta')" },
+    //     { label: '↳ Em Andamento',     icon: '🔄', action: "go('historico',this);hFiltroRapido('em_andamento')" },
+    //     { label: '↳ Resolvidos',       icon: '✅', action: "go('historico',this);hFiltroRapido('resolvido')" },
+    //     { separator: true, label: 'Registros' },
+    //     { label: '↳ Todos',            icon: '📋', action: "go('historico',this);hFiltroRapido('todos')" },
+    //     { separator: true, label: 'Cadastros' },
+    //     { label: '↳ Empresas',         icon: '🏢', action: "go('historico',this);hShowSec('clientes');Router._setNavAtivo(this)" },
+    //     { label: '↳ Contatos',         icon: '👤', action: "go('historico',this);hShowSec('contatos');Router._setNavAtivo(this)" },
+    //     { separator: true, label: 'Ferramentas' },
+    //     { label: '↳ Recuperação',      icon: '🔧', action: "go('historico',this);hShowSec('recuperacao');Router._setNavAtivo(this)" },
+    //   ]
+    // },
     {
       id: 'gestao-tempo',
       label: 'Gestão do Tempo',
