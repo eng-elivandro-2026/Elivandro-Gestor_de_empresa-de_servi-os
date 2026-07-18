@@ -1340,11 +1340,15 @@ async function salvarRadar(){
 async function _simnaoSync(m){
   if(!m || _radarTipo(m)!=='sim_nao') return;
   var sb=_sb(); if(!sb) return;
+  // Lê do CACHE recém-recarregado (_recarregarRadar atualiza _cacheRadar, não a
+  // global _radar — que só é reatribuída no selecionarMeta, DEPOIS deste sync).
+  // Usar a global aqui deixaria valor_atual uma operação atrás do footer do Radar.
+  var reg=_cacheRadar[m.id]||[];
   var vAtual, vMeta;
   if(_agregMode(m)==='checklist'){
-    vAtual=_simnaoChecklist(_radar, m).pct; vMeta=100;
+    vAtual=_simnaoChecklist(reg, m).pct; vMeta=100;
   } else {
-    var latest=_radar.length ? _radar[_radar.length-1] : null;   // asc por created_at → último
+    var latest=reg.length ? reg[reg.length-1] : null;   // asc por created_at → último
     vAtual = latest ? (_simnaoBateu(latest.valor_realizado,m) ? 1 : 0) : 0; vMeta=1;
   }
   try{
