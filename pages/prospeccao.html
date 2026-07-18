@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prospecção Comercial</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-tit{font-size:1.15rem;font-weight:800;color:var(--emp-cor);display:flex;align-items:center;gap:.45rem}
+.hdr-sub{font-size:.74rem;color:var(--text3);margin-top:.15rem}
+.hdr-emp{font-size:.72rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.8rem}
+.sec-tit{font-size:.92rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sec-desc{font-size:.74rem;color:var(--text3);margin-bottom:.7rem;line-height:1.45}
+.vazio{text-align:center;padding:1.6rem 1rem;color:var(--text3);font-size:.8rem}
+.psec{display:none}.psec.on{display:block}
+
+/* KPIs */
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.8rem}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.8rem .95rem}
+.kpi .k-lab{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-val{font-size:1.45rem;font-weight:800;margin:.2rem 0 .1rem}
+.kpi .k-sub{font-size:.68rem;color:var(--text3)}
+
+/* Filtros */
+.filtros{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem;align-items:center}
+.filtros input,.filtros select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .6rem;font-size:.78rem;font-family:inherit}
+.filtros input{min-width:190px}
+
+/* Cards de alvo */
+.alvo-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.7rem}
+.alvo{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--border2);border-radius:var(--r);padding:.75rem .85rem;cursor:pointer;transition:border-color .12s;text-align:left;font-family:inherit;color:var(--text)}
+.alvo:hover{border-color:var(--emp-bdr)}
+.alvo.urgente{border-left-color:var(--red)}
+.alvo-nome{font-size:.88rem;font-weight:700;margin-bottom:.25rem}
+.alvo-meta{font-size:.7rem;color:var(--text3);display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem}
+.alvo-badges{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;font-size:.63rem;font-weight:700;border-radius:20px;padding:.14rem .55rem;border:1px solid transparent}
+.pill.st-novo{background:var(--bg3);color:var(--text2);border-color:var(--border)}
+.pill.st-pesquisando{background:rgba(212,160,23,.14);color:var(--amber);border-color:rgba(212,160,23,.35)}
+.pill.st-prospectando{background:rgba(88,166,255,.12);color:var(--blue);border-color:rgba(88,166,255,.32)}
+.pill.st-qualificando{background:rgba(188,140,255,.12);color:var(--purple);border-color:rgba(188,140,255,.32)}
+.pill.st-qualificado{background:rgba(63,185,80,.12);color:var(--green);border-color:rgba(63,185,80,.32)}
+.pill.st-descartado,.pill.st-desqualificado{background:rgba(248,81,73,.12);color:var(--red);border-color:rgba(248,81,73,.32)}
+.pill.origem{background:var(--bg3);color:var(--text3);border-color:var(--border)}
+.pill.urg{background:rgba(248,81,73,.14);color:var(--red);border-color:rgba(248,81,73,.4)}
+
+/* Botões */
+.btn{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:var(--r2);padding:.48rem .95rem;font-size:.8rem;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:hover{border-color:var(--border2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-emp{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.btn-red{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);color:var(--red)}
+.btn-sm{padding:.3rem .6rem;font-size:.72rem}
+
+/* Formulários */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem}
+.fld{display:flex;flex-direction:column;gap:.25rem}
+.fld.full{grid-column:1/-1}
+.fld label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.fld label .req{color:var(--red)}
+.fld input,.fld select,.fld textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .6rem;font-size:.8rem;font-family:inherit}
+.fld textarea{min-height:70px;resize:vertical}
+
+/* Captura em massa */
+#capTexto{width:100%;min-height:160px}
+.cap-prev-row{display:grid;grid-template-columns:26px 1.4fr 1fr 1fr 90px 30px;gap:.45rem;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border)}
+.cap-prev-row input,.cap-prev-row select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.34rem .5rem;font-size:.75rem;font-family:inherit;width:100%}
+.cap-prev-row .rm{background:none;border:none;color:var(--red);cursor:pointer;font-size:.95rem}
+.cap-head{display:flex;align-items:center;gap:.5rem;font-size:.74rem;color:var(--text2);padding:.3rem 0;border-bottom:1px solid var(--border);font-weight:700}
+@media(max-width:760px){.cap-prev-row{grid-template-columns:26px 1fr 30px}.cap-prev-row select,.cap-prev-row input.cp-cid{display:none}}
+
+/* Modal de pesquisa */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.modal-bg.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);max-width:760px;width:100%;padding:1.1rem}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;margin-bottom:.7rem}
+.modal-tit{font-size:1rem;font-weight:800}
+.modal-sub{font-size:.72rem;color:var(--text3);margin-top:.15rem}
+.crono{font-size:.8rem;font-weight:800;color:var(--emp-cor);background:var(--emp-bg);border:1px solid var(--emp-bdr);border-radius:20px;padding:.3rem .75rem;white-space:nowrap}
+.links-g{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem}
+.links-g a{font-size:.74rem;font-weight:700;color:var(--blue);background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:20px;padding:.32rem .75rem;text-decoration:none}
+.check-list{margin-bottom:.8rem}
+.check-list label{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--text2);padding:.22rem 0;cursor:pointer}
+.check-list input{width:15px;height:15px;accent-color:var(--emp-cor)}
+.modal-acoes{display:flex;gap:.6rem;justify-content:flex-end;margin-top:.9rem;flex-wrap:wrap}
+.modal-acoes .esq{margin-right:auto}
+.aviso-req{font-size:.72rem;color:var(--red);margin-top:.4rem;text-align:right;display:none}
+
+/* Toast / parabéns */
+#toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.55rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+#toast.on{opacity:1}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* Métricas por usuário */
+table.mtu{width:100%;border-collapse:collapse;font-size:.78rem}
+table.mtu th{text-align:left;padding:.45rem .5rem;color:var(--text3);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+table.mtu td{padding:.42rem .5rem;border-bottom:1px solid var(--border)}
+table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
+
+#telaBloqueio{display:none;text-align:center;padding:4rem 1rem;color:var(--text3)}
+</style>
+</head>
+<body>
+
+<div id="telaBloqueio">
+  <div style="font-size:2rem;margin-bottom:.6rem">🔒</div>
+  <div style="font-size:.95rem;font-weight:700;color:var(--text)">Acesso restrito</div>
+  <div style="font-size:.8rem;margin-top:.35rem">Este módulo está disponível apenas para os perfis autorizados.</div>
+</div>
+
+<div class="wrap" id="telaGeral" style="display:none">
+
+  <div class="hdr">
+    <div>
+      <div class="hdr-tit">🎯 Prospecção Comercial</div>
+      <div class="hdr-sub">Etapas 1 (Atrair) e 2 (Qualificar) do macroprocesso comercial</div>
+    </div>
+    <div class="hdr-emp" id="empLabel">—</div>
+  </div>
+
+  <!-- ══ Seção: Alvos (lista + métricas) ══ -->
+  <div id="sec-alvos" class="psec on">
+
+    <div class="kpi-g" id="kpis"></div>
+
+    <div class="card" id="cardMetricasUsuario" style="display:none">
+      <div class="sec-tit">👤 Métricas por usuário</div>
+      <div class="sec-desc">Produtividade por pessoa — ranking por qualificados, depois prospectados.</div>
+      <div id="metricasUsuario"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+        <div class="sec-tit">📋 Lista de alvos</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-sm" onclick="mostrarSecao('captura')">📥 Captura em massa</button>
+          <button class="btn btn-emp btn-sm" onclick="toggleNovoAlvo()">＋ Adicionar alvo</button>
+        </div>
+      </div>
+      <div class="sec-desc">Clique num alvo para abrir a pesquisa rápida (Momento 2).</div>
+
+      <div id="formNovoAlvo" style="display:none;border:1px solid var(--border);border-radius:var(--r);padding:.7rem;margin-bottom:.8rem">
+        <div class="fgrid">
+          <div class="fld"><label>Nome <span class="req">*</span></label><input id="naNome"></div>
+          <div class="fld"><label>Cidade <span class="req">*</span></label><input id="naCidade"></div>
+          <div class="fld"><label>Segmento</label><input id="naSegmento" placeholder="ex: Alimentício"></div>
+          <div class="fld"><label>Fonte</label><input id="naFonte" placeholder="ex: LinkedIn, indicação"></div>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:flex-end">
+          <button class="btn btn-sm" onclick="toggleNovoAlvo()">Cancelar</button>
+          <button class="btn btn-emp btn-sm" id="btnSalvarNovoAlvo" onclick="salvarNovoAlvo()">Salvar alvo</button>
+        </div>
+      </div>
+
+      <div class="filtros">
+        <input id="fBusca" placeholder="🔍 Buscar por nome…" oninput="renderAlvos()">
+        <select id="fStatus" onchange="renderAlvos()">
+          <option value="">Todos os status</option>
+          <option value="novo">Novo</option><option value="pesquisando">Pesquisando</option>
+          <option value="prospectando">Prospectando</option><option value="qualificando">Qualificando</option>
+          <option value="qualificado">Qualificado</option><option value="descartado">Descartado</option>
+        </select>
+        <select id="fSegmento" onchange="renderAlvos()"><option value="">Todos os segmentos</option></select>
+      </div>
+
+      <div class="alvo-g" id="listaAlvos"><div class="vazio">Carregando…</div></div>
+    </div>
+  </div>
+
+  <!-- ══ Seção: Captura em massa (Momento 1) ══ -->
+  <div id="sec-captura" class="psec">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+        <div class="sec-tit">📥 Captura em massa</div>
+        <button class="btn btn-sm" onclick="mostrarSecao('alvos')">← Voltar aos alvos</button>
+      </div>
+      <div class="sec-desc">Cole a lista de empresas (uma por linha — vírgula e ponto e vírgula também separam). Duplicatas são removidas automaticamente, inclusive contra alvos já salvos.</div>
+      <textarea id="capTexto" class="fld" placeholder="Metalúrgica Silva&#10;Indústria de Alimentos Souza; Química Beta&#10;Têxtil Gama, Farmacêutica Delta"></textarea>
+      <div class="fgrid" style="margin-top:.6rem">
+        <div class="fld"><label>Segmento padrão</label><input id="capSegmento" placeholder="aplicado a todas (editável no preview)"></div>
+        <div class="fld"><label>Cidade padrão</label><input id="capCidade" placeholder="ex: Jundiaí"></div>
+        <div class="fld"><label>Fonte</label><input id="capFonte" placeholder='ex: "Prefeitura Jundiaí", "LinkedIn"'></div>
+      </div>
+      <div style="display:flex;gap:.6rem;margin-top:.7rem">
+        <button class="btn btn-emp" onclick="processarLista()">⚙️ Processar lista</button>
+        <button class="btn" onclick="document.getElementById('capTexto').value=''">Limpar</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardPreview" style="display:none">
+      <div class="sec-tit">2. Preview — revise antes de salvar</div>
+      <div class="sec-desc">Nome e cidade são obrigatórios. Desmarque o que não quiser salvar; ✕ remove a linha.</div>
+      <div class="cap-head">
+        <input type="checkbox" id="capTodas" checked onchange="capSelecionarTodas(this.checked)" style="width:15px;height:15px;accent-color:var(--emp-cor)">
+        <span>Selecionar todas</span>
+        <span id="capResumo" style="margin-left:auto"></span>
+      </div>
+      <div id="capPreview"></div>
+      <div style="display:flex;gap:.6rem;margin-top:.8rem">
+        <button class="btn btn-emp" id="btnSalvarCaptura" onclick="salvarCaptura()">💾 Salvar selecionadas</button>
+        <button class="btn" onclick="cancelarCaptura()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardCapturaOk" style="display:none">
+      <div class="vazio" style="color:var(--green)">
+        <div style="font-size:1.6rem">✅</div>
+        <div id="capOkMsg" style="font-weight:700;margin:.4rem 0"></div>
+        <button class="btn btn-emp" onclick="novaCaptura()">Nova captura</button>
+        <button class="btn" style="margin-left:.4rem" onclick="mostrarSecao('alvos')">Ver alvos</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ Modal: Pesquisa rápida (Momento 2) ══ -->
+<div class="modal-bg" id="modalPesquisa">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-tit" id="mpNome">—</div>
+        <div class="modal-sub" id="mpSub">—</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="crono" id="mpCrono">⏱️ 00:00</div>
+        <button class="btn btn-sm" onclick="fecharPesquisa(true)">✕</button>
+      </div>
+    </div>
+
+    <div class="links-g" id="mpLinks"></div>
+
+    <div class="check-list card" style="padding:.7rem .85rem">
+      <div class="sec-tit" style="font-size:.78rem">Checklist da pesquisa (orientativo)</div>
+      <label><input type="checkbox" class="mp-chk" data-k="produz"> Confirmei o que a empresa produz/faz</label>
+      <label><input type="checkbox" class="mp-chk" data-k="planta"> Identifiquei se tem planta industrial</label>
+      <label><input type="checkbox" class="mp-chk" data-k="porte"> Estimei o porte (funcionários ou faturamento)</label>
+      <label><input type="checkbox" class="mp-chk" data-k="fornecedor"> Verifiquei se tem fornecedor elétrico atual</label>
+      <label><input type="checkbox" class="mp-chk" data-k="expansao"> Encontrei notícia de expansão ou obra</label>
+      <label><input type="checkbox" class="mp-chk" data-k="decisao"> Defini se vale ou não prospectar</label>
+    </div>
+
+    <div class="fgrid">
+      <div class="fld full"><label>O que a empresa faz <span class="req">*</span></label><textarea id="mpFaz"></textarea></div>
+      <div class="fld"><label>Porte estimado</label>
+        <select id="mpPorte"><option value="">Não identificado</option><option>Médio (100–500 func.)</option><option>Grande (500+ func.)</option></select></div>
+      <div class="fld"><label>Tem planta industrial?</label>
+        <select id="mpPlanta"><option value="">Não sei</option><option>Sim — planta própria</option><option>Sim — múltiplas</option><option>Não — só escritório</option></select></div>
+      <div class="fld"><label>Fornecedor elétrico atual</label>
+        <select id="mpFornecedor"><option value="">Não identificado</option><option>Sim, tem</option><option>Não tem</option><option>Faz internamente</option></select></div>
+      <div class="fld"><label>Vale prospectar?</label>
+        <select id="mpVale"><option value="">Avaliar depois</option><option value="sim">Sim — tem potencial</option><option value="talvez">Talvez</option><option value="nao">Não — descartar</option></select></div>
+      <div class="fld full"><label>Observações</label><textarea id="mpObs"></textarea></div>
+    </div>
+
+    <div class="modal-acoes">
+      <button class="btn btn-red esq" onclick="descartarAlvo()">🗑️ Descartar alvo</button>
+      <button class="btn" onclick="fecharPesquisa(true)">Voltar</button>
+      <button class="btn btn-emp" onclick="salvarPesquisa()">Salvar pesquisa →</button>
+    </div>
+    <div class="aviso-req" id="mpAviso">Preencha "O que a empresa faz" para salvar.</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   PROSPECÇÃO COMERCIAL — PR-1: lista de alvos + captura em massa
+   + pesquisa rápida (Momentos 1 e 2). Wizards das Etapas 1 e 2
+   chegam no PR-2 (SHOW_SECTION já mapeado).
+
+   Padrão do portal (mesmo protocolo do R&P/Gestão do Tempo):
+   _sb() via parent, SET_EMPRESA / SET_TEMA / SHOW_SECTION, gate por
+   podeAcessarModulo('prospeccao') com fallback de perfis.
+   Módulo EXCLUSIVO de dono/admin nesta fase (decisão aprovada).
+   ============================================================ */
+
+var PERFIS_PERMITIDOS = ['dono', 'admin'];   // só FALLBACK (sem podeAcessarModulo)
+var _empresaAtiva = null;
+var _alvos = [];                 // alvos da empresa (todas as telas leem daqui)
+var _etapasTempo = {};           // alvo_id -> tempo_total_segundos (todas as etapas somadas)
+var _usuarioIdCache = null;
+var _usuariosEmp = null;         // [{usuario_id, nome}] p/ métricas por usuário
+
+function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : window.sbClient || null; }catch(e){ return window.sbClient || null; } }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, tipo){ var t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className=tipo==='err'?'on err':'on'; setTimeout(function(){ t.className=''; }, 2600); }
+function _fmtTempo(s){ s=Math.max(0,Math.round(s||0)); var m=Math.floor(s/60); if(m>=60) return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'); return String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+async function _obterUsuarioId(){
+  if(_usuarioIdCache) return _usuarioIdCache;
+  var sb=_sb(); if(!sb) return null;
+  try{
+    var auth=await sb.auth.getUser();
+    if(!auth.data || !auth.data.user) return null;
+    var res=await sb.from('usuarios').select('id').eq('auth_id', auth.data.user.id).maybeSingle();
+    if(res.data){ _usuarioIdCache=res.data.id; return _usuarioIdCache; }
+  }catch(e){}
+  return null;
+}
+
+/* ── Gate (módulo exclusivo dono/admin nesta fase) ───────────── */
+function _perfil(){
+  try{
+    return (window.parent && typeof window.parent.getPerfilUsuario==='function')
+      ? window.parent.getPerfilUsuario()
+      : (typeof window.getPerfilUsuario==='function' ? window.getPerfilUsuario() : null);
+  }catch(e){ return null; }
+}
+function _podeVer(){
+  try{
+    if(window.parent && typeof window.parent.podeAcessarModulo==='function')
+      return !!window.parent.podeAcessarModulo('prospeccao');
+    if(typeof window.podeAcessarModulo==='function')
+      return !!window.podeAcessarModulo('prospeccao');
+  }catch(e){}
+  return PERFIS_PERMITIDOS.indexOf(String(_perfil()||'').toLowerCase())>=0;
+}
+// Métricas por usuário: dono/admin (mesma restrição do módulo nesta fase,
+// mas mantida separada — quando o módulo abrir p/ outros perfis, isto fica)
+function _podeVerMetricasUsuarios(){
+  return ['dono','admin'].indexOf(String(_perfil()||'').toLowerCase())>=0;
+}
+function _aplicarGate(){
+  var ok=_podeVer();
+  document.getElementById('telaBloqueio').style.display = ok?'none':'block';
+  document.getElementById('telaGeral').style.display   = ok?'block':'none';
+  return ok;
+}
+
+/* ── Navegação de seções ─────────────────────────────────────── */
+function mostrarSecao(s){
+  ['alvos','captura'].forEach(function(k){
+    var el=document.getElementById('sec-'+k);
+    if(el) el.classList.toggle('on', k===s);
+  });
+}
+
+/* ── Log de rastreabilidade ──────────────────────────────────── */
+async function _log(alvoId, etapa, acao, dados, tempoSeg){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    await sb.from('prospeccao_log').insert({
+      alvo_id: alvoId, empresa_id: _empresaAtiva.id,
+      usuario_id: await _obterUsuarioId(),
+      etapa: etapa, acao: acao,
+      dados_json: dados||{}, tempo_segundos: Math.round(tempoSeg||0)
+    });
+  }catch(e){}
+}
+
+/* ── Carga ───────────────────────────────────────────────────── */
+async function carregarTudo(){
+  if(!_aplicarGate()) return;
+  var sb=_sb(); if(!sb || !_empresaAtiva || !_empresaAtiva.id) return;
+  try{
+    var res=await Promise.all([
+      sb.from('prospeccao_alvos').select('*').eq('empresa_id', _empresaAtiva.id).order('criado_em', {ascending:false}),
+      sb.from('prospeccao_etapas').select('alvo_id, tempo_total_segundos, usuario_id').eq('empresa_id', _empresaAtiva.id)
+    ]);
+    _alvos=(res[0] && !res[0].error && res[0].data)||[];
+    _etapasTempo={};
+    ((res[1] && res[1].data)||[]).forEach(function(e){
+      if(e && e.alvo_id) _etapasTempo[e.alvo_id]=(_etapasTempo[e.alvo_id]||0)+(Number(e.tempo_total_segundos)||0);
+    });
+    _etapasRaw=((res[1] && res[1].data)||[]);
+  }catch(e){ _alvos=[]; _etapasTempo={}; }
+  renderKpis(); renderAlvos(); popularFiltroSegmentos();
+  renderMetricasUsuario();
+}
+var _etapasRaw=[];
+
+/* ── KPIs por empresa ────────────────────────────────────────── */
+function _contaStatus(st){ return _alvos.filter(function(a){ return a.status===st; }).length; }
+function renderKpis(){
+  var total=_alvos.length;
+  var emProsp=_contaStatus('prospectando')+_contaStatus('qualificando');
+  var qual=_contaStatus('qualificado');
+  var desc=_contaStatus('descartado')+_contaStatus('desqualificado');
+  var pesquisados=_alvos.filter(function(a){ return a.status!=='novo'; }).length;
+  var tempos=Object.keys(_etapasTempo).map(function(k){ return _etapasTempo[k]; }).filter(function(t){ return t>0; });
+  var tMedio=tempos.length? (tempos.reduce(function(s,t){return s+t;},0)/tempos.length) : 0;
+  function kpi(lab,val,cor,sub){ return '<div class="kpi"><div class="k-lab">'+lab+'</div><div class="k-val"'+(cor?' style="color:'+cor+'"':'')+'>'+val+'</div><div class="k-sub">'+sub+'</div></div>'; }
+  document.getElementById('kpis').innerHTML =
+    kpi('Total de alvos', total, null, pesquisados+' já pesquisados')+
+    kpi('Em prospecção', emProsp, 'var(--blue)', 'prospectando + qualificando')+
+    kpi('Qualificados', qual, 'var(--green)', 'prontos p/ proposta')+
+    kpi('Descartados', desc, 'var(--red)', 'fora do funil')+
+    kpi('Tempo médio', _fmtTempo(tMedio), null, 'por lead trabalhado');
+}
+
+/* ── Métricas por usuário (dono/admin) ───────────────────────── */
+async function _carregarUsuariosEmp(){
+  if(_usuariosEmp) return _usuariosEmp;
+  var sb=_sb(); if(!sb || !_empresaAtiva) return (_usuariosEmp=[]);
+  try{
+    var r=await sb.from('usuario_empresas').select('usuario_id, nome').eq('empresa_id', _empresaAtiva.id).eq('ativo', true);
+    _usuariosEmp=(!r.error && r.data)||[];
+  }catch(e){ _usuariosEmp=[]; }
+  return _usuariosEmp;
+}
+async function renderMetricasUsuario(){
+  var card=document.getElementById('cardMetricasUsuario');
+  if(!_podeVerMetricasUsuarios()){ card.style.display='none'; return; }
+  card.style.display='';
+  var usuarios=await _carregarUsuariosEmp();
+  var porU={};
+  function u(id){ return porU[id]=porU[id]||{capturados:0,pesquisados:0,prospectados:0,qualificados:0,tempo:0,n:0}; }
+  _alvos.forEach(function(a){
+    if(a.criado_por) u(a.criado_por).capturados++;
+    var resp=a.responsavel_id||a.criado_por;
+    if(!resp) return;
+    if(a.status!=='novo') u(resp).pesquisados++;
+    if(['prospectando','qualificando','qualificado'].indexOf(a.status)>=0) u(resp).prospectados++;
+    if(a.status==='qualificado') u(resp).qualificados++;
+  });
+  _etapasRaw.forEach(function(e){ if(e.usuario_id && e.tempo_total_segundos>0){ u(e.usuario_id).tempo+=e.tempo_total_segundos; u(e.usuario_id).n++; } });
+  var nomes={}; usuarios.forEach(function(x){ nomes[x.usuario_id]=x.nome||'—'; });
+  var linhas=Object.keys(porU).map(function(id){
+    var m=porU[id];
+    return { nome:nomes[id]||'—', m:m, tMed: m.n? m.tempo/m.n : 0 };
+  }).sort(function(a,b){ return (b.m.qualificados-a.m.qualificados)||(b.m.prospectados-a.m.prospectados); });
+  var el=document.getElementById('metricasUsuario');
+  if(!linhas.length){ el.innerHTML='<div class="vazio">Sem atividade registrada ainda.</div>'; return; }
+  el.innerHTML='<table class="mtu"><thead><tr><th>#</th><th>Usuário</th><th class="num">Capturados</th><th class="num">Pesquisados</th><th class="num">Prospectados</th><th class="num">Qualificados</th><th class="num">Tempo médio</th></tr></thead><tbody>'+
+    linhas.map(function(l,i){
+      return '<tr><td>'+(i+1)+'º</td><td>'+esc(l.nome)+'</td><td class="num">'+l.m.capturados+'</td><td class="num">'+l.m.pesquisados+'</td><td class="num">'+l.m.prospectados+'</td><td class="num" style="color:var(--green);font-weight:700">'+l.m.qualificados+'</td><td class="num">'+_fmtTempo(l.tMed)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+/* ── Lista de alvos ──────────────────────────────────────────── */
+var ORIGEM_LABEL={ captura_massa:'SOE sugeriu', dono:'Dono definiu', vendedor:'Vendedor adicionou', indicacao:'Indicação' };
+var STATUS_LABEL={ novo:'Novo', pesquisando:'Pesquisando', prospectando:'Prospectando', qualificando:'Qualificando', qualificado:'Qualificado', desqualificado:'Desqualificado', descartado:'Descartado' };
+function popularFiltroSegmentos(){
+  var sel=document.getElementById('fSegmento'); if(!sel) return;
+  var atual=sel.value, segs={};
+  _alvos.forEach(function(a){ if(a.segmento) segs[a.segmento]=1; });
+  sel.innerHTML='<option value="">Todos os segmentos</option>'+Object.keys(segs).sort().map(function(s){ return '<option'+(s===atual?' selected':'')+'>'+esc(s)+'</option>'; }).join('');
+}
+function renderAlvos(){
+  var el=document.getElementById('listaAlvos');
+  var busca=(document.getElementById('fBusca').value||'').toLowerCase();
+  var fst=document.getElementById('fStatus').value;
+  var fseg=document.getElementById('fSegmento').value;
+  var lista=_alvos.filter(function(a){
+    if(busca && String(a.nome).toLowerCase().indexOf(busca)<0) return false;
+    if(fst && a.status!==fst) return false;
+    if(fseg && a.segmento!==fseg) return false;
+    return true;
+  });
+  if(!lista.length){ el.innerHTML='<div class="vazio">Nenhum alvo'+(_alvos.length?' com esses filtros':' ainda — comece pela captura em massa')+'.</div>'; return; }
+  el.innerHTML=lista.map(function(a){
+    return '<button class="alvo'+(a.urgente?' urgente':'')+'" onclick="abrirPesquisa(\''+esc(a.id)+'\')">'+
+      '<div class="alvo-nome">'+esc(a.nome)+'</div>'+
+      '<div class="alvo-meta"><span>'+esc(a.segmento||'—')+'</span><span>📍 '+esc(a.cidade||'—')+'</span>'+(_etapasTempo[a.id]?'<span>⏱️ '+_fmtTempo(_etapasTempo[a.id])+'</span>':'')+'</div>'+
+      '<div class="alvo-badges">'+
+        '<span class="pill st-'+esc(a.status)+'">'+(STATUS_LABEL[a.status]||a.status)+'</span>'+
+        '<span class="pill origem">'+(ORIGEM_LABEL[a.origem]||a.origem||'—')+'</span>'+
+        (a.urgente?'<span class="pill urg">🔥 Urgente</span>':'')+
+      '</div></button>';
+  }).join('');
+}
+
+/* ── Novo alvo manual ────────────────────────────────────────── */
+function toggleNovoAlvo(){
+  var f=document.getElementById('formNovoAlvo');
+  f.style.display = f.style.display==='none' ? '' : 'none';
+}
+async function salvarNovoAlvo(){
+  var nome=(document.getElementById('naNome').value||'').trim();
+  var cidade=(document.getElementById('naCidade').value||'').trim();
+  if(!nome || !cidade){ toast('Nome e cidade são obrigatórios.','err'); return; }
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  var btn=document.getElementById('btnSalvarNovoAlvo'); btn.disabled=true;
+  try{
+    var uid=await _obterUsuarioId();
+    var row={ empresa_id:_empresaAtiva.id, nome:nome, cidade:cidade,
+      segmento:(document.getElementById('naSegmento').value||'').trim()||null,
+      fonte:(document.getElementById('naFonte').value||'').trim()||null,
+      origem:'vendedor', status:'novo', criado_por:uid };
+    var r=await sb.from('prospeccao_alvos').insert([row]).select();
+    if(r.error) throw r.error;
+    var novo=(r.data && r.data[0])||row;
+    if(novo.id) await _log(novo.id, 'captura', 'alvo_manual_criado', {nome:nome}, 0);
+    toast('✅ Alvo adicionado.');
+    ['naNome','naCidade','naSegmento','naFonte'].forEach(function(id){ document.getElementById(id).value=''; });
+    toggleNovoAlvo();
+    await carregarTudo();
+  }catch(e){ toast('Erro ao salvar: '+(e&&e.message||''),'err'); }
+  btn.disabled=false;
+}
+
+/* ── Captura em massa (Momento 1) ────────────────────────────── */
+var _capItens=[];   // {nome, cidade, segmento, perfil, sel}
+function processarLista(){
+  var txt=document.getElementById('capTexto').value||'';
+  var segPad=(document.getElementById('capSegmento').value||'').trim();
+  var cidPad=(document.getElementById('capCidade').value||'').trim();
+  var nomes=txt.split(/[\n,;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if(!nomes.length){ toast('Cole ao menos um nome de empresa.','err'); return; }
+  // dedup: dentro do lote E contra alvos já salvos (case-insensitive)
+  var vistos={}; _alvos.forEach(function(a){ vistos[String(a.nome).trim().toLowerCase()]=true; });
+  var unicos=[], jaExistiam=0;
+  nomes.forEach(function(n){
+    var k=n.toLowerCase();
+    if(vistos[k]){ jaExistiam++; return; }
+    vistos[k]=true;
+    unicos.push({ nome:n, cidade:cidPad, segmento:segPad, perfil:'', sel:true });
+  });
+  _capItens=unicos;
+  document.getElementById('cardPreview').style.display = unicos.length?'':'none';
+  document.getElementById('cardCapturaOk').style.display='none';
+  if(!unicos.length){ toast('Todas as '+jaExistiam+' empresas já estão na lista de alvos.','err'); return; }
+  if(jaExistiam) toast(jaExistiam+' duplicata(s) removida(s) (já existiam na lista).');
+  renderCapPreview();
+}
+function renderCapPreview(){
+  var el=document.getElementById('capPreview');
+  el.innerHTML=_capItens.map(function(it,i){
+    return '<div class="cap-prev-row">'+
+      '<input type="checkbox" '+(it.sel?'checked':'')+' onchange="_capItens['+i+'].sel=this.checked;_capResumo()" style="width:15px;height:15px;accent-color:var(--emp-cor)">'+
+      '<input value="'+esc(it.nome)+'" onchange="_capItens['+i+'].nome=this.value" placeholder="Nome *">'+
+      '<input class="cp-cid" value="'+esc(it.cidade)+'" onchange="_capItens['+i+'].cidade=this.value" placeholder="Cidade *">'+
+      '<input value="'+esc(it.segmento)+'" onchange="_capItens['+i+'].segmento=this.value" placeholder="Segmento">'+
+      '<select onchange="_capItens['+i+'].perfil=this.value"><option value="">Perfil?</option><option value="A"'+(it.perfil==='A'?' selected':'')+'>A — OEM</option><option value="B"'+(it.perfil==='B'?' selected':'')+'>B — Operadora</option></select>'+
+      '<button class="rm" title="Remover" onclick="_capItens.splice('+i+',1);renderCapPreview()">✕</button>'+
+    '</div>';
+  }).join('');
+  _capResumo();
+}
+function _capResumo(){
+  var sel=_capItens.filter(function(it){ return it.sel; }).length;
+  document.getElementById('capResumo').textContent=sel+' de '+_capItens.length+' selecionadas';
+  document.getElementById('capTodas').checked = sel===_capItens.length && sel>0;
+}
+function capSelecionarTodas(v){ _capItens.forEach(function(it){ it.sel=v; }); renderCapPreview(); }
+function cancelarCaptura(){ _capItens=[]; document.getElementById('cardPreview').style.display='none'; }
+function novaCaptura(){
+  document.getElementById('capTexto').value='';
+  document.getElementById('cardCapturaOk').style.display='none';
+  cancelarCaptura();
+}
+var _capSalvando=false;
+async function salvarCaptura(){
+  if(_capSalvando) return; _capSalvando=true;
+  var btn=document.getElementById('btnSalvarCaptura'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    var sel=_capItens.filter(function(it){ return it.sel; });
+    var invalidas=sel.filter(function(it){ return !String(it.nome).trim() || !String(it.cidade).trim(); });
+    if(!sel.length){ toast('Selecione ao menos uma empresa.','err'); return; }
+    if(invalidas.length){ toast(invalidas.length+' linha(s) sem nome ou cidade — complete ou desmarque.','err'); return; }
+    var sb=_sb(); if(!sb || !_empresaAtiva) return;
+    var uid=await _obterUsuarioId();
+    var fonte=(document.getElementById('capFonte').value||'').trim()||null;
+    var rows=sel.map(function(it){
+      return { empresa_id:_empresaAtiva.id, nome:String(it.nome).trim(), cidade:String(it.cidade).trim(),
+        segmento:String(it.segmento||'').trim()||null, perfil:it.perfil||null,
+        origem:'captura_massa', fonte:fonte, status:'novo', criado_por:uid };
+    });
+    var r=await sb.from('prospeccao_alvos').insert(rows).select();
+    if(r.error) throw r.error;
+    var salvos=(r.data||rows);
+    // log em lote (1 por alvo, etapa captura)
+    for(var i=0;i<salvos.length;i++){
+      if(salvos[i].id) await _log(salvos[i].id, 'captura', 'captura_massa', {fonte:fonte}, 0);
+    }
+    document.getElementById('cardPreview').style.display='none';
+    document.getElementById('capOkMsg').textContent=salvos.length+' alvo(s) salvos na lista.';
+    document.getElementById('cardCapturaOk').style.display='';
+    _capItens=[];
+    await carregarTudo();
+  }catch(e){ toast('Erro ao salvar: '+(e&&e.message||''),'err'); }
+  btn.disabled=false; btn.textContent='💾 Salvar selecionadas';
+  _capSalvando=false;
+}
+
+/* ── Pesquisa rápida (Momento 2) ─────────────────────────────── */
+var _mpAlvo=null;          // alvo aberto no modal
+var _mpTempoBase=0;        // tempo já acumulado (banco)
+var _mpInicio=null;        // Date da abertura (sessão atual)
+var _mpTimer=null;
+var _mpEtapaRow=null;      // linha existente de prospeccao_etapas (pesquisa)
+
+function _mpElapsed(){ return _mpInicio ? Math.round((Date.now()-_mpInicio)/1000) : 0; }
+function _mpTick(){ document.getElementById('mpCrono').textContent='⏱️ '+_fmtTempo(_mpTempoBase+_mpElapsed()); }
+
+async function abrirPesquisa(id){
+  var a=_alvos.find(function(x){ return x.id===id; });
+  if(!a) return;
+  _mpAlvo=a;
+  document.getElementById('mpNome').textContent=a.nome;
+  document.getElementById('mpSub').textContent=(a.segmento||'—')+' · '+(a.cidade||'—')+' · '+(ORIGEM_LABEL[a.origem]||a.origem||'—');
+  // Links automáticos
+  var q=encodeURIComponent(a.nome+(a.cidade?' '+a.cidade:''));
+  var qNome=encodeURIComponent(a.nome);
+  document.getElementById('mpLinks').innerHTML=
+    '<a href="https://www.google.com/search?q='+q+'" target="_blank" rel="noopener">🔎 Google</a>'+
+    '<a href="https://www.linkedin.com/search/results/companies/?keywords='+qNome+'" target="_blank" rel="noopener">💼 LinkedIn</a>'+
+    '<a href="https://www.google.com/maps/search/'+q+'" target="_blank" rel="noopener">📍 Maps</a>';
+  // Carrega progresso salvo (tempo acumulado + campos + checklist)
+  _mpTempoBase=0; _mpEtapaRow=null;
+  var sb=_sb();
+  if(sb){
+    try{
+      var r=await sb.from('prospeccao_etapas').select('*').eq('alvo_id', a.id).eq('etapa','pesquisa').maybeSingle();
+      if(r && r.data){ _mpEtapaRow=r.data; _mpTempoBase=Number(r.data.tempo_total_segundos)||0; }
+    }catch(e){}
+  }
+  var d=(_mpEtapaRow && _mpEtapaRow.dados_json)||{};
+  document.getElementById('mpFaz').value=d.faz||'';
+  document.getElementById('mpPorte').value=d.porte||'';
+  document.getElementById('mpPlanta').value=d.planta||'';
+  document.getElementById('mpFornecedor').value=d.fornecedor||'';
+  document.getElementById('mpVale').value=d.vale||'';
+  document.getElementById('mpObs').value=d.obs||'';
+  document.querySelectorAll('.mp-chk').forEach(function(c){ c.checked=!!(d.checklist && d.checklist[c.dataset.k]); });
+  document.getElementById('mpAviso').style.display='none';
+  // Cronômetro (acumula sobre o tempo salvo)
+  _mpInicio=Date.now(); _mpTick();
+  _mpTimer=setInterval(_mpTick, 1000);
+  document.getElementById('modalPesquisa').classList.add('on');
+  _log(a.id, 'pesquisa', 'abriu_pesquisa', {}, 0);
+}
+
+function _mpDados(){
+  var checklist={};
+  document.querySelectorAll('.mp-chk').forEach(function(c){ checklist[c.dataset.k]=c.checked; });
+  return {
+    faz:document.getElementById('mpFaz').value.trim(),
+    porte:document.getElementById('mpPorte').value,
+    planta:document.getElementById('mpPlanta').value,
+    fornecedor:document.getElementById('mpFornecedor').value,
+    vale:document.getElementById('mpVale').value,
+    obs:document.getElementById('mpObs').value.trim(),
+    checklist:checklist
+  };
+}
+function _mpParar(){
+  if(_mpTimer){ clearInterval(_mpTimer); _mpTimer=null; }
+  var sessao=_mpElapsed(); _mpInicio=null;
+  return sessao;
+}
+// Upsert do progresso da etapa 'pesquisa' (tempo acumulado + dados)
+async function _mpSalvarEtapa(dados, sessaoSeg, concluido){
+  var sb=_sb(); if(!sb || !_mpAlvo || !_empresaAtiva) return;
+  var payload={
+    alvo_id:_mpAlvo.id, empresa_id:_empresaAtiva.id, etapa:'pesquisa',
+    dados_json:dados, passo_atual:0, passos_concluidos:[],
+    tempo_total_segundos:_mpTempoBase+sessaoSeg,
+    concluido:!!concluido, concluido_em: concluido? new Date().toISOString():null,
+    usuario_id: await _obterUsuarioId(), atualizado_em:new Date().toISOString()
+  };
+  try{ await sb.from('prospeccao_etapas').upsert(payload, {onConflict:'alvo_id,etapa'}); }catch(e){}
+}
+async function _mpSetStatus(status, extras){
+  var sb=_sb(); if(!sb || !_mpAlvo) return;
+  var upd=Object.assign({ status:status, atualizado_em:new Date().toISOString() }, extras||{});
+  try{ await sb.from('prospeccao_alvos').update(upd).eq('id', _mpAlvo.id); }catch(e){}
+}
+
+// Voltar (X ou botão): salva progresso parcial, mantém status
+async function fecharPesquisa(salvarParcial){
+  if(!_mpAlvo){ document.getElementById('modalPesquisa').classList.remove('on'); return; }
+  var sessao=_mpParar();
+  if(salvarParcial){
+    await _mpSalvarEtapa(_mpDados(), sessao, false);
+    await _log(_mpAlvo.id, 'pesquisa', 'voltou_sem_concluir', {}, sessao);
+  }
+  document.getElementById('modalPesquisa').classList.remove('on');
+  _mpAlvo=null;
+  await carregarTudo();
+}
+
+async function descartarAlvo(){
+  if(!_mpAlvo) return;
+  if(!confirm('Descartar "'+_mpAlvo.nome+'"? O alvo sai do funil (fica no histórico como descartado).')) return;
+  var sessao=_mpParar();
+  await _mpSalvarEtapa(_mpDados(), sessao, false);
+  await _mpSetStatus('descartado');
+  await _log(_mpAlvo.id, 'pesquisa', 'descartou', _mpDados(), sessao);
+  toast('Alvo descartado.');
+  document.getElementById('modalPesquisa').classList.remove('on');
+  _mpAlvo=null;
+  await carregarTudo();
+}
+
+var _mpSalvando=false;
+async function salvarPesquisa(){
+  if(_mpSalvando || !_mpAlvo) return;
+  var dados=_mpDados();
+  if(!dados.faz){ document.getElementById('mpAviso').style.display='block'; return; }
+  _mpSalvando=true;
+  var sessao=_mpParar();
+  // Regra aprovada (Nota A): vale='sim' → prospectando; senão → pesquisando
+  var novoStatus = dados.vale==='sim' ? 'prospectando' : 'pesquisando';
+  // Aproveita campos estruturados no alvo (porte)
+  await _mpSalvarEtapa(dados, sessao, true);
+  await _mpSetStatus(novoStatus, { porte:dados.porte||null });
+  await _log(_mpAlvo.id, 'pesquisa', 'pesquisa_concluida', dados, sessao);
+  toast('✅ Pesquisa salva — status: '+(STATUS_LABEL[novoStatus]||novoStatus)+'.');
+  document.getElementById('modalPesquisa').classList.remove('on');
+  _mpAlvo=null; _mpSalvando=false;
+  await carregarTudo();
+}
+
+/* ── Integração com o portal ─────────────────────────────────── */
+async function _onTrocaEmpresa(d){
+  _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
+  _alvos=[]; _etapasTempo={}; _etapasRaw=[]; _usuariosEmp=null;
+  var el=document.getElementById('empLabel');
+  if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
+  carregarTudo();
+}
+var _MAPA_SECAO={ alvos:'alvos', lista:'alvos', captura:'captura' };
+window.addEventListener('message', function(e){
+  if(!e.data || !e.data.type) return;
+  if(e.data.type==='SET_EMPRESA') _onTrocaEmpresa(e.data);
+  if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  if(e.data.type==='SHOW_SECTION') mostrarSecao(_MAPA_SECAO[e.data.payload]||'alvos');
+});
+
+_aplicarGate();
+try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
+try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
+</script>
+</body>
+</html>
