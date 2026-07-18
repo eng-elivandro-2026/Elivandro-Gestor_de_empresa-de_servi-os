@@ -703,9 +703,10 @@ async function _migLerAntigos(){
     if(x.id && porId[x.id]) return;
     var cn=_normCnpj(x.cnpj), nm=String(x.nome).trim().toLowerCase();
     if(cn && vistosCnpj[cn]) return;
-    if(!cn && vistosNome[nm]) return;
+    if(!cn && vistosNome[nm]) return;   // sem CNPJ: nome repetido = duplicata
     if(x.id) porId[x.id]=1;
-    if(cn) vistosCnpj[cn]=1; else vistosNome[nm]=1;
+    if(cn) vistosCnpj[cn]=1;
+    vistosNome[nm]=1;
     unicos.push(x);
   });
   // Remove os que já existem na tabela nova (CNPJ normalizado; sem CNPJ → apelido)
