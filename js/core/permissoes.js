@@ -75,6 +75,19 @@
       ver:    ['dono', 'admin', 'gestor', 'rh'],
       editar: ['dono', 'admin', 'rh']
     },
+    prospeccao: {
+      // Prospecção Comercial (Etapas 1-2) — EXCLUSIVO de dono/admin nesta
+      // fase (decisão aprovada); Elivandro abre p/ outros perfis depois,
+      // quando o módulo estiver validado em uso real. Ações granulares já
+      // previstas p/ essa abertura futura.
+      ver:                 ['dono', 'admin'],
+      capturar:            ['dono', 'admin'],
+      wizard:              ['dono', 'admin'],
+      editar_outros:       ['dono', 'admin'],
+      excluir:             ['dono', 'admin'],
+      metricas_usuarios:   ['dono', 'admin'],
+      definir_responsavel: ['dono', 'admin']
+    },
     'recursos-produtividade': {
       // Dashboard agregado (mostra toda a equipe) — default restrito a
       // gestão. Governável nas DUAS telas: por perfil (G4B, esta matriz)
@@ -93,7 +106,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'prospeccao', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Helpers internos ─────────────────────────────────────
 
