@@ -112,6 +112,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 #telaBloqueio{display:none;text-align:center;padding:4rem 1rem;color:var(--text3)}
 
+/* ── Wizard de cadastro (7 passos — motor adaptado da Prospecção) ── */
+.wiz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.7rem}
+.wiz-tit{font-size:1.05rem;font-weight:800}
+.wiz-meta{font-size:.72rem;color:var(--text3);margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.wiz-pills{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.9rem}
+.wiz-pill{font-size:.66rem;font-weight:700;border-radius:20px;padding:.28rem .65rem;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.wiz-pill.ativo{background:rgba(88,166,255,.12);color:var(--blue);border-color:rgba(88,166,255,.4)}
+.wiz-pill.feito{background:rgba(63,185,80,.12);color:var(--green);border-color:rgba(63,185,80,.4)}
+.wiz-instr{font-size:.78rem;color:var(--text2);background:var(--bg3);border-left:3px solid var(--emp-cor);border-radius:var(--r2);padding:.55rem .75rem;margin-bottom:.8rem;line-height:1.5}
+.wiz-parabens{display:none;font-size:.8rem;font-weight:700;color:var(--green);background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.35);border-radius:var(--r2);padding:.55rem .8rem;margin-bottom:.8rem}
+.wiz-parabens.on{display:block}
+.wiz-acoes{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+.wiz-acoes .esq{margin-right:auto}
+.fld .fld-linha{display:flex;gap:.4rem;align-items:stretch}
+.fld .fld-linha input{flex:1;min-width:0}
+#wzCnpjTexto{width:100%;min-height:180px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.72rem}
+.wz-drop{border:2px dashed var(--border2);border-radius:var(--r);padding:1rem;text-align:center;cursor:pointer;transition:border-color .12s,background .12s;color:var(--text2);font-size:.8rem}
+.wz-drop:hover,.wz-drop.drag{border-color:var(--emp-cor);background:var(--emp-bg)}
+.wz-drop .wd-ico{font-size:1.5rem;margin-bottom:.25rem}
+.wz-drop .wd-sub{font-size:.68rem;color:var(--text3);margin-top:.25rem}
+.wz-drop.ok{border-style:solid;border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.06)}
+.wz-parse-res{display:none;font-size:.74rem;color:var(--green);background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:var(--r2);padding:.5rem .7rem;margin-top:.6rem;line-height:1.5}
+.wz-parse-res.on{display:block}
+.wz-parse-res.err{color:var(--red);background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.3)}
+
 /* ── Ficha do cliente (painel lateral — padrão da Prospecção) ── */
 .split{display:grid;grid-template-columns:1fr;gap:.8rem;align-items:start;transition:grid-template-columns .15s}
 .split.com-ficha{grid-template-columns:1fr 420px}
@@ -178,8 +203,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
       <div class="sec-tit">📋 Lista de clientes</div>
-      <button class="btn btn-emp btn-sm" id="btnNovoCliente" disabled
-        title="Em breve — o cadastro guiado (wizard) chega na próxima atualização.">＋ Novo cliente</button>
+      <button class="btn btn-emp btn-sm" id="btnNovoCliente" onclick="novoCliente()"
+        title="Cadastro guiado em 7 passos">＋ Novo cliente</button>
     </div>
     <div class="sec-desc">Clique num cliente para abrir a ficha completa.</div>
 
@@ -220,8 +245,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div id="fcBody"><div class="vazio">Carregando…</div></div>
     <div class="fc-acoes">
-      <button class="btn" style="flex:1" disabled
-        title="Em breve — a edição pelo cadastro guiado chega na próxima atualização.">✏️ Editar cliente</button>
+      <button class="btn" style="flex:1" id="fcBtnEditar" onclick="editarCliente()"
+        title="Editar pelo cadastro guiado (contatos são geridos na aba Contatos)">✏️ Editar cliente</button>
       <button class="btn btn-sm" id="fcBtnAtivo" onclick="toggleAtivoCliente()" style="display:none">⏸️</button>
       <button class="btn btn-red btn-sm" id="fcBtnExcluir" onclick="excluirCliente()" style="display:none">🗑️</button>
     </div>
@@ -238,6 +263,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       </div>
       <div class="sec-desc">Pares com nomes similares. <b>Mesclar</b> mantém o cadastro mais completo (☑), copia o que só o outro tem e transfere os contatos — o outro registro é apagado. <b>São diferentes</b> guarda sua decisão e o par não é mais apontado. Filiais do mesmo grupo com CNPJs diferentes: prefira preencher o campo <b>Grupo</b> (no cadastro) em vez de mesclar.</div>
       <div id="listaDup"></div>
+    </div>
+  </div>
+
+  <!-- ══ Seção: Wizard de cadastro/edição (7 passos) ══ -->
+  <div id="sec-wizard" class="psec">
+    <div class="card">
+      <div class="wiz-head">
+        <div>
+          <div class="wiz-tit" id="wzTitulo">—</div>
+          <div class="wiz-meta" id="wzMeta">—</div>
+        </div>
+        <button class="btn btn-sm" onclick="_wizSair()">✕</button>
+      </div>
+      <div class="wiz-pills" id="wzPills"></div>
+      <div class="wiz-parabens" id="wzParabens"></div>
+      <div class="sec-tit" id="wzPassoTit">—</div>
+      <div class="wiz-instr" id="wzInstr" style="display:none"></div>
+      <div class="fgrid" id="wzCampos"></div>
+      <div class="wiz-acoes">
+        <button class="btn btn-red esq" id="wzBtnDescartar" onclick="_wizDescartarRascunho()">🗑️ Descartar rascunho</button>
+        <button class="btn" onclick="_wizSair()">Voltar</button>
+        <button class="btn btn-emp" id="wzBtnAvancar" onclick="_wizAvancar()">Salvar e avançar →</button>
+      </div>
+      <div class="aviso-req" id="wzAviso">Preencha os campos obrigatórios (*) para avançar.</div>
     </div>
   </div>
 
@@ -345,6 +394,8 @@ async function carregarTudo(){
   }catch(e){ _clientes=[]; _contatosByCli={}; }
   _clientes.sort(_cmpCodigo);
   await _backfillCodigos();      // migrados sem código ganham CLI-XXX (1ª abertura)
+  var btnNovo=document.getElementById('btnNovoCliente');
+  if(btnNovo) btnNovo.disabled=!_pode('criar', PERFIS_EDITAR);
   _popularFiltros();
   renderKpis();
   renderClientes();
@@ -513,6 +564,8 @@ function _fichaRender(){
     (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
     (c.dados_importados_cnpj?'<span class="pill papel" title="Dados importados do Comprovante de CNPJ">📄 CNPJ importado</span>':'');
   ['R','C','O','H'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
+  var btnEditar=document.getElementById('fcBtnEditar');
+  if(btnEditar) btnEditar.disabled=!_podeEditar();
   var btnAtivo=document.getElementById('fcBtnAtivo');
   btnAtivo.style.display=_podeEditar()?'':'none';
   btnAtivo.textContent=c.ativo===false?'▶️ Reativar':'⏸️ Desativar';
@@ -930,6 +983,845 @@ async function mesclarDup(idA, idB){
     await carregarTudo();
   }catch(e){ toast('Erro ao mesclar — nada foi apagado sem antes transferir.', 'err'); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   WIZARD DE CADASTRO (7 passos) — motor copiado/adaptado da
+   Prospecção (decisão aprovada): pills, instrução didática,
+   bloqueio por obrigatórios, campos condicionais, parabéns 3.5s.
+   Sem cronômetro/log/etapas (não fazem sentido aqui).
+   ══════════════════════════════════════════════════════════════ */
+var _wz={ cfg:null, modo:null, clienteId:null, dados:{}, passo:1, feitos:[], novoId:null };
+function _wzPK(){ return 'p'+_wz.passo; }
+function _wzD(){ return _wz.dados[_wzPK()]=_wz.dados[_wzPK()]||{}; }
+function _gruposExistentes(){
+  return Array.from(new Set(_clientes.map(function(c){ return (c.grupo||'').trim(); }).filter(Boolean))).sort();
+}
+function _mostrarSecWizard(on){
+  document.getElementById('sec-lista').classList.toggle('on', !on);
+  document.getElementById('sec-revisao').classList.remove('on');
+  document.getElementById('sec-wizard').classList.toggle('on', !!on);
+}
+function _wzCodigoPrevisto(){
+  if(_wz.modo==='edicao'){
+    var c=_clientes.find(function(x){ return x.id===_wz.clienteId; });
+    return (c && c.codigo)||'—';
+  }
+  return _proxCodigo()+' · confirmado ao salvar';
+}
+
+async function novoCliente(){
+  if(!_pode('criar', PERFIS_EDITAR)){ toast('Sem permissão para criar cliente.', 'err'); return; }
+  // Rascunho retomável (por usuário, só na criação)
+  var ras=await _wizLerRascunho();
+  if(ras && ras.dados && confirm('Encontramos um cadastro em andamento (passo '+(ras.passo||1)+'). Continuar de onde parou?\n\nOK = continuar · Cancelar = começar do zero (o rascunho é descartado)')){
+    _wizIniciar('novo', null, ras.dados, ras.passo||1, ras.feitos||[]);
+    return;
+  }
+  if(ras) await _wizLimparRascunho();
+  _wizIniciar('novo', null);
+}
+function editarCliente(){
+  var c=_ficha.cliente; if(!c) return;
+  if(!_podeEditar()){ toast('Sem permissão para editar.', 'err'); return; }
+  _wizIniciar('edicao', c.id, _wzDadosDoCliente(c), 1, []);
+}
+// Mapeia um cliente existente para os slots do wizard (edição)
+function _wzDadosDoCliente(c){
+  return {
+    p1:{ apelido:c.apelido||'', razao_social:c.razao_social||'', cnpj:c.cnpj||'', grupo:c.grupo||'',
+         tipo_estabelecimento:c.tipo_estabelecimento||'', cnpj_matriz:c.cnpj_matriz||'',
+         inscricao_estadual:c.inscricao_estadual||'', inscricao_municipal:c.inscricao_municipal||'',
+         data_abertura:c.data_abertura||'', natureza_juridica:c.natureza_juridica||'',
+         porte:c.porte||'', situacao_cadastral:c.situacao_cadastral||'',
+         data_situacao_cadastral:c.data_situacao_cadastral||'' },
+    p3:{ cnae_principal:c.cnae_principal||'',
+         cnae_secundarios:Array.isArray(c.cnae_secundarios)?c.cnae_secundarios.join('\n'):'',
+         segmento:c.segmento||'', origem:c.origem||'' },
+    p4:{ email:c.email||'', telefone:c.telefone||'', site:c.site||'', cep:c.cep||'',
+         logradouro:c.logradouro||'', numero:c.numero||'', complemento:c.complemento||'',
+         bairro:c.bairro||'', cidade:c.cidade||'', estado:c.estado||'' },
+    p7:{ observacoes:c.observacoes||'' }   // "conferido" é sempre re-marcado antes de salvar
+  };
+}
+function _wizIniciar(modo, clienteId, dados, passo, feitos){
+  _wz.cfg=WIZ_CLIENTE; _wz.modo=modo; _wz.clienteId=clienteId||null; _wz.novoId=null;
+  _wz.dados=dados||{}; _wz.passo=Math.min(passo||1, WIZ_CLIENTE.passos.length); _wz.feitos=feitos||[];
+  fecharFicha();
+  _mostrarSecWizard(true);
+  _wizRender();
+}
+
+/* ── Rascunho (configuracoes, chave por usuário — só na criação) ── */
+async function _wizChaveRascunho(){
+  var uid=await _obterUsuarioId();
+  return 'tf_clientes_rascunho_'+(uid||'anon');
+}
+async function _wizLerRascunho(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return null;
+  try{
+    var r=await sb.from('configuracoes').select('valor')
+      .eq('chave', await _wizChaveRascunho()).eq('empresa_id', _empresaAtiva.id).maybeSingle();
+    return (r && r.data && r.data.valor && r.data.valor.dados)? r.data.valor : null;
+  }catch(e){ return null; }
+}
+async function _wizSalvarRascunho(){
+  if(_wz.modo!=='novo') return;   // edição não tem rascunho (evita conflito com o dado real)
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    await sb.from('configuracoes').upsert(
+      { chave:await _wizChaveRascunho(), empresa_id:_empresaAtiva.id,
+        valor:{ dados:_wz.dados, passo:_wz.passo, feitos:_wz.feitos, quando:new Date().toISOString() },
+        updated_at:new Date().toISOString() },
+      { onConflict:'chave,empresa_id' });
+  }catch(e){}
+}
+async function _wizLimparRascunho(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    await sb.from('configuracoes').upsert(
+      { chave:await _wizChaveRascunho(), empresa_id:_empresaAtiva.id,
+        valor:null, updated_at:new Date().toISOString() },
+      { onConflict:'chave,empresa_id' });
+  }catch(e){}
+}
+
+function _wizRender(){
+  var cfg=_wz.cfg, p=cfg.passos[_wz.passo-1];
+  document.getElementById('wzTitulo').textContent =
+    _wz.modo==='edicao' ? '✏️ '+(((_wz.dados.p1||{}).apelido)||'Editar cliente') : '＋ Novo cliente';
+  document.getElementById('wzMeta').innerHTML=
+    '<span>'+(_wz.modo==='edicao'?'Edição de cadastro':'Cadastro guiado — qualquer pessoa nova consegue executar')+'</span>'+
+    '<span class="cli-cod" style="position:static">'+esc(_wzCodigoPrevisto())+'</span>';
+  document.getElementById('wzPills').innerHTML=cfg.pills.map(function(t,i){
+    var n=i+1, cls=_wz.feitos.indexOf(n)>=0?'feito':(n===_wz.passo?'ativo':'');
+    return '<span class="wiz-pill '+cls+'">'+n+'·'+esc(t)+'</span>';
+  }).join('');
+  document.getElementById('wzPassoTit').textContent='Passo '+_wz.passo+' de '+cfg.passos.length+' — '+p.t;
+  var instr=document.getElementById('wzInstr');
+  instr.style.display=p.instr?'block':'none'; instr.textContent=p.instr||'';
+  _wizRenderCampos();
+  var btn=document.getElementById('wzBtnAvancar');
+  btn.textContent=_wz.passo===cfg.passos.length
+    ? (_wz.modo==='edicao'?'💾 Salvar alterações':'💾 Salvar cliente')
+    : 'Salvar e avançar →';
+  document.getElementById('wzBtnDescartar').style.display=_wz.modo==='novo'?'':'none';
+  document.getElementById('wzAviso').style.display='none';
+  _wizValida();
+}
+
+function _wizRenderCampos(){
+  var p=_wz.cfg.passos[_wz.passo-1], d=_wzD();
+  var el=document.getElementById('wzCampos');
+  if(p.render){ el.innerHTML=p.render(_wz); return; }
+  var topo=p.topoHtml? p.topoHtml(_wz) : '';
+  el.innerHTML=topo+p.campos.map(function(c){
+    // Campos condicionais são SEMPRE renderizados e alternados por
+    // display (show/hide) — recriar o DOM a cada tecla rouba o foco.
+    var wrap='<div class="fld'+(c.full?' full':'')+'" id="fldwz_'+c.id+'"'+
+      (c.cond && !c.cond(_wz)?' style="display:none"':'')+'>';
+    if(c.ro){
+      var rv=typeof c.ro==='function'? c.ro(_wz) : (d[c.id]||'');
+      return wrap+'<label>'+esc(c.label)+'</label><input value="'+esc(rv)+'" disabled></div>';
+    }
+    var v=d[c.id]; v=v==null?'':v;
+    var attrs=' id="wz_'+c.id+'" oninput="_wizCampoChange(\''+c.id+'\',this.value)" onchange="_wizCampoChange(\''+c.id+'\',this.value)"'+(c.list?' list="'+c.list+'"':'');
+    var inner;
+    if(c.tipo==='select'){
+      inner='<select'+attrs+'><option value="">— Selecione —</option>'+(c.opts||[]).map(function(o){
+        var ov=typeof o==='string'?o:o.v, ot=typeof o==='string'?o:o.t;
+        return '<option value="'+esc(ov)+'"'+(String(v)===String(ov)?' selected':'')+'>'+esc(ot)+'</option>';
+      }).join('')+'</select>';
+    } else if(c.tipo==='textarea'){
+      inner='<textarea'+attrs+'>'+esc(v)+'</textarea>';
+    } else {
+      inner='<input type="'+(c.tipo||'text')+'" value="'+esc(v)+'"'+attrs+'>';
+    }
+    if(c.acao) inner='<div class="fld-linha">'+inner+'<button class="btn btn-sm" type="button" onclick="'+c.acao.fn+'">'+c.acao.label+'</button></div>';
+    if(c.list==='dlGrupos')
+      inner+='<datalist id="dlGrupos">'+_gruposExistentes().map(function(g){ return '<option value="'+esc(g)+'">'; }).join('')+'</datalist>';
+    return wrap+'<label>'+esc(c.label)+(c.req?' <span class="req">*</span>':'')+'</label>'+inner+'</div>';
+  }).join('');
+}
+// Só alterna a visibilidade dos condicionais — NÃO recria os campos
+// (renderização completa acontece apenas na troca de passo)
+function _wizAtualizarConds(){
+  var p=_wz.cfg.passos[_wz.passo-1];
+  (p.campos||[]).forEach(function(c){
+    if(!c.cond) return;
+    var el=document.getElementById('fldwz_'+c.id);
+    if(el) el.style.display=c.cond(_wz)?'':'none';
+  });
+}
+function _wizCampoChange(id, valor){
+  _wzD()[id]=valor;
+  _wizAtualizarConds();   // show/hide apenas — foco preservado
+  _wizValida();           // só o estado do botão Avançar
+}
+function _wizValida(){
+  var p=_wz.cfg.passos[_wz.passo-1], d=_wzD(), ok;
+  if(p.valida) ok=!!p.valida(_wz);
+  else ok=(p.campos||[]).every(function(c){
+    if(!c.req) return true;
+    if(c.cond && !c.cond(_wz)) return true;
+    return String(d[c.id]||'').trim()!=='';
+  });
+  var btn=document.getElementById('wzBtnAvancar');
+  if(btn) btn.disabled=!ok;
+  if(ok) document.getElementById('wzAviso').style.display='none';
+  return ok;
+}
+function _wzParabens(txt, ms){
+  var el=document.getElementById('wzParabens');
+  el.textContent=txt; el.classList.add('on');
+  setTimeout(function(){ el.classList.remove('on'); }, ms||3500);
+}
+
+var _wzAvancando=false;
+async function _wizAvancar(){
+  if(_wzAvancando) return;
+  if(!_wizValida()){ document.getElementById('wzAviso').style.display='block'; return; }
+  var cfg=_wz.cfg, p=cfg.passos[_wz.passo-1];
+  _wzAvancando=true;
+  try{
+    var passoAtual=_wz.passo, ultimo=passoAtual===cfg.passos.length;
+    if(_wz.feitos.indexOf(passoAtual)<0) _wz.feitos.push(passoAtual);
+    if(ultimo){
+      var salvo=await _salvarClienteWizard();
+      if(!salvo) return;   // erro já mostrado; dados preservados na tela
+      _wzParabens(_wz.modo==='edicao'
+        ? '✅ Alterações salvas!'
+        : '🎉 Cliente cadastrado! Já está disponível em todo o SOE.', 3000);
+      setTimeout(_wizFechar, 1400);
+    } else {
+      _wz.passo=passoAtual+1;
+      await _wizSalvarRascunho();   // autosave a cada avanço (retomável)
+      if(p.parabens) _wzParabens(p.parabens);
+      _wizRender();
+    }
+  }finally{ _wzAvancando=false; }
+}
+function _wizFechar(){
+  var abrirId=_wz.novoId;
+  _wz.cfg=null; _wz.modo=null; _wz.clienteId=null; _wz.dados={}; _wz.novoId=null;
+  _mostrarSecWizard(false);
+  carregarTudo().then(function(){ if(abrirId) abrirFicha(abrirId); });
+}
+function _wzTemDados(){
+  if(_wz.feitos.length) return true;
+  return Object.keys(_wz.dados).some(function(pk){
+    var d=_wz.dados[pk];
+    return d && Object.keys(d).some(function(k){ return String(d[k]||'').trim()!==''; });
+  });
+}
+async function _wizSair(){
+  if(!_wz.cfg){ _mostrarSecWizard(false); return; }
+  if(_wz.modo==='novo' && _wzTemDados()){
+    await _wizSalvarRascunho();
+    toast('Rascunho salvo — retome pelo "+ Novo cliente" quando quiser.');
+  }
+  _wizFechar();
+}
+async function _wizDescartarRascunho(){
+  if(!confirm('Descartar este cadastro? Tudo que foi preenchido aqui será perdido.')) return;
+  _wz.dados={}; _wz.passo=1; _wz.feitos=[];
+  await _wizLimparRascunho();
+  _wizFechar();
+  toast('Cadastro descartado.');
+}
+
+/* ── P2: parser do Comprovante de CNPJ (texto colado) ────────── */
+function _wzNormLinha(s){ return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+// Rótulos do comprovante da Receita → campo. null = rótulo conhecido a IGNORAR
+// (evita que o valor dele "vaze" para o rótulo anterior).
+var _CNPJ_ROTULOS={
+  'NUMERO DE INSCRICAO':'cnpj',
+  'DATA DE ABERTURA':'data_abertura',
+  'NOME EMPRESARIAL':'razao_social',
+  'TITULO DO ESTABELECIMENTO':'apelido',
+  'PORTE':'porte',
+  'CODIGO E DESCRICAO DA ATIVIDADE ECONOMICA PRINCIPAL':'cnae_principal',
+  'CODIGO E DESCRICAO DAS ATIVIDADES ECONOMICAS SECUNDARIAS':'cnae_secundarios',
+  'CODIGO E DESCRICAO DA NATUREZA JURIDICA':'natureza_juridica',
+  'LOGRADOURO':'logradouro',
+  'NUMERO':'numero',
+  'COMPLEMENTO':'complemento',
+  'CEP':'cep',
+  'BAIRRO/DISTRITO':'bairro',
+  'MUNICIPIO':'cidade',
+  'UF':'estado',
+  'ENDERECO ELETRONICO':'email',
+  'TELEFONE':'telefone',
+  'SITUACAO CADASTRAL':'situacao_cadastral',
+  'DATA DA SITUACAO CADASTRAL':'data_situacao_cadastral',
+  'REPUBLICA FEDERATIVA DO BRASIL':null,
+  'CADASTRO NACIONAL DA PESSOA JURIDICA':null,
+  'COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL':null,
+  'MOTIVO DE SITUACAO CADASTRAL':null,
+  'SITUACAO ESPECIAL':null,
+  'DATA DA SITUACAO ESPECIAL':null,
+  'ENTE FEDERATIVO RESPONSAVEL':null,
+  'ENTE FEDERATIVO RESPONSAVEL (EFR)':null
+};
+function _wzNormPorte(v){
+  var n=_wzNormLinha(v);
+  if(n==='MEI') return 'mei';
+  if(n==='ME' || n.indexOf('MICRO')>=0) return 'micro';
+  if(n==='EPP' || n.indexOf('PEQUENO')>=0) return 'pequena';
+  if(n.indexOf('DEMAIS')>=0) return 'demais';
+  return null;
+}
+function _wzNormData(v){
+  var m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v||'').trim());
+  return m? m[3]+'-'+m[2]+'-'+m[1] : null;
+}
+function _parseComprovanteCnpj(texto){
+  var out={}, atual=null;
+  String(texto||'').split(/\r?\n/).forEach(function(l){
+    // rótulos são comparados sem acento/caixa e sem o parêntese "(NOME DE FANTASIA)"
+    var n=_wzNormLinha(l).replace(/\s*\(.*?\)\s*/g,' ').replace(/\s+/g,' ').trim();
+    if(!n) return;
+    if(Object.prototype.hasOwnProperty.call(_CNPJ_ROTULOS, n)){ atual=_CNPJ_ROTULOS[n]; return; }
+    if(n==='MATRIZ'){ out.tipo_estabelecimento='matriz'; return; }
+    if(n==='FILIAL'){ out.tipo_estabelecimento='filial'; return; }
+    if(!atual) return;
+    var valor=String(l).trim();
+    if(/^\*+$/.test(valor)) return;                    // "********" = campo vazio no comprovante
+    if(_wzNormLinha(valor)==='NAO INFORMADA') return;
+    if(atual==='cnae_secundarios'){ (out.cnae_secundarios=out.cnae_secundarios||[]).push(valor); return; }
+    if(out[atual]==null) out[atual]=valor;             // primeira linha após o rótulo
+  });
+  return _wzNormalizarCampos(out);
+}
+// Normalizações para os CHECKs do banco — compartilhadas entre o parser
+// de texto colado (P2) e o parser posicional do PDF (P1)
+function _wzNormalizarCampos(out){
+  if(out.data_abertura){ var da=_wzNormData(out.data_abertura); if(da) out.data_abertura=da; else delete out.data_abertura; }
+  if(out.data_situacao_cadastral){ var ds=_wzNormData(out.data_situacao_cadastral); if(ds) out.data_situacao_cadastral=ds; else delete out.data_situacao_cadastral; }
+  if(out.porte){ var po=_wzNormPorte(out.porte); if(po) out.porte=po; else delete out.porte; }
+  if(out.situacao_cadastral){
+    var sc=_wzNormLinha(out.situacao_cadastral).toLowerCase();
+    if(['ativa','suspensa','inapta','baixada','nula'].indexOf(sc)>=0) out.situacao_cadastral=sc; else delete out.situacao_cadastral;
+  }
+  if(out.email) out.email=out.email.toLowerCase();
+  if(out.estado) out.estado=out.estado.toUpperCase().slice(0,2);
+  return out;
+}
+// Aplica campos extraídos nos slots do wizard, SEM sobrescrever o que o
+// usuário digitou. Retorna {nExt, aplicados, mantidos}.
+function _wzAplicarExtraido(ext){
+  var destino={
+    p1:['cnpj','razao_social','apelido','tipo_estabelecimento','data_abertura','natureza_juridica','porte','situacao_cadastral','data_situacao_cadastral'],
+    p3:['cnae_principal','cnae_secundarios'],
+    p4:['email','telefone','cep','logradouro','numero','complemento','bairro','cidade','estado']
+  };
+  var aplicados=0, mantidos=0;
+  Object.keys(destino).forEach(function(pk){
+    var d=_wz.dados[pk]=_wz.dados[pk]||{};
+    destino[pk].forEach(function(campo){
+      if(ext[campo]==null) return;
+      var val=campo==='cnae_secundarios'? (Array.isArray(ext[campo])?ext[campo].join('\n'):ext[campo]) : ext[campo];
+      if(String(d[campo]||'').trim()!==''){ mantidos++; return; }   // NÃO-destrutivo
+      d[campo]=val; aplicados++;
+    });
+  });
+  _wz.dados.p2=_wz.dados.p2||{};
+  _wz.dados.p2.importado=true;
+  return { nExt:Object.keys(ext).length, aplicados:aplicados, mantidos:mantidos };
+}
+function _wzResumoImport(st){
+  return '✅ '+st.nExt+' campo(s) reconhecido(s), '+st.aplicados+' preenchido(s)'+
+    (st.mantidos?' — '+st.mantidos+' mantido(s) como você digitou':'')+
+    '. Confira nos passos 1, 3 e 4; tudo continua editável.';
+}
+function _wzAplicarParser(){
+  var ta=document.getElementById('wzCnpjTexto');
+  var texto=(ta && ta.value)||'';
+  _wz.dados.p2=_wz.dados.p2||{}; _wz.dados.p2.texto=texto;
+  var res=document.getElementById('wzParseRes');
+  var ext=_parseComprovanteCnpj(texto);
+  if(!Object.keys(ext).length){
+    if(res){ res.className='wz-parse-res on err'; res.textContent='Nenhum campo reconhecido — confira se colou o texto completo do Comprovante de CNPJ.'; }
+    return;
+  }
+  var st=_wzAplicarExtraido(ext);
+  if(res){ res.className='wz-parse-res on'; res.textContent=_wzResumoImport(st); }
+  _wizValida();
+}
+
+/* ── P1: importar direto do PDF do Comprovante (pdf.js via CDN) ──
+   O arquivo é lido SOMENTE na memória do navegador e descartado após
+   a extração — nada é enviado a servidor nem salvo no Supabase.
+   [FUTURO — leitura de imagem/foto do comprovante]
+   Ponto de integração para OCR (ex.: Claude Vision API): aceitar
+   image/* nesta mesma zona de drop, enviar o arquivo a um endpoint
+   PRÓPRIO do backend (nunca direto do navegador com API key) e
+   alimentar o texto retornado em
+   _wzAplicarExtraido(_parseComprovanteCnpj(textoOcr)). ── */
+var _PDFJS_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+var _PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var _pdfjsPromessa=null;
+function _pdfjsCarregar(){
+  if(window.pdfjsLib){
+    try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=_PDFJS_WORKER; }catch(e){}
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if(_pdfjsPromessa) return _pdfjsPromessa;
+  _pdfjsPromessa=new Promise(function(resolve, reject){
+    var s=document.createElement('script');
+    s.src=_PDFJS_URL;
+    s.onload=function(){
+      if(window.pdfjsLib){
+        try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=_PDFJS_WORKER; }catch(e){}
+        resolve(window.pdfjsLib);
+      } else reject(new Error('pdfjs'));
+    };
+    s.onerror=function(){ _pdfjsPromessa=null; reject(new Error('cdn')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromessa;
+}
+// Itens do pdf.js (com coordenadas) → linhas de segmentos [{x, texto}].
+// Segmentos separados por gaps horizontais = células de colunas diferentes.
+function _wzPdfLinhas(items){
+  var porY={};
+  (items||[]).forEach(function(it){
+    if(!it.str || !String(it.str).trim()) return;
+    var y=Math.round((it.transform && it.transform[5] || 0)/3)*3;   // tolerância vertical
+    (porY[y]=porY[y]||[]).push(it);
+  });
+  return Object.keys(porY).map(Number).sort(function(a,b){ return b-a; }).map(function(y){
+    var its=porY[y].sort(function(a,b){ return (a.transform[4]||0)-(b.transform[4]||0); });
+    var segs=[];
+    its.forEach(function(it){
+      var x=it.transform[4]||0;
+      var larg=it.width!=null? it.width : String(it.str).length*4;
+      var ult=segs[segs.length-1];
+      if(ult && (x-ult.fimX)<12){ ult.texto+=' '+it.str; ult.fimX=x+larg; }
+      else segs.push({ x:x, texto:String(it.str), fimX:x+larg });
+    });
+    segs.forEach(function(s){ s.texto=s.texto.replace(/\s+/g,' ').trim(); });
+    return segs.filter(function(s){ return s.texto; });
+  }).filter(function(l){ return l.length; });
+}
+// Parser POSICIONAL: rótulo numa célula → valor = segmento das linhas
+// seguintes alinhado à mesma coluna (x ± 40). Necessário porque no PDF
+// da Receita vários rótulos dividem a mesma linha visual (ex.: TÍTULO
+// e PORTE) — parser de texto corrido erraria a associação.
+function _wzParsePdfSegmentos(linhas){
+  var out={}, TOL=40;
+  function rotuloDe(txt){
+    var n=_wzNormLinha(txt).replace(/\s*\(.*?\)\s*/g,' ').replace(/\s+/g,' ').trim();
+    return Object.prototype.hasOwnProperty.call(_CNPJ_ROTULOS, n)? {campo:_CNPJ_ROTULOS[n], n:n} : null;
+  }
+  linhas.forEach(function(linha, li){
+    linha.forEach(function(seg){
+      var n=_wzNormLinha(seg.texto);
+      if(n==='MATRIZ') out.tipo_estabelecimento=out.tipo_estabelecimento||'matriz';
+      if(n==='FILIAL') out.tipo_estabelecimento=out.tipo_estabelecimento||'filial';
+      var rot=rotuloDe(seg.texto);
+      if(!rot || !rot.campo || out[rot.campo]!=null) return;
+      var valores=[];
+      var maxLinhas=rot.campo==='cnae_secundarios'? linhas.length : li+4;
+      for(var lj=li+1; lj<linhas.length && lj<=maxLinhas; lj++){
+        var parou=false, achou=false;
+        for(var s=0; s<linhas[lj].length; s++){
+          var seg2=linhas[lj][s];
+          if(Math.abs(seg2.x-seg.x)>TOL) continue;
+          var n2=_wzNormLinha(seg2.texto);
+          if(rotuloDe(seg2.texto) || n2==='MATRIZ' || n2==='FILIAL'){ parou=true; break; }
+          if(/^\*+$/.test(seg2.texto) || n2==='NAO INFORMADA'){ parou=true; break; }
+          valores.push(seg2.texto); achou=true;
+          break;   // 1 segmento por linha na coluna do rótulo
+        }
+        if(parou) break;
+        if(achou && rot.campo!=='cnae_secundarios') break;
+      }
+      if(!valores.length) return;
+      out[rot.campo]=rot.campo==='cnae_secundarios'? valores : valores[0];
+    });
+  });
+  return _wzNormalizarCampos(out);
+}
+async function _wzImportarPdf(file){
+  if(!file) return;
+  if(!/pdf/i.test(file.type||'') && !/\.pdf$/i.test(file.name||'')){
+    _wzPdfEstado('err', 'Envie um arquivo PDF (o Comprovante de CNPJ baixado da Receita).');
+    _wizRenderCampos(); _wizValida(); return;
+  }
+  _wzPdfEstado('lendo', '⏳ Lendo o PDF…');
+  _wizRenderCampos();
+  try{
+    var lib=await _pdfjsCarregar();
+    var buf=await file.arrayBuffer();          // só memória — nada é enviado/salvo
+    var pdf=await lib.getDocument({data:buf}).promise;
+    var linhas=[];
+    for(var i=1;i<=pdf.numPages;i++){
+      var pg=await pdf.getPage(i);
+      var tc=await pg.getTextContent();
+      linhas=linhas.concat(_wzPdfLinhas(tc.items));
+    }
+    try{ pdf.destroy(); }catch(e){}
+    buf=null;                                   // binário descartado
+    var ext=_wzParsePdfSegmentos(linhas);
+    // Complemento: parser de texto corrido preenche o que o posicional não achou
+    var textoPlano=linhas.map(function(l){ return l.map(function(s){ return s.texto; }).join(' '); }).join('\n');
+    var ext2=_parseComprovanteCnpj(textoPlano);
+    Object.keys(ext2).forEach(function(k){ if(ext[k]==null) ext[k]=ext2[k]; });
+    if(!Object.keys(ext).length) throw new Error('semtexto');
+    var st=_wzAplicarExtraido(ext);
+    _wz.dados.p2.importado_pdf=true;
+    _wzPdfEstado('ok', _wzResumoImport(st));
+    await _wizSalvarRascunho();
+  }catch(e){
+    _wzPdfEstado('err', e && e.message==='cdn'
+      ? 'Leitor de PDF indisponível agora (sem acesso ao CDN). Use o passo 2 para colar o texto do comprovante.'
+      : 'Não consegui ler este PDF (pode ser digitalizado/foto, sem texto embutido). Use o passo 2 para colar o texto do comprovante.');
+  }
+  _wizRenderCampos(); _wizValida();
+}
+function _wzPdfEstado(tipo, msg){
+  _wz.dados.p2=_wz.dados.p2||{};
+  _wz.dados.p2.pdf_estado=tipo; _wz.dados.p2.pdf_msg=msg;
+}
+function _wzPdfDrop(ev){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag');
+  var f=ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  _wzImportarPdf(f);
+}
+function _wzPdfInput(inp){
+  var f=inp.files && inp.files[0];
+  inp.value='';
+  _wzImportarPdf(f);
+}
+function _wzP1TopoHtml(w){
+  if(w.modo==='edicao') return '';
+  var p2=w.dados.p2||{};
+  var estado=p2.pdf_estado||'';
+  var resHtml=p2.pdf_msg
+    ? '<div class="wz-parse-res on'+(estado==='err'?' err':'')+'" id="wzPdfRes">'+esc(p2.pdf_msg)+'</div>'
+    : '';
+  return '<div class="fld full">'+
+    '<div class="wz-drop'+(estado==='ok'?' ok':'')+'" '+
+      'ondragover="event.preventDefault();this.classList.add(\'drag\')" '+
+      'ondragleave="this.classList.remove(\'drag\')" '+
+      'ondrop="_wzPdfDrop(event)" '+
+      'onclick="document.getElementById(\'wzPdfFile\').click()">'+
+      '<div class="wd-ico">'+(estado==='ok'?'✅':'📄')+'</div>'+
+      (estado==='ok'
+        ? '<b>PDF lido!</b> Confira os campos abaixo — só ajustar o apelido e avançar.'
+        : '<b>Arraste aqui o PDF do Comprovante de CNPJ</b> ou clique para selecionar.')+
+      '<div class="wd-sub">O arquivo é lido só na memória do navegador e descartado — nada é salvo ou enviado. Sem o PDF? Preencha à mão ou cole o texto no passo 2.</div>'+
+    '</div>'+
+    '<input type="file" id="wzPdfFile" accept="application/pdf,.pdf" style="display:none" onchange="_wzPdfInput(this)">'+
+    resHtml+
+  '</div>';
+}
+
+/* ── P4: busca de CEP via ViaCEP (gratuito, sem key) ─────────── */
+async function _wzBuscarViaCep(){
+  var d=_wz.dados.p4=_wz.dados.p4||{};
+  var el=document.getElementById('wz_cep');
+  if(el) d.cep=el.value;
+  var cep=String(d.cep||'').replace(/\D/g,'');
+  if(cep.length!==8){ toast('CEP inválido — informe os 8 dígitos.', 'err'); return; }
+  try{
+    var resp=await fetch('https://viacep.com.br/ws/'+cep+'/json/');
+    var j=await resp.json();
+    if(j && !j.erro){
+      if(j.logradouro) d.logradouro=j.logradouro;
+      if(j.bairro) d.bairro=j.bairro;
+      if(j.localidade) d.cidade=j.localidade;
+      if(j.uf) d.estado=j.uf;
+      _wizRenderCampos(); _wizValida();
+      toast('Endereço preenchido pelo CEP.');
+    } else toast('CEP não encontrado — preencha manualmente.', 'err');
+  }catch(e){ toast('ViaCEP indisponível agora — preencha manualmente.', 'err'); }
+}
+
+/* ── P5: contatos (subform repetível, mínimo 1) ──────────────── */
+var _WZ_FLAGS=[
+  ['contato_principal','Contato principal (quem você liga primeiro)'],
+  ['decisor_compra','Decisor de compra'],
+  ['aprovador_verba','Aprovador de verba'],
+  ['influenciador_tecnico','Influenciador técnico'],
+  ['usuario_servico','Usuário do serviço'],
+  ['precisa_treinamento','Precisa de treinamento']
+];
+function _wzP5Contatos(){ var p5=_wz.dados.p5=_wz.dados.p5||{}; return p5.contatos=p5.contatos||[]; }
+function _wzP5Html(w){
+  if(w.modo==='edicao'){
+    var cts=_contatosByCli[w.clienteId]||[];
+    return '<div class="fld full"><div class="wiz-instr" style="margin-bottom:.6rem">Os contatos deste cliente são gerenciados na aba <b>Contatos</b> da ficha — lá você inclui, edita e exclui. Aqui é só conferência.</div>'+
+      (cts.length? cts.map(function(ct){
+        return '<div class="ct-item"><div class="ct-nome">'+esc(ct.nome)+(ct.contato_principal?' <span class="pill principal">⭐ Principal</span>':'')+'</div>'+
+          '<div class="ct-meta">'+[ct.cargo, ct.departamento].filter(Boolean).map(esc).join(' · ')+'</div></div>';
+      }).join('') : '<div class="vazio">Nenhum contato cadastrado.</div>')+'</div>';
+  }
+  var cts=_wzP5Contatos();
+  if(!cts.length) cts.push({});
+  function inp(i,k,label,req){
+    return '<div class="fld"><label>'+label+(req?' <span class="req">*</span>':'')+'</label>'+
+      '<input value="'+esc(cts[i][k]||'')+'" oninput="_wzP5Change('+i+',\''+k+'\',this.value)"></div>';
+  }
+  function selc(i,k,label,opts){
+    var v=cts[i][k]||'';
+    return '<div class="fld"><label>'+label+'</label><select onchange="_wzP5Change('+i+',\''+k+'\',this.value)">'+
+      '<option value="">—</option>'+opts.map(function(o){ return '<option value="'+o.v+'"'+(v===o.v?' selected':'')+'>'+o.t+'</option>'; }).join('')+'</select></div>';
+  }
+  return cts.map(function(ct,i){
+    return '<div class="ct-item" style="grid-column:1/-1;border-color:var(--emp-bdr)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">'+
+        '<div class="fc-sec-tit" style="margin:0">Contato '+(i+1)+(ct.contato_principal?' · ⭐ principal':'')+'</div>'+
+        (cts.length>1?'<button class="btn btn-red btn-sm" type="button" onclick="_wzP5Remover('+i+')">✕ Remover</button>':'')+
+      '</div>'+
+      '<div class="fgrid">'+
+        inp(i,'nome','Nome',true)+inp(i,'cargo','Cargo')+inp(i,'departamento','Departamento')+
+        selc(i,'tipo_vinculo','Vínculo',[{v:'funcionario',t:'Funcionário'},{v:'socio',t:'Sócio'},{v:'terceiro',t:'Terceiro'},{v:'consultor',t:'Consultor'}])+
+        inp(i,'whatsapp','WhatsApp')+inp(i,'telefone','Telefone')+
+        inp(i,'email_profissional','E-mail profissional')+inp(i,'email_pessoal','E-mail pessoal')+inp(i,'linkedin','LinkedIn')+
+        selc(i,'papel_principal','Papel principal',[{v:'decisor_final',t:'Decisor final'},{v:'aprovador_verba',t:'Aprovador de verba'},{v:'influenciador_tecnico',t:'Influenciador técnico'},{v:'usuario_servico',t:'Usuário do serviço'},{v:'contato_operacional',t:'Contato operacional'},{v:'porteiro',t:'Porteiro'}])+
+        selc(i,'canal_preferido','Canal preferido',[{v:'whatsapp',t:'WhatsApp'},{v:'ligacao',t:'Ligação'},{v:'email',t:'E-mail'},{v:'presencial',t:'Presencial'}])+
+        inp(i,'melhor_horario','Melhor horário')+
+        '<div class="fld full"><label>Observações (personalidade, como abordar, o que evitar)</label>'+
+          '<textarea oninput="_wzP5Change('+i+',\'observacoes\',this.value)">'+esc(ct.observacoes||'')+'</textarea></div>'+
+        '<div class="fld full">'+_WZ_FLAGS.map(function(f){
+          return '<label class="fld-chk"><input type="checkbox"'+(ct[f[0]]?' checked':'')+
+            ' onchange="_wzP5Flag('+i+',\''+f[0]+'\',this.checked)"> '+f[1]+'</label>';
+        }).join('')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('')+
+  '<div class="fld full"><button class="btn" type="button" onclick="_wzP5Adicionar()">＋ Adicionar outro contato</button></div>';
+}
+function _wzP5Change(i,k,v){ var cts=_wzP5Contatos(); if(cts[i]){ cts[i][k]=v; _wizValida(); } }
+function _wzP5Flag(i,k,marcado){
+  var cts=_wzP5Contatos(); if(!cts[i]) return;
+  cts[i][k]=!!marcado;
+  if(k==='contato_principal' && marcado){
+    cts.forEach(function(ct,j){ if(j!==i) ct.contato_principal=false; });   // máximo 1 principal
+    _wizRenderCampos();
+  }
+  _wizValida();
+}
+function _wzP5Adicionar(){ _wzP5Contatos().push({}); _wizRenderCampos(); _wizValida(); }
+function _wzP5Remover(i){ _wzP5Contatos().splice(i,1); _wizRenderCampos(); _wizValida(); }
+function _wzP5Valida(w){
+  if(w.modo==='edicao') return true;   // contatos são geridos na ficha
+  return _wzP5Contatos().some(function(ct){ return String(ct.nome||'').trim()!==''; });
+}
+
+/* ── P7: revisão e salvar ────────────────────────────────────── */
+function _wzP7Html(w){
+  var p1=w.dados.p1||{}, p3=w.dados.p3||{}, p4=w.dados.p4||{}, p7=w.dados.p7=w.dados.p7||{};
+  var cts=w.modo==='edicao'
+    ? (_contatosByCli[w.clienteId]||[])
+    : _wzP5Contatos().filter(function(ct){ return String(ct.nome||'').trim()!==''; });
+  var endereco=[p4.logradouro,p4.numero].filter(Boolean).join(', ')+(p4.cidade?' — '+p4.cidade+(p4.estado?'/'+p4.estado:''):'');
+  var h='<div class="fld full">'+
+    _fcSec('Empresa',
+      _fcKv('Código', _wzCodigoPrevisto())+
+      _fcKv('Apelido', p1.apelido)+
+      _fcKv('Razão social', p1.razao_social)+
+      _fcKv('CNPJ', p1.cnpj)+
+      _fcKv('Grupo', p1.grupo)+
+      (p1.tipo_estabelecimento==='filial'?_fcKv('CNPJ da matriz', p1.cnpj_matriz):'')+
+      _fcKv('Tipo', TIPO_ESTAB_LABEL[p1.tipo_estabelecimento])+
+      _fcKv('Porte', PORTE_LABEL[p1.porte])+
+      _fcKv('Situação', SITUACAO_LABEL[p1.situacao_cadastral])+
+      _fcKv('Segmento', p3.segmento)+
+      _fcKv('CNAE principal', p3.cnae_principal)+
+      _fcKv('Origem', ORIGEM_LABEL[p3.origem]||p3.origem)+
+      _fcKv('E-mail', p4.email)+
+      _fcKv('Telefone', p4.telefone)+
+      _fcKv('Endereço', endereco.trim()?endereco:null)+
+      ((_wz.dados.p2||{}).importado?_fcKv('Comprovante de CNPJ', '📄 dados importados'):''))+
+    _fcSec('Contatos ('+cts.length+')',
+      cts.length? cts.map(function(ct){
+        return '<div class="fc-kv"><span>'+esc(ct.nome)+(ct.contato_principal?' ⭐':'')+'</span><span>'+esc(ct.cargo||'—')+'</span></div>';
+      }).join('') : '<div class="vazio">Nenhum contato.</div>')+
+    '</div>'+
+    '<div class="fld full"><label>Observações internas</label>'+
+      '<textarea oninput="_wz.dados.p7.observacoes=this.value">'+esc(p7.observacoes||'')+'</textarea></div>'+
+    '<div class="fld full"><label class="fld-chk"><input type="checkbox" id="wzConferido"'+(p7.conferido?' checked':'')+
+      ' onchange="_wz.dados.p7.conferido=this.checked;_wizValida()"> Dados conferidos e corretos</label></div>';
+  return h;
+}
+
+function _wzLinhasCnaes(txt){
+  if(Array.isArray(txt)) return txt;
+  return String(txt||'').split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+}
+function _wzMontarRow(){
+  var p1=_wz.dados.p1||{}, p3=_wz.dados.p3||{}, p4=_wz.dados.p4||{}, p7=_wz.dados.p7||{};
+  function t(v){ v=v==null?'':String(v).trim(); return v===''?null:v; }
+  return {
+    apelido:String(p1.apelido||'').trim(),
+    razao_social:t(p1.razao_social), cnpj:t(p1.cnpj), grupo:t(p1.grupo),
+    tipo_estabelecimento:t(p1.tipo_estabelecimento),
+    cnpj_matriz: p1.tipo_estabelecimento==='filial'? t(p1.cnpj_matriz) : null,
+    inscricao_estadual:t(p1.inscricao_estadual), inscricao_municipal:t(p1.inscricao_municipal),
+    data_abertura:t(p1.data_abertura), natureza_juridica:t(p1.natureza_juridica),
+    porte:t(p1.porte), situacao_cadastral:t(p1.situacao_cadastral),
+    data_situacao_cadastral:t(p1.data_situacao_cadastral),
+    cnae_principal:t(p3.cnae_principal), cnae_secundarios:_wzLinhasCnaes(p3.cnae_secundarios),
+    segmento:t(p3.segmento), origem:t(p3.origem)||'manual',
+    email:t(p4.email), telefone:t(p4.telefone), site:t(p4.site),
+    cep:t(p4.cep), logradouro:t(p4.logradouro), numero:t(p4.numero), complemento:t(p4.complemento),
+    bairro:t(p4.bairro), cidade:t(p4.cidade), estado:t(p4.estado),
+    observacoes:t(p7.observacoes),
+    atualizado_em:new Date().toISOString()
+  };
+}
+async function _salvarClienteWizard(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return false;
+  var row=_wzMontarRow();
+  function tc(v){ v=v==null?'':String(v).trim(); return v===''?null:v; }
+  if(_wz.modo==='edicao'){
+    if((_wz.dados.p2||{}).importado) row.dados_importados_cnpj=true;   // nunca desmarca
+    try{
+      var ru=await sb.from('clientes').update(row).eq('id', _wz.clienteId);
+      if(ru && ru.error) throw ru.error;
+      return true;
+    }catch(e){ toast('Erro ao salvar as alterações. Tente novamente.', 'err'); return false; }
+  }
+  row.empresa_id=_empresaAtiva.id; row.ativo=true;
+  row.criado_por=await _obterUsuarioId();
+  row.dados_importados_cnpj=!!(_wz.dados.p2||{}).importado;
+  // INSERT com retry único: se outra sessão pegou o mesmo código, o índice
+  // único rejeita → recarrega a lista e recalcula
+  var novo=null;
+  for(var tent=0; tent<2 && !novo; tent++){
+    row.codigo=_proxCodigo();
+    try{
+      var ri=await sb.from('clientes').insert(row).select('id').maybeSingle();
+      if(ri && ri.error) throw ri.error;
+      novo=(ri && ri.data)||null;
+    }catch(e){
+      try{
+        var rr=await sb.from('clientes').select('*').eq('empresa_id', _empresaAtiva.id);
+        if(rr && rr.data) _clientes=rr.data;
+      }catch(e2){}
+    }
+  }
+  if(!novo){ toast('Erro ao salvar o cliente. Tente novamente.', 'err'); return false; }
+  // Contatos (mínimo 1 garantido pelo P5; máximo 1 principal — 1º assume se nenhum)
+  var cts=_wzP5Contatos().filter(function(ct){ return String(ct.nome||'').trim()!==''; });
+  if(!cts.some(function(ct){ return ct.contato_principal; })) cts[0].contato_principal=true;
+  var rowsCt=cts.map(function(ct){
+    return {
+      cliente_id:novo.id, empresa_id:_empresaAtiva.id, origem:'manual',
+      nome:String(ct.nome).trim(), cargo:tc(ct.cargo), departamento:tc(ct.departamento),
+      tipo_vinculo:tc(ct.tipo_vinculo), whatsapp:tc(ct.whatsapp), telefone:tc(ct.telefone),
+      email_profissional:tc(ct.email_profissional), email_pessoal:tc(ct.email_pessoal),
+      linkedin:tc(ct.linkedin), papel_principal:tc(ct.papel_principal),
+      canal_preferido:tc(ct.canal_preferido), melhor_horario:tc(ct.melhor_horario),
+      observacoes:tc(ct.observacoes),
+      contato_principal:!!ct.contato_principal, decisor_compra:!!ct.decisor_compra,
+      aprovador_verba:!!ct.aprovador_verba, influenciador_tecnico:!!ct.influenciador_tecnico,
+      usuario_servico:!!ct.usuario_servico, precisa_treinamento:!!ct.precisa_treinamento
+    };
+  });
+  try{
+    var rc=await sb.from('cliente_contatos').insert(rowsCt);
+    if(rc && rc.error) throw rc.error;
+  }catch(e){
+    // ROLLBACK: nada fica pela metade — desfaz o cliente recém-criado
+    try{ await sb.from('clientes').delete().eq('id', novo.id); }catch(e2){}
+    toast('Erro ao salvar os contatos — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
+    return false;
+  }
+  await _wizLimparRascunho();
+  _wz.novoId=novo.id;
+  return true;
+}
+
+/* ── Config dos 7 passos ─────────────────────────────────────── */
+var WIZ_CLIENTE={
+  pills:['Identificação','Comprovante CNPJ','CNAE e segmento','Contato e endereço','Contatos','Organograma','Revisão'],
+  passos:[
+    { t:'Identificação',
+      instr:'Tem o PDF do Comprovante de CNPJ? Arraste na área abaixo que o SOE preenche tudo — você só confere e ajusta o apelido. Sem o PDF, preencha a partir do apelido (como a equipe chama o cliente no dia a dia).',
+      topoHtml:_wzP1TopoHtml,
+      campos:[
+        { id:'codigo', label:'Código (gerado pelo SOE)', ro:function(w){ return _wzCodigoPrevisto(); } },
+        { id:'apelido', label:'Apelido (nome fantasia)', req:true },
+        { id:'razao_social', label:'Razão social' },
+        { id:'cnpj', label:'CNPJ' },
+        { id:'grupo', label:'Grupo econômico', list:'dlGrupos' },
+        { id:'tipo_estabelecimento', label:'Tipo', tipo:'select',
+          opts:[{v:'matriz',t:'Matriz'},{v:'filial',t:'Filial'},{v:'unico',t:'Único'}] },
+        { id:'cnpj_matriz', label:'CNPJ da matriz',
+          cond:function(w){ return (w.dados.p1||{}).tipo_estabelecimento==='filial'; } },
+        { id:'inscricao_estadual', label:'Inscrição estadual' },
+        { id:'inscricao_municipal', label:'Inscrição municipal' },
+        { id:'data_abertura', label:'Data de abertura', tipo:'date' },
+        { id:'natureza_juridica', label:'Natureza jurídica' },
+        { id:'porte', label:'Porte', tipo:'select',
+          opts:[{v:'mei',t:'MEI'},{v:'micro',t:'Micro'},{v:'pequena',t:'Pequena'},{v:'media',t:'Média'},{v:'grande',t:'Grande'},{v:'demais',t:'Demais'}] },
+        { id:'situacao_cadastral', label:'Situação cadastral', tipo:'select',
+          opts:[{v:'ativa',t:'Ativa'},{v:'suspensa',t:'Suspensa'},{v:'inapta',t:'Inapta'},{v:'baixada',t:'Baixada'},{v:'nula',t:'Nula'}] },
+        { id:'data_situacao_cadastral', label:'Data da situação', tipo:'date' }
+      ],
+      parabens:'Identificação pronta! Se tiver o Comprovante de CNPJ, o próximo passo preenche o resto sozinho.' },
+    { t:'Importar dados do Comprovante de CNPJ',
+      instr:'Passo opcional — pode pular. Se não usou o PDF no passo 1: acesse a consulta de CNPJ da Receita, abra o Comprovante, selecione todo o texto (Ctrl+A, Ctrl+C) e cole aqui. O SOE preenche tudo automaticamente, sem sobrescrever o que você já digitou.',
+      render:function(w){
+        var d=w.dados.p2||{};
+        return (d.importado_pdf
+          ? '<div class="fld full"><div class="wz-parse-res on">✓ Dados importados do PDF no passo 1 — pode avançar direto.</div></div>'
+          : '')+
+          '<div class="fld full"><label>Texto do comprovante</label>'+
+          '<textarea id="wzCnpjTexto" placeholder="Cole aqui o texto do Comprovante de Inscrição e de Situação Cadastral…" oninput="_wz.dados.p2=_wz.dados.p2||{};_wz.dados.p2.texto=this.value">'+esc(d.texto||'')+'</textarea></div>'+
+          '<div class="fld full"><button class="btn btn-emp" type="button" onclick="_wzAplicarParser()">⚙️ Preencher automaticamente</button>'+
+          '<div class="wz-parse-res" id="wzParseRes"></div></div>';
+      },
+      valida:function(){ return true; },
+      parabens:'Dados importados! Confira nos próximos passos — tudo continua editável.' },
+    { t:'CNAE e segmento',
+      instr:'O CNAE define o que a empresa faz oficialmente. O segmento é como você classifica internamente para propostas e análises.',
+      campos:[
+        { id:'cnae_principal', label:'CNAE principal', full:true },
+        { id:'cnae_secundarios', label:'CNAEs secundários (um por linha)', tipo:'textarea', full:true },
+        { id:'segmento', label:'Segmento', tipo:'select',
+          opts:['Automotivo','Alimentício','Químico','Farmacêutico','Têxtil','Metalúrgico','Logística','Mineração','Papel e celulose','Outro'] },
+        { id:'origem', label:'Origem do cliente (como chegou até você)', tipo:'select',
+          opts:[{v:'prospeccao',t:'Prospecção'},{v:'indicacao',t:'Indicação'},{v:'evento',t:'Evento'},{v:'manual',t:'Cadastro manual'},{v:'outro',t:'Outro'}] }
+      ],
+      parabens:'Classificação feita! Agora o endereço.' },
+    { t:'Contato e endereço',
+      instr:'Endereço completo da empresa. Digite o CEP e clique em Buscar para preencher automaticamente (ViaCEP, gratuito). Se o serviço estiver fora do ar, preencha manualmente — nada trava.',
+      campos:[
+        { id:'email', label:'E-mail geral' },
+        { id:'telefone', label:'Telefone' },
+        { id:'site', label:'Site' },
+        { id:'cep', label:'CEP', acao:{label:'🔎 Buscar', fn:'_wzBuscarViaCep()'} },
+        { id:'logradouro', label:'Logradouro' },
+        { id:'numero', label:'Número' },
+        { id:'complemento', label:'Complemento' },
+        { id:'bairro', label:'Bairro' },
+        { id:'cidade', label:'Cidade' },
+        { id:'estado', label:'UF' }
+      ],
+      parabens:'Endereço completo! Agora as pessoas — a parte mais valiosa do cadastro.' },
+    { t:'Contatos da empresa',
+      instr:'Cadastre todas as pessoas com quem você se relaciona nessa empresa. Comece pelo contato principal — quem você liga primeiro. Mínimo: 1 contato.',
+      render:_wzP5Html, valida:_wzP5Valida,
+      parabens:'Contatos registrados! O organograma (mapa de poder) chega em breve.' },
+    { t:'Organograma',
+      instr:'Monte o mapa de poder do cliente: quem manda em quem, quem influencia quem. Isso vale ouro na hora de vender.',
+      render:function(){
+        return '<div class="fld full"><div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
+          'Em breve — este passo chega numa próxima atualização. Pode avançar.</div></div>';
+      },
+      valida:function(){ return true; },
+      parabens:'Quase lá! Revise tudo antes de salvar.' },
+    { t:'Revisão e observações',
+      instr:'Revise tudo antes de salvar. Uma vez salvo, o cliente fica disponível em todo o SOE.',
+      render:_wzP7Html,
+      valida:function(w){ return !!(w.dados.p7||{}).conferido; } }
+  ]
+};
 
 /* ══════════════════════════════════════════════════════════════
    MIGRAÇÃO DO CADASTRO ANTIGO (localStorage + configuracoes)
