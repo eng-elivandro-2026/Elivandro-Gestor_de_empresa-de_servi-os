@@ -88,6 +88,17 @@
       ]
     },
     {
+      id: 'prospeccao',
+      label: 'Prospecção',
+      icon: '🎯',
+      tipo: 'iframe',
+      src: 'pages/prospeccao.html',
+      nav: [
+        { label: 'Alvos',            icon: '📋', action: "Router.ir('prospeccao');Router.iframeMsg('prospeccao','SHOW_SECTION','alvos')" },
+        { label: 'Captura em massa', icon: '📥', action: "Router.ir('prospeccao');Router.iframeMsg('prospeccao','SHOW_SECTION','captura')" },
+      ]
+    },
+    {
       id: 'gestao-a-vista',
       label: 'MPE',
       icon: '📊',

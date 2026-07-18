@@ -8751,9 +8751,9 @@ function rExecTimeline(){
 <script src="js/core/app-core.js?v=29"></script>
 <script src="js/services/decision-engine/index.js?v=2"></script>
 <script src="js/services/decision-engine/rp-alertas.js?v=1"></script>
-<script src="js/core/permissoes.js?v=12"></script>
+<script src="js/core/permissoes.js?v=13"></script>
 <script src="js/modules/multi-empresa.js"></script>
-<script src="js/core/router.js?v=17"></script>
+<script src="js/core/router.js?v=18"></script>
 <script src="js/modules/categoria-analise.js?v=4"></script>
 <script src="js/modules/cotacao.js"></script>
 <script src="js/modules/gantt.js?v=5"></script>
@@ -10248,6 +10248,17 @@ var _PERM_GRUPOS = [
   { mod: 'rh', label: '👷 RH / Equipes', actions: [
     { key: 'ver',    label: 'Ver' },
     { key: 'editar', label: 'Editar' }
+  ]},
+  { mod: 'prospeccao', label: '🎯 Prospecção Comercial', actions: [
+    // EXCLUSIVO dono/admin nesta fase — a abertura p/ outros perfis será
+    // feita manualmente aqui quando o módulo estiver validado.
+    { key: 'ver',                 label: 'Ver' },
+    { key: 'capturar',            label: 'Capturar em massa' },
+    { key: 'wizard',              label: 'Executar wizard' },
+    { key: 'editar_outros',       label: 'Editar alvo de outro' },
+    { key: 'excluir',             label: 'Excluir alvo' },
+    { key: 'metricas_usuarios',   label: 'Métricas por usuário' },
+    { key: 'definir_responsavel', label: 'Definir responsável' }
   ]},
   { mod: 'recursos-produtividade', label: '📈 Recursos & Produtividade', actions: [
     // Dashboard puro: só 'ver'. A aba Configurações (rp_config) é SÓ DONO
