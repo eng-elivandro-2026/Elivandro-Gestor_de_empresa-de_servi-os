@@ -141,6 +141,38 @@ table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
 .wiz-acoes .esq{margin-right:auto}
 .alerta-prazo{display:none;font-size:.78rem;font-weight:700;color:var(--red);background:rgba(248,81,73,.1);border-left:4px solid var(--red);border-radius:var(--r2);padding:.55rem .8rem;margin-bottom:.8rem}
 .alerta-prazo.on{display:block}
+/* ── Ficha do lead (painel lateral) ── */
+.split{display:grid;grid-template-columns:1fr;gap:.8rem;align-items:start;transition:grid-template-columns .15s}
+.split.com-ficha{grid-template-columns:1fr 420px}
+#fichaLead{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.9rem;position:sticky;top:.8rem;max-height:calc(100vh - 2rem);overflow-y:auto}
+.split.com-ficha #fichaLead{display:block}
+@media(max-width:900px){
+  .split.com-ficha{grid-template-columns:1fr}
+  .split.com-ficha>.card{display:none}          /* overlay: ficha ocupa a tela */
+  #fichaLead{position:static;max-height:none}
+}
+.fl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;margin-bottom:.6rem}
+.fl-nome{font-size:.98rem;font-weight:800}
+.fl-tabs{display:flex;gap:.3rem;margin-bottom:.8rem;flex-wrap:wrap}
+.fl-tab{font-size:.68rem;font-weight:700;border-radius:20px;padding:.3rem .7rem;background:var(--bg3);color:var(--text3);border:1px solid var(--border);cursor:pointer;font-family:inherit}
+.fl-tab.on{background:var(--emp-bg);border-color:var(--emp-bdr);color:var(--emp-cor)}
+.fl-sec{margin-bottom:.75rem}
+.fl-sec-tit{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+.fl-kv{display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;padding:.22rem 0;border-bottom:1px solid var(--border)}
+.fl-kv span:first-child{color:var(--text3)}
+.fl-kv span:last-child{text-align:right;font-weight:600}
+.fl-tl-item{display:flex;gap:.55rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.74rem}
+.fl-tl-ico{flex:0 0 auto}
+.fl-tl-meta{color:var(--text3);font-size:.66rem;margin-top:.15rem}
+#fichaLead details{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.5rem;padding:.45rem .6rem}
+#fichaLead summary{cursor:pointer;font-size:.76rem;font-weight:700;color:var(--text2)}
+.fl-kpi-g{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.7rem}
+.fl-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.5rem .6rem}
+.fl-kpi .v{font-size:1.1rem;font-weight:800}
+.fl-kpi .l{font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.fl-acoes{display:flex;gap:.5rem;margin-top:.8rem;position:sticky;bottom:0;background:var(--bg2);padding-top:.5rem}
+.alvo-play{float:right;background:var(--emp-bg);border:1px solid var(--emp-bdr);color:var(--emp-cor);border-radius:50%;width:26px;height:26px;font-size:.7rem;cursor:pointer;line-height:1}
+
 /* Score (Etapa 2) */
 .score-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .9rem;margin-bottom:.8rem}
 .score-tit{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.5rem}
@@ -183,6 +215,7 @@ table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
       <div id="metricasUsuario"></div>
     </div>
 
+    <div class="split" id="splitAlvos">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
         <div class="sec-tit">📋 Lista de alvos</div>
@@ -219,6 +252,28 @@ table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
 
       <div class="alvo-g" id="listaAlvos"><div class="vazio">Carregando…</div></div>
     </div>
+
+    <!-- Ficha do lead (painel lateral — 4 vistas) -->
+    <div id="fichaLead">
+      <div class="fl-head">
+        <div>
+          <div class="fl-nome" id="flNome">—</div>
+          <div class="alvo-badges" id="flBadges" style="margin-top:.3rem"></div>
+        </div>
+        <button class="btn btn-sm" onclick="fecharFicha()">✕</button>
+      </div>
+      <div class="fl-tabs">
+        <button class="fl-tab" id="flTab-A" onclick="_fichaSetVista('A')">Resumo</button>
+        <button class="fl-tab" id="flTab-B" onclick="_fichaSetVista('B')">Timeline</button>
+        <button class="fl-tab" id="flTab-C" onclick="_fichaSetVista('C')">Seções</button>
+        <button class="fl-tab" id="flTab-D" onclick="_fichaSetVista('D')">Dashboard</button>
+      </div>
+      <div id="flBody"><div class="vazio">Carregando…</div></div>
+      <div class="fl-acoes">
+        <button class="btn btn-emp" style="flex:1" id="flBtnWizard" onclick="_fichaAbrirWizard()">▶ Abrir wizard</button>
+      </div>
+    </div>
+    </div><!-- /split -->
   </div>
 
   <!-- ══ Seção: Captura em massa (Momento 1) ══ -->
@@ -536,7 +591,8 @@ function renderAlvos(){
   });
   if(!lista.length){ el.innerHTML='<div class="vazio">Nenhum alvo'+(_alvos.length?' com esses filtros':' ainda — comece pela captura em massa')+'.</div>'; return; }
   el.innerHTML=lista.map(function(a){
-    return '<button class="alvo'+(a.urgente?' urgente':'')+'" onclick="abrirAlvo(\''+esc(a.id)+'\')">'+
+    return '<button class="alvo'+(a.urgente?' urgente':'')+'" onclick="abrirFicha(\''+esc(a.id)+'\')">'+
+      '<span class="alvo-play" title="Trabalhar (pesquisa/wizard)" onclick="event.stopPropagation();abrirTrabalho(\''+esc(a.id)+'\')">▶</span>'+
       '<div class="alvo-nome">'+esc(a.nome)+'</div>'+
       '<div class="alvo-meta"><span>'+esc(a.segmento||'—')+'</span><span>📍 '+esc(a.cidade||'—')+'</span>'+(_etapasTempo[a.id]?'<span>⏱️ '+_fmtTempo(_etapasTempo[a.id])+'</span>':'')+'</div>'+
       '<div class="alvo-badges">'+
@@ -794,14 +850,15 @@ async function salvarPesquisa(){
    Passos bloqueados, autosave retomável (prospeccao_etapas), cronômetro
    acumulado, parabenizações, log por passo.
    ══════════════════════════════════════════════════════════════ */
-// Roteia o clique no alvo pelo status (funil)
-function abrirAlvo(id){
+// Ação de TRABALHO no alvo (pesquisa/wizard conforme o status do funil).
+// Chamada pelo ▶ do card e pelo "Abrir wizard" da ficha — o clique no card
+// abre a FICHA (hub do lead, decisão aprovada no PR-3).
+function abrirTrabalho(id){
   var a=_alvos.find(function(x){ return x.id===id; });
   if(!a) return;
   if(a.status==='prospectando') abrirWizard(WIZ_PROSPECCAO, id, false);
-  else if(a.status==='qualificando' && WIZ_QUALIFICACAO) abrirWizard(WIZ_QUALIFICACAO, id, false);
-  else if(a.status==='qualificado' && WIZ_QUALIFICACAO) abrirWizard(WIZ_QUALIFICACAO, id, true);   // leitura
-  else if(a.status==='qualificando'||a.status==='qualificado') toast('Wizard de qualificação disponível em breve.');
+  else if(a.status==='qualificando') abrirWizard(WIZ_QUALIFICACAO, id, false);
+  else if(a.status==='qualificado') abrirWizard(WIZ_QUALIFICACAO, id, true);   // leitura
   else abrirPesquisa(id);   // novo / pesquisando / descartado (retriagem)
 }
 
@@ -1199,6 +1256,156 @@ var WIZ_QUALIFICACAO={
   },
   parabensFinal:function(w){ return 'Lead qualificado com score '+_qualScore(w).total+'%! Pronto para proposta.'; }
 };
+
+/* ══════════════════════════════════════════════════════════════
+   FICHA DO LEAD (PR-3) — painel lateral, 4 vistas, 100% leitura.
+   Dados: alvo (memória) + prospeccao_etapas + prospeccao_log.
+   ══════════════════════════════════════════════════════════════ */
+var _ficha={ alvo:null, etapas:{}, logs:[] };
+var _fichaVista='A';   // memória da vista POR SESSÃO (não persiste no banco)
+
+async function abrirFicha(id){
+  var a=_alvos.find(function(x){ return x.id===id; });
+  if(!a) return;
+  _ficha.alvo=a; _ficha.etapas={}; _ficha.logs=[];
+  var sb=_sb();
+  if(sb){
+    try{
+      var res=await Promise.all([
+        sb.from('prospeccao_etapas').select('*').eq('alvo_id', a.id),
+        sb.from('prospeccao_log').select('*').eq('alvo_id', a.id).order('criado_em', {ascending:true})
+      ]);
+      ((res[0] && res[0].data)||[]).forEach(function(e){ _ficha.etapas[e.etapa]=e; });
+      _ficha.logs=(res[1] && res[1].data)||[];
+    }catch(e){}
+  }
+  document.getElementById('splitAlvos').classList.add('com-ficha');
+  _fichaRender();
+  _log(a.id, 'ficha', 'abriu_ficha', {vista:_fichaVista}, 0);
+}
+function fecharFicha(){
+  _ficha.alvo=null;
+  document.getElementById('splitAlvos').classList.remove('com-ficha');
+}
+function _fichaSetVista(v){ _fichaVista=v; if(_ficha.alvo) _fichaRender(); }
+function _fichaAbrirWizard(){
+  if(!_ficha.alvo) return;
+  var id=_ficha.alvo.id;
+  fecharFicha();
+  abrirTrabalho(id);
+}
+
+function _fichaD(etapa){ var e=_ficha.etapas[etapa]; return (e && e.dados_json)||{}; }
+function _flKv(l, v){ return '<div class="fl-kv"><span>'+esc(l)+'</span><span>'+(v!=null && String(v).trim()!==''?esc(v):'—')+'</span></div>'; }
+function _flSec(tit, inner){ return inner? '<div class="fl-sec"><div class="fl-sec-tit">'+tit+'</div>'+inner+'</div>' : ''; }
+function _flDataBr(s){ if(!s) return '—'; var d=String(s).slice(0,10).split('-'); return d.length===3? d[2]+'/'+d[1]+'/'+d[0] : s; }
+function _flDiasNoFunil(a){ try{ return Math.max(0, Math.floor((Date.now()-new Date(a.criado_em).getTime())/86400000)); }catch(e){ return 0; } }
+// Pseudo-wizard p/ reusar _qualScore/_qualScoreHtml com dados salvos (readonly → sem botão Confirmar)
+function _fichaScoreW(){ return { dados:_fichaD('qualificacao'), passo:0, readonly:true, alvo:_ficha.alvo }; }
+
+function _fichaRender(){
+  var a=_ficha.alvo;
+  document.getElementById('flNome').textContent=a.nome;
+  document.getElementById('flBadges').innerHTML=
+    '<span class="pill st-'+esc(a.status)+'">'+(STATUS_LABEL[a.status]||a.status)+'</span>'+
+    '<span class="pill origem">'+(ORIGEM_LABEL[a.origem]||a.origem||'—')+'</span>'+
+    (a.perfil?'<span class="badge-perfil '+a.perfil+'">'+(a.perfil==='A'?'OEM':'Operadora')+'</span>':'')+
+    (a.urgente?'<span class="pill urg">🔥 Urgente</span>':'');
+  ['A','B','C','D'].forEach(function(v){ document.getElementById('flTab-'+v).classList.toggle('on', v===_fichaVista); });
+  var btn=document.getElementById('flBtnWizard');
+  btn.textContent = a.status==='qualificado' ? '👁️ Ver wizard (leitura)'
+    : (a.status==='novo'||a.status==='pesquisando'||a.status==='descartado') ? '🔎 Abrir pesquisa' : '▶ Abrir wizard';
+  var f={ A:_fichaVistaA, B:_fichaVistaB, C:_fichaVistaC, D:_fichaVistaD }[_fichaVista]||_fichaVistaA;
+  document.getElementById('flBody').innerHTML=f();
+}
+
+/* Vista A — Resumo */
+function _fichaVistaA(){
+  var a=_ficha.alvo, pq=_fichaD('pesquisa'), e1=_fichaD('prospeccao'), e2=_fichaD('qualificacao');
+  var h='';
+  // Score (só se a qualificação começou)
+  if(Object.keys(e2).length){
+    var s=_qualScore(_fichaScoreW());
+    h+='<div class="fl-sec"><span class="score-pct" style="color:'+s.faixa.cor+'">'+s.total+'%</span> <span class="score-faixa" style="color:'+s.faixa.cor+';background:'+s.faixa.bg+'">'+s.faixa.t+'</span></div>';
+  }
+  h+=_flSec('Empresa', _flKv('Segmento', a.segmento)+_flKv('Cidade', a.cidade)+_flKv('Porte', a.porte)+_flKv('O que faz', (e1.p1&&e1.p1.faz)||pq.faz));
+  var ct=(e1.p2||{});
+  if(ct.nome||ct.cargo) h+=_flSec('Contato', _flKv('Nome', ct.nome)+_flKv('Cargo', ct.cargo)+_flKv('WhatsApp', ct.whatsapp)+_flKv('E-mail', ct.email));
+  var dor=(e2.p2||{});
+  if(dor.dor||dor.servico) h+=_flSec('Dor e serviço', _flKv('Dor', dor.dor)+_flKv('Serviço', dor.servico));
+  var pz=(e2.p3||{});
+  if(a.prazo_cliente||pz.tem_prazo){
+    var dias=a.prazo_cliente? Math.ceil((new Date(a.prazo_cliente+'T12:00:00')-new Date())/86400000) : null;
+    h+=_flSec('Prazo', _flKv('Prazo do cliente', _flDataBr(a.prazo_cliente))+_flKv('Motivo', pz.motivo)+
+      (dias!=null && dias<=7 ? '<div class="alerta-prazo on" style="margin-top:.4rem">🔥 Prazo a '+Math.max(dias,0)+' dia(s)!</div>':''));
+  }
+  var vi=(e2.p5||{});
+  if(vi.data) h+=_flSec('Visita agendada', _flKv('Data', _flDataBr(vi.data)+(vi.horario?' às '+vi.horario:''))+_flKv('Endereço', vi.endereco));
+  var pa=(e1.p6||{});
+  if(pa.acao) h+=_flSec('Próxima ação', _flKv('Ação', pa.acao)+_flKv('Data', _flDataBr(pa.data)));
+  h+=_flSec('Tempo investido', _flKv('Total', _fmtTempo(_etapasTempo[a.id]||0)));
+  return h||'<div class="vazio">Sem dados ainda — use o ▶ para começar a trabalhar este lead.</div>';
+}
+
+/* Vista B — Timeline */
+var _ACAO_META={
+  captura_massa:['📥','Capturado em massa'], alvo_manual_criado:['➕','Alvo criado manualmente'],
+  abriu_pesquisa:['🔎','Abriu pesquisa rápida'], pesquisa_concluida:['✅','Pesquisa concluída'],
+  voltou_sem_concluir:['↩️','Saiu da pesquisa sem concluir'], descartou:['🗑️','Descartou o alvo'],
+  abriu_wizard:['▶️','Abriu wizard'], passo_concluido:['✔️','Passo concluído'],
+  saiu_sem_concluir:['↩️','Saiu do wizard sem concluir'], wizard_concluido:['🏁','Wizard concluído'],
+  descartou_sem_interesse:['🗑️','Descartado (sem interesse)'], abriu_ficha:['📄','Abriu a ficha']
+};
+function _fichaVistaB(){
+  if(!_ficha.logs.length) return '<div class="vazio">Nenhuma ação registrada ainda.</div>';
+  return _ficha.logs.map(function(l){
+    var m=_ACAO_META[l.acao]||['•', l.acao];
+    var dt=l.criado_em? new Date(l.criado_em) : null;
+    var quando=dt? _flDataBr(l.criado_em)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0') : '—';
+    return '<div class="fl-tl-item"><span class="fl-tl-ico">'+m[0]+'</span><div><div>'+esc(m[1])+(l.etapa?' <span style="color:var(--text3)">('+esc(l.etapa)+')</span>':'')+'</div>'+
+      '<div class="fl-tl-meta">'+quando+(l.tempo_segundos?' · ⏱️ '+_fmtTempo(l.tempo_segundos):'')+'</div></div></div>';
+  }).join('');
+}
+
+/* Vista C — Seções dobráveis */
+function _fichaVistaC(){
+  var a=_ficha.alvo, pq=_fichaD('pesquisa'), e1=_fichaD('prospeccao'), e2=_fichaD('qualificacao');
+  function det(tit, inner, aberta){ return '<details'+(aberta?' open':'')+'><summary>'+tit+'</summary><div style="margin-top:.4rem">'+inner+'</div></details>'; }
+  var h='';
+  h+=det('🏢 Empresa', _flKv('Nome', a.nome)+_flKv('Segmento', a.segmento)+_flKv('Cidade', a.cidade)+_flKv('Estado', a.estado)+_flKv('Porte', a.porte)+_flKv('Fonte', a.fonte)+_flKv('O que faz', (e1.p1&&e1.p1.faz)||pq.faz)+_flKv('Fornecedor elétrico', (e1.p1&&e1.p1.fornecedor)||pq.fornecedor), true);
+  var ct=e1.p2||{}, cq=e2.p1||{};
+  h+=det('👤 Contato', _flKv('Nome', ct.nome||cq.contato)+_flKv('Cargo', ct.cargo||cq.cargo)+_flKv('WhatsApp', ct.whatsapp)+_flKv('E-mail', ct.email)+_flKv('LinkedIn', ct.linkedin)+_flKv('Canal da qualificação', cq.canal));
+  var qi=e1.p4||{}, dv=e2.p4||{};
+  var scoreHtml=Object.keys(e2).length? _qualScoreHtml(_fichaScoreW()) : '';
+  h+=det('🎯 Qualificação', _flKv('Projeto em desenvolvimento', qi.projeto)+_flKv('Dor', (e2.p2||{}).dor)+_flKv('Serviço', (e2.p2||{}).servico)+_flKv('Decisor', dv.decisor||qi.decisor)+_flKv('Verba', dv.verba||qi.verba)+_flKv('Concorrentes', dv.concorrentes)+scoreHtml);
+  var pz=e2.p3||{}, vi=e2.p5||{};
+  h+=det('📅 Prazo & Visita', _flKv('Tem prazo', pz.tem_prazo==='sim'?'Sim':pz.tem_prazo==='urgente'?'Urgente':pz.tem_prazo==='sem'?'Sem prazo':null)+_flKv('Data do prazo', _flDataBr(a.prazo_cliente))+_flKv('Motivo', pz.motivo)+_flKv('Visita', vi.data?_flDataBr(vi.data)+(vi.horario?' às '+vi.horario:''):null)+_flKv('Endereço', vi.endereco)+_flKv('Verificar', vi.verificar));
+  h+=det('📜 Log completo ('+_ficha.logs.length+')', _fichaVistaB());
+  return h;
+}
+
+/* Vista D — Dashboard do lead */
+function _fichaVistaD(){
+  var a=_ficha.alvo;
+  var e1=_ficha.etapas.prospeccao, e2=_ficha.etapas.qualificacao;
+  function kpi(v,l){ return '<div class="fl-kpi"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+  var h='<div class="fl-kpi-g">'+
+    kpi(_flDiasNoFunil(a), 'dias no funil')+
+    kpi(_fmtTempo(_etapasTempo[a.id]||0), 'tempo investido')+
+    kpi(_ficha.logs.length, 'ações registradas')+
+    kpi(((e1&&(e1.passos_concluidos||[]).length)||0)+'/6 · '+((e2&&(e2.passos_concluidos||[]).length)||0)+'/5', 'passos E1 · E2')+
+  '</div>';
+  h+='<div class="fl-sec-tit">Score por critério</div>'+_qualScoreHtml(_fichaScoreW());
+  var FUNIL=['novo','pesquisando','prospectando','qualificando','qualificado'];
+  h+='<div class="fl-sec-tit" style="margin-top:.6rem">Posição no funil</div><div style="display:flex;gap:.3rem;flex-wrap:wrap">'+
+    FUNIL.map(function(st){
+      var atual=a.status===st;
+      var passou=FUNIL.indexOf(a.status)>FUNIL.indexOf(st);
+      return '<span class="pill '+(atual?'st-'+st:(passou?'st-qualificado':''))+'" style="'+(!atual&&!passou?'opacity:.4':'')+'">'+STATUS_LABEL[st]+'</span>';
+    }).join('<span style="color:var(--text3)">→</span>')+
+    (a.status==='descartado'||a.status==='desqualificado'?'<span class="pill st-descartado">'+STATUS_LABEL[a.status]+'</span>':'')+'</div>';
+  return h;
+}
 
 /* ── Integração com o portal ─────────────────────────────────── */
 async function _onTrocaEmpresa(d){
