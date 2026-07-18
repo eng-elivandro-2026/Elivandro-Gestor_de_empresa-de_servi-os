@@ -10479,9 +10479,88 @@ function findSelectedCompanyRecord(){
   for(var j=0;j<dir.length;j++) if(normTxt(dir[j].empresa)===empresa) return dir[j];
   return null;
 }
+/* ── Fonte NOVA do autocomplete de cliente: tabela `clientes` (PR-D) ──
+   Cache por empresa (clientes ativos + contatos). Cache vazio →
+   fallback INTEGRAL ao cadastro antigo (cliGetAll/Relacionamento). */
+var _cliTab={ empId:null, lista:[], contatos:{}, carregou:false, carregando:false };
+function _cliTabEmpresaId(){
+  try{
+    return (typeof getEmpresaAtivaId==='function') ? getEmpresaAtivaId()
+      : (window._empresaAtiva ? window._empresaAtiva.id : null);
+  }catch(e){ return null; }
+}
+function _cliTabCarregar(){
+  var eid=_cliTabEmpresaId();
+  if(!eid || !window.sbClient) return;
+  if(_cliTab.empId===eid && (_cliTab.carregou || _cliTab.carregando)) return;
+  _cliTab.empId=eid; _cliTab.carregando=true; _cliTab.carregou=false;
+  _cliTab.lista=[]; _cliTab.contatos={};
+  window.sbClient.from('clientes')
+    .select('id,codigo,apelido,razao_social,cnpj,cidade,estado')
+    .eq('empresa_id', eid).eq('ativo', true)
+    .then(function(r){
+      _cliTab.carregando=false;
+      if(r && r.data && _cliTab.empId===eid){ _cliTab.lista=r.data; _cliTab.carregou=true; }
+    });
+  window.sbClient.from('cliente_contatos')
+    .select('id,cliente_id,nome,cargo,departamento,email_profissional,whatsapp,telefone,contato_principal')
+    .eq('empresa_id', eid).eq('ativo', true)
+    .then(function(r){
+      if(r && r.data && _cliTab.empId===eid){
+        _cliTab.contatos={};
+        r.data.forEach(function(c){ (_cliTab.contatos[c.cliente_id]=_cliTab.contatos[c.cliente_id]||[]).push(c); });
+      }
+    });
+}
+// Contatos do cliente (tabela nova) no shape que _fillContato1/dropdown esperam
+function _contatosTabelaNova(clienteId){
+  var lista=(_cliTab.contatos[clienteId]||[]).slice();
+  lista.sort(function(a,b){ return (b.contato_principal?1:0)-(a.contato_principal?1:0); });
+  return lista.map(function(c){
+    return { nome:c.nome||'', departamento:c.departamento||c.cargo||'', email:c.email_profissional||'', telefone:c.whatsapp||c.telefone||'' };
+  });
+}
+// Vínculo proposta → cliente, resolvido NO SALVAR (entra no dados_json
+// como `clienteId`; o campo `cli` segue texto livre — propostas antigas
+// e nomes digitados à mão continuam valendo sem vínculo):
+// 1) seleção explícita cujo apelido ainda é o texto do campo;
+// 2) match EXATO de apelido/razão no cache da tabela;
+// 3) edição sem mudança no texto → preserva o vínculo anterior.
+function _propClienteIdResolver(cliTexto){
+  var t=normTxt(cliTexto||'');
+  if(!t) return null;
+  var sel=window._propClienteSel;
+  if(sel && normTxt(sel.apelido)===t) return sel.id;
+  var m=(_cliTab.lista||[]).find(function(c){
+    return normTxt(c.apelido)===t || (c.razao_social && normTxt(c.razao_social)===t);
+  });
+  if(m) return m.id;
+  var ant=(props||[]).find(function(x){ return x.id===editId; });
+  if(ant && ant.clienteId && normTxt(ant.cli||'')===t) return ant.clienteId;
+  return null;
+}
+
 function getCompanySuggestions(query){
   var q=normTxt(query);
-  // Fonte única: clientes cadastrados (Relacionamento). NÃO usa propostas anteriores.
+  _cliTabCarregar();
+  // Tabela nova COM clientes → é a fonte (código + apelido/razão/CNPJ/cidade)
+  if(_cliTab.lista.length){
+    return _cliTab.lista.map(function(c){
+      return { empresa:c.apelido, cnpj:c.cnpj||'', cidade:c.cidade||'', _idNovo:c.id, _codigo:c.codigo||'', _razao:c.razao_social||'' };
+    }).filter(function(e){
+      if(!q) return true;
+      var hay=[e.empresa,e._razao,e.cnpj,e.cidade,e._codigo].map(normTxt).join(' | ');
+      return hay.indexOf(q)>=0;
+    }).slice(0,12).map(function(e){
+      return {
+        kind:'company',
+        title:(e._codigo? e._codigo+' · ':'')+(e.empresa||'—'),
+        meta:[e.cnpj||'Sem CNPJ', e.cidade||'Sem cidade'].join(' • '),
+        raw:e
+      };
+    });
+  }
+  // Fallback: cadastro antigo (Relacionamento). NÃO usa propostas anteriores.
   if(typeof window.cliGetAll!=='function') return [];
   var dir=(window.cliGetAll()||[]).filter(function(c){ return c && c.nome; }).map(function(c){
     return {empresa:c.nome, cnpj:c.cnpj||'', cidade:c.cidade||'', _id:c.id||null};
@@ -10653,7 +10732,12 @@ function applyCompanySelection(rec){
   var cnpj=rec.cnpj||'';
   var cidade=rec.cidade||'';
   var clienteId=rec._id||null;
-  if(typeof window.cliGetAll==='function'){
+  if(rec._idNovo){
+    // Seleção vinda da TABELA NOVA (módulo Clientes): registra o vínculo —
+    // o clienteId entra no dados_json da proposta ao salvar
+    window._propClienteSel={ id:rec._idNovo, apelido:empresa };
+  } else if(typeof window.cliGetAll==='function'){
+    window._propClienteSel=null;
     var cadMatch=null;
     // Prioridade: match por CNPJ (evita pegar a filial errada com mesmo nome)
     if(_normCnpjDigits(cnpj)){
@@ -10671,8 +10755,10 @@ function applyCompanySelection(rec){
   if(Q('pCli'))  Q('pCli').value=empresa;
   if(Q('pCnpj')) Q('pCnpj').value=cnpj;
   if(Q('pCid'))  Q('pCid').value=cidade;
-  // Contatos vinculados ao cliente selecionado
-  var contatos=_contatosDoCliente(clienteId, empresa);
+  // Contatos: tabela nova primeiro (dado real do módulo Clientes);
+  // sem contatos lá → fluxo antigo do Relacionamento (por id/nome)
+  var contatos=rec._idNovo ? _contatosTabelaNova(rec._idNovo) : [];
+  if(!contatos.length) contatos=_contatosDoCliente(clienteId, empresa);
   if(contatos.length===1){
     _fillContato1(contatos[0]);
     hideAutoBox();
@@ -10973,7 +11059,7 @@ function buildCurrentProposalSnapshot(){
   var vd=vdS+vdM;
   if(Q('vD'))Q('vD').value=vd.toFixed(2);
   return {
-    id:editId||uid(),num:num,cli:cli,dat:df,dat2:dv,
+    id:editId||uid(),num:num,cli:cli,clienteId:_propClienteIdResolver(cli),dat:df,dat2:dv,
     dtFech:Q('pDatFech')&&Q('pDatFech').value||'',
     revAtual:Q('pRevAtual')&&Q('pRevAtual').value||'',
     fas:(Q('pFas')&&Q('pFas').value)||'em_elaboracao',tsSaved:Date.now(),
