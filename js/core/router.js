@@ -43,7 +43,6 @@
       id: 'planejamento-estrategico',
       label: 'Planejamento Estratégico',
       icon: '🧭',
-      badge: 'DONO',
       tipo: 'iframe',
       src: 'pages/planejamento-estrategico.html',
       nav: [
@@ -91,6 +90,7 @@
       id: 'prospeccao',
       label: 'Prospecção',
       icon: '🎯',
+      badge: 'DONO',
       tipo: 'iframe',
       src: 'pages/prospeccao.html',
       nav: [
@@ -102,6 +102,7 @@
       id: 'clientes',
       label: 'Clientes',
       icon: '👥',
+      badge: 'DONO',
       tipo: 'iframe',
       src: 'pages/clientes.html',
       nav: [

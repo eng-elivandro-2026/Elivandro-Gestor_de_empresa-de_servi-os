@@ -133,6 +133,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .wz-drop .wd-ico{font-size:1.5rem;margin-bottom:.25rem}
 .wz-drop .wd-sub{font-size:.68rem;color:var(--text3);margin-top:.25rem}
 .wz-drop.ok{border-style:solid;border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.06)}
+#wzCampos details.wz-assin{border:1px dashed var(--border2);border-radius:var(--r2);padding:.45rem .6rem;margin-bottom:.5rem}
+#wzCampos details.wz-assin summary{cursor:pointer;font-size:.74rem;font-weight:700;color:var(--text2)}
+#wzCampos details.wz-assin textarea{width:100%;min-height:90px;margin-top:.45rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .6rem;font-size:.76rem;font-family:inherit}
 .wz-parse-res{display:none;font-size:.74rem;color:var(--green);background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:var(--r2);padding:.5rem .7rem;margin-top:.6rem;line-height:1.5}
 .wz-parse-res.on{display:block}
 .wz-parse-res.err{color:var(--red);background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.3)}
@@ -526,14 +529,14 @@ function renderClientes(){
    Resumo e Contatos funcionais; Organograma (PR-C) e Histórico
    (vínculo real no PR-D — aqui best-effort por nome) placeholders.
    ══════════════════════════════════════════════════════════════ */
-var _ficha={ cliente:null, propostas:null };
+var _ficha={ cliente:null, propostas:null, organo:null };
 var _fichaVista='R';   // memória da vista POR SESSÃO (não persiste no banco)
 var _ctForm=null;      // null=fechado | 'novo' | id do contato em edição
 
 function abrirFicha(id){
   var c=_clientes.find(function(x){ return x.id===id; });
   if(!c) return;
-  _ficha.cliente=c; _ficha.propostas=null; _ctForm=null;
+  _ficha.cliente=c; _ficha.propostas=null; _ficha.organo=null; _ctForm=null;
   document.getElementById('splitClientes').classList.add('com-ficha');
   _fichaRender();
 }
@@ -576,6 +579,7 @@ function _fichaRender(){
   var f={ R:_fichaVistaResumo, C:_fichaVistaContatos, O:_fichaVistaOrganograma, H:_fichaVistaHistorico }[_fichaVista]||_fichaVistaResumo;
   document.getElementById('fcBody').innerHTML=f();
   if(_fichaVista==='H' && _ficha.propostas===null) _fichaCarregarHistorico();
+  if(_fichaVista==='O' && _ficha.organo===null) _fichaCarregarOrganograma();
 }
 
 /* Aba Resumo */
@@ -750,10 +754,40 @@ async function _recarregarContatos(clienteId){
   }catch(e){}
 }
 
-/* Aba Organograma — placeholder (PR-C) */
+/* Aba Organograma — SVG em leitura + legenda + lista das relações */
 function _fichaVistaOrganograma(){
-  return '<div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
-    'Em breve — o mapa de poder do cliente (quem manda em quem, quem influencia quem) chega numa próxima atualização.</div>';
+  var c=_ficha.cliente;
+  if(_ficha.organo===null) return '<div class="vazio">Carregando organograma…</div>';
+  var cts=_contatosByCli[c.id]||[];
+  if(!cts.length)
+    return '<div class="vazio">Nenhum contato cadastrado — o organograma nasce dos contatos.</div>';
+  var nodes=cts.map(function(ct){ return { ref:ct.id, nome:ct.nome, papel:ct.papel_principal }; });
+  var arestas=_ficha.organo.arestas;
+  var h=_wzOrgSvg(nodes, arestas)+_orgLegendaHtml();
+  if(!arestas.length){
+    h+='<div class="vazio" style="padding:.8rem">Nenhuma relação mapeada ainda.<br>'+
+      '<span style="font-size:.68rem">Use ✏️ Editar cliente → passo 6 (Organograma) para montar o mapa de poder.</span></div>';
+  } else {
+    function nomeDe(id){ var ct=cts.filter(function(x){ return x.id===id; })[0]; return ct? ct.nome : '?'; }
+    h+='<div class="fc-sec" style="margin-top:.6rem"><div class="fc-sec-tit">Relações ('+arestas.length+')</div>'+
+      arestas.map(function(a){
+        return '<div class="fc-kv"><span>'+esc(nomeDe(a.de))+'</span><span>'+(REL_LABEL[a.tipo]||a.tipo)+' → '+esc(nomeDe(a.para))+'</span></div>';
+      }).join('')+'</div>';
+  }
+  return h;
+}
+async function _fichaCarregarOrganograma(){
+  var c=_ficha.cliente, sb=_sb();
+  if(!sb || !c){ _ficha.organo={arestas:[]}; return; }
+  var arestas=[];
+  try{
+    var r=await sb.from('cliente_organograma').select('*').eq('cliente_id', c.id);
+    arestas=((r && r.data)||[]).map(function(a){
+      return { de:a.contato_origem_id, para:a.contato_destino_id, tipo:a.tipo_relacao };
+    });
+  }catch(e){}
+  _ficha.organo={ arestas:arestas };
+  if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='O') _fichaRender();
 }
 
 /* Aba Histórico — best-effort por nome (o vínculo real por cliente_id chega na integração com o Comercial) */
@@ -1020,10 +1054,21 @@ async function novoCliente(){
   if(ras) await _wizLimparRascunho();
   _wizIniciar('novo', null);
 }
-function editarCliente(){
+async function editarCliente(){
   var c=_ficha.cliente; if(!c) return;
   if(!_podeEditar()){ toast('Sem permissão para editar.', 'err'); return; }
-  _wizIniciar('edicao', c.id, _wzDadosDoCliente(c), 1, []);
+  var dados=_wzDadosDoCliente(c);
+  // Arestas reais do organograma → P6 (refs = ids dos contatos)
+  var sb=_sb();
+  if(sb){
+    try{
+      var r=await sb.from('cliente_organograma').select('*').eq('cliente_id', c.id);
+      dados.p6={ arestas:((r && r.data)||[]).map(function(a){
+        return { de:a.contato_origem_id, para:a.contato_destino_id, tipo:a.tipo_relacao };
+      }) };
+    }catch(e){}
+  }
+  _wizIniciar('edicao', c.id, dados, 1, []);
 }
 // Mapeia um cliente existente para os slots do wizard (edição)
 function _wzDadosDoCliente(c){
@@ -1575,6 +1620,7 @@ function _wzP5Html(w){
         '<div class="fc-sec-tit" style="margin:0">Contato '+(i+1)+(ct.contato_principal?' · ⭐ principal':'')+'</div>'+
         (cts.length>1?'<button class="btn btn-red btn-sm" type="button" onclick="_wzP5Remover('+i+')">✕ Remover</button>':'')+
       '</div>'+
+      _wzAssinHtml(i, ct)+
       '<div class="fgrid">'+
         inp(i,'nome','Nome',true)+inp(i,'cargo','Cargo')+inp(i,'departamento','Departamento')+
         selc(i,'tipo_vinculo','Vínculo',[{v:'funcionario',t:'Funcionário'},{v:'socio',t:'Sócio'},{v:'terceiro',t:'Terceiro'},{v:'consultor',t:'Consultor'}])+
@@ -1594,6 +1640,110 @@ function _wzP5Html(w){
   }).join('')+
   '<div class="fld full"><button class="btn" type="button" onclick="_wzP5Adicionar()">＋ Adicionar outro contato</button></div>';
 }
+/* ── P5: parser de assinatura de e-mail ──────────────────────── */
+var _ASSIN_CARGOS=/(gerente|diretor|engenheir|supervisor|coordenador|analista|comprador|t[eé]cnic|presidente|s[oó]ci[oa]|ceo|cto|cfo|coo|vendedor|consultor|especialista|gestor)/i;
+var _ASSIN_DESPEDIDA=/^(atenciosamente|att\.?\b|abra[cç]os?|cordialmente|grat[oa]|obrigad[oa]|sds|sauda[cç][oõ]es)/i;
+var _ASSIN_EMPRESA=/\b(ltda\.?|s\.?\s?a\.?|eireli|epp|holding|grupo|group)\b|\bme\b/i;
+function _wzAssinParse(texto){
+  var out={};
+  var linhas=String(texto||'').split(/\r?\n/).map(function(l){ return l.replace(/\s+/g,' ').trim(); })
+    .filter(function(l){ return l && !/^[-_=*.•|]+$/.test(l) && !_ASSIN_DESPEDIDA.test(l); });
+  var usadas={};
+  // 1) e-mail
+  linhas.forEach(function(l,i){
+    if(out.email_profissional!=null) return;
+    var m=/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(l);
+    if(m){ out.email_profissional=m[0].toLowerCase(); usadas[i]=1; }
+  });
+  // 2) linkedin
+  linhas.forEach(function(l,i){
+    if(out.linkedin!=null) return;
+    var m=/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,;]+/i.exec(l);
+    if(m){ out.linkedin=m[0]; usadas[i]=1; }
+  });
+  // 3) telefones — linhas com (XX) ou +55; 1º → WhatsApp, 2º → Telefone
+  var fones=[];
+  linhas.forEach(function(l,i){
+    if(!/\(\d{2}\)|\+55/.test(l)) return;
+    var re=/(?:\+55[\s.-]?)?(?:\(\d{2}\)|\d{2})[\s.-]?\d{4,5}[\s.-]?\d{4}/g, m;
+    while((m=re.exec(l))!==null){
+      var f=m[0].trim();
+      if(fones.indexOf(f)<0) fones.push(f);
+      usadas[i]=1;
+    }
+  });
+  if(fones[0]) out.whatsapp=fones[0];
+  if(fones[1]) out.telefone=fones[1];
+  // 4) empresa — SÓ para o aviso de divergência (não é gravada; decisão aprovada)
+  linhas.forEach(function(l,i){
+    if(out._empresa!=null || usadas[i]) return;
+    if(_ASSIN_EMPRESA.test(l)){ out._empresa=l; usadas[i]=1; }
+  });
+  // 5) cargo — separador (| / – —) ou palavra-chave; "Nome | Cargo" divide os dois
+  linhas.forEach(function(l,i){
+    if(out.cargo!=null || usadas[i]) return;
+    var partes=l.split(/\s*[|•]\s*|\s+[\/–—-]\s+/).map(function(p){ return p.trim(); }).filter(Boolean);
+    if(partes.length>1){
+      var idx=-1;
+      partes.forEach(function(p,j){ if(idx<0 && _ASSIN_CARGOS.test(p)) idx=j; });
+      if(idx>=0){
+        out.cargo=partes[idx];
+        if(out.nome==null && idx>0 && !_ASSIN_CARGOS.test(partes[0])) out.nome=partes[0];
+        usadas[i]=1;
+      }
+    } else if(_ASSIN_CARGOS.test(l)){ out.cargo=l; usadas[i]=1; }
+  });
+  // 6) nome — primeira linha útil restante
+  if(out.nome==null){
+    for(var i=0;i<linhas.length;i++){
+      if(usadas[i] || _ASSIN_EMPRESA.test(linhas[i])) continue;
+      out.nome=linhas[i]; break;
+    }
+  }
+  return out;
+}
+function _wzAssinExtrair(i){
+  var cts=_wzP5Contatos(), ct=cts[i]; if(!ct) return;
+  var ext=_wzAssinParse(ct._assin_texto||'');
+  var campos=['nome','cargo','whatsapp','telefone','email_profissional','linkedin'];
+  var aplicados=0, mantidos=0;
+  campos.forEach(function(k){
+    if(ext[k]==null) return;
+    if(String(ct[k]||'').trim()!==''){ mantidos++; return; }   // não-destrutivo
+    ct[k]=ext[k]; aplicados++;
+  });
+  if(!aplicados && !mantidos){
+    toast('Não reconheci nada nessa assinatura — preencha manualmente.', 'err');
+    return;
+  }
+  ct._assin_usada=true;
+  ct._assin_resumo='✓ '+aplicados+' campo(s) extraído(s) da assinatura'+
+    (mantidos?' — '+mantidos+' mantido(s) como você digitou':'')+'. Tudo continua editável.';
+  // Empresa extraída NÃO é gravada — só aviso quando parecer de OUTRA empresa
+  ct._assin_aviso='';
+  if(ext._empresa){
+    var alvo=_wzNormLinha(((_wz.dados.p1||{}).apelido||'')+' '+((_wz.dados.p1||{}).razao_social||''));
+    var empAss=_wzNormLinha(ext._empresa).replace(/\b(LTDA|S ?A|EIRELI|EPP|ME)\b\.?/g,' ').replace(/\s+/g,' ').trim();
+    var tok=empAss.split(' ').filter(function(t){ return t.length>=3; })[0]||'';
+    if(tok && alvo.indexOf(tok)<0)
+      ct._assin_aviso='⚠️ A assinatura parece ser de outra empresa ('+ext._empresa+') — confira se o contato é deste cliente.';
+  }
+  _wizRenderCampos(); _wizValida();
+  toast('Contato extraído da assinatura.');
+}
+function _wzAssinHtml(i, ct){
+  if(ct._assin_usada){
+    return '<div class="fld full"><div class="wz-parse-res on">'+esc(ct._assin_resumo||'✓ Contato extraído da assinatura.')+
+      (ct._assin_aviso?'<br><span style="color:var(--amber)">'+esc(ct._assin_aviso)+'</span>':'')+'</div></div>';
+  }
+  return '<div class="fld full"><details class="wz-assin"'+(ct._assin_aberta?' open':'')+
+    ' ontoggle="var c=_wzP5Contatos()['+i+']; if(c) c._assin_aberta=this.open">'+
+    '<summary>📧 Colar assinatura de e-mail (preenche o contato automaticamente)</summary>'+
+    '<textarea placeholder="Cole aqui a assinatura do e-mail da pessoa…" oninput="_wzP5Contatos()['+i+']._assin_texto=this.value">'+esc(ct._assin_texto||'')+'</textarea>'+
+    '<button class="btn btn-emp btn-sm" type="button" style="margin-top:.4rem" onclick="_wzAssinExtrair('+i+')">⚙️ Extrair contato</button>'+
+  '</details></div>';
+}
+
 function _wzP5Change(i,k,v){ var cts=_wzP5Contatos(); if(cts[i]){ cts[i][k]=v; _wizValida(); } }
 function _wzP5Flag(i,k,marcado){
   var cts=_wzP5Contatos(); if(!cts[i]) return;
@@ -1609,6 +1759,179 @@ function _wzP5Remover(i){ _wzP5Contatos().splice(i,1); _wizRenderCampos(); _wizV
 function _wzP5Valida(w){
   if(w.modo==='edicao') return true;   // contatos são geridos na ficha
   return _wzP5Contatos().some(function(ct){ return String(ct.nome||'').trim()!==''; });
+}
+
+/* ── P6: organograma (construtor de relações + SVG ao vivo) ──── */
+var REL_LABEL={ reporta_para:'reporta para', influencia:'influencia', aprova:'aprova', decide_junto:'decide junto com' };
+var REL_COR={ influencia:'var(--blue)', aprova:'var(--amber)', decide_junto:'var(--purple)' };
+function _wzP6Arestas(){ var p6=_wz.dados.p6=_wz.dados.p6||{}; return p6.arestas=p6.arestas||[]; }
+// Nós do organograma: no wizard NOVO ref = índice do contato no P5
+// (os ids só nascem no INSERT do P7); na EDIÇÃO ref = id real
+function _wzP6Nodes(w){
+  if(w.modo==='edicao')
+    return (_contatosByCli[w.clienteId]||[]).map(function(ct){ return { ref:ct.id, nome:ct.nome, papel:ct.papel_principal }; });
+  return _wzP5Contatos()
+    .map(function(ct,i){ return { ref:i, nome:String(ct.nome||'').trim(), papel:ct.papel_principal }; })
+    .filter(function(n){ return n.nome; });
+}
+// Ciclo de "reporta para": seguindo chefes a partir de `de`, chega em `para`?
+function _orgCriaCiclo(arestas, de, para){
+  var chefe={};
+  arestas.filter(function(a){ return a.tipo==='reporta_para'; })
+    .forEach(function(a){ chefe[a.de]=a.para; });
+  chefe[de]=para;
+  var atual=para, passos=0;
+  while(chefe[atual]!=null && passos++<100){
+    if(String(chefe[atual])===String(de)) return true;
+    atual=chefe[atual];
+  }
+  return false;
+}
+// Níveis por BFS/recursão nas arestas "reporta para" (com guarda de ciclo).
+// Retorna { nivel: {ref→n}, soltos: [refs sem NENHUMA relação] }
+function _orgNiveis(nodes, arestas){
+  var refs={}; nodes.forEach(function(n){ refs[n.ref]=1; });
+  var chefe={}, participa={};
+  arestas.forEach(function(a){
+    if(!refs.hasOwnProperty(a.de) || !refs.hasOwnProperty(a.para)) return;
+    participa[a.de]=1; participa[a.para]=1;
+    if(a.tipo==='reporta_para') chefe[a.de]=a.para;
+  });
+  var nivel={};
+  function calc(ref, guarda){
+    if(nivel[ref]!=null) return nivel[ref];
+    if(guarda[ref]) return 0;                       // ciclo — corta na raiz
+    guarda[ref]=1;
+    var c=chefe[ref];
+    var n=(c==null || !refs.hasOwnProperty(c))? 0 : calc(c, guarda)+1;
+    nivel[ref]=n; return n;
+  }
+  var soltos=[];
+  nodes.forEach(function(n){
+    if(participa[n.ref]) calc(n.ref, {});
+    else soltos.push(n.ref);
+  });
+  return { nivel:nivel, soltos:soltos };
+}
+// SVG puro (sem biblioteca): caixas por nível; linha SÓLIDA = reporta
+// para; TRACEJADA colorida = influencia/aprova/decide junto; contatos
+// sem relação numa faixa separada embaixo.
+function _wzOrgSvg(nodes, arestas){
+  if(!nodes.length) return '<div class="vazio">Nenhum contato para desenhar ainda.</div>';
+  var BW=132, BH=40, GX=26, GY=64, PAD=14;
+  var nv=_orgNiveis(nodes, arestas);
+  var porNivel={}, maxNivel=0;
+  nodes.forEach(function(n){
+    if(nv.soltos.indexOf(n.ref)>=0) return;
+    var l=nv.nivel[n.ref]||0;
+    (porNivel[l]=porNivel[l]||[]).push(n);
+    if(l>maxNivel) maxNivel=l;
+  });
+  var linhas=[];
+  for(var l=0;l<=maxNivel;l++){ if(porNivel[l]) linhas.push(porNivel[l]); }
+  var soltosNodes=nodes.filter(function(n){ return nv.soltos.indexOf(n.ref)>=0; });
+  var totalLinhas=linhas.length+(soltosNodes.length?1:0);
+  var maxPorLinha=1;
+  linhas.forEach(function(ln){ if(ln.length>maxPorLinha) maxPorLinha=ln.length; });
+  if(soltosNodes.length>maxPorLinha) maxPorLinha=soltosNodes.length;
+  var W=PAD*2+maxPorLinha*BW+(maxPorLinha-1)*GX;
+  var H=PAD*2+totalLinhas*BH+(totalLinhas-1)*GY+(soltosNodes.length?26:0);
+  var pos={};
+  function posiciona(ln, linhaIdx, extraY){
+    var lw=ln.length*BW+(ln.length-1)*GX;
+    var x0=(W-lw)/2;
+    ln.forEach(function(n,i){
+      pos[n.ref]={ x:x0+i*(BW+GX), y:PAD+linhaIdx*(BH+GY)+(extraY||0) };
+    });
+  }
+  linhas.forEach(function(ln,i){ posiciona(ln,i,0); });
+  if(soltosNodes.length) posiciona(soltosNodes, linhas.length, 26);
+  var svg='';
+  // arestas primeiro (ficam atrás das caixas)
+  arestas.forEach(function(a){
+    var p1=pos[a.de], p2=pos[a.para];
+    if(!p1 || !p2) return;
+    var x1=p1.x+BW/2, y1=p1.y, x2=p2.x+BW/2, y2=p2.y+BH;
+    if(a.tipo==='reporta_para'){
+      svg+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="var(--text2)" stroke-width="1.6"/>';
+    } else {
+      var mx=(x1+x2)/2, my=Math.min(y1,y2)-18;
+      svg+='<path d="M '+x1+' '+(p1.y+BH/2)+' Q '+mx+' '+my+' '+x2+' '+(p2.y+BH/2)+'" fill="none" stroke="'+(REL_COR[a.tipo]||'var(--text3)')+'" stroke-width="1.4" stroke-dasharray="5 4"/>';
+    }
+  });
+  nodes.forEach(function(n){
+    var p=pos[n.ref]; if(!p) return;
+    var nome=n.nome.length>17? n.nome.slice(0,16)+'…' : n.nome;
+    svg+='<g><rect x="'+p.x+'" y="'+p.y+'" width="'+BW+'" height="'+BH+'" rx="7" fill="var(--bg3)" stroke="var(--emp-bdr)"/>'+
+      '<text x="'+(p.x+BW/2)+'" y="'+(p.y+16)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">'+esc(nome)+'</text>'+
+      '<text x="'+(p.x+BW/2)+'" y="'+(p.y+30)+'" text-anchor="middle" font-size="8.5" fill="var(--text3)">'+esc(PAPEL_LABEL[n.papel]||'—')+'</text></g>';
+  });
+  if(soltosNodes.length){
+    var ySol=PAD+linhas.length*(BH+GY)+8;
+    svg+='<text x="'+PAD+'" y="'+ySol+'" font-size="9" fill="var(--text3)">SEM RELAÇÃO MAPEADA:</text>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:'+W+'px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">'+svg+'</svg>';
+}
+function _orgLegendaHtml(){
+  return '<div style="display:flex;gap:.8rem;flex-wrap:wrap;font-size:.66rem;color:var(--text3);margin-top:.5rem">'+
+    '<span>━ reporta para</span>'+
+    '<span style="color:var(--blue)">┄ influencia</span>'+
+    '<span style="color:var(--amber)">┄ aprova</span>'+
+    '<span style="color:var(--purple)">┄ decide junto</span>'+
+  '</div>';
+}
+function _wzP6Html(w){
+  var nodes=_wzP6Nodes(w);
+  var arestas=_wzP6Arestas();
+  if(nodes.length<2){
+    return '<div class="fld full"><div class="vazio">É preciso ter pelo menos 2 contatos'+
+      (w.modo==='edicao'?' (gerencie na aba Contatos da ficha)':' no passo 5')+
+      ' para mapear relações. Este passo é opcional — pode avançar.</div></div>';
+  }
+  function selNodes(id){
+    return '<select id="'+id+'">'+nodes.map(function(n){
+      return '<option value="'+esc(String(n.ref))+'">'+esc(n.nome)+'</option>';
+    }).join('')+'</select>';
+  }
+  var lista=arestas.map(function(a,i){
+    function nomeDe(ref){ var n=nodes.filter(function(x){ return String(x.ref)===String(ref); })[0]; return n? n.nome : '?'; }
+    return '<div class="fc-kv"><span>'+esc(nomeDe(a.de))+' <b>'+(REL_LABEL[a.tipo]||a.tipo)+'</b> '+esc(nomeDe(a.para))+'</span>'+
+      '<span><button class="btn btn-red btn-sm" type="button" onclick="_wzP6Remover('+i+')">✕</button></span></div>';
+  }).join('');
+  return '<div class="fld full">'+
+      '<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">'+
+        selNodes('wzP6De')+
+        '<select id="wzP6Tipo">'+
+          '<option value="reporta_para">reporta para</option>'+
+          '<option value="influencia">influencia</option>'+
+          '<option value="aprova">aprova</option>'+
+          '<option value="decide_junto">decide junto com</option>'+
+        '</select>'+
+        selNodes('wzP6Para')+
+        '<button class="btn btn-emp btn-sm" type="button" onclick="_wzP6Add()">＋ Adicionar relação</button>'+
+      '</div>'+
+    '</div>'+
+    (lista?'<div class="fld full">'+lista+'</div>':'')+
+    '<div class="fld full">'+_wzOrgSvg(nodes, arestas)+_orgLegendaHtml()+'</div>';
+}
+function _wzP6Add(){
+  var de=document.getElementById('wzP6De').value;
+  var tipo=document.getElementById('wzP6Tipo').value;
+  var para=document.getElementById('wzP6Para').value;
+  if(String(de)===String(para)){ toast('Um contato não pode se relacionar com ele mesmo.', 'err'); return; }
+  var arestas=_wzP6Arestas();
+  var dup=arestas.some(function(a){ return String(a.de)===String(de) && String(a.para)===String(para) && a.tipo===tipo; });
+  if(dup){ toast('Essa relação já existe.', 'err'); return; }
+  if(tipo==='reporta_para' && _orgCriaCiclo(arestas, de, para)){
+    toast('Isso criaria um ciclo de "reporta para" (A→B→A) — revise a hierarquia.', 'err'); return;
+  }
+  // No modo novo os refs são índices numéricos do P5
+  arestas.push({ de:_wz.modo==='edicao'? de : parseInt(de,10), para:_wz.modo==='edicao'? para : parseInt(para,10), tipo:tipo });
+  _wizRenderCampos(); _wizValida();
+}
+function _wzP6Remover(i){
+  _wzP6Arestas().splice(i,1);
+  _wizRenderCampos(); _wizValida();
 }
 
 /* ── P7: revisão e salvar ────────────────────────────────────── */
@@ -1682,8 +2005,26 @@ async function _salvarClienteWizard(){
     try{
       var ru=await sb.from('clientes').update(row).eq('id', _wz.clienteId);
       if(ru && ru.error) throw ru.error;
-      return true;
     }catch(e){ toast('Erro ao salvar as alterações. Tente novamente.', 'err'); return false; }
+    // Organograma: REGRAVA as arestas (DELETE + INSERT — decisão aprovada;
+    // mais simples e à prova de drift que diff aresta a aresta)
+    try{
+      var rd=await sb.from('cliente_organograma').delete().eq('cliente_id', _wz.clienteId);
+      if(rd && rd.error) throw rd.error;
+      var ars=((_wz.dados.p6||{}).arestas||[]).filter(function(a){ return String(a.de)!==String(a.para); })
+        .map(function(a){
+          return { empresa_id:_empresaAtiva.id, cliente_id:_wz.clienteId,
+            contato_origem_id:a.de, contato_destino_id:a.para, tipo_relacao:a.tipo };
+        });
+      if(ars.length){
+        var ri2=await sb.from('cliente_organograma').insert(ars);
+        if(ri2 && ri2.error) throw ri2.error;
+      }
+      return true;
+    }catch(e){
+      toast('Dados salvos, mas o organograma não foi regravado — abra a edição e salve novamente o passo 6.', 'err');
+      return false;
+    }
   }
   row.empresa_id=_empresaAtiva.id; row.ativo=true;
   row.criado_por=await _obterUsuarioId();
@@ -1705,10 +2046,14 @@ async function _salvarClienteWizard(){
     }
   }
   if(!novo){ toast('Erro ao salvar o cliente. Tente novamente.', 'err'); return false; }
-  // Contatos (mínimo 1 garantido pelo P5; máximo 1 principal — 1º assume se nenhum)
-  var cts=_wzP5Contatos().filter(function(ct){ return String(ct.nome||'').trim()!==''; });
-  if(!cts.some(function(ct){ return ct.contato_principal; })) cts[0].contato_principal=true;
-  var rowsCt=cts.map(function(ct){
+  // Contatos (mínimo 1 garantido pelo P5; máximo 1 principal — 1º assume se
+  // nenhum). Guarda o ÍNDICE original do P5: as arestas do P6 referenciam
+  // por índice e precisam ser mapeadas para os ids gerados no INSERT.
+  var comNome=[];
+  _wzP5Contatos().forEach(function(ct,i){ if(String(ct.nome||'').trim()!=='') comNome.push({ i:i, ct:ct }); });
+  if(!comNome.some(function(x){ return x.ct.contato_principal; })) comNome[0].ct.contato_principal=true;
+  var rowsCt=comNome.map(function(x){
+    var ct=x.ct;
     return {
       cliente_id:novo.id, empresa_id:_empresaAtiva.id, origem:'manual',
       nome:String(ct.nome).trim(), cargo:tc(ct.cargo), departamento:tc(ct.departamento),
@@ -1723,12 +2068,27 @@ async function _salvarClienteWizard(){
     };
   });
   try{
-    var rc=await sb.from('cliente_contatos').insert(rowsCt);
+    var rc=await sb.from('cliente_contatos').insert(rowsCt).select('id');
     if(rc && rc.error) throw rc.error;
+    // Arestas do P6: índice do P5 → id inserido (mesma ordem do insert)
+    var ids=(rc && rc.data)||[];
+    var idPorIndice={};
+    comNome.forEach(function(x,k){ if(ids[k]) idPorIndice[x.i]=ids[k].id; });
+    var arestas=((_wz.dados.p6||{}).arestas||[]).filter(function(a){
+      return idPorIndice[a.de]!=null && idPorIndice[a.para]!=null && String(a.de)!==String(a.para);
+    }).map(function(a){
+      return { empresa_id:_empresaAtiva.id, cliente_id:novo.id,
+        contato_origem_id:idPorIndice[a.de], contato_destino_id:idPorIndice[a.para],
+        tipo_relacao:a.tipo };
+    });
+    if(arestas.length){
+      var ro=await sb.from('cliente_organograma').insert(arestas);
+      if(ro && ro.error) throw ro.error;
+    }
   }catch(e){
-    // ROLLBACK: nada fica pela metade — desfaz o cliente recém-criado
+    // ROLLBACK: o CASCADE da 064 derruba contatos e arestas junto do cliente
     try{ await sb.from('clientes').delete().eq('id', novo.id); }catch(e2){}
-    toast('Erro ao salvar os contatos — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
+    toast('Erro ao salvar contatos/organograma — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
     return false;
   }
   await _wizLimparRascunho();
@@ -1809,13 +2169,10 @@ var WIZ_CLIENTE={
       render:_wzP5Html, valida:_wzP5Valida,
       parabens:'Contatos registrados! O organograma (mapa de poder) chega em breve.' },
     { t:'Organograma',
-      instr:'Monte o mapa de poder do cliente: quem manda em quem, quem influencia quem. Isso vale ouro na hora de vender.',
-      render:function(){
-        return '<div class="fld full"><div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
-          'Em breve — este passo chega numa próxima atualização. Pode avançar.</div></div>';
-      },
+      instr:'Monte o mapa de poder do cliente: quem manda em quem, quem influencia quem, quem aprova junto. Isso vale ouro na hora de vender. Passo opcional — pode pular e completar depois pela edição.',
+      render:_wzP6Html,
       valida:function(){ return true; },
-      parabens:'Quase lá! Revise tudo antes de salvar.' },
+      parabens:'Mapa de poder registrado! Revise tudo antes de salvar.' },
     { t:'Revisão e observações',
       instr:'Revise tudo antes de salvar. Uma vez salvo, o cliente fica disponível em todo o SOE.',
       render:_wzP7Html,
