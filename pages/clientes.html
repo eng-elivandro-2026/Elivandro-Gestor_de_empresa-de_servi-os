@@ -240,8 +240,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
     <div id="fcBody"><div class="vazio">Carregando…</div></div>
     <div class="fc-acoes">
-      <button class="btn" style="flex:1" disabled
-        title="Em breve — a edição pelo cadastro guiado chega na próxima atualização.">✏️ Editar cliente</button>
+      <button class="btn" style="flex:1" id="fcBtnEditar" onclick="editarCliente()"
+        title="Editar pelo cadastro guiado (contatos são geridos na aba Contatos)">✏️ Editar cliente</button>
       <button class="btn btn-sm" id="fcBtnAtivo" onclick="toggleAtivoCliente()" style="display:none">⏸️</button>
       <button class="btn btn-red btn-sm" id="fcBtnExcluir" onclick="excluirCliente()" style="display:none">🗑️</button>
     </div>
@@ -559,6 +559,8 @@ function _fichaRender(){
     (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
     (c.dados_importados_cnpj?'<span class="pill papel" title="Dados importados do Comprovante de CNPJ">📄 CNPJ importado</span>':'');
   ['R','C','O','H'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
+  var btnEditar=document.getElementById('fcBtnEditar');
+  if(btnEditar) btnEditar.disabled=!_podeEditar();
   var btnAtivo=document.getElementById('fcBtnAtivo');
   btnAtivo.style.display=_podeEditar()?'':'none';
   btnAtivo.textContent=c.ativo===false?'▶️ Reativar':'⏸️ Desativar';
@@ -1002,16 +1004,80 @@ function _wzCodigoPrevisto(){
   return _proxCodigo()+' · confirmado ao salvar';
 }
 
-function novoCliente(){
+async function novoCliente(){
   if(!_pode('criar', PERFIS_EDITAR)){ toast('Sem permissão para criar cliente.', 'err'); return; }
+  // Rascunho retomável (por usuário, só na criação)
+  var ras=await _wizLerRascunho();
+  if(ras && ras.dados && confirm('Encontramos um cadastro em andamento (passo '+(ras.passo||1)+'). Continuar de onde parou?\n\nOK = continuar · Cancelar = começar do zero (o rascunho é descartado)')){
+    _wizIniciar('novo', null, ras.dados, ras.passo||1, ras.feitos||[]);
+    return;
+  }
+  if(ras) await _wizLimparRascunho();
   _wizIniciar('novo', null);
 }
-function _wizIniciar(modo, clienteId){
+function editarCliente(){
+  var c=_ficha.cliente; if(!c) return;
+  if(!_podeEditar()){ toast('Sem permissão para editar.', 'err'); return; }
+  _wizIniciar('edicao', c.id, _wzDadosDoCliente(c), 1, []);
+}
+// Mapeia um cliente existente para os slots do wizard (edição)
+function _wzDadosDoCliente(c){
+  return {
+    p1:{ apelido:c.apelido||'', razao_social:c.razao_social||'', cnpj:c.cnpj||'', grupo:c.grupo||'',
+         tipo_estabelecimento:c.tipo_estabelecimento||'', cnpj_matriz:c.cnpj_matriz||'',
+         inscricao_estadual:c.inscricao_estadual||'', inscricao_municipal:c.inscricao_municipal||'',
+         data_abertura:c.data_abertura||'', natureza_juridica:c.natureza_juridica||'',
+         porte:c.porte||'', situacao_cadastral:c.situacao_cadastral||'',
+         data_situacao_cadastral:c.data_situacao_cadastral||'' },
+    p3:{ cnae_principal:c.cnae_principal||'',
+         cnae_secundarios:Array.isArray(c.cnae_secundarios)?c.cnae_secundarios.join('\n'):'',
+         segmento:c.segmento||'', origem:c.origem||'' },
+    p4:{ email:c.email||'', telefone:c.telefone||'', site:c.site||'', cep:c.cep||'',
+         logradouro:c.logradouro||'', numero:c.numero||'', complemento:c.complemento||'',
+         bairro:c.bairro||'', cidade:c.cidade||'', estado:c.estado||'' },
+    p7:{ observacoes:c.observacoes||'' }   // "conferido" é sempre re-marcado antes de salvar
+  };
+}
+function _wizIniciar(modo, clienteId, dados, passo, feitos){
   _wz.cfg=WIZ_CLIENTE; _wz.modo=modo; _wz.clienteId=clienteId||null; _wz.novoId=null;
-  _wz.dados={}; _wz.passo=1; _wz.feitos=[];
+  _wz.dados=dados||{}; _wz.passo=Math.min(passo||1, WIZ_CLIENTE.passos.length); _wz.feitos=feitos||[];
   fecharFicha();
   _mostrarSecWizard(true);
   _wizRender();
+}
+
+/* ── Rascunho (configuracoes, chave por usuário — só na criação) ── */
+async function _wizChaveRascunho(){
+  var uid=await _obterUsuarioId();
+  return 'tf_clientes_rascunho_'+(uid||'anon');
+}
+async function _wizLerRascunho(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return null;
+  try{
+    var r=await sb.from('configuracoes').select('valor')
+      .eq('chave', await _wizChaveRascunho()).eq('empresa_id', _empresaAtiva.id).maybeSingle();
+    return (r && r.data && r.data.valor && r.data.valor.dados)? r.data.valor : null;
+  }catch(e){ return null; }
+}
+async function _wizSalvarRascunho(){
+  if(_wz.modo!=='novo') return;   // edição não tem rascunho (evita conflito com o dado real)
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    await sb.from('configuracoes').upsert(
+      { chave:await _wizChaveRascunho(), empresa_id:_empresaAtiva.id,
+        valor:{ dados:_wz.dados, passo:_wz.passo, feitos:_wz.feitos, quando:new Date().toISOString() },
+        updated_at:new Date().toISOString() },
+      { onConflict:'chave,empresa_id' });
+  }catch(e){}
+}
+async function _wizLimparRascunho(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  try{
+    await sb.from('configuracoes').upsert(
+      { chave:await _wizChaveRascunho(), empresa_id:_empresaAtiva.id,
+        valor:null, updated_at:new Date().toISOString() },
+      { onConflict:'chave,empresa_id' });
+  }catch(e){}
 }
 
 function _wizRender(){
@@ -1110,6 +1176,7 @@ async function _wizAvancar(){
       setTimeout(_wizFechar, 1400);
     } else {
       _wz.passo=passoAtual+1;
+      await _wizSalvarRascunho();   // autosave a cada avanço (retomável)
       if(p.parabens) _wzParabens(p.parabens);
       _wizRender();
     }
@@ -1121,13 +1188,25 @@ function _wizFechar(){
   _mostrarSecWizard(false);
   carregarTudo().then(function(){ if(abrirId) abrirFicha(abrirId); });
 }
-function _wizSair(){
+function _wzTemDados(){
+  if(_wz.feitos.length) return true;
+  return Object.keys(_wz.dados).some(function(pk){
+    var d=_wz.dados[pk];
+    return d && Object.keys(d).some(function(k){ return String(d[k]||'').trim()!==''; });
+  });
+}
+async function _wizSair(){
   if(!_wz.cfg){ _mostrarSecWizard(false); return; }
+  if(_wz.modo==='novo' && _wzTemDados()){
+    await _wizSalvarRascunho();
+    toast('Rascunho salvo — retome pelo "+ Novo cliente" quando quiser.');
+  }
   _wizFechar();
 }
-function _wizDescartarRascunho(){
+async function _wizDescartarRascunho(){
   if(!confirm('Descartar este cadastro? Tudo que foi preenchido aqui será perdido.')) return;
   _wz.dados={}; _wz.passo=1; _wz.feitos=[];
+  await _wizLimparRascunho();
   _wizFechar();
   toast('Cadastro descartado.');
 }
@@ -1454,6 +1533,7 @@ async function _salvarClienteWizard(){
     toast('Erro ao salvar os contatos — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
     return false;
   }
+  await _wizLimparRascunho();
   _wz.novoId=novo.id;
   return true;
 }
