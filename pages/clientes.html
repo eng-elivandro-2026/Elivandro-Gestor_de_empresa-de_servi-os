@@ -128,6 +128,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .fld .fld-linha{display:flex;gap:.4rem;align-items:stretch}
 .fld .fld-linha input{flex:1;min-width:0}
 #wzCnpjTexto{width:100%;min-height:180px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.72rem}
+.wz-drop{border:2px dashed var(--border2);border-radius:var(--r);padding:1rem;text-align:center;cursor:pointer;transition:border-color .12s,background .12s;color:var(--text2);font-size:.8rem}
+.wz-drop:hover,.wz-drop.drag{border-color:var(--emp-cor);background:var(--emp-bg)}
+.wz-drop .wd-ico{font-size:1.5rem;margin-bottom:.25rem}
+.wz-drop .wd-sub{font-size:.68rem;color:var(--text3);margin-top:.25rem}
+.wz-drop.ok{border-style:solid;border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.06)}
 .wz-parse-res{display:none;font-size:.74rem;color:var(--green);background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:var(--r2);padding:.5rem .7rem;margin-top:.6rem;line-height:1.5}
 .wz-parse-res.on{display:block}
 .wz-parse-res.err{color:var(--red);background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.3)}
@@ -1108,7 +1113,8 @@ function _wizRenderCampos(){
   var p=_wz.cfg.passos[_wz.passo-1], d=_wzD();
   var el=document.getElementById('wzCampos');
   if(p.render){ el.innerHTML=p.render(_wz); return; }
-  el.innerHTML=p.campos.map(function(c){
+  var topo=p.topoHtml? p.topoHtml(_wz) : '';
+  el.innerHTML=topo+p.campos.map(function(c){
     // Campos condicionais são SEMPRE renderizados e alternados por
     // display (show/hide) — recriar o DOM a cada tecla rouba o foco.
     var wrap='<div class="fld'+(c.full?' full':'')+'" id="fldwz_'+c.id+'"'+
@@ -1284,8 +1290,12 @@ function _parseComprovanteCnpj(texto){
     if(atual==='cnae_secundarios'){ (out.cnae_secundarios=out.cnae_secundarios||[]).push(valor); return; }
     if(out[atual]==null) out[atual]=valor;             // primeira linha após o rótulo
   });
-  // Normalizações para os CHECKs do banco
-  if(out.data_abertura){ out.data_abertura=_wzNormData(out.data_abertura)||undefined; if(out.data_abertura===undefined) delete out.data_abertura; }
+  return _wzNormalizarCampos(out);
+}
+// Normalizações para os CHECKs do banco — compartilhadas entre o parser
+// de texto colado (P2) e o parser posicional do PDF (P1)
+function _wzNormalizarCampos(out){
+  if(out.data_abertura){ var da=_wzNormData(out.data_abertura); if(da) out.data_abertura=da; else delete out.data_abertura; }
   if(out.data_situacao_cadastral){ var ds=_wzNormData(out.data_situacao_cadastral); if(ds) out.data_situacao_cadastral=ds; else delete out.data_situacao_cadastral; }
   if(out.porte){ var po=_wzNormPorte(out.porte); if(po) out.porte=po; else delete out.porte; }
   if(out.situacao_cadastral){
@@ -1296,17 +1306,9 @@ function _parseComprovanteCnpj(texto){
   if(out.estado) out.estado=out.estado.toUpperCase().slice(0,2);
   return out;
 }
-function _wzAplicarParser(){
-  var ta=document.getElementById('wzCnpjTexto');
-  var texto=(ta && ta.value)||'';
-  _wz.dados.p2=_wz.dados.p2||{}; _wz.dados.p2.texto=texto;
-  var res=document.getElementById('wzParseRes');
-  var ext=_parseComprovanteCnpj(texto);
-  var nExt=Object.keys(ext).length;
-  if(!nExt){
-    if(res){ res.className='wz-parse-res on err'; res.textContent='Nenhum campo reconhecido — confira se colou o texto completo do Comprovante de CNPJ.'; }
-    return;
-  }
+// Aplica campos extraídos nos slots do wizard, SEM sobrescrever o que o
+// usuário digitou. Retorna {nExt, aplicados, mantidos}.
+function _wzAplicarExtraido(ext){
   var destino={
     p1:['cnpj','razao_social','apelido','tipo_estabelecimento','data_abertura','natureza_juridica','porte','situacao_cadastral','data_situacao_cadastral'],
     p3:['cnae_principal','cnae_secundarios'],
@@ -1317,19 +1319,203 @@ function _wzAplicarParser(){
     var d=_wz.dados[pk]=_wz.dados[pk]||{};
     destino[pk].forEach(function(campo){
       if(ext[campo]==null) return;
-      var val=campo==='cnae_secundarios'? ext[campo].join('\n') : ext[campo];
+      var val=campo==='cnae_secundarios'? (Array.isArray(ext[campo])?ext[campo].join('\n'):ext[campo]) : ext[campo];
       if(String(d[campo]||'').trim()!==''){ mantidos++; return; }   // NÃO-destrutivo
       d[campo]=val; aplicados++;
     });
   });
+  _wz.dados.p2=_wz.dados.p2||{};
   _wz.dados.p2.importado=true;
-  if(res){
-    res.className='wz-parse-res on';
-    res.textContent='✅ '+nExt+' campo(s) reconhecido(s), '+aplicados+' preenchido(s)'+
-      (mantidos?' — '+mantidos+' mantido(s) como você digitou':'')+
-      '. Confira nos passos 1, 3 e 4; tudo continua editável.';
+  return { nExt:Object.keys(ext).length, aplicados:aplicados, mantidos:mantidos };
+}
+function _wzResumoImport(st){
+  return '✅ '+st.nExt+' campo(s) reconhecido(s), '+st.aplicados+' preenchido(s)'+
+    (st.mantidos?' — '+st.mantidos+' mantido(s) como você digitou':'')+
+    '. Confira nos passos 1, 3 e 4; tudo continua editável.';
+}
+function _wzAplicarParser(){
+  var ta=document.getElementById('wzCnpjTexto');
+  var texto=(ta && ta.value)||'';
+  _wz.dados.p2=_wz.dados.p2||{}; _wz.dados.p2.texto=texto;
+  var res=document.getElementById('wzParseRes');
+  var ext=_parseComprovanteCnpj(texto);
+  if(!Object.keys(ext).length){
+    if(res){ res.className='wz-parse-res on err'; res.textContent='Nenhum campo reconhecido — confira se colou o texto completo do Comprovante de CNPJ.'; }
+    return;
   }
+  var st=_wzAplicarExtraido(ext);
+  if(res){ res.className='wz-parse-res on'; res.textContent=_wzResumoImport(st); }
   _wizValida();
+}
+
+/* ── P1: importar direto do PDF do Comprovante (pdf.js via CDN) ──
+   O arquivo é lido SOMENTE na memória do navegador e descartado após
+   a extração — nada é enviado a servidor nem salvo no Supabase.
+   [FUTURO — leitura de imagem/foto do comprovante]
+   Ponto de integração para OCR (ex.: Claude Vision API): aceitar
+   image/* nesta mesma zona de drop, enviar o arquivo a um endpoint
+   PRÓPRIO do backend (nunca direto do navegador com API key) e
+   alimentar o texto retornado em
+   _wzAplicarExtraido(_parseComprovanteCnpj(textoOcr)). ── */
+var _PDFJS_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+var _PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var _pdfjsPromessa=null;
+function _pdfjsCarregar(){
+  if(window.pdfjsLib){
+    try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=_PDFJS_WORKER; }catch(e){}
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if(_pdfjsPromessa) return _pdfjsPromessa;
+  _pdfjsPromessa=new Promise(function(resolve, reject){
+    var s=document.createElement('script');
+    s.src=_PDFJS_URL;
+    s.onload=function(){
+      if(window.pdfjsLib){
+        try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=_PDFJS_WORKER; }catch(e){}
+        resolve(window.pdfjsLib);
+      } else reject(new Error('pdfjs'));
+    };
+    s.onerror=function(){ _pdfjsPromessa=null; reject(new Error('cdn')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromessa;
+}
+// Itens do pdf.js (com coordenadas) → linhas de segmentos [{x, texto}].
+// Segmentos separados por gaps horizontais = células de colunas diferentes.
+function _wzPdfLinhas(items){
+  var porY={};
+  (items||[]).forEach(function(it){
+    if(!it.str || !String(it.str).trim()) return;
+    var y=Math.round((it.transform && it.transform[5] || 0)/3)*3;   // tolerância vertical
+    (porY[y]=porY[y]||[]).push(it);
+  });
+  return Object.keys(porY).map(Number).sort(function(a,b){ return b-a; }).map(function(y){
+    var its=porY[y].sort(function(a,b){ return (a.transform[4]||0)-(b.transform[4]||0); });
+    var segs=[];
+    its.forEach(function(it){
+      var x=it.transform[4]||0;
+      var larg=it.width!=null? it.width : String(it.str).length*4;
+      var ult=segs[segs.length-1];
+      if(ult && (x-ult.fimX)<12){ ult.texto+=' '+it.str; ult.fimX=x+larg; }
+      else segs.push({ x:x, texto:String(it.str), fimX:x+larg });
+    });
+    segs.forEach(function(s){ s.texto=s.texto.replace(/\s+/g,' ').trim(); });
+    return segs.filter(function(s){ return s.texto; });
+  }).filter(function(l){ return l.length; });
+}
+// Parser POSICIONAL: rótulo numa célula → valor = segmento das linhas
+// seguintes alinhado à mesma coluna (x ± 40). Necessário porque no PDF
+// da Receita vários rótulos dividem a mesma linha visual (ex.: TÍTULO
+// e PORTE) — parser de texto corrido erraria a associação.
+function _wzParsePdfSegmentos(linhas){
+  var out={}, TOL=40;
+  function rotuloDe(txt){
+    var n=_wzNormLinha(txt).replace(/\s*\(.*?\)\s*/g,' ').replace(/\s+/g,' ').trim();
+    return Object.prototype.hasOwnProperty.call(_CNPJ_ROTULOS, n)? {campo:_CNPJ_ROTULOS[n], n:n} : null;
+  }
+  linhas.forEach(function(linha, li){
+    linha.forEach(function(seg){
+      var n=_wzNormLinha(seg.texto);
+      if(n==='MATRIZ') out.tipo_estabelecimento=out.tipo_estabelecimento||'matriz';
+      if(n==='FILIAL') out.tipo_estabelecimento=out.tipo_estabelecimento||'filial';
+      var rot=rotuloDe(seg.texto);
+      if(!rot || !rot.campo || out[rot.campo]!=null) return;
+      var valores=[];
+      var maxLinhas=rot.campo==='cnae_secundarios'? linhas.length : li+4;
+      for(var lj=li+1; lj<linhas.length && lj<=maxLinhas; lj++){
+        var parou=false, achou=false;
+        for(var s=0; s<linhas[lj].length; s++){
+          var seg2=linhas[lj][s];
+          if(Math.abs(seg2.x-seg.x)>TOL) continue;
+          var n2=_wzNormLinha(seg2.texto);
+          if(rotuloDe(seg2.texto) || n2==='MATRIZ' || n2==='FILIAL'){ parou=true; break; }
+          if(/^\*+$/.test(seg2.texto) || n2==='NAO INFORMADA'){ parou=true; break; }
+          valores.push(seg2.texto); achou=true;
+          break;   // 1 segmento por linha na coluna do rótulo
+        }
+        if(parou) break;
+        if(achou && rot.campo!=='cnae_secundarios') break;
+      }
+      if(!valores.length) return;
+      out[rot.campo]=rot.campo==='cnae_secundarios'? valores : valores[0];
+    });
+  });
+  return _wzNormalizarCampos(out);
+}
+async function _wzImportarPdf(file){
+  if(!file) return;
+  if(!/pdf/i.test(file.type||'') && !/\.pdf$/i.test(file.name||'')){
+    _wzPdfEstado('err', 'Envie um arquivo PDF (o Comprovante de CNPJ baixado da Receita).');
+    _wizRenderCampos(); _wizValida(); return;
+  }
+  _wzPdfEstado('lendo', '⏳ Lendo o PDF…');
+  _wizRenderCampos();
+  try{
+    var lib=await _pdfjsCarregar();
+    var buf=await file.arrayBuffer();          // só memória — nada é enviado/salvo
+    var pdf=await lib.getDocument({data:buf}).promise;
+    var linhas=[];
+    for(var i=1;i<=pdf.numPages;i++){
+      var pg=await pdf.getPage(i);
+      var tc=await pg.getTextContent();
+      linhas=linhas.concat(_wzPdfLinhas(tc.items));
+    }
+    try{ pdf.destroy(); }catch(e){}
+    buf=null;                                   // binário descartado
+    var ext=_wzParsePdfSegmentos(linhas);
+    // Complemento: parser de texto corrido preenche o que o posicional não achou
+    var textoPlano=linhas.map(function(l){ return l.map(function(s){ return s.texto; }).join(' '); }).join('\n');
+    var ext2=_parseComprovanteCnpj(textoPlano);
+    Object.keys(ext2).forEach(function(k){ if(ext[k]==null) ext[k]=ext2[k]; });
+    if(!Object.keys(ext).length) throw new Error('semtexto');
+    var st=_wzAplicarExtraido(ext);
+    _wz.dados.p2.importado_pdf=true;
+    _wzPdfEstado('ok', _wzResumoImport(st));
+    await _wizSalvarRascunho();
+  }catch(e){
+    _wzPdfEstado('err', e && e.message==='cdn'
+      ? 'Leitor de PDF indisponível agora (sem acesso ao CDN). Use o passo 2 para colar o texto do comprovante.'
+      : 'Não consegui ler este PDF (pode ser digitalizado/foto, sem texto embutido). Use o passo 2 para colar o texto do comprovante.');
+  }
+  _wizRenderCampos(); _wizValida();
+}
+function _wzPdfEstado(tipo, msg){
+  _wz.dados.p2=_wz.dados.p2||{};
+  _wz.dados.p2.pdf_estado=tipo; _wz.dados.p2.pdf_msg=msg;
+}
+function _wzPdfDrop(ev){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag');
+  var f=ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  _wzImportarPdf(f);
+}
+function _wzPdfInput(inp){
+  var f=inp.files && inp.files[0];
+  inp.value='';
+  _wzImportarPdf(f);
+}
+function _wzP1TopoHtml(w){
+  if(w.modo==='edicao') return '';
+  var p2=w.dados.p2||{};
+  var estado=p2.pdf_estado||'';
+  var resHtml=p2.pdf_msg
+    ? '<div class="wz-parse-res on'+(estado==='err'?' err':'')+'" id="wzPdfRes">'+esc(p2.pdf_msg)+'</div>'
+    : '';
+  return '<div class="fld full">'+
+    '<div class="wz-drop'+(estado==='ok'?' ok':'')+'" '+
+      'ondragover="event.preventDefault();this.classList.add(\'drag\')" '+
+      'ondragleave="this.classList.remove(\'drag\')" '+
+      'ondrop="_wzPdfDrop(event)" '+
+      'onclick="document.getElementById(\'wzPdfFile\').click()">'+
+      '<div class="wd-ico">'+(estado==='ok'?'✅':'📄')+'</div>'+
+      (estado==='ok'
+        ? '<b>PDF lido!</b> Confira os campos abaixo — só ajustar o apelido e avançar.'
+        : '<b>Arraste aqui o PDF do Comprovante de CNPJ</b> ou clique para selecionar.')+
+      '<div class="wd-sub">O arquivo é lido só na memória do navegador e descartado — nada é salvo ou enviado. Sem o PDF? Preencha à mão ou cole o texto no passo 2.</div>'+
+    '</div>'+
+    '<input type="file" id="wzPdfFile" accept="application/pdf,.pdf" style="display:none" onchange="_wzPdfInput(this)">'+
+    resHtml+
+  '</div>';
 }
 
 /* ── P4: busca de CEP via ViaCEP (gratuito, sem key) ─────────── */
@@ -1555,7 +1741,8 @@ var WIZ_CLIENTE={
   pills:['Identificação','Comprovante CNPJ','CNAE e segmento','Contato e endereço','Contatos','Organograma','Revisão'],
   passos:[
     { t:'Identificação',
-      instr:'Comece pelo apelido — como você e sua equipe chamam esse cliente no dia a dia. O resto pode vir do Comprovante de CNPJ, no próximo passo.',
+      instr:'Tem o PDF do Comprovante de CNPJ? Arraste na área abaixo que o SOE preenche tudo — você só confere e ajusta o apelido. Sem o PDF, preencha a partir do apelido (como a equipe chama o cliente no dia a dia).',
+      topoHtml:_wzP1TopoHtml,
       campos:[
         { id:'codigo', label:'Código (gerado pelo SOE)', ro:function(w){ return _wzCodigoPrevisto(); } },
         { id:'apelido', label:'Apelido (nome fantasia)', req:true },
@@ -1578,10 +1765,13 @@ var WIZ_CLIENTE={
       ],
       parabens:'Identificação pronta! Se tiver o Comprovante de CNPJ, o próximo passo preenche o resto sozinho.' },
     { t:'Importar dados do Comprovante de CNPJ',
-      instr:'Passo opcional — pode pular. Acesse a consulta de CNPJ da Receita, abra o Comprovante, selecione todo o texto (Ctrl+A, Ctrl+C) e cole aqui. O SOE preenche tudo automaticamente, sem sobrescrever o que você já digitou.',
+      instr:'Passo opcional — pode pular. Se não usou o PDF no passo 1: acesse a consulta de CNPJ da Receita, abra o Comprovante, selecione todo o texto (Ctrl+A, Ctrl+C) e cole aqui. O SOE preenche tudo automaticamente, sem sobrescrever o que você já digitou.',
       render:function(w){
         var d=w.dados.p2||{};
-        return '<div class="fld full"><label>Texto do comprovante</label>'+
+        return (d.importado_pdf
+          ? '<div class="fld full"><div class="wz-parse-res on">✓ Dados importados do PDF no passo 1 — pode avançar direto.</div></div>'
+          : '')+
+          '<div class="fld full"><label>Texto do comprovante</label>'+
           '<textarea id="wzCnpjTexto" placeholder="Cole aqui o texto do Comprovante de Inscrição e de Situação Cadastral…" oninput="_wz.dados.p2=_wz.dados.p2||{};_wz.dados.p2.texto=this.value">'+esc(d.texto||'')+'</textarea></div>'+
           '<div class="fld full"><button class="btn btn-emp" type="button" onclick="_wzAplicarParser()">⚙️ Preencher automaticamente</button>'+
           '<div class="wz-parse-res" id="wzParseRes"></div></div>';
