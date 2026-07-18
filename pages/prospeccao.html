@@ -1089,8 +1089,116 @@ Object.defineProperty(WIZ_PROSPECCAO.passos[5].campos[2], 'opts', {
   get:function(){ return (_usuariosEmp||[]).map(function(u){ return {v:u.usuario_id, t:u.nome||'—'}; }); }
 });
 
-// Placeholder do C2 (substituído no commit do wizard de qualificação)
-var WIZ_QUALIFICACAO=null;
+/* ── Config: Wizard de Qualificação — Etapa 2 (5 passos + score) ── */
+// Score 5×20pts — gatilhos exatos do spec; recalculado a cada input.
+function _qualScore(w){
+  var d=w.dados||{};
+  var p2=d.p2||{}, p3=d.p3||{}, p4=d.p4||{}, p5=d.p5||{};
+  var itens=[
+    { lab:'Dor clara e específica',          on: !!(String(p2.dor||'').trim() && p2.servico) },
+    { lab:'Prazo definido',                  on: !!(p3.tem_prazo && p3.tem_prazo!=='sem') },
+    { lab:'Decisor confirmado',              on: !!(p4.decisor && p4.decisor!=='Não sei ainda') },
+    { lab:'Verba aprovada ou em aprovação',  on: ['Sim — verba aprovada','Em processo de aprovação'].indexOf(p4.verba)>=0 },
+    { lab:'Visita agendada',                 on: !!String(p5.data||'').trim() }
+  ];
+  var total=itens.filter(function(i){ return i.on; }).length*20;
+  var faixa = total>=80 ? {t:'Pronto para proposta', cor:'var(--green)', bg:'rgba(63,185,80,.14)'}
+            : total>=40 ? {t:'Qualificação parcial — avalie', cor:'var(--amber)', bg:'rgba(212,160,23,.14)'}
+            :             {t:'Ainda imaturo', cor:'var(--red)', bg:'rgba(248,81,73,.12)'};
+  return { itens:itens, total:total, faixa:faixa };
+}
+function _qualScoreHtml(w){
+  var s=_qualScore(w);
+  var confirmar=(w.passo===4||w.passo===5) && s.total>0 && !w.readonly
+    ? '<div style="text-align:right;margin-top:.5rem"><button class="btn btn-emp btn-sm" style="background:rgba(63,185,80,.14);border-color:rgba(63,185,80,.4);color:var(--green)" onclick="_wizAvancar()">✅ Confirmar e avançar</button></div>'
+    : '';
+  return '<div class="score-box">'+
+    '<div class="score-tit"><span style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Score de qualificação</span>'+
+    '<span><span class="score-pct" style="color:'+s.faixa.cor+'">'+s.total+'%</span> <span class="score-faixa" style="color:'+s.faixa.cor+';background:'+s.faixa.bg+'">'+s.faixa.t+'</span></span></div>'+
+    s.itens.map(function(i){
+      return '<div class="sc-row"><span class="sc-lab">'+i.lab+'</span><span class="sc-track"><span class="sc-fill'+(i.on?' on':'')+'" style="display:block;width:'+(i.on?100:0)+'%"></span></span><span class="sc-pts">'+(i.on?'+20':'0')+'</span></div>';
+    }).join('')+confirmar+'</div>';
+}
+var WIZ_QUALIFICACAO={
+  etapa:'qualificacao',
+  titulo:'Qualificação — Etapa 2',
+  pills:['Canal e contato','Dor','Prazo','Decisor e verba','Visita'],
+  scoreHtml:_qualScoreHtml,
+  aoMudar:function(w){   // score em tempo real, sem recarregar
+    var el=document.getElementById('wzScore');
+    if(el && el.innerHTML) el.innerHTML=_qualScoreHtml(w);
+  },
+  passos:[
+    { t:'Canal e contato',
+      instr:'Confirme com quem você está falando e por qual canal vai qualificar.',
+      campos:[
+        { id:'canal', label:'Canal da qualificação', tipo:'select', req:true,
+          opts:['WhatsApp','Ligação telefônica','Vídeo chamada','Visita presencial','E-mail'] },
+        { id:'data', label:'Data', tipo:'date', req:true },
+        { id:'contato', label:'Nome do contato confirmado', tipo:'text', req:true,
+          pre:function(a,w){ var pr=w.etapasAll.prospeccao; return (pr && pr.dados_json && pr.dados_json.p2 && pr.dados_json.p2.nome)||null; } },
+        { id:'cargo', label:'Cargo', tipo:'select',
+          opts:['Diretor técnico','Engenheiro de produto','Sócio-dono','Gerente de manutenção','Engenheiro de automação','Outro'],
+          pre:function(a,w){ var pr=w.etapasAll.prospeccao; return (pr && pr.dados_json && pr.dados_json.p2 && pr.dados_json.p2.cargo)||null; } }
+      ],
+      parabens:'Canal confirmado. Siga para entender a dor real do cliente.' },
+    { t:'Dor e necessidade', mostraScore:true,
+      instr:'Descubra o problema real do cliente. Quanto mais específico, melhor a proposta depois.',
+      campos:[
+        { id:'dor', label:'Qual é o problema/necessidade do cliente?', tipo:'textarea', full:true, req:true },
+        { id:'servico', label:'Que serviço ele precisa?', tipo:'select', req:true, full:true,
+          opts:['Projeto elétrico + montagem de painel','Só projeto elétrico','Só montagem de painel','Automação / programação CLP','Retrofit elétrico de máquina','Quadro de disjuntores / QGBT','Manutenção elétrica'] },
+        { id:'obs', label:'Observações técnicas', tipo:'textarea', full:true }
+      ],
+      parabens:'Dor mapeada! Você sabe o que ele precisa. Agora entenda o prazo.' },
+    { t:'Prazo e urgência', mostraScore:true,
+      instr:'Prazo é o maior gargalo. Capture agora para não ser pego de surpresa.',
+      alertaPrazo:function(w){
+        var p=w.alvo.prazo_cliente; if(!p) return '';
+        var dias=Math.ceil((new Date(p+'T12:00:00')-new Date())/86400000);
+        return dias<=7 ? '🔥 ATENÇÃO: o prazo deste cliente ('+p.split('-').reverse().join('/')+') está a '+Math.max(dias,0)+' dia(s)!' : '';
+      },
+      campos:[
+        { id:'tem_prazo', label:'O cliente tem prazo definido?', tipo:'select', req:true,
+          opts:[{v:'sim',t:'Sim — prazo definido'},{v:'sem',t:'Não — sem prazo'},{v:'urgente',t:'Urgente — quer para ontem'}] },
+        { id:'data_prazo', label:'Data do prazo', tipo:'date',
+          cond:function(w){ var tp=(w.dados.p3||{}).tem_prazo; return tp==='sim'||tp==='urgente'; } },
+        { id:'motivo', label:'Por que esse prazo?', tipo:'textarea', full:true, req:true }
+      ],
+      aoSalvar:async function(w){
+        var d=w.dados.p3||{};
+        var extras={};
+        if(d.tem_prazo==='urgente') extras.urgente=true;
+        if(d.data_prazo) extras.prazo_cliente=d.data_prazo;
+        if(Object.keys(extras).length) await _wzSetStatusAlvo(w.alvo.status, extras);
+      },
+      parabens:'Prazo registrado! Você não vai ser pego de surpresa.' },
+    { t:'Decisor e verba', mostraScore:true,
+      instr:'Confirme se está falando com quem decide e se existe verba aprovada.',
+      campos:[
+        { id:'decisor', label:'Quem toma a decisão de contratação?', tipo:'select', req:true, full:true,
+          opts:['O próprio contato decide sozinho','Contato indica, diretoria aprova','Compras decide pelo menor preço','Comitê decide junto','Não sei ainda'] },
+        { id:'verba', label:'Existe verba aprovada?', tipo:'select', req:true, full:true,
+          opts:['Sim — verba aprovada','Em processo de aprovação','Só interesse, sem verba ainda','Não sei ainda'] },
+        { id:'concorrentes', label:'Tem concorrentes sendo consultados?', tipo:'select', full:true,
+          opts:['Não sei','Sim — cotando com outros','Não — somos os únicos','Tem fornecedor atual que pode renovar'] }
+      ],
+      parabens:'Decisor e verba confirmados. Último passo: agende a visita.' },
+    { t:'Visita técnica', mostraScore:true,
+      instr:'A visita é obrigatória antes de qualquer proposta. Agende aqui.',
+      campos:[
+        { id:'data', label:'Data da visita', tipo:'date', req:true },
+        { id:'horario', label:'Horário', tipo:'time', pre:function(){ return '09:00'; } },
+        { id:'endereco', label:'Endereço', tipo:'text', req:true, full:true },
+        { id:'verificar', label:'O que verificar na visita', tipo:'textarea', full:true }
+      ] }
+  ],
+  aoConcluir:async function(w){
+    var score=_qualScore(w).total;
+    await _wzSetStatusAlvo('qualificado', { score_qualificacao:score });
+  },
+  parabensFinal:function(w){ return 'Lead qualificado com score '+_qualScore(w).total+'%! Pronto para proposta.'; }
+};
 
 /* ── Integração com o portal ─────────────────────────────────── */
 async function _onTrocaEmpresa(d){
