@@ -1023,10 +1023,21 @@ async function novoCliente(){
   if(ras) await _wizLimparRascunho();
   _wizIniciar('novo', null);
 }
-function editarCliente(){
+async function editarCliente(){
   var c=_ficha.cliente; if(!c) return;
   if(!_podeEditar()){ toast('Sem permissão para editar.', 'err'); return; }
-  _wizIniciar('edicao', c.id, _wzDadosDoCliente(c), 1, []);
+  var dados=_wzDadosDoCliente(c);
+  // Arestas reais do organograma → P6 (refs = ids dos contatos)
+  var sb=_sb();
+  if(sb){
+    try{
+      var r=await sb.from('cliente_organograma').select('*').eq('cliente_id', c.id);
+      dados.p6={ arestas:((r && r.data)||[]).map(function(a){
+        return { de:a.contato_origem_id, para:a.contato_destino_id, tipo:a.tipo_relacao };
+      }) };
+    }catch(e){}
+  }
+  _wizIniciar('edicao', c.id, dados, 1, []);
 }
 // Mapeia um cliente existente para os slots do wizard (edição)
 function _wzDadosDoCliente(c){
@@ -1719,6 +1730,179 @@ function _wzP5Valida(w){
   return _wzP5Contatos().some(function(ct){ return String(ct.nome||'').trim()!==''; });
 }
 
+/* ── P6: organograma (construtor de relações + SVG ao vivo) ──── */
+var REL_LABEL={ reporta_para:'reporta para', influencia:'influencia', aprova:'aprova', decide_junto:'decide junto com' };
+var REL_COR={ influencia:'var(--blue)', aprova:'var(--amber)', decide_junto:'var(--purple)' };
+function _wzP6Arestas(){ var p6=_wz.dados.p6=_wz.dados.p6||{}; return p6.arestas=p6.arestas||[]; }
+// Nós do organograma: no wizard NOVO ref = índice do contato no P5
+// (os ids só nascem no INSERT do P7); na EDIÇÃO ref = id real
+function _wzP6Nodes(w){
+  if(w.modo==='edicao')
+    return (_contatosByCli[w.clienteId]||[]).map(function(ct){ return { ref:ct.id, nome:ct.nome, papel:ct.papel_principal }; });
+  return _wzP5Contatos()
+    .map(function(ct,i){ return { ref:i, nome:String(ct.nome||'').trim(), papel:ct.papel_principal }; })
+    .filter(function(n){ return n.nome; });
+}
+// Ciclo de "reporta para": seguindo chefes a partir de `de`, chega em `para`?
+function _orgCriaCiclo(arestas, de, para){
+  var chefe={};
+  arestas.filter(function(a){ return a.tipo==='reporta_para'; })
+    .forEach(function(a){ chefe[a.de]=a.para; });
+  chefe[de]=para;
+  var atual=para, passos=0;
+  while(chefe[atual]!=null && passos++<100){
+    if(String(chefe[atual])===String(de)) return true;
+    atual=chefe[atual];
+  }
+  return false;
+}
+// Níveis por BFS/recursão nas arestas "reporta para" (com guarda de ciclo).
+// Retorna { nivel: {ref→n}, soltos: [refs sem NENHUMA relação] }
+function _orgNiveis(nodes, arestas){
+  var refs={}; nodes.forEach(function(n){ refs[n.ref]=1; });
+  var chefe={}, participa={};
+  arestas.forEach(function(a){
+    if(!refs.hasOwnProperty(a.de) || !refs.hasOwnProperty(a.para)) return;
+    participa[a.de]=1; participa[a.para]=1;
+    if(a.tipo==='reporta_para') chefe[a.de]=a.para;
+  });
+  var nivel={};
+  function calc(ref, guarda){
+    if(nivel[ref]!=null) return nivel[ref];
+    if(guarda[ref]) return 0;                       // ciclo — corta na raiz
+    guarda[ref]=1;
+    var c=chefe[ref];
+    var n=(c==null || !refs.hasOwnProperty(c))? 0 : calc(c, guarda)+1;
+    nivel[ref]=n; return n;
+  }
+  var soltos=[];
+  nodes.forEach(function(n){
+    if(participa[n.ref]) calc(n.ref, {});
+    else soltos.push(n.ref);
+  });
+  return { nivel:nivel, soltos:soltos };
+}
+// SVG puro (sem biblioteca): caixas por nível; linha SÓLIDA = reporta
+// para; TRACEJADA colorida = influencia/aprova/decide junto; contatos
+// sem relação numa faixa separada embaixo.
+function _wzOrgSvg(nodes, arestas){
+  if(!nodes.length) return '<div class="vazio">Nenhum contato para desenhar ainda.</div>';
+  var BW=132, BH=40, GX=26, GY=64, PAD=14;
+  var nv=_orgNiveis(nodes, arestas);
+  var porNivel={}, maxNivel=0;
+  nodes.forEach(function(n){
+    if(nv.soltos.indexOf(n.ref)>=0) return;
+    var l=nv.nivel[n.ref]||0;
+    (porNivel[l]=porNivel[l]||[]).push(n);
+    if(l>maxNivel) maxNivel=l;
+  });
+  var linhas=[];
+  for(var l=0;l<=maxNivel;l++){ if(porNivel[l]) linhas.push(porNivel[l]); }
+  var soltosNodes=nodes.filter(function(n){ return nv.soltos.indexOf(n.ref)>=0; });
+  var totalLinhas=linhas.length+(soltosNodes.length?1:0);
+  var maxPorLinha=1;
+  linhas.forEach(function(ln){ if(ln.length>maxPorLinha) maxPorLinha=ln.length; });
+  if(soltosNodes.length>maxPorLinha) maxPorLinha=soltosNodes.length;
+  var W=PAD*2+maxPorLinha*BW+(maxPorLinha-1)*GX;
+  var H=PAD*2+totalLinhas*BH+(totalLinhas-1)*GY+(soltosNodes.length?26:0);
+  var pos={};
+  function posiciona(ln, linhaIdx, extraY){
+    var lw=ln.length*BW+(ln.length-1)*GX;
+    var x0=(W-lw)/2;
+    ln.forEach(function(n,i){
+      pos[n.ref]={ x:x0+i*(BW+GX), y:PAD+linhaIdx*(BH+GY)+(extraY||0) };
+    });
+  }
+  linhas.forEach(function(ln,i){ posiciona(ln,i,0); });
+  if(soltosNodes.length) posiciona(soltosNodes, linhas.length, 26);
+  var svg='';
+  // arestas primeiro (ficam atrás das caixas)
+  arestas.forEach(function(a){
+    var p1=pos[a.de], p2=pos[a.para];
+    if(!p1 || !p2) return;
+    var x1=p1.x+BW/2, y1=p1.y, x2=p2.x+BW/2, y2=p2.y+BH;
+    if(a.tipo==='reporta_para'){
+      svg+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="var(--text2)" stroke-width="1.6"/>';
+    } else {
+      var mx=(x1+x2)/2, my=Math.min(y1,y2)-18;
+      svg+='<path d="M '+x1+' '+(p1.y+BH/2)+' Q '+mx+' '+my+' '+x2+' '+(p2.y+BH/2)+'" fill="none" stroke="'+(REL_COR[a.tipo]||'var(--text3)')+'" stroke-width="1.4" stroke-dasharray="5 4"/>';
+    }
+  });
+  nodes.forEach(function(n){
+    var p=pos[n.ref]; if(!p) return;
+    var nome=n.nome.length>17? n.nome.slice(0,16)+'…' : n.nome;
+    svg+='<g><rect x="'+p.x+'" y="'+p.y+'" width="'+BW+'" height="'+BH+'" rx="7" fill="var(--bg3)" stroke="var(--emp-bdr)"/>'+
+      '<text x="'+(p.x+BW/2)+'" y="'+(p.y+16)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">'+esc(nome)+'</text>'+
+      '<text x="'+(p.x+BW/2)+'" y="'+(p.y+30)+'" text-anchor="middle" font-size="8.5" fill="var(--text3)">'+esc(PAPEL_LABEL[n.papel]||'—')+'</text></g>';
+  });
+  if(soltosNodes.length){
+    var ySol=PAD+linhas.length*(BH+GY)+8;
+    svg+='<text x="'+PAD+'" y="'+ySol+'" font-size="9" fill="var(--text3)">SEM RELAÇÃO MAPEADA:</text>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:'+W+'px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">'+svg+'</svg>';
+}
+function _orgLegendaHtml(){
+  return '<div style="display:flex;gap:.8rem;flex-wrap:wrap;font-size:.66rem;color:var(--text3);margin-top:.5rem">'+
+    '<span>━ reporta para</span>'+
+    '<span style="color:var(--blue)">┄ influencia</span>'+
+    '<span style="color:var(--amber)">┄ aprova</span>'+
+    '<span style="color:var(--purple)">┄ decide junto</span>'+
+  '</div>';
+}
+function _wzP6Html(w){
+  var nodes=_wzP6Nodes(w);
+  var arestas=_wzP6Arestas();
+  if(nodes.length<2){
+    return '<div class="fld full"><div class="vazio">É preciso ter pelo menos 2 contatos'+
+      (w.modo==='edicao'?' (gerencie na aba Contatos da ficha)':' no passo 5')+
+      ' para mapear relações. Este passo é opcional — pode avançar.</div></div>';
+  }
+  function selNodes(id){
+    return '<select id="'+id+'">'+nodes.map(function(n){
+      return '<option value="'+esc(String(n.ref))+'">'+esc(n.nome)+'</option>';
+    }).join('')+'</select>';
+  }
+  var lista=arestas.map(function(a,i){
+    function nomeDe(ref){ var n=nodes.filter(function(x){ return String(x.ref)===String(ref); })[0]; return n? n.nome : '?'; }
+    return '<div class="fc-kv"><span>'+esc(nomeDe(a.de))+' <b>'+(REL_LABEL[a.tipo]||a.tipo)+'</b> '+esc(nomeDe(a.para))+'</span>'+
+      '<span><button class="btn btn-red btn-sm" type="button" onclick="_wzP6Remover('+i+')">✕</button></span></div>';
+  }).join('');
+  return '<div class="fld full">'+
+      '<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">'+
+        selNodes('wzP6De')+
+        '<select id="wzP6Tipo">'+
+          '<option value="reporta_para">reporta para</option>'+
+          '<option value="influencia">influencia</option>'+
+          '<option value="aprova">aprova</option>'+
+          '<option value="decide_junto">decide junto com</option>'+
+        '</select>'+
+        selNodes('wzP6Para')+
+        '<button class="btn btn-emp btn-sm" type="button" onclick="_wzP6Add()">＋ Adicionar relação</button>'+
+      '</div>'+
+    '</div>'+
+    (lista?'<div class="fld full">'+lista+'</div>':'')+
+    '<div class="fld full">'+_wzOrgSvg(nodes, arestas)+_orgLegendaHtml()+'</div>';
+}
+function _wzP6Add(){
+  var de=document.getElementById('wzP6De').value;
+  var tipo=document.getElementById('wzP6Tipo').value;
+  var para=document.getElementById('wzP6Para').value;
+  if(String(de)===String(para)){ toast('Um contato não pode se relacionar com ele mesmo.', 'err'); return; }
+  var arestas=_wzP6Arestas();
+  var dup=arestas.some(function(a){ return String(a.de)===String(de) && String(a.para)===String(para) && a.tipo===tipo; });
+  if(dup){ toast('Essa relação já existe.', 'err'); return; }
+  if(tipo==='reporta_para' && _orgCriaCiclo(arestas, de, para)){
+    toast('Isso criaria um ciclo de "reporta para" (A→B→A) — revise a hierarquia.', 'err'); return;
+  }
+  // No modo novo os refs são índices numéricos do P5
+  arestas.push({ de:_wz.modo==='edicao'? de : parseInt(de,10), para:_wz.modo==='edicao'? para : parseInt(para,10), tipo:tipo });
+  _wizRenderCampos(); _wizValida();
+}
+function _wzP6Remover(i){
+  _wzP6Arestas().splice(i,1);
+  _wizRenderCampos(); _wizValida();
+}
+
 /* ── P7: revisão e salvar ────────────────────────────────────── */
 function _wzP7Html(w){
   var p1=w.dados.p1||{}, p3=w.dados.p3||{}, p4=w.dados.p4||{}, p7=w.dados.p7=w.dados.p7||{};
@@ -1917,13 +2101,10 @@ var WIZ_CLIENTE={
       render:_wzP5Html, valida:_wzP5Valida,
       parabens:'Contatos registrados! O organograma (mapa de poder) chega em breve.' },
     { t:'Organograma',
-      instr:'Monte o mapa de poder do cliente: quem manda em quem, quem influencia quem. Isso vale ouro na hora de vender.',
-      render:function(){
-        return '<div class="fld full"><div class="vazio"><div style="font-size:1.6rem;margin-bottom:.4rem">🧬</div>'+
-          'Em breve — este passo chega numa próxima atualização. Pode avançar.</div></div>';
-      },
+      instr:'Monte o mapa de poder do cliente: quem manda em quem, quem influencia quem, quem aprova junto. Isso vale ouro na hora de vender. Passo opcional — pode pular e completar depois pela edição.',
+      render:_wzP6Html,
       valida:function(){ return true; },
-      parabens:'Quase lá! Revise tudo antes de salvar.' },
+      parabens:'Mapa de poder registrado! Revise tudo antes de salvar.' },
     { t:'Revisão e observações',
       instr:'Revise tudo antes de salvar. Uma vez salvo, o cliente fica disponível em todo o SOE.',
       render:_wzP7Html,
