@@ -121,6 +121,37 @@ table.mtu td{padding:.42rem .5rem;border-bottom:1px solid var(--border)}
 table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
 
 #telaBloqueio{display:none;text-align:center;padding:4rem 1rem;color:var(--text3)}
+
+/* ── Wizards (Etapas 1 e 2) ── */
+.wiz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.7rem}
+.wiz-tit{font-size:1.05rem;font-weight:800}
+.wiz-meta{font-size:.72rem;color:var(--text3);margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.badge-perfil{font-size:.63rem;font-weight:800;border-radius:20px;padding:.14rem .6rem}
+.badge-perfil.A{background:rgba(63,185,80,.14);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+.badge-perfil.B{background:rgba(188,140,255,.14);color:var(--purple);border:1px solid rgba(188,140,255,.4)}
+.wiz-pills{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.9rem}
+.wiz-pill{font-size:.66rem;font-weight:700;border-radius:20px;padding:.28rem .65rem;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.wiz-pill.ativo{background:rgba(88,166,255,.12);color:var(--blue);border-color:rgba(88,166,255,.4)}
+.wiz-pill.feito{background:rgba(63,185,80,.12);color:var(--green);border-color:rgba(63,185,80,.4)}
+.wiz-instr{font-size:.78rem;color:var(--text2);background:var(--bg3);border-left:3px solid var(--emp-cor);border-radius:var(--r2);padding:.55rem .75rem;margin-bottom:.8rem;line-height:1.5}
+.wiz-roteiro{font-size:.8rem;color:var(--text);background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.25);border-radius:var(--r2);padding:.6rem .8rem;margin-bottom:.8rem;line-height:1.55;font-style:italic}
+.wiz-parabens{display:none;font-size:.8rem;font-weight:700;color:var(--green);background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.35);border-radius:var(--r2);padding:.55rem .8rem;margin-bottom:.8rem}
+.wiz-parabens.on{display:block}
+.wiz-acoes{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+.wiz-acoes .esq{margin-right:auto}
+.alerta-prazo{display:none;font-size:.78rem;font-weight:700;color:var(--red);background:rgba(248,81,73,.1);border-left:4px solid var(--red);border-radius:var(--r2);padding:.55rem .8rem;margin-bottom:.8rem}
+.alerta-prazo.on{display:block}
+/* Score (Etapa 2) */
+.score-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .9rem;margin-bottom:.8rem}
+.score-tit{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.5rem}
+.score-pct{font-size:1.2rem;font-weight:800}
+.score-faixa{font-size:.68rem;font-weight:700;border-radius:20px;padding:.16rem .6rem}
+.sc-row{display:flex;align-items:center;gap:.55rem;margin-bottom:.3rem;font-size:.72rem;color:var(--text2)}
+.sc-track{flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.sc-fill{height:100%;border-radius:4px;background:var(--border2);transition:background .2s}
+.sc-fill.on{background:var(--green)}
+.sc-lab{flex:0 0 210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-pts{flex:0 0 40px;text-align:right;font-weight:700}
 </style>
 </head>
 <body>
@@ -232,6 +263,36 @@ table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
         <button class="btn btn-emp" onclick="novaCaptura()">Nova captura</button>
         <button class="btn" style="margin-left:.4rem" onclick="mostrarSecao('alvos')">Ver alvos</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ Seção: Wizard (Etapas 1 e 2 — renderizada pelo motor _wiz) ══ -->
+  <div id="sec-wizard" class="psec">
+    <div class="card">
+      <div class="wiz-head">
+        <div>
+          <div class="wiz-tit" id="wzTitulo">—</div>
+          <div class="wiz-meta" id="wzMeta">—</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="crono" id="wzCrono">⏱️ 00:00</div>
+          <button class="btn btn-sm" onclick="_wizSair()">✕</button>
+        </div>
+      </div>
+      <div class="wiz-pills" id="wzPills"></div>
+      <div class="wiz-parabens" id="wzParabens"></div>
+      <div class="alerta-prazo" id="wzAlertaPrazo"></div>
+      <div id="wzScore"></div>
+      <div class="sec-tit" id="wzPassoTit">—</div>
+      <div class="wiz-instr" id="wzInstr" style="display:none"></div>
+      <div class="wiz-roteiro" id="wzRoteiro" style="display:none"></div>
+      <div class="fgrid" id="wzCampos"></div>
+      <div class="wiz-acoes">
+        <button class="btn btn-red esq" id="wzBtnDescartar" onclick="_wizDescartar()">🗑️ Descartar</button>
+        <button class="btn" onclick="_wizSair()">Voltar</button>
+        <button class="btn btn-emp" id="wzBtnAvancar" onclick="_wizAvancar()">Salvar e avançar →</button>
+      </div>
+      <div class="aviso-req" id="wzAviso">Preencha os campos obrigatórios (*) para avançar.</div>
     </div>
   </div>
 
@@ -355,7 +416,7 @@ function _aplicarGate(){
 
 /* ── Navegação de seções ─────────────────────────────────────── */
 function mostrarSecao(s){
-  ['alvos','captura'].forEach(function(k){
+  ['alvos','captura','wizard'].forEach(function(k){
     var el=document.getElementById('sec-'+k);
     if(el) el.classList.toggle('on', k===s);
   });
@@ -475,7 +536,7 @@ function renderAlvos(){
   });
   if(!lista.length){ el.innerHTML='<div class="vazio">Nenhum alvo'+(_alvos.length?' com esses filtros':' ainda — comece pela captura em massa')+'.</div>'; return; }
   el.innerHTML=lista.map(function(a){
-    return '<button class="alvo'+(a.urgente?' urgente':'')+'" onclick="abrirPesquisa(\''+esc(a.id)+'\')">'+
+    return '<button class="alvo'+(a.urgente?' urgente':'')+'" onclick="abrirAlvo(\''+esc(a.id)+'\')">'+
       '<div class="alvo-nome">'+esc(a.nome)+'</div>'+
       '<div class="alvo-meta"><span>'+esc(a.segmento||'—')+'</span><span>📍 '+esc(a.cidade||'—')+'</span>'+(_etapasTempo[a.id]?'<span>⏱️ '+_fmtTempo(_etapasTempo[a.id])+'</span>':'')+'</div>'+
       '<div class="alvo-badges">'+
@@ -727,6 +788,309 @@ async function salvarPesquisa(){
   _mpAlvo=null; _mpSalvando=false;
   await carregarTudo();
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MOTOR DE WIZARD (_wiz) — 1 implementação, 2 configs (Etapas 1-2).
+   Passos bloqueados, autosave retomável (prospeccao_etapas), cronômetro
+   acumulado, parabenizações, log por passo.
+   ══════════════════════════════════════════════════════════════ */
+// Roteia o clique no alvo pelo status (funil)
+function abrirAlvo(id){
+  var a=_alvos.find(function(x){ return x.id===id; });
+  if(!a) return;
+  if(a.status==='prospectando') abrirWizard(WIZ_PROSPECCAO, id, false);
+  else if(a.status==='qualificando' && WIZ_QUALIFICACAO) abrirWizard(WIZ_QUALIFICACAO, id, false);
+  else if(a.status==='qualificado' && WIZ_QUALIFICACAO) abrirWizard(WIZ_QUALIFICACAO, id, true);   // leitura
+  else if(a.status==='qualificando'||a.status==='qualificado') toast('Wizard de qualificação disponível em breve.');
+  else abrirPesquisa(id);   // novo / pesquisando / descartado (retriagem)
+}
+
+var _wz={ cfg:null, alvo:null, dados:{}, passo:1, feitos:[], tempoBase:0, inicio:null, timer:null, etapasAll:{}, readonly:false };
+function _wzElapsed(){ return _wz.inicio ? Math.round((Date.now()-_wz.inicio)/1000) : 0; }
+function _wzTick(){ document.getElementById('wzCrono').textContent='⏱️ '+_fmtTempo(_wz.tempoBase+_wzElapsed()); }
+function _wzPK(){ return 'p'+_wz.passo; }
+function _wzD(){ return _wz.dados[_wzPK()]=_wz.dados[_wzPK()]||{}; }
+
+async function abrirWizard(cfg, alvoId, readonly){
+  var a=_alvos.find(function(x){ return x.id===alvoId; });
+  if(!a) return;
+  await _carregarUsuariosEmp();   // p/ selects de responsável
+  _wz.cfg=cfg; _wz.alvo=a; _wz.readonly=!!readonly; _wz.etapasAll={};
+  var sb=_sb();
+  if(sb){
+    try{
+      var r=await sb.from('prospeccao_etapas').select('*').eq('alvo_id', a.id);
+      ((r && r.data)||[]).forEach(function(e){ _wz.etapasAll[e.etapa]=e; });
+    }catch(e){}
+  }
+  var row=_wz.etapasAll[cfg.etapa]||null;
+  _wz.dados=(row && row.dados_json)||{};
+  _wz.feitos=(row && row.passos_concluidos)||[];
+  _wz.passo=row && row.passo_atual>=1 ? Math.min(row.passo_atual, cfg.passos.length) : 1;
+  if(row && row.concluido) _wz.readonly=true;
+  _wz.tempoBase=(row && Number(row.tempo_total_segundos))||0;
+  _wz.inicio=_wz.readonly? null : Date.now();
+  if(_wz.timer) clearInterval(_wz.timer);
+  _wz.timer=_wz.readonly? null : setInterval(_wzTick, 1000);
+  _wzTick();
+  mostrarSecao('wizard');
+  _wizRender();
+  if(!_wz.readonly) _log(a.id, cfg.etapa, 'abriu_wizard', {passo:_wz.passo}, 0);
+}
+
+function _wzPerfil(){ return (_wz.dados.p1 && _wz.dados.p1.perfil) || _wz.alvo.perfil || ''; }
+function _wizRender(){
+  var cfg=_wz.cfg, a=_wz.alvo, p=cfg.passos[_wz.passo-1];
+  document.getElementById('wzTitulo').textContent=a.nome;
+  var perfil=_wzPerfil();
+  document.getElementById('wzMeta').innerHTML=
+    '<span>'+esc(cfg.titulo)+'</span><span>·</span><span>'+esc(a.segmento||'—')+'</span><span>📍 '+esc(a.cidade||'—')+'</span>'+
+    (perfil?'<span class="badge-perfil '+perfil+'">'+(perfil==='A'?'OEM':'Operadora')+'</span>':'');
+  document.getElementById('wzPills').innerHTML=cfg.pills.map(function(t,i){
+    var n=i+1, cls=_wz.feitos.indexOf(n)>=0?'feito':(n===_wz.passo?'ativo':'');
+    return '<span class="wiz-pill '+cls+'">'+n+'·'+esc(t)+'</span>';
+  }).join('');
+  document.getElementById('wzPassoTit').textContent='Passo '+_wz.passo+' — '+p.t;
+  var instr=document.getElementById('wzInstr');
+  instr.style.display=p.instr?'block':'none'; instr.textContent=p.instr||'';
+  var rot=document.getElementById('wzRoteiro');
+  var rotTxt=p.roteiro? p.roteiro(_wz) : '';
+  rot.style.display=rotTxt?'block':'none'; rot.textContent=rotTxt;
+  // Alerta de prazo (config decide) + score (Etapa 2)
+  var ap=document.getElementById('wzAlertaPrazo');
+  var apTxt=(p.alertaPrazo)? p.alertaPrazo(_wz) : '';
+  ap.classList.toggle('on', !!apTxt); ap.textContent=apTxt||'';
+  document.getElementById('wzScore').innerHTML=(cfg.scoreHtml && p.mostraScore)? cfg.scoreHtml(_wz) : '';
+  _wizRenderCampos();
+  document.getElementById('wzBtnAvancar').style.display=_wz.readonly?'none':'';
+  document.getElementById('wzBtnDescartar').style.display=_wz.readonly?'none':'';
+  document.getElementById('wzBtnAvancar').textContent=_wz.passo===cfg.passos.length?'✅ Concluir':'Salvar e avançar →';
+  document.getElementById('wzAviso').style.display='none';
+  _wizValida();
+}
+function _wizRenderCampos(){
+  var p=_wz.cfg.passos[_wz.passo-1], d=_wzD(), a=_wz.alvo;
+  document.getElementById('wzCampos').innerHTML=p.campos.map(function(c){
+    if(c.cond && !c.cond(_wz)) return '';
+    var v=d[c.id];
+    if(v==null && c.pre){ v=c.pre(a,_wz); if(v!=null) d[c.id]=v; }
+    v=v==null?'':v;
+    var attrs=' id="wz_'+c.id+'" '+(_wz.readonly?'disabled ':'')+'oninput="_wizCampoChange(\''+c.id+'\',this.value)" onchange="_wizCampoChange(\''+c.id+'\',this.value)"';
+    var inner;
+    if(c.tipo==='select'){
+      inner='<select'+attrs+'><option value="">— Selecione —</option>'+(c.opts||[]).map(function(o){
+        var ov=typeof o==='string'?o:o.v, ot=typeof o==='string'?o:o.t;
+        return '<option value="'+esc(ov)+'"'+(String(v)===String(ov)?' selected':'')+'>'+esc(ot)+'</option>';
+      }).join('')+'</select>';
+    } else if(c.tipo==='textarea'){
+      inner='<textarea'+attrs+'>'+esc(v)+'</textarea>';
+    } else {
+      inner='<input type="'+(c.tipo||'text')+'" value="'+esc(v)+'"'+attrs+'>';
+    }
+    return '<div class="fld'+(c.full?' full':'')+'"><label>'+esc(c.label)+(c.req?' <span class="req">*</span>':'')+'</label>'+inner+'</div>';
+  }).join('');
+}
+function _wizCampoChange(id, valor){
+  _wzD()[id]=valor;
+  var p=_wz.cfg.passos[_wz.passo-1];
+  if(p.campos.some(function(c){ return c.cond; })) _wizRenderCampos();   // campos condicionais
+  if(_wz.cfg.aoMudar) _wz.cfg.aoMudar(_wz);
+  _wizValida();
+}
+function _wizValida(){
+  var p=_wz.cfg.passos[_wz.passo-1], d=_wzD();
+  var ok=p.campos.every(function(c){
+    if(!c.req) return true;
+    if(c.cond && !c.cond(_wz)) return true;
+    return String(d[c.id]||'').trim()!=='';
+  });
+  var btn=document.getElementById('wzBtnAvancar');
+  if(btn) btn.disabled=!ok || _wz.readonly;
+  if(ok) document.getElementById('wzAviso').style.display='none';
+  return ok;
+}
+async function _wizUpsert(concluido){
+  var sb=_sb(); if(!sb || !_wz.alvo || !_empresaAtiva) return;
+  var sessao=_wzElapsed();
+  _wz.tempoBase+=sessao; _wz.inicio=_wz.inicio?Date.now():null;
+  try{
+    await sb.from('prospeccao_etapas').upsert({
+      alvo_id:_wz.alvo.id, empresa_id:_empresaAtiva.id, etapa:_wz.cfg.etapa,
+      dados_json:_wz.dados, passo_atual:_wz.passo, passos_concluidos:_wz.feitos,
+      tempo_total_segundos:_wz.tempoBase,
+      concluido:!!concluido, concluido_em: concluido? new Date().toISOString():null,
+      usuario_id: await _obterUsuarioId(), atualizado_em:new Date().toISOString()
+    }, {onConflict:'alvo_id,etapa'});
+  }catch(e){}
+  return sessao;
+}
+async function _wzSetStatusAlvo(status, extras){
+  var sb=_sb(); if(!sb || !_wz.alvo) return;
+  var upd=Object.assign({ status:status, atualizado_em:new Date().toISOString() }, extras||{});
+  try{ await sb.from('prospeccao_alvos').update(upd).eq('id', _wz.alvo.id); Object.assign(_wz.alvo, upd); }catch(e){}
+}
+function _wzParabens(txt, ms){
+  var el=document.getElementById('wzParabens');
+  el.textContent=txt; el.classList.add('on');
+  setTimeout(function(){ el.classList.remove('on'); }, ms||3500);
+}
+var _wzAvancando=false;
+async function _wizAvancar(){
+  if(_wzAvancando || _wz.readonly) return;
+  if(!_wizValida()){ document.getElementById('wzAviso').style.display='block'; return; }
+  var cfg=_wz.cfg, p=cfg.passos[_wz.passo-1];
+  if(p.antesAvancar){
+    var res=await p.antesAvancar(_wz);
+    if(res==='parou') return;   // ex.: descarte no P3 (fluxo já resolvido) ou usuário desistiu
+  }
+  _wzAvancando=true;
+  try{
+    var passoAtual=_wz.passo, ultimo=passoAtual===cfg.passos.length;
+    if(_wz.feitos.indexOf(passoAtual)<0) _wz.feitos.push(passoAtual);
+    if(!ultimo) _wz.passo=passoAtual+1;
+    var sessao=await _wizUpsert(ultimo);
+    if(p.aoSalvar) await p.aoSalvar(_wz);
+    await _log(_wz.alvo.id, cfg.etapa+'_p'+passoAtual, 'passo_concluido', _wz.dados['p'+passoAtual]||{}, sessao||0);
+    if(ultimo){
+      await cfg.aoConcluir(_wz);
+      await _log(_wz.alvo.id, cfg.etapa, 'wizard_concluido', {tempo_total:_wz.tempoBase}, 0);
+      _wzParabens(cfg.parabensFinal(_wz), 3000);
+      setTimeout(function(){ _wizFechar(); }, 1600);
+    } else {
+      _wzParabens(p.parabens||'Passo concluído!');
+      _wizRender();
+    }
+  }finally{ _wzAvancando=false; }
+}
+function _wizFechar(){
+  if(_wz.timer){ clearInterval(_wz.timer); _wz.timer=null; }
+  _wz.inicio=null; _wz.cfg=null; _wz.alvo=null;
+  mostrarSecao('alvos');
+  carregarTudo();
+}
+async function _wizSair(){
+  if(_wz.readonly || !_wz.cfg){ _wizFechar(); return; }
+  var sessao=await _wizUpsert(false);
+  await _log(_wz.alvo.id, _wz.cfg.etapa, 'saiu_sem_concluir', {passo:_wz.passo}, sessao||0);
+  _wizFechar();
+}
+async function _wizDescartar(){
+  if(!_wz.alvo || _wz.readonly) return;
+  if(!confirm('Descartar "'+_wz.alvo.nome+'"? O alvo sai do funil.')) return;
+  var sessao=await _wizUpsert(false);
+  await _wzSetStatusAlvo('descartado');
+  await _log(_wz.alvo.id, _wz.cfg.etapa, 'descartou', {passo:_wz.passo}, sessao||0);
+  toast('Alvo descartado.');
+  _wizFechar();
+}
+
+/* ── Config: Wizard de Prospecção — Etapa 1 (6 passos) ───────── */
+var SEGMENTOS=['Automotivo','Alimentício','Químico','Farmacêutico','Têxtil','Metalúrgico','Outro'];
+var PORTES=[{v:'',t:'Não identificado'},{v:'Médio (100–500 func.)',t:'Médio (100–500 func.)'},{v:'Grande (500+ func.)',t:'Grande (500+ func.)'}];
+var WIZ_PROSPECCAO={
+  etapa:'prospeccao',
+  titulo:'Prospecção — Etapa 1',
+  pills:['Pesquisar','Contato certo','Primeiro contato','Qualificação','Portfólio','Registrar'],
+  passos:[
+    { t:'Pesquisar empresa',
+      campos:[
+        { id:'nome', label:'Nome da empresa', tipo:'text', req:true, pre:function(a){ return a.nome; } },
+        { id:'perfil', label:'Perfil do cliente', tipo:'select', req:true, pre:function(a){ return a.perfil||null; },
+          opts:[{v:'A',t:'A — Fabricante de máquinas (OEM)'},{v:'B',t:'B — Indústria operadora'}] },
+        { id:'segmento', label:'Segmento', tipo:'select', req:true, opts:SEGMENTOS, pre:function(a){ return SEGMENTOS.indexOf(a.segmento)>=0?a.segmento:null; } },
+        { id:'porte', label:'Porte estimado', tipo:'select', opts:PORTES.slice(1), pre:function(a){ return a.porte||null; } },
+        { id:'faz', label:'O que a empresa faz / o que descobri', tipo:'textarea', full:true, req:true,
+          pre:function(a,w){ var pq=w.etapasAll.pesquisa; return (pq && pq.dados_json && pq.dados_json.faz)||null; } },
+        { id:'fornecedor', label:'Já tem fornecedor elétrico conhecido?', tipo:'select',
+          opts:['Não identificado','Sim, tem','Não tem','Faz internamente'],
+          pre:function(a,w){ var pq=w.etapasAll.pesquisa; return (pq && pq.dados_json && pq.dados_json.fornecedor)||null; } }
+      ],
+      aoSalvar:async function(w){
+        var d=w.dados.p1;
+        await _wzSetStatusAlvo(w.alvo.status, { perfil:d.perfil||null, segmento:d.segmento||null, porte:d.porte||null, nome:d.nome||w.alvo.nome });
+      },
+      parabens:'Ótimo começo! Empresa pesquisada e salva. Agora vá achar o contato certo.' },
+    { t:'Contato certo',
+      instr:'Nunca fale com recepcionista. Procure no LinkedIn pelo cargo certo.',
+      campos:[
+        { id:'nome', label:'Nome do contato', tipo:'text', req:true },
+        { id:'cargo', label:'Cargo', tipo:'select', req:true,
+          opts:['Diretor técnico','Engenheiro de produto','Sócio-dono','Gerente de manutenção','Engenheiro de automação','Outro'] },
+        { id:'whatsapp', label:'WhatsApp / Telefone', tipo:'text' },
+        { id:'email', label:'E-mail', tipo:'email' },
+        { id:'linkedin', label:'LinkedIn', tipo:'text' }
+      ],
+      parabens:'Contato mapeado! Você encontrou a pessoa certa. Hora de fazer o primeiro contato.' },
+    { t:'Primeiro contato',
+      instr:'Canal preferido: WhatsApp ou ligação direta. E-mail só como reforço.',
+      roteiro:function(w){
+        return _wzPerfil()==='B'
+          ? '"Modernizamos máquinas com retrofit elétrico e automação. Posso te mostrar casos parecidos com o que vocês têm?"'
+          : '"Fazemos projeto e montagem de painéis para fabricantes de máquinas — do esquema elétrico até o painel montado e testado, incluindo CLP e automação. Posso te mostrar o que já fizemos?"';
+      },
+      campos:[
+        { id:'canal', label:'Canal utilizado', tipo:'select', req:true, opts:['WhatsApp','Ligação','E-mail','LinkedIn','Visita presencial'] },
+        { id:'data', label:'Data do contato', tipo:'date', req:true },
+        { id:'resultado', label:'Resultado do contato', tipo:'select', req:true,
+          opts:[{v:'interesse',t:'Interesse — quer saber mais'},{v:'ligar_depois',t:'Pediu para ligar depois'},{v:'pediu_portfolio',t:'Solicitou portfólio'},{v:'sem_resposta',t:'Sem resposta — tentar novamente'},{v:'sem_interesse',t:'Sem interesse — descartar'}] },
+        { id:'obs', label:'Observações', tipo:'textarea', full:true }
+      ],
+      antesAvancar:async function(w){
+        if((w.dados.p3||{}).resultado!=='sem_interesse') return;
+        if(confirm('Resultado "Sem interesse". Descartar este lead agora?')){
+          var sessao=await _wizUpsert(false);
+          await _wzSetStatusAlvo('descartado');
+          await _log(w.alvo.id, 'prospeccao_p3', 'descartou_sem_interesse', w.dados.p3||{}, sessao||0);
+          toast('Lead descartado.');
+          _wizFechar();
+          return 'parou';
+        }
+        return 'parou';   // não descartou → fica no passo p/ ajustar o resultado
+      },
+      parabens:'Primeiro contato feito! Esse é o passo que a maioria não dá. Você avançou.' },
+    { t:'Qualificação inicial',
+      instr:'3 perguntas rápidas. Se não souber, marque "Não sei" — isso também é informação.',
+      campos:[
+        { id:'projeto', label:'① Tem projeto ou máquina em desenvolvimento agora?', tipo:'select', req:true, full:true,
+          opts:['Sim — projeto ativo agora','Sim — previsão nos próximos 3 meses','Não — sem projeto no momento','Não sei ainda'] },
+        { id:'decisor', label:'② Quem decide a contratação?', tipo:'select', req:true, full:true,
+          opts:['O próprio contato decide','Contato indica, diretoria aprova','Compras decide','Não sei ainda'] },
+        { id:'verba', label:'③ Tem verba ou projeto aprovado?', tipo:'select', req:true, full:true,
+          opts:['Sim — verba aprovada','Em aprovação','Só interesse, sem verba ainda','Não sei ainda'] }
+      ],
+      parabens:'Lead qualificado inicialmente! Você sabe o que esse cliente precisa.' },
+    { t:'Portfólio',
+      campos:[
+        { id:'apresentado', label:'O que foi apresentado', tipo:'select', req:true, full:true,
+          opts:['Fotos de painéis montados','Esquemas elétricos','Apresentação comercial','Vídeo de automação','Ainda não apresentou — próximo passo'] },
+        { id:'reacao', label:'Reação do cliente', tipo:'textarea', full:true }
+      ],
+      parabens:'Portfólio apresentado! O cliente já te conhece. Defina o próximo passo.' },
+    { t:'Registrar próxima ação',
+      campos:[
+        { id:'acao', label:'Próxima ação', tipo:'select', req:true,
+          opts:['Ligar para follow-up','Enviar proposta','Agendar visita técnica','Aguardar retorno','Apresentar ao decisor','Descartar'] },
+        { id:'data', label:'Data da próxima ação', tipo:'date', req:true },
+        { id:'responsavel', label:'Responsável', tipo:'select',
+          opts:[], pre:null },   // opts populadas dinamicamente (abaixo)
+        { id:'obs', label:'Observação final', tipo:'textarea', full:true }
+      ] }
+  ],
+  aoConcluir:async function(w){
+    var d=w.dados.p6||{};
+    // Decisão aprovada: conclusão da Etapa 1 avança o funil p/ 'qualificando'
+    // (o alvo JÁ estava 'prospectando' na entrada — spec desatualizado).
+    await _wzSetStatusAlvo('qualificando', { responsavel_id:d.responsavel||null });
+  },
+  parabensFinal:function(){ return 'Lead 100% prospectado! Registrado e pronto para qualificação.'; }
+};
+// Responsável (P6): usuários da empresa, carregados no abrirWizard
+Object.defineProperty(WIZ_PROSPECCAO.passos[5].campos[2], 'opts', {
+  get:function(){ return (_usuariosEmp||[]).map(function(u){ return {v:u.usuario_id, t:u.nome||'—'}; }); }
+});
+
+// Placeholder do C2 (substituído no commit do wizard de qualificação)
+var WIZ_QUALIFICACAO=null;
 
 /* ── Integração com o portal ─────────────────────────────────── */
 async function _onTrocaEmpresa(d){
