@@ -133,6 +133,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .wz-drop .wd-ico{font-size:1.5rem;margin-bottom:.25rem}
 .wz-drop .wd-sub{font-size:.68rem;color:var(--text3);margin-top:.25rem}
 .wz-drop.ok{border-style:solid;border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.06)}
+#wzCampos details.wz-assin{border:1px dashed var(--border2);border-radius:var(--r2);padding:.45rem .6rem;margin-bottom:.5rem}
+#wzCampos details.wz-assin summary{cursor:pointer;font-size:.74rem;font-weight:700;color:var(--text2)}
+#wzCampos details.wz-assin textarea{width:100%;min-height:90px;margin-top:.45rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.5rem .6rem;font-size:.76rem;font-family:inherit}
 .wz-parse-res{display:none;font-size:.74rem;color:var(--green);background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:var(--r2);padding:.5rem .7rem;margin-top:.6rem;line-height:1.5}
 .wz-parse-res.on{display:block}
 .wz-parse-res.err{color:var(--red);background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.3)}
@@ -1575,6 +1578,7 @@ function _wzP5Html(w){
         '<div class="fc-sec-tit" style="margin:0">Contato '+(i+1)+(ct.contato_principal?' · ⭐ principal':'')+'</div>'+
         (cts.length>1?'<button class="btn btn-red btn-sm" type="button" onclick="_wzP5Remover('+i+')">✕ Remover</button>':'')+
       '</div>'+
+      _wzAssinHtml(i, ct)+
       '<div class="fgrid">'+
         inp(i,'nome','Nome',true)+inp(i,'cargo','Cargo')+inp(i,'departamento','Departamento')+
         selc(i,'tipo_vinculo','Vínculo',[{v:'funcionario',t:'Funcionário'},{v:'socio',t:'Sócio'},{v:'terceiro',t:'Terceiro'},{v:'consultor',t:'Consultor'}])+
@@ -1594,6 +1598,110 @@ function _wzP5Html(w){
   }).join('')+
   '<div class="fld full"><button class="btn" type="button" onclick="_wzP5Adicionar()">＋ Adicionar outro contato</button></div>';
 }
+/* ── P5: parser de assinatura de e-mail ──────────────────────── */
+var _ASSIN_CARGOS=/(gerente|diretor|engenheir|supervisor|coordenador|analista|comprador|t[eé]cnic|presidente|s[oó]ci[oa]|ceo|cto|cfo|coo|vendedor|consultor|especialista|gestor)/i;
+var _ASSIN_DESPEDIDA=/^(atenciosamente|att\.?\b|abra[cç]os?|cordialmente|grat[oa]|obrigad[oa]|sds|sauda[cç][oõ]es)/i;
+var _ASSIN_EMPRESA=/\b(ltda\.?|s\.?\s?a\.?|eireli|epp|holding|grupo|group)\b|\bme\b/i;
+function _wzAssinParse(texto){
+  var out={};
+  var linhas=String(texto||'').split(/\r?\n/).map(function(l){ return l.replace(/\s+/g,' ').trim(); })
+    .filter(function(l){ return l && !/^[-_=*.•|]+$/.test(l) && !_ASSIN_DESPEDIDA.test(l); });
+  var usadas={};
+  // 1) e-mail
+  linhas.forEach(function(l,i){
+    if(out.email_profissional!=null) return;
+    var m=/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(l);
+    if(m){ out.email_profissional=m[0].toLowerCase(); usadas[i]=1; }
+  });
+  // 2) linkedin
+  linhas.forEach(function(l,i){
+    if(out.linkedin!=null) return;
+    var m=/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,;]+/i.exec(l);
+    if(m){ out.linkedin=m[0]; usadas[i]=1; }
+  });
+  // 3) telefones — linhas com (XX) ou +55; 1º → WhatsApp, 2º → Telefone
+  var fones=[];
+  linhas.forEach(function(l,i){
+    if(!/\(\d{2}\)|\+55/.test(l)) return;
+    var re=/(?:\+55[\s.-]?)?(?:\(\d{2}\)|\d{2})[\s.-]?\d{4,5}[\s.-]?\d{4}/g, m;
+    while((m=re.exec(l))!==null){
+      var f=m[0].trim();
+      if(fones.indexOf(f)<0) fones.push(f);
+      usadas[i]=1;
+    }
+  });
+  if(fones[0]) out.whatsapp=fones[0];
+  if(fones[1]) out.telefone=fones[1];
+  // 4) empresa — SÓ para o aviso de divergência (não é gravada; decisão aprovada)
+  linhas.forEach(function(l,i){
+    if(out._empresa!=null || usadas[i]) return;
+    if(_ASSIN_EMPRESA.test(l)){ out._empresa=l; usadas[i]=1; }
+  });
+  // 5) cargo — separador (| / – —) ou palavra-chave; "Nome | Cargo" divide os dois
+  linhas.forEach(function(l,i){
+    if(out.cargo!=null || usadas[i]) return;
+    var partes=l.split(/\s*[|•]\s*|\s+[\/–—-]\s+/).map(function(p){ return p.trim(); }).filter(Boolean);
+    if(partes.length>1){
+      var idx=-1;
+      partes.forEach(function(p,j){ if(idx<0 && _ASSIN_CARGOS.test(p)) idx=j; });
+      if(idx>=0){
+        out.cargo=partes[idx];
+        if(out.nome==null && idx>0 && !_ASSIN_CARGOS.test(partes[0])) out.nome=partes[0];
+        usadas[i]=1;
+      }
+    } else if(_ASSIN_CARGOS.test(l)){ out.cargo=l; usadas[i]=1; }
+  });
+  // 6) nome — primeira linha útil restante
+  if(out.nome==null){
+    for(var i=0;i<linhas.length;i++){
+      if(usadas[i] || _ASSIN_EMPRESA.test(linhas[i])) continue;
+      out.nome=linhas[i]; break;
+    }
+  }
+  return out;
+}
+function _wzAssinExtrair(i){
+  var cts=_wzP5Contatos(), ct=cts[i]; if(!ct) return;
+  var ext=_wzAssinParse(ct._assin_texto||'');
+  var campos=['nome','cargo','whatsapp','telefone','email_profissional','linkedin'];
+  var aplicados=0, mantidos=0;
+  campos.forEach(function(k){
+    if(ext[k]==null) return;
+    if(String(ct[k]||'').trim()!==''){ mantidos++; return; }   // não-destrutivo
+    ct[k]=ext[k]; aplicados++;
+  });
+  if(!aplicados && !mantidos){
+    toast('Não reconheci nada nessa assinatura — preencha manualmente.', 'err');
+    return;
+  }
+  ct._assin_usada=true;
+  ct._assin_resumo='✓ '+aplicados+' campo(s) extraído(s) da assinatura'+
+    (mantidos?' — '+mantidos+' mantido(s) como você digitou':'')+'. Tudo continua editável.';
+  // Empresa extraída NÃO é gravada — só aviso quando parecer de OUTRA empresa
+  ct._assin_aviso='';
+  if(ext._empresa){
+    var alvo=_wzNormLinha(((_wz.dados.p1||{}).apelido||'')+' '+((_wz.dados.p1||{}).razao_social||''));
+    var empAss=_wzNormLinha(ext._empresa).replace(/\b(LTDA|S ?A|EIRELI|EPP|ME)\b\.?/g,' ').replace(/\s+/g,' ').trim();
+    var tok=empAss.split(' ').filter(function(t){ return t.length>=3; })[0]||'';
+    if(tok && alvo.indexOf(tok)<0)
+      ct._assin_aviso='⚠️ A assinatura parece ser de outra empresa ('+ext._empresa+') — confira se o contato é deste cliente.';
+  }
+  _wizRenderCampos(); _wizValida();
+  toast('Contato extraído da assinatura.');
+}
+function _wzAssinHtml(i, ct){
+  if(ct._assin_usada){
+    return '<div class="fld full"><div class="wz-parse-res on">'+esc(ct._assin_resumo||'✓ Contato extraído da assinatura.')+
+      (ct._assin_aviso?'<br><span style="color:var(--amber)">'+esc(ct._assin_aviso)+'</span>':'')+'</div></div>';
+  }
+  return '<div class="fld full"><details class="wz-assin"'+(ct._assin_aberta?' open':'')+
+    ' ontoggle="var c=_wzP5Contatos()['+i+']; if(c) c._assin_aberta=this.open">'+
+    '<summary>📧 Colar assinatura de e-mail (preenche o contato automaticamente)</summary>'+
+    '<textarea placeholder="Cole aqui a assinatura do e-mail da pessoa…" oninput="_wzP5Contatos()['+i+']._assin_texto=this.value">'+esc(ct._assin_texto||'')+'</textarea>'+
+    '<button class="btn btn-emp btn-sm" type="button" style="margin-top:.4rem" onclick="_wzAssinExtrair('+i+')">⚙️ Extrair contato</button>'+
+  '</details></div>';
+}
+
 function _wzP5Change(i,k,v){ var cts=_wzP5Contatos(); if(cts[i]){ cts[i][k]=v; _wizValida(); } }
 function _wzP5Flag(i,k,marcado){
   var cts=_wzP5Contatos(); if(!cts[i]) return;
