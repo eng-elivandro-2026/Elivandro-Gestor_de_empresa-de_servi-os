@@ -56,7 +56,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* Cards de cliente */
 .cli-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.7rem}
-.cli{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-bdr);border-radius:var(--r);padding:.75rem .85rem;cursor:pointer;transition:border-color .12s;text-align:left;font-family:inherit;color:var(--text)}
+.cli{position:relative;background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--emp-bdr);border-radius:var(--r);padding:.75rem .85rem;cursor:pointer;transition:border-color .12s;text-align:left;font-family:inherit;color:var(--text)}
+.cli-cod{position:absolute;top:.55rem;right:.65rem;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.66rem;font-weight:800;color:var(--emp-cor);background:var(--emp-bg);border:1px solid var(--emp-bdr);border-radius:var(--r2);padding:.1rem .4rem}
 .cli:hover{border-color:var(--emp-bdr)}
 .cli.inativo{border-left-color:var(--border2);opacity:.75}
 .cli-nome{font-size:.88rem;font-weight:700;margin-bottom:.1rem}
@@ -69,6 +70,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pill.origem{background:var(--bg3);color:var(--text3);border-color:var(--border)}
 .pill.papel{background:rgba(88,166,255,.12);color:var(--blue);border-color:rgba(88,166,255,.32)}
 .pill.principal{background:rgba(240,165,0,.12);color:var(--accent);border-color:rgba(240,165,0,.35)}
+.pill.grupo{background:rgba(188,140,255,.12);color:var(--purple);border-color:rgba(188,140,255,.32)}
+
+/* Aviso de duplicatas + tela de revisão */
+.aviso-dup{display:none;font-size:.76rem;color:var(--amber);background:rgba(212,160,23,.09);border:1px solid rgba(212,160,23,.35);border-radius:var(--r2);padding:.5rem .7rem;margin-bottom:.7rem;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:space-between}
+.aviso-dup.on{display:flex}
+.psec{display:none}.psec.on{display:block}
+.dup-par{border:1px solid var(--border);border-radius:var(--r);padding:.7rem .8rem;margin-bottom:.8rem}
+.dup-cols{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem}
+@media(max-width:700px){.dup-cols{grid-template-columns:1fr}}
+.dup-col{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .65rem;font-size:.74rem}
+.dup-col .dc-nome{font-weight:800;font-size:.82rem;margin-bottom:.2rem}
+.dup-col .dc-linha{color:var(--text2);padding:.12rem 0}
+.dup-col.vencedor{border-color:var(--emp-bdr)}
+.dup-acoes{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
 
 /* Botões */
 .btn{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:var(--r2);padding:.48rem .95rem;font-size:.8rem;font-weight:700;font-family:inherit;cursor:pointer}
@@ -157,6 +172,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <div class="kpi-g" id="kpis"></div>
 
+  <!-- ══ Seção: Lista ══ -->
+  <div id="sec-lista" class="psec on">
   <div class="split" id="splitClientes">
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
@@ -165,6 +182,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         title="Em breve — o cadastro guiado (wizard) chega na próxima atualização.">＋ Novo cliente</button>
     </div>
     <div class="sec-desc">Clique num cliente para abrir a ficha completa.</div>
+
+    <!-- Aviso discreto de possíveis duplicatas (não bloqueia nada) -->
+    <div class="aviso-dup" id="avisoDup">
+      <span id="avisoDupTexto">—</span>
+      <button class="btn btn-sm" id="btnRevisarDup" onclick="abrirRevisaoDup()" style="display:none">🔍 Revisar</button>
+    </div>
 
     <div class="filtros">
       <input id="fBusca" placeholder="🔍 Apelido, razão social ou CNPJ…" oninput="renderClientes()">
@@ -204,6 +227,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
   </div><!-- /split -->
+  </div><!-- /sec-lista -->
+
+  <!-- ══ Seção: Revisão de duplicatas (só dono/admin; só quando há suspeitos) ══ -->
+  <div id="sec-revisao" class="psec">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+        <div class="sec-tit">🔍 Revisão de duplicatas</div>
+        <button class="btn btn-sm" onclick="fecharRevisaoDup()">← Voltar à lista</button>
+      </div>
+      <div class="sec-desc">Pares com nomes similares. <b>Mesclar</b> mantém o cadastro mais completo (☑), copia o que só o outro tem e transfere os contatos — o outro registro é apagado. <b>São diferentes</b> guarda sua decisão e o par não é mais apontado. Filiais do mesmo grupo com CNPJs diferentes: prefira preencher o campo <b>Grupo</b> (no cadastro) em vez de mesclar.</div>
+      <div id="listaDup"></div>
+    </div>
+  </div>
 
 </div>
 
@@ -232,6 +268,9 @@ var _contatosByCli = {};         // cliente_id -> [contatos]
 var _usuarioIdCache = null;
 var _migPendentes = [];          // registros do cadastro antigo ainda não migrados
 var _migDispensada = false;      // "Agora não" — só nesta sessão
+var _dupOk = new Set();          // pares "são diferentes" (persistidos em configuracoes)
+var _dupPares = [];              // pares suspeitos detectados [[idA,idB],...]
+var _backfillJaTentou = false;   // retry único do backfill de códigos
 
 function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : window.sbClient || null; }catch(e){ return window.sbClient || null; } }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -292,18 +331,24 @@ async function carregarTudo(){
   var sb=_sb(); if(!sb || !_empresaAtiva || !_empresaAtiva.id) return;
   try{
     var res=await Promise.all([
-      sb.from('clientes').select('*').eq('empresa_id', _empresaAtiva.id).order('apelido', {ascending:true}),
-      sb.from('cliente_contatos').select('*').eq('empresa_id', _empresaAtiva.id).order('criado_em', {ascending:true})
+      sb.from('clientes').select('*').eq('empresa_id', _empresaAtiva.id),
+      sb.from('cliente_contatos').select('*').eq('empresa_id', _empresaAtiva.id).order('criado_em', {ascending:true}),
+      sb.from('configuracoes').select('valor').eq('chave','tf_clientes_dup_ok').eq('empresa_id', _empresaAtiva.id).maybeSingle()
     ]);
     _clientes=(res[0] && res[0].data)||[];
     _contatosByCli={};
     ((res[1] && res[1].data)||[]).forEach(function(c){
       (_contatosByCli[c.cliente_id]=_contatosByCli[c.cliente_id]||[]).push(c);
     });
+    var dupOkVal=res[2] && res[2].data && res[2].data.valor;
+    _dupOk=new Set(Array.isArray(dupOkVal)?dupOkVal:[]);
   }catch(e){ _clientes=[]; _contatosByCli={}; }
+  _clientes.sort(_cmpCodigo);
+  await _backfillCodigos();      // migrados sem código ganham CLI-XXX (1ª abertura)
   _popularFiltros();
   renderKpis();
   renderClientes();
+  _detectarDuplicatas();
   if(_ficha.cliente){
     var atual=_clientes.find(function(c){ return c.id===_ficha.cliente.id; });
     if(atual){ _ficha.cliente=atual; _fichaRender(); } else fecharFicha();
@@ -321,6 +366,48 @@ function _popularFiltros(){
   }
   popular('fCidade',   Array.from(new Set(_clientes.map(function(c){ return (c.cidade||'').trim(); }).filter(Boolean))).sort());
   popular('fSegmento', Array.from(new Set(_clientes.map(function(c){ return (c.segmento||'').trim(); }).filter(Boolean))).sort());
+}
+
+/* ── Código sequencial (CLI-001) — gerado na aplicação ───────── */
+function _codNum(c){ var m=/^CLI-(\d+)$/i.exec(String((c && c.codigo)||'').trim()); return m?parseInt(m[1],10):null; }
+function _maxCodNum(){ return _clientes.reduce(function(mx,c){ var n=_codNum(c); return (n!=null && n>mx)?n:mx; },0); }
+function _fmtCod(n){ return 'CLI-'+String(n).padStart(3,'0'); }
+function _proxCodigo(){ return _fmtCod(_maxCodNum()+1); }
+// Ordena por sufixo numérico (CLI-002 < CLI-010, mesmo além de 999);
+// sem código → fim da lista; empate → apelido
+function _cmpCodigo(a,b){
+  var na=_codNum(a), nb=_codNum(b);
+  if(na!=null && nb!=null && na!==nb) return na-nb;
+  if(na!=null && nb==null) return -1;
+  if(na==null && nb!=null) return 1;
+  return String(a.apelido||'').localeCompare(String(b.apelido||''),'pt-BR');
+}
+// Backfill: registros migrados (sem código) recebem sequencial em ordem
+// de criado_em. Se outra sessão numerar ao mesmo tempo, o índice único
+// (empresa_id,codigo) rejeita → recarrega e tenta UMA vez de novo.
+async function _backfillCodigos(){
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  var sem=_clientes.filter(function(c){ return _codNum(c)==null; });
+  if(!sem.length) return;
+  sem.sort(function(a,b){ return String(a.criado_em||'').localeCompare(String(b.criado_em||'')); });
+  var base=_maxCodNum(), houveErro=false;
+  for(var i=0;i<sem.length;i++){
+    var cod=_fmtCod(base+1+i);
+    try{
+      var res=await sb.from('clientes').update({codigo:cod, atualizado_em:new Date().toISOString()}).eq('id', sem[i].id);
+      if(res && res.error) throw res.error;
+      sem[i].codigo=cod;
+    }catch(e){ houveErro=true; break; }
+  }
+  if(houveErro && !_backfillJaTentou){
+    _backfillJaTentou=true;
+    try{
+      var r=await sb.from('clientes').select('*').eq('empresa_id', _empresaAtiva.id);
+      if(r && r.data) _clientes=r.data;
+    }catch(e){}
+    await _backfillCodigos();
+  }
+  _clientes.sort(_cmpCodigo);
 }
 
 /* ── KPIs ────────────────────────────────────────────────────── */
@@ -370,11 +457,13 @@ function renderClientes(){
     if(c.segmento) meta.push('🏷️ '+esc(c.segmento));
     meta.push('👤 '+nCts+' contato'+(nCts===1?'':'s'));
     return '<button class="cli'+(c.ativo===false?' inativo':'')+'" onclick="abrirFicha(\''+c.id+'\')">'+
-      '<div class="cli-nome">'+esc(c.apelido)+'</div>'+
+      (c.codigo?'<span class="cli-cod">'+esc(c.codigo)+'</span>':'')+
+      '<div class="cli-nome" style="padding-right:4rem">'+esc(c.apelido)+'</div>'+
       (c.razao_social?'<div class="cli-razao">'+esc(c.razao_social)+'</div>':'')+
       '<div class="cli-meta">'+meta.join(' ')+'</div>'+
       '<div class="cli-badges">'+
         '<span class="pill '+(c.ativo===false?'st-inativo':'st-ativo')+'">'+(c.ativo===false?'Inativo':'Ativo')+'</span>'+
+        (c.grupo?'<span class="pill grupo">🏢 '+esc(c.grupo)+'</span>':'')+
         (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
       '</div>'+
     '</button>';
@@ -418,7 +507,9 @@ function _fichaRender(){
   var c=_ficha.cliente;
   document.getElementById('fcNome').textContent=c.apelido;
   document.getElementById('fcBadges').innerHTML=
+    (c.codigo?'<span class="cli-cod" style="position:static">'+esc(c.codigo)+'</span>':'')+
     '<span class="pill '+(c.ativo===false?'st-inativo':'st-ativo')+'">'+(c.ativo===false?'Inativo':'Ativo')+'</span>'+
+    (c.grupo?'<span class="pill grupo">🏢 '+esc(c.grupo)+'</span>':'')+
     (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
     (c.dados_importados_cnpj?'<span class="pill papel" title="Dados importados do Comprovante de CNPJ">📄 CNPJ importado</span>':'');
   ['R','C','O','H'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
@@ -439,8 +530,11 @@ function _fichaVistaResumo(){
   var c=_ficha.cliente;
   var endereco=[c.logradouro, c.numero].filter(Boolean).join(', ')+(c.complemento?' — '+c.complemento:'');
   var h=_fcSec('Identificação',
+    _fcKv('Código', c.codigo)+
     _fcKv('Razão social', c.razao_social)+
     _fcKv('CNPJ', c.cnpj)+
+    _fcKv('Grupo', c.grupo)+
+    _fcKv('CNPJ da matriz', c.cnpj_matriz)+
     _fcKv('Tipo', TIPO_ESTAB_LABEL[c.tipo_estabelecimento])+
     _fcKv('Porte', PORTE_LABEL[c.porte])+
     _fcKv('Situação cadastral', SITUACAO_LABEL[c.situacao_cadastral])+
@@ -675,6 +769,169 @@ async function excluirCliente(){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   DUPLICATAS — detecção discreta (prefixo + 1º token) e tela de
+   Revisão (só dono/admin): Mesclar mantém o mais completo, copia
+   campos vazios, transfere contatos/organograma e apaga o outro;
+   "São diferentes" persiste em configuracoes (tf_clientes_dup_ok).
+   ══════════════════════════════════════════════════════════════ */
+function _normNome(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+function _tok1(s){ var t=_normNome(s).split(' ').filter(function(x){ return x.length>=3; }); return t.length?t[0]:null; }
+function _parKey(a,b){ return [a,b].sort().join('|'); }
+function _parSuspeito(a,b){
+  var na=_normNome(a.apelido), nb=_normNome(b.apelido);
+  if(!na || !nb) return false;
+  if(na===nb) return true;
+  if(na.indexOf(nb)===0 || nb.indexOf(na)===0) return true;   // um é prefixo do outro
+  var ta=_tok1(a.apelido), tb=_tok1(b.apelido);
+  return !!ta && ta===tb;                                     // mesmo 1º token (≥3 letras)
+}
+
+function _detectarDuplicatas(){
+  _dupPares=[];
+  for(var i=0;i<_clientes.length;i++)
+    for(var j=i+1;j<_clientes.length;j++){
+      var a=_clientes[i], b=_clientes[j];
+      if(_dupOk.has(_parKey(a.id,b.id))) continue;
+      if(_parSuspeito(a,b)) _dupPares.push([a.id,b.id]);
+    }
+  var aviso=document.getElementById('avisoDup');
+  var revisaoAberta=document.getElementById('sec-revisao').classList.contains('on');
+  if(!_dupPares.length){
+    aviso.classList.remove('on');
+    if(revisaoAberta) fecharRevisaoDup();
+    return;
+  }
+  var ids=new Set();
+  _dupPares.forEach(function(p){ ids.add(p[0]); ids.add(p[1]); });
+  document.getElementById('avisoDupTexto').textContent=
+    '⚠️ Atenção: encontramos '+ids.size+' clientes com nomes similares. Verifique se não são duplicatas.';
+  document.getElementById('btnRevisarDup').style.display=_podeExcluir()?'':'none';
+  aviso.classList.add('on');
+  if(revisaoAberta) renderRevisaoDup();
+}
+
+function abrirRevisaoDup(){
+  if(!_podeExcluir()){ toast('Revisão disponível apenas para dono/admin.', 'err'); return; }
+  fecharFicha();
+  document.getElementById('sec-lista').classList.remove('on');
+  document.getElementById('sec-revisao').classList.add('on');
+  renderRevisaoDup();
+}
+function fecharRevisaoDup(){
+  document.getElementById('sec-revisao').classList.remove('on');
+  document.getElementById('sec-lista').classList.add('on');
+}
+
+// Campos considerados na "completude" e copiados no merge (nunca
+// sobrescrevendo o que o vencedor já tem)
+var _CAMPOS_MERGE=['razao_social','cnpj','inscricao_estadual','inscricao_municipal','tipo_estabelecimento',
+  'data_abertura','natureza_juridica','porte','situacao_cadastral','data_situacao_cadastral',
+  'cnae_principal','segmento','email','telefone','site','cep','logradouro','numero','complemento',
+  'bairro','cidade','estado','observacoes','grupo','cnpj_matriz','origem'];
+function _completude(c){
+  var n=0;
+  _CAMPOS_MERGE.forEach(function(k){ var v=c[k]; if(v!=null && String(v).trim()!=='') n++; });
+  if(Array.isArray(c.cnae_secundarios) && c.cnae_secundarios.length) n++;
+  return n;
+}
+// [vencedor, perdedor]: mais campos não-vazios; empate → código menor (mais antigo)
+function _vencedorPar(a,b){
+  var ca=_completude(a), cb=_completude(b);
+  if(ca!==cb) return ca>cb?[a,b]:[b,a];
+  var na=_codNum(a), nb=_codNum(b);
+  if(na!=null && nb!=null) return na<=nb?[a,b]:[b,a];
+  if(na!=null) return [a,b];
+  if(nb!=null) return [b,a];
+  return String(a.criado_em||'')<=String(b.criado_em||'')?[a,b]:[b,a];
+}
+
+function renderRevisaoDup(){
+  var el=document.getElementById('listaDup');
+  if(!_dupPares.length){ el.innerHTML='<div class="vazio">Nenhuma possível duplicata pendente. 🎉</div>'; return; }
+  el.innerHTML=_dupPares.map(function(p){
+    var a=_clientes.find(function(x){ return x.id===p[0]; });
+    var b=_clientes.find(function(x){ return x.id===p[1]; });
+    if(!a || !b) return '';
+    var venc=_vencedorPar(a,b)[0];
+    function col(c){
+      var n=(_contatosByCli[c.id]||[]).length;
+      return '<div class="dup-col'+(c.id===venc.id?' vencedor':'')+'">'+
+        '<div class="dc-nome">'+(c.id===venc.id?'☑ ':'')+esc(c.apelido)+
+          ' <span class="cli-cod" style="position:static;margin-left:.25rem">'+esc(c.codigo||'—')+'</span></div>'+
+        '<div class="dc-linha">Razão: '+esc(c.razao_social||'—')+'</div>'+
+        '<div class="dc-linha">CNPJ: '+esc(c.cnpj||'—')+'</div>'+
+        '<div class="dc-linha">'+esc(c.cidade||'—')+(c.grupo?' · 🏢 '+esc(c.grupo):'')+'</div>'+
+        '<div class="dc-linha">'+n+' contato'+(n===1?'':'s')+' · '+_completude(c)+' campo(s) preenchido(s)</div>'+
+      '</div>';
+    }
+    return '<div class="dup-par">'+
+      '<div class="dup-cols">'+col(a)+col(b)+'</div>'+
+      '<div class="dup-acoes">'+
+        '<button class="btn btn-sm" onclick="manterAmbosDup(\''+a.id+'\',\''+b.id+'\')">✔ São diferentes — manter ambos</button>'+
+        '<button class="btn btn-emp btn-sm" onclick="mesclarDup(\''+a.id+'\',\''+b.id+'\')">⇄ Mesclar (mantém ☑ '+esc(venc.apelido)+')</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+async function manterAmbosDup(idA, idB){
+  _dupOk.add(_parKey(idA, idB));
+  var sb=_sb();
+  if(sb && _empresaAtiva){
+    try{
+      await sb.from('configuracoes').upsert(
+        {chave:'tf_clientes_dup_ok', empresa_id:_empresaAtiva.id,
+         valor:Array.from(_dupOk), updated_at:new Date().toISOString()},
+        {onConflict:'chave,empresa_id'});
+    }catch(e){}
+  }
+  toast('Decisão guardada — o par não será mais apontado.');
+  _detectarDuplicatas();
+}
+
+async function mesclarDup(idA, idB){
+  if(!_podeExcluir()){ toast('Sem permissão para mesclar.', 'err'); return; }
+  var a=_clientes.find(function(x){ return x.id===idA; });
+  var b=_clientes.find(function(x){ return x.id===idB; });
+  if(!a || !b) return;
+  var vp=_vencedorPar(a,b), venc=vp[0], perd=vp[1];
+  var msg='Mesclar "'+perd.apelido+'" em "'+venc.apelido+'"?\n\n'+
+    '• "'+venc.apelido+'" ('+(venc.codigo||'sem código')+') é mantido e recebe o que só o outro tem\n'+
+    '• Contatos e organograma são transferidos\n'+
+    '• "'+perd.apelido+'" ('+(perd.codigo||'sem código')+') é APAGADO\n';
+  var cnV=_normCnpj(venc.cnpj), cnP=_normCnpj(perd.cnpj);
+  if(cnV && cnP && cnV!==cnP)
+    msg+='\n⚠️ Os CNPJs são DIFERENTES — podem ser filiais do mesmo grupo. Nesse caso prefira "manter ambos" e preencher o campo Grupo.\n';
+  if(!confirm(msg+'\nEsta ação não pode ser desfeita.')) return;
+  var sb=_sb(); if(!sb) return;
+  var payload={}, copiados=0;
+  _CAMPOS_MERGE.forEach(function(k){
+    var vv=venc[k], pv=perd[k];
+    if((vv==null || String(vv).trim()==='') && pv!=null && String(pv).trim()!==''){ payload[k]=pv; copiados++; }
+  });
+  if((!Array.isArray(venc.cnae_secundarios) || !venc.cnae_secundarios.length)
+      && Array.isArray(perd.cnae_secundarios) && perd.cnae_secundarios.length){
+    payload.cnae_secundarios=perd.cnae_secundarios; copiados++;
+  }
+  if(perd.dados_importados_cnpj && !venc.dados_importados_cnpj) payload.dados_importados_cnpj=true;
+  try{
+    if(Object.keys(payload).length){
+      payload.atualizado_em=new Date().toISOString();
+      var r1=await sb.from('clientes').update(payload).eq('id', venc.id);
+      if(r1 && r1.error) throw r1.error;
+    }
+    var r2=await sb.from('cliente_contatos').update({cliente_id:venc.id}).eq('cliente_id', perd.id);
+    if(r2 && r2.error) throw r2.error;
+    var r3=await sb.from('cliente_organograma').update({cliente_id:venc.id}).eq('cliente_id', perd.id);
+    if(r3 && r3.error) throw r3.error;
+    var r4=await sb.from('clientes').delete().eq('id', perd.id);
+    if(r4 && r4.error) throw r4.error;
+    toast('Mesclado em "'+venc.apelido+'"'+(copiados?' — '+copiados+' campo(s) copiado(s)':'')+'. Contatos transferidos.');
+    await carregarTudo();
+  }catch(e){ toast('Erro ao mesclar — nada foi apagado sem antes transferir.', 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════════════
    MIGRAÇÃO DO CADASTRO ANTIGO (localStorage + configuracoes)
    — NÃO apaga os dados antigos (rede de segurança / DataGuard).
    — Flag tf_clientes_migrado em configuracoes: banner some.
@@ -749,9 +1006,11 @@ async function migrarCadastroAntigo(){
   var sb=_sb(); if(!sb || !_empresaAtiva || !_migPendentes.length) return;
   var btn=document.getElementById('btnMigrar'); if(btn) btn.disabled=true;
   var usuarioId=await _obterUsuarioId();
-  var rows=_migPendentes.map(function(x){
+  var codBase=_maxCodNum();   // migrados já saem com código sequencial
+  var rows=_migPendentes.map(function(x, i){
     return {
       empresa_id:_empresaAtiva.id,
+      codigo:_fmtCod(codBase+1+i),
       apelido:String(x.nome).trim(),
       cnpj:(x.cnpj && String(x.cnpj).trim())||null,
       cidade:(x.cidade && String(x.cidade).trim())||null,
@@ -788,6 +1047,8 @@ async function migrarCadastroAntigo(){
 function _onTrocaEmpresa(d){
   _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
   _clientes=[]; _contatosByCli={}; _migPendentes=[]; _migDispensada=false;
+  _dupOk=new Set(); _dupPares=[]; _backfillJaTentou=false;
+  fecharRevisaoDup();
   fecharFicha();
   var el=document.getElementById('empLabel');
   if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
