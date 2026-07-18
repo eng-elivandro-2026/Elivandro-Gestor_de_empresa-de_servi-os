@@ -271,6 +271,7 @@ table.mtu td.num,table.mtu th.num{text-align:right;white-space:nowrap}
       <div id="flBody"><div class="vazio">Carregando…</div></div>
       <div class="fl-acoes">
         <button class="btn btn-emp" style="flex:1" id="flBtnWizard" onclick="_fichaAbrirWizard()">▶ Abrir wizard</button>
+        <button class="btn" id="flBtnConverter" onclick="_fichaConverter()" style="display:none">👥 Converter em cliente</button>
       </div>
     </div>
     </div><!-- /split -->
@@ -1315,8 +1316,77 @@ function _fichaRender(){
   var btn=document.getElementById('flBtnWizard');
   btn.textContent = a.status==='qualificado' ? '👁️ Ver wizard (leitura)'
     : (a.status==='novo'||a.status==='pesquisando'||a.status==='descartado') ? '🔎 Abrir pesquisa' : '▶ Abrir wizard';
+  // Conversão em cliente (PR-D): qualquer status exceto descartado/
+  // desqualificado; alvo já convertido → atalho para a ficha do cliente
+  var btnConv=document.getElementById('flBtnConverter');
+  if(btnConv){
+    if(a.cliente_id){
+      btnConv.style.display=''; btnConv.textContent='👥 Ver cliente';
+    } else if(a.status!=='descartado' && a.status!=='desqualificado'){
+      btnConv.style.display=''; btnConv.textContent='👥 Converter em cliente';
+    } else btnConv.style.display='none';
+  }
   var f={ A:_fichaVistaA, B:_fichaVistaB, C:_fichaVistaC, D:_fichaVistaD }[_fichaVista]||_fichaVistaA;
   document.getElementById('flBody').innerHTML=f();
+}
+
+/* ── Conversão lead → cliente (PR-D) ─────────────────────────── */
+function _normNomeCli(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+function _irParaClientes(){
+  try{
+    if(window.parent && window.parent.Router && typeof window.parent.Router.ir==='function')
+      window.parent.Router.ir('clientes');
+  }catch(e){}
+}
+async function _fichaConverter(){
+  var a=_ficha.alvo; if(!a) return;
+  var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  // Já convertido → atalho: abre a ficha do cliente no módulo Clientes
+  if(a.cliente_id){
+    try{ sessionStorage.setItem('tf_abrir_cliente', JSON.stringify({ empresa_id:_empresaAtiva.id, cliente_id:a.cliente_id })); }catch(e){}
+    _irParaClientes();
+    return;
+  }
+  // Guarda anti-duplicata: cliente com o mesmo nome (normalizado)?
+  var existente=null;
+  try{
+    var r=await sb.from('clientes').select('id,codigo,apelido,razao_social').eq('empresa_id', _empresaAtiva.id);
+    var alvoNorm=_normNomeCli(a.nome);
+    existente=((r && r.data)||[]).find(function(c){
+      return _normNomeCli(c.apelido)===alvoNorm || (c.razao_social && _normNomeCli(c.razao_social)===alvoNorm);
+    })||null;
+  }catch(e){}
+  if(existente && confirm('Já existe o cliente "'+existente.apelido+'" ('+(existente.codigo||'sem código')+').\n\nVincular este lead a ele em vez de criar um cliente novo?')){
+    try{
+      var ru=await sb.from('prospeccao_alvos').update({ cliente_id:existente.id, atualizado_em:new Date().toISOString() }).eq('id', a.id);
+      if(ru && ru.error) throw ru.error;
+      a.cliente_id=existente.id;
+      await _log(a.id, 'conversao', 'vinculado_a_cliente', { cliente_id:existente.id, codigo:existente.codigo }, 0);
+      toast('Lead vinculado ao cliente '+(existente.codigo||existente.apelido)+'.');
+      _fichaRender();
+    }catch(e){ toast('Erro ao vincular — tente novamente.', 'err'); }
+    return;
+  }
+  // Handoff → módulo Clientes abre o wizard pré-preenchido (sessionStorage
+  // evita corrida com a carga do iframe; consumido e removido lá)
+  var e1=_ficha.etapas.prospeccao, e2=_ficha.etapas.qualificacao;
+  var ctE1=((e1 && e1.dados_json)||{}).p2||{};
+  var ctE2=((e2 && e2.dados_json)||{}).p1||{};
+  var canal=String(ctE2.canal||'').toLowerCase();
+  var payload={
+    empresa_id:_empresaAtiva.id,
+    alvo_id:a.id,
+    apelido:a.nome, cidade:a.cidade||'', estado:a.estado||'', segmento:a.segmento||'',
+    contato:{
+      nome:ctE1.nome||ctE2.contato||'', cargo:ctE1.cargo||ctE2.cargo||'',
+      whatsapp:ctE1.whatsapp||'', email:ctE1.email||'',
+      canal_preferido: canal.indexOf('whats')>=0?'whatsapp' : canal.indexOf('liga')>=0?'ligacao'
+        : canal.indexOf('mail')>=0?'email' : canal.indexOf('presen')>=0 || canal.indexOf('visita')>=0?'presencial' : ''
+    }
+  };
+  try{ sessionStorage.setItem('tf_converter_lead', JSON.stringify(payload)); }catch(e){}
+  await _log(a.id, 'conversao', 'abriu_conversao', {}, 0);
+  _irParaClientes();
 }
 
 /* Vista A — Resumo */

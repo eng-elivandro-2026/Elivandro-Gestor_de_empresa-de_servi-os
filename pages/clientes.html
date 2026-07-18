@@ -408,6 +408,7 @@ async function carregarTudo(){
     if(atual){ _ficha.cliente=atual; _fichaRender(); } else fecharFicha();
   }
   _verificarMigracao();
+  _checarHandoffs();
 }
 
 function _popularFiltros(){
@@ -790,16 +791,23 @@ async function _fichaCarregarOrganograma(){
   if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='O') _fichaRender();
 }
 
-/* Aba Histórico — best-effort por nome (o vínculo real por cliente_id chega na integração com o Comercial) */
+/* Aba Histórico — vínculo REAL por dados_json->>clienteId (prioridade)
+   + best-effort por nome como complemento (propostas antigas/sem vínculo) */
 function _fichaVistaHistorico(){
   if(_ficha.propostas===null) return '<div class="vazio">Buscando propostas…</div>';
   if(!_ficha.propostas.length)
-    return '<div class="vazio">Nenhuma proposta encontrada com o nome deste cliente.<br>'+
-      '<span style="font-size:.68rem">Busca por nome/apelido — o vínculo definitivo chega na integração com o Comercial.</span></div>';
-  return '<div class="sec-desc" style="margin-bottom:.4rem">Propostas com nome de cliente parecido (busca por texto — o vínculo definitivo chega na integração com o Comercial).</div>'+
+    return '<div class="vazio">Nenhuma proposta deste cliente ainda.<br>'+
+      '<span style="font-size:.68rem">Propostas novas criadas pelo autocomplete ficam vinculadas automaticamente; as antigas aparecem por nome.</span></div>';
+  var nVinc=_ficha.propostas.filter(function(p){ return p._vinculo; }).length;
+  return '<div class="sec-desc" style="margin-bottom:.4rem">'+
+      (nVinc? nVinc+' vinculada'+(nVinc===1?'':'s')+' 🔗' : '')+
+      (nVinc && _ficha.propostas.length>nVinc? ' · ' : '')+
+      (_ficha.propostas.length>nVinc? (_ficha.propostas.length-nVinc)+' por nome (sem vínculo)' : '')+
+    '</div>'+
     _ficha.propostas.map(function(p){
       var val=p.valor_total!=null? Number(p.valor_total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '—';
       return '<div class="hist-item"><b>'+esc(p.numero_proposta||'s/nº')+'</b> — '+esc(p.titulo||'(sem título)')+
+        (p._vinculo?' <span class="pill papel" title="Vinculada por clienteId">🔗 vinculada</span>':' <span class="pill origem" title="Match por texto do nome — sem vínculo">por nome</span>')+
         '<div class="hist-meta">'+esc(p.fase||'—')+' · '+val+' · atualizada em '+_dataBr(p.updated_at)+'</div></div>';
     }).join('');
 }
@@ -810,13 +818,20 @@ async function _fichaCarregarHistorico(){
   var props=[];
   try{
     var res=await sb.from('propostas')
-      .select('numero_proposta,titulo,cliente,valor_total,fase,updated_at')
+      .select('numero_proposta,titulo,cliente,valor_total,fase,updated_at,cliente_id:dados_json->>clienteId')
       .eq('empresa_id', _empresaAtiva.id);
     var nomes=[c.apelido, c.razao_social].filter(Boolean).map(function(s){ return s.toLowerCase(); });
-    props=((res && res.data)||[]).filter(function(p){
+    ((res && res.data)||[]).forEach(function(p){
+      if(p.cliente_id===c.id){ p._vinculo=true; props.push(p); return; }     // 1º: vínculo real
       var pc=(p.cliente||'').toLowerCase().trim();
-      if(!pc) return false;
-      return nomes.some(function(n){ return pc.indexOf(n)>=0 || n.indexOf(pc)>=0; });
+      if(!pc) return;
+      if(nomes.some(function(n){ return pc.indexOf(n)>=0 || n.indexOf(pc)>=0; })){
+        p._vinculo=false; props.push(p);                                     // 2º: best-effort por nome
+      }
+    });
+    props.sort(function(a,b){
+      if(!!a._vinculo!==!!b._vinculo) return a._vinculo?-1:1;                // vinculadas primeiro
+      return String(b.updated_at||'').localeCompare(String(a.updated_at||''));
     });
   }catch(e){}
   _ficha.propostas=props;
@@ -1024,7 +1039,7 @@ async function mesclarDup(idA, idB){
    bloqueio por obrigatórios, campos condicionais, parabéns 3.5s.
    Sem cronômetro/log/etapas (não fazem sentido aqui).
    ══════════════════════════════════════════════════════════════ */
-var _wz={ cfg:null, modo:null, clienteId:null, dados:{}, passo:1, feitos:[], novoId:null };
+var _wz={ cfg:null, modo:null, clienteId:null, dados:{}, passo:1, feitos:[], novoId:null, alvoConversao:null };
 function _wzPK(){ return 'p'+_wz.passo; }
 function _wzD(){ return _wz.dados[_wzPK()]=_wz.dados[_wzPK()]||{}; }
 function _gruposExistentes(){
@@ -1090,10 +1105,50 @@ function _wzDadosDoCliente(c){
 }
 function _wizIniciar(modo, clienteId, dados, passo, feitos){
   _wz.cfg=WIZ_CLIENTE; _wz.modo=modo; _wz.clienteId=clienteId||null; _wz.novoId=null;
+  _wz.alvoConversao=null;
   _wz.dados=dados||{}; _wz.passo=Math.min(passo||1, WIZ_CLIENTE.passos.length); _wz.feitos=feitos||[];
   fecharFicha();
   _mostrarSecWizard(true);
   _wizRender();
+}
+
+/* ── Handoffs da Prospecção (sessionStorage — PR-D) ──────────────
+   tf_converter_lead: abre o wizard pré-preenchido com o lead; ao
+   salvar, grava cliente_id no alvo + log. tf_abrir_cliente: abre a
+   ficha de um cliente. Chaves consumidas (removidas) imediatamente. */
+function _lerHandoff(chave){
+  try{
+    var raw=sessionStorage.getItem(chave);
+    if(!raw) return null;
+    sessionStorage.removeItem(chave);
+    var p=JSON.parse(raw);
+    if(!p || p.empresa_id!==(_empresaAtiva && _empresaAtiva.id)) return null;   // stale/outra empresa
+    return p;
+  }catch(e){ return null; }
+}
+function _checarHandoffs(){
+  var abrir=_lerHandoff('tf_abrir_cliente');
+  if(abrir && abrir.cliente_id){
+    if(_clientes.some(function(c){ return c.id===abrir.cliente_id; })) abrirFicha(abrir.cliente_id);
+    return;
+  }
+  var conv=_lerHandoff('tf_converter_lead');
+  if(!conv || !conv.alvo_id) return;
+  if(!_pode('criar', PERFIS_EDITAR)){ toast('Sem permissão para criar cliente.', 'err'); return; }
+  var ct=conv.contato||{};
+  var dados={
+    p1:{ apelido:conv.apelido||'' },
+    p3:{ segmento:conv.segmento||'', origem:'prospeccao' },
+    p4:{ cidade:conv.cidade||'', estado:conv.estado||'' },
+    p5:{ contatos:[ (String(ct.nome||'').trim()
+      ? { nome:ct.nome, cargo:ct.cargo||'', whatsapp:ct.whatsapp||'',
+          email_profissional:ct.email||'', canal_preferido:ct.canal_preferido||'',
+          contato_principal:true, _origem:'prospeccao' }
+      : {}) ] }
+  };
+  _wizIniciar('novo', null, dados, 1, []);
+  _wz.alvoConversao={ alvo_id:conv.alvo_id };
+  toast('Convertendo lead "'+(conv.apelido||'')+'" em cliente — confira e complete o cadastro.');
 }
 
 /* ── Rascunho (configuracoes, chave por usuário — só na criação) ── */
@@ -2055,7 +2110,7 @@ async function _salvarClienteWizard(){
   var rowsCt=comNome.map(function(x){
     var ct=x.ct;
     return {
-      cliente_id:novo.id, empresa_id:_empresaAtiva.id, origem:'manual',
+      cliente_id:novo.id, empresa_id:_empresaAtiva.id, origem:ct._origem||'manual',
       nome:String(ct.nome).trim(), cargo:tc(ct.cargo), departamento:tc(ct.departamento),
       tipo_vinculo:tc(ct.tipo_vinculo), whatsapp:tc(ct.whatsapp), telefone:tc(ct.telefone),
       email_profissional:tc(ct.email_profissional), email_pessoal:tc(ct.email_pessoal),
@@ -2090,6 +2145,24 @@ async function _salvarClienteWizard(){
     try{ await sb.from('clientes').delete().eq('id', novo.id); }catch(e2){}
     toast('Erro ao salvar contatos/organograma — o cadastro foi desfeito, nada ficou pela metade. Tente novamente.', 'err');
     return false;
+  }
+  // Conversão de lead (handoff da Prospecção): grava o vínculo no alvo + log.
+  // Falha aqui NÃO desfaz o cliente (já está íntegro) — só avisa.
+  if(_wz.alvoConversao && _wz.alvoConversao.alvo_id){
+    try{
+      var rv=await sb.from('prospeccao_alvos')
+        .update({ cliente_id:novo.id, atualizado_em:new Date().toISOString() })
+        .eq('id', _wz.alvoConversao.alvo_id);
+      if(rv && rv.error) throw rv.error;
+      await sb.from('prospeccao_log').insert({
+        alvo_id:_wz.alvoConversao.alvo_id, empresa_id:_empresaAtiva.id,
+        usuario_id:await _obterUsuarioId(),
+        etapa:'conversao', acao:'convertido_em_cliente',
+        dados_json:{ cliente_id:novo.id, codigo:row.codigo }, tempo_segundos:0
+      });
+    }catch(e){
+      toast('Cliente criado, mas o vínculo com o lead falhou — refaça pelo botão "Converter" na Ficha do Lead.', 'err');
+    }
   }
   await _wizLimparRascunho();
   _wz.novoId=novo.id;
