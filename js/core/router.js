@@ -99,6 +99,16 @@
       ]
     },
     {
+      id: 'clientes',
+      label: 'Clientes',
+      icon: '👥',
+      tipo: 'iframe',
+      src: 'pages/clientes.html',
+      nav: [
+        { label: 'Lista de clientes', icon: '📋', action: "Router.ir('clientes')" },
+      ]
+    },
+    {
       id: 'gestao-a-vista',
       label: 'MPE',
       icon: '📊',

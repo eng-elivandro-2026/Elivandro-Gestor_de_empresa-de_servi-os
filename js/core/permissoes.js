@@ -88,6 +88,14 @@
       metricas_usuarios:   ['dono', 'admin'],
       definir_responsavel: ['dono', 'admin']
     },
+    clientes: {
+      // Cadastro central de clientes (empresas + contatos). Substitui o
+      // cadastro antigo do Relacionamento. Excluir restrito a dono/admin.
+      ver:     ['dono', 'admin', 'gestor', 'comercial'],
+      criar:   ['dono', 'admin', 'gestor', 'comercial'],
+      editar:  ['dono', 'admin', 'gestor', 'comercial'],
+      excluir: ['dono', 'admin']
+    },
     'recursos-produtividade': {
       // Dashboard agregado (mostra toda a equipe) — default restrito a
       // gestão. Governável nas DUAS telas: por perfil (G4B, esta matriz)
@@ -106,7 +114,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'prospeccao', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Helpers internos ─────────────────────────────────────
 
