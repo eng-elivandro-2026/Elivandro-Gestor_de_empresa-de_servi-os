@@ -791,16 +791,23 @@ async function _fichaCarregarOrganograma(){
   if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='O') _fichaRender();
 }
 
-/* Aba Histórico — best-effort por nome (o vínculo real por cliente_id chega na integração com o Comercial) */
+/* Aba Histórico — vínculo REAL por dados_json->>clienteId (prioridade)
+   + best-effort por nome como complemento (propostas antigas/sem vínculo) */
 function _fichaVistaHistorico(){
   if(_ficha.propostas===null) return '<div class="vazio">Buscando propostas…</div>';
   if(!_ficha.propostas.length)
-    return '<div class="vazio">Nenhuma proposta encontrada com o nome deste cliente.<br>'+
-      '<span style="font-size:.68rem">Busca por nome/apelido — o vínculo definitivo chega na integração com o Comercial.</span></div>';
-  return '<div class="sec-desc" style="margin-bottom:.4rem">Propostas com nome de cliente parecido (busca por texto — o vínculo definitivo chega na integração com o Comercial).</div>'+
+    return '<div class="vazio">Nenhuma proposta deste cliente ainda.<br>'+
+      '<span style="font-size:.68rem">Propostas novas criadas pelo autocomplete ficam vinculadas automaticamente; as antigas aparecem por nome.</span></div>';
+  var nVinc=_ficha.propostas.filter(function(p){ return p._vinculo; }).length;
+  return '<div class="sec-desc" style="margin-bottom:.4rem">'+
+      (nVinc? nVinc+' vinculada'+(nVinc===1?'':'s')+' 🔗' : '')+
+      (nVinc && _ficha.propostas.length>nVinc? ' · ' : '')+
+      (_ficha.propostas.length>nVinc? (_ficha.propostas.length-nVinc)+' por nome (sem vínculo)' : '')+
+    '</div>'+
     _ficha.propostas.map(function(p){
       var val=p.valor_total!=null? Number(p.valor_total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '—';
       return '<div class="hist-item"><b>'+esc(p.numero_proposta||'s/nº')+'</b> — '+esc(p.titulo||'(sem título)')+
+        (p._vinculo?' <span class="pill papel" title="Vinculada por clienteId">🔗 vinculada</span>':' <span class="pill origem" title="Match por texto do nome — sem vínculo">por nome</span>')+
         '<div class="hist-meta">'+esc(p.fase||'—')+' · '+val+' · atualizada em '+_dataBr(p.updated_at)+'</div></div>';
     }).join('');
 }
@@ -811,13 +818,20 @@ async function _fichaCarregarHistorico(){
   var props=[];
   try{
     var res=await sb.from('propostas')
-      .select('numero_proposta,titulo,cliente,valor_total,fase,updated_at')
+      .select('numero_proposta,titulo,cliente,valor_total,fase,updated_at,cliente_id:dados_json->>clienteId')
       .eq('empresa_id', _empresaAtiva.id);
     var nomes=[c.apelido, c.razao_social].filter(Boolean).map(function(s){ return s.toLowerCase(); });
-    props=((res && res.data)||[]).filter(function(p){
+    ((res && res.data)||[]).forEach(function(p){
+      if(p.cliente_id===c.id){ p._vinculo=true; props.push(p); return; }     // 1º: vínculo real
       var pc=(p.cliente||'').toLowerCase().trim();
-      if(!pc) return false;
-      return nomes.some(function(n){ return pc.indexOf(n)>=0 || n.indexOf(pc)>=0; });
+      if(!pc) return;
+      if(nomes.some(function(n){ return pc.indexOf(n)>=0 || n.indexOf(pc)>=0; })){
+        p._vinculo=false; props.push(p);                                     // 2º: best-effort por nome
+      }
+    });
+    props.sort(function(a,b){
+      if(!!a._vinculo!==!!b._vinculo) return a._vinculo?-1:1;                // vinculadas primeiro
+      return String(b.updated_at||'').localeCompare(String(a.updated_at||''));
     });
   }catch(e){}
   _ficha.propostas=props;
