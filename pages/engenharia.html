@@ -503,7 +503,44 @@ header.card::before{
     color: var(--muted);
   }
   body{margin-bottom: 140px;}
+
+  /* Relatório completo: mostra os 7 passos em ordem lógica, independente
+     de em qual passo o usuário estava ao clicar Imprimir. Nada é movido
+     no DOM — só reordenado visualmente via CSS (os data-step ficam
+     fisicamente intercalados por causa dos splits de row do PR-B). */
+  #engWizNav{display:none !important}                       /* pills/instrução/botões — chrome de UI */
+  #wizMethodBlock, #wizLayoutBlock{display:none !important} /* pickers de imagem — fica só a prévia escolhida */
+  .actions{display:none !important}                          /* salvar/novo/exportar/importar/excluir projeto */
+  .grid{display:block !important}                             /* tira as 2 colunas, tudo empilhado */
+  #inputs-card{display:flex !important; flex-direction:column !important}
+  #inputs-card .eng-step{display:block !important}
+  #inputs-card .eng-step[data-step="1"]{order:1}
+  #inputs-card .eng-step[data-step="2"]{order:2}
+  #inputs-card .eng-step[data-step="3"]{order:3}
+  #inputs-card .eng-step[data-step="4"]{order:4}
+  #inputs-card .eng-step[data-step="5"]{order:5}
+  #results-card, #memorial-card{display:block !important}
+
+  /* #results-card/#memorial-card saem de display:none (passo 1) para
+     block só na hora de imprimir — isso reinicia a animação fadeIn de
+     .card. No pipeline real de impressão (page.pdf()/Ctrl+P), essa
+     animação recém-reiniciada fica congelada perto do keyframe inicial
+     (opacity≈0), pintando o cartão praticamente invisível. Confirmado
+     por extração de texto página a página do PDF real. */
+  .card{animation:none !important}
+
+  /* Cada campo (label+input) e cada card de resultado (label+valor)
+     não pode ser cortado no meio pela quebra de página real. */
+  #inputs-card .row > div{break-inside:avoid; page-break-inside:avoid}
+  .statgrid .stat{break-inside:avoid; page-break-inside:avoid}
+
+  /* Memorial: textarea não reflui através de quebras de página na
+     impressão (mostra só o que cabe na caixa) — usa o espelho em <pre>,
+     populado pelo doPrint() antes de chamar window.print(). */
+  #memorialText{display:none !important}
+  #memorialPrintMirror{display:block !important}
 }
+#memorialPrintMirror{display:none;white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.5}
 footer#print-footer{display:none;}
 
 /* Animações sutis */
@@ -649,13 +686,10 @@ a:hover{
   <header class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div>
-        <h1>Elaborado por: Eng. Elivandro</h1>
-        <div class="help" id="appVersionLine">CALCULADORA DE CABOS - NBR5410 (V74)</div>
-        <div class="help">
-          <b></b> <br>
-          <b></b><br>
-          <b></b> 
-      </div>
+        <h1>SOE-Sistema Operacional Empresarial</h1>
+        <div class="help">@Fortex Tecnologia Industrial</div>
+        <div class="help" id="appVersionLine">Calculadora de cabos, baseada na NBR5410 (V74)</div>
+        <div class="help">criado por Eng. Elivandro</div>
       </div>
       
 <div class="actions">
@@ -703,7 +737,7 @@ a:hover{
 
       
 
-      <h3 class="eng-step" data-step="1">Identificação do Negócio / Cliente / Tecfusion</h3>
+      <h3 class="eng-step" data-step="1">Identificação do Negócio / Cliente</h3>
       <div class="row eng-step" data-step="1">
         <div><label>Data de criação</label><input id="metaCreatedAt" type="text"/></div>
         <div><label>Data e horário da última alteração</label><input id="metaUpdatedAt" type="text" readonly/></div>
@@ -718,10 +752,10 @@ a:hover{
       </div>
       <div class="row eng-step" data-step="1">
         <div><label>Nome do responsável pelas informações - Cliente</label><input id="clientResponsible" type="text" placeholder="Ex.: Fulano de Tal"/></div>
-        <div><label>Número Tecfusion</label><input id="tecfusionNumber" type="text" placeholder="Ex.: TF-000123"/></div>
+        <div><label>Número de Referência</label><input id="tecfusionNumber" type="text" placeholder="Ex.: REF-000123"/></div>
       </div>
       <div class="row eng-step" data-step="1">
-        <div><label>Responsável pelas informações - Tecfusion</label><input id="tecfusionResponsible" type="text" placeholder="Ex.: Eng. Nome Sobrenome"/></div>
+        <div><label>Responsável pelas informações - Empresa Executante</label><input id="tecfusionResponsible" type="text" placeholder="Ex.: Eng. Nome Sobrenome"/></div>
         <div><label>&nbsp;</label><div class="help">As datas são geradas automaticamente e registradas no salvamento local do navegador.</div></div>
       </div>
 
@@ -1128,7 +1162,7 @@ a:hover{
           <details id="wizLayoutBlock" style="margin-top:6px">
             <summary>🖼️ ASSISTENTE VISUAL — clique no arranjo dos condutores (Tabelas 38 e 39 NBR 5410)</summary>
             <div class="help" style="margin:8px 0" id="layoutAssistHelp">As figuras são as mesmas para PVC 70°C (Tabela 38) e EPR/XLPE 90°C (Tabela 39) — só muda o valor de ampacidade, definido pela Classe térmica selecionada acima. Mostrando apenas os arranjos válidos para o método e nº de condutores atuais.</div>
-            <div id="layoutGrid" class="wiz-grid" style="max-height:340px">
+            <div id="layoutGrid" class="wiz-grid" style="max-height:none;overflow-y:visible">
 <div class="layout-card" data-k="E_2C" onclick="layoutPick(this)" style="display:none">
       <div class="wiz-icon"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAADcCAIAAACUOFjWAAAgAElEQVR42u1dB1xT1xfOZFemgCjKVKG4rVgHWrUOtKig9d/WiRO1OJDlQEBwtEzBgbhnpWodoLV1VAXBhSKCWkcVZKkoKkMgyfufvJvchABWq4Qk3O/nr817vCQv733vnPOde+65TD6f/+zZs00b486fO2dra+vUr5+evh6DgKDxwBH+h6LKy8qKCgufPX2alpbGJFeFoPFJyWRqamoaGRm1Mjfv3KWzjs5n5LoQNDIpKQH16vXrnJycdnZ2o93c2rRpQ64LQSOCRS4BASElAQEhJQEhJQEBISUBISUBASElASElAQEhJQEBISUBISUBwYeB02R/uUAgqK6upiiqvgM0NDQ+1Xfx+Xz4LtEVp0GYp1KWkslksj4a5RXlh48c7tK1i65eM/RPT1/X2KR5c2MjtGnawqSqqor1KVDNq965awf+orCwn8vKyliNDbiMxFIqEF68eLFj547Y2Jjc3Fy0h81mW1paduvW7fbt2zdv3iS2ilhKubrsvLy8TZvioqOjcnJykO8Gs2FnZ798eeCc2XObNWtGOEEspfwAFHzy5El4eNj+/fuLXxTj/U5OTh6zZo8cOfLGjeuEEISUcgW45tCVocePJ5WWluKd/fr1Dw1d2bVLV/DghA2ElHLFnTt3FnotOHfuHI/HQ3u4XO6kSZNmTJ/ZqVMn8OCECoSUcsXxE8d//vmntLQ0zEhtbe3x48cvXLDQwsKSMJKQUq4AFp44cWJZwFLw3aByGHRGycjIyNNz3swZM/X09BQ5M0JIqYIoKSnZvWc3KBvQN6JcA4tlY2Mzf94CMJOamprk9hNSyg9gFJ8+fbp3797IqMjCwgK0E4xihw4dfH193VzHEJdNSClv5OXlRUdH7ftlH1ATM7Jvn77e3t6DBw8hjCSklDcyMzM3bFi/a/eut2/foj3gqfv3779sacAXX3xBbjkhpbyRlZW1ZOmSM2dOV1ZWoj3q6uo//PCDxywPB4cOjXJKLCZLX98Af3vz5sZsNjHVTYOUEEeeOXMmLOzn8xfO45IcY2PjCeMnzpgxw8LCorG8NofD6efUz3KLJdps0aKFhgbRWE2AlBRFnfj9xIoVwRkZGTgZaWhoONtj9syZswwMDBoxjoRw1pAGYVsTImVpaemBAwfW/LTmwYP7qMYCeGBjYxOwLMDFZaSWlha5zYSUcjWQxcXFe/ftXbVq5fPnz9FONpttb//5sqXLRo8eTW4wIaW8kZeXt37Duh07dmBGgpt2dHQM+zmcCG1CykbA7Tu34+LiNm+Ox0IbPPXXX3/t5+vfvXt3cmsJKeWNjJsZISEhx48nVVVVoT26urpubm6+Pn6WlpbkvhJSyhUCgeDChQuRUZF//vkHTv2Ympq6u0+dMnlK69atSY0FIaW8ce/evZjYtadPnUKMBAq2atVq7twfJ06YaGRkRO6oCkD5hhYsLCy+HTvO2MQYbbZu3SY0ZOXMGTMII4mlbDSoq6uPHTtWU0tz7tw5zZsbL1++fMTwEaTGgpCysc07i+XyjQtInE6dOtna2JK7SEipKBjjNkYpzpOiqJKSkry8PLRpYmJiaGhITLtqklJZwOPxLqZejIgIR5tTJru7ublqapLBT0LKxoOAEhQWFpw/fx5tDhwwkMfjk8uiUuqbgJCSgICQkoCQklwCAkJKAgJCSgJCSgICQkoCQkoCAkJKAkJKAgJCSsWAQCB4+/YtnvFD0IggBRlC8Hi8O3fu7Ny1KyMjg1wNQkqFsJHX0q+tWLHi5MnfydUgpFQI3LhxIygo6PTpU+RSEFIqhI0ELkZGRp46feodizQSEFLKCcDCI0ePrFmz+vr164SRhJQKwchjx46uXBmamZmJVo1g0F1fmExmWVkZoUXjoimmhMrLy/ft2xewPODmzZt8vnBmgrAtVg/H4KDgDo3U7ZegSZPy9evXmzfHL/RakJWVhWwkm83u06dPfPxm+C+H20Cug1ljTWPSV4a4b4wXL14Im1muXlVcLFowVENDo3v37rEx6+zs7K5du9ogzz2T1aply0GDBqFNSysrDpskPQgpaRQWFcZv2rQxbiNuZglB5OjRoxd5eQMjG+57uVzukCFD4R9hGyFlDRQVFYWFha1fvw43atPW1v527LeLFy9p06YN4QEhpdxtZGFhWHgYhJKYkc2aNfv223ELFywkrQMJKRsBNzJurF+//tChgzjXY2JiMm3qtClT3M3NzUn7FEJKeePWrVuhoaF//HGyvLwc7TEwMJwxY+bcOXMNDAzI7SeklCsoisq+nR0YFHj8eBL22vr6+h4eHl4LvSCgJPeekFKuABampCQHBQWlXEzBQ4hmZmYxMbHOw5w5HJKRIaSUL/h8/l9//bXI2ys7OxvvtLCwWLVqtcs3LuSWE1LKG5WVlSkpKYu8F2FGgl20t7df5OU9auQocr8JKeWNioqKffv2bYzbkJ2dhRnZt2/f+fPmDxgwkHhtQkp5o6ysbPee3WFhPz9+/FiakYv9F/fq1VtNTY3cbEJKedvIvXv3REZG5OTkIGUDLARG+vn59/qyF2EkIaW88fz5sw0bNsRvji8qKkKFP8DC4cOHh6wItbS05HK5jXt6cEoFBQU4xrW2tm7dujWJJVSZlM+ePYuJWbs2Zi0esIH7PXTo0NiYdc2bN1eEIUQej3fq9Kl58zzR5pIlSzxmzdbR0SHkU01SPnnyJC5uY3hEOE6Pf/bZZwO+GrB58xY9PT0FOUmKQfF41fiZqa6qJrMvVJaUDx8+CAwKPHjwIGakgYHB9OnTfbx9mzVrRm4tIaW8cffvu8FBQQm/JuA9xsbGU6ZMWbBgIWEkIaW8wefzMzMzIyLDDx85jHeCoJk8ecqUyZMNDQybwm2DAECFK+6Uj5Rn/zq7Njr63PlzqO8P3BsbG5v58xe4uboZGqomIysrK+/fv1dU9LSy8m1eXv6b0jdv377lcrlsNtvOzk5DXQMkHYh6DQ0NQsrGQWpq6rnz5ysqKtBmq1bm3ot8xowZAxJHxbgoEAgeP3701zn4ueeys7NBKoGXKC0traqq5vN59Bw0lqGhAVATfrudnb1TXyeAubm5sueblO/sR40clZx84fz583CHwGsvWxYANlJLS6VWlYNHLjk5efee3deuXn1e/PzNmzf1tYN78aIYuYuMjIykpEQjI6NuXbt9//33gwcPUV7/rnykdHBwiImJnT17dkF+fkLCr+C/wFSokqe+e/duVHRkYmLi69ev0bT09wkxgbXFNO7fv3/ot0PuU9xnzJhp29aWy+EqHTuVj5Rwidu1bRcRHq6hodmuXTuVoSPw78mTJ/v3/xIVHfXs2TOZn6ytra2jowNxpJoQ6mh/dXUVBJc8Hg9MaXl5OUp/8mls2Ljh6LGjP/7oOdJlZOs2rYGahJQNjk6dOquSv4Z48dLlSyuCgy+mXsRtZCA0BAVjYmLSooVZly5dOnbsaGRoZGZmZmpqig4oelqU8zin5FXJlStXbt3KBCVUWFgAhAaaAkGB4kuXLvnzzz8XLljQq1dvJSq2JyOwjY+ioqLEpMTIyIi///4bWTswjfr6+r169XIe5ty1azeIWNTV1Wu/EfSNjbUNvHAd7QrGEhx3eno6GMiLF1NKSkpoU1p96tSfRUWFHrM8QAvq6xsQUhL8eywITIrfHH/gwK95eXmIkeCjwSi6urq5fONia2v7nhEzEBSsaefOnb/88suk40kQBuCuxJmZmStXrXzw4MGcOXNBmxNSErwLT58+3bQpbuu2raBp0B4IGN1c3WbNmtWhQ8f/kOQCE2tvb29hYdG9e/eNGzeeOHEc5c7AlUOUCUFCZGSU4ieMCCkbDaBRkpISd+3ahRkJlPKYNdvT0xPs2cdIZi0trX5O/cxamLU0M9sUvwkUPYPuNbdn7x5HR8fx4yco+JUhU/EbzXEnpySHrgwtfiFqtQXiOiIicvHixZ+kaQeLxWrbtq2fn/+ypQGgltBOiDtDQkNPnzlNSElQB/Lz8/39/HJycpCBbN7cODw8wn2K+ydskQAfa2xsDHbX388frCYi+qNH/4SGhty7d4+QkqAG+Hx+RET4jYwbaNPIyGjJ4iXjvh3XEONSmpqa06fPmDt3LioMgK++du1aXNxGCB4IKZXDpVICeZTfpqenJyQkYNU8xm2Mi4tLw+URNTQ0JkycCF+B8koQXJ45eyYlJVlha40JKUV4+fLlpcuXCwoLGvqLILCLio56XvwcediuXbpOnTqtoTM1piamvj5+tja2aPPu3bsHDh6QGTcipFQsAFF279m9dm30o0ePsNXEhUifFqdOn0pNvcjj8eC1np7eoEFfN2jLVgwrK6vx48ej11VVVadPn750KY2QUkFRWVm5ffu2yMiIhw8f4iE+Bt0LvSG+LiMjAw23gJm0trYeNWqk3GYA//DD+NbmrdHrxwBaZhFSKhzAHEZEhq/5aU1ubq6MdP1UXOFyuH37OMVviod/IDhAEaP9EEQOdx5uI3apcoCJicnUqVOxK2AoakzZpJPnoECXLFm8c9fOV69eNeBzz2LZ2NhYWFgw6AnBKJXNoLsJDx067OPHV0BQwxOVlpZ6IyNDwOc7Ojp27twFbHDtI+FJGz5iRHhEOE7XE1IqltB+8eLFsoBle/bsRv1UgTpaWlpwgxsilIQPB7ubl5eXfj0dEQKNB3bs2LE2w8C5//3337duZRYUFtrb2bdt2xYIDSK9zoz606dP4+Li4jdvKioqQr+LxWTp6esFB6344Ycfait681bmvXv3PnHihOLdEyZDvJRLUyQliIz7D+5HR0fv378fMRLMVYcOHfr3658GBicttYG+90bGjZs3b+LFe4YOGSoTIYDeunL1SmxMTGJSIs7XaGpqTpo42d3d/fPPP5c5Hug7dZr777/XWHyXT/GLi4t9fL0f5zxesniJTO5TW1tryOAh8BZFnnvOaoKMzMzMDAhYtnPnjjdvXjPEizutWrlqzJixbE4DFrE/e/oUr9+jrq7u7Owso7f27/9l6lT3Y4nHpBkDlntj3IZp06YmJydL6zD4IVu3bQURXed3lZWVwafVXghVXV2jRw9HQ0MjRb5HTYuU4ByzsrJA1iQlJeFZL3379l0ZumrgwEFstvyuBjhWW9u2eBPYduHChdh1seDi6zw+KzsrLDwM3Dre8/Dhw127dqLUEjxXVlZWo0aOch7mbGRkhBx9fn4+uAK8aBCGrq6ulZUliSkVAnDj//rrr9h1MX/++SdmZO/efVYEh3zxxReNngTYvXvXvXv3kGEzNTV1dh7eokWL7KysM2fPgA6Dx+nSpbRDvx1c7L8EveXq1asFBQXoeHNzc6+FXkOGDIXftW3b1vUb1oOlrK6uvnfv7wcPHuCCDFE2QI2rp6dPSKkQAPfn4+MNJgfNxuJyuYMGfe3r49ujR49GPzcwkPfu30ePCmiaSRMnzZ37I5g0sHaLF/tDiAl/evv27ePHkszinTt38Pi1paXlqFGjjI1N4PW4cf/btXs3al304sVLiCx79uwp/V2aGpotzcwUQNZg0Sl5iSRgU3HfqampC70W3sy8iRn5/Xffh4aEOjo6ymcpHbDTFfQkrzr/+vjx41evStBrHR0dJ6d+YCxB4lhbW3f/ojvQCCnrt28rcOMkdAsR2Cw2Rzw1TE1dTUqnU4xaegZ8vVpdkysaQ2szGXUtntokSHno0CEPj1mZmTfxXXFzdfP19QU9K7cybKA+iJv6RomASWzxKqJAX5zLFAqgt1UCSoBMCHwCPuHOXbpoaoqU9f0H90HToPcmJCS8fi1Ku4LjtrW1Ubr7peLuu7y8fPuO7atXr4LwC+3R0tIa4zYmKCi4VatW8haVTGZ91budOnYyM2tx+3Y2SqBuit/UunVrExMTeJAOH/mttLQUkVKNK7GCdu3bGxs3Ly5+Dm959OjRzJkzwsJ+Bq8Nr1EYAN6gTZs2rVqZ184/4KWuCCnlCrhVoA8Sfk2IjIzAjDQ0NBz37bgFCxbIn5HvBjwqXbp0SUtLA/6Bg/7jj5NXrlw2MDAoLCx88+YNVs0QbOC32NnZz5+3YJG3F8rGwxuvX78u8Y5MZrt27WfOnIVHNTHgA+/evdPIzpspG19Kp65YqspIIKKwn2p4GC780dPT8/CYHRq60sJC3gkRCGRBlADb8KVHXYEk7ltNbeKESQ4OHVCAC164uLgYxDhmJPh9Jyen0aNdpT920qRJ06ZNs7CwkIkK4EM6dOjg6enZv1//2icDllL6q4mllBOeP3++bl1s/Ob4ly9foj3NmjWbNXPWIq9F8p+TD/zLyMg4duzojYwMPIYJfvbK1Stf9f8KH9a+fft5nvOioiKvXrsq061FQ0Pjq68GeHv7yDSlBvKtCA7p3Klz0vGk27dvFxUVUQKqZauWVpZW7u7ugwcPqfNkcnJy8AIaimlQVJCUYAYiIsI3b9mMKsQAJsbC6ph58+Y3SpcIHp93/UZ6SGiI9E6wmkmJSdKkBLi4uJiamvz222+/nzxZWFgAfrm5UXPz1uYjXUa6uIwEWVaHQlJTGzv22969+zx4+KCwoBDuKEQm5ubmlpZ1ewMw2OcvnMe9romllAfADAQGBR49cuSVWIFaWVl5eS0Cua2vr0AZY2Em/9xZ8NHSPTWBYUCv9u3tXF3dnhc/rygvh7/CacOedzTuBz3emgburvGO74V44PffTyj4TVQpUuY+yfXx9UlMPIZTKhBv+fj4grhRtNUYhFFvfkFqauqIESNqKgCmEQ00zP1BOdT3mZiblZ11584dRb6JqpM8h3ucm5vr7++flJSIGQmOzHuRz/fffa+Y64OUvCo5eOigdI2FTLz4ybP6cJW2b98ulX5XUKgCKeEqnzt/bor75EOHDqKRN1CjEIEFB60AcaqpqalQZ8vlihpGVlVVpaQkJyUlya2K7Nq1a7/8sg/LeZai9vVUelLCrU1OvhAUFHju3DlkA+CWd+vWLSYmdsKECfIZQvwgdOvaDceR+fn5iUnHGrTuHQMcSPTaKLxpY21jbWVFSNkgF/rs2bOhK0NTUlJwRNKlS5dVq1b37dNXMc95wMABgwZ9jcp10ULQ8Di9Z8fej3Hc5879hYsvtbS0hjk7Ozr2bLxwS/ofJe0rwIsoMSl5PF7CrwnLAwPgpuJf1b1799DQlU59nRT2tNXV1GfPng1iGW3ev39/+/ZtWVlZ9QWXnwS3bt0Kj4hAWVt4bh0cHFxdXRVnUTbVsZQJCfuDg4MgTsKZkW9GfBOyIqTOYQyFgsPnDuN/EE3BBht59q+zGzduyMvPa6Cvy8nJWRuzNi0tFdUoCSesDRnatUtXxZHb0lBWUkLsuGfP7pDQEDyECOph9OjRAQEBTk79lGLBjilTpnz99dfodVlZ2YGDB7Zs3lxS8vKTf5GwBWb8pqNHj+DZSBDYTJo0WZGXm1a+PGVpaenatdFbt2198uQJtpHOzs5+fv6f23+uLCtFtGhhFrBseWFhYWZmJoNuGrN+w/o3pW+WLV32CcvC4RJFRUXu2bvnxYsXaI+dnd2yZQE4007c96fBiRMndu/ZnZubi4IwsJFgcoKDVoBPVKK1S4RdhLp29fXxxeNMwMu4uLjpM2aAGP/4+JJeGOrx4sX+G+M24mk66urqoSGhnTsr4hoGkopfSglJOWrUKA+P2WZmwoaLurq606dP3xQXb29vr4DZn3cDHOjQocO8vLxAcKCTBzF+5Mjhvn37JCUlAkf/myQHOsJ7f/vt0PARzvt+2YeGEtC18vfzHzbMWfEvlPK5bzCNs2bOEvAFsetiXFxGBgUGKe8CeECUKZPd2Sz2jh07Hjx8gGrbbt+5PWPmDAiRXUe72n/+uXFz4/eMkuHtxcXF2dnZCb8mgArEZW/wdksLS/epU+G6KcVlUcqxb7Axc+bMAQPj6uqq7EsyGhsbz5rlYWlltX79urS0NFQ0Dg53y5YtJ0+eHDBgQO/efdq1bWdtY21kaFSnkQOD+uz5s4cPH965c+fypUsnfj+BZzky6F4GX3zxxY9zfxw8eIjiLBZYxyi9OMSFE1fWggywl5MnT2aoBHR0dEaNHGVqYhIfH590PAlV3IEXzsnJ2b59Oxi99u3bd+3arYODg7Z27UF8qrSsLOPGjRsZN+7duyddvYtqO4YOGTpt2vTu3bsrstxWBUupegCJBhbRzKxlXyenXTt3Xky9iE1deXl5enr69evXmzVrVucST2BcceWo5L5yOL169Z44cWLfPn0sLCyVK+AmpFQgWFpaTmw1sVvXbsdPHIco859/HmJqoilH7/k5pqamfn7+/fv1t7W1/eQGUiDuwC1VKfcBq1mgI/kCPpr8y2QwWcwaOZNqHp+QUuHCkk6dOtnY2AwZPCQ1NfXS5UsXL6Y8efLkX5NEYAtbtWrl6NjTycnJsUeP9u3tGq48SibFSfPsw9ZYQSPeotc13ypQyekQyg4wOxBldu3atWPHjlOnTi0peXnn7t2jR4+ClAFX/uDB/ZcvX8IdRdYJWAjyxdraauiQYfb29rp6ulwOF3y30iynzKyD8YSUiktNLg0weC1amOHZPKC1gZEgaCC+hL82xpiqiPCY97UfgHcOFwkP5og7L8CBKB7gg0fnC+gQuZqQUh73UFdXDxQ02jQ0MvoY2YFGrRS2wIcIHSW5xGxO7169166NQZtWllYaGhrK9VjVVirvjDjfY1Sdknyq2FLykaWE/xFSNjjALragoby2/j1J+T50lJlyCZuIizweH00cqK7mkSVLCBTvMSaXgIDElIoLHo+n+NNPFUC3YUdcjyx/l+8WjXFX8wTIj0NACXKbvvjV4MGFMSVPQEgpimxyc3O3b9+Rnp5OrkaDBqeUmJ2I02jiWI0XxFLSD6vg9u3smJiYrdu2KnI9tio8/PgFXHSxpRSTUjx6yWASUjKuX7/u7b3oQvIFcin+q58R0Q2nX2u7cVSvjM3h24pqnriEGY2g0uykxyuZLE7TvppURsYN/8V+hJFE6CgEqqqqzpw9szY6+vz586JMBEvYALqh+wKogl0UP9JSseK/HIzMIT2oSGcl+Xwka2rKJFaTJiWo7KNHj4aFh4GlRCzU1dXt3LlzQUGB9AJKBB8WKtbPSzRsA/8VkZInISUadAVGIlIqd4eMj2FkYmLimjWrgZFofr62tva4cf/z/NFTZh0kAuK+5YHS0tLDhw9HRIRn385GNlJTU3Pu3B/nec7LyXmsNBVfn8a+UR9aB1lTQjPr9+zYa6N1xanKyirkxHk82o8LwCKyxW6bJYoBqCa5iu2bN2927twRGBT46tUrFBJpaWn9/FOYu7s7h8MBUjbEl4IxvnLlCu7B5+w8vH///uqNv7ySnAJQ3MWKIZ0AqnUks2laytevX+/YuWPZsqW44zc4a3//xYiRDfe9fAE/+3bW+g3r0aaJiUmvXr2aCCmJ+34XQMHs2bs7JCQEMRKCaxsbGw+P2ZMnTVaK3kPKq9CRmZQIHbomSChmpKb41Hxv05gOkZubGxUVuSl+E+7z27FjR29vn+HOwxVnKrQKULD2HoFAgFy2eFybX12N1sbUwJXOUiM6VFMhZU5ODjBy+44diJFo4SNfX79hQ4cRRhL3Lf8nmLp+4/r69euPHj3y5s1rZCM7d+4MNpIwUqx8mfVdOqljZHSbAE1bw6aOJXbF4rFECplDBp19Q6Pcwim19Ieh6RzCJVDFe9DnsFhsdDIUxVfltRlvZt4MDQ05deoUas0IPx4Uxpo1Pzl87qBo3fmVhMG0RxZGiJQwxS010i1NXCAhKianGczHYzliCjJp8UdJlaCz0QvETpV13/DD/r73d2Dg8j/++AN15wE4ODhsiou3srJSuv5sxH0rPfh8fmpqqreP97VrV9HjiGb4792zr77F4ZqwRqHecw9dCik0clyObBNQMIXoTVVVfCRucK20cDKYyFKKKoBQqlzKLDClJBGyrwJVsxk8Hi8lJWXipAlXr15BV1NHR+ebb1y2bd1uYWFBWPjf6Uss5X9DRUVFckqyl9fC3NxctEdXV3eM2xh/f/82bQgjifuWO169enX4yOHo6Ki7d+9KGDlmzMKFXq1btyF3+n0s4PvU3deeo0PX/lDITSFHjIWOQCBVUf5O1Y/zlPBfjsowcs/ePVFRkY8ePUKXwdjYePz4Ce7u7m1t2xLq1ZkMAhVdO5SkapVZyLAQa21MSj5fJLdRKAnanM8T4LeI38WUpqY0KRGhhZKePh/4kyqQ8s2bN7/s/wVsJGaknp6ep+e8SRMnmZiYEP4R9y1vPH32NDY2dufOHfn5+Vhr+/r4TZs2TbUb7jSM+mbKtq2ipDwvU2I44X08Hk5G8tAoIvyPHupm1O5bKNUSo3bYUKPhJaXs7htsZFRU1Lp1sSg9zqDLdb0X+cyZM4ekxz/SuUuISNVHaIZMNgfnyfGfPqQ+VVKnqcSkfPny5YqQYDCTeGygZcuW69dtGDx4sBItqKOExlVkYiVWlvpXhcR8n8cAfyBHOa8L9c8//ywPDNi/fz/6JSwWy9raJjgoeMCAAYSRH2EameKJMkwZE4btX2UlHzFSMsBdxUNChxKIPgSPmTHrqU+TbkyMjsELMyplMwK00kxgYGBSUiJiJIfDad++PXhtZ2dnUjxLhE4j4NatW6vXrD558iRKQKipqfXo4Thv3rxBgwaRwp+PkDg1sj91+WvRC3rkkKJb+Im7CVCS6gq6gOgd+kb264V/FzUGlthS5SPlscRjx48nVVSI1mR17OG4fHlg7969SQH5J+Ilsz5SooQieG3kfDEpKYEkvmQilkl9iPRrHIlKBaRMlljUi9y3QAmFzvPnz9GUBvgNXTp3WbEipGfPniSOJO5bITBkyJCgwOBOnTopOCNZTFZLs5YDBw5Em5aWlsSoqxopW5ia6urq9nPqFx291szMTPGLI7lc7oABA3v2/BJtamhoKL4ak+QaKQZS2f+gT+YAAAjZSURBVDgZiYrJa3h/ilnT6UtvMnEKqYbWZkuOkF7ASllJ6eExu1379hBKmpqaKss5q9FQyrizjhi0wavYlI+UOjo6I11GEh/XMGDWspSUbB8Bqi41/aFfU8OyUtIfCAqeBDcEotCXZobI2wr4FHa7SGXTiy+J/Li4Fp1d54fUpCxVX5zNEI2hUwIBX9p3QzhGZqsQEKFDoEC+milVAVQjyy3A3X8oqponykqKqiRBpNCdseqwhpR0CFBLOkkdwpaIIUpG6HA4XELKJgpKlpQ16EXRGXEGqtgVLQRG8egXLBYwilWTZ5TMR9ceGaJk1BKztn4Sgc1mE/dNoJDhLQHBuwyq3D+XuO8mHE9KtXJGpWQgrNHkr2oIJMUVu3y+KGUjHpuWfIb4fzVjgLoG0CURJPo6iscQj5wzmaLiQzQOwlUj7puAqG8CBXXTogy5QJyV5MvMbXifZa9qTKL4F3+Np1mIKoKF+kbU6YpFSCmP+/369auCgkK02bx5c319fQUYsq/hYnE1GqpSraqqxsXhlEDUgApxTli/VnN55NovpPNFMgod+XqpoXBaztNViKhOhcsl5SoND4jSUlPTotdGoc2JEyaOGjWazGsj7rsxIaAEeflPTp06hTb79umLxIQCmHDJC6Rm6LFE0aJ0uKOkVE5cnMxk1umhpXKQ9XXJEr+JbmkpmprD5dKWUmgh2bQfJ2szNmH9Lb1Mg6QgXJQzl6TG6+urWu8cRam/yESitISnxMEAiiiZLDaKKZkoa07Gvpt6uFs/Y+t41RDxLLOurySWssnKLwavmo/n2VRViXpTiaYsgyET1/Pj7kKUrL6RJbdkFFsgu0emISVXjYPsIu2+OWJLKXbu5PZgVFfzcLdPgkYEIaXogX727NnF1Iu4sSXswX2pCYj6bgRGFhYWrlsXm5CQkJ+fj3Zqa2sLardpUq1fjavRKIaoFIjWOaIZrzLRHl7K7l/bA9Xo6CJ29NJLSdDOGiBS3yzxC0JKCUpKSlavXrVn755Xr16hPXDBxo4Zq6Ojo+qkFPDEMaUouKREy4AKU9yyHVeofx3UqX0Ak1lzvpiQnUz6CrPEMSWDzWLWjFCbPCmLi4uDg4N27tpZWlqK9ujq6n7//ffzPOeRueTEfTcCcnJyFiyYf/rMabyEKFjH+fMXTHWfamJiotrLLNMFQZKV4MUyXLS+MVN6DizWH+J1burK74iqf2T0OIslSkiiDDmLzeLQBpLDYSGTKZ0NwC+aKCkhXnzw4MHChQuAkUhxw7UzMDD48UfPObPnNI1uq5R08CfVmrzuR1G6VV/tj3r3N+FxcyFFazlrYimFqKysTL+eHhoacubMGcRI1EnQ09Pzu/99B+67aei7j50m+35g4uFEhlTDoLo4zcTn0+RI+fbt27NnzwIjL1+5jOWkjY2tj4/P+B/GN504Utj2XrKekqS1pLgZmkAqSc6WFisURcnI8NrLyuNUOagZZCZRBRCbw+RyWQypLD06EwZK0TdNUlZUVJw5e2bNmtWXLl/CO9u2befn6/fdd98RZUOEjrzB4/F27961ZeuW9PR0vLNnzy+9Fi4cMeKbpsZIVAeEhxCxWUQJIJn+fXXmfaSOEZVgIPtHL/0p+hNbOJoo7DvA4YqKLdCb8AGSuFbc8R/+1FRICepy+45tK1etfPLkCd7Zp0+fgIDl/Zz6NcElRGnnLb1+MlOalO8VKkrct6i8TWq4QfQn0NrASziQw6l3cSd0GlhgNRVSlpeX7/tl38qVEkZCiNOrV++lS5b26d2HLGpL3Le8UVZWFroyZNeuXUVFRZiRrqNH+/n5t29vx+VyCQkIKeXooSiquLj4p59/2rJl8+vXr9FODQ2NkSNHrlgRYtHGQrXT4x+I93UX2LFIlLtw1i1aVouNDlBTF/GKq8ZBx8uspScdp4o/kIU8OI8nUFlSQhD56NE/setiwUZiRurr649xG7NokbelBVn4u8HA/Ng3cVSVkbfv3P7ppzUHDhzAJZK6urozps/w9fX77LPP5HuPmGw2Byw0Dh4Uw0LLaJoPPqXaAzyiybIsFk5lgGqRHk6sM10vtd6eSPeoICnhYmVnZ4HXBkbiKVqGBoaTp0zx91+sra0t5/OBO9TBwWH+/AVos4ejo8IEsv+FlPiJwu4blwKhbsVsNktdXU3822WXvMWTgcTvpXtVovokel91NU8FSZmSkvLTz2tOnTqFGWlhYeExy2Py5CnyZyQiZbdu3eEfcexNVOgkJycvXuKflpaGn0VLS0tfH99x4/6n2vWRcov+pGo4BDI+Wih0mEw2iyk9EFFnI34puyvx2sjyqpSlBLsIjFweGHD5smRQ29ra2nuR99ix3xJGfkpVIooBJTwTFQHRI900RyWMlCZlHb00atFdIOCrCCkhvtm/fz947bt37+IZep06dQoOXvFV//4aGqQdBXHfDaxj6izsGzdu3NixY2VCchZdZdoYs22oWlWGlKgEh3qfoTxWrV/NlFH0Ytcp+87qagrNp6moqBD7EFExLyX7scyPuAsyVxqvRPuOw+qUTdI2VdRzUHXcN25wqOIQTeySvev02omiMAYtL8LjCTApkfegp2gx6yS97OfXzaAaA9w47wOiG3Vc4XJZMqTEJWoU3Y5S6NjpdlZMqbVRkGODk4RokkHPQCfDvgTEfRN8lBBh1udGBcKO+aImVbLL1Ek69jI/vg0LriFHc2QZoqmJbEbdkxyoOidLCCjJ2vbotMGu83miGZWElArOSKbk5koFYfj2i0Wd8NZK9zulvblAEs0yWf/itT+clMhlM0STuNmMWgPcDNGcCwGDgftaifcLJKqcVy08gFfNR4tAwh7ivgmI+yb4KCslktvSXhtZUboJr0goUPQiOJJ8NUvUXo9PvYea+VfG0GP3LBZTTY0t3iPSPBLTLOlrxRIbewGWPnSKQIBb/1dXCcRqDNlU0l5a2bW4ZHxFVMJNr3ZIyeSPmDIj0B+X5UDZculOLPVVmEhNp625oplAdJKU8AXuGCN60/8BX3/AIoP+j1MAAAAASUVORK5CYII=" alt="E_2C" loading="lazy"/></div>
       <div class="wiz-badge">E_2C</div>
@@ -1268,6 +1302,7 @@ a:hover{
       </div>
 
       <textarea id="memorialText" spellcheck="false" style="width:100%; min-height:320px; margin-top:10px"></textarea>
+      <pre id="memorialPrintMirror"></pre>
 
       <details style="margin-top:12px">
         <summary><b>Ajuda e referências (fórmulas e parâmetros considerados)</b></summary>
@@ -2775,6 +2810,19 @@ function doPrint(){
   }catch(e){
     // não interrompe a impressão
   }
+  // Relatório completo: garante o memorial atualizado e populado ANTES
+  // de imprimir, independente de o usuário ter clicado em "Gerar/
+  // Atualizar memorial" — e copia para o espelho em <pre> que a
+  // impressão usa (textarea não reflui bem através de páginas).
+  try{
+    recalc();
+    renderMemorial();
+    const mirror = document.getElementById('memorialPrintMirror');
+    const txt = document.getElementById('memorialText');
+    if(mirror && txt) mirror.textContent = txt.value;
+  }catch(e){
+    // não interrompe a impressão
+  }
   window.print();
 }
 
@@ -2891,8 +2939,8 @@ function buildMemorialText(inp,res){
   lines.push(`Negócio: ${biz}`);
   lines.push(`Instalação: ${inst}`);
   lines.push(`Resp. informações (Cliente): ${clientResp}`);
-  lines.push(`Número Tecfusion: ${tfNum}`);
-  lines.push(`Resp. informações (Tecfusion): ${tfResp}`);
+  lines.push(`Número de Referência: ${tfNum}`);
+  lines.push(`Resp. informações (Empresa Executante): ${tfResp}`);
   lines.push('');
   lines.push('1) DADOS DE ENTRADA (seleções do usuário)');
   lines.push(`- Sistema: ${sysLabel}`);
@@ -3307,9 +3355,12 @@ function _engAtualizarAviso(){
   el.style.display = ok?'none':'block';
   el.textContent = 'Informe a tensão e a potência (ou a corrente diretamente) para avançar.';
 }
-function _engMostrarPasso(n){
-  n=Math.max(1,Math.min(7,n));
-  _engPasso=n;
+// Aplica SÓ a visibilidade por passo (sem mexer em pills/título/botões).
+// Extraído à parte para poder ser reaplicado depois de qualquer recalc()
+// legado (toggleLayoutRow/toggleHarmonicsUI/toggleGroupingUI reescrevem
+// display de blocos por conta própria, sem saber que existe um "passo" —
+// isso reafirma o wizard como autoridade final, sem tocar nessas funções).
+function _engAplicarVisibilidadePasso(n){
   document.querySelectorAll('.eng-step').forEach(function(el){
     el.style.display = (el.getAttribute('data-step')===String(n)) ? '' : 'none';
   });
@@ -3317,6 +3368,23 @@ function _engMostrarPasso(n){
   if(inputsCard) inputsCard.style.display = (n<=5) ? '' : 'none';
   if(resultsCard) resultsCard.style.display = (n===6) ? '' : 'none';
   if(memorialCard) memorialCard.style.display = (n===7) ? '' : 'none';
+  // O gate acima é GROSSO (mostra a área do passo inteira). Dentro do
+  // passo 4 existem sub-elementos com visibilidade FINA própria, que já
+  // era controlada por funções legadas antes do wizard existir
+  // (groupSingleRow/groupMultiRow por groupTableType, layoutRow por
+  // método) — o gate grosso tinha voltado a sobrescrever essa escolha
+  // fina. Reaplicar essas funções aqui garante que elas tenham a
+  // palavra final SÓ sobre seus próprios elementos, sem tocar na
+  // lógica delas nem vazar nada para fora do passo 4.
+  if(n===4){
+    try{ toggleLayoutRow(); }catch(e){}
+    try{ toggleGroupingUI(); }catch(e){}
+  }
+}
+function _engMostrarPasso(n){
+  n=Math.max(1,Math.min(7,n));
+  _engPasso=n;
+  _engAplicarVisibilidadePasso(n);
   document.querySelectorAll('.eng-pill').forEach(function(p){
     var pn=parseInt(p.getAttribute('data-p'),10);
     p.classList.toggle('ativo', pn===n);
@@ -3329,6 +3397,16 @@ function _engMostrarPasso(n){
   _engAtualizarAviso();
   if(n===6) try{ recalc(); }catch(e){}
 }
+// Hook: reafirma a visibilidade do passo atual depois de QUALQUER recalc()
+// — não altera recalc()/toggleLayoutRow()/toggleHarmonicsUI()/
+// toggleGroupingUI() em si, só garante que o wizard vence por último.
+(function(){
+  var _recalcOriginal = recalc;
+  recalc = function(){
+    _recalcOriginal.apply(this, arguments);
+    if(typeof _engPasso === 'number') _engAplicarVisibilidadePasso(_engPasso);
+  };
+})();
 function _engAvancar(){
   if(_engPasso===7) return;
   if(!_engValidarPasso(_engPasso)){ _engAtualizarAviso(); return; }
