@@ -3048,8 +3048,14 @@ function buildMemorialText(inp,res){
   lines.push('');
 
   lines.push('3) FATORES DE CORREÇÃO E CORRENTE CORRIGIDA REQUERIDA');
-  lines.push(`- fT (temperatura) = ${formatNum(res.fT,4)}`);
-  lines.push(`- fG (agrupamento) = ${formatNum(res.fG,4)}`);
+  // Origem dos fatores (rastreabilidade do memorial) — mesmo texto que já
+  // aparece na tela (fG_source já vem calculado em inp via getGroupingFactor();
+  // fT usa a mesma distinção Solo/Ambiente do painel "Temperatura ambiente").
+  const fTSource = isMethodSolo(inp.method)
+    ? `Tabela 40 NBR 5410, referência Solo (Método D — enterrado), ${formatNum(inp.ambientT,0)}°C`
+    : `Tabela 40 NBR 5410, referência Ambiente (ar), ${formatNum(inp.ambientT,0)}°C`;
+  lines.push(`- fT (temperatura) = ${formatNum(res.fT,4)} — ${fTSource}`);
+  lines.push(`- fG (agrupamento) = ${formatNum(res.fG,4)}${inp.fG_source ? ' — ' + inp.fG_source : ''}`);
   if(res.fNC && res.fNC!==1){
     lines.push(`- fNC (nº de condutores carregados, neutro por harmônicas) = ${formatNum(res.fNC,4)}`);
     lines.push(`  Observação: ${res.fNC_note || 'Neutro considerado carregado por harmônicas.'}`);
