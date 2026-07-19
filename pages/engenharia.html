@@ -529,6 +529,11 @@ header.card::before{
      por extração de texto página a página do PDF real. */
   .card{animation:none !important}
 
+  /* Cada campo (label+input) e cada card de resultado (label+valor)
+     não pode ser cortado no meio pela quebra de página real. */
+  #inputs-card .row > div{break-inside:avoid; page-break-inside:avoid}
+  .statgrid .stat{break-inside:avoid; page-break-inside:avoid}
+
   /* Memorial: textarea não reflui através de quebras de página na
      impressão (mostra só o que cabe na caixa) — usa o espelho em <pre>,
      populado pelo doPrint() antes de chamar window.print(). */
