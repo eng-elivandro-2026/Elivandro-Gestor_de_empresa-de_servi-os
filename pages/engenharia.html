@@ -521,6 +521,14 @@ header.card::before{
   #inputs-card .eng-step[data-step="5"]{order:5}
   #results-card, #memorial-card{display:block !important}
 
+  /* #results-card/#memorial-card saem de display:none (passo 1) para
+     block só na hora de imprimir — isso reinicia a animação fadeIn de
+     .card. No pipeline real de impressão (page.pdf()/Ctrl+P), essa
+     animação recém-reiniciada fica congelada perto do keyframe inicial
+     (opacity≈0), pintando o cartão praticamente invisível. Confirmado
+     por extração de texto página a página do PDF real. */
+  .card{animation:none !important}
+
   /* Memorial: textarea não reflui através de quebras de página na
      impressão (mostra só o que cabe na caixa) — usa o espelho em <pre>,
      populado pelo doPrint() antes de chamar window.print(). */
