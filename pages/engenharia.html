@@ -539,6 +539,10 @@ header.card::before{
      populado pelo doPrint() antes de chamar window.print(). */
   #memorialText{display:none !important}
   #memorialPrintMirror{display:block !important}
+
+  /* Modais/toast da persistência na nuvem (PR-C) nunca aparecem no
+     relatório impresso, mesmo se estiverem abertos na hora do print. */
+  .eng-modal-overlay, .eng-toast{display:none !important}
 }
 #memorialPrintMirror{display:none;white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.5}
 footer#print-footer{display:none;}
@@ -661,6 +665,19 @@ a:hover{
 .wiz-opt-btn:hover{background:#dbeafe;border-color:#3b82f6}
 .wiz-opt-btn.wiz-opt-selected{background:#16a34a;border-color:#16a34a;color:#fff}
 
+/* Persistência na nuvem (PR-C): modal salvar/histórico + toast */
+.eng-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.eng-modal-overlay.on{display:flex}
+.eng-modal-box{background:var(--card);border-radius:var(--radius-lg);padding:24px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.eng-modal-box.wide{max-width:720px}
+.eng-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.eng-hist-item{border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.eng-hist-titulo{font-weight:600;margin-bottom:2px}
+.eng-hist-acoes{display:flex;gap:8px;margin-top:8px}
+.eng-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#1a202c;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .2s ease;z-index:1100}
+.eng-toast.on{opacity:1;transform:translate(-50%,0)}
+.eng-toast.on.err{background:#b42318}
+
 .layout-card{border:2px solid var(--line,#ddd);border-radius:10px;padding:8px;cursor:pointer;background:#fff;transition:all .15s;flex-direction:column;align-items:center;text-align:center}
 .layout-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.25)}
 
@@ -705,12 +722,43 @@ a:hover{
     <button id="btn-delete-project" class="btn">🗑 Excluir registro</button>
       </div>
 
+  <div class="actions-row">
+    <button id="btn-save-cloud" class="btn">☁ Salvar no Supabase</button>
+    <button id="btn-open-history" class="btn">☁ Histórico</button>
+  </div>
+
   <input id="fileImportJson" type="file" accept="application/json" style="display:none" />
   <div class="pill" id="printStamp" style="display:none">Impresso em: —</div>
 </div>
 
     </div>
   </header>
+
+  <div class="eng-modal-overlay" id="modalSalvarCloud">
+    <div class="eng-modal-box">
+      <h2 style="margin-bottom:4px">Salvar cálculo na nuvem</h2>
+      <div class="help" style="margin-bottom:14px">Fica visível para todos os usuários da empresa (Histórico), separado do seu projeto local.</div>
+      <label>Título do cálculo</label>
+      <input id="cloudTituloInput" type="text" maxlength="200"/>
+      <div class="eng-modal-actions">
+        <button type="button" class="btn" onclick="_engFecharModalSalvar()">Cancelar</button>
+        <button type="button" class="primary" id="btnConfirmarSalvarCloud" onclick="_engConfirmarSalvarCloud()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="eng-modal-overlay" id="modalHistorico">
+    <div class="eng-modal-box wide">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h2 style="margin:0">Histórico de cálculos salvos</h2>
+        <button type="button" class="btn" onclick="_engFecharHistorico()">Fechar</button>
+      </div>
+      <div class="help" style="margin:6px 0 12px">Cálculos salvos na nuvem por qualquer usuário da empresa. Reabrir ou duplicar cria um novo projeto local a partir do cálculo escolhido.</div>
+      <div id="historicoLista"></div>
+    </div>
+  </div>
+
+  <div class="eng-toast" id="toast"></div>
 
   <section class="card" id="engWizNav">
     <div class="eng-pills" id="engPills">
@@ -2760,7 +2808,10 @@ function saveNow(silent=false){
     // Revisão interna (REV.xx) incrementa a cada salvamento
     const prevRevNum = Number(current.revNum||0);
     const revNum = prevRevNum + 1;
-    const bundle = { createdAt, updatedAt, revNum, data: snapshotForm() };
+    // supabaseId (PR-C) precisa sobreviver ao autosave local — sem isso,
+    // digitar qualquer campo depois de "Salvar no Supabase" perderia o
+    // vínculo com a linha na nuvem e o próximo salvar criaria duplicata.
+    const bundle = { createdAt, updatedAt, revNum, data: snapshotForm(), supabaseId: current.supabaseId };
 
     writeMetaBundle(bundle);
     syncMetaInputs(bundle);
@@ -3461,7 +3512,262 @@ window.addEventListener('message', function(e){
   if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
 });
 
-if(_aplicarGateEng()){ init(); _engMostrarPasso(1); }
+/* ══════════════════════════════════════════════════════════════
+   PERSISTÊNCIA NA NUVEM (PR-C) — ação explícita "Salvar no
+   Supabase", por cima do sistema de projetos locais (que continua
+   intocado). Segue os mesmos padrões de Clientes/Prospecção:
+   insert/update explícito (nunca upsert), criado_por só no insert,
+   atualizado_em recarimbado a cada update, filtro explícito por
+   empresa_id mesmo com RLS, toast com .message do erro do Supabase.
+   ══════════════════════════════════════════════════════════════ */
+function _podeEng(acao){
+  try{
+    if(window.parent && typeof window.parent.podeAcao==='function') return !!window.parent.podeAcao('engenharia', acao);
+    if(typeof window.podeAcao==='function') return !!window.podeAcao('engenharia', acao);
+  }catch(e){}
+  return PERFIS_ENGENHARIA.indexOf(String(_perfilEng()||'').toLowerCase())>=0;
+}
+function _podeCriarEng(){ return _podeEng('criar'); }
+function _podeEditarEng(){ return _podeEng('editar'); }
+
+function toast(msg, tipo){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.className = tipo==='err' ? 'eng-toast on err' : 'eng-toast on';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(function(){ t.className='eng-toast'; }, 2600);
+}
+function _escapeHtmlEng(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+var _usuarioIdEngCache = null;
+async function _obterUsuarioIdEng(){
+  if(_usuarioIdEngCache) return _usuarioIdEngCache;
+  var sb=_sbEng(); if(!sb) return null;
+  try{
+    var auth = await sb.auth.getUser();
+    if(!auth.data || !auth.data.user) return null;
+    var res = await sb.from('usuarios').select('id').eq('auth_id', auth.data.user.id).maybeSingle();
+    if(res.data){ _usuarioIdEngCache = res.data.id; return _usuarioIdEngCache; }
+  }catch(e){}
+  return null;
+}
+
+function _engGerarTitulo(){
+  var empresa = (($('companyName') && $('companyName').value) || '').trim();
+  var negocio = (($('businessName') && $('businessName').value) || '').trim();
+  var partes = [empresa, negocio].filter(Boolean);
+  return partes.length ? partes.join(' — ') : 'Cálculo de cabos (sem identificação)';
+}
+function _engBundleTemSupabaseId(){
+  var bundle = readMetaBundle();
+  return !!(bundle && bundle.supabaseId);
+}
+function _engAtualizarBotoesPermissao(){
+  var btnSalvar = $('btn-save-cloud');
+  if(btnSalvar) btnSalvar.disabled = !(_podeCriarEng() || _podeEditarEng());
+}
+
+function _engAbrirModalSalvar(){
+  if(!(_podeCriarEng() || _podeEditarEng())){ toast('Sem permissão para salvar cálculos na nuvem.', 'err'); return; }
+  if(!_empresaAtivaEng){ toast('Empresa ainda não identificada — aguarde carregar e tente de novo.', 'err'); return; }
+  var input = $('cloudTituloInput');
+  if(input) input.value = _engGerarTitulo();
+  var modal = $('modalSalvarCloud');
+  if(modal) modal.classList.add('on');
+}
+function _engFecharModalSalvar(){
+  var modal = $('modalSalvarCloud');
+  if(modal) modal.classList.remove('on');
+}
+var _engSalvandoCloud = false;
+async function _engConfirmarSalvarCloud(){
+  if(_engSalvandoCloud) return;
+  var titulo = (($('cloudTituloInput') && $('cloudTituloInput').value) || '').trim();
+  if(!titulo){ toast('Dê um título ao cálculo antes de salvar.', 'err'); return; }
+  var ehUpdate = _engBundleTemSupabaseId();
+  if(!(ehUpdate ? _podeEditarEng() : _podeCriarEng())){ toast('Sem permissão para esta ação.', 'err'); return; }
+  var sb=_sbEng();
+  if(!sb || !_empresaAtivaEng){ toast('Não foi possível conectar. Tente novamente.', 'err'); return; }
+  _engSalvandoCloud=true;
+  var btn=$('btnConfirmarSalvarCloud');
+  var textoOriginal = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='Salvando…'; }
+  try{
+    saveNow(true); // garante que o projeto local (entrada/resultado) está atualizado antes de mandar pra nuvem
+    var bundle = readMetaBundle() || {};
+    var entrada = bundle.data || snapshotForm();
+    var resultado = (lastCalc && lastCalc.res) ? lastCalc.res : {};
+    if(bundle.supabaseId){
+      var upd = { titulo: titulo, entrada: entrada, resultado: resultado, app_version: APP_VERSION||'V74', atualizado_em: new Date().toISOString() };
+      var ru = await sb.from('engenharia_calculos').update(upd).eq('id', bundle.supabaseId);
+      if(ru && ru.error) throw ru.error;
+      toast('✔ Cálculo atualizado na nuvem.');
+    }else{
+      var uid = await _obterUsuarioIdEng();
+      if(!uid) throw new Error('Não foi possível identificar o usuário atual.');
+      var row = {
+        empresa_id: _empresaAtivaEng.id,
+        tipo_calculo: 'dimensionamento_cabos',
+        criado_por: uid,
+        titulo: titulo,
+        status: 'rascunho',
+        app_version: APP_VERSION||'V74',
+        entrada: entrada,
+        resultado: resultado
+      };
+      var ri = await sb.from('engenharia_calculos').insert(row).select('id').maybeSingle();
+      if(ri && ri.error) throw ri.error;
+      if(ri && ri.data){
+        bundle.supabaseId = ri.data.id;
+        writeMetaBundle(bundle);
+      }
+      toast('✔ Cálculo salvo na nuvem.');
+    }
+    _engFecharModalSalvar();
+  }catch(e){
+    toast('Erro ao salvar na nuvem: ' + ((e && e.message) || ''), 'err');
+  }
+  if(btn){ btn.disabled=false; btn.textContent=textoOriginal; }
+  _engSalvandoCloud=false;
+}
+
+var _engHistoricoCache = [];
+async function _engAbrirHistorico(){
+  if(!_empresaAtivaEng){ toast('Empresa ainda não identificada — aguarde carregar e tente de novo.', 'err'); return; }
+  var modal = $('modalHistorico');
+  var lista = $('historicoLista');
+  if(lista) lista.innerHTML = '<div class="help">Buscando cálculos salvos…</div>';
+  if(modal) modal.classList.add('on');
+  var sb=_sbEng();
+  if(!sb){ if(lista) lista.innerHTML='<div class="help">Não foi possível conectar.</div>'; return; }
+  try{
+    var res = await sb.from('engenharia_calculos')
+      .select('id,titulo,status,atualizado_em,criado_em,entrada')
+      .eq('empresa_id', _empresaAtivaEng.id)
+      .eq('tipo_calculo', 'dimensionamento_cabos')
+      .order('atualizado_em', {ascending:false})
+      .limit(200);
+    if(res.error) throw res.error;
+    _engHistoricoCache = res.data || [];
+    _engRenderHistorico();
+  }catch(e){
+    if(lista) lista.innerHTML = '<div class="help">Erro ao buscar histórico: ' + _escapeHtmlEng((e && e.message) || '') + '</div>';
+  }
+}
+function _engFecharHistorico(){
+  var modal=$('modalHistorico');
+  if(modal) modal.classList.remove('on');
+}
+function _engRenderHistorico(){
+  var lista=$('historicoLista');
+  if(!lista) return;
+  if(!_engHistoricoCache.length){ lista.innerHTML='<div class="help">Nenhum cálculo salvo na nuvem ainda.</div>'; return; }
+  var podeDuplicar = _podeCriarEng();
+  lista.innerHTML = _engHistoricoCache.map(function(row){
+    var upd = row.atualizado_em ? fmtDateTimeBR(row.atualizado_em) : '';
+    var acoes = '<button type="button" class="btn" onclick="_engReabrirCalculo(\'' + row.id + '\')">Reabrir</button>';
+    if(podeDuplicar) acoes += '<button type="button" class="btn" onclick="_engDuplicarCalculo(\'' + row.id + '\')">Duplicar</button>';
+    return '<div class="eng-hist-item">'
+      + '<div class="eng-hist-titulo">' + _escapeHtmlEng(row.titulo || '(sem título)') + '</div>'
+      + '<div class="help">' + upd + ' · ' + (row.status==='finalizado' ? 'Finalizado' : 'Rascunho') + '</div>'
+      + '<div class="eng-hist-acoes">' + acoes + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function _engHaAlteracaoNaoSalva(){
+  // Mesma convenção do resto do sistema: confirm() de texto fixo, não diff
+  // real. Heurística: considera que há algo a perder se o formulário atual
+  // já tem identificação preenchida (empresa ou negócio).
+  var empresa = (($('companyName') && $('companyName').value) || '').trim();
+  var negocio = (($('businessName') && $('businessName').value) || '').trim();
+  return !!(empresa || negocio);
+}
+function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId){
+  var id = 'p_' + String(Date.now());
+  var createdAt = nowISO();
+  var bundle = {id:id, name: titulo || 'Cálculo reaberto', createdAt:createdAt, updatedAt:createdAt, revNum:0, data: entrada||{}, supabaseId: supabaseId||''};
+  writeMetaBundle(bundle);
+  applySnapshot(bundle.data);
+  syncMetaInputs(bundle);
+  syncRevPill(bundle);
+  refreshProjectSelect();
+  enforceLoadedOptions();
+  toggleLayoutRow();
+  populateLayout();
+  populateGroupCircuits();
+  toggleGroupingUI();
+  toggleHarmonicsUI();
+  toggleLockSectionUI();
+  updateMethodHelp();
+  recalc();
+}
+
+var _engReabrindo = false;
+async function _engReabrirCalculo(id){
+  if(_engReabrindo) return;
+  if(_engHaAlteracaoNaoSalva()){
+    if(!confirm('Reabrir este cálculo vai trocar o formulário na tela (um novo projeto local será criado). O projeto atual continua salvo e pode ser reaberto pelo seletor de projetos. Continuar?')) return;
+  }
+  _engReabrindo=true;
+  try{
+    var sb=_sbEng();
+    var res = await sb.from('engenharia_calculos').select('id,titulo,entrada').eq('id', id).maybeSingle();
+    if(res.error) throw res.error;
+    if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engReabrindo=false; return; }
+    _engCarregarComoNovoProjetoLocal(res.data.titulo, res.data.entrada, res.data.id);
+    _engFecharHistorico();
+    toast('✔ Cálculo reaberto em um novo projeto local.');
+  }catch(e){
+    toast('Erro ao reabrir: ' + ((e && e.message) || ''), 'err');
+  }
+  _engReabrindo=false;
+}
+
+var _engDuplicando = false;
+async function _engDuplicarCalculo(id){
+  if(_engDuplicando) return;
+  if(!_podeCriarEng()){ toast('Sem permissão para duplicar.', 'err'); return; }
+  if(!_empresaAtivaEng){ toast('Empresa ainda não identificada — aguarde carregar e tente de novo.', 'err'); return; }
+  _engDuplicando=true;
+  try{
+    var sb=_sbEng();
+    var res = await sb.from('engenharia_calculos').select('titulo,entrada,resultado,app_version').eq('id', id).maybeSingle();
+    if(res.error) throw res.error;
+    if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engDuplicando=false; return; }
+    var uid = await _obterUsuarioIdEng();
+    if(!uid) throw new Error('Não foi possível identificar o usuário atual.');
+    var novaLinha = {
+      empresa_id: _empresaAtivaEng.id,
+      tipo_calculo: 'dimensionamento_cabos',
+      criado_por: uid,
+      duplicado_de_id: id,
+      titulo: (res.data.titulo || 'Cálculo') + ' (cópia)',
+      status: 'rascunho',
+      app_version: res.data.app_version || APP_VERSION || 'V74',
+      entrada: res.data.entrada,
+      resultado: res.data.resultado
+    };
+    var ri = await sb.from('engenharia_calculos').insert(novaLinha).select('id,titulo,entrada').maybeSingle();
+    if(ri.error) throw ri.error;
+    _engCarregarComoNovoProjetoLocal(ri.data.titulo, ri.data.entrada, ri.data.id);
+    _engFecharHistorico();
+    toast('✔ Cálculo duplicado em um novo projeto local.');
+  }catch(e){
+    toast('Erro ao duplicar: ' + ((e && e.message) || ''), 'err');
+  }
+  _engDuplicando=false;
+}
+
+$('btn-save-cloud').addEventListener('click', _engAbrirModalSalvar);
+$('btn-open-history').addEventListener('click', _engAbrirHistorico);
+
+if(_aplicarGateEng()){ init(); _engMostrarPasso(1); _engAtualizarBotoesPermissao(); }
 try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
 </script>
 
