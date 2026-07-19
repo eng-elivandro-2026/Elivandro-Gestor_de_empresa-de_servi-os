@@ -503,7 +503,31 @@ header.card::before{
     color: var(--muted);
   }
   body{margin-bottom: 140px;}
+
+  /* Relatório completo: mostra os 7 passos em ordem lógica, independente
+     de em qual passo o usuário estava ao clicar Imprimir. Nada é movido
+     no DOM — só reordenado visualmente via CSS (os data-step ficam
+     fisicamente intercalados por causa dos splits de row do PR-B). */
+  #engWizNav{display:none !important}                       /* pills/instrução/botões — chrome de UI */
+  #wizMethodBlock, #wizLayoutBlock{display:none !important} /* pickers de imagem — fica só a prévia escolhida */
+  .actions{display:none !important}                          /* salvar/novo/exportar/importar/excluir projeto */
+  .grid{display:block !important}                             /* tira as 2 colunas, tudo empilhado */
+  #inputs-card{display:flex !important; flex-direction:column !important}
+  #inputs-card .eng-step{display:block !important}
+  #inputs-card .eng-step[data-step="1"]{order:1}
+  #inputs-card .eng-step[data-step="2"]{order:2}
+  #inputs-card .eng-step[data-step="3"]{order:3}
+  #inputs-card .eng-step[data-step="4"]{order:4}
+  #inputs-card .eng-step[data-step="5"]{order:5}
+  #results-card, #memorial-card{display:block !important}
+
+  /* Memorial: textarea não reflui através de quebras de página na
+     impressão (mostra só o que cabe na caixa) — usa o espelho em <pre>,
+     populado pelo doPrint() antes de chamar window.print(). */
+  #memorialText{display:none !important}
+  #memorialPrintMirror{display:block !important}
 }
+#memorialPrintMirror{display:none;white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.5}
 footer#print-footer{display:none;}
 
 /* Animações sutis */
@@ -1265,6 +1289,7 @@ a:hover{
       </div>
 
       <textarea id="memorialText" spellcheck="false" style="width:100%; min-height:320px; margin-top:10px"></textarea>
+      <pre id="memorialPrintMirror"></pre>
 
       <details style="margin-top:12px">
         <summary><b>Ajuda e referências (fórmulas e parâmetros considerados)</b></summary>
@@ -2772,6 +2797,19 @@ function doPrint(){
   }catch(e){
     // não interrompe a impressão
   }
+  // Relatório completo: garante o memorial atualizado e populado ANTES
+  // de imprimir, independente de o usuário ter clicado em "Gerar/
+  // Atualizar memorial" — e copia para o espelho em <pre> que a
+  // impressão usa (textarea não reflui bem através de páginas).
+  try{
+    recalc();
+    renderMemorial();
+    const mirror = document.getElementById('memorialPrintMirror');
+    const txt = document.getElementById('memorialText');
+    if(mirror && txt) mirror.textContent = txt.value;
+  }catch(e){
+    // não interrompe a impressão
+  }
   window.print();
 }
 
@@ -3317,6 +3355,18 @@ function _engAplicarVisibilidadePasso(n){
   if(inputsCard) inputsCard.style.display = (n<=5) ? '' : 'none';
   if(resultsCard) resultsCard.style.display = (n===6) ? '' : 'none';
   if(memorialCard) memorialCard.style.display = (n===7) ? '' : 'none';
+  // O gate acima é GROSSO (mostra a área do passo inteira). Dentro do
+  // passo 4 existem sub-elementos com visibilidade FINA própria, que já
+  // era controlada por funções legadas antes do wizard existir
+  // (groupSingleRow/groupMultiRow por groupTableType, layoutRow por
+  // método) — o gate grosso tinha voltado a sobrescrever essa escolha
+  // fina. Reaplicar essas funções aqui garante que elas tenham a
+  // palavra final SÓ sobre seus próprios elementos, sem tocar na
+  // lógica delas nem vazar nada para fora do passo 4.
+  if(n===4){
+    try{ toggleLayoutRow(); }catch(e){}
+    try{ toggleGroupingUI(); }catch(e){}
+  }
 }
 function _engMostrarPasso(n){
   n=Math.max(1,Math.min(7,n));
