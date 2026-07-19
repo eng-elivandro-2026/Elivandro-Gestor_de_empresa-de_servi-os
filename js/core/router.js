@@ -87,6 +87,19 @@
       ]
     },
     {
+      id: 'engenharia',
+      label: 'Engenharia',
+      icon: '⚡',
+      tipo: 'iframe',
+      src: 'pages/engenharia.html',
+      nav: [
+        // SHOW_SECTION preparado para futuros cálculos (queda de tensão,
+        // curto-circuito, luminotécnica, SPDA...) — mesmo padrão simples
+        // que a Prospecção já usa.
+        { label: 'Dimensionamento de Cabos', icon: '🔌', action: "Router.ir('engenharia');Router.iframeMsg('engenharia','SHOW_SECTION','cabos')" },
+      ]
+    },
+    {
       id: 'prospeccao',
       label: 'Prospecção',
       icon: '🎯',
