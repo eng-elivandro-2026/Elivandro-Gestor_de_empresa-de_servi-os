@@ -626,6 +626,13 @@ a:hover{
 
 .layout-card{border:2px solid var(--line,#ddd);border-radius:10px;padding:8px;cursor:pointer;background:#fff;transition:all .15s;flex-direction:column;align-items:center;text-align:center}
 .layout-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+
+/* ── Wizard de 7 passos (PR-B) ── */
+.eng-pills{display:flex;gap:6px;flex-wrap:wrap}
+.eng-pill{font-size:11px;font-weight:700;border-radius:20px;padding:5px 11px;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.eng-pill.ativo{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+.eng-pill.feito{background:#dcfce7;color:#15803d;border-color:#86efac}
+.eng-result-explica{font-size:12.5px;color:#475569;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:8px;padding:8px 10px;margin:6px 0 12px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -671,62 +678,83 @@ a:hover{
     </div>
   </header>
 
+  <section class="card" id="engWizNav">
+    <div class="eng-pills" id="engPills">
+      <span class="eng-pill" data-p="1">1 · Identificação</span>
+      <span class="eng-pill" data-p="2">2 · Dados elétricos</span>
+      <span class="eng-pill" data-p="3">3 · Método</span>
+      <span class="eng-pill" data-p="4">4 · Arranjo e correções</span>
+      <span class="eng-pill" data-p="5">5 · Comprimento e queda</span>
+      <span class="eng-pill" data-p="6">6 · Resultado</span>
+      <span class="eng-pill" data-p="7">7 · Memorial</span>
+    </div>
+    <div id="engPassoTit" style="font-weight:700;font-size:15px;margin-top:6px">—</div>
+    <div class="help" id="engInstr" style="margin-top:4px">—</div>
+    <div class="help" id="engAviso" style="display:none;color:#b42318;font-weight:600;margin-top:6px">—</div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button type="button" class="btn" id="engBtnVoltar" onclick="_engVoltar()">← Voltar</button>
+      <button type="button" class="primary" id="engBtnAvancar" onclick="_engAvancar()" style="margin-left:auto">Avançar →</button>
+    </div>
+  </section>
+
   <div class="grid">
     <section class="card" id="inputs-card">
       <h2>Entradas</h2>
 
       
 
-      <h3>Identificação do Negócio / Cliente / Tecfusion</h3>
-      <div class="row">
+      <h3 class="eng-step" data-step="1">Identificação do Negócio / Cliente / Tecfusion</h3>
+      <div class="row eng-step" data-step="1">
         <div><label>Data de criação</label><input id="metaCreatedAt" type="text"/></div>
         <div><label>Data e horário da última alteração</label><input id="metaUpdatedAt" type="text" readonly/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="1">
         <div><label>Nome da Empresa</label><input id="companyName" type="text" placeholder="Ex.: Empresa XYZ Ltda."/></div>
         <div><label>Cidade do Negócio</label><input id="businessCity" type="text" placeholder="Ex.: São Paulo/SP"/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="1">
         <div><label>Nome do Negócio</label><input id="businessName" type="text" placeholder="Ex.: Loja Centro"/></div>
         <div><label>Nome da instalação</label><input id="installationName" type="text" placeholder="Ex.: QDG Geral / Alimentador Principal"/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="1">
         <div><label>Nome do responsável pelas informações - Cliente</label><input id="clientResponsible" type="text" placeholder="Ex.: Fulano de Tal"/></div>
         <div><label>Número Tecfusion</label><input id="tecfusionNumber" type="text" placeholder="Ex.: TF-000123"/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="1">
         <div><label>Responsável pelas informações - Tecfusion</label><input id="tecfusionResponsible" type="text" placeholder="Ex.: Eng. Nome Sobrenome"/></div>
         <div><label>&nbsp;</label><div class="help">As datas são geradas automaticamente e registradas no salvamento local do navegador.</div></div>
       </div>
 
       <div class="divider"></div>
-<h3>Elétrico</h3>
-      <div class="row">
+<h3 class="eng-step" data-step="2">Elétrico</h3>
+      <div class="row eng-step" data-step="2">
         <div><label>Sistema</label>
           <select id="system"><option value="mono">Monofásico</option><option value="tri" selected>Trifásico</option></select>
         </div>
         <div><label>Tensão (V)</label><input id="V" type="number" value="380"/></div>
       </div>
-<div class="row">
+<div class="row eng-step" data-step="2">
         <div><label>Tipo de potência</label>
           <select id="powerType"><option value="kW" selected>kW</option><option value="kVA">kVA</option><option value="cv">CV (cavalo-vapor)</option><option value="hp">HP (horse-power)</option></select>
         </div>
         <div><label>Potência</label><input id="powerValue" type="number" value="15"/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="2">
         <div><label>Demanda (%)</label><input id="demandPct" type="number" value="100"/></div>
         <div><label>Folga de carga (%) (pedido pelo cliente)</label><input id="loadMarginPct" type="number" step="0.1" value="0"/></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="2">
         <div><label>Fator de projeto</label><input id="projectFactor" type="number" step="0.01" value="1.00"/></div>
         <div><label>&nbsp;</label><div class="help">Folga aplica-se como (1 + Folga/100). Fator de projeto multiplica a potência/corrente de cálculo.</div></div>
       </div>
-      <div class="row">
+      <div class="row eng-step" data-step="2">
         <div><label>Corrente (A) (se &gt;0 ignora potência)</label><input id="currentA" type="number" value="0"/></div>
+      </div>
+      <div class="row eng-step" data-step="5">
         <div><label>Queda máx (%)</label><input id="vdLimitPct" type="number" step="0.1" value="4"/></div>
       </div>
 
-      <div class="row">
+      <div class="row eng-step" data-step="5">
         <div>
           <label style="display:flex;align-items:center;gap:8px;">
             <input id="lockSection" type="checkbox">
@@ -742,7 +770,7 @@ a:hover{
         </div>
       </div>
 
-      <div class="row">
+      <div class="row eng-step" data-step="2">
         <div><label>cosφ</label><input id="pf" type="number" step="0.01" value="0.92"/></div>
         <div><label>η (kW, CV e HP)</label><input id="efficiency" type="number" step="0.01" value="0.95"/></div>
       </div>
@@ -751,7 +779,7 @@ a:hover{
       <!-- Harmônicas / Neutro (posicionado em sequência lógica de cálculo) -->
 
 
-      <div class="row" id="harmonicsRow">
+      <div class="row eng-step" data-step="4" id="harmonicsRow">
         <div>
           <label style="display:flex;align-items:center;gap:8px;">
             <input id="hasNeutral" type="checkbox" checked>
@@ -788,7 +816,7 @@ a:hover{
           </div>
         </div>
       </div>
-      <div class="help" id="harmonicsHelp">
+      <div class="help eng-step" data-step="4" id="harmonicsHelp">
         <b>Referência:</b> NBR 5410 (tratamento do condutor neutro em presença de harmônicas de 3ª ordem e múltiplas).<br>
         <b>Regras implementadas (conforme sua seleção):</b><br>
         • <b>&lt; 15%</b>: neutro pode ser reduzido conforme Tabela 48 da NBR 5410 (seção reduzida do condutor neutro), quando aplicável, e não força 4 condutores.<br>
@@ -799,8 +827,10 @@ a:hover{
       </div>
 
       
-<div class="row">
+<div class="row eng-step" data-step="5">
         <div><label>Comprimento (m)</label><input id="lengthM" type="number" value="30"/></div>
+      </div>
+      <div class="row eng-step" data-step="4">
         <div><label>Temperatura ambiente (°C) — Tabela 40 NBR 5410</label>
           <select id="ambientT"><option value="10">10°C</option><option value="15">15°C</option><option value="20">20°C</option><option value="25">25°C</option><option value="30" selected>30°C</option><option value="35">35°C</option><option value="40">40°C</option><option value="45">45°C</option><option value="50">50°C</option><option value="55">55°C</option><option value="60">60°C</option><option value="65">65°C</option><option value="70">70°C</option><option value="75">75°C</option><option value="80">80°C</option></select>
           <div class="help" id="tempRefBadge">—</div>
@@ -812,8 +842,8 @@ a:hover{
       </div>
 
       <div class="divider"></div>
-      <h3>Método / Ampacidade / Agrupamento</h3>
-      <div class="row">
+      <h3 class="eng-step" data-step="4">Método / Ampacidade / Agrupamento</h3>
+      <div class="row eng-step" data-step="4">
         <div><label>Material</label>
           <select id="material"><option value="cu" selected>Cobre</option><option value="al">Alumínio</option></select>
         </div>
@@ -822,7 +852,7 @@ a:hover{
         </div>
       </div>
 
-      <div class="row">
+      <div class="row eng-step" data-step="3">
         <div><label>Método de instalação</label>
           <div id="methodPreview" class="method-preview">
             <div class="method-preview-thumb placeholder" id="methodPreviewThumb">🖼️</div>
@@ -1078,12 +1108,14 @@ a:hover{
       </details>
 
         </div>
+      </div>
+      <div class="row eng-step" data-step="4">
         <div><label>Condutores carregados</label>
           <select id="loaded"><option value="2">2</option><option value="3" selected>3</option><option value="4">4 (×0,86 em E/F/G)</option></select>
         </div>
       </div>
 
-      <div class="row" id="layoutRow">
+      <div class="row eng-step" data-step="4" id="layoutRow">
         <div><label>Arranjo/Coluna</label>
           <div id="layoutPreview" class="method-preview">
             <div class="method-preview-thumb placeholder" id="layoutPreviewThumb">🖼️</div>
@@ -1141,14 +1173,14 @@ a:hover{
         </div>
       </div>
 
-      <div class="row">
+      <div class="row eng-step" data-step="4">
         <div><label>Agrupamento: modo</label>
           <select id="groupMode"><option value="manual" selected>Manual</option><option value="table">Pela Tabela (NBR 42/43)</option></select>
         </div>
         <div><label>fG (manual)</label><input id="fG_manual" type="number" step="0.01" value="1.00"/></div>
       </div>
 
-      <div id="groupTableBox" style="display:none">
+      <div class="eng-step" data-step="4" id="groupTableBox" style="display:none">
         <div class="row">
           <div><label>Tabela</label>
             <select id="groupTableType"><option value="single" selected>Tabela 42 NBR 5410 (agrupamento em camada única)</option><option value="multi">Tabela 43 NBR 5410 (múltiplas camadas)</option></select>
@@ -1156,12 +1188,12 @@ a:hover{
           <div><label>fG calculado</label><div class="pill" id="fG_table_pill">—</div><div class="help" id="fG_table_note">—</div><div id="groupTablePreview" style="margin-top:8px;overflow-x:auto"></div></div>
         </div>
 
-        <div class="row" id="groupSingleRow">
+        <div class="row eng-step" data-step="4" id="groupSingleRow">
           <div><label>Referência (Tabela 42 NBR 5410 — forma de agrupamento)</label><select id="groupRef"></select></div>
           <div><label>Nº circuitos/cabos agrupados</label><select id="groupCircuits"></select></div>
         </div>
 
-        <div class="row" id="groupMultiRow" style="display:none">
+        <div class="row eng-step" data-step="4" id="groupMultiRow" style="display:none">
           <div><label>Quantidade de camadas</label><select id="groupLayers"></select></div>
           <div><label>Circuitos/cabos por camada</label><select id="groupPerLayer"></select></div>
         </div>
@@ -1171,6 +1203,14 @@ a:hover{
 
     <section class="card" id="results-card">
       <h2>Resultado</h2>
+      <div class="eng-result-explica">
+        <b>Como ler este resultado:</b><br>
+        • <b>Ib</b> é a corrente que o circuito vai puxar de verdade (calculada a partir da potência ou informada direto).<br>
+        • <b>Iz requerida</b> é a corrente que o cabo precisa aguentar depois de aplicar os fatores de correção (temperatura, agrupamento etc).<br>
+        • <b>Seção mínima</b> é a bitola que atende só a ampacidade (aquecimento). <b>Seção final</b> já considera também a queda de tensão no comprimento informado — por isso pode vir maior que a seção mínima.<br>
+        • <b>Neutro (N)</b> e <b>Terra (PE)</b> são as bitolas dos condutores de neutro e de proteção, sempre em bitola comercial (nunca um valor "quebrado").<br>
+        • <b>Queda ΔV%</b> é o quanto a tensão cai do início ao fim do circuito — precisa ficar dentro do limite que você informou no passo 5.
+      </div>
       <div class="statgrid">
         <div class="stat"><div class="k">Ib</div><div class="v" id="stat-Ib">—</div></div>
         <div class="stat"><div class="k">fT · fG</div><div class="v" id="stat-fTotal">—</div><div class="help" id="stat-factors" style="margin-top:4px">—</div></div>
@@ -3238,6 +3278,70 @@ $('tblPick').addEventListener('change', renderTableView);
 $('tblSearch').addEventListener('input', renderTableView);
 
 /* ══════════════════════════════════════════════════════════════
+   WIZARD DE 7 PASSOS (PR-B) — camada de EXIBIÇÃO apenas. Os campos
+   nunca saem do DOM (só display:none/'' via [data-step]), então o
+   recálculo contínuo (oninput/onchange já existentes) continua
+   funcionando exatamente como antes, em qualquer passo. Nenhuma
+   função de cálculo/memorial/persistência é tocada aqui.
+   ══════════════════════════════════════════════════════════════ */
+var ENG_PASSOS=[
+  {n:1,titulo:'Identificação',instr:'Dados do negócio, cliente e responsáveis — usados só na identificação do memorial, não entram no cálculo.'},
+  {n:2,titulo:'Dados elétricos',instr:'Sistema, tensão e potência (ou informe a corrente diretamente, que prevalece sobre a potência).'},
+  {n:3,titulo:'Método de instalação',instr:'Clique na figura que representa a instalação real (Tabela 33 da NBR 5410).'},
+  {n:4,titulo:'Arranjo e correções',instr:'Material, classe térmica, arranjo (para métodos E/F/G), temperatura, agrupamento e neutro/harmônicas.'},
+  {n:5,titulo:'Comprimento e queda',instr:'Comprimento do circuito, limite de queda de tensão e, se aplicável, bitola travada pelo cliente/projeto.'},
+  {n:6,titulo:'Resultado',instr:'Bitola calculada — a explicação de cada valor está logo acima da tabela.'},
+  {n:7,titulo:'Memorial',instr:'Revise e gere o memorial de cálculo em texto, ou use as ações do topo para salvar/imprimir o projeto.'}
+];
+var _engPasso=1;
+function _engValidarPasso(n){
+  if(n===2){
+    var v=num($('V').value,0), pv=num($('powerValue').value,0), ia=num($('currentA').value,0);
+    return v>0 && (pv>0 || ia>0);
+  }
+  return true;
+}
+function _engAtualizarAviso(){
+  var el=$('engAviso'); if(!el) return;
+  var ok=_engValidarPasso(_engPasso);
+  el.style.display = ok?'none':'block';
+  el.textContent = 'Informe a tensão e a potência (ou a corrente diretamente) para avançar.';
+}
+function _engMostrarPasso(n){
+  n=Math.max(1,Math.min(7,n));
+  _engPasso=n;
+  document.querySelectorAll('.eng-step').forEach(function(el){
+    el.style.display = (el.getAttribute('data-step')===String(n)) ? '' : 'none';
+  });
+  var inputsCard=$('inputs-card'), resultsCard=$('results-card'), memorialCard=$('memorial-card');
+  if(inputsCard) inputsCard.style.display = (n<=5) ? '' : 'none';
+  if(resultsCard) resultsCard.style.display = (n===6) ? '' : 'none';
+  if(memorialCard) memorialCard.style.display = (n===7) ? '' : 'none';
+  document.querySelectorAll('.eng-pill').forEach(function(p){
+    var pn=parseInt(p.getAttribute('data-p'),10);
+    p.classList.toggle('ativo', pn===n);
+    p.classList.toggle('feito', pn<n);
+  });
+  var titEl=$('engPassoTit'); if(titEl) titEl.textContent='Passo '+n+' de 7 — '+ENG_PASSOS[n-1].titulo;
+  var instrEl=$('engInstr'); if(instrEl) instrEl.textContent=ENG_PASSOS[n-1].instr;
+  var btnVoltar=$('engBtnVoltar'); if(btnVoltar) btnVoltar.style.display=(n===1)?'none':'';
+  var btnAvancar=$('engBtnAvancar'); if(btnAvancar) btnAvancar.textContent=(n===7)?'Concluído ✓':'Avançar →';
+  _engAtualizarAviso();
+  if(n===6) try{ recalc(); }catch(e){}
+}
+function _engAvancar(){
+  if(_engPasso===7) return;
+  if(!_engValidarPasso(_engPasso)){ _engAtualizarAviso(); return; }
+  _engMostrarPasso(_engPasso+1);
+}
+function _engVoltar(){ if(_engPasso>1) _engMostrarPasso(_engPasso-1); }
+// Atualiza o aviso do passo 2 em tempo real, sem interferir nos listeners
+// de recálculo já existentes (esses três campos já têm oninput próprio).
+['V','powerValue','currentA'].forEach(function(id){
+  var el=$(id); if(el) el.addEventListener('input', function(){ if(_engPasso===2) _engAtualizarAviso(); });
+});
+
+/* ══════════════════════════════════════════════════════════════
    INTEGRAÇÃO COM O PORTAL (PR-A) — mesmo protocolo dos demais
    módulos iframe (Prospecção/Clientes): _sb() via parent,
    SET_EMPRESA/SET_TEMA, gate por podeAcessarModulo('engenharia')
@@ -3279,7 +3383,7 @@ window.addEventListener('message', function(e){
   if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
 });
 
-if(_aplicarGateEng()) init();
+if(_aplicarGateEng()){ init(); _engMostrarPasso(1); }
 try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
 </script>
 
