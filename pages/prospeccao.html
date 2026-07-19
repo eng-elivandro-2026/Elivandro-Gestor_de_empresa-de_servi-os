@@ -1316,14 +1316,15 @@ function _fichaRender(){
   var btn=document.getElementById('flBtnWizard');
   btn.textContent = a.status==='qualificado' ? '👁️ Ver wizard (leitura)'
     : (a.status==='novo'||a.status==='pesquisando'||a.status==='descartado') ? '🔎 Abrir pesquisa' : '▶ Abrir wizard';
-  // Conversão em cliente (PR-D): qualquer status exceto descartado/
-  // desqualificado; alvo já convertido → atalho para a ficha do cliente
+  // Conversão em cliente: SÓ leads QUALIFICADOS (Etapa 2 completa) —
+  // antes disso não há dor/decisor/verba/prazo validados, e o vendedor
+  // aprende que cliente não é qualquer contato. Já convertido
+  // (cliente_id) → atalho para a ficha do cliente.
   var btnConv=document.getElementById('flBtnConverter');
   if(btnConv){
-    if(a.cliente_id){
-      btnConv.style.display=''; btnConv.textContent='👥 Ver cliente';
-    } else if(a.status!=='descartado' && a.status!=='desqualificado'){
-      btnConv.style.display=''; btnConv.textContent='👥 Converter em cliente';
+    if(a.status==='qualificado'){
+      btnConv.style.display='';
+      btnConv.textContent=a.cliente_id?'👥 Ver cliente':'👥 Converter em cliente';
     } else btnConv.style.display='none';
   }
   var f={ A:_fichaVistaA, B:_fichaVistaB, C:_fichaVistaC, D:_fichaVistaD }[_fichaVista]||_fichaVistaA;
@@ -1341,6 +1342,7 @@ function _irParaClientes(){
 async function _fichaConverter(){
   var a=_ficha.alvo; if(!a) return;
   var sb=_sb(); if(!sb || !_empresaAtiva) return;
+  if(a.status!=='qualificado') return;   // guarda: só qualificado converte/vê
   // Já convertido → atalho: abre a ficha do cliente no módulo Clientes
   if(a.cliente_id){
     try{ sessionStorage.setItem('tf_abrir_cliente', JSON.stringify({ empresa_id:_empresaAtiva.id, cliente_id:a.cliente_id })); }catch(e){}
