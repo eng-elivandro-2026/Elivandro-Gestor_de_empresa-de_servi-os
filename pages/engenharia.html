@@ -649,13 +649,9 @@ a:hover{
   <header class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div>
-        <h1>Elaborado por: Eng. Elivandro</h1>
-        <div class="help" id="appVersionLine">CALCULADORA DE CABOS - NBR5410 (V74)</div>
-        <div class="help">
-          <b></b> <br>
-          <b></b><br>
-          <b></b> 
-      </div>
+        <h1>SOE-Sistema Operacional Empresarial - Fortex Tecnologia Industrial</h1>
+        <div class="help" id="appVersionLine">Calculadora de cabos, baseada na NBR5410 (V74)</div>
+        <div class="help">criado por Eng. Elivandro</div>
       </div>
       
 <div class="actions">
@@ -703,7 +699,7 @@ a:hover{
 
       
 
-      <h3 class="eng-step" data-step="1">Identificação do Negócio / Cliente / Tecfusion</h3>
+      <h3 class="eng-step" data-step="1">Identificação do Negócio / Cliente</h3>
       <div class="row eng-step" data-step="1">
         <div><label>Data de criação</label><input id="metaCreatedAt" type="text"/></div>
         <div><label>Data e horário da última alteração</label><input id="metaUpdatedAt" type="text" readonly/></div>
@@ -718,10 +714,10 @@ a:hover{
       </div>
       <div class="row eng-step" data-step="1">
         <div><label>Nome do responsável pelas informações - Cliente</label><input id="clientResponsible" type="text" placeholder="Ex.: Fulano de Tal"/></div>
-        <div><label>Número Tecfusion</label><input id="tecfusionNumber" type="text" placeholder="Ex.: TF-000123"/></div>
+        <div><label>Número de Referência</label><input id="tecfusionNumber" type="text" placeholder="Ex.: REF-000123"/></div>
       </div>
       <div class="row eng-step" data-step="1">
-        <div><label>Responsável pelas informações - Tecfusion</label><input id="tecfusionResponsible" type="text" placeholder="Ex.: Eng. Nome Sobrenome"/></div>
+        <div><label>Responsável pelas informações - Empresa Executante</label><input id="tecfusionResponsible" type="text" placeholder="Ex.: Eng. Nome Sobrenome"/></div>
         <div><label>&nbsp;</label><div class="help">As datas são geradas automaticamente e registradas no salvamento local do navegador.</div></div>
       </div>
 
@@ -2891,8 +2887,8 @@ function buildMemorialText(inp,res){
   lines.push(`Negócio: ${biz}`);
   lines.push(`Instalação: ${inst}`);
   lines.push(`Resp. informações (Cliente): ${clientResp}`);
-  lines.push(`Número Tecfusion: ${tfNum}`);
-  lines.push(`Resp. informações (Tecfusion): ${tfResp}`);
+  lines.push(`Número de Referência: ${tfNum}`);
+  lines.push(`Resp. informações (Empresa Executante): ${tfResp}`);
   lines.push('');
   lines.push('1) DADOS DE ENTRADA (seleções do usuário)');
   lines.push(`- Sistema: ${sysLabel}`);
