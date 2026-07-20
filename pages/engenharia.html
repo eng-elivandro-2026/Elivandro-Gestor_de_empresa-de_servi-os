@@ -678,6 +678,18 @@ a:hover{
 .eng-toast.on{opacity:1;transform:translate(-50%,0)}
 .eng-toast.on.err{background:#b42318}
 
+/* Seletor de cliente real (vínculo cliente_id) no modal de salvar */
+.eng-cli-busca{position:relative}
+.eng-cli-lista{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:10;background:var(--card);border:1px solid var(--line);border-radius:10px;max-height:240px;overflow-y:auto;box-shadow:var(--shadow-md)}
+.eng-cli-opt{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-light)}
+.eng-cli-opt:last-child{border-bottom:none}
+.eng-cli-opt:hover,.eng-cli-opt.on{background:var(--line-light)}
+.eng-cli-opt .cli-sub{color:var(--muted);font-size:11.5px;margin-top:1px}
+.eng-cli-opt .cli-vazio{color:var(--muted);font-style:italic}
+.eng-cli-chip{display:inline-flex;align-items:center;gap:8px;background:var(--ok-bg);border:1px solid var(--ok);color:var(--ink);border-radius:999px;padding:6px 6px 6px 12px;font-size:13px;font-weight:600;margin-bottom:6px}
+.eng-cli-chip-x{border:none;background:#fff;color:var(--muted);border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+.eng-cli-chip-x:hover{color:var(--danger)}
+
 .layout-card{border:2px solid var(--line,#ddd);border-radius:10px;padding:8px;cursor:pointer;background:#fff;transition:all .15s;flex-direction:column;align-items:center;text-align:center}
 .layout-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.25)}
 
@@ -738,6 +750,18 @@ a:hover{
     <div class="eng-modal-box">
       <h2 style="margin-bottom:4px">Salvar cálculo na nuvem</h2>
       <div class="help" style="margin-bottom:14px">Fica visível para todos os usuários da empresa (Histórico), separado do seu projeto local.</div>
+
+      <label>Cliente (opcional)</label>
+      <div id="cloudClienteSelecionado" class="eng-cli-chip" style="display:none">
+        <span id="cloudClienteChipNome">—</span>
+        <button type="button" class="eng-cli-chip-x" title="Desvincular cliente" onclick="_engLimparClienteSelecionado()">✕</button>
+      </div>
+      <div id="cloudClienteBusca" class="eng-cli-busca">
+        <input id="cloudClienteInput" type="text" autocomplete="off" placeholder="Busque um cliente cadastrado (nome, razão social ou cidade)…"/>
+        <div id="cloudClienteLista" class="eng-cli-lista" style="display:none"></div>
+      </div>
+      <div class="help" style="margin:4px 0 12px">Vincula o cálculo a um cliente real para ele aparecer na ficha do cliente. Pode salvar sem vincular.</div>
+
       <label>Título do cálculo</label>
       <input id="cloudTituloInput" type="text" maxlength="200"/>
       <div class="eng-modal-actions">
@@ -2846,10 +2870,11 @@ function saveNow(silent=false){
     // Revisão interna (REV.xx) incrementa a cada salvamento
     const prevRevNum = Number(current.revNum||0);
     const revNum = prevRevNum + 1;
-    // supabaseId (PR-C) precisa sobreviver ao autosave local — sem isso,
-    // digitar qualquer campo depois de "Salvar no Supabase" perderia o
-    // vínculo com a linha na nuvem e o próximo salvar criaria duplicata.
-    const bundle = { createdAt, updatedAt, revNum, data: snapshotForm(), supabaseId: current.supabaseId };
+    // supabaseId (PR-C) e clienteId (vínculo com clientes) precisam
+    // sobreviver ao autosave local — sem isso, digitar qualquer campo depois
+    // de "Salvar no Supabase" perderia o vínculo (o próximo salvar criaria
+    // duplicata / apagaria o cliente vinculado). Mesma lição do supabaseId.
+    const bundle = { createdAt, updatedAt, revNum, data: snapshotForm(), supabaseId: current.supabaseId, clienteId: current.clienteId };
 
     writeMetaBundle(bundle);
     syncMetaInputs(bundle);
@@ -3618,17 +3643,106 @@ function _engAtualizarBotoesPermissao(){
   if(btnSalvar) btnSalvar.disabled = !(_podeCriarEng() || _podeEditarEng());
 }
 
+/* ── Seletor de cliente real (vínculo cliente_id) ─────────────
+   Autocomplete próprio, autocontido. Carrega os clientes ATIVOS da
+   empresa uma vez (via _sbEng, RLS por empresa) e filtra por texto.
+   cliente_id é sempre opcional/nullable. */
+var _engClientesCache = null;      // null = ainda não carregou
+var _engClienteSelecionado = null; // {id, apelido} ou null
+async function _engCarregarClientes(){
+  if(_engClientesCache !== null) return _engClientesCache;
+  var sb=_sbEng();
+  if(!sb || !_empresaAtivaEng){ return []; }
+  try{
+    var res = await sb.from('clientes')
+      .select('id,apelido,razao_social,cidade,ativo')
+      .eq('empresa_id', _empresaAtivaEng.id)
+      .eq('ativo', true);
+    if(res && res.error) throw res.error;
+    _engClientesCache = (res && res.data) || [];
+  }catch(e){ _engClientesCache = []; }
+  return _engClientesCache;
+}
+function _engRenderClienteLista(){
+  var lista = $('cloudClienteLista');
+  var input = $('cloudClienteInput');
+  if(!lista || !input) return;
+  var q = (input.value||'').trim().toLowerCase();
+  var todos = _engClientesCache || [];
+  var filtrados = todos;
+  if(q){
+    filtrados = todos.filter(function(c){
+      return [c.apelido, c.razao_social, c.cidade].filter(Boolean)
+        .some(function(s){ return String(s).toLowerCase().indexOf(q) >= 0; });
+    });
+  }
+  filtrados = filtrados.slice(0, 8);
+  if(!todos.length){ lista.innerHTML = '<div class="eng-cli-opt"><span class="cli-vazio">Nenhum cliente ativo cadastrado nesta empresa.</span></div>'; lista.style.display='block'; return; }
+  if(!filtrados.length){ lista.innerHTML = '<div class="eng-cli-opt"><span class="cli-vazio">Nenhum cliente encontrado para "'+_escapeHtmlEng(q)+'".</span></div>'; lista.style.display='block'; return; }
+  lista.innerHTML = filtrados.map(function(c){
+    var sub = [c.razao_social, c.cidade].filter(Boolean).join(' · ');
+    return '<div class="eng-cli-opt" onclick="_engSelecionarCliente(\''+_escapeHtmlEng(c.id)+'\')">'+
+      '<div>'+_escapeHtmlEng(c.apelido||'(sem nome)')+'</div>'+
+      (sub? '<div class="cli-sub">'+_escapeHtmlEng(sub)+'</div>' : '')+
+    '</div>';
+  }).join('');
+  lista.style.display='block';
+}
+function _engSelecionarCliente(id){
+  var c = (_engClientesCache||[]).find(function(x){ return String(x.id)===String(id); });
+  if(!c) return;
+  _engClienteSelecionado = { id:c.id, apelido:c.apelido||'' };
+  // Conveniência não-destrutiva: preenche "Nome da Empresa" só se estiver vazio.
+  var comp = $('companyName');
+  if(comp && !(comp.value||'').trim()){ comp.value = c.apelido||''; }
+  _engSyncClienteUI();
+}
+function _engLimparClienteSelecionado(){
+  _engClienteSelecionado = null;
+  _engSyncClienteUI();
+}
+function _engSyncClienteUI(){
+  var chip = $('cloudClienteSelecionado');
+  var chipNome = $('cloudClienteChipNome');
+  var busca = $('cloudClienteBusca');
+  var lista = $('cloudClienteLista');
+  var input = $('cloudClienteInput');
+  if(lista){ lista.style.display='none'; }
+  if(input){ input.value=''; }
+  if(_engClienteSelecionado){
+    if(chipNome) chipNome.textContent = _engClienteSelecionado.apelido || '(sem nome)';
+    if(chip) chip.style.display='';
+    if(busca) busca.style.display='none';
+  }else{
+    if(chip) chip.style.display='none';
+    if(busca) busca.style.display='';
+  }
+}
+
 function _engAbrirModalSalvar(){
   if(!(_podeCriarEng() || _podeEditarEng())){ toast('Sem permissão para salvar cálculos na nuvem.', 'err'); return; }
   if(!_empresaAtivaEng){ toast('Empresa ainda não identificada — aguarde carregar e tente de novo.', 'err'); return; }
   var input = $('cloudTituloInput');
   if(input) input.value = _engGerarTitulo();
+  // Pré-seleciona o cliente já vinculado a este projeto local (se houver).
+  var bundle = readMetaBundle() || {};
+  _engClienteSelecionado = null;
+  _engSyncClienteUI();
   var modal = $('modalSalvarCloud');
   if(modal) modal.classList.add('on');
+  // Carrega clientes (assíncrono) e, ao terminar, pré-seleciona pelo bundle.
+  _engCarregarClientes().then(function(){
+    if(bundle.clienteId){
+      var c = (_engClientesCache||[]).find(function(x){ return String(x.id)===String(bundle.clienteId); });
+      if(c){ _engClienteSelecionado = { id:c.id, apelido:c.apelido||'' }; _engSyncClienteUI(); }
+    }
+  });
 }
 function _engFecharModalSalvar(){
   var modal = $('modalSalvarCloud');
   if(modal) modal.classList.remove('on');
+  var lista = $('cloudClienteLista');
+  if(lista) lista.style.display='none';
 }
 var _engSalvandoCloud = false;
 async function _engConfirmarSalvarCloud(){
@@ -3648,10 +3762,13 @@ async function _engConfirmarSalvarCloud(){
     var bundle = readMetaBundle() || {};
     var entrada = bundle.data || snapshotForm();
     var resultado = (lastCalc && lastCalc.res) ? lastCalc.res : {};
+    var clienteId = _engClienteSelecionado ? _engClienteSelecionado.id : null;
     if(bundle.supabaseId){
-      var upd = { titulo: titulo, entrada: entrada, resultado: resultado, app_version: APP_VERSION||'V74', atualizado_em: new Date().toISOString() };
+      var upd = { titulo: titulo, entrada: entrada, resultado: resultado, cliente_id: clienteId, app_version: APP_VERSION||'V74', atualizado_em: new Date().toISOString() };
       var ru = await sb.from('engenharia_calculos').update(upd).eq('id', bundle.supabaseId);
       if(ru && ru.error) throw ru.error;
+      bundle.clienteId = clienteId; // reflete troca de cliente no bundle local
+      writeMetaBundle(bundle);
       toast('✔ Cálculo atualizado na nuvem.');
     }else{
       var uid = await _obterUsuarioIdEng();
@@ -3660,6 +3777,7 @@ async function _engConfirmarSalvarCloud(){
         empresa_id: _empresaAtivaEng.id,
         tipo_calculo: 'dimensionamento_cabos',
         criado_por: uid,
+        cliente_id: clienteId,
         titulo: titulo,
         status: 'rascunho',
         app_version: APP_VERSION||'V74',
@@ -3670,6 +3788,7 @@ async function _engConfirmarSalvarCloud(){
       if(ri && ri.error) throw ri.error;
       if(ri && ri.data){
         bundle.supabaseId = ri.data.id;
+        bundle.clienteId = clienteId;
         writeMetaBundle(bundle);
       }
       toast('✔ Cálculo salvo na nuvem.');
@@ -3734,10 +3853,10 @@ function _engHaAlteracaoNaoSalva(){
   var negocio = (($('businessName') && $('businessName').value) || '').trim();
   return !!(empresa || negocio);
 }
-function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId){
+function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId, clienteId){
   var id = 'p_' + String(Date.now());
   var createdAt = nowISO();
-  var bundle = {id:id, name: titulo || 'Cálculo reaberto', createdAt:createdAt, updatedAt:createdAt, revNum:0, data: entrada||{}, supabaseId: supabaseId||''};
+  var bundle = {id:id, name: titulo || 'Cálculo reaberto', createdAt:createdAt, updatedAt:createdAt, revNum:0, data: entrada||{}, supabaseId: supabaseId||'', clienteId: clienteId||null};
   writeMetaBundle(bundle);
   applySnapshot(bundle.data);
   syncMetaInputs(bundle);
@@ -3765,10 +3884,10 @@ async function _engReabrirCalculo(id){
   _engReabrindo=true;
   try{
     var sb=_sbEng();
-    var res = await sb.from('engenharia_calculos').select('id,titulo,entrada').eq('id', id).maybeSingle();
+    var res = await sb.from('engenharia_calculos').select('id,titulo,entrada,cliente_id').eq('id', id).maybeSingle();
     if(res.error) throw res.error;
     if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engReabrindo=false; return; }
-    _engCarregarComoNovoProjetoLocal(res.data.titulo, res.data.entrada, res.data.id);
+    _engCarregarComoNovoProjetoLocal(res.data.titulo, res.data.entrada, res.data.id, res.data.cliente_id);
     _engFecharHistorico();
     toast('✔ Cálculo reaberto em um novo projeto local.');
   }catch(e){
@@ -3785,7 +3904,7 @@ async function _engDuplicarCalculo(id){
   _engDuplicando=true;
   try{
     var sb=_sbEng();
-    var res = await sb.from('engenharia_calculos').select('titulo,entrada,resultado,app_version').eq('id', id).maybeSingle();
+    var res = await sb.from('engenharia_calculos').select('titulo,entrada,resultado,app_version,cliente_id').eq('id', id).maybeSingle();
     if(res.error) throw res.error;
     if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engDuplicando=false; return; }
     var uid = await _obterUsuarioIdEng();
@@ -3795,15 +3914,16 @@ async function _engDuplicarCalculo(id){
       tipo_calculo: 'dimensionamento_cabos',
       criado_por: uid,
       duplicado_de_id: id,
+      cliente_id: res.data.cliente_id || null, // a cópia herda o vínculo de cliente da origem
       titulo: (res.data.titulo || 'Cálculo') + ' (cópia)',
       status: 'rascunho',
       app_version: res.data.app_version || APP_VERSION || 'V74',
       entrada: res.data.entrada,
       resultado: res.data.resultado
     };
-    var ri = await sb.from('engenharia_calculos').insert(novaLinha).select('id,titulo,entrada').maybeSingle();
+    var ri = await sb.from('engenharia_calculos').insert(novaLinha).select('id,titulo,entrada,cliente_id').maybeSingle();
     if(ri.error) throw ri.error;
-    _engCarregarComoNovoProjetoLocal(ri.data.titulo, ri.data.entrada, ri.data.id);
+    _engCarregarComoNovoProjetoLocal(ri.data.titulo, ri.data.entrada, ri.data.id, ri.data.cliente_id);
     _engFecharHistorico();
     toast('✔ Cálculo duplicado em um novo projeto local.');
   }catch(e){
@@ -3814,6 +3934,19 @@ async function _engDuplicarCalculo(id){
 
 $('btn-save-cloud').addEventListener('click', _engAbrirModalSalvar);
 $('btn-open-history').addEventListener('click', _engAbrirHistorico);
+(function(){
+  var cliInput = $('cloudClienteInput');
+  if(cliInput){
+    cliInput.addEventListener('input', _engRenderClienteLista);
+    cliInput.addEventListener('focus', _engRenderClienteLista);
+  }
+  // Clicar fora da lista de sugestões a fecha.
+  document.addEventListener('click', function(e){
+    var busca = $('cloudClienteBusca');
+    var lista = $('cloudClienteLista');
+    if(lista && busca && !busca.contains(e.target)) lista.style.display='none';
+  });
+})();
 
 if(_aplicarGateEng()){ init(); _engMostrarPasso(1); _engAtualizarBotoesPermissao(); }
 try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
