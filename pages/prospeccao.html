@@ -713,8 +713,14 @@ async function salvarCaptura(){
     _capItens=[];
     await carregarTudo();
   }catch(e){ toast('Erro ao salvar: '+(e&&e.message||''),'err'); }
-  btn.disabled=false; btn.textContent='💾 Salvar selecionadas';
-  _capSalvando=false;
+  finally{
+    // Reabilita o botão e libera o guard SEMPRE — inclusive nos returns de
+    // validação dentro do try (sem selecionadas / linha inválida / sem
+    // empresa), que antes deixavam o botão preso em "Salvando…" e
+    // _capSalvando=true (exigindo recarregar a página pra tentar de novo).
+    btn.disabled=false; btn.textContent='💾 Salvar selecionadas';
+    _capSalvando=false;
+  }
 }
 
 /* ── Pesquisa rápida (Momento 2) ─────────────────────────────── */
