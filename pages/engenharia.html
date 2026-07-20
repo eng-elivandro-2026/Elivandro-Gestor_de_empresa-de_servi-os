@@ -2720,7 +2720,16 @@ function createNewProject(){
   if(!name) return;
 
   // Restaura valores padrão do formulário
-  if(window.__DEFAULT_SNAPSHOT__) applySnapshot(window.__DEFAULT_SNAPSHOT__);
+  if(window.__DEFAULT_SNAPSHOT__){
+    applySnapshot(window.__DEFAULT_SNAPSHOT__);
+    // Mesma causa raiz do groupCircuits/layout/methodCardId nos outros 4
+    // pontos de reidratação: os três dependem de outro campo (groupRef;
+    // method+loaded; method) e reconstroem suas <option>/preview do zero —
+    // sem passar o valor default aqui, cairiam no primeiro item / guess.
+    populateLayout(window.__DEFAULT_SNAPSHOT__.layout);
+    populateGroupCircuits(window.__DEFAULT_SNAPSHOT__.groupCircuits);
+    _wizResetPreviewParaPadrao(); // projeto novo — nunca "registro antigo sem a info"
+  }
 
   const id = 'p_' + String(Date.now());
   const createdAt = nowISO();
@@ -2762,7 +2771,12 @@ function deleteCurrentProject(){
     recalc();
   }else{
     // Nenhum restante: cria um novo vazio
-    if(window.__DEFAULT_SNAPSHOT__) applySnapshot(window.__DEFAULT_SNAPSHOT__);
+    if(window.__DEFAULT_SNAPSHOT__){
+      applySnapshot(window.__DEFAULT_SNAPSHOT__);
+      populateLayout(window.__DEFAULT_SNAPSHOT__.layout);
+      populateGroupCircuits(window.__DEFAULT_SNAPSHOT__.groupCircuits);
+      _wizResetPreviewParaPadrao(); // projeto novo — nunca "registro antigo sem a info"
+    }
     const freshId = 'p_' + String(Date.now());
     const fresh = {id:freshId, name:'Projeto 1', createdAt: nowISO(), updatedAt: nowISO(), revNum: 0, data: snapshotForm()};
     writeMetaBundle(fresh);
@@ -3895,15 +3909,38 @@ function _wizRestaurarPreviewPorCardId(cardId, metodoAtual){
     return;
   }
 
+  if(metodoAtual){
+    // Sem card mas COM método: é um registro salvo antes desta função
+    // existir (o método é confiável, veio do banco/localStorage) — mensagem
+    // honesta em vez de mostrar uma figura arbitrária como se fosse certa.
+    document.querySelectorAll('.wiz-card').forEach(c=>c.classList.remove('wiz-selected'));
+    document.querySelectorAll('.wiz-opt-btn').forEach(b=>b.classList.remove('wiz-opt-selected'));
+    prev.classList.remove('method-preview-filled');
+    thumb.classList.add('placeholder');
+    thumb.innerHTML = '🖼️';
+    txt.classList.add('method-preview-empty');
+    txt.textContent = `Figura original não registrada neste cálculo (salvo antes desta função) — método usado: ${metodoAtual}. Reabra o assistente para escolher/conferir a figura.`;
+    return;
+  }
+  _wizResetPreviewParaPadrao();
+}
+// Estado "nada escolhido ainda" — usado tanto pelo placeholder inicial do
+// HTML quanto por createNewProject()/deleteCurrentProject() (sem projeto
+// restante), que resetam pro estado DEFAULT (nunca "um registro antigo sem
+// a info" — é um projeto genuinamente novo, method='E' é só o valor inicial
+// do <select>, não uma escolha real do usuário que precise ser citada).
+function _wizResetPreviewParaPadrao(){
+  const prev = document.getElementById('methodPreview');
+  const thumb = document.getElementById('methodPreviewThumb');
+  const txt = document.getElementById('methodPreviewText');
+  if(!prev || !thumb || !txt) return;
   document.querySelectorAll('.wiz-card').forEach(c=>c.classList.remove('wiz-selected'));
   document.querySelectorAll('.wiz-opt-btn').forEach(b=>b.classList.remove('wiz-opt-selected'));
   prev.classList.remove('method-preview-filled');
   thumb.classList.add('placeholder');
   thumb.innerHTML = '🖼️';
   txt.classList.add('method-preview-empty');
-  txt.textContent = metodoAtual
-    ? `Figura original não registrada neste cálculo (salvo antes desta função) — método usado: ${metodoAtual}. Reabra o assistente para escolher/conferir a figura.`
-    : 'Nenhuma figura escolhida ainda — abra o assistente visual abaixo e clique na instalação que corresponde ao seu caso.';
+  txt.textContent = 'Nenhuma figura escolhida ainda — abra o assistente visual abaixo e clique na instalação que corresponde ao seu caso.';
 }
 (function(){
   const search = document.getElementById('wizSearch');
