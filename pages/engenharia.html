@@ -3581,6 +3581,11 @@ window.addEventListener('message', function(e){
   if(!e.data || !e.data.type) return;
   if(e.data.type==='SET_EMPRESA') _onTrocaEmpresaEng(e.data);
   if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  // Deep-link vindo de outro módulo (ex.: aba "Cálculos" da ficha do cliente):
+  // abre um cálculo salvo específico, reusando 100% o fluxo de reabrir.
+  if(e.data.type==='ENG_ABRIR_CALCULO' && e.data.payload && e.data.payload.id){
+    try{ _engReabrirCalculo(e.data.payload.id); }catch(err){}
+  }
 });
 
 /* ══════════════════════════════════════════════════════════════

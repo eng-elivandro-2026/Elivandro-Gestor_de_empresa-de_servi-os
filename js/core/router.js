@@ -506,7 +506,30 @@
   window.addEventListener('message', function (e) {
     if (!e.data || !e.data.type) return;
     if (e.data.type === 'ROUTER_IR') {
-      Router.ir(e.data.modulo);
+      var _destino = e.data.modulo;
+      // Deep-link entre módulos: além de navegar, entrega uma mensagem
+      // opcional ao iframe destino (ex.: "abra o cálculo X"). Se o iframe
+      // acabou de ser criado por Router.ir (nunca visitado antes), ele ainda
+      // está carregando — entrega a mensagem no evento 'load'; se já existia
+      // e está pronto, entrega imediatamente.
+      var _msg = e.data.msg || null;
+      var _jaExistia = !!document.getElementById('frame-' + _destino);
+      Router.ir(_destino);
+      // Só entrega se a navegação foi de fato permitida (Router.ir respeita
+      // o gate de acesso — se bloqueou, o módulo ativo não mudou).
+      if (_msg && Router.getAtivo() === _destino) {
+        if (_jaExistia) {
+          Router.iframeMsg(_destino, _msg.type, _msg.payload);
+        } else {
+          var _f = document.getElementById('frame-' + _destino);
+          if (_f) {
+            _f.addEventListener('load', function _once() {
+              _f.removeEventListener('load', _once);
+              Router.iframeMsg(_destino, _msg.type, _msg.payload);
+            });
+          }
+        }
+      }
     }
     if (e.data.type === 'SET_TEMA') {
       document.body.classList.toggle('light', e.data.tema === 'light');
