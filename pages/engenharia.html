@@ -749,6 +749,7 @@ a:hover{
   <div class="actions-row">
     <button id="btn-save-cloud" class="btn">☁ Salvar no Supabase</button>
     <button id="btn-open-history" class="btn">☁ Histórico</button>
+    <button id="btn-fechar" class="btn">✕ Fechar</button>
   </div>
 
   <input id="fileImportJson" type="file" accept="application/json" style="display:none" />
@@ -840,7 +841,8 @@ a:hover{
     <div class="help" id="engAviso" style="display:none;color:#b42318;font-weight:600;margin-top:6px">—</div>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button type="button" class="btn" id="engBtnVoltar" onclick="_engVoltar()">← Voltar</button>
-      <button type="button" class="primary" id="engBtnAvancar" onclick="_engAvancar()" style="margin-left:auto">Avançar →</button>
+      <button type="button" class="btn" id="engBtnFechar" onclick="_engFechar()" style="margin-left:auto">✕ Fechar</button>
+      <button type="button" class="primary" id="engBtnAvancar" onclick="_engAvancar()">Avançar →</button>
     </div>
   </section>
 
@@ -3469,6 +3471,7 @@ $('btn-save-project').addEventListener('click', ()=>saveNow(false));
 $('btn-new-project').addEventListener('click', createNewProject);
 $('btn-delete-project').addEventListener('click', deleteCurrentProject);
 $('btn-print').addEventListener('click', ()=>{ doPrint(); });
+(function(){ var b=$('btn-fechar'); if(b) b.addEventListener('click', _engFechar); })();
 
 $('btn-export-json').addEventListener('click', exportProjectsJSON);
 $('btn-import-json').addEventListener('click', ()=>{ document.getElementById('fileImportJson').click(); });
@@ -3564,6 +3567,11 @@ function _engMostrarWizardUI(){
 // (projeto local atual). Novo projeto continua sendo ação explícita dentro
 // do wizard ("+ Criar novo projeto").
 function _engIniciarCabos(){ _engMostrarPasso(1); }
+// "Fechar": sai do wizard e volta pra tela inicial SEM salvar, SEM tocar no
+// Supabase e SEM apagar o rascunho local (continua reabrível pelo seletor de
+// projetos). Sem confirmação: nada é perdido — é só navegação. Terceira via
+// além de "Concluído" (salva) e "Excluir registro" (apaga).
+function _engFechar(){ _engMostrarInicio(); }
 
 function _engMostrarPasso(n){
   _engMostrarWizardUI(); // mostrar um passo implica estar no wizard
