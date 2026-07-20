@@ -2729,6 +2729,7 @@ function createNewProject(){
     populateLayout(window.__DEFAULT_SNAPSHOT__.layout);
     populateGroupCircuits(window.__DEFAULT_SNAPSHOT__.groupCircuits);
     _wizResetPreviewParaPadrao(); // projeto novo — nunca "registro antigo sem a info"
+    updateTempFactorPanel();      // painel PVC/EPR volta ao default (limpa resíduo do projeto anterior)
   }
 
   const id = 'p_' + String(Date.now());
@@ -2768,6 +2769,7 @@ function deleteCurrentProject(){
     toggleHarmonicsUI();
     toggleLockSectionUI();
     updateMethodHelp();
+    updateTempFactorPanel();
     recalc();
   }else{
     // Nenhum restante: cria um novo vazio
@@ -2776,6 +2778,7 @@ function deleteCurrentProject(){
       populateLayout(window.__DEFAULT_SNAPSHOT__.layout);
       populateGroupCircuits(window.__DEFAULT_SNAPSHOT__.groupCircuits);
       _wizResetPreviewParaPadrao(); // projeto novo — nunca "registro antigo sem a info"
+      updateTempFactorPanel();      // painel PVC/EPR volta ao default (limpa resíduo)
     }
     const freshId = 'p_' + String(Date.now());
     const fresh = {id:freshId, name:'Projeto 1', createdAt: nowISO(), updatedAt: nowISO(), revNum: 0, data: snapshotForm()};
@@ -2822,6 +2825,7 @@ function importProjectsJSON(file){
         toggleHarmonicsUI();
         toggleLockSectionUI();
         updateMethodHelp();
+        updateTempFactorPanel();
         recalc();
       }
       alert('Importação concluída.');
@@ -2873,6 +2877,7 @@ function loadNow(silent=false){
     toggleHarmonicsUI();
     toggleLockSectionUI();
     updateMethodHelp();
+    updateTempFactorPanel();
     recalc();
     if(!silent) alert('Dados restaurados.');
   }catch(e){
@@ -3747,6 +3752,7 @@ function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId){
   toggleHarmonicsUI();
   toggleLockSectionUI();
   updateMethodHelp();
+  updateTempFactorPanel();
   recalc();
 }
 
