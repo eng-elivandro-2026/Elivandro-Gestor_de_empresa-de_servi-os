@@ -245,6 +245,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <button class="fc-tab" id="fcTab-C" onclick="_fichaSetVista('C')">Contatos</button>
       <button class="fc-tab" id="fcTab-O" onclick="_fichaSetVista('O')">Organograma</button>
       <button class="fc-tab" id="fcTab-H" onclick="_fichaSetVista('H')">Histórico</button>
+      <button class="fc-tab" id="fcTab-G" onclick="_fichaSetVista('G')">Cálculos</button>
     </div>
     <div id="fcBody"><div class="vazio">Carregando…</div></div>
     <div class="fc-acoes">
@@ -530,14 +531,14 @@ function renderClientes(){
    Resumo e Contatos funcionais; Organograma (PR-C) e Histórico
    (vínculo real no PR-D — aqui best-effort por nome) placeholders.
    ══════════════════════════════════════════════════════════════ */
-var _ficha={ cliente:null, propostas:null, organo:null };
+var _ficha={ cliente:null, propostas:null, organo:null, calculos:null };
 var _fichaVista='R';   // memória da vista POR SESSÃO (não persiste no banco)
 var _ctForm=null;      // null=fechado | 'novo' | id do contato em edição
 
 function abrirFicha(id){
   var c=_clientes.find(function(x){ return x.id===id; });
   if(!c) return;
-  _ficha.cliente=c; _ficha.propostas=null; _ficha.organo=null; _ctForm=null;
+  _ficha.cliente=c; _ficha.propostas=null; _ficha.organo=null; _ficha.calculos=null; _ctForm=null;
   document.getElementById('splitClientes').classList.add('com-ficha');
   _fichaRender();
 }
@@ -567,7 +568,7 @@ function _fichaRender(){
     (c.grupo?'<span class="pill grupo">🏢 '+esc(c.grupo)+'</span>':'')+
     (c.origem?'<span class="pill origem">'+(ORIGEM_LABEL[c.origem]||esc(c.origem))+'</span>':'')+
     (c.dados_importados_cnpj?'<span class="pill papel" title="Dados importados do Comprovante de CNPJ">📄 CNPJ importado</span>':'');
-  ['R','C','O','H'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
+  ['R','C','O','H','G'].forEach(function(v){ document.getElementById('fcTab-'+v).classList.toggle('on', v===_fichaVista); });
   var btnEditar=document.getElementById('fcBtnEditar');
   if(btnEditar) btnEditar.disabled=!_podeEditar();
   var btnAtivo=document.getElementById('fcBtnAtivo');
@@ -577,10 +578,11 @@ function _fichaRender(){
   var btnExc=document.getElementById('fcBtnExcluir');
   btnExc.style.display=_podeExcluir()?'':'none';
   btnExc.title='Excluir cliente (remove também os contatos)';
-  var f={ R:_fichaVistaResumo, C:_fichaVistaContatos, O:_fichaVistaOrganograma, H:_fichaVistaHistorico }[_fichaVista]||_fichaVistaResumo;
+  var f={ R:_fichaVistaResumo, C:_fichaVistaContatos, O:_fichaVistaOrganograma, H:_fichaVistaHistorico, G:_fichaVistaCalculos }[_fichaVista]||_fichaVistaResumo;
   document.getElementById('fcBody').innerHTML=f();
   if(_fichaVista==='H' && _ficha.propostas===null) _fichaCarregarHistorico();
   if(_fichaVista==='O' && _ficha.organo===null) _fichaCarregarOrganograma();
+  if(_fichaVista==='G' && _ficha.calculos===null) _fichaCarregarCalculos();
 }
 
 /* Aba Resumo */
@@ -836,6 +838,53 @@ async function _fichaCarregarHistorico(){
   }catch(e){}
   _ficha.propostas=props;
   if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='H') _fichaRender();
+}
+
+/* ── Aba "Cálculos" (módulo Engenharia) — só leitura ──────────
+   Lista os cálculos de engenharia vinculados a este cliente
+   (engenharia_calculos.cliente_id). Clicar abre o cálculo de volta no
+   módulo Engenharia via deep-link (ROUTER_IR + ENG_ABRIR_CALCULO). */
+var _ENG_TIPO_LABEL={ dimensionamento_cabos:'Dimensionamento de cabos' };
+function _fichaVistaCalculos(){
+  if(_ficha.calculos===null) return '<div class="vazio">Buscando cálculos…</div>';
+  if(!_ficha.calculos.length)
+    return '<div class="vazio">Nenhum cálculo de engenharia vinculado a este cliente ainda.<br>'+
+      '<span style="font-size:.68rem">Cálculos salvos no módulo Engenharia com este cliente vinculado aparecem aqui.</span></div>';
+  return '<div class="sec-desc" style="margin-bottom:.4rem">Clique em um cálculo para abri-lo no módulo Engenharia.</div>'+
+    _ficha.calculos.map(function(k){
+      var tipo=_ENG_TIPO_LABEL[k.tipo_calculo]||k.tipo_calculo||'—';
+      var sec=(k.resultado && k.resultado.secFinal!=null)? (esc(String(k.resultado.secFinal))+' mm²') : '—';
+      var stPill=(k.status==='finalizado')
+        ? '<span class="pill papel" title="Finalizado">✅ finalizado</span>'
+        : '<span class="pill origem" title="Rascunho">✏️ rascunho</span>';
+      return '<div class="hist-item" style="cursor:pointer" onclick="_abrirCalculoEngenharia(\''+esc(k.id)+'\')" title="Abrir no módulo Engenharia">'+
+        '<b>'+esc(k.titulo||'(sem título)')+'</b> '+stPill+
+        '<div class="hist-meta">'+esc(tipo)+' · Seção final: '+sec+' · atualizado em '+_dataBr(k.atualizado_em)+'</div></div>';
+    }).join('');
+}
+async function _fichaCarregarCalculos(){
+  var c=_ficha.cliente, sb=_sb();
+  if(!sb || !c || !_empresaAtiva){ _ficha.calculos=[]; return; }
+  var lista=[];
+  try{
+    var res=await sb.from('engenharia_calculos')
+      .select('id,titulo,tipo_calculo,status,atualizado_em,resultado')
+      .eq('empresa_id', _empresaAtiva.id)
+      .eq('cliente_id', c.id)
+      .order('atualizado_em', {ascending:false});
+    if(res && res.error) throw res.error;
+    lista=(res && res.data)||[];
+  }catch(e){}
+  _ficha.calculos=lista;
+  if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='G') _fichaRender();
+}
+function _abrirCalculoEngenharia(id){
+  if(!id) return;
+  try{
+    if(window.parent && window.parent!==window){
+      window.parent.postMessage({ type:'ROUTER_IR', modulo:'engenharia', msg:{ type:'ENG_ABRIR_CALCULO', payload:{ id:id } } }, '*');
+    }
+  }catch(e){}
 }
 
 /* ── Ativar/desativar e excluir cliente ──────────────────────── */
