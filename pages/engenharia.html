@@ -1868,10 +1868,18 @@ function updateMethodHelp(){
     : 'Métodos E–G: Tabela 38 NBR 5410 (PVC 70°C) / Tabela 39 NBR 5410 (EPR/XLPE 90°C).';
 }
 
-function populateLayout(){
+function populateLayout(desiredValue){
   const method=$('method').value;
   const sel=$('layout'); sel.innerHTML='';
   (LAYOUTS[method]||[]).forEach(it=>{const o=document.createElement('option');o.value=it.value;o.textContent=it.label;sel.appendChild(o);});
+  // Restauração de snapshot (reabrir/duplicar/importar/carregar): se um valor
+  // salvo foi passado e ainda é válido pro método atual, usa ele — sem isso,
+  // a reconstrução das <option> sempre cairia no primeiro item da lista e
+  // sanitizeLayoutByLoaded() "adivinharia" um valor plausível, mas errado.
+  if(desiredValue!=null && (LAYOUTS[method]||[]).some(it=>it.value===desiredValue)){
+    sel.value = desiredValue;
+    if(sel.dataset) sel.dataset.confirmed='true'; // já era uma escolha confirmada quando foi salva
+  }
   updateLayoutHelp(); sanitizeLayoutByLoaded();
 }
 function updateLayoutHelp(){
@@ -1985,11 +1993,16 @@ function populateGroupingSelectors(){
   const first=Object.keys(FG_TABLE14)[0];
   Object.keys(FG_TABLE14[first]).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;perSel.appendChild(o);});
 }
-function populateGroupCircuits(){
+function populateGroupCircuits(desiredValue){
   const ref=$('groupRef').value;
   const sel=$('groupCircuits'); sel.innerHTML='';
   const row=FG_TABLE13[ref]||{};
   Object.keys(row).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;sel.appendChild(o);});
+  // Restauração de snapshot: mesma lógica de populateLayout() — usa o valor
+  // salvo se ainda for válido pra Ref atual, senão cai no default (1º item).
+  if(desiredValue!=null && row.hasOwnProperty(String(desiredValue))){
+    sel.value = String(desiredValue);
+  }
 }
 function toggleGroupingUI(){
   const isTable=($('groupMode').value==='table');
@@ -2734,8 +2747,8 @@ function deleteCurrentProject(){
     syncMetaInputs(b);
     enforceLoadedOptions();
     toggleLayoutRow();
-    populateLayout();
-    populateGroupCircuits();
+    populateLayout((b.data||{}).layout);
+    populateGroupCircuits((b.data||{}).groupCircuits);
     toggleGroupingUI();
     toggleHarmonicsUI();
     toggleLockSectionUI();
@@ -2782,8 +2795,8 @@ function importProjectsJSON(file){
         syncMetaInputs(b);
         enforceLoadedOptions();
         toggleLayoutRow();
-        populateLayout();
-        populateGroupCircuits();
+        populateLayout(b.data.layout);
+        populateGroupCircuits(b.data.groupCircuits);
         toggleGroupingUI();
         toggleHarmonicsUI();
         toggleLockSectionUI();
@@ -2832,8 +2845,8 @@ function loadNow(silent=false){
     syncMetaInputs(bundle);
     enforceLoadedOptions();
     toggleLayoutRow();
-    populateLayout();
-    populateGroupCircuits();
+    populateLayout(bundle.data.layout);
+    populateGroupCircuits(bundle.data.groupCircuits);
     toggleGroupingUI();
     toggleHarmonicsUI();
     toggleLockSectionUI();
@@ -3705,8 +3718,8 @@ function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId){
   refreshProjectSelect();
   enforceLoadedOptions();
   toggleLayoutRow();
-  populateLayout();
-  populateGroupCircuits();
+  populateLayout(bundle.data.layout);
+  populateGroupCircuits(bundle.data.groupCircuits);
   toggleGroupingUI();
   toggleHarmonicsUI();
   toggleLockSectionUI();
