@@ -543,6 +543,7 @@ header.card::before{
   /* Modais/toast da persistência na nuvem (PR-C) nunca aparecem no
      relatório impresso, mesmo se estiverem abertos na hora do print. */
   .eng-modal-overlay, .eng-toast{display:none !important}
+  #telaInicio{display:none !important} /* landing nunca sai no relatório impresso */
 }
 #memorialPrintMirror{display:none;white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.5}
 footer#print-footer{display:none;}
@@ -690,6 +691,17 @@ a:hover{
 .eng-cli-chip-x{border:none;background:#fff;color:var(--muted);border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
 .eng-cli-chip-x:hover{color:var(--danger)}
 
+/* Tela inicial (landing) do módulo */
+.eng-inicio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.eng-inicio-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:6px;border:2px solid var(--line);border-radius:var(--radius-lg);padding:18px;background:var(--card);cursor:pointer;transition:all var(--transition-fast);font:inherit;color:inherit}
+.eng-inicio-card:hover{border-color:var(--brand);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.eng-inicio-card-off{cursor:not-allowed;opacity:.55}
+.eng-inicio-card-off:hover{border-color:var(--line);box-shadow:none;transform:none}
+.eng-inicio-ico{font-size:30px;line-height:1}
+.eng-inicio-tit{font-weight:700;font-size:15px;color:var(--ink)}
+.eng-inicio-sub{font-size:12.5px;color:var(--muted)}
+.eng-inicio-acoes{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+
 .layout-card{border:2px solid var(--line,#ddd);border-radius:10px;padding:8px;cursor:pointer;background:#fff;transition:all .15s;flex-direction:column;align-items:center;text-align:center}
 .layout-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.25)}
 
@@ -745,6 +757,35 @@ a:hover{
 
     </div>
   </header>
+
+  <!-- Tela inicial do módulo (landing): lista os tipos de cálculo.
+       Clicar em "Engenharia" na sidebar abre AQUI; o sub-item de nav
+       "Dimensionamento de Cabos" (SHOW_SECTION:'cabos') entra direto no
+       wizard. Concluir/excluir voltam para cá. -->
+  <section class="card" id="telaInicio" style="display:none">
+    <h2>O que você quer calcular?</h2>
+    <div class="help" style="margin-bottom:16px">Escolha o tipo de cálculo de engenharia. Novos tipos serão adicionados ao módulo.</div>
+    <div class="eng-inicio-grid">
+      <button type="button" class="eng-inicio-card" id="cardCalcCabos" onclick="_engIniciarCabos()">
+        <div class="eng-inicio-ico">🔌</div>
+        <div class="eng-inicio-tit">Dimensionamento de Cabos</div>
+        <div class="eng-inicio-sub">Seção de condutores, neutro e PE — NBR 5410</div>
+      </button>
+      <div class="eng-inicio-card eng-inicio-card-off" aria-disabled="true" title="Em breve">
+        <div class="eng-inicio-ico">📉</div>
+        <div class="eng-inicio-tit">Queda de tensão</div>
+        <div class="eng-inicio-sub">Em breve</div>
+      </div>
+      <div class="eng-inicio-card eng-inicio-card-off" aria-disabled="true" title="Em breve">
+        <div class="eng-inicio-ico">⚡</div>
+        <div class="eng-inicio-tit">Curto-circuito</div>
+        <div class="eng-inicio-sub">Em breve</div>
+      </div>
+    </div>
+    <div class="eng-inicio-acoes">
+      <button type="button" class="btn" id="btn-inicio-historico">☁ Histórico de cálculos salvos</button>
+    </div>
+  </section>
 
   <div class="eng-modal-overlay" id="modalSalvarCloud">
     <div class="eng-modal-box">
@@ -2812,6 +2853,9 @@ function deleteCurrentProject(){
     recalc();
   }
   refreshProjectSelect();
+  // Após excluir, volta pra tela inicial do módulo (o projeto restante/novo
+  // fica pronto no localStorage, mas a navegação vai para a landing).
+  _engMostrarInicio();
 }
 function exportProjectsJSON(){
   const store = readProjectStore();
@@ -3503,7 +3547,26 @@ function _engAplicarVisibilidadePasso(n){
     try{ toggleGroupingUI(); }catch(e){}
   }
 }
+// ── Tela inicial (landing) ↔ wizard ─────────────────────────
+function _engMostrarInicio(){
+  var acoes=document.querySelector('.actions'); if(acoes) acoes.style.display='none';
+  var nav=$('engWizNav'); if(nav) nav.style.display='none';
+  var grid=document.querySelector('.grid'); if(grid) grid.style.display='none';
+  var inicio=$('telaInicio'); if(inicio) inicio.style.display='';
+}
+function _engMostrarWizardUI(){
+  var inicio=$('telaInicio'); if(inicio) inicio.style.display='none';
+  var acoes=document.querySelector('.actions'); if(acoes) acoes.style.display='';
+  var nav=$('engWizNav'); if(nav) nav.style.display='';
+  var grid=document.querySelector('.grid'); if(grid) grid.style.display='';
+}
+// Card "Dimensionamento de Cabos" da landing → entra no wizard no passo 1
+// (projeto local atual). Novo projeto continua sendo ação explícita dentro
+// do wizard ("+ Criar novo projeto").
+function _engIniciarCabos(){ _engMostrarPasso(1); }
+
 function _engMostrarPasso(n){
+  _engMostrarWizardUI(); // mostrar um passo implica estar no wizard
   n=Math.max(1,Math.min(7,n));
   _engPasso=n;
   _engAplicarVisibilidadePasso(n);
@@ -3530,9 +3593,19 @@ function _engMostrarPasso(n){
   };
 })();
 function _engAvancar(){
-  if(_engPasso===7) return;
+  if(_engPasso===7){ _engConcluir(); return; } // passo 7: "Concluído ✓" = finalizar
   if(!_engValidarPasso(_engPasso)){ _engAtualizarAviso(); return; }
   _engMostrarPasso(_engPasso+1);
+}
+// Passo 7 → "Concluído": salva na nuvem (sempre pelo modal, pré-preenchido)
+// e, após salvar com sucesso, volta pra tela inicial. Cancelar o modal
+// mantém no passo 7. Arma um flag que _engConfirmarSalvarCloud consulta no
+// sucesso; _engFecharModalSalvar (cancelar) limpa o flag.
+var _engConcluirPendente = false;
+function _engConcluir(){
+  if(!(_podeCriarEng() || _podeEditarEng())){ toast('Sem permissão para finalizar (salvar na nuvem).', 'err'); return; }
+  _engConcluirPendente = true;
+  _engAbrirModalSalvar();
 }
 function _engVoltar(){ if(_engPasso>1) _engMostrarPasso(_engPasso-1); }
 // Atualiza o aviso do passo 2 em tempo real, sem interferir nos listeners
@@ -3581,6 +3654,12 @@ window.addEventListener('message', function(e){
   if(!e.data || !e.data.type) return;
   if(e.data.type==='SET_EMPRESA') _onTrocaEmpresaEng(e.data);
   if(e.data.type==='SET_TEMA') document.body.classList.toggle('light', e.data.tema==='light');
+  // Sub-item de nav "Dimensionamento de Cabos" (router: SHOW_SECTION:'cabos')
+  // — entra direto no wizard, pulando a tela inicial. Mecanismo que já
+  // estava preparado no router e não era tratado aqui.
+  if(e.data.type==='SHOW_SECTION' && e.data.payload==='cabos'){
+    try{ _engIniciarCabos(); }catch(err){}
+  }
   // Deep-link vindo de outro módulo (ex.: aba "Cálculos" da ficha do cliente):
   // abre um cálculo salvo específico, reusando 100% o fluxo de reabrir.
   if(e.data.type==='ENG_ABRIR_CALCULO' && e.data.payload && e.data.payload.id){
@@ -3748,20 +3827,23 @@ function _engFecharModalSalvar(){
   if(modal) modal.classList.remove('on');
   var lista = $('cloudClienteLista');
   if(lista) lista.style.display='none';
+  _engConcluirPendente = false; // cancelar o modal desarma o "Concluído" (fica no passo 7)
 }
 var _engSalvandoCloud = false;
 async function _engConfirmarSalvarCloud(){
-  if(_engSalvandoCloud) return;
+  if(_engSalvandoCloud) return false;
   var titulo = (($('cloudTituloInput') && $('cloudTituloInput').value) || '').trim();
-  if(!titulo){ toast('Dê um título ao cálculo antes de salvar.', 'err'); return; }
+  if(!titulo){ toast('Dê um título ao cálculo antes de salvar.', 'err'); return false; }
   var ehUpdate = _engBundleTemSupabaseId();
-  if(!(ehUpdate ? _podeEditarEng() : _podeCriarEng())){ toast('Sem permissão para esta ação.', 'err'); return; }
+  if(!(ehUpdate ? _podeEditarEng() : _podeCriarEng())){ toast('Sem permissão para esta ação.', 'err'); return false; }
   var sb=_sbEng();
-  if(!sb || !_empresaAtivaEng){ toast('Não foi possível conectar. Tente novamente.', 'err'); return; }
+  if(!sb || !_empresaAtivaEng){ toast('Não foi possível conectar. Tente novamente.', 'err'); return false; }
   _engSalvandoCloud=true;
   var btn=$('btnConfirmarSalvarCloud');
   var textoOriginal = btn ? btn.textContent : '';
   if(btn){ btn.disabled=true; btn.textContent='Salvando…'; }
+  var sucesso = false;
+  var eraConcluir = _engConcluirPendente; // capturado antes de _engFecharModalSalvar limpar o flag
   try{
     saveNow(true); // garante que o projeto local (entrada/resultado) está atualizado antes de mandar pra nuvem
     var bundle = readMetaBundle() || {};
@@ -3798,12 +3880,18 @@ async function _engConfirmarSalvarCloud(){
       }
       toast('✔ Cálculo salvo na nuvem.');
     }
+    sucesso = true;
     _engFecharModalSalvar();
   }catch(e){
     toast('Erro ao salvar na nuvem: ' + ((e && e.message) || ''), 'err');
   }
   if(btn){ btn.disabled=false; btn.textContent=textoOriginal; }
   _engSalvandoCloud=false;
+  // "Concluído" (passo 7): após salvar com sucesso, volta pra tela inicial.
+  // O rascunho local NÃO é apagado (o cálculo já está salvo na nuvem e o
+  // rascunho continua reabrível pelo seletor de projetos).
+  if(sucesso && eraConcluir){ _engMostrarInicio(); }
+  return sucesso;
 }
 
 var _engHistoricoCache = [];
@@ -3878,6 +3966,7 @@ function _engCarregarComoNovoProjetoLocal(titulo, entrada, supabaseId, clienteId
   updateMethodHelp();
   updateTempFactorPanel();
   recalc();
+  _engMostrarPasso(1); // reabrir (histórico/deep-link) cai no wizard, não na landing
 }
 
 var _engReabrindo = false;
@@ -3939,6 +4028,7 @@ async function _engDuplicarCalculo(id){
 
 $('btn-save-cloud').addEventListener('click', _engAbrirModalSalvar);
 $('btn-open-history').addEventListener('click', _engAbrirHistorico);
+(function(){ var b=$('btn-inicio-historico'); if(b) b.addEventListener('click', _engAbrirHistorico); })();
 (function(){
   var cliInput = $('cloudClienteInput');
   if(cliInput){
@@ -3953,7 +4043,10 @@ $('btn-open-history').addEventListener('click', _engAbrirHistorico);
   });
 })();
 
-if(_aplicarGateEng()){ init(); _engMostrarPasso(1); _engAtualizarBotoesPermissao(); }
+// Boot: prepara o wizard (init) mas abre na TELA INICIAL do módulo, não
+// direto no passo 1. O card da landing / o sub-item de nav (SHOW_SECTION)
+// entram no wizard.
+if(_aplicarGateEng()){ init(); _engMostrarInicio(); _engAtualizarBotoesPermissao(); }
 try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
 </script>
 
