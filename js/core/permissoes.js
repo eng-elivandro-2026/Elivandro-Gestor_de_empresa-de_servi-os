@@ -83,6 +83,14 @@
       criar:  ['dono', 'admin', 'gestor', 'comercial', 'operacional'],
       editar: ['dono', 'admin', 'gestor', 'comercial', 'operacional']
     },
+    'curto-circuito': {
+      // Curto-Circuito BT — mesmos perfis padrão de Engenharia na v1
+      // (decisão D1/D2). Editável por usuário via configurações de
+      // permissões (G4B). RLS de dados fica na tabela própria (Etapa 4).
+      ver:    ['dono', 'admin', 'gestor', 'comercial', 'operacional'],
+      criar:  ['dono', 'admin', 'gestor', 'comercial', 'operacional'],
+      editar: ['dono', 'admin', 'gestor', 'comercial', 'operacional']
+    },
     prospeccao: {
       // Prospecção Comercial (Etapas 1-2) — EXCLUSIVO de dono/admin nesta
       // fase (decisão aprovada); Elivandro abre p/ outros perfis depois,
@@ -122,7 +130,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'engenharia', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'engenharia', 'curto-circuito', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Helpers internos ─────────────────────────────────────
 

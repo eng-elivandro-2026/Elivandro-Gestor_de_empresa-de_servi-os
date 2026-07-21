@@ -97,6 +97,22 @@
         // curto-circuito, luminotécnica, SPDA...) — mesmo padrão simples
         // que a Prospecção já usa.
         { label: 'Dimensionamento de Cabos', icon: '🔌', action: "Router.ir('engenharia');Router.iframeMsg('engenharia','SHOW_SECTION','cabos')" },
+        { label: 'Curto-Circuito BT',        icon: '⚡', action: "Router.ir('curto-circuito')" },
+      ]
+    },
+    {
+      // Módulo OCULTO: acessado pelo item "Curto-Circuito BT" na subnav de
+      // Engenharia (não vira botão próprio no sidebar). Mesmo padrão do
+      // reuniao-radar. Iframe autocontido (pages/curto-circuito.html).
+      id: 'curto-circuito',
+      label: 'Curto-Circuito BT',
+      icon: '⚡',
+      oculto: true,
+      tipo: 'iframe',
+      src: 'pages/curto-circuito.html',
+      nav: [
+        { label: 'Curto-Circuito BT',        icon: '⚡', action: "Router.ir('curto-circuito')" },
+        { label: '↳ Dimensionamento de Cabos', icon: '🔌', action: "Router.ir('engenharia');Router.iframeMsg('engenharia','SHOW_SECTION','cabos')" },
       ]
     },
     {
