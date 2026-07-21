@@ -108,6 +108,8 @@
     <div class="row">
       <button class="btn sm ghost" id="btnNovo">＋ Novo</button>
       <button class="btn sm" id="btnImprimir">🖨️ Memorial</button>
+      <button class="btn sm" id="btnPDF">📄 Exportar PDF</button>
+      <button class="btn sm danger" id="btnExcluirNuvem" style="display:none" title="Excluir estudo da nuvem">🗑️ Excluir</button>
       <button class="btn primary sm" id="btnSalvar">💾 Salvar rascunho</button>
     </div>
   </div>
@@ -277,6 +279,8 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="../js/modules/curto-bt-engine.js"></script>
 <script>
 (function(){
@@ -606,10 +610,10 @@
     STATE=d.state; STATE._localId=id;
     // Rascunho local é desacoplado da nuvem: salvar na nuvem cria novo registro.
     // Para editar em-nuvem, abra pela lista "Estudos na nuvem".
-    _supabaseId=null; _supabaseAtualizadoEm=null;
-    hidratar(); toast('Rascunho carregado.','ok');
+    _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null;
+    hidratar(); atualizarBotaoExcluir(); toast('Rascunho carregado.','ok');
   }
-  function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; hidratar(); toast('Novo estudo.','ok'); }
+  function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null; hidratar(); atualizarBotaoExcluir(); toast('Novo estudo.','ok'); }
 
   // ── Memorial + diagrama unifilar (impressão) ─────────────
   function _fmtData(){ try{ return new Date().toLocaleDateString('pt-BR'); }catch(e){ return ''; } }
@@ -641,6 +645,95 @@
       h+='<div class="formline">Disjuntor: '+(p.referencia?esc(p.referencia)+' · ':'')+'Icu='+esc(p.Icu_kA||'—')+' kA · Icm='+esc(p.Icm_kA||'—')+' kA · I3='+esc(p.I3_kA||'—')+' kA · t='+esc(p.t_s||'—')+' s</div>';
     }
     return h;
+  }
+
+  // ── Exportação PDF (jsPDF + html2canvas) — v2 ────────────
+  function _slug(s){ return String(s||'estudo').normalize('NFD').replace(/[^\x00-\x7F]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'estudo'; }
+  function _fmtDataArquivo(){ try{ return new Date().toISOString().slice(0,10); }catch(e){ return 'data'; } }
+
+  function _pdfHTML(out, s, emp, svgImg){
+    var H4='margin:14px 0 5px;font-size:13px;color:#0369a1;border-bottom:1px solid #e2e8f0;padding-bottom:2px';
+    var h='';
+    // Página 1 — CAPA (min-height ~ 1 página A4 na largura de 794px)
+    h+='<div style="min-height:1120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">';
+    if(emp.logo_url) h+='<img src="'+esc(emp.logo_url)+'" style="max-height:80px;margin-bottom:18px">';
+    h+='<div style="font-size:24px;font-weight:700;color:#0369a1;letter-spacing:.5px">MEMORIAL DE CÁLCULO</div>';
+    h+='<div style="font-size:15px;margin:6px 0 26px;color:#475569">Curto-circuito em baixa tensão · IEC 60909-0:2016</div>';
+    h+='<div style="font-size:18px;font-weight:700;margin-bottom:26px">'+esc(s.study.titulo||'—')+'</div>';
+    h+='<div style="font-size:13px;line-height:2">';
+    h+='<b>'+esc(emp.razao_social||emp.nome||emp.nome_curto||'—')+'</b>'+(emp.cnpj?' · CNPJ '+esc(emp.cnpj):'')+'<br>';
+    h+='Cliente: <b>'+esc(s.study.cliente||'—')+'</b><br>';
+    h+='Instalação: '+esc(s.study.instalacao||'—')+'<br>';
+    h+='Responsável técnico: '+esc(s.study.responsavel||'—')+(s.study.art?' · ART/RRT '+esc(s.study.art):'')+'<br>';
+    h+='Revisão '+esc(s.study.revisao||'—')+' · '+esc(_fmtData())+'</div>';
+    h+='</div>';
+    // Página 2+ — MEMORIAL
+    if(out && out.calculado!==false){
+      h+='<div style="'+H4+'">Dados de entrada</div><div style="font-size:11px;color:#475569">Tensão '+esc(s.study.tensao_V)+' V · tipo de falta: '+esc(s.study.tipo_falta)+'</div>'+_memDadosEntrada();
+      h+='<div style="'+H4+'">Hipóteses adotadas</div><div style="font-size:11px;color:#475569">'+
+         '• Método da fonte de tensão equivalente (IEC 60909-0:2016).<br>'+
+         '• Rede radial; impedâncias em série referidas ao lado de baixa tensão.<br>'+
+         '• Caso máximo: c = '+esc(s.cMax)+' (cMax), R dos condutores a 20 °C, falta sólida.<br>'+
+         '• Caso mínimo: c = '+esc(s.cMin)+' (cMin), R à temperatura de operação.<br>'+
+         (out.tipicos_usados.indexOf('transformador')>=0?'• Transformador: uk% e Pcu típicos IEC 60076-5 — substituir por dados de placa.<br>':'')+
+         (s.motors.length?'• Motores conectados diretamente ao barramento da falta (soma vetorial).<br>':'')+'</div>';
+      h+='<div style="'+H4+'">Tabela de impedâncias acumuladas</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr>'+
+         ['Elemento','R (mΩ)','X (mΩ)','|Z| (mΩ)','ΣR','ΣX','Σ|Z|'].map(function(x){return '<th style="text-align:left;border-bottom:1px solid #cbd5e1;padding:3px">'+x+'</th>';}).join('')+'</tr></thead><tbody>';
+      out.impedancias.forEach(function(e){ h+='<tr>'+[e.elemento,e.R_mOhm,e.X_mOhm,e.Z_mOhm,e.R_acum,e.X_acum,e.Z_acum].map(function(v){return '<td style="border-bottom:1px solid #eef2f6;padding:3px">'+esc(String(v))+'</td>';}).join('')+'</tr>'; });
+      h+='</tbody></table>';
+      h+='<div style="'+H4+'">Desenvolvimento do cálculo</div>';
+      out.memoria_calculo.forEach(function(m){ h+='<div style="font-family:monospace;font-size:10px;background:#f8fafc;padding:5px;border-radius:4px;margin:3px 0">'+esc(m.formula)+'<br>= '+esc(m.valores_substituidos)+'<br>= <b>'+esc(m.resultado)+' '+esc(m.unidade||'')+'</b></div>'; });
+      h+='<div style="'+H4+'">Resultados e verificações</div>';
+      h+='<div style="font-size:12px"><b>Ik" máx = '+kA(out.Ik_total_max_kA)+'</b> · Ik" mín = '+kA(out.caso_min.Ik_kA)+' · ip = '+kA(out.ip_total_kA)+' · κ = '+out.caso_max.kappa+'</div>';
+      h+=renderVerif(out.verificacoes);
+      h+='<div style="'+H4+'">Advertências de responsabilidade técnica</div><div style="font-size:11px;color:#475569">'+
+         'Este estudo foi elaborado para as condições de instalação descritas e deve ser revisado por profissional habilitado antes de sua utilização.<br>'+
+         'Dados de placa reais substituem os valores típicos de norma utilizados. Alterações na instalação invalidam este cálculo.<br>'+
+         'O estudo não cobre seletividade, cascata, arco elétrico, redes em malha ou paralelismo de transformadores.</div>';
+      // Última seção — DIAGRAMA UNIFILAR (imagem do SVG capturada via html2canvas)
+      h+='<div style="'+H4+'">Diagrama unifilar esquemático</div>';
+      if(svgImg) h+='<img src="'+svgImg+'" style="max-width:100%;border:1px solid #e2e8f0;border-radius:4px">';
+      h+='<div style="font-size:9px;color:#94a3b8;margin-top:4px">Legenda: cadeia fonte → transformador → cabos → ponto de falta (Ik" destacado) → motores. Diagrama esquemático de referência — não substitui projeto elétrico em escala.</div>';
+    } else {
+      h+='<div style="color:#d97706">'+esc(out?out.aviso:'Preencha os dados para gerar o PDF.')+'</div>';
+    }
+    return h;
+  }
+
+  async function exportarPDF(){
+    if(!window.jspdf || !window.jspdf.jsPDF || !window.html2canvas){ toast('Bibliotecas de PDF não carregaram (verifique a conexão).','err'); return; }
+    var btn=Q('btnPDF'); var old=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='gerando...'; }
+    try{
+      coletar(); recalc();
+      var out=lastResult, s=STATE, emp=_empFull();
+      // 1) SVG do unifilar → PNG via html2canvas (requisito)
+      var svgImg=null;
+      try{
+        var wrap=document.createElement('div'); wrap.style.cssText='position:fixed;left:-9999px;top:0;background:#fff;padding:8px;width:760px';
+        wrap.innerHTML=unifilarSVG(out); document.body.appendChild(wrap);
+        var sc=await window.html2canvas(wrap,{backgroundColor:'#ffffff',scale:2}); svgImg=sc.toDataURL('image/png');
+        document.body.removeChild(wrap);
+      }catch(e){ svgImg=null; }
+      // 2) DOM completo do PDF (capa + memorial + unifilar)
+      var cont=document.createElement('div'); cont.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#111;padding:36px;font-family:Inter,Arial,sans-serif;font-size:12px;line-height:1.5';
+      cont.innerHTML=_pdfHTML(out,s,emp,svgImg); document.body.appendChild(cont);
+      var canvas=await window.html2canvas(cont,{backgroundColor:'#ffffff',scale:2}); document.body.removeChild(cont);
+      // 3) paginação A4
+      var pdf=new window.jspdf.jsPDF('p','mm','a4');
+      var pw=210, ph=297, pxPerPage=canvas.width*(ph/pw);
+      var pages=Math.max(1, Math.ceil(canvas.height/pxPerPage));
+      for(var p=0;p<pages;p++){
+        if(p>0) pdf.addPage();
+        var sliceH=Math.min(pxPerPage, canvas.height-p*pxPerPage);
+        var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=sliceH;
+        pc.getContext('2d').drawImage(canvas,0,p*pxPerPage,canvas.width,sliceH,0,0,canvas.width,sliceH);
+        pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw, sliceH*pw/canvas.width);
+      }
+      pdf.save('curto-bt_'+_slug(s.study.titulo)+'_'+_fmtDataArquivo()+'.pdf');
+      toast('PDF gerado.','ok');
+    }catch(e){ toast('Erro ao gerar PDF: '+(e&&e.message?e.message:e),'err'); }
+    if(btn){ btn.disabled=false; btn.textContent=old; }
   }
 
   function montarMemorial(){
@@ -770,8 +863,8 @@
     hidratar();                                 // 4-6) novo namespace
     renderDrafts();
     // Nuvem: zera caches do tenant anterior e recarrega clientes/estudos
-    _clientesCache=null; _clienteSel=null; _usuarioIdCache=null; _supabaseId=null; _supabaseAtualizadoEm=null;
-    limparClienteSel();
+    _clientesCache=null; _clienteSel=null; _usuarioIdCache=null; _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null;
+    limparClienteSel(); atualizarBotaoExcluir();
     carregarClientes().then(function(){ if(token===_ctxToken) renderClienteLista(); });
     listarNuvem();
   }
@@ -821,9 +914,36 @@
 
   // ── Persistência na nuvem (Supabase) — Etapa 4 ───────────
   var CURTO_APP_VERSION='curto-bt-v1';
-  var _clientesCache=null, _clienteSel=null, _usuarioIdCache=null, _supabaseAtualizadoEm=null;
+  var _clientesCache=null, _clienteSel=null, _usuarioIdCache=null, _supabaseAtualizadoEm=null, _supabaseCriadoPor=null;
   function _sbCloud(){ try{ return (window.parent && window.parent.sbClient) || window.sbClient || null; }catch(e){ return null; } }
   function cloudMsg(t){ var el=Q('cloudStatus'); if(el) el.textContent=t; }
+  function _perfilAtual(){ try{ return (window.parent.getPerfilUsuario && window.parent.getPerfilUsuario()) || window.parent._perfilUsuario || null; }catch(e){ return null; } }
+  // Pode excluir: autor do estudo OU perfil dono/admin (a RLS 069 é a barreira real)
+  function _podeExcluir(criadoPor){
+    var perfil=_perfilAtual();
+    if(perfil==='dono'||perfil==='admin') return true;
+    return !!(criadoPor && _usuarioIdCache && criadoPor===_usuarioIdCache);
+  }
+  function atualizarBotaoExcluir(){
+    var btn=Q('btnExcluirNuvem'); if(!btn) return;
+    if(!_supabaseId){ btn.style.display='none'; return; }
+    var perfil=_perfilAtual();
+    if(perfil==='dono'||perfil==='admin'){ btn.style.display=''; return; }
+    obterUsuarioId().then(function(uid){ btn.style.display=(uid && _supabaseCriadoPor && uid===_supabaseCriadoPor)?'':'none'; });
+  }
+  async function excluirNuvem(id, titulo){
+    var sb=_sbCloud(); if(!sb||!_empresa||!_empresa.id) return;
+    if(!confirm('Excluir "'+(titulo||'este estudo')+'"?\n\nTem certeza? Esta ação não pode ser desfeita.')) return;
+    cloudMsg('excluindo...');
+    try{
+      var r=await sb.from('curto_circuito_calculos').delete().eq('id',id).eq('empresa_id',_empresa.id).select('id');
+      if(r&&r.error) throw r.error;
+      if(!r.data||!r.data.length){ cloudMsg('bloqueado'); toast('Sem permissão para excluir este estudo (ou já removido).','err'); return; }
+      toast('Estudo excluído.','ok'); cloudMsg('excluído');
+      if(_supabaseId===id){ novoEstudo(); }   // estava aberto → volta à tela inicial (novo estudo)
+      listarNuvem();
+    }catch(e){ cloudMsg('erro'); toast('Erro ao excluir: '+(e&&e.message?e.message:e),'err'); }
+  }
 
   async function obterUsuarioId(){
     if(_usuarioIdCache) return _usuarioIdCache;
@@ -886,15 +1006,16 @@
         if(!uid){ cloudMsg('erro'); toast('Não foi possível identificar o usuário.','err'); return; }
         var ins=await sb.from('curto_circuito_calculos').insert(Object.assign({ empresa_id:_empresa.id, criado_por:uid }, base)).select('id,atualizado_em').single();
         if(ins&&ins.error) throw ins.error;
-        _supabaseId=ins.data.id; _supabaseAtualizadoEm=ins.data.atualizado_em; toast('Salvo na nuvem.','ok');
+        _supabaseId=ins.data.id; _supabaseAtualizadoEm=ins.data.atualizado_em; _supabaseCriadoPor=uid; toast('Salvo na nuvem.','ok');
       }
-      cloudMsg('salvo'); listarNuvem();
+      cloudMsg('salvo'); atualizarBotaoExcluir(); listarNuvem();
     }catch(e){ cloudMsg('erro'); toast('Erro ao salvar: '+(e&&e.message?e.message:e),'err'); }
   }
 
   async function listarNuvem(){
     var box=Q('cloudList'); var sb=_sbCloud();
     if(!sb||!_empresa||!_empresa.id){ box.innerHTML='<div class="emp">Aguardando empresa…</div>'; return; }
+    await obterUsuarioId(); // aquece _usuarioIdCache para a checagem de exclusão por autoria
     try{
       var r=await sb.from('curto_circuito_calculos').select('id,titulo,status,atualizado_em,criado_por,cliente_id')
         .eq('empresa_id',_empresa.id).order('atualizado_em',{ascending:false}).limit(200);
@@ -904,11 +1025,13 @@
       box.innerHTML='';
       arr.forEach(function(d){
         var el=document.createElement('div'); el.className='draft-item';
+        var btnDel = _podeExcluir(d.criado_por) ? '<button class="btn sm danger" data-del="'+d.id+'" title="Excluir">🗑️</button>' : '';
         el.innerHTML='<span class="t">'+esc(d.titulo||'(sem título)')+' <span class="pill '+(d.status==='finalizado'?'ok':'warn')+'">'+esc(d.status||'')+'</span></span>'+
-          '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span><button class="btn sm" data-open="'+d.id+'">abrir</button></span>';
+          '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span><button class="btn sm" data-open="'+d.id+'">abrir</button>'+btnDel+'</span>';
         box.appendChild(el);
         function op(){ abrirNuvem(d.id); }
         el.querySelector('[data-open]').addEventListener('click',op); el.querySelector('.t').addEventListener('click',op);
+        var db=el.querySelector('[data-del]'); if(db) db.addEventListener('click',function(){ excluirNuvem(d.id, d.titulo); });
       });
     }catch(e){ box.innerHTML='<div class="emp">Erro ao listar: '+esc(e&&e.message?e.message:'')+'</div>'; }
   }
@@ -921,10 +1044,11 @@
       var row=r&&r.data; if(!row){ toast('Estudo não disponível (outro tenant ou removido).','err'); return; }
       var env=row.entrada||{};
       if(env.schema_version!==1||env.engine_version!=='curto-bt-v1'){ toast('Versão de estudo incompatível.','err'); return; }
-      STATE=env.state; STATE._localId=null; _supabaseId=row.id; _supabaseAtualizadoEm=row.atualizado_em;
+      STATE=env.state; STATE._localId=null; _supabaseId=row.id; _supabaseAtualizadoEm=row.atualizado_em; _supabaseCriadoPor=row.criado_por;
       var c=(_clientesCache||[]).filter(function(x){return x.id===row.cliente_id;})[0];
       hidratar();
       if(c) selecionarCliente(c); else { STATE.cliente_id=row.cliente_id; var sel=Q('cloudClienteSel'); sel.style.display='inline-flex'; sel.textContent='Cliente: '+row.cliente_id; }
+      atualizarBotaoExcluir();
       toast('Estudo carregado da nuvem.','ok'); cloudMsg('carregado');
     }catch(e){ toast('Erro ao abrir: '+(e&&e.message?e.message:e),'err'); }
   }
@@ -958,6 +1082,8 @@
     Q('btnSalvar').addEventListener('click',salvarRascunho);
     Q('btnNovo').addEventListener('click',novoEstudo);
     Q('btnImprimir').addEventListener('click',function(){ montarMemorial(); Q('memorial').style.display='block'; window.print(); setTimeout(function(){ Q('memorial').style.display='none'; },400); });
+    Q('btnExcluirNuvem').addEventListener('click',function(){ if(_supabaseId) excluirNuvem(_supabaseId, STATE.study.titulo); });
+    Q('btnPDF').addEventListener('click',exportarPDF);
 
     // Nuvem
     Q('btnSalvarNuvem').addEventListener('click',salvarNuvem);
