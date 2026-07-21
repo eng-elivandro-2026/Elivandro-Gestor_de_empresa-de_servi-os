@@ -777,11 +777,11 @@ a:hover{
         <div class="eng-inicio-tit">Queda de tensão</div>
         <div class="eng-inicio-sub">Em breve</div>
       </div>
-      <div class="eng-inicio-card eng-inicio-card-off" aria-disabled="true" title="Em breve">
+      <button type="button" class="eng-inicio-card" id="cardCalcCurto" onclick="try{window.parent.postMessage({type:'ROUTER_IR',modulo:'curto-circuito'},'*');}catch(e){}">
         <div class="eng-inicio-ico">⚡</div>
-        <div class="eng-inicio-tit">Curto-circuito</div>
-        <div class="eng-inicio-sub">Em breve</div>
-      </div>
+        <div class="eng-inicio-tit">Curto-Circuito BT</div>
+        <div class="eng-inicio-sub">Corrente de curto em baixa tensão — IEC 60909</div>
+      </button>
     </div>
     <div class="eng-inicio-acoes">
       <button type="button" class="btn" id="btn-inicio-historico">☁ Histórico de cálculos salvos</button>
@@ -3986,9 +3986,20 @@ async function _engReabrirCalculo(id){
   _engReabrindo=true;
   try{
     var sb=_sbEng();
-    var res = await sb.from('engenharia_calculos').select('id,titulo,entrada,cliente_id').eq('id', id).maybeSingle();
+    var res = await sb.from('engenharia_calculos').select('id,titulo,tipo_calculo,entrada,cliente_id').eq('id', id).maybeSingle();
     if(res.error) throw res.error;
     if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engReabrindo=false; return; }
+    // Guarda type-aware: só cálculos de dimensionamento de cabos abrem no
+    // wizard de cabos; curto-circuito é redirecionado ao seu módulo próprio.
+    if(res.data.tipo_calculo && res.data.tipo_calculo!=='dimensionamento_cabos'){
+      if(res.data.tipo_calculo==='curto_circuito_bt' && window.parent){
+        window.parent.postMessage({ type:'ROUTER_IR', modulo:'curto-circuito', msg:{ type:'CURTO_ABRIR_CALCULO', payload:{ id:id } } }, '*');
+        toast('Abrindo estudo de curto-circuito no módulo próprio…');
+      } else {
+        toast('Este cálculo é de outro tipo e não abre no dimensionamento de cabos.', 'err');
+      }
+      _engReabrindo=false; return;
+    }
     _engCarregarComoNovoProjetoLocal(res.data.titulo, res.data.entrada, res.data.id, res.data.cliente_id);
     _engFecharHistorico();
     toast('✔ Cálculo reaberto em um novo projeto local.');
@@ -4006,9 +4017,13 @@ async function _engDuplicarCalculo(id){
   _engDuplicando=true;
   try{
     var sb=_sbEng();
-    var res = await sb.from('engenharia_calculos').select('titulo,entrada,resultado,app_version,cliente_id').eq('id', id).maybeSingle();
+    var res = await sb.from('engenharia_calculos').select('titulo,tipo_calculo,entrada,resultado,app_version,cliente_id').eq('id', id).maybeSingle();
     if(res.error) throw res.error;
     if(!res.data){ toast('Cálculo não encontrado.', 'err'); _engDuplicando=false; return; }
+    // Guarda type-aware: só duplica cálculos de cabos (nunca converte curto→cabos).
+    if(res.data.tipo_calculo && res.data.tipo_calculo!=='dimensionamento_cabos'){
+      toast('Só é possível duplicar cálculos de dimensionamento de cabos aqui.', 'err'); _engDuplicando=false; return;
+    }
     var uid = await _obterUsuarioIdEng();
     if(!uid) throw new Error('Não foi possível identificar o usuário atual.');
     var novaLinha = {

@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curto-Circuito BT</title>
+<!--
+  curto-circuito.html — Módulo Curto BT (iframe autocontido).
+  ETAPA 2: interface local + persistência em localStorage namespaceada por
+  empresa+usuário. SEM nuvem, SEM registro no router (isso é Etapa 3/4).
+  Motor de cálculo: js/modules/curto-bt-engine.js (fonte única da matemática).
+  Tokens visuais no vocabulário de engenharia (paleta clara — dark mode é
+  fora do escopo v1, igual a engenharia.html).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f0f4f8; --card:#ffffff; --card-elevated:#f8fafc;
+    --ink:#0f172a; --ink-secondary:#475569; --muted:#64748b;
+    --line:#e2e8f0; --line-light:#eef2f6;
+    --brand:#0369a1; --brand-dark:#075985; --brand-gradient:linear-gradient(135deg,#0369a1,#0ea5e9);
+    --ok:#16a34a; --ok-bg:#f0fdf4; --warn:#d97706; --warn-bg:#fffbeb;
+    --danger:#dc2626; --danger-bg:#fef2f2; --danger-light:#fecaca;
+    --radius:10px; --radius-sm:7px;
+    --shadow:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+    --shadow-lg:0 10px 25px rgba(15,23,42,.10);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  h1{font-size:1.35rem;margin:0 0 2px;display:flex;align-items:center;gap:.5rem}
+  h2{font-size:1.0rem;margin:0 0 10px;position:relative;padding-left:11px}
+  h2::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:4px;border-radius:3px;background:var(--brand-gradient)}
+  h3{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 6px}
+  .sub{color:var(--ink-secondary);font-size:.82rem;margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+  .grid{display:grid;gap:10px}
+  @media(min-width:720px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}}
+  .f label{display:block;font-size:.72rem;font-weight:600;color:var(--ink-secondary);margin-bottom:3px}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:.86rem;font-family:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(3,105,161,.12)}
+  input:disabled{background:var(--card-elevated);color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:8px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;color:var(--ink);font-size:.84rem;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn:hover{background:var(--card-elevated)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-dark)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:5px 9px;font-size:.76rem}
+  .btn.danger{color:var(--danger);border-color:var(--danger-light)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:.3rem;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--danger-bg);color:var(--danger)}
+  .pill.tip{background:#eff6ff;color:var(--brand)}
+  .tbtn{padding:6px 12px;border:1px solid var(--line);border-radius:20px;background:#fff;font-size:.78rem;cursor:pointer;font-weight:600}
+  .tbtn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  table{width:100%;border-collapse:collapse;font-size:.8rem}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line-light)}
+  th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+  .statgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+  .stat{background:var(--card-elevated);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px}
+  .stat .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+  .stat .v{font-size:1.15rem;font-weight:700;margin-top:2px}
+  .stat.hero .v{color:var(--brand)} .stat.hero{border-color:var(--brand);background:#eff6ff}
+  .emp{color:var(--muted);font-size:.82rem;padding:10px;text-align:center;font-style:italic}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .chip{font-size:.72rem;background:var(--card-elevated);border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--ink-secondary)}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(120%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-size:.84rem;transition:transform .25s;z-index:99;box-shadow:var(--shadow-lg)}
+  .toast.on{transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--danger)} .toast.ok{background:var(--ok)}
+  .aviso{background:var(--warn-bg);border:1px solid #fde68a;color:#92400e;border-radius:var(--radius-sm);padding:9px 12px;font-size:.8rem;margin:8px 0}
+  .del-x{cursor:pointer;color:var(--danger);font-weight:700;border:none;background:none;font-size:1rem}
+  #bloqueio{display:none;text-align:center;padding:60px 20px;color:var(--muted)}
+  .drafts{max-height:220px;overflow:auto}
+  .draft-item{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line-light);font-size:.82rem;gap:8px}
+  .draft-item .t{font-weight:600;cursor:pointer}
+  .memo{background:#fff;color:#111;font-size:.82rem}
+  .memo h4{margin:12px 0 5px;font-size:.85rem}
+  .memo .formline{font-family:'JetBrains Mono',monospace;font-size:.76rem;background:var(--card-elevated);padding:6px 9px;border-radius:5px;margin:3px 0}
+  svg.unifilar{width:100%;max-width:760px;height:auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm)}
+  /* Impressão do memorial */
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .no-print{display:none !important}
+    #memorial{display:block !important}
+    .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+    h1,h2{color:#000}
+  }
+  #memorial{display:none}
+</style>
+</head>
+<body>
+<div id="bloqueio">
+  <h1>⚡ Curto-Circuito BT</h1>
+  <p>Você não tem permissão para acessar este módulo nesta empresa.</p>
+</div>
+
+<div id="app" class="wrap">
+  <div class="flex-between no-print">
+    <div>
+      <h1>⚡ Curto-Circuito BT <span class="chip" id="empresaChip">—</span></h1>
+      <p class="sub">Cálculo de curto-circuito em baixa tensão · IEC 60909-0:2016 · NBR 5410</p>
+    </div>
+    <div class="row">
+      <button class="btn sm ghost" id="btnNovo">＋ Novo</button>
+      <button class="btn sm" id="btnImprimir">🖨️ Memorial</button>
+      <button class="btn primary sm" id="btnSalvar">💾 Salvar rascunho</button>
+    </div>
+  </div>
+
+  <!-- Rascunhos locais -->
+  <div class="card no-print">
+    <div class="flex-between"><h2 style="margin:0">Rascunhos locais</h2><span class="chip" id="nsChip">—</span></div>
+    <div class="drafts" id="draftsList"><div class="emp">Nenhum rascunho salvo neste dispositivo/empresa.</div></div>
+  </div>
+
+  <!-- Nuvem -->
+  <div class="card no-print" id="cardNuvem">
+    <div class="flex-between"><h2 style="margin:0">☁️ Salvar na nuvem</h2><span id="cloudStatus" class="chip">—</span></div>
+    <div class="grid g2" style="margin-top:10px">
+      <div class="f" style="position:relative">
+        <label>Cliente * (obrigatório para salvar na nuvem)</label>
+        <input id="cloudClienteInput" placeholder="Buscar cliente por nome..." autocomplete="off">
+        <div id="cloudClienteLista" class="drafts" style="display:none;position:absolute;z-index:5;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);width:100%;box-shadow:var(--shadow-lg)"></div>
+        <div id="cloudClienteSel" class="chip" style="display:none;margin-top:6px"></div>
+      </div>
+      <div class="f" style="align-self:end;display:flex;gap:8px;align-items:center">
+        <button class="btn primary" id="btnSalvarNuvem">☁️ Salvar na nuvem</button>
+        <button class="btn sm ghost" id="btnRecarregarNuvem" title="Recarregar lista">↻</button>
+      </div>
+    </div>
+    <h3>Estudos na nuvem (desta empresa)</h3>
+    <div class="drafts" id="cloudList"><div class="emp">—</div></div>
+  </div>
+
+  <!-- 1. Identificação -->
+  <div class="card no-print">
+    <h2>1 · Identificação do estudo</h2>
+    <div class="grid g3">
+      <div class="f"><label>Título do estudo *</label><input id="in_titulo" placeholder="Ex.: QGBT Galpão A"></div>
+      <div class="f"><label>Instalação / local</label><input id="in_instalacao" placeholder="Ex.: Galpão industrial – Painel principal"></div>
+      <div class="f"><label>Cliente (será obrigatório na nuvem — Etapa 4)</label><input id="in_cliente" placeholder="Vínculo definido ao salvar na nuvem"></div>
+      <div class="f"><label>Responsável técnico</label><input id="in_responsavel" placeholder="Eng. ..."></div>
+      <div class="f"><label>ART / RRT</label><input id="in_art" placeholder="Nº ART/RRT"></div>
+      <div class="f"><label>Revisão</label><input id="in_revisao" value="REV.00"></div>
+    </div>
+  </div>
+
+  <!-- 2. Tensão + tipo de falta -->
+  <div class="card no-print">
+    <h2>2 · Tensão e tipo de falta</h2>
+    <h3>Tensão nominal (V) — BT até 1000 V</h3>
+    <div class="row" id="tensaoBtns"></div>
+    <div class="grid g2" style="margin-top:8px">
+      <div class="f"><label>Tensão (V)</label><input id="in_tensao" type="number" value="380" min="1" max="1000"></div>
+      <div class="f"><label>Tipo de falta</label>
+        <select id="in_tipofalta">
+          <option value="trifasica">Trifásica (dimensionamento)</option>
+          <option value="bifasica">Bifásica (Ik2 = Ik3·√3/2)</option>
+          <option value="fase_retorno">Fase-retorno (laço TN)</option>
+          <option value="TT">TT (fora do escopo — aviso)</option>
+          <option value="IT">IT (fora do escopo — aviso)</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:8px">
+      <div class="f"><label>cMax (caso máximo)</label><input id="in_cmax" type="number" step="0.01" value="1.05"></div>
+      <div class="f"><label>cMin (caso mínimo)</label><input id="in_cmin" type="number" step="0.01" value="0.95"></div>
+    </div>
+  </div>
+
+  <!-- 3. Fonte -->
+  <div class="card no-print">
+    <h2>3 · Fonte de alimentação</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button class="tbtn on" data-fonte="rede" id="fonteRede">Rede da concessionária</button>
+      <button class="tbtn" data-fonte="gerador" id="fonteGerador">Gerador de emergência</button>
+    </div>
+    <div id="blocoRede">
+      <div class="grid g3">
+        <div class="f"><label>Modo</label>
+          <select id="in_rede_modo"><option value="infinita">Potência infinita</option><option value="Icc">Icc (kA)</option><option value="Scc">Scc (MVA)</option></select>
+        </div>
+        <div class="f" id="wrapIcc" style="display:none"><label>Icc (kA)</label><input id="in_icc" type="number" step="0.1"></div>
+        <div class="f" id="wrapScc" style="display:none"><label>Scc (MVA)</label><input id="in_scc" type="number" step="0.1"></div>
+        <div class="f"><label>X/R da rede</label><input id="in_rede_xr" type="number" step="0.1" value="10"></div>
+      </div>
+    </div>
+    <div id="blocoGerador" style="display:none">
+      <div class="grid g4">
+        <div class="f"><label>Potência (kVA)</label><input id="in_ger_kva" type="number" step="1"></div>
+        <div class="f"><label>Tensão nominal (V)</label><input id="in_ger_v" type="number" value="380"></div>
+        <div class="f"><label>X"d subtransitória (%)</label><input id="in_ger_xd" type="number" step="0.1" placeholder="10–20"></div>
+        <div class="f"><label>X/R</label><input id="in_ger_xr" type="number" step="0.1" value="10"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Transformador -->
+  <div class="card no-print" id="cardTrafo">
+    <div class="flex-between"><h2 style="margin:0">4 · Transformador AT/BT</h2>
+      <label style="font-size:.8rem;display:flex;gap:6px;align-items:center"><input type="checkbox" id="in_trafo_on" checked style="width:auto"> incluir transformador</label>
+    </div>
+    <div id="blocoTrafo" style="margin-top:10px">
+      <div class="grid g3">
+        <div class="f"><label>Potência (kVA)</label><input id="in_tr_kva" type="number" step="1" value="1000"></div>
+        <div class="f"><label>uk (%) <span id="ukTip"></span></label><input id="in_tr_uk" type="number" step="0.1" value="5"></div>
+        <div class="f"><label>Pcu (kW) <span id="pcuTip"></span></label><input id="in_tr_pcu" type="number" step="0.1" value="10"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm ghost" id="btnTipicos">↺ Preencher valores típicos (IEC 60076-5)</button>
+        <span id="tipicoInfo"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Cabos -->
+  <div class="card no-print">
+    <div class="flex-between"><h2 style="margin:0">5 · Trechos de cabo (em série)</h2><button class="btn sm" id="btnAddCabo">＋ trecho</button></div>
+    <div style="overflow:auto;margin-top:10px"><table id="tblCabos"><thead><tr>
+      <th>ID</th><th>Comp. (m)</th><th>Seção (mm²)</th><th>Material</th><th>Paral.</th><th>X (Ω/km)</th><th>T.op (°C)</th><th>Isolação</th><th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- 6. Ponto de falta -->
+  <div class="card no-print">
+    <h2>6 · Ponto de falta</h2>
+    <div class="f" style="max-width:420px"><label>Calcular em</label><select id="in_ponto"></select></div>
+  </div>
+
+  <!-- 7. Motores -->
+  <div class="card no-print">
+    <div class="flex-between"><h2 style="margin:0">7 · Motores no barramento da falta</h2><button class="btn sm" id="btnAddMotor">＋ motor</button></div>
+    <p class="sub" style="margin:4px 0 0">Contribuição aplicada apenas à falta trifásica (demais fora do escopo v1).</p>
+    <div style="overflow:auto;margin-top:10px"><table id="tblMotores"><thead><tr>
+      <th>ID</th><th>Modo</th><th>P (kW)</th><th>η</th><th>cosφ</th><th>In (A)</th><th>m</th><th>X/R</th><th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- 8. Proteção -->
+  <div class="card no-print">
+    <h2>8 · Verificação da proteção e do condutor</h2>
+    <div class="grid g4">
+      <div class="f"><label>Disjuntor — Icu (kA)</label><input id="in_icu" type="number" step="0.1"></div>
+      <div class="f"><label>Icm (kA)</label><input id="in_icm" type="number" step="0.1"></div>
+      <div class="f"><label>I3 instantâneo (kA)</label><input id="in_i3" type="number" step="0.1"></div>
+      <div class="f"><label>Tempo de atuação t (s)</label><input id="in_t" type="number" step="0.01" value="0.1"></div>
+      <div class="f" style="grid-column:1/-1"><label>Referência comercial do disjuntor</label><input id="in_ref" placeholder="Fabricante / modelo"></div>
+    </div>
+  </div>
+
+  <!-- Resultado -->
+  <div class="card" id="cardResultado">
+    <h2>Resultado</h2>
+    <div id="avisoBox"></div>
+    <div class="statgrid" id="statBox"></div>
+
+    <h3>Impedâncias acumuladas</h3>
+    <div style="overflow:auto"><table id="tblImp"><thead><tr>
+      <th>Elemento</th><th>R (mΩ)</th><th>X (mΩ)</th><th>|Z| (mΩ)</th><th>ΣR</th><th>ΣX</th><th>Σ|Z|</th>
+    </tr></thead><tbody></tbody></table></div>
+
+    <h3>Contribuição de motores</h3>
+    <div id="motBox" class="emp">Sem motores.</div>
+
+    <h3>Verificações</h3>
+    <div id="verifBox"></div>
+  </div>
+
+  <!-- Memorial (impressão) -->
+  <div id="memorial" class="card memo"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/modules/curto-bt-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  var E = window.CurtoBTEngine;
+  var PARENT_ORIGIN = window.location.origin; // iframe é servido da mesma origem do shell
+  var Q = function(id){return document.getElementById(id);};
+
+  // ── Estado ────────────────────────────────────────────────
+  var STATE = null;
+  var _empresa = null;          // {id,nome,nome_curto,...}
+  var _userKey = null;          // id do usuário (auth) para namespace local
+  var _ctxToken = 0;            // token de contexto (invalida respostas após troca de empresa)
+  var _supabaseId = null;       // id na nuvem (Etapa 4); aqui sempre null
+  var lastResult = null;
+
+  function novoEstado(){
+    return {
+      study:{ titulo:'', instalacao:'', cliente:'', responsavel:'', art:'', revisao:'REV.00',
+              tensao_V:380, tipo_falta:'trifasica' },
+      cMax:1.05, cMin:0.95,
+      fonte_tipo:'rede',
+      rede:{ modo:'infinita', Icc_kA:null, Scc_MVA:null, xr:10 },
+      gerador:{ kVA:null, v:380, xdPct:null, xr:10 },
+      trafo_on:true,
+      trafo:{ kVA:1000, ukPct:5, pcu_kW:10 },
+      feeders:[ { id:'AL-01', comprimento_m:20, secao_mm2:25, material:'Cu', paralelos:1, x_ohm_km:0.08, temp_op_C:70, isolacao:'PVC' } ],
+      motors:[],
+      ponto:1,
+      protection:{ Icu_kA:null, Icm_kA:null, I3_kA:null, t_s:0.1, referencia:'' },
+      cliente_id:null, proposta_app_id:null, status:'rascunho'
+    };
+  }
+
+  // ── Toast ─────────────────────────────────────────────────
+  var _tt;
+  function toast(msg,type){
+    var t=Q('toast'); t.textContent=msg; t.className='toast on '+(type||'');
+    clearTimeout(_tt); _tt=setTimeout(function(){t.className='toast';},2600);
+  }
+
+  // ── Namespace de persistência local ──────────────────────
+  function nsKey(){
+    var emp = _empresa && _empresa.id ? _empresa.id : 'sem-empresa';
+    var usr = _userKey || 'anon';
+    return 'soe:curto-bt:v1:'+emp+':'+usr;
+  }
+  function podePersistir(){ return !!(_empresa && _empresa.id && _userKey); }
+  function lerStore(){
+    try{ return JSON.parse(localStorage.getItem(nsKey())||'{}'); }catch(e){ return {}; }
+  }
+  function escreverStore(s){
+    try{ localStorage.setItem(nsKey(), JSON.stringify(s)); }catch(e){}
+  }
+
+  // ── Coleta do DOM → STATE ────────────────────────────────
+  function num(id){ var v=parseFloat(Q(id).value); return isFinite(v)?v:null; }
+  function coletar(){
+    var s=STATE;
+    s.study.titulo=Q('in_titulo').value.trim();
+    s.study.instalacao=Q('in_instalacao').value.trim();
+    s.study.cliente=Q('in_cliente').value.trim();
+    s.study.responsavel=Q('in_responsavel').value.trim();
+    s.study.art=Q('in_art').value.trim();
+    s.study.revisao=Q('in_revisao').value.trim();
+    s.study.tensao_V=num('in_tensao');
+    s.study.tipo_falta=Q('in_tipofalta').value;
+    s.cMax=num('in_cmax'); s.cMin=num('in_cmin');
+    s.rede.modo=Q('in_rede_modo').value;
+    s.rede.Icc_kA=num('in_icc'); s.rede.Scc_MVA=num('in_scc'); s.rede.xr=num('in_rede_xr');
+    s.gerador.kVA=num('in_ger_kva'); s.gerador.v=num('in_ger_v'); s.gerador.xdPct=num('in_ger_xd'); s.gerador.xr=num('in_ger_xr');
+    s.trafo_on=Q('in_trafo_on').checked;
+    s.trafo.kVA=num('in_tr_kva'); s.trafo.ukPct=num('in_tr_uk'); s.trafo.pcu_kW=num('in_tr_pcu');
+    s.protection.Icu_kA=num('in_icu'); s.protection.Icm_kA=num('in_icm'); s.protection.I3_kA=num('in_i3');
+    s.protection.t_s=num('in_t'); s.protection.referencia=Q('in_ref').value.trim();
+    s.ponto=parseInt(Q('in_ponto').value,10)||0;
+  }
+
+  // ── STATE → envelope de entrada do motor ─────────────────
+  function buildInput(){
+    var s=STATE;
+    var network;
+    if(s.fonte_tipo==='gerador'){
+      network={ tipo:'gerador', kVA:s.gerador.kVA, xdPct:s.gerador.xdPct, xr:s.gerador.xr };
+    } else {
+      network={ tipo:'rede', modo:s.rede.modo, xr:s.rede.xr };
+      if(s.rede.modo==='Icc') network.Icc_kA=s.rede.Icc_kA;
+      if(s.rede.modo==='Scc') network.Scc_MVA=s.rede.Scc_MVA;
+    }
+    return {
+      schema_version:1, engine_version:'curto-bt-v1',
+      cMax:s.cMax, cMin:s.cMin,
+      study:{ titulo:s.study.titulo, tensao_V:s.study.tensao_V, tipo_falta:s.study.tipo_falta },
+      network:network,
+      transformer: s.trafo_on ? { kVA:s.trafo.kVA, ukPct:s.trafo.ukPct, pcu_kW:s.trafo.pcu_kW } : null,
+      feeders: s.feeders.map(function(f){ return {
+        id:f.id, comprimento_m:f.comprimento_m, secao_mm2:f.secao_mm2, material:f.material,
+        paralelos:f.paralelos, x_ohm_km:f.x_ohm_km, temp_op_C:f.temp_op_C, isolacao:f.isolacao }; }),
+      fault_point:{ apos_trecho_index:s.ponto },
+      motors: s.motors.map(function(m){ return {
+        id:m.id, modo:m.modo, potencia_kW:m.potencia_kW, eta:m.eta, cosfi:m.cosfi,
+        In_A:m.In_A, multiplo_m:m.multiplo_m, xr:m.xr }; }),
+      protection:{ Icu_kA:s.protection.Icu_kA, Icm_kA:s.protection.Icm_kA, I3_kA:s.protection.I3_kA,
+                   t_s:s.protection.t_s, referencia:s.protection.referencia }
+    };
+  }
+
+  // ── Recalcular + renderizar ──────────────────────────────
+  function recalc(){
+    if(!STATE) return;
+    coletar();
+    var out;
+    try{ out = E.calcular(buildInput()); }
+    catch(err){
+      lastResult=null;
+      Q('avisoBox').innerHTML='<div class="aviso">⚠ '+esc(err.message)+'</div>';
+      Q('statBox').innerHTML=''; Q('tblImp').querySelector('tbody').innerHTML='';
+      Q('motBox').innerHTML='<div class="emp">—</div>'; Q('verifBox').innerHTML='';
+      return;
+    }
+    lastResult=out;
+    renderResultado(out);
+  }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function kA(x){ return (x==null?'—':Number(x).toFixed(2)+' kA'); }
+
+  function renderResultado(out){
+    if(out.calculado===false){
+      Q('avisoBox').innerHTML='<div class="aviso">'+esc(out.aviso)+'</div>';
+      Q('statBox').innerHTML=''; Q('tblImp').querySelector('tbody').innerHTML='';
+      Q('motBox').innerHTML='<div class="emp">—</div>'; Q('verifBox').innerHTML=''; return;
+    }
+    Q('avisoBox').innerHTML='';
+    var cm=out.caso_max;
+    Q('statBox').innerHTML=[
+      stat('Ik" máx (rede+motores)', kA(out.Ik_total_max_kA), true),
+      stat('Ik" mín', kA(out.caso_min.Ik_kA)),
+      stat('ip de pico', kA(out.ip_total_kA)),
+      stat('κ', cm.kappa),
+      stat('Z total', cm.Z_total_mOhm+' mΩ'),
+      stat('R / X total', cm.R_total_mOhm+' / '+cm.X_total_mOhm+' mΩ')
+    ].join('');
+
+    var tb=Q('tblImp').querySelector('tbody'); tb.innerHTML='';
+    out.impedancias.forEach(function(e){
+      tb.innerHTML+='<tr><td>'+esc(e.elemento)+'</td><td class="mono">'+e.R_mOhm+'</td><td class="mono">'+e.X_mOhm+
+        '</td><td class="mono">'+e.Z_mOhm+'</td><td class="mono">'+e.R_acum+'</td><td class="mono">'+e.X_acum+'</td><td class="mono">'+e.Z_acum+'</td></tr>';
+    });
+
+    if(out.motores.length){
+      var h='<table><thead><tr><th>ID</th><th>In (A)</th><th>Contribuição Im</th><th>ip motor</th></tr></thead><tbody>';
+      out.motores.forEach(function(m){ h+='<tr><td>'+esc(m.id||'—')+'</td><td class="mono">'+m.In_A+'</td><td class="mono">'+kA(m.Im_kA)+'</td><td class="mono">'+kA(m.ip_motor_kA)+'</td></tr>'; });
+      Q('motBox').innerHTML=h+'</tbody></table>';
+    } else Q('motBox').innerHTML='<div class="emp">Sem motores.</div>';
+
+    Q('verifBox').innerHTML=renderVerif(out.verificacoes);
+  }
+  function stat(k,v,hero){ return '<div class="stat'+(hero?' hero':'')+'"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>'; }
+
+  function renderVerif(v){
+    var out='';
+    if(v.disjuntor){
+      var d=v.disjuntor;
+      out+='<div class="card" style="margin:6px 0"><b>Disjuntor</b>'+(d.referencia?' — '+esc(d.referencia):'')+'<div class="row" style="margin-top:6px">'+
+        badge('Icu ≥ Ik_max', d.capacidade_ok, d.Icu_kA+'≥'+d.Ik_max_kA)+
+        badge('Icm ≥ ip', d.pico_ok, d.Icm_kA+'≥'+d.ip_total_kA)+
+        badge('I3 ≤ Ik_min', d.atuacao_ok, d.I3_kA+'≤'+d.Ik_min_kA)+'</div></div>';
+    }
+    if(v.termica){
+      var t=v.termica;
+      out+='<div class="card" style="margin:6px 0"><b>Térmica do cabo (I²t ≤ k²S²)</b> <span class="pill '+(t.aprovado?'ok':'bad')+'">'+(t.aprovado?'aprovado':'reprovado')+'</span>'+
+        '<div class="sub" style="margin-top:4px">k='+t.k+' · I²t='+t.I2t+' · k²S²='+t.k2S2+' · seção mín ≈ <b>'+t.secao_minima_mm2+' mm²</b> (atual '+t.secao_mm2+' mm²)</div></div>';
+    }
+    if(v.PE){
+      out+='<div class="card" style="margin:6px 0"><b>Condutor de proteção (PE)</b><div class="sub" style="margin-top:4px">Fase '+v.PE.secao_fase_mm2+' mm² → PE mínimo <b>'+v.PE.secao_pe_mm2+' mm²</b> (NBR 5410)</div></div>';
+    }
+    return out || '<div class="emp">Informe dados de proteção / cabo para as verificações.</div>';
+  }
+  function badge(txt,ok,detail){
+    var cls = ok===null?'warn':(ok?'ok':'bad'); var mark = ok===null?'—':(ok?'✓':'✗');
+    return '<span class="pill '+cls+'" title="'+esc(detail||'')+'">'+mark+' '+esc(txt)+'</span> ';
+  }
+
+  // ── Hidratação STATE → DOM ───────────────────────────────
+  function hidratar(){
+    var s=STATE;
+    Q('in_titulo').value=s.study.titulo; Q('in_instalacao').value=s.study.instalacao;
+    Q('in_cliente').value=s.study.cliente; Q('in_responsavel').value=s.study.responsavel;
+    Q('in_art').value=s.study.art; Q('in_revisao').value=s.study.revisao;
+    Q('in_tensao').value=s.study.tensao_V; Q('in_tipofalta').value=s.study.tipo_falta;
+    Q('in_cmax').value=s.cMax; Q('in_cmin').value=s.cMin;
+    setFonte(s.fonte_tipo);
+    Q('in_rede_modo').value=s.rede.modo; Q('in_icc').value=s.rede.Icc_kA||''; Q('in_scc').value=s.rede.Scc_MVA||''; Q('in_rede_xr').value=s.rede.xr;
+    Q('in_ger_kva').value=s.gerador.kVA||''; Q('in_ger_v').value=s.gerador.v||''; Q('in_ger_xd').value=s.gerador.xdPct||''; Q('in_ger_xr').value=s.gerador.xr;
+    Q('in_trafo_on').checked=s.trafo_on;
+    Q('in_tr_kva').value=s.trafo.kVA||''; Q('in_tr_uk').value=s.trafo.ukPct||''; Q('in_tr_pcu').value=s.trafo.pcu_kW||'';
+    Q('in_icu').value=s.protection.Icu_kA||''; Q('in_icm').value=s.protection.Icm_kA||''; Q('in_i3').value=s.protection.I3_kA||'';
+    Q('in_t').value=s.protection.t_s||''; Q('in_ref').value=s.protection.referencia||'';
+    renderCabos(); renderMotores(); atualizarRedeModo(); atualizarTrafoBloco();
+    recalc();
+  }
+
+  // ── Cabos (lista dinâmica) ───────────────────────────────
+  function renderCabos(){
+    var tb=Q('tblCabos').querySelector('tbody'); tb.innerHTML='';
+    STATE.feeders.forEach(function(f,i){
+      var tr=document.createElement('tr');
+      tr.innerHTML=
+        '<td><input value="'+esc(f.id)+'" data-k="id" style="width:80px"></td>'+
+        '<td><input type="number" value="'+f.comprimento_m+'" data-k="comprimento_m" style="width:80px"></td>'+
+        '<td><input type="number" value="'+f.secao_mm2+'" data-k="secao_mm2" style="width:80px"></td>'+
+        '<td><select data-k="material"><option '+(f.material==='Cu'?'selected':'')+'>Cu</option><option '+(f.material==='Al'?'selected':'')+'>Al</option></select></td>'+
+        '<td><input type="number" value="'+f.paralelos+'" data-k="paralelos" style="width:60px"></td>'+
+        '<td><input type="number" step="0.01" value="'+f.x_ohm_km+'" data-k="x_ohm_km" style="width:80px"></td>'+
+        '<td><input type="number" value="'+f.temp_op_C+'" data-k="temp_op_C" style="width:70px"></td>'+
+        '<td><select data-k="isolacao"><option '+(f.isolacao==='PVC'?'selected':'')+'>PVC</option><option '+(f.isolacao==='XLPE'?'selected':'')+'>XLPE</option></select></td>'+
+        '<td><button class="del-x" data-del="'+i+'">✕</button></td>';
+      tb.appendChild(tr);
+      tr.querySelectorAll('[data-k]').forEach(function(el){
+        el.addEventListener('input',function(){
+          var k=el.getAttribute('data-k'); var v=el.value;
+          if(['comprimento_m','secao_mm2','paralelos','x_ohm_km','temp_op_C'].indexOf(k)>=0) v=parseFloat(v);
+          STATE.feeders[i][k]=v; if(k==='id') recalc(); else recalc();
+        });
+      });
+      tr.querySelector('[data-del]').addEventListener('click',function(){
+        STATE.feeders.splice(i,1); if(!STATE.feeders.length) STATE.feeders.push(novoCabo()); renderCabos(); atualizarPonto(); recalc();
+      });
+    });
+    atualizarPonto();
+  }
+  function novoCabo(){ return { id:'AL-0'+(STATE.feeders.length+1), comprimento_m:10, secao_mm2:16, material:'Cu', paralelos:1, x_ohm_km:0.08, temp_op_C:70, isolacao:'PVC' }; }
+
+  function atualizarPonto(){
+    var sel=Q('in_ponto'); var n=STATE.feeders.length; var cur=STATE.ponto;
+    var html='<option value="0">Terminais do transformador (sem cabo)</option>';
+    for(var i=1;i<=n;i++){ html+='<option value="'+i+'">Após trecho '+i+' ('+esc(STATE.feeders[i-1].id)+')</option>'; }
+    sel.innerHTML=html; if(cur>n) cur=n; STATE.ponto=cur; sel.value=cur;
+  }
+
+  // ── Motores (lista dinâmica) ─────────────────────────────
+  function renderMotores(){
+    var tb=Q('tblMotores').querySelector('tbody'); tb.innerHTML='';
+    if(!STATE.motors.length){ tb.innerHTML='<tr><td colspan="9" class="emp">Sem motores.</td></tr>'; return; }
+    STATE.motors.forEach(function(m,i){
+      var tr=document.createElement('tr');
+      tr.innerHTML=
+        '<td><input value="'+esc(m.id||'')+'" data-k="id" style="width:70px"></td>'+
+        '<td><select data-k="modo"><option value="kW" '+(m.modo==='kW'?'selected':'')+'>kW</option><option value="In" '+(m.modo==='In'?'selected':'')+'>In</option></select></td>'+
+        '<td><input type="number" value="'+(m.potencia_kW||'')+'" data-k="potencia_kW" style="width:70px"></td>'+
+        '<td><input type="number" step="0.01" value="'+(m.eta||'')+'" data-k="eta" style="width:60px"></td>'+
+        '<td><input type="number" step="0.01" value="'+(m.cosfi||'')+'" data-k="cosfi" style="width:60px"></td>'+
+        '<td><input type="number" value="'+(m.In_A||'')+'" data-k="In_A" style="width:70px"></td>'+
+        '<td><input type="number" value="'+(m.multiplo_m||5)+'" data-k="multiplo_m" style="width:55px"></td>'+
+        '<td><input type="number" value="'+(m.xr||10)+'" data-k="xr" style="width:55px"></td>'+
+        '<td><button class="del-x" data-del="'+i+'">✕</button></td>';
+      tb.appendChild(tr);
+      tr.querySelectorAll('[data-k]').forEach(function(el){
+        el.addEventListener('input',function(){
+          var k=el.getAttribute('data-k'); var v=el.value;
+          if(['potencia_kW','eta','cosfi','In_A','multiplo_m','xr'].indexOf(k)>=0) v=parseFloat(v);
+          STATE.motors[i][k]=v; recalc();
+        });
+      });
+      tr.querySelector('[data-del]').addEventListener('click',function(){ STATE.motors.splice(i,1); renderMotores(); recalc(); });
+    });
+  }
+
+  // ── Fonte / rede modo / trafo bloco ──────────────────────
+  function setFonte(tipo){
+    STATE.fonte_tipo=tipo;
+    Q('fonteRede').classList.toggle('on',tipo==='rede');
+    Q('fonteGerador').classList.toggle('on',tipo==='gerador');
+    Q('blocoRede').style.display = tipo==='rede'?'':'none';
+    Q('blocoGerador').style.display = tipo==='gerador'?'':'none';
+    // Gerador é a própria fonte; transformador opcional segue como está.
+  }
+  function atualizarRedeModo(){
+    var m=Q('in_rede_modo').value;
+    Q('wrapIcc').style.display = m==='Icc'?'':'none';
+    Q('wrapScc').style.display = m==='Scc'?'':'none';
+  }
+  function atualizarTrafoBloco(){ Q('blocoTrafo').style.display = Q('in_trafo_on').checked?'':'none'; }
+
+  // ── Persistência local (rascunhos) ───────────────────────
+  function salvarRascunho(){
+    if(!podePersistir()){ toast('Aguardando empresa/usuário para salvar localmente.','err'); return; }
+    coletar();
+    if(!STATE.study.titulo){ toast('Informe um título para salvar.','err'); return; }
+    var store=lerStore();
+    var id = STATE._localId || ('d_'+idSeq());
+    STATE._localId=id;
+    store[id]={ id:id, titulo:STATE.study.titulo, atualizado_em:agora(), state:STATE, supabaseId:_supabaseId };
+    escreverStore(store);
+    toast('Rascunho salvo localmente.','ok');
+    renderDrafts();
+  }
+  var _seq=0; function idSeq(){ _seq++; return (_ctxToken*100000 + _seq); }
+  function agora(){ // sem Date.now no motor; aqui é UI, Date é permitido
+    try{ return new Date().toISOString(); }catch(e){ return ''; }
+  }
+  function renderDrafts(){
+    var box=Q('draftsList');
+    if(!podePersistir()){ box.innerHTML='<div class="emp">Aguardando empresa/usuário…</div>'; return; }
+    var store=lerStore(); var ids=Object.keys(store);
+    if(!ids.length){ box.innerHTML='<div class="emp">Nenhum rascunho salvo neste dispositivo/empresa.</div>'; return; }
+    ids.sort(function(a,b){ return (store[b].atualizado_em||'').localeCompare(store[a].atualizado_em||''); });
+    box.innerHTML='';
+    ids.forEach(function(id){
+      var d=store[id];
+      var el=document.createElement('div'); el.className='draft-item';
+      el.innerHTML='<span class="t">'+esc(d.titulo||'(sem título)')+'</span>'+
+        '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span>'+
+        '<button class="btn sm" data-load="'+id+'">abrir</button>'+
+        '<button class="btn sm danger" data-del="'+id+'">excluir</button></span>';
+      box.appendChild(el);
+      el.querySelector('[data-load]').addEventListener('click',function(){ abrirRascunho(id); });
+      el.querySelector('.t').addEventListener('click',function(){ abrirRascunho(id); });
+      el.querySelector('[data-del]').addEventListener('click',function(){
+        var s=lerStore(); delete s[id]; escreverStore(s); renderDrafts(); toast('Rascunho excluído.','ok');
+      });
+    });
+  }
+  function abrirRascunho(id){
+    var store=lerStore(); var d=store[id]; if(!d) return;
+    STATE=d.state; STATE._localId=id;
+    // Rascunho local é desacoplado da nuvem: salvar na nuvem cria novo registro.
+    // Para editar em-nuvem, abra pela lista "Estudos na nuvem".
+    _supabaseId=null; _supabaseAtualizadoEm=null;
+    hidratar(); toast('Rascunho carregado.','ok');
+  }
+  function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; hidratar(); toast('Novo estudo.','ok'); }
+
+  // ── Memorial + diagrama unifilar (impressão) ─────────────
+  function _fmtData(){ try{ return new Date().toLocaleDateString('pt-BR'); }catch(e){ return ''; } }
+  function _empFull(){ try{ return (window.parent.getEmpresaAtiva && window.parent.getEmpresaAtiva()) || _empresa || {}; }catch(e){ return _empresa||{}; } }
+  function _memDadosEntrada(){
+    var s=STATE, h='';
+    if(s.fonte_tipo==='gerador'){
+      h+='<div class="formline">Fonte: gerador — '+esc(s.gerador.kVA||'—')+' kVA · '+esc(s.gerador.v||'—')+' V · X"d='+esc(s.gerador.xdPct||'—')+'% · X/R='+esc(s.gerador.xr||'—')+'</div>';
+    } else {
+      var m=s.rede.modo;
+      var det = m==='infinita'?'potência infinita':(m==='Icc'?('Icc='+esc(s.rede.Icc_kA||'—')+' kA'):('Scc='+esc(s.rede.Scc_MVA||'—')+' MVA'));
+      h+='<div class="formline">Fonte: rede — '+det+' · X/R='+esc(s.rede.xr||'—')+'</div>';
+    }
+    if(s.trafo_on){
+      var tip = (lastResult && lastResult.tipicos_usados && lastResult.tipicos_usados.indexOf('transformador')>=0);
+      h+='<div class="formline">Transformador: '+esc(s.trafo.kVA||'—')+' kVA · uk='+esc(s.trafo.ukPct||'—')+'% · Pcu='+esc(s.trafo.pcu_kW||'—')+' kW'+
+         (tip?' <span class="pill tip">valores típicos IEC 60076-5</span>':' (dados de placa)')+'</div>';
+    }
+    s.feeders.forEach(function(f,i){
+      h+='<div class="formline">Cabo '+esc(f.id||('#'+(i+1)))+': '+esc(f.comprimento_m)+' m · '+esc(f.secao_mm2)+' mm² '+esc(f.material)+
+         ' · '+esc(f.paralelos)+'× · X='+esc(f.x_ohm_km)+' Ω/km · '+esc(f.isolacao)+' · T.op '+esc(f.temp_op_C)+' °C'+((i+1)===s.ponto?' <b>(ponto de falta)</b>':'')+'</div>';
+    });
+    if(s.ponto===0) h+='<div class="formline">Ponto de falta: terminais do transformador</div>';
+    s.motors.forEach(function(mo){
+      h+='<div class="formline">Motor '+esc(mo.id||'')+': '+(mo.modo==='In'?(esc(mo.In_A)+' A'):(esc(mo.potencia_kW)+' kW, η='+esc(mo.eta)+', cosφ='+esc(mo.cosfi)))+' · m='+esc(mo.multiplo_m)+' · X/R='+esc(mo.xr)+'</div>';
+    });
+    var p=s.protection;
+    if(p.Icu_kA||p.Icm_kA||p.I3_kA||p.referencia){
+      h+='<div class="formline">Disjuntor: '+(p.referencia?esc(p.referencia)+' · ':'')+'Icu='+esc(p.Icu_kA||'—')+' kA · Icm='+esc(p.Icm_kA||'—')+' kA · I3='+esc(p.I3_kA||'—')+' kA · t='+esc(p.t_s||'—')+' s</div>';
+    }
+    return h;
+  }
+
+  function montarMemorial(){
+    coletar(); recalc();
+    var out=lastResult, s=STATE, emp=_empFull();
+    var h='';
+    // 6.1 Cabeçalho
+    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #0369a1;padding-bottom:8px">';
+    h+='<div>'+(emp.logo_url?'<img src="'+esc(emp.logo_url)+'" alt="logo" style="max-height:48px;margin-bottom:4px"><br>':'')+
+       '<b style="font-size:1rem">'+esc(emp.razao_social||emp.nome||emp.nome_curto||'—')+'</b>'+
+       (emp.cnpj?'<div class="sub">CNPJ '+esc(emp.cnpj)+'</div>':'')+'</div>';
+    h+='<div style="text-align:right"><b>MEMORIAL DE CÁLCULO</b><div class="sub">Curto-circuito em baixa tensão · IEC 60909-0:2016</div>'+
+       '<div class="sub">Estudo: '+esc(s.study.titulo||'—')+' · '+esc(s.study.revisao||'')+' · '+esc(_fmtData())+'</div></div>';
+    h+='</div>';
+    h+='<div class="sub" style="margin-top:6px">Cliente: <b>'+esc(s.study.cliente||'—')+'</b> · Instalação: '+esc(s.study.instalacao||'—')+
+       ' · Responsável técnico: '+esc(s.study.responsavel||'—')+(s.study.art?' (ART/RRT '+esc(s.study.art)+')':'')+'</div>';
+    // 6.2 Diagrama unifilar
+    h+='<h4>Diagrama unifilar esquemático</h4>'+unifilarSVG(out);
+    if(out && out.calculado!==false){
+      // 6.3 Dados de entrada
+      h+='<h4>Dados de entrada</h4><div class="sub">Tensão '+esc(s.study.tensao_V)+' V · tipo de falta: '+esc(s.study.tipo_falta)+'</div>'+_memDadosEntrada();
+      // 6.4 Hipóteses adotadas
+      h+='<h4>Hipóteses adotadas</h4><div class="sub">'+
+         '• Método da fonte de tensão equivalente (IEC 60909-0:2016).<br>'+
+         '• Rede radial; impedâncias em série referidas ao lado de baixa tensão.<br>'+
+         '• Caso máximo: fator c = '+esc(s.cMax)+' (cMax), resistência dos condutores a 20 °C, falta sólida.<br>'+
+         '• Caso mínimo: fator c = '+esc(s.cMin)+' (cMin), resistência dos condutores à temperatura de operação.<br>'+
+         (out.tipicos_usados.indexOf('transformador')>=0?'• Transformador: uk% e Pcu de valores típicos de norma (IEC 60076-5) — substituir por dados de placa quando disponíveis.<br>':'')+
+         (s.motors.length?'• Motores considerados conectados diretamente ao barramento da falta (contribuição por soma vetorial).<br>':'')+
+         '</div>';
+      // 6.5 Tabela de impedâncias acumuladas
+      h+='<h4>Tabela de impedâncias acumuladas</h4><table><thead><tr><th>Elemento</th><th>R (mΩ)</th><th>X (mΩ)</th><th>|Z| (mΩ)</th><th>ΣR</th><th>ΣX</th><th>Σ|Z|</th></tr></thead><tbody>';
+      out.impedancias.forEach(function(e){ h+='<tr><td>'+esc(e.elemento)+'</td><td>'+e.R_mOhm+'</td><td>'+e.X_mOhm+'</td><td>'+e.Z_mOhm+'</td><td>'+e.R_acum+'</td><td>'+e.X_acum+'</td><td>'+e.Z_acum+'</td></tr>'; });
+      h+='</tbody></table>';
+      // 6.6 Desenvolvimento do cálculo
+      h+='<h4>Desenvolvimento do cálculo</h4>';
+      out.memoria_calculo.forEach(function(m){ h+='<div class="formline">'+esc(m.formula)+'<br>= '+esc(m.valores_substituidos)+'<br>= <b>'+esc(m.resultado)+' '+esc(m.unidade||'')+'</b></div>'; });
+      // 6.7 Resultados e verificações
+      h+='<h4>Resultados e verificações</h4>';
+      h+='<div class="statgrid">'+
+         '<div class="stat hero"><div class="k">Ik" máx</div><div class="v">'+kA(out.Ik_total_max_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">Ik" mín</div><div class="v">'+kA(out.caso_min.Ik_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">ip de pico</div><div class="v">'+kA(out.ip_total_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">κ</div><div class="v">'+out.caso_max.kappa+'</div></div></div>';
+      h+=renderVerif(out.verificacoes);
+    } else {
+      h+='<div class="aviso">'+esc(out?out.aviso:'Preencha os dados para gerar o memorial.')+'</div>';
+    }
+    // 6.8 Advertências de responsabilidade técnica
+    h+='<h4>Advertências de responsabilidade técnica</h4><div class="sub">'+
+       'Este estudo foi elaborado para as condições de instalação descritas e deve ser revisado por profissional habilitado antes de sua utilização.<br>'+
+       'Dados de placa reais substituem os valores típicos de norma utilizados. Alterações na instalação invalidam este cálculo.<br>'+
+       'O estudo não cobre seletividade, cascata, arco elétrico, redes em malha ou paralelismo de transformadores.</div>';
+    Q('memorial').innerHTML=h;
+  }
+
+  function unifilarSVG(out){
+    // Diagrama esquemático: fonte → [trafo] → cabos → ponto de falta (→ motores),
+    // com o valor calculado (Z acumulado) exibido em cada elemento (R-21).
+    var nodes=[];
+    var haveCalc = out && out.calculado!==false && out.impedancias && out.impedancias.length;
+    if(haveCalc){
+      out.impedancias.forEach(function(e){
+        var name;
+        if(e.elemento.indexOf('rede')===0) name='REDE';
+        else if(e.elemento.indexOf('gerador')===0) name='GER';
+        else if(e.elemento.indexOf('transformador')===0) name='TR-01';
+        else if(e.elemento.indexOf('cabo')===0) name=(e.elemento.replace(/^cabo #\d+ \(/,'').split(' ')[0])||'CABO';
+        else name=e.elemento;
+        nodes.push({ t:(name.length>10?name.slice(0,10):name), s:'Z='+e.Z_acum+'mΩ' });
+      });
+      nodes.push({t:'FALTA', s:kA(out.Ik_total_max_kA)});
+    } else {
+      nodes.push({t: STATE.fonte_tipo==='gerador'?'GER':'REDE', s:''});
+      if(STATE.trafo_on) nodes.push({t:'TR-01', s:(STATE.trafo.kVA||'')+'kVA'});
+      for(var i=0;i<STATE.ponto;i++){ nodes.push({t:STATE.feeders[i].id||('C'+(i+1)), s:STATE.feeders[i].secao_mm2+'mm²'}); }
+      nodes.push({t:'FALTA', s:''});
+    }
+    var W=Math.max(760, nodes.length*130), H=140, x0=20, dx=(W-40)/Math.max(1,nodes.length-1);
+    var svg='<svg class="unifilar" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+    for(var j=0;j<nodes.length;j++){
+      var cx=x0+dx*j, cy=60, isFalta=nodes[j].t==='FALTA';
+      if(j>0) svg+='<line x1="'+(x0+dx*(j-1)+34)+'" y1="'+cy+'" x2="'+(cx-34)+'" y2="'+cy+'" stroke="#334155" stroke-width="2"/>';
+      svg+='<rect x="'+(cx-34)+'" y="'+(cy-20)+'" width="68" height="40" rx="6" fill="'+(isFalta?'#fef2f2':'#eff6ff')+'" stroke="'+(isFalta?'#dc2626':'#0369a1')+'" stroke-width="'+(isFalta?2.5:1.5)+'"/>';
+      svg+='<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">'+esc(nodes[j].t)+'</text>';
+      svg+='<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" font-size="9" fill="#475569">'+esc(nodes[j].s)+'</text>';
+    }
+    if(STATE.motors.length){
+      var mx=x0+dx*(nodes.length-1);
+      svg+='<line x1="'+mx+'" y1="80" x2="'+mx+'" y2="115" stroke="#334155" stroke-width="2"/>';
+      svg+='<circle cx="'+mx+'" cy="125" r="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><text x="'+mx+'" y="129" text-anchor="middle" font-size="9" font-weight="700">M×'+STATE.motors.length+'</text>';
+    }
+    svg+='<text x="'+(W/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="#94a3b8">Diagrama esquemático de referência — não substitui projeto elétrico em escala</text>';
+    return svg+'</svg>';
+  }
+
+  // ── Contrato postMessage (origem restrita + validação) ───
+  function enviarParent(msg){ try{ window.parent.postMessage(msg, PARENT_ORIGIN); }catch(e){} }
+
+  window.addEventListener('message', function(e){
+    // Validação de origem/fonte/tipo
+    if(e.origin !== PARENT_ORIGIN) return;
+    if(e.source !== window.parent) return;
+    if(!e.data || typeof e.data.type!=='string') return;
+
+    if(e.data.type==='SET_EMPRESA'){ onSetEmpresa(e.data); }
+    else if(e.data.type==='SET_TEMA'){ document.body.classList.toggle('light', e.data.tema==='light'); /* v1: paleta clara única */ }
+    else if(e.data.type==='SHOW_SECTION'){ /* reservado para navegação futura */ }
+    else if(e.data.type==='CURTO_ABRIR_CALCULO'){ if(e.data.payload && e.data.payload.id) abrirNuvem(e.data.payload.id); }
+  });
+
+  function onSetEmpresa(data){
+    var novaId = data.empresaId || null;
+    if(_empresa && _empresa.id===novaId){ // mesma empresa: só atualiza metadados
+      _empresa = { id:novaId, nome:data.empresaNome, nome_curto:data.empresaNomeCurto, cnpj:data.empresaCnpj, razao_social:data.empresaRazaoSocial };
+      Q('empresaChip').textContent=_empresa.nome_curto||_empresa.nome||'—';
+      return;
+    }
+    // Troca de empresa: sequência de isolamento
+    var token = ++_ctxToken;                    // 1) invalida respostas pendentes
+    if(podePersistir() && STATE){ try{ salvarRascunhoSilencioso(); }catch(e){} } // 2) salva sob namespace antigo
+    _empresa = { id:novaId, nome:data.empresaNome, nome_curto:data.empresaNomeCurto, cnpj:data.empresaCnpj, razao_social:data.empresaRazaoSocial };
+    Q('empresaChip').textContent=_empresa.nome_curto||_empresa.nome||'—';
+    Q('nsChip').textContent=nsKey();
+    STATE=novoEstado(); _supabaseId=null;       // 3) limpa memória visual
+    if(token!==_ctxToken) return;               // 7) contexto ainda atual?
+    hidratar();                                 // 4-6) novo namespace
+    renderDrafts();
+    // Nuvem: zera caches do tenant anterior e recarrega clientes/estudos
+    _clientesCache=null; _clienteSel=null; _usuarioIdCache=null; _supabaseId=null; _supabaseAtualizadoEm=null;
+    limparClienteSel();
+    carregarClientes().then(function(){ if(token===_ctxToken) renderClienteLista(); });
+    listarNuvem();
+  }
+  function salvarRascunhoSilencioso(){
+    if(!podePersistir() || !STATE || !STATE.study || !STATE.study.titulo) return;
+    coletar(); var store=lerStore(); var id=STATE._localId||('d_'+idSeq()); STATE._localId=id;
+    store[id]={ id:id, titulo:STATE.study.titulo, atualizado_em:agora(), state:STATE, supabaseId:_supabaseId };
+    escreverStore(store);
+  }
+
+  // Resolve identidade do usuário (namespace) via sessão do parent — SEM rede/DB.
+  function resolverUsuario(){
+    try{
+      var sb = window.parent && window.parent.sbClient;
+      if(sb && sb.auth && sb.auth.getSession){
+        sb.auth.getSession().then(function(res){
+          var u = res && res.data && res.data.session && res.data.session.user;
+          _userKey = u ? u.id : 'anon';
+          Q('nsChip').textContent=nsKey(); renderDrafts();
+        }).catch(function(){ _userKey='anon'; renderDrafts(); });
+        return;
+      }
+    }catch(e){}
+    _userKey='anon'; renderDrafts();
+  }
+
+  // Gate de acesso (usa permissões do parent, se disponíveis)
+  function aplicarGate(){
+    try{
+      if(window.parent && typeof window.parent.podeAcessarModulo==='function'){
+        if(!window.parent.podeAcessarModulo('curto-circuito') && !window.parent.podeAcessarModulo('engenharia')){
+          Q('app').style.display='none'; Q('bloqueio').style.display='block'; return false;
+        }
+      }
+    }catch(e){}
+    return true;
+  }
+
+  // ── Botões / eventos globais ─────────────────────────────
+  function bindTensaoBtns(){
+    var vals=[110,220,380,440,660,720,1000];
+    Q('tensaoBtns').innerHTML=vals.map(function(v){ return '<button class="tbtn" data-v="'+v+'">'+v+' V</button>'; }).join('');
+    Q('tensaoBtns').querySelectorAll('[data-v]').forEach(function(b){
+      b.addEventListener('click',function(){ Q('in_tensao').value=b.getAttribute('data-v'); recalc(); });
+    });
+  }
+
+  // ── Persistência na nuvem (Supabase) — Etapa 4 ───────────
+  var CURTO_APP_VERSION='curto-bt-v1';
+  var _clientesCache=null, _clienteSel=null, _usuarioIdCache=null, _supabaseAtualizadoEm=null;
+  function _sbCloud(){ try{ return (window.parent && window.parent.sbClient) || window.sbClient || null; }catch(e){ return null; } }
+  function cloudMsg(t){ var el=Q('cloudStatus'); if(el) el.textContent=t; }
+
+  async function obterUsuarioId(){
+    if(_usuarioIdCache) return _usuarioIdCache;
+    var sb=_sbCloud(); if(!sb||!sb.auth) return null;
+    try{
+      var au=await sb.auth.getUser(); var authId=au&&au.data&&au.data.user&&au.data.user.id; if(!authId) return null;
+      var r=await sb.from('usuarios').select('id').eq('auth_id',authId).maybeSingle();
+      if(r&&r.data) _usuarioIdCache=r.data.id;
+      return _usuarioIdCache;
+    }catch(e){ return null; }
+  }
+  async function carregarClientes(){
+    var sb=_sbCloud();
+    if(!sb||!_empresa||!_empresa.id){ _clientesCache=[]; return _clientesCache; }
+    try{
+      var r=await sb.from('clientes').select('id,apelido,razao_social,cidade,ativo').eq('empresa_id',_empresa.id).eq('ativo',true);
+      _clientesCache=(r&&r.data)||[];
+    }catch(e){ _clientesCache=[]; }
+    return _clientesCache;
+  }
+  function renderClienteLista(){
+    var lista=Q('cloudClienteLista'), input=Q('cloudClienteInput'); if(!lista||!input) return;
+    var qv=(input.value||'').trim().toLowerCase();
+    var arr=(_clientesCache||[]).filter(function(c){ return !qv||(c.apelido||'').toLowerCase().indexOf(qv)>=0||(c.razao_social||'').toLowerCase().indexOf(qv)>=0; }).slice(0,20);
+    lista.innerHTML = arr.length ? arr.map(function(c){ return '<div class="draft-item" data-cid="'+c.id+'"><span class="t">'+esc(c.apelido||c.razao_social||'—')+'</span><span class="chip">'+esc(c.cidade||'')+'</span></div>'; }).join('') : '<div class="emp">Nenhum cliente.</div>';
+    lista.style.display='block';
+    lista.querySelectorAll('[data-cid]').forEach(function(el){ el.addEventListener('mousedown',function(){ var c=(_clientesCache||[]).filter(function(x){return x.id===el.getAttribute('data-cid');})[0]; if(c) selecionarCliente(c); }); });
+  }
+  function selecionarCliente(c){
+    _clienteSel=c; if(STATE) STATE.cliente_id=c.id;
+    Q('cloudClienteInput').value=''; Q('cloudClienteLista').style.display='none';
+    var sel=Q('cloudClienteSel'); sel.style.display='inline-flex'; sel.textContent='Cliente: '+(c.apelido||c.razao_social||c.id);
+    Q('in_cliente').value=c.apelido||c.razao_social||'';
+  }
+  function limparClienteSel(){ _clienteSel=null; if(STATE) STATE.cliente_id=null; var sel=Q('cloudClienteSel'); if(sel) sel.style.display='none'; var i=Q('in_cliente'); if(i) i.value=''; }
+  function envelopeEntrada(){ var s=JSON.parse(JSON.stringify(STATE)); delete s._localId; return { schema_version:1, engine_version:'curto-bt-v1', state:s }; }
+
+  async function salvarNuvem(){
+    var sb=_sbCloud();
+    if(!sb){ toast('Sem conexão com a nuvem.','err'); return; }
+    if(!_empresa||!_empresa.id){ toast('Empresa ativa não definida.','err'); return; }
+    coletar();
+    if(!STATE.study.titulo){ toast('Informe um título.','err'); return; }
+    if(!_clienteSel||!STATE.cliente_id){ toast('Selecione um cliente (obrigatório).','err'); return; }
+    try{ if(window.parent.podeAcao && !window.parent.podeAcao('curto-circuito', _supabaseId?'editar':'criar')){ toast('Sem permissão para salvar.','err'); return; } }catch(e){}
+    recalc();
+    var nowIso; try{ nowIso=new Date().toISOString(); }catch(e){ nowIso=null; }
+    var base={ titulo:STATE.study.titulo, cliente_id:STATE.cliente_id, proposta_app_id:STATE.proposta_app_id||null,
+               status:STATE.status||'rascunho', app_version:CURTO_APP_VERSION, entrada:envelopeEntrada(), resultado:lastResult||{}, atualizado_em:nowIso };
+    cloudMsg('salvando...');
+    try{
+      if(_supabaseId){
+        var up=await sb.from('curto_circuito_calculos').update(base)
+          .eq('id',_supabaseId).eq('empresa_id',_empresa.id).eq('atualizado_em',_supabaseAtualizadoEm).select('id,atualizado_em');
+        if(up&&up.error) throw up.error;
+        if(!up.data||!up.data.length){ cloudMsg('conflito'); toast('Conflito: o estudo mudou em outra sessão. Recarregue ou salve uma cópia.','err'); return; }
+        _supabaseAtualizadoEm=up.data[0].atualizado_em; toast('Atualizado na nuvem.','ok');
+      } else {
+        var uid=await obterUsuarioId();
+        if(!uid){ cloudMsg('erro'); toast('Não foi possível identificar o usuário.','err'); return; }
+        var ins=await sb.from('curto_circuito_calculos').insert(Object.assign({ empresa_id:_empresa.id, criado_por:uid }, base)).select('id,atualizado_em').single();
+        if(ins&&ins.error) throw ins.error;
+        _supabaseId=ins.data.id; _supabaseAtualizadoEm=ins.data.atualizado_em; toast('Salvo na nuvem.','ok');
+      }
+      cloudMsg('salvo'); listarNuvem();
+    }catch(e){ cloudMsg('erro'); toast('Erro ao salvar: '+(e&&e.message?e.message:e),'err'); }
+  }
+
+  async function listarNuvem(){
+    var box=Q('cloudList'); var sb=_sbCloud();
+    if(!sb||!_empresa||!_empresa.id){ box.innerHTML='<div class="emp">Aguardando empresa…</div>'; return; }
+    try{
+      var r=await sb.from('curto_circuito_calculos').select('id,titulo,status,atualizado_em,criado_por,cliente_id')
+        .eq('empresa_id',_empresa.id).order('atualizado_em',{ascending:false}).limit(200);
+      if(r&&r.error) throw r.error;
+      var arr=(r&&r.data)||[];
+      if(!arr.length){ box.innerHTML='<div class="emp">Nenhum estudo salvo na nuvem.</div>'; return; }
+      box.innerHTML='';
+      arr.forEach(function(d){
+        var el=document.createElement('div'); el.className='draft-item';
+        el.innerHTML='<span class="t">'+esc(d.titulo||'(sem título)')+' <span class="pill '+(d.status==='finalizado'?'ok':'warn')+'">'+esc(d.status||'')+'</span></span>'+
+          '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span><button class="btn sm" data-open="'+d.id+'">abrir</button></span>';
+        box.appendChild(el);
+        function op(){ abrirNuvem(d.id); }
+        el.querySelector('[data-open]').addEventListener('click',op); el.querySelector('.t').addEventListener('click',op);
+      });
+    }catch(e){ box.innerHTML='<div class="emp">Erro ao listar: '+esc(e&&e.message?e.message:'')+'</div>'; }
+  }
+
+  async function abrirNuvem(id){
+    var sb=_sbCloud(); if(!sb||!_empresa) return;
+    try{
+      var r=await sb.from('curto_circuito_calculos').select('*').eq('id',id).eq('empresa_id',_empresa.id).maybeSingle();
+      if(r&&r.error) throw r.error;
+      var row=r&&r.data; if(!row){ toast('Estudo não disponível (outro tenant ou removido).','err'); return; }
+      var env=row.entrada||{};
+      if(env.schema_version!==1||env.engine_version!=='curto-bt-v1'){ toast('Versão de estudo incompatível.','err'); return; }
+      STATE=env.state; STATE._localId=null; _supabaseId=row.id; _supabaseAtualizadoEm=row.atualizado_em;
+      var c=(_clientesCache||[]).filter(function(x){return x.id===row.cliente_id;})[0];
+      hidratar();
+      if(c) selecionarCliente(c); else { STATE.cliente_id=row.cliente_id; var sel=Q('cloudClienteSel'); sel.style.display='inline-flex'; sel.textContent='Cliente: '+row.cliente_id; }
+      toast('Estudo carregado da nuvem.','ok'); cloudMsg('carregado');
+    }catch(e){ toast('Erro ao abrir: '+(e&&e.message?e.message:e),'err'); }
+  }
+
+  function init(){
+    if(!aplicarGate()) return;
+    STATE=novoEstado();
+    bindTensaoBtns();
+    hidratar();
+
+    // recálculo ao vivo em todos os inputs simples
+    ['in_titulo','in_instalacao','in_cliente','in_responsavel','in_art','in_revisao','in_tensao','in_tipofalta',
+     'in_cmax','in_cmin','in_rede_modo','in_icc','in_scc','in_rede_xr','in_ger_kva','in_ger_v','in_ger_xd','in_ger_xr',
+     'in_tr_kva','in_tr_uk','in_tr_pcu','in_icu','in_icm','in_i3','in_t','in_ref','in_ponto'].forEach(function(id){
+      var el=Q(id); if(el) el.addEventListener('input',recalc);
+    });
+    Q('in_rede_modo').addEventListener('change',function(){ atualizarRedeModo(); recalc(); });
+    Q('in_ponto').addEventListener('change',function(){ STATE.ponto=parseInt(Q('in_ponto').value,10)||0; recalc(); });
+    Q('in_trafo_on').addEventListener('change',function(){ atualizarTrafoBloco(); recalc(); });
+    Q('fonteRede').addEventListener('click',function(){ setFonte('rede'); recalc(); });
+    Q('fonteGerador').addEventListener('click',function(){ setFonte('gerador'); recalc(); });
+
+    Q('btnAddCabo').addEventListener('click',function(){ STATE.feeders.push(novoCabo()); renderCabos(); STATE.ponto=STATE.feeders.length; atualizarPonto(); recalc(); });
+    Q('btnAddMotor').addEventListener('click',function(){ STATE.motors.push({ id:'M-0'+(STATE.motors.length+1), modo:'kW', potencia_kW:50, eta:0.9, cosfi:0.85, multiplo_m:5, xr:10 }); renderMotores(); recalc(); });
+    Q('btnTipicos').addEventListener('click',function(){
+      var kva=parseFloat(Q('in_tr_kva').value); var t=E.transformadorTipicos(kva);
+      if(!t){ toast('> 6300 kVA: informe uk% e Pcu de placa.','err'); return; }
+      Q('in_tr_uk').value=t.ukPct; Q('in_tr_pcu').value=t.pcu_kW;
+      Q('tipicoInfo').innerHTML='<span class="pill tip">valores típicos IEC 60076-5</span>'; recalc();
+    });
+    Q('btnSalvar').addEventListener('click',salvarRascunho);
+    Q('btnNovo').addEventListener('click',novoEstudo);
+    Q('btnImprimir').addEventListener('click',function(){ montarMemorial(); Q('memorial').style.display='block'; window.print(); setTimeout(function(){ Q('memorial').style.display='none'; },400); });
+
+    // Nuvem
+    Q('btnSalvarNuvem').addEventListener('click',salvarNuvem);
+    Q('btnRecarregarNuvem').addEventListener('click',listarNuvem);
+    Q('cloudClienteInput').addEventListener('input',renderClienteLista);
+    Q('cloudClienteInput').addEventListener('focus',renderClienteLista);
+    Q('cloudClienteInput').addEventListener('blur',function(){ setTimeout(function(){ var l=Q('cloudClienteLista'); if(l) l.style.display='none'; },150); });
+
+    resolverUsuario();
+    enviarParent({ type:'RH_PEDIR_EMPRESA' }); // pede a empresa ativa ao shell
+    Q('nsChip').textContent=nsKey();
+    renderDrafts();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
+</body>
+</html>
