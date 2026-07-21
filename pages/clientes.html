@@ -844,7 +844,7 @@ async function _fichaCarregarHistorico(){
    Lista os cálculos de engenharia vinculados a este cliente
    (engenharia_calculos.cliente_id). Clicar abre o cálculo de volta no
    módulo Engenharia via deep-link (ROUTER_IR + ENG_ABRIR_CALCULO). */
-var _ENG_TIPO_LABEL={ dimensionamento_cabos:'Dimensionamento de cabos' };
+var _ENG_TIPO_LABEL={ dimensionamento_cabos:'Dimensionamento de cabos', curto_circuito_bt:'Curto-circuito BT' };
 function _fichaVistaCalculos(){
   if(_ficha.calculos===null) return '<div class="vazio">Buscando cálculos…</div>';
   if(!_ficha.calculos.length)
@@ -853,13 +853,17 @@ function _fichaVistaCalculos(){
   return '<div class="sec-desc" style="margin-bottom:.4rem">Clique em um cálculo para abri-lo no módulo Engenharia.</div>'+
     _ficha.calculos.map(function(k){
       var tipo=_ENG_TIPO_LABEL[k.tipo_calculo]||k.tipo_calculo||'—';
-      var sec=(k.resultado && k.resultado.secFinal!=null)? (esc(String(k.resultado.secFinal))+' mm²') : '—';
+      var isCurto=(k.tipo_calculo==='curto_circuito_bt');
+      // Resumo específico por tipo: cabos → seção final; curto → Ik" máx
+      var resumo=isCurto
+        ? ('Ik" máx: '+((k.resultado && k.resultado.Ik_total_max_kA!=null)? (esc(String(k.resultado.Ik_total_max_kA))+' kA') : '—'))
+        : ('Seção final: '+((k.resultado && k.resultado.secFinal!=null)? (esc(String(k.resultado.secFinal))+' mm²') : '—'));
       var stPill=(k.status==='finalizado')
         ? '<span class="pill papel" title="Finalizado">✅ finalizado</span>'
         : '<span class="pill origem" title="Rascunho">✏️ rascunho</span>';
-      return '<div class="hist-item" style="cursor:pointer" onclick="_abrirCalculoEngenharia(\''+esc(k.id)+'\')" title="Abrir no módulo Engenharia">'+
+      return '<div class="hist-item" style="cursor:pointer" onclick="_abrirCalculoEngenharia(\''+esc(k.id)+'\',\''+esc(k.tipo_calculo||'')+'\')" title="Abrir cálculo">'+
         '<b>'+esc(k.titulo||'(sem título)')+'</b> '+stPill+
-        '<div class="hist-meta">'+esc(tipo)+' · Seção final: '+sec+' · atualizado em '+_dataBr(k.atualizado_em)+'</div></div>';
+        '<div class="hist-meta">'+esc(tipo)+' · '+resumo+' · atualizado em '+_dataBr(k.atualizado_em)+'</div></div>';
     }).join('');
 }
 async function _fichaCarregarCalculos(){
@@ -875,14 +879,31 @@ async function _fichaCarregarCalculos(){
     if(res && res.error) throw res.error;
     lista=(res && res.data)||[];
   }catch(e){}
+  // Estudos de curto-circuito BT (tabela própria) — mesmo cliente/empresa.
+  // Sintetiza tipo_calculo para a lista misturada saber rotear/rotular.
+  try{
+    var resC=await sb.from('curto_circuito_calculos')
+      .select('id,titulo,status,atualizado_em,resultado')
+      .eq('empresa_id', _empresaAtiva.id)
+      .eq('cliente_id', c.id)
+      .order('atualizado_em', {ascending:false});
+    if(!(resC && resC.error) && resC && resC.data){
+      resC.data.forEach(function(r){ r.tipo_calculo='curto_circuito_bt'; lista.push(r); });
+    }
+  }catch(e){}
+  lista.sort(function(a,b){ return String(b.atualizado_em||'').localeCompare(String(a.atualizado_em||'')); });
   _ficha.calculos=lista;
   if(_ficha.cliente && _ficha.cliente.id===c.id && _fichaVista==='G') _fichaRender();
 }
-function _abrirCalculoEngenharia(id){
+function _abrirCalculoEngenharia(id, tipo){
   if(!id) return;
   try{
     if(window.parent && window.parent!==window){
-      window.parent.postMessage({ type:'ROUTER_IR', modulo:'engenharia', msg:{ type:'ENG_ABRIR_CALCULO', payload:{ id:id } } }, '*');
+      if(tipo==='curto_circuito_bt'){
+        window.parent.postMessage({ type:'ROUTER_IR', modulo:'curto-circuito', msg:{ type:'CURTO_ABRIR_CALCULO', payload:{ id:id } } }, '*');
+      } else {
+        window.parent.postMessage({ type:'ROUTER_IR', modulo:'engenharia', msg:{ type:'ENG_ABRIR_CALCULO', payload:{ id:id } } }, '*');
+      }
     }
   }catch(e){}
 }
