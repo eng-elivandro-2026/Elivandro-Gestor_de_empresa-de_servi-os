@@ -612,45 +612,113 @@
   function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; hidratar(); toast('Novo estudo.','ok'); }
 
   // ── Memorial + diagrama unifilar (impressão) ─────────────
+  function _fmtData(){ try{ return new Date().toLocaleDateString('pt-BR'); }catch(e){ return ''; } }
+  function _empFull(){ try{ return (window.parent.getEmpresaAtiva && window.parent.getEmpresaAtiva()) || _empresa || {}; }catch(e){ return _empresa||{}; } }
+  function _memDadosEntrada(){
+    var s=STATE, h='';
+    if(s.fonte_tipo==='gerador'){
+      h+='<div class="formline">Fonte: gerador — '+esc(s.gerador.kVA||'—')+' kVA · '+esc(s.gerador.v||'—')+' V · X"d='+esc(s.gerador.xdPct||'—')+'% · X/R='+esc(s.gerador.xr||'—')+'</div>';
+    } else {
+      var m=s.rede.modo;
+      var det = m==='infinita'?'potência infinita':(m==='Icc'?('Icc='+esc(s.rede.Icc_kA||'—')+' kA'):('Scc='+esc(s.rede.Scc_MVA||'—')+' MVA'));
+      h+='<div class="formline">Fonte: rede — '+det+' · X/R='+esc(s.rede.xr||'—')+'</div>';
+    }
+    if(s.trafo_on){
+      var tip = (lastResult && lastResult.tipicos_usados && lastResult.tipicos_usados.indexOf('transformador')>=0);
+      h+='<div class="formline">Transformador: '+esc(s.trafo.kVA||'—')+' kVA · uk='+esc(s.trafo.ukPct||'—')+'% · Pcu='+esc(s.trafo.pcu_kW||'—')+' kW'+
+         (tip?' <span class="pill tip">valores típicos IEC 60076-5</span>':' (dados de placa)')+'</div>';
+    }
+    s.feeders.forEach(function(f,i){
+      h+='<div class="formline">Cabo '+esc(f.id||('#'+(i+1)))+': '+esc(f.comprimento_m)+' m · '+esc(f.secao_mm2)+' mm² '+esc(f.material)+
+         ' · '+esc(f.paralelos)+'× · X='+esc(f.x_ohm_km)+' Ω/km · '+esc(f.isolacao)+' · T.op '+esc(f.temp_op_C)+' °C'+((i+1)===s.ponto?' <b>(ponto de falta)</b>':'')+'</div>';
+    });
+    if(s.ponto===0) h+='<div class="formline">Ponto de falta: terminais do transformador</div>';
+    s.motors.forEach(function(mo){
+      h+='<div class="formline">Motor '+esc(mo.id||'')+': '+(mo.modo==='In'?(esc(mo.In_A)+' A'):(esc(mo.potencia_kW)+' kW, η='+esc(mo.eta)+', cosφ='+esc(mo.cosfi)))+' · m='+esc(mo.multiplo_m)+' · X/R='+esc(mo.xr)+'</div>';
+    });
+    var p=s.protection;
+    if(p.Icu_kA||p.Icm_kA||p.I3_kA||p.referencia){
+      h+='<div class="formline">Disjuntor: '+(p.referencia?esc(p.referencia)+' · ':'')+'Icu='+esc(p.Icu_kA||'—')+' kA · Icm='+esc(p.Icm_kA||'—')+' kA · I3='+esc(p.I3_kA||'—')+' kA · t='+esc(p.t_s||'—')+' s</div>';
+    }
+    return h;
+  }
+
   function montarMemorial(){
-    coletar();
-    var out=lastResult;
-    var emp=_empresa||{};
-    var s=STATE;
-    var h='<h1 style="border:0;padding:0">MEMORIAL DE CÁLCULO — CURTO-CIRCUITO EM BAIXA TENSÃO</h1>';
-    h+='<div class="sub">'+esc(emp.nome||emp.nome_curto||'—')+' · Cliente: '+esc(s.study.cliente||'—')+
-       ' · Responsável: '+esc(s.study.responsavel||'—')+(s.study.art?' (ART/RRT '+esc(s.study.art)+')':'')+
-       ' · '+esc(s.study.revisao||'')+'</div>';
-    h+='<h4>Método e hipóteses</h4><div class="sub">Fonte de tensão equivalente (IEC 60909-0:2016), rede radial, impedâncias em série referidas ao lado BT. '+
-       'Caso máximo: cMax='+s.cMax+', R dos condutores a 20 °C. Caso mínimo: cMin='+s.cMin+', R à temperatura de operação. Verificações de condutor por NBR 5410.</div>';
-    h+=unifilarSVG(out);
+    coletar(); recalc();
+    var out=lastResult, s=STATE, emp=_empFull();
+    var h='';
+    // 6.1 Cabeçalho
+    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #0369a1;padding-bottom:8px">';
+    h+='<div>'+(emp.logo_url?'<img src="'+esc(emp.logo_url)+'" alt="logo" style="max-height:48px;margin-bottom:4px"><br>':'')+
+       '<b style="font-size:1rem">'+esc(emp.razao_social||emp.nome||emp.nome_curto||'—')+'</b>'+
+       (emp.cnpj?'<div class="sub">CNPJ '+esc(emp.cnpj)+'</div>':'')+'</div>';
+    h+='<div style="text-align:right"><b>MEMORIAL DE CÁLCULO</b><div class="sub">Curto-circuito em baixa tensão · IEC 60909-0:2016</div>'+
+       '<div class="sub">Estudo: '+esc(s.study.titulo||'—')+' · '+esc(s.study.revisao||'')+' · '+esc(_fmtData())+'</div></div>';
+    h+='</div>';
+    h+='<div class="sub" style="margin-top:6px">Cliente: <b>'+esc(s.study.cliente||'—')+'</b> · Instalação: '+esc(s.study.instalacao||'—')+
+       ' · Responsável técnico: '+esc(s.study.responsavel||'—')+(s.study.art?' (ART/RRT '+esc(s.study.art)+')':'')+'</div>';
+    // 6.2 Diagrama unifilar
+    h+='<h4>Diagrama unifilar esquemático</h4>'+unifilarSVG(out);
     if(out && out.calculado!==false){
-      h+='<h4>Dados de entrada</h4><div class="sub">Tensão '+s.study.tensao_V+' V · falta '+esc(s.study.tipo_falta)+
-         (out.tipicos_usados.indexOf('transformador')>=0?' · <span class="pill tip">transformador: valores típicos IEC 60076-5</span>':'')+'</div>';
-      h+='<h4>Impedâncias acumuladas</h4>'+Q('tblImp').parentNode.innerHTML;
+      // 6.3 Dados de entrada
+      h+='<h4>Dados de entrada</h4><div class="sub">Tensão '+esc(s.study.tensao_V)+' V · tipo de falta: '+esc(s.study.tipo_falta)+'</div>'+_memDadosEntrada();
+      // 6.4 Hipóteses adotadas
+      h+='<h4>Hipóteses adotadas</h4><div class="sub">'+
+         '• Método da fonte de tensão equivalente (IEC 60909-0:2016).<br>'+
+         '• Rede radial; impedâncias em série referidas ao lado de baixa tensão.<br>'+
+         '• Caso máximo: fator c = '+esc(s.cMax)+' (cMax), resistência dos condutores a 20 °C, falta sólida.<br>'+
+         '• Caso mínimo: fator c = '+esc(s.cMin)+' (cMin), resistência dos condutores à temperatura de operação.<br>'+
+         (out.tipicos_usados.indexOf('transformador')>=0?'• Transformador: uk% e Pcu de valores típicos de norma (IEC 60076-5) — substituir por dados de placa quando disponíveis.<br>':'')+
+         (s.motors.length?'• Motores considerados conectados diretamente ao barramento da falta (contribuição por soma vetorial).<br>':'')+
+         '</div>';
+      // 6.5 Tabela de impedâncias acumuladas
+      h+='<h4>Tabela de impedâncias acumuladas</h4><table><thead><tr><th>Elemento</th><th>R (mΩ)</th><th>X (mΩ)</th><th>|Z| (mΩ)</th><th>ΣR</th><th>ΣX</th><th>Σ|Z|</th></tr></thead><tbody>';
+      out.impedancias.forEach(function(e){ h+='<tr><td>'+esc(e.elemento)+'</td><td>'+e.R_mOhm+'</td><td>'+e.X_mOhm+'</td><td>'+e.Z_mOhm+'</td><td>'+e.R_acum+'</td><td>'+e.X_acum+'</td><td>'+e.Z_acum+'</td></tr>'; });
+      h+='</tbody></table>';
+      // 6.6 Desenvolvimento do cálculo
       h+='<h4>Desenvolvimento do cálculo</h4>';
-      out.memoria_calculo.forEach(function(m){
-        h+='<div class="formline">'+esc(m.formula)+'<br>= '+esc(m.valores_substituidos)+'<br>= <b>'+esc(m.resultado)+' '+esc(m.unidade||'')+'</b></div>';
-      });
+      out.memoria_calculo.forEach(function(m){ h+='<div class="formline">'+esc(m.formula)+'<br>= '+esc(m.valores_substituidos)+'<br>= <b>'+esc(m.resultado)+' '+esc(m.unidade||'')+'</b></div>'; });
+      // 6.7 Resultados e verificações
       h+='<h4>Resultados e verificações</h4>';
-      h+='<div class="sub">Ik" máx = '+kA(out.Ik_total_max_kA)+' · Ik" mín = '+kA(out.caso_min.Ik_kA)+' · ip = '+kA(out.ip_total_kA)+' · κ = '+out.caso_max.kappa+'</div>';
+      h+='<div class="statgrid">'+
+         '<div class="stat hero"><div class="k">Ik" máx</div><div class="v">'+kA(out.Ik_total_max_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">Ik" mín</div><div class="v">'+kA(out.caso_min.Ik_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">ip de pico</div><div class="v">'+kA(out.ip_total_kA)+'</div></div>'+
+         '<div class="stat"><div class="k">κ</div><div class="v">'+out.caso_max.kappa+'</div></div></div>';
       h+=renderVerif(out.verificacoes);
     } else {
       h+='<div class="aviso">'+esc(out?out.aviso:'Preencha os dados para gerar o memorial.')+'</div>';
     }
-    h+='<h4>Advertências</h4><div class="sub">Este estudo foi elaborado para as condições de instalação descritas e deve ser revisado por profissional habilitado antes de sua utilização. '+
-       'Dados de placa reais substituem os valores típicos de norma. Alterações na instalação invalidam este cálculo. '+
-       'Não cobre seletividade, cascata, arco elétrico, redes em malha ou paralelismo de transformadores.</div>';
+    // 6.8 Advertências de responsabilidade técnica
+    h+='<h4>Advertências de responsabilidade técnica</h4><div class="sub">'+
+       'Este estudo foi elaborado para as condições de instalação descritas e deve ser revisado por profissional habilitado antes de sua utilização.<br>'+
+       'Dados de placa reais substituem os valores típicos de norma utilizados. Alterações na instalação invalidam este cálculo.<br>'+
+       'O estudo não cobre seletividade, cascata, arco elétrico, redes em malha ou paralelismo de transformadores.</div>';
     Q('memorial').innerHTML=h;
   }
 
   function unifilarSVG(out){
-    // Diagrama esquemático simples: fonte → [trafo] → cabos → ponto de falta (→ motores)
+    // Diagrama esquemático: fonte → [trafo] → cabos → ponto de falta (→ motores),
+    // com o valor calculado (Z acumulado) exibido em cada elemento (R-21).
     var nodes=[];
-    nodes.push({t: STATE.fonte_tipo==='gerador'?'GER':'REDE', s:''});
-    if(STATE.trafo_on) nodes.push({t:'TR', s:(STATE.trafo.kVA||'')+'kVA'});
-    for(var i=0;i<STATE.ponto;i++){ nodes.push({t:STATE.feeders[i].id||('C'+(i+1)), s:STATE.feeders[i].secao_mm2+'mm²'}); }
-    nodes.push({t:'FALTA', s: out&&out.calculado!==false? kA(out.Ik_total_max_kA):''});
+    var haveCalc = out && out.calculado!==false && out.impedancias && out.impedancias.length;
+    if(haveCalc){
+      out.impedancias.forEach(function(e){
+        var name;
+        if(e.elemento.indexOf('rede')===0) name='REDE';
+        else if(e.elemento.indexOf('gerador')===0) name='GER';
+        else if(e.elemento.indexOf('transformador')===0) name='TR-01';
+        else if(e.elemento.indexOf('cabo')===0) name=(e.elemento.replace(/^cabo #\d+ \(/,'').split(' ')[0])||'CABO';
+        else name=e.elemento;
+        nodes.push({ t:(name.length>10?name.slice(0,10):name), s:'Z='+e.Z_acum+'mΩ' });
+      });
+      nodes.push({t:'FALTA', s:kA(out.Ik_total_max_kA)});
+    } else {
+      nodes.push({t: STATE.fonte_tipo==='gerador'?'GER':'REDE', s:''});
+      if(STATE.trafo_on) nodes.push({t:'TR-01', s:(STATE.trafo.kVA||'')+'kVA'});
+      for(var i=0;i<STATE.ponto;i++){ nodes.push({t:STATE.feeders[i].id||('C'+(i+1)), s:STATE.feeders[i].secao_mm2+'mm²'}); }
+      nodes.push({t:'FALTA', s:''});
+    }
     var W=Math.max(760, nodes.length*130), H=140, x0=20, dx=(W-40)/Math.max(1,nodes.length-1);
     var svg='<svg class="unifilar" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
     for(var j=0;j<nodes.length;j++){
