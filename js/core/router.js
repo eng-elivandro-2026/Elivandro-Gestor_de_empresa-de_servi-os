@@ -111,8 +111,11 @@
       tipo: 'iframe',
       src: 'pages/curto-circuito.html',
       nav: [
+        // Dois itens no MESMO nível (nenhum é subitem do outro) — igual à
+        // subnav de Engenharia. NÃO usar o prefixo '↳' (ele indenta o item
+        // como subitem em _renderNavMod).
+        { label: 'Dimensionamento de Cabos', icon: '🔌', action: "Router.ir('engenharia');Router.iframeMsg('engenharia','SHOW_SECTION','cabos')" },
         { label: 'Curto-Circuito BT',        icon: '⚡', action: "Router.ir('curto-circuito')" },
-        { label: '↳ Dimensionamento de Cabos', icon: '🔌', action: "Router.ir('engenharia');Router.iframeMsg('engenharia','SHOW_SECTION','cabos')" },
       ]
     },
     {

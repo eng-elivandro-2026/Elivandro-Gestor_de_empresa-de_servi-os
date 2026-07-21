@@ -777,11 +777,11 @@ a:hover{
         <div class="eng-inicio-tit">Queda de tensão</div>
         <div class="eng-inicio-sub">Em breve</div>
       </div>
-      <div class="eng-inicio-card eng-inicio-card-off" aria-disabled="true" title="Em breve">
+      <button type="button" class="eng-inicio-card" id="cardCalcCurto" onclick="try{window.parent.postMessage({type:'ROUTER_IR',modulo:'curto-circuito'},'*');}catch(e){}">
         <div class="eng-inicio-ico">⚡</div>
-        <div class="eng-inicio-tit">Curto-circuito</div>
-        <div class="eng-inicio-sub">Em breve</div>
-      </div>
+        <div class="eng-inicio-tit">Curto-Circuito BT</div>
+        <div class="eng-inicio-sub">Corrente de curto em baixa tensão — IEC 60909</div>
+      </button>
     </div>
     <div class="eng-inicio-acoes">
       <button type="button" class="btn" id="btn-inicio-historico">☁ Histórico de cálculos salvos</button>
