@@ -108,6 +108,7 @@
     <div class="row">
       <button class="btn sm ghost" id="btnNovo">＋ Novo</button>
       <button class="btn sm" id="btnImprimir">🖨️ Memorial</button>
+      <button class="btn sm danger" id="btnExcluirNuvem" style="display:none" title="Excluir estudo da nuvem">🗑️ Excluir</button>
       <button class="btn primary sm" id="btnSalvar">💾 Salvar rascunho</button>
     </div>
   </div>
@@ -606,10 +607,10 @@
     STATE=d.state; STATE._localId=id;
     // Rascunho local é desacoplado da nuvem: salvar na nuvem cria novo registro.
     // Para editar em-nuvem, abra pela lista "Estudos na nuvem".
-    _supabaseId=null; _supabaseAtualizadoEm=null;
-    hidratar(); toast('Rascunho carregado.','ok');
+    _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null;
+    hidratar(); atualizarBotaoExcluir(); toast('Rascunho carregado.','ok');
   }
-  function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; hidratar(); toast('Novo estudo.','ok'); }
+  function novoEstudo(){ STATE=novoEstado(); _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null; hidratar(); atualizarBotaoExcluir(); toast('Novo estudo.','ok'); }
 
   // ── Memorial + diagrama unifilar (impressão) ─────────────
   function _fmtData(){ try{ return new Date().toLocaleDateString('pt-BR'); }catch(e){ return ''; } }
@@ -770,8 +771,8 @@
     hidratar();                                 // 4-6) novo namespace
     renderDrafts();
     // Nuvem: zera caches do tenant anterior e recarrega clientes/estudos
-    _clientesCache=null; _clienteSel=null; _usuarioIdCache=null; _supabaseId=null; _supabaseAtualizadoEm=null;
-    limparClienteSel();
+    _clientesCache=null; _clienteSel=null; _usuarioIdCache=null; _supabaseId=null; _supabaseAtualizadoEm=null; _supabaseCriadoPor=null;
+    limparClienteSel(); atualizarBotaoExcluir();
     carregarClientes().then(function(){ if(token===_ctxToken) renderClienteLista(); });
     listarNuvem();
   }
@@ -821,9 +822,36 @@
 
   // ── Persistência na nuvem (Supabase) — Etapa 4 ───────────
   var CURTO_APP_VERSION='curto-bt-v1';
-  var _clientesCache=null, _clienteSel=null, _usuarioIdCache=null, _supabaseAtualizadoEm=null;
+  var _clientesCache=null, _clienteSel=null, _usuarioIdCache=null, _supabaseAtualizadoEm=null, _supabaseCriadoPor=null;
   function _sbCloud(){ try{ return (window.parent && window.parent.sbClient) || window.sbClient || null; }catch(e){ return null; } }
   function cloudMsg(t){ var el=Q('cloudStatus'); if(el) el.textContent=t; }
+  function _perfilAtual(){ try{ return (window.parent.getPerfilUsuario && window.parent.getPerfilUsuario()) || window.parent._perfilUsuario || null; }catch(e){ return null; } }
+  // Pode excluir: autor do estudo OU perfil dono/admin (a RLS 069 é a barreira real)
+  function _podeExcluir(criadoPor){
+    var perfil=_perfilAtual();
+    if(perfil==='dono'||perfil==='admin') return true;
+    return !!(criadoPor && _usuarioIdCache && criadoPor===_usuarioIdCache);
+  }
+  function atualizarBotaoExcluir(){
+    var btn=Q('btnExcluirNuvem'); if(!btn) return;
+    if(!_supabaseId){ btn.style.display='none'; return; }
+    var perfil=_perfilAtual();
+    if(perfil==='dono'||perfil==='admin'){ btn.style.display=''; return; }
+    obterUsuarioId().then(function(uid){ btn.style.display=(uid && _supabaseCriadoPor && uid===_supabaseCriadoPor)?'':'none'; });
+  }
+  async function excluirNuvem(id, titulo){
+    var sb=_sbCloud(); if(!sb||!_empresa||!_empresa.id) return;
+    if(!confirm('Excluir "'+(titulo||'este estudo')+'"?\n\nTem certeza? Esta ação não pode ser desfeita.')) return;
+    cloudMsg('excluindo...');
+    try{
+      var r=await sb.from('curto_circuito_calculos').delete().eq('id',id).eq('empresa_id',_empresa.id).select('id');
+      if(r&&r.error) throw r.error;
+      if(!r.data||!r.data.length){ cloudMsg('bloqueado'); toast('Sem permissão para excluir este estudo (ou já removido).','err'); return; }
+      toast('Estudo excluído.','ok'); cloudMsg('excluído');
+      if(_supabaseId===id){ novoEstudo(); }   // estava aberto → volta à tela inicial (novo estudo)
+      listarNuvem();
+    }catch(e){ cloudMsg('erro'); toast('Erro ao excluir: '+(e&&e.message?e.message:e),'err'); }
+  }
 
   async function obterUsuarioId(){
     if(_usuarioIdCache) return _usuarioIdCache;
@@ -886,15 +914,16 @@
         if(!uid){ cloudMsg('erro'); toast('Não foi possível identificar o usuário.','err'); return; }
         var ins=await sb.from('curto_circuito_calculos').insert(Object.assign({ empresa_id:_empresa.id, criado_por:uid }, base)).select('id,atualizado_em').single();
         if(ins&&ins.error) throw ins.error;
-        _supabaseId=ins.data.id; _supabaseAtualizadoEm=ins.data.atualizado_em; toast('Salvo na nuvem.','ok');
+        _supabaseId=ins.data.id; _supabaseAtualizadoEm=ins.data.atualizado_em; _supabaseCriadoPor=uid; toast('Salvo na nuvem.','ok');
       }
-      cloudMsg('salvo'); listarNuvem();
+      cloudMsg('salvo'); atualizarBotaoExcluir(); listarNuvem();
     }catch(e){ cloudMsg('erro'); toast('Erro ao salvar: '+(e&&e.message?e.message:e),'err'); }
   }
 
   async function listarNuvem(){
     var box=Q('cloudList'); var sb=_sbCloud();
     if(!sb||!_empresa||!_empresa.id){ box.innerHTML='<div class="emp">Aguardando empresa…</div>'; return; }
+    await obterUsuarioId(); // aquece _usuarioIdCache para a checagem de exclusão por autoria
     try{
       var r=await sb.from('curto_circuito_calculos').select('id,titulo,status,atualizado_em,criado_por,cliente_id')
         .eq('empresa_id',_empresa.id).order('atualizado_em',{ascending:false}).limit(200);
@@ -904,11 +933,13 @@
       box.innerHTML='';
       arr.forEach(function(d){
         var el=document.createElement('div'); el.className='draft-item';
+        var btnDel = _podeExcluir(d.criado_por) ? '<button class="btn sm danger" data-del="'+d.id+'" title="Excluir">🗑️</button>' : '';
         el.innerHTML='<span class="t">'+esc(d.titulo||'(sem título)')+' <span class="pill '+(d.status==='finalizado'?'ok':'warn')+'">'+esc(d.status||'')+'</span></span>'+
-          '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span><button class="btn sm" data-open="'+d.id+'">abrir</button></span>';
+          '<span class="row"><span class="chip">'+esc((d.atualizado_em||'').slice(0,16).replace('T',' '))+'</span><button class="btn sm" data-open="'+d.id+'">abrir</button>'+btnDel+'</span>';
         box.appendChild(el);
         function op(){ abrirNuvem(d.id); }
         el.querySelector('[data-open]').addEventListener('click',op); el.querySelector('.t').addEventListener('click',op);
+        var db=el.querySelector('[data-del]'); if(db) db.addEventListener('click',function(){ excluirNuvem(d.id, d.titulo); });
       });
     }catch(e){ box.innerHTML='<div class="emp">Erro ao listar: '+esc(e&&e.message?e.message:'')+'</div>'; }
   }
@@ -921,10 +952,11 @@
       var row=r&&r.data; if(!row){ toast('Estudo não disponível (outro tenant ou removido).','err'); return; }
       var env=row.entrada||{};
       if(env.schema_version!==1||env.engine_version!=='curto-bt-v1'){ toast('Versão de estudo incompatível.','err'); return; }
-      STATE=env.state; STATE._localId=null; _supabaseId=row.id; _supabaseAtualizadoEm=row.atualizado_em;
+      STATE=env.state; STATE._localId=null; _supabaseId=row.id; _supabaseAtualizadoEm=row.atualizado_em; _supabaseCriadoPor=row.criado_por;
       var c=(_clientesCache||[]).filter(function(x){return x.id===row.cliente_id;})[0];
       hidratar();
       if(c) selecionarCliente(c); else { STATE.cliente_id=row.cliente_id; var sel=Q('cloudClienteSel'); sel.style.display='inline-flex'; sel.textContent='Cliente: '+row.cliente_id; }
+      atualizarBotaoExcluir();
       toast('Estudo carregado da nuvem.','ok'); cloudMsg('carregado');
     }catch(e){ toast('Erro ao abrir: '+(e&&e.message?e.message:e),'err'); }
   }
@@ -958,6 +990,7 @@
     Q('btnSalvar').addEventListener('click',salvarRascunho);
     Q('btnNovo').addEventListener('click',novoEstudo);
     Q('btnImprimir').addEventListener('click',function(){ montarMemorial(); Q('memorial').style.display='block'; window.print(); setTimeout(function(){ Q('memorial').style.display='none'; },400); });
+    Q('btnExcluirNuvem').addEventListener('click',function(){ if(_supabaseId) excluirNuvem(_supabaseId, STATE.study.titulo); });
 
     // Nuvem
     Q('btnSalvarNuvem').addEventListener('click',salvarNuvem);
