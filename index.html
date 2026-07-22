@@ -11503,5 +11503,99 @@ document.addEventListener('keydown', function(e) {
     setTimeout(function(){ clearInterval(t); },20000);
   })();
 </script>
+
+<script>
+  // ══════════════ MODO ESPIÃO (Superadmin / Impersonation) ══════════════
+  // O painel (pages/admin-aprovacoes.html) envia SPY_ENTER; aqui trocamos a
+  // empresa ativa (reutilizando trocarEmpresa/setEmpresaAtiva do multi-empresa.js),
+  // pintamos o header de vermelho e mostramos um badge com botão "Sair". O
+  // estado sobrevive a F5 via localStorage. O RLS não muda — o master já é
+  // membro de todas as empresas (migration 071 + Edge Function).
+  (function(){
+    var MASTER='nascimento.gaube@gmail.com';
+    var K_ACTIVE='soe:spy:active', K_SAVED='soe:spy:saved', K_TARGET='soe:spy:target';
+    function ehMaster(){ return String(window._userEmail||'').toLowerCase()===MASTER; }
+    function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+    function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+    function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+    function aplicarVisualEspiao(nome){
+      var hdr=document.querySelector('header.hdr');
+      if(hdr){ hdr.style.setProperty('background','#dc2626','important'); hdr.style.setProperty('border-bottom-color','#b91c1c','important'); hdr.setAttribute('data-spy','1'); }
+      var host=document.querySelector('.hdr-right')||hdr;
+      if(!host) return;
+      var badge=document.getElementById('spy-badge');
+      if(!badge){
+        badge=document.createElement('div'); badge.id='spy-badge';
+        badge.style.cssText='display:flex;align-items:center;gap:.5rem;margin-right:.4rem';
+        var span=document.createElement('span'); span.id='spy-badge-txt';
+        span.style.cssText='color:#fff;font-weight:700;font-size:.75rem;white-space:nowrap';
+        var btn=document.createElement('button'); btn.type='button'; btn.textContent='Sair do modo espião';
+        btn.style.cssText='background:#fff;color:#dc2626;border:none;border-radius:6px;padding:.28rem .6rem;font-weight:700;font-size:.72rem;cursor:pointer;font-family:inherit';
+        btn.onclick=function(){ window.sairModoEspiao(); };
+        badge.appendChild(span); badge.appendChild(btn);
+        host.insertBefore(badge, host.firstChild);
+      }
+      var txt=document.getElementById('spy-badge-txt');
+      if(txt) txt.textContent='🕵️ Visualizando: '+(nome||'');
+    }
+    function removerVisualEspiao(){
+      var hdr=document.querySelector('header.hdr');
+      if(hdr){ hdr.style.removeProperty('background'); hdr.style.removeProperty('border-bottom-color'); hdr.removeAttribute('data-spy'); }
+      var b=document.getElementById('spy-badge'); if(b&&b.parentNode) b.parentNode.removeChild(b);
+    }
+
+    window.entrarModoEspiao=function(payload){
+      if(!ehMaster()||!payload||!payload.empresaId) return;
+      // Salva o contexto atual do superadmin p/ restaurar depois
+      try{
+        var atual=(typeof window.getEmpresaAtiva==='function')?window.getEmpresaAtiva():window._empresaAtiva;
+        if(atual&&atual.id) lsSet(K_SAVED, JSON.stringify({ id:atual.id, nome:atual.nome, nome_curto:atual.nome_curto, cnpj:atual.cnpj }));
+      }catch(e){}
+      lsSet(K_ACTIVE,'1');
+      lsSet(K_TARGET, JSON.stringify(payload));
+      // Ativa a empresa alvo — prefere o objeto COMPLETO de _empresasUsuario
+      var id=payload.empresaId, usados=window._empresasUsuario||[];
+      var alvo=usados.filter(function(x){ return x.id===id; })[0];
+      if(alvo&&typeof window.trocarEmpresa==='function'){ window.trocarEmpresa(id); }
+      else if(typeof window.setEmpresaAtiva==='function'){
+        window.setEmpresaAtiva({ id:payload.empresaId, nome:payload.empresaNome, nome_curto:payload.empresaNomeCurto, cnpj:payload.empresaCnpj });
+      }
+      aplicarVisualEspiao(payload.empresaNome||payload.empresaNomeCurto||'');
+      try{ if(window.Router&&typeof Router.ir==='function') Router.ir('comercial'); }catch(e){}
+    };
+
+    window.sairModoEspiao=function(){
+      var saved=null; try{ saved=JSON.parse(ls(K_SAVED)||'null'); }catch(e){}
+      lsDel(K_ACTIVE); lsDel(K_SAVED); lsDel(K_TARGET);
+      // Restaura a empresa original (via localStorage p/ o boot reidratar)
+      if(saved&&saved.id) lsSet('tf_empresa_ativa', JSON.stringify(saved));
+      removerVisualEspiao();
+      setTimeout(function(){ try{ location.reload(); }catch(e){} }, 120);
+    };
+
+    // Pedido vindo do painel (iframe admin-aprovacoes)
+    window.addEventListener('message', function(ev){
+      var d=ev&&ev.data;
+      if(!d||d.type!=='SPY_ENTER') return;
+      if(!ehMaster()) return;
+      window.entrarModoEspiao(d.payload||{});
+    });
+
+    // Boot: reidrata o visual vermelho se o modo espião estava ativo (sobrevive a F5)
+    var tries=0;
+    var t=setInterval(function(){
+      tries++;
+      if(ls(K_ACTIVE)!=='1'){ clearInterval(t); return; }
+      if(typeof window._userEmail==='undefined'){ if(tries>75) clearInterval(t); return; }
+      if(!ehMaster()){ clearInterval(t); lsDel(K_ACTIVE); lsDel(K_SAVED); lsDel(K_TARGET); return; }
+      if(!window._empresaAtiva){ if(tries>75) clearInterval(t); return; }
+      clearInterval(t);
+      var tgt=null; try{ tgt=JSON.parse(ls(K_TARGET)||'null'); }catch(e){}
+      aplicarVisualEspiao((tgt&&(tgt.empresaNome||tgt.empresaNomeCurto))||(window._empresaAtiva&&window._empresaAtiva.nome)||'');
+    },400);
+    setTimeout(function(){ clearInterval(t); },30000);
+  })();
+</script>
 </body>
 </html>
