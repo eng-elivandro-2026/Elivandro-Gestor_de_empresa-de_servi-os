@@ -3,13 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aprovações de Acesso</title>
+<title>Painel de Superadmin</title>
 <!--
-  admin-aprovacoes.html — Painel do superadmin para aprovar/rejeitar
-  pedidos de cadastro (cadastros_pendentes). Iframe autocontido, tokens
-  inline no vocabulário de engenharia.html (não linka css/*.css).
-  Enforcement real: gate de master no iframe + RLS master-only na tabela
-  + Edge Function provisionar-empresa (checa is_master).
+  admin-aprovacoes.html — Painel do superadmin. Duas abas:
+    • Aprovações — aprova/rejeita pedidos de cadastro (cadastros_pendentes).
+    • Empresas   — dashboard global + tabela de todas as empresas, com
+                   toggle de status e "Entrar como" (Modo Espião via
+                   postMessage SPY_ENTER para o shell / index.html).
+  Iframe autocontido, tokens inline no vocabulário de engenharia.html.
+  Enforcement real: gate de master no iframe + RLS master-only +
+  Edge Function provisionar-empresa (checa is_master).
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +30,7 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
-  .wrap{max-width:1100px;margin:0 auto;padding:18px}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px}
   h1{font-size:1.35rem;margin:0 0 2px;display:flex;align-items:center;gap:.5rem}
   .sub{color:var(--ink-secondary);font-size:.85rem;margin:0 0 16px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
@@ -36,16 +39,35 @@
   th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;background:var(--card-elevated)}
   tr:last-child td{border-bottom:none}
   .mono{font-variant-numeric:tabular-nums}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
   .btn{display:inline-flex;align-items:center;gap:.35rem;padding:6px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);
        background:#fff;color:var(--ink);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit}
   .btn:hover{background:var(--card-elevated)}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn.ok{border-color:#bbf7d0;color:var(--ok)} .btn.ok:hover{background:var(--ok-bg)}
   .btn.bad{border-color:var(--danger-light);color:var(--danger)} .btn.bad:hover{background:var(--danger-bg)}
+  .btn.sm{padding:4px 8px;font-size:.74rem}
+  .btn.spy{border-color:var(--danger-light);color:var(--danger)} .btn.spy:hover{background:var(--danger-bg)}
   .acoes{display:flex;gap:6px;flex-wrap:wrap}
   .emp{text-align:center;color:var(--muted);font-style:italic;padding:34px 12px}
   .top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .chip{font-size:.72rem;background:var(--card-elevated);border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--ink-secondary)}
+  .badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:20px}
+  .badge.on{background:var(--ok-bg);color:var(--ok);border:1px solid #bbf7d0}
+  .badge.off{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-light)}
+  /* Abas */
+  .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 16px;border:none;background:transparent;color:var(--muted);font-size:.86rem;font-weight:600;cursor:pointer;
+       font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--brand);border-bottom-color:var(--brand)}
+  .painel{display:none} .painel.on{display:block}
+  /* Métricas */
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+  .metric .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+  .metric .val{font-size:1.7rem;font-weight:700;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums}
+  .metric .hint{font-size:.72rem;color:var(--muted);margin-top:2px}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(140%);background:var(--ink);color:#fff;
          padding:10px 18px;border-radius:var(--radius-sm);font-size:.85rem;transition:transform .25s;z-index:50;box-shadow:0 10px 25px rgba(15,23,42,.2)}
   .toast.on{transform:translateX(-50%) translateY(0)}
@@ -63,17 +85,55 @@
 <div id="app" class="wrap">
   <div class="top">
     <div>
-      <h1>🗳️ Aprovações de Acesso</h1>
-      <p class="sub">Empresas aguardando aprovação</p>
+      <h1>🛡️ Painel de Superadmin</h1>
+      <p class="sub">Aprovações de acesso e visão global das empresas</p>
     </div>
-    <div><button class="btn" id="btnRecarregar">↻ Recarregar</button> <span class="chip" id="contador">—</span></div>
   </div>
 
-  <div class="card">
-    <table>
-      <thead><tr><th>Data</th><th>Empresa</th><th>CNPJ</th><th>Nome</th><th>E-mail</th><th style="text-align:right">Ações</th></tr></thead>
-      <tbody id="lista"><tr><td colspan="6" class="emp">Carregando…</td></tr></tbody>
-    </table>
+  <div class="tabs">
+    <button class="tab on" id="tab-btn-aprovacoes" data-tab="aprovacoes">🗳️ Aprovações</button>
+    <button class="tab" id="tab-btn-empresas" data-tab="empresas">🏢 Empresas</button>
+  </div>
+
+  <!-- ABA APROVAÇÕES -->
+  <div class="painel on" id="painel-aprovacoes">
+    <div class="top">
+      <div><p class="sub" style="margin:0">Empresas aguardando aprovação</p></div>
+      <div><button class="btn" id="btnRecarregar">↻ Recarregar</button> <span class="chip" id="contador">—</span></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Data</th><th>Empresa</th><th>CNPJ</th><th>Nome</th><th>E-mail</th><th style="text-align:right">Ações</th></tr></thead>
+        <tbody id="lista"><tr><td colspan="6" class="emp">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ABA EMPRESAS -->
+  <div class="painel" id="painel-empresas">
+    <div class="top">
+      <div><p class="sub" style="margin:0">Métricas globais e todas as empresas cadastradas</p></div>
+      <div><button class="btn" id="btnRecarregarEmp">↻ Recarregar</button> <span class="chip" id="contadorEmp">—</span></div>
+    </div>
+
+    <div class="metrics" id="metrics">
+      <div class="metric"><div class="lbl">Empresas ativas</div><div class="val" id="m-empresas">—</div></div>
+      <div class="metric"><div class="lbl">Usuários</div><div class="val" id="m-usuarios">—</div></div>
+      <div class="metric"><div class="lbl">Propostas</div><div class="val" id="m-propostas">—</div></div>
+      <div class="metric"><div class="lbl">Obras em andamento</div><div class="val" id="m-obras">—</div></div>
+      <div class="metric"><div class="lbl">Novos cadastros (30d)</div><div class="val" id="m-novos">—</div></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Empresa</th><th>CNPJ</th><th>Status</th>
+          <th class="num">Usuários</th><th class="num">Propostas</th><th class="num">Obras</th><th class="num">Clientes</th>
+          <th>Último acesso</th><th style="text-align:right">Ações</th>
+        </tr></thead>
+        <tbody id="listaEmp"><tr><td colspan="9" class="emp">—</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -91,7 +151,9 @@
   function _emailAtual(){ try{ return String((window.parent && window.parent._userEmail) || '').toLowerCase(); }catch(e){ return ''; } }
   function _ehMaster(){ return _emailAtual() === MASTER_EMAIL; }
   function fmtData(iso){ if(!iso) return '—'; try{ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso).slice(0,16).replace('T',' '); } }
+  function fmtDataCurta(iso){ if(!iso) return 'nunca'; try{ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso).slice(0,16).replace('T',' '); } }
 
+  // ══════════════════════════ ABA APROVAÇÕES ══════════════════════════
   var _carregando=false;
   async function carregar(){
     if(_carregando) return; _carregando=true;
@@ -152,7 +214,6 @@
     }catch(e){
       _destravarLinha(tr);
       var m = (e && e.message) ? e.message : 'Erro ao provisionar.';
-      // Erros vindos da Edge Function podem estar no corpo
       try{ if(e && e.context && e.context.body){ var b=JSON.parse(e.context.body); if(b && b.erro) m=b.erro; } }catch(_){}
       toast('Erro: '+m,'err');
     }
@@ -161,7 +222,7 @@
   async function rejeitar(c, tr){
     var sb=_sb(); if(!sb) return;
     var obs = prompt('Rejeitar o cadastro de "'+(c.empresa_nome||'')+'".\n\nObservação (opcional):', '');
-    if(obs === null) return; // cancelou
+    if(obs === null) return;
     _travarLinha(tr);
     try{
       var upd = { status:'rejeitado' };
@@ -177,9 +238,142 @@
     }
   }
 
+  // ══════════════════════════ ABA EMPRESAS ══════════════════════════
+  var _carregandoEmp=false, _empJaCarregou=false;
+
+  function _tally(rows, key, filtro){
+    var m={}; (rows||[]).forEach(function(r){ if(filtro && !filtro(r)) return; var k=r[key]; if(k==null) return; m[k]=(m[k]||0)+1; }); return m;
+  }
+
+  async function carregarEmpresas(){
+    if(_carregandoEmp) return; _carregandoEmp=true; _empJaCarregou=true;
+    var tb=Q('listaEmp'); var sb=_sb();
+    if(!sb){ tb.innerHTML='<tr><td colspan="9" class="emp">Sem conexão.</td></tr>'; _carregandoEmp=false; return; }
+    tb.innerHTML='<tr><td colspan="9" class="emp">Carregando…</td></tr>';
+    try{
+      var res = await Promise.all([
+        sb.from('empresas').select('id,nome,nome_curto,cnpj,ativo'),
+        sb.from('usuario_empresas').select('empresa_id,usuario_id,ativo'),
+        sb.from('propostas').select('empresa_id'),
+        sb.from('obras').select('empresa_id,status_operacional'),
+        sb.from('clientes').select('empresa_id'),
+        sb.from('cadastros_pendentes').select('id,criado_em')
+      ]);
+      var firstErr = res.find(function(r){ return r && r.error; });
+      if(firstErr) throw firstErr.error;
+
+      var empresas = (res[0].data||[]).slice();
+      var ue = res[1].data||[], props = res[2].data||[], obras = res[3].data||[], cli = res[4].data||[], cad = res[5].data||[];
+
+      var isAndamento = function(r){ return r.status_operacional === 'andamento'; };
+      var uCount = _tally(ue, 'empresa_id', function(r){ return r.ativo; });
+      var pCount = _tally(props, 'empresa_id');
+      var oCount = _tally(obras, 'empresa_id', isAndamento);
+      var cCount = _tally(cli, 'empresa_id');
+
+      // Métricas globais
+      var totalAtivas = empresas.filter(function(e){ return e.ativo; }).length;
+      var setUsers = {}; ue.forEach(function(r){ if(r.ativo && r.usuario_id) setUsers[r.usuario_id]=1; });
+      var totalUsuarios = Object.keys(setUsers).length;
+      var totalPropostas = props.length;
+      var totalObras = obras.filter(isAndamento).length;
+      var d30 = Date.now() - 30*24*60*60*1000;
+      var novos30 = cad.filter(function(r){ var t=new Date(r.criado_em).getTime(); return !isNaN(t) && t>=d30; }).length;
+
+      Q('m-empresas').textContent  = totalAtivas;
+      Q('m-usuarios').textContent  = totalUsuarios;
+      Q('m-propostas').textContent = totalPropostas;
+      Q('m-obras').textContent     = totalObras;
+      Q('m-novos').textContent     = novos30;
+      Q('contadorEmp').textContent = empresas.length + ' empresa(s)';
+
+      // Último acesso por empresa (RPC SECURITY DEFINER)
+      await Promise.all(empresas.map(async function(e){
+        try{ var r = await sb.rpc('get_empresa_ultimo_acesso', { p_empresa_id: e.id }); e._ultimo = (r && !r.error) ? r.data : null; }
+        catch(_){ e._ultimo = null; }
+      }));
+
+      // Ordena por nome
+      empresas.sort(function(a,b){ return String(a.nome||a.nome_curto||'').localeCompare(String(b.nome||b.nome_curto||'')); });
+
+      if(!empresas.length){ tb.innerHTML='<tr><td colspan="9" class="emp">Nenhuma empresa cadastrada.</td></tr>'; _carregandoEmp=false; return; }
+      tb.innerHTML='';
+      empresas.forEach(function(e){
+        var tr=document.createElement('tr');
+        var nomeCel = '<b>'+esc(e.nome||e.nome_curto||'—')+'</b>' + (e.nome_curto && e.nome_curto!==e.nome ? '<div style="font-size:.72rem;color:var(--muted)">'+esc(e.nome_curto)+'</div>' : '');
+        var statusCel = e.ativo ? '<span class="badge on">● Ativa</span>' : '<span class="badge off">● Inativa</span>';
+        var toggleBtn = e.ativo
+          ? '<button class="btn sm" data-toggle="'+esc(e.id)+'" title="Desativar">⏸ Desativar</button>'
+          : '<button class="btn sm ok" data-toggle="'+esc(e.id)+'" title="Ativar">✅ Ativar</button>';
+        tr.innerHTML =
+          '<td>'+nomeCel+'</td>'+
+          '<td class="mono">'+esc(e.cnpj||'—')+'</td>'+
+          '<td>'+statusCel+'</td>'+
+          '<td class="num">'+(uCount[e.id]||0)+'</td>'+
+          '<td class="num">'+(pCount[e.id]||0)+'</td>'+
+          '<td class="num">'+(oCount[e.id]||0)+'</td>'+
+          '<td class="num">'+(cCount[e.id]||0)+'</td>'+
+          '<td class="mono" style="font-size:.78rem">'+esc(fmtDataCurta(e._ultimo))+'</td>'+
+          '<td><div class="acoes" style="justify-content:flex-end">'+
+            toggleBtn+
+            '<button class="btn sm spy" data-spy="'+esc(e.id)+'" title="Entrar como (modo espião)">🕵️ Entrar como</button>'+
+          '</div></td>';
+        tb.appendChild(tr);
+        tr.querySelector('[data-toggle]').addEventListener('click',function(){ toggleAtivo(e, tr); });
+        tr.querySelector('[data-spy]').addEventListener('click',function(){ entrarComo(e); });
+      });
+    }catch(e){
+      tb.innerHTML='<tr><td colspan="9" class="emp">Erro ao carregar empresas: '+esc(e&&e.message?e.message:'')+'</td></tr>';
+    }
+    _carregandoEmp=false;
+  }
+
+  async function toggleAtivo(e, tr){
+    var sb=_sb(); if(!sb) return;
+    var novo = !e.ativo;
+    if(!confirm((novo?'Ativar':'Desativar')+' a empresa "'+(e.nome||e.nome_curto||'')+'"?')) return;
+    tr.querySelectorAll('button').forEach(function(b){ b.disabled=true; });
+    try{
+      var r = await sb.from('empresas').update({ ativo: novo }).eq('id', e.id).select('id,ativo');
+      if(r && r.error) throw r.error;
+      if(!r.data || !r.data.length){ throw new Error('Sem permissão ou empresa não encontrada.'); }
+      toast('Status atualizado.','ok');
+      carregarEmpresas();
+    }catch(err){
+      tr.querySelectorAll('button').forEach(function(b){ b.disabled=false; });
+      toast('Erro: '+(err&&err.message?err.message:''),'err');
+    }
+  }
+
+  function entrarComo(e){
+    if(!confirm('Entrar no MODO ESPIÃO da empresa "'+(e.nome||e.nome_curto||'')+'"?\n\nVocê passará a ver o sistema como essa empresa até clicar em "Sair do modo espião".')) return;
+    try{
+      window.parent.postMessage({
+        type: 'SPY_ENTER',
+        payload: {
+          empresaId:        e.id,
+          empresaNome:      e.nome,
+          empresaNomeCurto: e.nome_curto,
+          empresaCnpj:      e.cnpj
+        }
+      }, '*');
+    }catch(err){ toast('Não foi possível iniciar o modo espião.','err'); }
+  }
+
+  // ══════════════════════════ ABAS / INIT ══════════════════════════
+  function trocarAba(nome){
+    ['aprovacoes','empresas'].forEach(function(n){
+      Q('tab-btn-'+n).classList.toggle('on', n===nome);
+      Q('painel-'+n).classList.toggle('on', n===nome);
+    });
+    if(nome==='empresas' && !_empJaCarregou) carregarEmpresas();
+  }
+
   function init(){
     if(!_ehMaster()){ Q('app').style.display='none'; Q('bloqueio').style.display='block'; return; }
     Q('btnRecarregar').addEventListener('click', carregar);
+    Q('btnRecarregarEmp').addEventListener('click', carregarEmpresas);
+    document.querySelectorAll('.tab').forEach(function(b){ b.addEventListener('click', function(){ trocarAba(b.dataset.tab); }); });
     carregar();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
