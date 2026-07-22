@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Criar conta — SOE · Eng. Elivandro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#21262d; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#6e7681;
+    --accent:#f0a500; --green:#3fb950; --blue:#58a6ff; --red:#ff7b72;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
+  .container{display:flex;width:980px;max-width:100%;background:var(--panel);border:1px solid var(--border);
+             border-radius:14px;overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+
+  /* Lado esquerdo — apresentação (40%) */
+  .left{flex:0 0 40%;background:linear-gradient(160deg,#0d1117 0%,#12171f 100%);
+        padding:38px 34px;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+  .logo{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+  .logo-mk{background:var(--accent);color:#000;font-weight:800;padding:9px 12px;border-radius:8px;font-size:16px;letter-spacing:.5px}
+  .logo-text{font-size:17px;font-weight:700;line-height:1.1}
+  .logo-sub{font-size:11.5px;color:var(--muted)}
+  .left h2{font-size:1.5rem;line-height:1.25;margin:6px 0 22px;font-weight:700}
+  .benefit{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}
+  .benefit .ico{font-size:1.25rem;line-height:1.3;flex-shrink:0}
+  .benefit .txt{font-size:.9rem;color:#c9d1d9;line-height:1.4}
+  .left-footer{margin-top:auto;padding-top:22px;font-size:.85rem;color:var(--muted)}
+  .left-footer a{color:var(--accent);text-decoration:none;font-weight:600}
+  .left-footer a:hover{text-decoration:underline}
+
+  /* Lado direito — formulário (60%) */
+  .right{flex:1;padding:36px 38px;display:flex;flex-direction:column;justify-content:center}
+  .right h1{font-size:1.5rem;margin:0 0 4px;font-weight:700}
+  .right .sub{font-size:.9rem;color:var(--muted);margin:0 0 22px}
+  .field{margin-bottom:13px}
+  label{display:block;font-size:.76rem;font-weight:600;color:#c9d1d9;margin-bottom:5px}
+  label .req{color:var(--accent)}
+  input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);
+        color:var(--text);font-size:.95rem;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+  input::placeholder{color:var(--muted2)}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.15)}
+  input.invalid{border-color:var(--red)}
+  .row2{display:flex;gap:12px}
+  .row2 .field{flex:1}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:4px;min-height:14px}
+  .hint.err{color:var(--red)}
+
+  /* força de senha */
+  .pwbar{height:5px;border-radius:3px;background:var(--panel2);margin-top:7px;overflow:hidden}
+  .pwbar > i{display:block;height:100%;width:0;transition:width .2s,background .2s}
+  .pwlabel{font-size:.7rem;color:var(--muted);margin-top:4px}
+
+  .terms{display:flex;align-items:flex-start;gap:9px;margin:6px 0 16px;font-size:.82rem;color:#c9d1d9}
+  .terms input{width:auto;margin-top:2px;accent-color:var(--accent)}
+  .terms a{color:var(--accent);text-decoration:none}
+
+  .btn{width:100%;padding:13px;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:.98rem;
+       font-family:inherit;transition:opacity .15s,transform .05s}
+  .btn-accent{background:var(--accent);color:#000}
+  .btn-accent:hover{opacity:.92}
+  .btn-accent:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+
+  #msg{margin-top:14px;font-size:.86rem;min-height:20px;line-height:1.45}
+  #msg.err{color:var(--red)}
+  #msg.ok{color:var(--green)}
+
+  /* mensagem de sucesso (substitui o form) */
+  #sucesso{display:none;text-align:center;padding:20px 6px}
+  #sucesso .big{font-size:2.6rem;margin-bottom:10px}
+  #sucesso h1{font-size:1.35rem;margin:0 0 10px}
+  #sucesso p{color:var(--muted);font-size:.92rem;line-height:1.6;margin:0 0 20px}
+  #sucesso a{color:var(--accent);text-decoration:none;font-weight:600}
+
+  @media(max-width:760px){
+    .container{flex-direction:column}
+    .left{display:none}           /* mobile: só o formulário */
+    .right{padding:26px 22px}
+    .row2{flex-direction:column;gap:0}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Lado esquerdo: apresentação ── -->
+  <div class="left">
+    <div class="logo">
+      <div class="logo-mk">SOE</div>
+      <div>
+        <div class="logo-text">Eng. Elivandro</div>
+        <div class="logo-sub">Sistema Operacional Empresarial</div>
+      </div>
+    </div>
+    <h2>Gerencie sua empresa de serviços elétricos</h2>
+
+    <div class="benefit"><span class="ico">⚡</span><span class="txt">Propostas e obras em um só lugar</span></div>
+    <div class="benefit"><span class="ico">📊</span><span class="txt">Dashboard comercial e financeiro</span></div>
+    <div class="benefit"><span class="ico">🔧</span><span class="txt">Calculadoras técnicas (NBR 5410, IEC 60909)</span></div>
+    <div class="benefit"><span class="ico">👥</span><span class="txt">Gestão de equipes e produtividade</span></div>
+
+    <div class="left-footer">Já tem conta? <a href="login.html">Fazer login →</a></div>
+  </div>
+
+  <!-- ── Lado direito: formulário ── -->
+  <div class="right">
+    <div id="form">
+      <h1>Criar conta gratuita</h1>
+      <p class="sub">Preencha os dados da sua empresa</p>
+
+      <div class="field">
+        <label>Nome da empresa <span class="req">*</span></label>
+        <input type="text" id="empresaNome" placeholder="Ex: Eletro Serviços Ltda" autocomplete="organization" maxlength="160" />
+        <div class="hint" id="hEmpresa"></div>
+      </div>
+
+      <div class="field">
+        <label>CNPJ <span class="req">*</span></label>
+        <input type="text" id="cnpj" placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" autocomplete="off" />
+        <div class="hint" id="hCnpj"></div>
+      </div>
+
+      <div class="field">
+        <label>Seu nome completo <span class="req">*</span></label>
+        <input type="text" id="nome" placeholder="Ex: João da Silva" autocomplete="name" maxlength="160" />
+        <div class="hint" id="hNome"></div>
+      </div>
+
+      <div class="field">
+        <label>E-mail profissional <span class="req">*</span></label>
+        <input type="email" id="email" placeholder="voce@suaempresa.com.br" autocomplete="email" maxlength="254" />
+        <div class="hint" id="hEmail"></div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Senha <span class="req">*</span></label>
+          <input type="password" id="senha" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+          <div class="pwbar"><i id="pwFill"></i></div>
+          <div class="pwlabel" id="pwLabel">Força da senha</div>
+        </div>
+        <div class="field">
+          <label>Confirmar senha <span class="req">*</span></label>
+          <input type="password" id="senha2" placeholder="Repita a senha" autocomplete="new-password" />
+          <div class="hint" id="hSenha2"></div>
+        </div>
+      </div>
+
+      <div class="terms">
+        <input type="checkbox" id="termos" />
+        <label for="termos" style="margin:0;font-weight:400;color:#c9d1d9;cursor:pointer">Concordo com os <a href="#" onclick="return false">termos de uso</a></label>
+      </div>
+
+      <button class="btn btn-accent" id="btnCriar">Criar minha conta</button>
+      <div id="msg"></div>
+    </div>
+
+    <!-- Sucesso -->
+    <div id="sucesso">
+      <div class="big">✅</div>
+      <h1>Cadastro recebido!</h1>
+      <p>Em breve você receberá um e-mail com a confirmação do acesso.</p>
+      <a href="login.html">← Voltar para o login</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+  const supabase = createClient(
+    "https://ojuuzojwnyxdsavdosif.supabase.co",
+    "sb_publishable_uqS8EZTOs5-sHKr1IpFhzg_eZrZOr7u",
+    { auth: { detectSessionInUrl: false, persistSession: false } }
+  );
+
+  const $ = (id) => document.getElementById(id);
+  const msg = $("msg");
+  function erro(t){ msg.className = "err"; msg.textContent = t; }
+  function limparMsg(){ msg.className = ""; msg.textContent = ""; }
+
+  // ── Máscara de CNPJ ──────────────────────────────────────
+  $("cnpj").addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "").slice(0, 14);
+    let out = v;
+    if (v.length > 2)  out = v.slice(0,2) + "." + v.slice(2);
+    if (v.length > 5)  out = v.slice(0,2) + "." + v.slice(2,5) + "." + v.slice(5);
+    if (v.length > 8)  out = v.slice(0,2) + "." + v.slice(2,5) + "." + v.slice(5,8) + "/" + v.slice(8);
+    if (v.length > 12) out = v.slice(0,2) + "." + v.slice(2,5) + "." + v.slice(5,8) + "/" + v.slice(8,12) + "-" + v.slice(12);
+    e.target.value = out;
+  });
+
+  // Validação de CNPJ (formato + dígitos verificadores)
+  function cnpjValido(str){
+    const c = (str || "").replace(/\D/g, "");
+    if (c.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(c)) return false; // todos iguais
+    const calc = (base) => {
+      let soma = 0, pos = base.length - 7;
+      for (let i = 0; i < base.length; i++){
+        soma += parseInt(base[i], 10) * pos--;
+        if (pos < 2) pos = 9;
+      }
+      const r = soma % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    const d1 = calc(c.slice(0, 12));
+    const d2 = calc(c.slice(0, 12) + d1);
+    return c.slice(12) === "" + d1 + d2;
+  }
+
+  function emailValido(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e||"").trim()); }
+
+  // ── Indicador de força de senha ──────────────────────────
+  $("senha").addEventListener("input", (e) => {
+    const s = e.target.value || "";
+    let score = 0;
+    if (s.length >= 8) score++;
+    if (s.length >= 12) score++;
+    if (/[A-Z]/.test(s) && /[a-z]/.test(s)) score++;
+    if (/\d/.test(s)) score++;
+    if (/[^A-Za-z0-9]/.test(s)) score++;
+    const pct = [0, 25, 45, 65, 85, 100][Math.min(score, 5)];
+    const cor = pct < 45 ? "#ff7b72" : (pct < 85 ? "#f0a500" : "#3fb950");
+    const lbl = s.length === 0 ? "Força da senha" : (pct < 45 ? "Fraca" : (pct < 85 ? "Média" : "Forte"));
+    $("pwFill").style.width = pct + "%";
+    $("pwFill").style.background = cor;
+    $("pwLabel").textContent = lbl;
+  });
+
+  // ── Validação geral ──────────────────────────────────────
+  function validar(){
+    const empresa = $("empresaNome").value.trim();
+    const cnpj = $("cnpj").value.trim();
+    const nome = $("nome").value.trim();
+    const email = $("email").value.trim();
+    const senha = $("senha").value;
+    const senha2 = $("senha2").value;
+
+    if (!empresa) return "Informe o nome da empresa.";
+    if (!cnpjValido(cnpj)) return "CNPJ inválido. Confira os números.";
+    if (!nome) return "Informe seu nome completo.";
+    if (!emailValido(email)) return "Informe um e-mail válido.";
+    if (senha.length < 8) return "A senha deve ter no mínimo 8 caracteres.";
+    if (senha !== senha2) return "As senhas não coincidem.";
+    if (!$("termos").checked) return "É preciso concordar com os termos de uso.";
+    return null;
+  }
+
+  // ── Submissão ────────────────────────────────────────────
+  $("btnCriar").addEventListener("click", async () => {
+    limparMsg();
+    const problema = validar();
+    if (problema){ erro(problema); return; }
+
+    const btn = $("btnCriar");
+    btn.disabled = true;
+    const rotulo = btn.textContent;
+    btn.textContent = "Criando...";
+
+    const nome = $("nome").value.trim();
+    const email = $("email").value.trim().toLowerCase();
+    const empresa_nome = $("empresaNome").value.trim();
+    const empresa_cnpj = $("cnpj").value.trim();
+    const senha = $("senha").value;
+
+    try {
+      // 1) Cria o usuário no Auth com metadados do cadastro
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: senha,
+        options: { data: { nome, empresa_nome, empresa_cnpj, status: "pendente" } }
+      });
+      if (error) throw error;
+
+      // Supabase pode devolver "usuário" sem identidade quando o e-mail já existe
+      const jaExiste = data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
+      if (jaExiste){
+        erro("Este e-mail já está cadastrado. Faça login ou use a opção de recuperar senha.");
+        btn.disabled = false; btn.textContent = rotulo; return;
+      }
+
+      // 2) Registra o pedido pendente (INSERT público — policy da migration 070)
+      const { error: insErr } = await supabase.from("cadastros_pendentes").insert({
+        auth_id: (data && data.user) ? data.user.id : null,
+        nome, email, empresa_nome, empresa_cnpj, status: "pendente"
+      });
+      if (insErr) throw insErr;
+
+      // 3) Sucesso: mostra mensagem e desabilita o formulário
+      $("form").style.display = "none";
+      $("sucesso").style.display = "block";
+
+    } catch (e) {
+      const m = (e && e.message) ? e.message.toLowerCase() : "";
+      if (m.includes("already registered") || m.includes("already been registered") || m.includes("user already"))
+        erro("Este e-mail já está cadastrado. Faça login ou recupere a senha.");
+      else if (m.includes("password"))
+        erro("Senha inválida — use no mínimo 8 caracteres.");
+      else if (m.includes("email") && m.includes("invalid"))
+        erro("E-mail inválido.");
+      else if (m.includes("rate") || m.includes("too many"))
+        erro("Muitas tentativas. Aguarde alguns instantes e tente de novo.");
+      else
+        erro("Não foi possível concluir o cadastro. Tente novamente em instantes.");
+      btn.disabled = false; btn.textContent = rotulo;
+    }
+  });
+
+  // Enter no último campo envia
+  $("senha2").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnCriar").click(); });
+</script>
+</body>
+</html>
