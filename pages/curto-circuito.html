@@ -878,7 +878,10 @@
       nodes.push({t:'FALTA', s:''});
     }
     var W=Math.max(760, nodes.length*130), H=140, x0=20, dx=(W-40)/Math.max(1,nodes.length-1);
-    var svg='<svg class="unifilar" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+    // viewBox com margem lateral de 16px: os nós das pontas (caixa de 68px
+    // centrada) extrapolam ~14px além de 0 e de W; sem a margem eles seriam
+    // cortados (TR-01 à esquerda, FALTA à direita).
+    var svg='<svg class="unifilar" viewBox="-16 0 '+(W+32)+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
     for(var j=0;j<nodes.length;j++){
       var cx=x0+dx*j, cy=60, isFalta=nodes[j].t==='FALTA';
       if(j>0) svg+='<line x1="'+(x0+dx*(j-1)+34)+'" y1="'+cy+'" x2="'+(cx-34)+'" y2="'+cy+'" stroke="#334155" stroke-width="2"/>';
