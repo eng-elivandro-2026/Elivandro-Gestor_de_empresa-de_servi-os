@@ -293,6 +293,29 @@ serve(async (req: Request) => {
       );
     if (vinculoErr) throw new Error("Falha ao vincular dono a empresa: " + vinculoErr.message);
 
+    // ── 5b. Vincula o MASTER (superadmin) à empresa nova ──
+    // Necessário para o Painel de Superadmin (dashboard global) e o Modo
+    // Espião: o RLS usa auth_empresa_ids(), então o master só enxerga os
+    // dados de empresas onde é membro. Best-effort — não derruba o
+    // provisionamento se falhar (o backfill da migration 071 cobre o resto).
+    try {
+      const { data: masterUsuario } = await admin
+        .from("usuarios")
+        .select("id")
+        .ilike("email", MASTER_EMAIL)
+        .maybeSingle();
+      if (masterUsuario && masterUsuario.id && masterUsuario.id !== usuarioId) {
+        await admin
+          .from("usuario_empresas")
+          .upsert(
+            { usuario_id: masterUsuario.id, empresa_id: empresaId, ativo: true, perfil_empresa: "dono" },
+            { onConflict: "usuario_id,empresa_id" },
+          );
+      }
+    } catch (_) {
+      // silencioso — não impede o provisionamento
+    }
+
     // ── 6. Seed categorias de gestão do tempo ──
     const { error: tempoErr } = await admin
       .from("gestao_tempo_categorias")
