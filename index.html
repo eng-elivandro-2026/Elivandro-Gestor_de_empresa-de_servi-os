@@ -11519,7 +11519,12 @@ document.addEventListener('keydown', function(e) {
     function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
     function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
 
-    function aplicarVisualEspiao(nome){
+    function textoBadge(empresaNome, usuarioNome){
+      return usuarioNome
+        ? ('🕵️ '+(empresaNome||'')+' — '+usuarioNome)
+        : ('🕵️ Visualizando: '+(empresaNome||''));
+    }
+    function aplicarVisualEspiao(empresaNome, usuarioNome){
       var hdr=document.querySelector('header.hdr');
       if(hdr){ hdr.style.setProperty('background','#dc2626','important'); hdr.style.setProperty('border-bottom-color','#b91c1c','important'); hdr.setAttribute('data-spy','1'); }
       var host=document.querySelector('.hdr-right')||hdr;
@@ -11537,7 +11542,7 @@ document.addEventListener('keydown', function(e) {
         host.insertBefore(badge, host.firstChild);
       }
       var txt=document.getElementById('spy-badge-txt');
-      if(txt) txt.textContent='🕵️ Visualizando: '+(nome||'');
+      if(txt) txt.textContent=textoBadge(empresaNome, usuarioNome);
     }
     function removerVisualEspiao(){
       var hdr=document.querySelector('header.hdr');
@@ -11561,7 +11566,7 @@ document.addEventListener('keydown', function(e) {
       else if(typeof window.setEmpresaAtiva==='function'){
         window.setEmpresaAtiva({ id:payload.empresaId, nome:payload.empresaNome, nome_curto:payload.empresaNomeCurto, cnpj:payload.empresaCnpj });
       }
-      aplicarVisualEspiao(payload.empresaNome||payload.empresaNomeCurto||'');
+      aplicarVisualEspiao(payload.empresaNome||payload.empresaNomeCurto||'', payload.usuarioNome||'');
       try{ if(window.Router&&typeof Router.ir==='function') Router.ir('comercial'); }catch(e){}
     };
 
@@ -11592,9 +11597,59 @@ document.addEventListener('keydown', function(e) {
       if(!window._empresaAtiva){ if(tries>75) clearInterval(t); return; }
       clearInterval(t);
       var tgt=null; try{ tgt=JSON.parse(ls(K_TARGET)||'null'); }catch(e){}
-      aplicarVisualEspiao((tgt&&(tgt.empresaNome||tgt.empresaNomeCurto))||(window._empresaAtiva&&window._empresaAtiva.nome)||'');
+      aplicarVisualEspiao((tgt&&(tgt.empresaNome||tgt.empresaNomeCurto))||(window._empresaAtiva&&window._empresaAtiva.nome)||'', (tgt&&tgt.usuarioNome)||'');
     },400);
     setTimeout(function(){ clearInterval(t); },30000);
+
+    // ── EXPANSÃO 1: botão "🕵️ Espiar" no seletor de empresa (só master) ──
+    // Aditivo: insere um botão ao lado do seletor nativo (não altera o
+    // seletor nem multi-empresa.js). Abre um popover com as demais empresas
+    // do master; clicar dispara o mesmo entrarModoEspiao().
+    function montarEspiaoSeletor(){
+      var cont=document.getElementById('seletor-empresa-container');
+      if(!cont || document.getElementById('spy-emp-wrap')) return;
+      var wrap=document.createElement('div'); wrap.id='spy-emp-wrap';
+      wrap.style.cssText='position:relative;display:inline-flex;align-items:center;margin-left:.35rem';
+      var btn=document.createElement('button'); btn.id='spy-emp-btn'; btn.type='button'; btn.title='Espiar outra empresa'; btn.textContent='🕵️';
+      btn.style.cssText='background:transparent;border:1px solid var(--border,#30363d);border-radius:6px;color:inherit;cursor:pointer;font-size:.82rem;line-height:1;padding:.24rem .4rem';
+      var pop=document.createElement('div'); pop.id='spy-emp-pop';
+      pop.style.cssText='display:none;position:absolute;top:34px;left:0;z-index:300;background:var(--bg2,#161b22);border:1px solid var(--border,#30363d);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.4);min-width:230px;max-height:320px;overflow:auto;padding:6px';
+      btn.addEventListener('click', function(ev){ ev.stopPropagation(); if(pop.style.display==='none'){ renderEspiaoPop(pop); pop.style.display='block'; } else { pop.style.display='none'; } });
+      pop.addEventListener('click', function(ev){ ev.stopPropagation(); });
+      wrap.appendChild(btn); wrap.appendChild(pop);
+      cont.parentNode.insertBefore(wrap, cont.nextSibling);
+    }
+    function renderEspiaoPop(pop){
+      var lista=window._empresasUsuario||[];
+      var ativaId=(window._empresaAtiva&&window._empresaAtiva.id)||null;
+      var alvos=lista.filter(function(e){ return e.id!==ativaId; });
+      pop.innerHTML='';
+      var tit=document.createElement('div'); tit.textContent='Espiar empresa';
+      tit.style.cssText='padding:4px 8px;color:var(--text3,#8b949e);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700';
+      pop.appendChild(tit);
+      if(!alvos.length){ var vaz=document.createElement('div'); vaz.textContent='Nenhuma outra empresa.'; vaz.style.cssText='padding:6px 8px;color:var(--text3,#8b949e);font-size:.78rem'; pop.appendChild(vaz); return; }
+      alvos.sort(function(a,b){ return String(a.nome_curto||a.nome||'').localeCompare(String(b.nome_curto||b.nome||'')); });
+      alvos.forEach(function(e){
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px';
+        row.onmouseover=function(){ row.style.background='var(--bg3,#21262d)'; };
+        row.onmouseout=function(){ row.style.background='transparent'; };
+        var nm=document.createElement('span'); nm.textContent=e.nome_curto||e.nome||'—';
+        nm.style.cssText='font-size:.82rem;color:var(--text,#e6edf3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px';
+        var b=document.createElement('button'); b.type='button'; b.textContent='🕵️ Espiar';
+        b.style.cssText='background:transparent;border:1px solid rgba(220,38,38,.35);color:#dc2626;border-radius:6px;padding:.18rem .5rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit';
+        b.onclick=function(ev){ ev.stopPropagation(); pop.style.display='none'; if(typeof window.entrarModoEspiao==='function') window.entrarModoEspiao({ empresaId:e.id, empresaNome:e.nome, empresaNomeCurto:e.nome_curto, empresaCnpj:e.cnpj }); };
+        row.appendChild(nm); row.appendChild(b); pop.appendChild(row);
+      });
+    }
+    document.addEventListener('click', function(){ var p=document.getElementById('spy-emp-pop'); if(p) p.style.display='none'; });
+    var stries=0, ts=setInterval(function(){
+      stries++;
+      if(typeof window._userEmail==='undefined'){ if(stries>75) clearInterval(ts); return; }
+      if(!ehMaster()){ clearInterval(ts); return; }
+      montarEspiaoSeletor();
+      if(document.getElementById('spy-emp-wrap')||stries>75) clearInterval(ts);
+    },400);
   })();
 </script>
 </body>

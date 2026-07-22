@@ -316,10 +316,12 @@
           '<td class="mono" style="font-size:.78rem">'+esc(fmtDataCurta(e._ultimo))+'</td>'+
           '<td><div class="acoes" style="justify-content:flex-end">'+
             toggleBtn+
+            '<button class="btn sm" data-users="'+esc(e.id)+'" title="Ver usuários da empresa">👤 Ver usuários</button>'+
             '<button class="btn sm spy" data-spy="'+esc(e.id)+'" title="Entrar como (modo espião)">🕵️ Entrar como</button>'+
           '</div></td>';
         tb.appendChild(tr);
         tr.querySelector('[data-toggle]').addEventListener('click',function(){ toggleAtivo(e, tr); });
+        tr.querySelector('[data-users]').addEventListener('click',function(){ toggleUsuarios(e, tr); });
         tr.querySelector('[data-spy]').addEventListener('click',function(){ entrarComo(e); });
       });
     }catch(e){
@@ -355,6 +357,82 @@
           empresaNome:      e.nome,
           empresaNomeCurto: e.nome_curto,
           empresaCnpj:      e.cnpj
+        }
+      }, '*');
+    }catch(err){ toast('Não foi possível iniciar o modo espião.','err'); }
+  }
+
+  // ── Lista de usuários da empresa (expansão) + entrar como usuário ──
+  async function carregarUsuarios(empresaId){
+    var sb=_sb(); if(!sb) throw new Error('Sem conexão.');
+    // Passo 1: vínculos ativos (perfil na empresa)
+    var r1 = await sb.from('usuario_empresas')
+      .select('usuario_id, perfil_empresa')
+      .eq('empresa_id', empresaId)
+      .eq('ativo', true);
+    if(r1 && r1.error) throw r1.error;
+    var vinc = r1.data || [];
+    var ids = vinc.map(function(x){ return x.usuario_id; }).filter(Boolean);
+    var perfilMap = {}; vinc.forEach(function(x){ perfilMap[x.usuario_id] = x.perfil_empresa; });
+    if(!ids.length) return [];
+    // Passo 2: dados dos usuários (RLS: master/dono vê os usuários das suas empresas)
+    var r2 = await sb.from('usuarios').select('id,nome,email').in('id', ids);
+    if(r2 && r2.error) throw r2.error;
+    var rows = (r2.data||[]).map(function(u){ return { id:u.id, nome:u.nome, email:u.email, perfil:perfilMap[u.id] }; })
+      // esconde o administrador da plataforma (master)
+      .filter(function(u){ return u.email && String(u.email).toLowerCase() !== MASTER_EMAIL; });
+    rows.sort(function(a,b){
+      return String(a.perfil||'').localeCompare(String(b.perfil||'')) || String(a.nome||'').localeCompare(String(b.nome||''));
+    });
+    return rows;
+  }
+
+  async function toggleUsuarios(e, tr){
+    // Se já está expandida, recolhe
+    var next = tr.nextSibling;
+    if(next && next.nodeType===1 && next.classList.contains('exp-row') && next.getAttribute('data-for')===String(e.id)){
+      next.parentNode.removeChild(next); return;
+    }
+    var exp=document.createElement('tr'); exp.className='exp-row'; exp.setAttribute('data-for', String(e.id));
+    var td=document.createElement('td'); td.colSpan=9; td.style.background='var(--card-elevated)'; td.style.padding='0';
+    td.innerHTML='<div style="padding:10px 14px;color:var(--muted)">Carregando usuários…</div>';
+    exp.appendChild(td);
+    tr.parentNode.insertBefore(exp, tr.nextSibling);
+    try{
+      var users = await carregarUsuarios(e.id);
+      if(!users.length){ td.innerHTML='<div style="padding:10px 14px;color:var(--muted)">Nenhum usuário além do administrador da plataforma.</div>'; return; }
+      td.innerHTML='<div style="padding:8px 14px 12px">'
+        + '<table style="width:100%"><thead><tr>'
+        + '<th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Último acesso</th><th style="text-align:right">Ação</th>'
+        + '</tr></thead><tbody></tbody></table></div>';
+      var tbody=td.querySelector('tbody');
+      users.forEach(function(u){
+        var r=document.createElement('tr');
+        r.innerHTML =
+          '<td><b>'+esc(u.nome||'—')+'</b></td>'+
+          '<td>'+esc(u.email||'—')+'</td>'+
+          '<td>'+esc(u.perfil||'—')+'</td>'+
+          '<td class="mono" style="font-size:.78rem;color:var(--muted)" title="Último acesso por usuário indisponível nesta versão">—</td>'+
+          '<td style="text-align:right"><button class="btn sm spy" title="Entrar como este usuário">🕵️ Entrar como este usuário</button></td>';
+        tbody.appendChild(r);
+        r.querySelector('button').addEventListener('click', function(){ entrarComoUsuario(e, u); });
+      });
+    }catch(err){
+      td.innerHTML='<div style="padding:10px 14px;color:var(--danger)">Erro ao carregar usuários: '+esc(err&&err.message?err.message:'')+'</div>';
+    }
+  }
+
+  function entrarComoUsuario(e, u){
+    if(!confirm('Entrar no MODO ESPIÃO como "'+(u.nome||u.email||'')+'"\n(empresa "'+(e.nome||e.nome_curto||'')+'")?\n\nVocê verá o sistema até clicar em "Sair do modo espião".')) return;
+    try{
+      window.parent.postMessage({
+        type: 'SPY_ENTER',
+        payload: {
+          empresaId:        e.id,
+          empresaNome:      e.nome,
+          empresaNomeCurto: e.nome_curto,
+          empresaCnpj:      e.cnpj,
+          usuarioNome:      u.nome || u.email
         }
       }, '*');
     }catch(err){ toast('Não foi possível iniciar o modo espião.','err'); }
