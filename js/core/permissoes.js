@@ -132,6 +132,16 @@
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
   var _MODULOS_ROUTER = ['comercial', 'engenharia', 'curto-circuito', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
+  // ── Módulos RESTRITOS (badge DONO/CEO no Router) ─────────
+  // Padrão: SÓ o superadmin/master enxerga. NÃO recebem o bypass de
+  // perfil 'dono' nem o fallback da matriz padrão — assim nenhuma outra
+  // empresa (nem o dono dela) os vê. Liberação é OPT-IN explícito:
+  //   • Permissões individuais (usuario_empresas.permissoes_modulos), ou
+  //   • Override da empresa (empresas.config_json.permissoes[modulo]).
+  // OBS: 'dashboard-estrategico' exibe dados FIXOS da Tecfusion no código —
+  // não habilite para outras empresas (mostraria os SEUS números).
+  var _MODULOS_RESTRITOS = ['dashboard-estrategico', 'prospeccao', 'clientes'];
+
   // ── Helpers internos ─────────────────────────────────────
 
   function _isSuperadmin() {
@@ -297,6 +307,25 @@
   window.podeAcessarModulo = function (modulo) {
     if (_isSuperadmin()) return true;
     var perfil = _getPerfil();
+
+    // ── Módulos RESTRITOS: padrão master-only, opt-in explícito ──
+    // Não recebem o bypass de 'dono' nem o fallback da matriz padrão.
+    // Só liberam por permissão individual (permissoes_modulos) ou por
+    // override da empresa ativa (config_json.permissoes[modulo]).
+    if (_MODULOS_RESTRITOS.indexOf(modulo) >= 0) {
+      var indR = _resolverIndividual(modulo, 'ver');
+      if (indR === true) return true;
+      if (indR === false) return false;
+      if (_temPermissaoIndividual(modulo, 'ver') || _temPermissaoIndividual(modulo, 'acesso')) return true;
+      var empR = window._empresaAtiva;
+      var ovR = empR && empR.config_json && empR.config_json.permissoes && empR.config_json.permissoes[modulo];
+      if (ovR && perfil) {
+        var permOv = ovR.ver || ovR.acesso || [];
+        return permOv.indexOf(perfil) >= 0;
+      }
+      return false; // padrão: escondido para todos, exceto o master
+    }
+
     if (perfil === 'dono') return true;
     // Permissão individual explícita (migration 054) — autoritativa,
     // inclusive para o Quadro de Avisos (substitui o hardcode por e-mail).
