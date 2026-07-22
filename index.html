@@ -992,6 +992,7 @@ body.empresa-tema-fortex #hdr-logo-mk{background:#F5A623 !important}
       <button class="btn-hdr" id="btn-usuarios" onclick="abrirGerenciarUsuarios()" title="Gerenciar Usuários" style="display:none">👥</button>
       <button class="btn-hdr" id="btn-permissoes" onclick="abrirPermissoes()" title="Permissões por Perfil" style="display:none">⚙️</button>
       <button class="btn-hdr" id="btn-permissoes-individuais" onclick="abrirPermissoesIndividuais()" title="Permissões Individuais por Usuário" style="display:none">🛡️</button>
+      <button class="btn-hdr" id="btn-aprovacoes" onclick="Router.ir('admin-aprovacoes')" title="Aprovações de Acesso (superadmin)" style="display:none">🗳️</button>
       <div style="display:flex;align-items:center;gap:.4rem">
         <div class="hdr-avatar" id="hdr-avatar">EE</div>
         <span id="hdr-email" style="font-size:.72rem;color:var(--text2)"></span>
@@ -11487,5 +11488,20 @@ document.addEventListener('keydown', function(e) {
   </div>
 </div>
 
+<script>
+  // Revela o botão 🗳️ "Aprovações de Acesso" apenas para o superadmin
+  // (mesmo e-mail-mestre usado no restante do sistema). window._userEmail
+  // é definido em iniciarPlataforma() após a autenticação.
+  (function(){
+    var MASTER='nascimento.gaube@gmail.com';
+    var t=setInterval(function(){
+      if(typeof window._userEmail==='undefined') return;
+      clearInterval(t);
+      var b=document.getElementById('btn-aprovacoes');
+      if(b && String(window._userEmail||'').toLowerCase()===MASTER) b.style.display='';
+    },400);
+    setTimeout(function(){ clearInterval(t); },20000);
+  })();
+</script>
 </body>
 </html>

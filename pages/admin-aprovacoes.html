@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aprovações de Acesso</title>
+<!--
+  admin-aprovacoes.html — Painel do superadmin para aprovar/rejeitar
+  pedidos de cadastro (cadastros_pendentes). Iframe autocontido, tokens
+  inline no vocabulário de engenharia.html (não linka css/*.css).
+  Enforcement real: gate de master no iframe + RLS master-only na tabela
+  + Edge Function provisionar-empresa (checa is_master).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f0f4f8; --card:#ffffff; --card-elevated:#f8fafc;
+    --ink:#0f172a; --ink-secondary:#475569; --muted:#64748b;
+    --line:#e2e8f0; --line-light:#eef2f6;
+    --brand:#0369a1; --brand-dark:#075985;
+    --ok:#16a34a; --ok-bg:#f0fdf4; --warn:#d97706; --warn-bg:#fffbeb;
+    --danger:#dc2626; --danger-bg:#fef2f2; --danger-light:#fecaca;
+    --radius:10px; --radius-sm:7px; --shadow:0 1px 3px rgba(15,23,42,.08);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px}
+  h1{font-size:1.35rem;margin:0 0 2px;display:flex;align-items:center;gap:.5rem}
+  .sub{color:var(--ink-secondary);font-size:.85rem;margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-light);vertical-align:middle}
+  th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;background:var(--card-elevated)}
+  tr:last-child td{border-bottom:none}
+  .mono{font-variant-numeric:tabular-nums}
+  .btn{display:inline-flex;align-items:center;gap:.35rem;padding:6px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);
+       background:#fff;color:var(--ink);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn:hover{background:var(--card-elevated)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ok{border-color:#bbf7d0;color:var(--ok)} .btn.ok:hover{background:var(--ok-bg)}
+  .btn.bad{border-color:var(--danger-light);color:var(--danger)} .btn.bad:hover{background:var(--danger-bg)}
+  .acoes{display:flex;gap:6px;flex-wrap:wrap}
+  .emp{text-align:center;color:var(--muted);font-style:italic;padding:34px 12px}
+  .top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{font-size:.72rem;background:var(--card-elevated);border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--ink-secondary)}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(140%);background:var(--ink);color:#fff;
+         padding:10px 18px;border-radius:var(--radius-sm);font-size:.85rem;transition:transform .25s;z-index:50;box-shadow:0 10px 25px rgba(15,23,42,.2)}
+  .toast.on{transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--danger)} .toast.ok{background:var(--ok)}
+  #bloqueio{display:none;text-align:center;padding:70px 20px;color:var(--muted)}
+  #bloqueio h1{justify-content:center}
+</style>
+</head>
+<body>
+<div id="bloqueio">
+  <h1>🔒 Acesso restrito</h1>
+  <p>Esta área é exclusiva do administrador da plataforma.</p>
+</div>
+
+<div id="app" class="wrap">
+  <div class="top">
+    <div>
+      <h1>🗳️ Aprovações de Acesso</h1>
+      <p class="sub">Empresas aguardando aprovação</p>
+    </div>
+    <div><button class="btn" id="btnRecarregar">↻ Recarregar</button> <span class="chip" id="contador">—</span></div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Data</th><th>Empresa</th><th>CNPJ</th><th>Nome</th><th>E-mail</th><th style="text-align:right">Ações</th></tr></thead>
+      <tbody id="lista"><tr><td colspan="6" class="emp">Carregando…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var MASTER_EMAIL = 'nascimento.gaube@gmail.com';
+  var Q = function(id){ return document.getElementById(id); };
+  var _tt;
+  function toast(msg,type){ var t=Q('toast'); t.textContent=msg; t.className='toast on '+(type||''); clearTimeout(_tt); _tt=setTimeout(function(){t.className='toast';},3000); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function _sb(){ try{ return (window.parent && window.parent.sbClient) || window.sbClient || null; }catch(e){ return window.sbClient || null; } }
+  function _emailAtual(){ try{ return String((window.parent && window.parent._userEmail) || '').toLowerCase(); }catch(e){ return ''; } }
+  function _ehMaster(){ return _emailAtual() === MASTER_EMAIL; }
+  function fmtData(iso){ if(!iso) return '—'; try{ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso).slice(0,16).replace('T',' '); } }
+
+  var _carregando=false;
+  async function carregar(){
+    if(_carregando) return; _carregando=true;
+    var tb=Q('lista'); var sb=_sb();
+    if(!sb){ tb.innerHTML='<tr><td colspan="6" class="emp">Sem conexão.</td></tr>'; _carregando=false; return; }
+    try{
+      var r = await sb.from('cadastros_pendentes')
+        .select('id,criado_em,empresa_nome,empresa_cnpj,nome,email')
+        .eq('status','pendente')
+        .order('criado_em',{ascending:false});
+      if(r && r.error) throw r.error;
+      var arr = (r && r.data) || [];
+      Q('contador').textContent = arr.length + ' pendente(s)';
+      if(!arr.length){ tb.innerHTML='<tr><td colspan="6" class="emp">Nenhum cadastro pendente.</td></tr>'; _carregando=false; return; }
+      tb.innerHTML='';
+      arr.forEach(function(c){
+        var tr=document.createElement('tr');
+        tr.innerHTML =
+          '<td class="mono">'+esc(fmtData(c.criado_em))+'</td>'+
+          '<td><b>'+esc(c.empresa_nome||'—')+'</b></td>'+
+          '<td class="mono">'+esc(c.empresa_cnpj||'—')+'</td>'+
+          '<td>'+esc(c.nome||'—')+'</td>'+
+          '<td>'+esc(c.email||'—')+'</td>'+
+          '<td><div class="acoes" style="justify-content:flex-end">'+
+            '<button class="btn ok" data-aprovar="'+esc(c.id)+'">✅ Aprovar</button>'+
+            '<button class="btn bad" data-rejeitar="'+esc(c.id)+'">❌ Rejeitar</button>'+
+          '</div></td>';
+        tb.appendChild(tr);
+        tr.querySelector('[data-aprovar]').addEventListener('click',function(){ aprovar(c, tr); });
+        tr.querySelector('[data-rejeitar]').addEventListener('click',function(){ rejeitar(c, tr); });
+      });
+    }catch(e){
+      tb.innerHTML='<tr><td colspan="6" class="emp">Erro ao carregar: '+esc(e&&e.message?e.message:'')+'</td></tr>';
+    }
+    _carregando=false;
+  }
+
+  function _travarLinha(tr,txt){ tr.querySelectorAll('button').forEach(function(b){ b.disabled=true; }); var a=tr.querySelector('[data-aprovar]'); if(a&&txt) a.textContent=txt; }
+  function _destravarLinha(tr){ tr.querySelectorAll('button').forEach(function(b){ b.disabled=false; }); var a=tr.querySelector('[data-aprovar]'); if(a) a.textContent='✅ Aprovar'; }
+
+  async function aprovar(c, tr){
+    var sb=_sb(); if(!sb) return;
+    if(!confirm('Aprovar e provisionar a empresa "'+(c.empresa_nome||'')+'"?\n\nIsto cria a empresa, o dono e as categorias padrão.')) return;
+    _travarLinha(tr,'provisionando...');
+    try{
+      var s = await sb.auth.getSession();
+      var token = s && s.data && s.data.session && s.data.session.access_token;
+      if(!token){ throw new Error('Sessão expirada. Recarregue e entre novamente.'); }
+      var res = await sb.functions.invoke('provisionar-empresa', {
+        body: { cadastro_id: c.id, dry_run: false },
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if(res && res.error) throw res.error;
+      var d = res && res.data;
+      if(!d || d.ok !== true){ throw new Error((d && d.erro) || 'Falha ao provisionar.'); }
+      toast('Empresa provisionada com sucesso.','ok');
+      carregar();
+    }catch(e){
+      _destravarLinha(tr);
+      var m = (e && e.message) ? e.message : 'Erro ao provisionar.';
+      // Erros vindos da Edge Function podem estar no corpo
+      try{ if(e && e.context && e.context.body){ var b=JSON.parse(e.context.body); if(b && b.erro) m=b.erro; } }catch(_){}
+      toast('Erro: '+m,'err');
+    }
+  }
+
+  async function rejeitar(c, tr){
+    var sb=_sb(); if(!sb) return;
+    var obs = prompt('Rejeitar o cadastro de "'+(c.empresa_nome||'')+'".\n\nObservação (opcional):', '');
+    if(obs === null) return; // cancelou
+    _travarLinha(tr);
+    try{
+      var upd = { status:'rejeitado' };
+      if(obs && obs.trim()) upd.observacao = obs.trim();
+      var r = await sb.from('cadastros_pendentes').update(upd).eq('id', c.id).select('id');
+      if(r && r.error) throw r.error;
+      if(!r.data || !r.data.length){ throw new Error('Sem permissão ou já processado.'); }
+      toast('Cadastro rejeitado.','ok');
+      carregar();
+    }catch(e){
+      _destravarLinha(tr);
+      toast('Erro ao rejeitar: '+(e&&e.message?e.message:''),'err');
+    }
+  }
+
+  function init(){
+    if(!_ehMaster()){ Q('app').style.display='none'; Q('bloqueio').style.display='block'; return; }
+    Q('btnRecarregar').addEventListener('click', carregar);
+    carregar();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+</body>
+</html>
