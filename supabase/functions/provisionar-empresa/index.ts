@@ -15,8 +15,9 @@
 // "profiles" neste projeto.)
 // ============================================================
 
-import { serve } from "std/http/server";
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient, User } from "https://esm.sh/@supabase/supabase-js@2";
 
 type JsonRecord = Record<string, unknown>;
 
