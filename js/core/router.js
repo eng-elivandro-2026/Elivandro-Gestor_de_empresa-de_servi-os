@@ -279,6 +279,21 @@
         { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
       ]
     },
+    {
+      // Módulo OCULTO: painel do superadmin para aprovar cadastros de
+      // novas empresas. Acessado pelo botão 🗳️ no header (só master).
+      // Enforcement real: gate de master no iframe + RLS master-only +
+      // Edge Function provisionar-empresa (checa is_master).
+      id: 'admin-aprovacoes',
+      label: 'Aprovações de Acesso',
+      icon: '🗳️',
+      oculto: true,
+      tipo: 'iframe',
+      src: 'pages/admin-aprovacoes.html',
+      nav: [
+        { label: 'Aprovações de Acesso', icon: '🗳️', action: "Router.ir('admin-aprovacoes')" },
+      ]
+    },
   ];
 
   var _moduloAtivo = null;
