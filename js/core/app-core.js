@@ -863,7 +863,7 @@ function loadAll(){
 // em blur/saída do editor/salvar manual. Todos os demais chamadores (ações
 // deliberadas: mudança de fase, saveP, modais…) seguem com push imediato.
 function saveAll(cloudMode){
-  LS('tf_props',props);
+  saveProps(props);
   try{if(Q('registro')&&Q('registro').classList.contains('on'))rRegistro();}catch(e){}
   // Sync com Supabase — salva a proposta em edição ou todas se não houver editId
   if(typeof sbSalvarProposta === 'function' && props.length){

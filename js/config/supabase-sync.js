@@ -19,6 +19,40 @@
     }
   }
 
+  // ── Escritor guardado de tf_props (à prova de cota) ───────
+  // Caminho normal: idêntico a localStorage.setItem. Só diverge quando a cota
+  // estoura: em vez de perder em silêncio, descarta caches de OUTRAS empresas
+  // (a nuvem re-hidrata), tenta de novo, e se ainda falhar loga + avisa 1x.
+  window.saveProps = function (arr) {
+    try {
+      localStorage.setItem('tf_props', JSON.stringify(arr));
+      return true;
+    } catch (e) {
+      if (!e || (e.name !== 'QuotaExceededError' && e.code !== 22)) {
+        console.warn('[storage] Falha ao gravar tf_props:', e && e.message);
+        return false;
+      }
+      // 1) Libera espaço: caches por-empresa de OUTRAS empresas (não são fonte de verdade).
+      try {
+        var ativa = String((window._empresaAtiva && window._empresaAtiva.id) || '');
+        var PREFIXOS = /^(tf_historico_|tf_svc_templates_|tf_bancoEscopos_|tf_etpl_|tf_tpls_|tf_prc_|tf_meta_|rh_alert_emails_)/;
+        Object.keys(localStorage).forEach(function (k) {
+          if (PREFIXOS.test(k) && (!ativa || k.indexOf(ativa) < 0)) localStorage.removeItem(k);
+        });
+      } catch (_) {}
+      // 2) Tenta de novo a escrita completa.
+      try { localStorage.setItem('tf_props', JSON.stringify(arr)); return true; } catch (_) {}
+      // 3) Ainda cheio: não perde em silêncio — loga e avisa uma vez.
+      console.error('[storage] Cota do localStorage excedida ao gravar tf_props (mesmo após limpeza).');
+      if (!window._quotaAvisado && typeof toast === 'function') {
+        window._quotaAvisado = true;
+        toast('⚠ Armazenamento local cheio. Suas propostas estão salvas na nuvem; ' +
+              'evite trabalhar offline até liberar espaço.', 'err');
+      }
+      return false;
+    }
+  };
+
   function _getEmpId() {
     if (typeof getEmpresaAtivaId === 'function') {
       var id = getEmpresaAtivaId();
@@ -211,11 +245,11 @@
     }
     var props = merged;
     if (props.length) {
-      LS('tf_props', props);
+      saveProps(props);
       // Migrar para stages v1 (idempotente — skipa propostas já migradas)
       if(typeof migrarTodasPropostas==='function'){
         var _mc=migrarTodasPropostas(props);
-        if(_mc>0) LS('tf_props',props);
+        if(_mc>0) saveProps(props);
       }
 
       // ── Backfill dtFech para propostas fechadas sem data de fechamento ──
@@ -237,7 +271,7 @@
         _dirty.push(p);
       });
       if (_dirty.length) {
-        LS('tf_props', props);
+        saveProps(props);
         // Push de volta ao Supabase em background (não bloqueia o carregamento)
         setTimeout(function() {
           _sbBackfillDtFech(_dirty, empId);
