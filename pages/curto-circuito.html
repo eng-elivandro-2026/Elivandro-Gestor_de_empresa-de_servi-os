@@ -651,12 +651,12 @@
   function _slug(s){ return String(s||'estudo').normalize('NFD').replace(/[^\x00-\x7F]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'estudo'; }
   function _fmtDataArquivo(){ try{ return new Date().toISOString().slice(0,10); }catch(e){ return 'data'; } }
 
-  function _pdfHTML(out, s, emp, svgImg){
+  function _pdfHTML(out, s, emp, svgImg, logoUrl){
     var H4='margin:14px 0 5px;font-size:13px;color:#0369a1;border-bottom:1px solid #e2e8f0;padding-bottom:2px';
     var h='';
     // Página 1 — CAPA (min-height ~ 1 página A4 na largura de 794px)
     h+='<div style="min-height:1120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">';
-    if(emp.logo_url) h+='<img src="'+esc(emp.logo_url)+'" style="max-height:80px;margin-bottom:18px">';
+    if(logoUrl) h+='<img crossorigin="anonymous" src="'+esc(logoUrl)+'" style="max-height:80px;margin-bottom:18px">';
     h+='<div style="font-size:24px;font-weight:700;color:#0369a1;letter-spacing:.5px">MEMORIAL DE CÁLCULO</div>';
     h+='<div style="font-size:15px;margin:6px 0 26px;color:#475569">Curto-circuito em baixa tensão · IEC 60909-0:2016</div>';
     h+='<div style="font-size:18px;font-weight:700;margin-bottom:26px">'+esc(s.study.titulo||'—')+'</div>';
@@ -701,34 +701,99 @@
     return h;
   }
 
+  // PROBLEMA 1 — unifilar fiel: serializa o SVG (XMLSerializer) → Blob/URL →
+  // Image → drawImage num canvas → PNG. Evita o desalinhamento do html2canvas.
+  function _unifilarPNG(){
+    return new Promise(function(resolve,reject){
+      try{
+        var tmp=document.createElement('div'); tmp.innerHTML=unifilarSVG(lastResult);
+        var svg=tmp.querySelector('svg'); if(!svg){ resolve(null); return; }
+        var vb=(svg.getAttribute('viewBox')||'0 0 760 140').split(/\s+/);
+        var W=parseFloat(vb[2])||760, H=parseFloat(vb[3])||140;
+        svg.setAttribute('width',W); svg.setAttribute('height',H);
+        if(!svg.getAttribute('xmlns')) svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+        var str=new XMLSerializer().serializeToString(svg);
+        var url=URL.createObjectURL(new Blob([str],{type:'image/svg+xml;charset=utf-8'}));
+        var img=new Image();
+        img.onload=function(){
+          var sc=2, cv=document.createElement('canvas'); cv.width=W*sc; cv.height=H*sc;
+          var ctx=cv.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,cv.width,cv.height);
+          ctx.drawImage(img,0,0,cv.width,cv.height); URL.revokeObjectURL(url);
+          try{ resolve(cv.toDataURL('image/png')); }catch(e){ reject(e); }
+        };
+        img.onerror=function(e){ URL.revokeObjectURL(url); reject(e); };
+        img.src=url;
+      }catch(e){ reject(e); }
+    });
+  }
+
+  // PROBLEMA 2 — logo da empresa: usa empresa.logo_url se existir; senão tenta
+  // o bucket 'logos' do Storage por {empresa_id}.png|jpg|jpeg. Só retorna se a
+  // imagem realmente carregar (com CORS, para o html2canvas capturá-la).
+  function _imgExiste(url){
+    return new Promise(function(resolve){
+      try{ var im=new Image(); im.crossOrigin='anonymous'; im.onload=function(){ resolve(true); }; im.onerror=function(){ resolve(false); }; im.src=url; }
+      catch(e){ resolve(false); }
+    });
+  }
+  async function _obterLogoUrl(){
+    var emp=_empFull();
+    if(emp && emp.logo_url && await _imgExiste(emp.logo_url)) return emp.logo_url;
+    var sb=_sbCloud();
+    if(!sb || !sb.storage || !_empresa || !_empresa.id) return null;
+    var exts=['png','jpg','jpeg'];
+    for(var i=0;i<exts.length;i++){
+      try{
+        var res=sb.storage.from('logos').getPublicUrl(_empresa.id+'.'+exts[i]);
+        var url=res && res.data && res.data.publicUrl;
+        if(url && await _imgExiste(url)) return url;
+      }catch(e){}
+    }
+    return null;
+  }
+  function _esperarImagens(cont){
+    var imgs=cont.querySelectorAll('img');
+    return Promise.all(Array.prototype.map.call(imgs,function(im){
+      if(im.complete) return Promise.resolve();
+      return new Promise(function(res){ im.onload=im.onerror=function(){ res(); }; });
+    }));
+  }
+  // PROBLEMA 3 — detecta fatia totalmente branca para não gerar página em branco.
+  function _sliceVazia(cv){
+    try{
+      var d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
+      for(var i=0;i<d.length;i+=4){ if(d[i]<250||d[i+1]<250||d[i+2]<250) return false; }
+      return true;
+    }catch(e){ return false; } // canvas "tainted"/erro → trata como não-vazia (não perde conteúdo)
+  }
+
   async function exportarPDF(){
     if(!window.jspdf || !window.jspdf.jsPDF || !window.html2canvas){ toast('Bibliotecas de PDF não carregaram (verifique a conexão).','err'); return; }
     var btn=Q('btnPDF'); var old=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='gerando...'; }
     try{
       coletar(); recalc();
       var out=lastResult, s=STATE, emp=_empFull();
-      // 1) SVG do unifilar → PNG via html2canvas (requisito)
-      var svgImg=null;
-      try{
-        var wrap=document.createElement('div'); wrap.style.cssText='position:fixed;left:-9999px;top:0;background:#fff;padding:8px;width:760px';
-        wrap.innerHTML=unifilarSVG(out); document.body.appendChild(wrap);
-        var sc=await window.html2canvas(wrap,{backgroundColor:'#ffffff',scale:2}); svgImg=sc.toDataURL('image/png');
-        document.body.removeChild(wrap);
-      }catch(e){ svgImg=null; }
-      // 2) DOM completo do PDF (capa + memorial + unifilar)
-      var cont=document.createElement('div'); cont.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#111;padding:36px;font-family:Inter,Arial,sans-serif;font-size:12px;line-height:1.5';
-      cont.innerHTML=_pdfHTML(out,s,emp,svgImg); document.body.appendChild(cont);
-      var canvas=await window.html2canvas(cont,{backgroundColor:'#ffffff',scale:2}); document.body.removeChild(cont);
-      // 3) paginação A4
+      var svgImg=null;  try{ svgImg=await _unifilarPNG(); }catch(e){ svgImg=null; }
+      var logoUrl=null; try{ logoUrl=await _obterLogoUrl(); }catch(e){ logoUrl=null; }
+      // DOM completo do PDF (capa + memorial + unifilar)
+      var cont=document.createElement('div'); cont.style.cssText='position:fixed;left:-9999px;top:0;box-sizing:border-box;width:794px;background:#fff;color:#111;padding:36px 36px 12px;font-family:Inter,Arial,sans-serif;font-size:12px;line-height:1.5';
+      cont.innerHTML=_pdfHTML(out,s,emp,svgImg,logoUrl); document.body.appendChild(cont);
+      await _esperarImagens(cont); // garante logo/unifilar carregados antes do render
+      var canvas=await window.html2canvas(cont,{backgroundColor:'#ffffff',scale:2,useCORS:true}); document.body.removeChild(cont);
+      // Paginação A4 — pula fatia final totalmente branca (sem página em branco)
       var pdf=new window.jspdf.jsPDF('p','mm','a4');
       var pw=210, ph=297, pxPerPage=canvas.width*(ph/pw);
-      var pages=Math.max(1, Math.ceil(canvas.height/pxPerPage));
-      for(var p=0;p<pages;p++){
-        if(p>0) pdf.addPage();
-        var sliceH=Math.min(pxPerPage, canvas.height-p*pxPerPage);
-        var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=sliceH;
-        pc.getContext('2d').drawImage(canvas,0,p*pxPerPage,canvas.width,sliceH,0,0,canvas.width,sliceH);
+      var total=Math.max(1, Math.ceil(canvas.height/pxPerPage)), added=0;
+      for(var p=0;p<total;p++){
+        var srcY=p*pxPerPage, sliceH=Math.min(pxPerPage, canvas.height-srcY);
+        if(sliceH<=1) break;
+        var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=Math.ceil(sliceH);
+        var pctx=pc.getContext('2d'); pctx.fillStyle='#ffffff'; pctx.fillRect(0,0,pc.width,pc.height);
+        pctx.drawImage(canvas,0,srcY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+        if(added>0 && _sliceVazia(pc)) continue;   // não adiciona página em branco
+        if(added>0) pdf.addPage();
         pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw, sliceH*pw/canvas.width);
+        added++;
       }
       pdf.save('curto-bt_'+_slug(s.study.titulo)+'_'+_fmtDataArquivo()+'.pdf');
       toast('PDF gerado.','ok');
