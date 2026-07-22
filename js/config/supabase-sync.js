@@ -187,11 +187,21 @@
       return [];
     }
 
-    var res = await window.sbClient
-      .from('propostas')
-      .select('dados_json, app_id, fase')
-      .eq('empresa_id', empId)
-      .order('updated_at', { ascending: false });
+    var PAGE = 1000, _rows = [], _off = 0, res;
+    while (true) {
+      res = await window.sbClient
+        .from('propostas')
+        .select('dados_json, app_id, fase')
+        .eq('empresa_id', empId)
+        .order('updated_at', { ascending: false })
+        .order('app_id', { ascending: true })          // desempate estável entre páginas
+        .range(_off, _off + PAGE - 1);
+      if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
+      _rows = _rows.concat(res.data || []);
+      if (!res.data || res.data.length < PAGE) break;   // última página
+      _off += PAGE;
+    }
+    res = { data: _rows, error: null };                 // re-shape: linhas seguintes ficam idênticas
     if (res.error) { console.error('[supabase-sync] Erro ao carregar propostas:', res.error.message); return; }
     var nuvem = (res.data || []).map(function (r) {
       var p = r.dados_json || {};
