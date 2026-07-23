@@ -41,7 +41,7 @@
     },
     {
       id: 'planejamento-estrategico',
-      label: 'Planejamento Estratégico',
+      label: 'Estratégia',
       icon: '🧭',
       tipo: 'iframe',
       src: 'pages/planejamento-estrategico.html',
@@ -53,9 +53,8 @@
     },
     {
       id: 'reuniao-radar',
-      label: 'Reunião de Radar',
+      label: 'Gestão',
       icon: '🗓️',
-      oculto: true,
       tipo: 'iframe',
       src: 'pages/reuniao-radar.html',
       nav: [
@@ -143,7 +142,7 @@
     },
     {
       id: 'gestao-a-vista',
-      label: 'MPE',
+      label: 'Indicadores',
       icon: '📊',
       tipo: 'iframe',
       src: 'pages/gestao-a-vista.html',
@@ -154,7 +153,7 @@
     },
     {
       id: 'operacional',
-      label: 'Operacional',
+      label: 'Execução',
       icon: 'OP',
       tipo: 'inline',
       init: function () { go('operacional'); if (typeof rOperacional === 'function') rOperacional(); },
@@ -174,7 +173,7 @@
     },
     {
       id: 'avisos',
-      label: 'Quadro de Avisos',
+      label: 'Avisos',
       icon: '📌',
       tipo: 'inline',
       init: function () { go('avisos'); if (typeof rAvisos === 'function') rAvisos(); },
@@ -212,7 +211,7 @@
     // },
     {
       id: 'gestao-tempo',
-      label: 'Gestão do Tempo',
+      label: 'Tempo',
       icon: '⏱️',
       tipo: 'iframe',
       src: 'pages/gestao-tempo.html',
@@ -224,7 +223,7 @@
     },
     {
       id: 'rh',
-      label: 'RH / Equipes',
+      label: 'Pessoas',
       icon: '👷',
       tipo: 'inline',
       init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
@@ -238,7 +237,7 @@
     },
     {
       id: 'recursos-produtividade',
-      label: 'Recursos & Produtividade',
+      label: 'Produtividade',
       icon: '📈',
       tipo: 'iframe',
       src: 'pages/recursos-produtividade.html',
@@ -270,7 +269,7 @@
     },
     {
       id: 'dashboard-estrategico',
-      label: 'Painel Estratégico',
+      label: 'Painel CEO',
       icon: '📊',
       badge: 'CEO',
       tipo: 'iframe',
