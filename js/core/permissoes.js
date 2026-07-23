@@ -91,6 +91,12 @@
       criar:  ['dono', 'admin', 'gestor', 'comercial', 'operacional'],
       editar: ['dono', 'admin', 'gestor', 'comercial', 'operacional']
     },
+    precificacao: {
+      // Módulo 05 — Precificação (SOE). Estrutura de custos, times,
+      // formação de preço e índices próprios. Acesso a dono/admin.
+      ver:    ['dono', 'admin'],
+      editar: ['dono', 'admin']
+    },
     prospeccao: {
       // Prospecção Comercial (Etapas 1-2) — EXCLUSIVO de dono/admin nesta
       // fase (decisão aprovada); Elivandro abre p/ outros perfis depois,
@@ -130,7 +136,7 @@
   };
 
   // Lista canônica de módulos do Router (mesma ordem da sidebar)
-  var _MODULOS_ROUTER = ['comercial', 'engenharia', 'curto-circuito', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
+  var _MODULOS_ROUTER = ['comercial', 'precificacao', 'engenharia', 'curto-circuito', 'prospeccao', 'clientes', 'gestao-a-vista', 'operacional', 'historico', 'gestao-tempo', 'rh', 'recursos-produtividade', 'financeiro', 'dashboard-estrategico', 'dashboard-minha-empresa', 'planejamento-estrategico'];
 
   // ── Módulos RESTRITOS (badge DONO/CEO no Router) ─────────
   // Padrão: SÓ o superadmin/master enxerga. NÃO recebem o bypass de

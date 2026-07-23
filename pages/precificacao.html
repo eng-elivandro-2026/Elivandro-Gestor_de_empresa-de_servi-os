@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precificação — SOE</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--blue:#58a6ff;
+  --red:#f85149;--amber:#d4a017;--purple:#bc8cff;
+  --r:8px;--r2:6px;
+  --emp-cor:#4DB748;--emp-bg:rgba(77,183,72,.10);--emp-bdr:rgba(77,183,72,.32);
+}
+body.light{
+  --bg:#f5f7fb;--bg2:#ffffff;--bg3:#eef2f7;
+  --border:#d5dce6;--border2:#bfc9d7;
+  --text:#111827;--text2:#4b5563;--text3:#6b7280;
+  --accent:#d97706;--green:#15803d;--blue:#2563eb;--red:#dc2626;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:1.1rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.hdr-tit{font-size:1.15rem;font-weight:800;color:var(--emp-cor);display:flex;align-items:center;gap:.45rem}
+.hdr-sub{font-size:.74rem;color:var(--text3);margin-top:.15rem}
+.hdr-emp{font-size:.72rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.28rem .7rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.8rem}
+.sec-tit{font-size:.92rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sec-desc{font-size:.74rem;color:var(--text3);margin-bottom:.7rem;line-height:1.45}
+.vazio{text-align:center;padding:1.6rem 1rem;color:var(--text3);font-size:.8rem}
+.kpi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.8rem}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.8rem .95rem}
+.kpi .k-lab{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-val{font-size:1.45rem;font-weight:800;margin:.2rem 0 .1rem}
+.btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .8rem;font-size:.78rem;font-family:inherit;cursor:pointer}
+.btn:hover{border-color:var(--emp-bdr)}
+.psec{display:none}.psec.on{display:block}
+#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
+#toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
+#gateBloqueio{display:none;text-align:center;padding:3rem 1rem;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <div class="hdr-tit">🏷️ Precificação</div>
+      <div class="hdr-sub">Módulo 05 — SOE · estrutura de custos, times e formação de preço</div>
+    </div>
+    <div class="hdr-emp" id="empLabel">—</div>
+  </div>
+
+  <div id="gateBloqueio">Você não tem acesso ao módulo Precificação.</div>
+
+  <div id="conteudo">
+    <!-- 1 -->
+    <section class="psec on" id="sec-custos">
+      <div class="card">
+        <div class="sec-tit">🧱 Minha Estrutura de Custos</div>
+        <div class="sec-desc">Funções e seus custos (salário, encargos, benefícios, HH).</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 2 -->
+    <section class="psec" id="sec-times">
+      <div class="card">
+        <div class="sec-tit">👥 Meus Times</div>
+        <div class="sec-desc">Composição de times a partir das funções.</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 3 -->
+    <section class="psec" id="sec-simulador">
+      <div class="card">
+        <div class="sec-tit">🧮 Simulador</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 4 -->
+    <section class="psec" id="sec-contratacao">
+      <div class="card">
+        <div class="sec-tit">📝 Custo de Contratação</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 5 -->
+    <section class="psec" id="sec-rescisao">
+      <div class="card">
+        <div class="sec-tit">📄 Simulação de Rescisão</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 6 -->
+    <section class="psec" id="sec-preco">
+      <div class="card">
+        <div class="sec-tit">💲 Formação de Preço</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 7 -->
+    <section class="psec" id="sec-indices">
+      <div class="card">
+        <div class="sec-tit">📊 Banco de Índices</div>
+        <div class="sec-desc">Índices HH e percentuais próprios da empresa.</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+    <!-- 8 -->
+    <section class="psec" id="sec-analises">
+      <div class="card">
+        <div class="sec-tit">📈 Análises</div>
+        <div class="vazio">Em construção.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   PRECIFICAÇÃO — Módulo 05 (SOE). Iframe autocontido, padrão do
+   portal: _sb() via parent, SET_EMPRESA / SET_TEMA / SHOW_SECTION,
+   gate por podeAcessarModulo('precificacao'). Dono/admin.
+   ============================================================ */
+var PERFIS_PERMITIDOS = ['dono', 'admin'];   // FALLBACK (sem podeAcessarModulo)
+var _empresaAtiva = null;
+
+function _sb(){ try{ return (window.parent && window.parent.sbClient) ? window.parent.sbClient : window.sbClient || null; }catch(e){ return window.sbClient || null; } }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg,tipo){ var t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className=tipo==='err'?'on err':'on'; setTimeout(function(){ t.className=''; },2600); }
+
+/* Navegação entre seções (.psec) */
+var _MAPA_SECAO={ custos:'sec-custos', times:'sec-times', simulador:'sec-simulador', contratacao:'sec-contratacao', rescisao:'sec-rescisao', preco:'sec-preco', indices:'sec-indices', analises:'sec-analises' };
+function mostrarSecao(id){
+  var alvo=document.getElementById(id)||document.getElementById('sec-custos');
+  document.querySelectorAll('.psec').forEach(function(s){ s.classList.toggle('on', s===alvo); });
+}
+
+/* Gate de acesso */
+function _temAcesso(){
+  try{ if(window.parent && typeof window.parent.podeAcessarModulo==='function') return !!window.parent.podeAcessarModulo('precificacao'); }catch(e){}
+  try{ var perfil = (window.parent && typeof window.parent.getPerfilUsuario==='function') ? window.parent.getPerfilUsuario() : null;
+       return !perfil || PERFIS_PERMITIDOS.indexOf(perfil)>=0; }catch(e){ return true; }
+}
+function _aplicarGate(){
+  var ok=_temAcesso();
+  var c=document.getElementById('conteudo'), g=document.getElementById('gateBloqueio');
+  if(c) c.style.display = ok?'':'none';
+  if(g) g.style.display = ok?'none':'block';
+}
+
+/* Troca de empresa → recarrega dados (implementação das telas vem depois) */
+async function _onTrocaEmpresa(d){
+  _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
+  var el=document.getElementById('empLabel'); if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
+  _aplicarGate();
+  // carregarTudo();
+}
+
+/* Protocolo do portal */
+window.addEventListener('message', function(e){
+  if(!e.data || !e.data.type) return;
+  if(e.data.type==='SET_EMPRESA')  _onTrocaEmpresa(e.data);
+  if(e.data.type==='SET_TEMA')     document.body.classList.toggle('light', e.data.tema==='light');
+  if(e.data.type==='SHOW_SECTION') mostrarSecao(_MAPA_SECAO[e.data.payload]||'sec-custos');
+});
+
+/* Init */
+_aplicarGate();
+try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
+try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
+</script>
+</body>
+</html>
