@@ -52,13 +52,17 @@
       ]
     },
     {
-      id: 'reuniao-radar',
-      label: 'Gestão',
-      icon: '🗓️',
-      tipo: 'iframe',
-      src: 'pages/reuniao-radar.html',
+      id: 'rh',
+      label: 'Pessoas',
+      icon: '👷',
+      tipo: 'inline',
+      init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
       nav: [
-        { label: 'Reunião de Radar', icon: '🗓️', action: "Router.ir('reuniao-radar')" },
+        { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',null)" },
+        { label: 'Apontamentos',  icon: '⏱️', action: "go('rh',this);rhShowSec('apontamentos',null)" },
+        { label: 'Boletins',      icon: '📋', action: "go('rh',this);rhShowSec('boletins',null)" },
+        { label: 'Férias',        icon: '🌴', action: "go('rh',this);rhShowSec('ferias-geral',null)" },
+        { label: 'Despesas',      icon: '💰', action: "go('rh',this);rhShowSec('despesas',null)" },
       ]
     },
     {
@@ -83,6 +87,26 @@
         { label: 'Análise',            icon: '📈', action: "go('analise',this);rAnalise()" },
         { label: 'Pipeline',           icon: '🔀', sub: 'pipeline',      action: "go('registro',this);rRegistro()" },
         { label: 'Versões',            icon: '📋', action: "go('changelog',this)" },
+      ]
+    },
+    {
+      id: 'operacional',
+      label: 'Execução',
+      icon: 'OP',
+      tipo: 'inline',
+      init: function () { go('operacional'); if (typeof rOperacional === 'function') rOperacional(); },
+      nav: [
+        { label: 'Obras', icon: 'OP', action: "go('operacional',this);rOperacional()" },
+        { separator: true, label: 'Status' },
+        { label: 'Aprovado', icon: '✅', action: "go('operacional',this);opSetFiltroStatus('aprovado')" },
+        { label: 'Em Andamento', icon: '🔧', action: "go('operacional',this);opSetFiltroStatus('andamento')" },
+        { label: 'TAF', icon: '🧪', action: "go('operacional',this);opSetFiltroStatus('taf')" },
+        { label: 'SAT', icon: '🛠️', action: "go('operacional',this);opSetFiltroStatus('sat')" },
+        { label: 'Finalizado', icon: '🏁', action: "go('operacional',this);opSetFiltroStatus('finalizado')" },
+        { label: 'Atrasado', icon: '⚠️', action: "go('operacional',this);opSetFiltroStatus('atrasado')" },
+        { label: 'Em Pausa Falta Material', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_falta_material')" },
+        { label: 'Em Pausa Ag. Cliente', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_cliente')" },
+        { label: 'Em Pausa Ag. Terceiro', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_terceiro')" },
       ]
     },
     {
@@ -118,6 +142,71 @@
       ]
     },
     {
+      id: 'financeiro',
+      label: 'Financeiro',
+      icon: '💰',
+      tipo: 'iframe',
+      src: 'pages/financeiro.html',
+      nav: [
+        { label: 'Notas Fiscais de Faturamento',  icon: '📄', action: "Router.iframeMsg('financeiro','SHOW_TAB','nfs');Router._setNavAtivo(this)" },
+        { label: 'Notas Fiscais de Fornecedores', icon: '📥', action: "Router.iframeMsg('financeiro','SHOW_TAB','nf-fornecedor');Router._setNavAtivo(this)" },
+        { label: 'Contas a Receber',              icon: '💰', action: "Router.iframeMsg('financeiro','SHOW_TAB','contas');Router._setNavAtivo(this)" },
+        { label: 'Contas a Pagar',                icon: '💳', action: "Router.iframeMsg('financeiro','SHOW_TAB','cp');Router._setNavAtivo(this)" },
+        { label: 'Fontes Financeiras',            icon: '🏦', action: "Router.iframeMsg('financeiro','SHOW_TAB','bancos-contas');Router._setNavAtivo(this)" },
+        { label: 'Fluxo de Caixa',                icon: '💵', action: "Router.iframeMsg('financeiro','SHOW_TAB','fluxo');Router._setNavAtivo(this)" },
+        { label: 'DRE Gerencial',                 icon: '📊', action: "Router.iframeMsg('financeiro','SHOW_TAB','dre');Router._setNavAtivo(this)" },
+        { label: 'Ferramentas',                   icon: '⚙️', action: "Router.iframeMsg('financeiro','SHOW_TAB','ferramentas');Router._setNavAtivo(this)" },
+      ]
+    },
+    {
+      id: 'gestao-a-vista',
+      label: 'Indicadores',
+      icon: '📊',
+      tipo: 'iframe',
+      src: 'pages/gestao-a-vista.html',
+      nav: [
+        { label: 'Indicadores',         icon: '📊', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','kpis');Router._setNavAtivo(this)" },
+        { label: 'Fechamentos por Mês', icon: '📅', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','fechmes');Router._setNavAtivo(this)" },
+      ]
+    },
+    {
+      id: 'reuniao-radar',
+      label: 'Gestão',
+      icon: '🗓️',
+      tipo: 'iframe',
+      src: 'pages/reuniao-radar.html',
+      nav: [
+        { label: 'Reunião de Radar', icon: '🗓️', action: "Router.ir('reuniao-radar')" },
+      ]
+    },
+    {
+      id: 'recursos-produtividade',
+      label: 'Produtividade',
+      icon: '📈',
+      tipo: 'iframe',
+      src: 'pages/recursos-produtividade.html',
+      nav: [
+        { label: 'Visão Geral',     icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
+        { label: 'Por Colaborador', icon: '👤', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','colaborador')" },
+        { label: 'Por Cliente',     icon: '🏢', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','cliente')" },
+        { label: 'Por Proposta',    icon: '📁', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','proposta')" },
+        { label: 'Mapa de Alocação', icon: '🗺️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','mapa')" },
+        { label: 'Configurações',   icon: '⚙️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','config')" },
+      ]
+    },
+    {
+      id: 'gestao-tempo',
+      label: 'Tempo',
+      icon: '⏱️',
+      tipo: 'iframe',
+      src: 'pages/gestao-tempo.html',
+      nav: [
+        { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','registrar')" },
+        { label: 'Dashboard',            icon: '📊', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','dashboard')" },
+        { label: 'Categorias',           icon: '🏷️', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','categorias')" },
+      ]
+    },
+    {
       id: 'prospeccao',
       label: 'Prospecção',
       icon: '🎯',
@@ -141,34 +230,14 @@
       ]
     },
     {
-      id: 'gestao-a-vista',
-      label: 'Indicadores',
+      id: 'dashboard-estrategico',
+      label: 'Painel CEO',
       icon: '📊',
+      badge: 'CEO',
       tipo: 'iframe',
-      src: 'pages/gestao-a-vista.html',
+      src: 'pages/dashboard-estrategico.html',
       nav: [
-        { label: 'Indicadores',         icon: '📊', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','kpis');Router._setNavAtivo(this)" },
-        { label: 'Fechamentos por Mês', icon: '📅', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','fechmes');Router._setNavAtivo(this)" },
-      ]
-    },
-    {
-      id: 'operacional',
-      label: 'Execução',
-      icon: 'OP',
-      tipo: 'inline',
-      init: function () { go('operacional'); if (typeof rOperacional === 'function') rOperacional(); },
-      nav: [
-        { label: 'Obras', icon: 'OP', action: "go('operacional',this);rOperacional()" },
-        { separator: true, label: 'Status' },
-        { label: 'Aprovado', icon: '✅', action: "go('operacional',this);opSetFiltroStatus('aprovado')" },
-        { label: 'Em Andamento', icon: '🔧', action: "go('operacional',this);opSetFiltroStatus('andamento')" },
-        { label: 'TAF', icon: '🧪', action: "go('operacional',this);opSetFiltroStatus('taf')" },
-        { label: 'SAT', icon: '🛠️', action: "go('operacional',this);opSetFiltroStatus('sat')" },
-        { label: 'Finalizado', icon: '🏁', action: "go('operacional',this);opSetFiltroStatus('finalizado')" },
-        { label: 'Atrasado', icon: '⚠️', action: "go('operacional',this);opSetFiltroStatus('atrasado')" },
-        { label: 'Em Pausa Falta Material', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_falta_material')" },
-        { label: 'Em Pausa Ag. Cliente', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_cliente')" },
-        { label: 'Em Pausa Ag. Terceiro', icon: '⏸️', action: "go('operacional',this);opSetFiltroStatus('em_pausa_aguardando_terceiro')" },
+        { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
       ]
     },
     {
@@ -209,75 +278,6 @@
     //     { label: '↳ Recuperação',      icon: '🔧', action: "go('historico',this);hShowSec('recuperacao');Router._setNavAtivo(this)" },
     //   ]
     // },
-    {
-      id: 'gestao-tempo',
-      label: 'Tempo',
-      icon: '⏱️',
-      tipo: 'iframe',
-      src: 'pages/gestao-tempo.html',
-      nav: [
-        { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','registrar')" },
-        { label: 'Dashboard',            icon: '📊', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','dashboard')" },
-        { label: 'Categorias',           icon: '🏷️', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','categorias')" },
-      ]
-    },
-    {
-      id: 'rh',
-      label: 'Pessoas',
-      icon: '👷',
-      tipo: 'inline',
-      init: function () { go('rh'); if (typeof rRH === 'function') rRH(); },
-      nav: [
-        { label: 'Colaboradores', icon: '👷', action: "go('rh',this);rhShowSec('colaboradores',null)" },
-        { label: 'Apontamentos',  icon: '⏱️', action: "go('rh',this);rhShowSec('apontamentos',null)" },
-        { label: 'Boletins',      icon: '📋', action: "go('rh',this);rhShowSec('boletins',null)" },
-        { label: 'Férias',        icon: '🌴', action: "go('rh',this);rhShowSec('ferias-geral',null)" },
-        { label: 'Despesas',      icon: '💰', action: "go('rh',this);rhShowSec('despesas',null)" },
-      ]
-    },
-    {
-      id: 'recursos-produtividade',
-      label: 'Produtividade',
-      icon: '📈',
-      tipo: 'iframe',
-      src: 'pages/recursos-produtividade.html',
-      nav: [
-        { label: 'Visão Geral',     icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
-        { label: 'Por Colaborador', icon: '👤', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','colaborador')" },
-        { label: 'Por Cliente',     icon: '🏢', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','cliente')" },
-        { label: 'Por Proposta',    icon: '📁', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','proposta')" },
-        { label: 'Mapa de Alocação', icon: '🗺️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','mapa')" },
-        { label: 'Configurações',   icon: '⚙️', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','config')" },
-      ]
-    },
-    {
-      id: 'financeiro',
-      label: 'Financeiro',
-      icon: '💰',
-      tipo: 'iframe',
-      src: 'pages/financeiro.html',
-      nav: [
-        { label: 'Notas Fiscais de Faturamento',  icon: '📄', action: "Router.iframeMsg('financeiro','SHOW_TAB','nfs');Router._setNavAtivo(this)" },
-        { label: 'Notas Fiscais de Fornecedores', icon: '📥', action: "Router.iframeMsg('financeiro','SHOW_TAB','nf-fornecedor');Router._setNavAtivo(this)" },
-        { label: 'Contas a Receber',              icon: '💰', action: "Router.iframeMsg('financeiro','SHOW_TAB','contas');Router._setNavAtivo(this)" },
-        { label: 'Contas a Pagar',                icon: '💳', action: "Router.iframeMsg('financeiro','SHOW_TAB','cp');Router._setNavAtivo(this)" },
-        { label: 'Fontes Financeiras',            icon: '🏦', action: "Router.iframeMsg('financeiro','SHOW_TAB','bancos-contas');Router._setNavAtivo(this)" },
-        { label: 'Fluxo de Caixa',                icon: '💵', action: "Router.iframeMsg('financeiro','SHOW_TAB','fluxo');Router._setNavAtivo(this)" },
-        { label: 'DRE Gerencial',                 icon: '📊', action: "Router.iframeMsg('financeiro','SHOW_TAB','dre');Router._setNavAtivo(this)" },
-        { label: 'Ferramentas',                   icon: '⚙️', action: "Router.iframeMsg('financeiro','SHOW_TAB','ferramentas');Router._setNavAtivo(this)" },
-      ]
-    },
-    {
-      id: 'dashboard-estrategico',
-      label: 'Painel CEO',
-      icon: '📊',
-      badge: 'CEO',
-      tipo: 'iframe',
-      src: 'pages/dashboard-estrategico.html',
-      nav: [
-        { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
-      ]
-    },
     {
       // Módulo OCULTO: painel do superadmin para aprovar cadastros de
       // novas empresas. Acessado pelo botão 🗳️ no header (só master).
