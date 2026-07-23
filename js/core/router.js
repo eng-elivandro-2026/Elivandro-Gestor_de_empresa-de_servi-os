@@ -104,6 +104,23 @@
       ]
     },
     {
+      id: 'precificacao',
+      label: 'Precificação',
+      icon: '🏷️',
+      tipo: 'iframe',
+      src: 'pages/precificacao.html',
+      nav: [
+        { label: 'Minha Estrutura de Custos', icon: '🧱', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','custos')" },
+        { label: 'Meus Times',                icon: '👥', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','times')" },
+        { label: 'Simulador',                 icon: '🧮', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','simulador')" },
+        { label: 'Custo de Contratação',      icon: '📝', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','contratacao')" },
+        { label: 'Simulação de Rescisão',     icon: '📄', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','rescisao')" },
+        { label: 'Formação de Preço',         icon: '💲', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','preco')" },
+        { label: 'Banco de Índices',          icon: '📊', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','indices')" },
+        { label: 'Análises',                  icon: '📈', action: "Router.ir('precificacao');Router.iframeMsg('precificacao','SHOW_SECTION','analises')" },
+      ]
+    },
+    {
       id: 'operacional',
       label: 'Execução',
       icon: 'OP',
