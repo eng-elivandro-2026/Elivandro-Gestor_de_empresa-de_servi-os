@@ -48,9 +48,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.8rem}
 .fld{display:flex;flex-direction:column;gap:.25rem}
 .fld label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.fld input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
+.fld input{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
 .fld input:focus{outline:none;border-color:var(--emp-bdr)}
 .fld input[readonly]{background:var(--bg);color:var(--emp-cor);font-weight:800}
+body.light .fld input:not([readonly]),
+body.light .fld select{background:#ffffff;border-color:var(--border2)}
 /* Tabela */
 .tbl-wrap{overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse;font-size:.8rem}
@@ -61,7 +63,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pill{display:inline-block;font-size:.63rem;font-weight:700;border-radius:20px;padding:.14rem .55rem;border:1px solid transparent}
 .pill.ativo{background:rgba(63,185,80,.14);color:var(--green);border-color:rgba(63,185,80,.35)}
 .pill.inativo{background:var(--bg3);color:var(--text3);border-color:var(--border)}
-.fld select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
+.fld select{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
 .fld select:focus{outline:none;border-color:var(--emp-bdr)}
 .subsec-tit{font-size:.74rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:.9rem 0 .5rem}
 .adic{border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .7rem;margin-bottom:.5rem;background:var(--bg2)}
@@ -72,6 +74,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .adic-badges{display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.25rem}
 .mini-badge{font-size:.58rem;font-weight:700;border-radius:10px;padding:.05rem .35rem;background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
 .colap-btn{background:none;border:none;color:var(--emp-cor);font-size:.8rem;font-weight:700;cursor:pointer;padding:.4rem 0}
+/* Banco de Índices */
+.idx-grp-tit{font-size:.72rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .35rem}
+.idx-tbl input{width:110px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.3rem .45rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
+.idx-tbl input:focus{outline:none;border-color:var(--emp-bdr)}
+body.light .idx-tbl input{background:#ffffff;border-color:var(--border2)}
+.idx-tbl td.uni{color:var(--text3);font-size:.72rem}
+.idx-tbl tr.tot td{border-top:1px solid var(--border2);border-bottom:none}
+.idx-tot{font-weight:800;color:var(--emp-cor)}
+.idx-geral{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1rem;padding:.7rem .9rem;background:var(--emp-bg);border:1px solid var(--emp-bdr);border-radius:var(--r)}
+.idx-geral .lab{font-size:.8rem;font-weight:800;color:var(--text)}
+.idx-geral .val{font-size:1.2rem;font-weight:800;color:var(--emp-cor);font-variant-numeric:tabular-nums}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -229,9 +242,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <!-- 7 -->
     <section class="psec" id="sec-indices">
       <div class="card">
-        <div class="sec-tit">📊 Banco de Índices</div>
-        <div class="sec-desc">Índices HH e percentuais próprios da empresa.</div>
-        <div class="vazio">Em construção.</div>
+        <div class="form-row">
+          <div>
+            <div class="sec-tit">📊 Banco de Índices</div>
+            <div class="sec-desc">Parâmetros gerais e encargos sociais (SINAPI 2026 · SP) próprios da empresa.</div>
+          </div>
+          <div class="acoes">
+            <button class="btn" onclick="restaurarIndicesPadrao()">Restaurar Padrões SINAPI 2026</button>
+            <button class="btn prim" onclick="salvarIndices()">Salvar Índices</button>
+          </div>
+        </div>
+        <div id="indicesWrap"><div class="vazio">Carregando…</div></div>
       </div>
     </section>
     <!-- 8 -->
@@ -265,6 +286,7 @@ var _MAPA_SECAO={ custos:'sec-custos', times:'sec-times', simulador:'sec-simulad
 function mostrarSecao(id){
   var alvo=document.getElementById(id)||document.getElementById('sec-custos');
   document.querySelectorAll('.psec').forEach(function(s){ s.classList.toggle('on', s===alvo); });
+  if(alvo && alvo.id==='sec-indices') carregarIndices();
 }
 
 /* Gate de acesso */
@@ -463,6 +485,122 @@ function _renderFuncoes(){
       '</div></td></tr>';
   }).join('');
   box.innerHTML='<table class="tbl"><thead><tr><th>Função</th><th class="num">Salário</th><th class="num">Encargos%</th><th class="num">Benefícios</th><th class="num">Horas/mês</th><th class="num">Custo/HH</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table>';
+}
+
+/* ── Banco de Índices (precificacao_indices) ─────────────────── */
+var _IDX_GERAIS = [
+  { chave:'salario_minimo_nacional', rotulo:'Salário Mínimo Nacional', valor:1518.00, unidade:'R$' },
+  { chave:'salario_minimo_sp',       rotulo:'Salário Mínimo SP',       valor:1700.00, unidade:'R$' },
+  { chave:'horas_mes_padrao',        rotulo:'Horas/mês padrão',        valor:220,     unidade:'h'  }
+];
+var _IDX_ENCARGOS = [
+  { id:'A', titulo:'Grupo A — Encargos sobre folha', itens:[
+    { chave:'enc_a_inss',    rotulo:'INSS',             valor:20.0, unidade:'%' },
+    { chave:'enc_a_sesi',    rotulo:'SESI',             valor:1.5,  unidade:'%' },
+    { chave:'enc_a_senai',   rotulo:'SENAI',            valor:1.0,  unidade:'%' },
+    { chave:'enc_a_incra',   rotulo:'INCRA',            valor:0.2,  unidade:'%' },
+    { chave:'enc_a_sebrae',  rotulo:'SEBRAE',           valor:0.6,  unidade:'%' },
+    { chave:'enc_a_sal_edu', rotulo:'Salário Educação', valor:2.5,  unidade:'%' },
+    { chave:'enc_a_sat',     rotulo:'SAT',              valor:3.0,  unidade:'%' },
+    { chave:'enc_a_fgts',    rotulo:'FGTS',             valor:8.0,  unidade:'%' },
+    { chave:'enc_a_seconci', rotulo:'SECONCI (SP)',     valor:1.0,  unidade:'%' }
+  ]},
+  { id:'B', titulo:'Grupo B — Provisões', itens:[
+    { chave:'enc_b_13',         rotulo:'13º Salário',         valor:8.33, unidade:'%' },
+    { chave:'enc_b_ferias',     rotulo:'Férias',              valor:8.33, unidade:'%' },
+    { chave:'enc_b_abono',      rotulo:'Abono de Férias',     valor:2.78, unidade:'%' },
+    { chave:'enc_b_aux_doenca', rotulo:'Auxílio Doença',      valor:1.39, unidade:'%' },
+    { chave:'enc_b_pat',        rotulo:'Licença Paternidade', valor:0.02, unidade:'%' },
+    { chave:'enc_b_faltas',     rotulo:'Faltas Legais',       valor:0.28, unidade:'%' },
+    { chave:'enc_b_acidente',   rotulo:'Acidente Trabalho',   valor:0.03, unidade:'%' }
+  ]},
+  { id:'C', titulo:'Grupo C — Verbas Rescisórias', itens:[
+    { chave:'enc_c_av_inden',   rotulo:'Aviso Prévio Indenizado', valor:0.42, unidade:'%' },
+    { chave:'enc_c_av_prev',    rotulo:'Aviso Prévio',            valor:0.04, unidade:'%' },
+    { chave:'enc_c_inden_adic', rotulo:'Indenização Adicional',   valor:0.08, unidade:'%' },
+    { chave:'enc_c_multa_fgts', rotulo:'Multa FGTS',              valor:3.60, unidade:'%' }
+  ]},
+  { id:'D', titulo:'Grupo D — Reincidências', itens:[
+    { chave:'enc_d_reinc', rotulo:'Reincidência A sobre B', valor:4.59, unidade:'%' }
+  ]}
+];
+function _idxTodos(){ var t=_IDX_GERAIS.slice(); _IDX_ENCARGOS.forEach(function(g){ t=t.concat(g.itens); }); return t; }
+function _idxInpId(ch){ return 'idx_'+ch; }
+/* Snapshot dos padrões (capturado antes de qualquer carga do banco) */
+var _DEFAULT_IDX = _idxTodos().map(function(i){ return { chave:i.chave, valor:i.valor }; });
+
+async function carregarIndices(){
+  var box=document.getElementById('indicesWrap'); if(!box) return;
+  var sb=_sb();
+  if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  var mapa={};
+  try{
+    var res=await sb.from('precificacao_indices').select('chave,valor').eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error;
+    (res.data||[]).forEach(function(r){ mapa[r.chave]=_n(r.valor); });
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; return; }
+  _idxTodos().forEach(function(i){ if(mapa[i.chave]!=null) i.valor=mapa[i.chave]; });
+  _renderIndices();
+}
+
+function _idxLinha(i){
+  return '<tr><td>'+esc(i.rotulo)+'</td>'+
+         '<td class="num"><input type="number" step="0.01" min="0" id="'+_idxInpId(i.chave)+'" value="'+_n(i.valor)+'" oninput="_recalcIndices()"></td>'+
+         '<td class="uni">'+esc(i.unidade)+'</td></tr>';
+}
+function _renderIndices(){
+  var box=document.getElementById('indicesWrap'); if(!box) return;
+  var html='';
+  // Bloco 1 — Parâmetros Gerais
+  html+='<div class="idx-grp-tit">Parâmetros Gerais</div>';
+  html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Parâmetro</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
+  html+=_IDX_GERAIS.map(_idxLinha).join('');
+  html+='</tbody></table></div>';
+  // Bloco 2 — Encargos Sociais
+  html+='<div class="idx-grp-tit" style="margin-top:1.3rem">Encargos Sociais (SINAPI 2026 · SP)</div>';
+  _IDX_ENCARGOS.forEach(function(g){
+    html+='<div class="idx-grp-tit">'+esc(g.titulo)+'</div>';
+    html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Encargo</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
+    html+=g.itens.map(_idxLinha).join('');
+    html+='<tr class="tot"><td class="idx-tot">Total '+esc(g.titulo.split('—')[0].trim())+'</td><td class="num idx-tot" id="idxTot'+g.id+'">—</td><td class="uni">%</td></tr>';
+    html+='</tbody></table></div>';
+  });
+  html+='<div class="idx-geral"><span class="lab">TOTAL GERAL ENCARGOS</span><span class="val" id="idxTotGeral">—</span></div>';
+  box.innerHTML=html;
+  _recalcIndices();
+}
+
+function _recalcIndices(){
+  var geral=0;
+  _IDX_ENCARGOS.forEach(function(g){
+    var s=0;
+    g.itens.forEach(function(i){ s+=_num(_idxInpId(i.chave)); });
+    var el=document.getElementById('idxTot'+g.id); if(el) el.textContent=_fmt(s)+'%';
+    geral+=s;
+  });
+  var gl=document.getElementById('idxTotGeral'); if(gl) gl.textContent=_fmt(geral)+'%';
+}
+
+async function salvarIndices(){
+  var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
+  var agora=new Date().toISOString();
+  var rows=_idxTodos().map(function(i){
+    i.valor=_num(_idxInpId(i.chave));
+    return { empresa_id:_empresaAtiva.id, chave:i.chave, rotulo:i.rotulo, valor:i.valor, unidade:i.unidade, atualizado_em:agora };
+  });
+  try{
+    var res=await sb.from('precificacao_indices').upsert(rows,{ onConflict:'empresa_id,chave' });
+    if(res.error) throw res.error;
+    var sm=_num(_idxInpId('salario_minimo_nacional')); if(sm>0){ _salMinimo=sm; _salMinFallback=false; var av=document.getElementById('avisoSalMin'); if(av) av.style.display='none'; }
+    toast('Índices salvos.');
+  }catch(err){ toast('Erro ao salvar: '+(err.message||err),'err'); }
+}
+
+function restaurarIndicesPadrao(){
+  if(!window.confirm('Restaurar todos os índices para os padrões SINAPI 2026? Os valores no formulário voltarão ao padrão (salve para persistir).')) return;
+  _DEFAULT_IDX.forEach(function(d){ var el=document.getElementById(_idxInpId(d.chave)); if(el) el.value=d.valor; });
+  _recalcIndices();
+  toast('Padrões restaurados. Clique em Salvar Índices para persistir.');
 }
 
 /* Protocolo do portal */
