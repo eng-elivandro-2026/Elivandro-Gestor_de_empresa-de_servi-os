@@ -475,6 +475,7 @@ function _renderFuncoes(){
   if(!_funcoes.length){ box.innerHTML='<div class="vazio">Nenhuma função cadastrada ainda.</div>'; return; }
   var linhas=_funcoes.map(function(f){
     var hh=f.custo_hh!=null?f.custo_hh:_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes);
+    var mensal=hh*_n(f.horas_mes);
     return '<tr class="'+(f.ativo?'':'inativo')+'">'+
       '<td>'+esc(f.nome)+_badgesAdic(f)+'</td>'+
       '<td class="num">R$ '+_fmt(f.salario_base)+'</td>'+
@@ -482,13 +483,17 @@ function _renderFuncoes(){
       '<td class="num">R$ '+_fmt(f.beneficios_mes)+'</td>'+
       '<td class="num">'+_fmt(f.horas_mes)+'</td>'+
       '<td class="num">R$ '+_fmt(hh)+'</td>'+
+      '<td class="num">R$ '+_fmt(mensal)+'</td>'+
+      '<td class="num">R$ '+_fmt(mensal*3)+'</td>'+
+      '<td class="num">R$ '+_fmt(mensal*6)+'</td>'+
+      '<td class="num">R$ '+_fmt(mensal*12)+'</td>'+
       '<td><span class="pill '+(f.ativo?'ativo':'inativo')+'">'+(f.ativo?'Ativo':'Inativo')+'</span></td>'+
       '<td><div class="acoes">'+
         '<button class="btn btn-xs" onclick="abrirFormFuncao(\''+f.id+'\')">Editar</button>'+
         '<button class="btn btn-xs" onclick="toggleAtivoFuncao(\''+f.id+'\','+(f.ativo?'false':'true')+')">'+(f.ativo?'Desativar':'Ativar')+'</button>'+
       '</div></td></tr>';
   }).join('');
-  box.innerHTML='<table class="tbl"><thead><tr><th>Função</th><th class="num">Salário</th><th class="num">Encargos%</th><th class="num">Benefícios</th><th class="num">Horas/mês</th><th class="num">Custo/HH</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table>';
+  box.innerHTML='<table class="tbl"><thead><tr><th>Função</th><th class="num">Salário</th><th class="num">Encargos%</th><th class="num">Benefícios</th><th class="num">Horas/mês</th><th class="num">Custo/HH</th><th class="num">Mensal</th><th class="num">Trimestral</th><th class="num">Semestral</th><th class="num">Anual</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table>';
 }
 
 /* ── Banco de Índices (precificacao_indices) ─────────────────── */
