@@ -37,34 +37,23 @@ var _DASH_PANELS = [
 window.irParaPainel = function(cardId, togFn) {
   if (typeof go === 'function') go('dashboard', null);
   setTimeout(function() {
-    var card = document.getElementById(cardId);
-    if (!card) return;
-    // Recolher todos os outros painéis (accordeon)
+    var alvo = document.getElementById(cardId);
+    if (!alvo) return;
+    // Modelo exclusivo (um painel por vez): esconde SÓ os cards de _DASH_PANELS
+    // e mostra apenas o alvo. Só mexe nos elementos .card do registro — a barra
+    // de ano (#comercialAnoBar) e demais conteúdos do #dashboard ficam intactos.
+    var alvoBody = null;
     _DASH_PANELS.forEach(function(p) {
-      if (p.card === cardId) return;
-      var b = document.getElementById(p.body);
-      if (!b) return;
-      var hidden = b.style.display === 'none' || b.style.display === '';
-      if (!hidden) {
-        var fn = window[p.tog];
-        if (typeof fn === 'function') fn();
-      }
+      var c = document.getElementById(p.card);
+      if (c) c.style.display = (p.card === cardId) ? '' : 'none';
+      if (p.card === cardId) alvoBody = document.getElementById(p.body);
     });
-    // Expandir o painel alvo se estiver recolhido
-    var togFunc = window[togFn];
-    if (typeof togFunc === 'function') {
-      var body = card.querySelector('[style*="display: none"], [style*="display:none"]');
-      if (body) togFunc();
+    // Garante o body do alvo expandido + chevron correto: chama togFn SÓ quando o
+    // body está fechado (display:none), então nunca inverte (togFn só abre aqui).
+    if (alvoBody && alvoBody.style.display === 'none') {
+      var togFunc = window[togFn];
+      if (typeof togFunc === 'function') togFunc();
     }
-    setTimeout(function() {
-      var areaInline = document.getElementById('area-inline');
-      if (areaInline) {
-        var cardTop = card.getBoundingClientRect().top + areaInline.scrollTop - areaInline.getBoundingClientRect().top - 10;
-        areaInline.scrollTo({ top: cardTop, behavior: 'smooth' });
-      } else {
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 120);
   }, 60);
 };
 
