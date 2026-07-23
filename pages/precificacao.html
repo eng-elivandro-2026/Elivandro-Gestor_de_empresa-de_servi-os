@@ -61,6 +61,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pill{display:inline-block;font-size:.63rem;font-weight:700;border-radius:20px;padding:.14rem .55rem;border:1px solid transparent}
 .pill.ativo{background:rgba(63,185,80,.14);color:var(--green);border-color:rgba(63,185,80,.35)}
 .pill.inativo{background:var(--bg3);color:var(--text3);border-color:var(--border)}
+.fld select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
+.fld select:focus{outline:none;border-color:var(--emp-bdr)}
+.subsec-tit{font-size:.74rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:.9rem 0 .5rem}
+.adic{border:1px solid var(--border);border-radius:var(--r2);padding:.55rem .7rem;margin-bottom:.5rem;background:var(--bg2)}
+.adic-tog{display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:700;cursor:pointer}
+.adic-sub{margin-top:.6rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem}
+.aviso{font-size:.72rem;color:var(--amber);background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);border-radius:var(--r2);padding:.4rem .6rem;margin:.4rem 0}
+.info-line{font-size:.74rem;color:var(--blue);margin-top:.4rem}
+.adic-badges{display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.25rem}
+.mini-badge{font-size:.58rem;font-weight:700;border-radius:10px;padding:.05rem .35rem;background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+.colap-btn{background:none;border:none;color:var(--emp-cor);font-size:.8rem;font-weight:700;cursor:pointer;padding:.4rem 0}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -96,12 +107,80 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
           <div class="sec-tit" id="custoFormTit" style="margin-bottom:.7rem">Nova Função</div>
           <div class="form-grid">
             <div class="fld"><label>Nome da função *</label><input type="text" id="fNome" placeholder="Ex.: Engenheiro Pleno"></div>
-            <div class="fld"><label>Salário base (R$) *</label><input type="number" id="fSalario" min="0" step="0.01" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label id="fSalarioLbl">Salário base (R$) *</label><input type="number" id="fSalario" min="0" step="0.01" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Encargos (%)</label><input type="number" id="fEncargos" min="0" step="0.001" value="37.8" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Benefícios/mês (R$)</label><input type="number" id="fBeneficios" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Horas/mês</label><input type="number" id="fHoras" min="1" step="0.01" value="220" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Custo/HH (R$)</label><input type="text" id="fCustoHH" readonly></div>
           </div>
+          <!-- Tipo de Remuneração -->
+          <div class="subsec-tit">Tipo de Remuneração</div>
+          <div class="fld" style="max-width:280px">
+            <label>Forma</label>
+            <select id="fTipoRem" onchange="_tipoRemChange();_calcCustoHH()">
+              <option value="fixo">Salário Fixo</option>
+              <option value="comissao_pura">Comissão Pura</option>
+              <option value="fixo_mais_comissao">Fixo + Comissão</option>
+            </select>
+          </div>
+          <div class="info-line" id="fComissaoInfo" style="display:none"></div>
+
+          <!-- Adicionais (colapsável) -->
+          <button type="button" class="colap-btn" id="btnAdic" onclick="_togAdicionais()">➕ Adicionais</button>
+          <div id="adicWrap" style="display:none">
+            <div class="aviso" id="avisoSalMin" style="display:none">⚠ Configure o salário mínimo no Banco de Índices</div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aPericAtivo" onchange="_togSub('aPericAtivo','subPeric');_calcCustoHH()"> 🔥 Periculosidade</label>
+              <div class="adic-sub" id="subPeric" style="display:none">
+                <div class="fld"><label>Percentual (%)</label><input type="number" id="aPericPct" min="0" step="0.01" value="30" oninput="_calcCustoHH()"></div>
+              </div>
+            </div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aInsalAtivo" onchange="_togSub('aInsalAtivo','subInsal');_calcCustoHH()"> 🏥 Insalubridade</label>
+              <div class="adic-sub" id="subInsal" style="display:none">
+                <div class="fld"><label>Grau</label><select id="aInsalGrau" onchange="_calcCustoHH()"><option value="minimo">Mínimo (10%)</option><option value="medio">Médio (20%)</option><option value="maximo">Máximo (40%)</option></select></div>
+                <div class="fld"><label>Base</label><select id="aInsalBase" onchange="_calcCustoHH()"><option value="salario_minimo">Salário Mínimo</option><option value="salario_base">Salário Base</option></select></div>
+              </div>
+            </div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aPlrAtivo" onchange="_togSub('aPlrAtivo','subPlr');_calcCustoHH()"> 💰 PLR</label>
+              <div class="adic-sub" id="subPlr" style="display:none">
+                <div class="fld"><label>Tipo</label><select id="aPlrTipo" onchange="_plrLabel();_calcCustoHH()"><option value="valor">Valor Anual (R$)</option><option value="percentual">% do Salário</option></select></div>
+                <div class="fld"><label id="aPlrValorLbl">Valor anual (R$)</label><input type="number" id="aPlrValor" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+              </div>
+            </div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aComAtivo" onchange="_togSub('aComAtivo','subCom');_calcCustoHH()"> 📊 Comissão</label>
+              <div class="adic-sub" id="subCom" style="display:none">
+                <div class="fld"><label>% sobre vendas</label><input type="number" id="aComPct" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+                <div class="fld"><label>Base</label><select id="aComBase" onchange="_calcCustoHH()"><option value="faturamento">Faturamento</option><option value="lucro_bruto">Lucro Bruto</option></select></div>
+              </div>
+            </div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aAjudaAtivo" onchange="_togSub('aAjudaAtivo','subAjuda');_calcCustoHH()"> ⛽ Ajuda de Custo</label>
+              <div class="adic-sub" id="subAjuda" style="display:none">
+                <div class="fld"><label>Combustível (R$/mês)</label><input type="number" id="aAjCombustivel" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+                <div class="fld"><label>Pedágio (R$/mês)</label><input type="number" id="aAjPedagio" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+                <div class="fld"><label>Alimentação (R$/mês)</label><input type="number" id="aAjAlimentacao" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+                <div class="fld"><label>Outros (R$/mês)</label><input type="number" id="aAjOutros" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+              </div>
+            </div>
+
+            <div class="adic">
+              <label class="adic-tog"><input type="checkbox" id="aOutroAtivo" onchange="_togSub('aOutroAtivo','subOutro');_calcCustoHH()"> ➕ Outro Adicional</label>
+              <div class="adic-sub" id="subOutro" style="display:none">
+                <div class="fld"><label>Nome</label><input type="text" id="aOutroNome" placeholder="Ex.: Adicional noturno"></div>
+                <div class="fld"><label>Tipo</label><select id="aOutroTipo" onchange="_calcCustoHH()"><option value="percentual">% do salário</option><option value="valor_mes">R$/mês</option></select></div>
+                <div class="fld"><label>Valor</label><input type="number" id="aOutroValor" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="acoes">
             <button class="btn prim" onclick="salvarFuncao()">Salvar</button>
             <button class="btn" onclick="fecharFormFuncao()">Cancelar</button>
@@ -206,17 +285,91 @@ async function _onTrocaEmpresa(d){
   _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
   var el=document.getElementById('empLabel'); if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   _aplicarGate();
+  carregarSalMinimo();
   carregarFuncoes();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
 var _funcoes = [];
 var _funcaoEdit = null;
+var _salMinimo = 1518.00, _salMinFallback = true;
 
 function _num(id){ var v=parseFloat(document.getElementById(id).value); return isFinite(v)?v:0; }
+function _n(x){ return Number(x)||0; }
+function _val(id){ var el=document.getElementById(id); return el?el.value:''; }
+function _chk(id){ var el=document.getElementById(id); return !!(el&&el.checked); }
+function _setChk(id,v){ var el=document.getElementById(id); if(el) el.checked=!!v; }
+function _setVal(id,v){ var el=document.getElementById(id); if(el) el.value=(v==null?'':v); }
 function _fmt(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function _calcHH(sal,enc,ben,hrs){ hrs=hrs||0; if(hrs<=0) return 0; return (sal*(1+enc/100)+ben)/hrs; }
-function _calcCustoHH(){ document.getElementById('fCustoHH').value=_fmt(_calcHH(_num('fSalario'),_num('fEncargos'),_num('fBeneficios'),_num('fHoras'))); }
+
+/* Salário mínimo (Banco de Índices; fallback 1518,00 + aviso) */
+async function carregarSalMinimo(){
+  _salMinimo=1518.00; _salMinFallback=true;
+  var sb=_sb();
+  if(sb&&_empresaAtiva){ try{
+    var r=await sb.from('precificacao_indices').select('valor').eq('empresa_id',_empresaAtiva.id).eq('chave','salario_minimo_nacional').maybeSingle();
+    if(!r.error && r.data && r.data.valor!=null){ _salMinimo=_n(r.data.valor)||1518.00; _salMinFallback=false; }
+  }catch(e){} }
+  var av=document.getElementById('avisoSalMin'); if(av) av.style.display=_salMinFallback?'':'none';
+}
+
+/* Lê os adicionais do formulário → objeto JSON (schema migration 073) */
+function _lerAdicionais(){
+  var plrTipo=_val('aPlrTipo')||'valor';
+  return {
+    periculosidade:{ ativo:_chk('aPericAtivo'), pct:_num('aPericPct') },
+    insalubridade:{ ativo:_chk('aInsalAtivo'), grau:_val('aInsalGrau')||'minimo', base:_val('aInsalBase')||'salario_minimo' },
+    plr:{ ativo:_chk('aPlrAtivo'), tipo:plrTipo, valor_anual:(plrTipo==='valor'?_num('aPlrValor'):0), pct:(plrTipo==='percentual'?_num('aPlrValor'):0) },
+    comissao:{ ativo:_chk('aComAtivo'), pct:_num('aComPct'), base:_val('aComBase')||'faturamento' },
+    ajuda_custo:{ ativo:_chk('aAjudaAtivo'), combustivel:_num('aAjCombustivel'), pedagio:_num('aAjPedagio'), alimentacao:_num('aAjAlimentacao'), outros:_num('aAjOutros') },
+    outro:{ ativo:_chk('aOutroAtivo'), nome:_val('aOutroNome')||'', tipo:_val('aOutroTipo')||'percentual', valor:_num('aOutroValor') }
+  };
+}
+
+/* Adicionais em R$/HH (comissão NÃO entra no custo/HH) */
+function _calcAdicionaisHH(salario, horas, a){
+  if(!a || horas<=0) return 0;
+  var mes=0;
+  if(a.periculosidade&&a.periculosidade.ativo) mes += salario*(_n(a.periculosidade.pct)/100);
+  if(a.insalubridade&&a.insalubridade.ativo){
+    var g={minimo:10,medio:20,maximo:40}[a.insalubridade.grau]||0;
+    var base=a.insalubridade.base==='salario_base'?salario:_salMinimo;
+    mes += base*(g/100);
+  }
+  if(a.plr&&a.plr.ativo){ mes += a.plr.tipo==='valor' ? _n(a.plr.valor_anual)/12 : salario*(_n(a.plr.pct)/100); }
+  if(a.ajuda_custo&&a.ajuda_custo.ativo) mes += _n(a.ajuda_custo.combustivel)+_n(a.ajuda_custo.pedagio)+_n(a.ajuda_custo.alimentacao)+_n(a.ajuda_custo.outros);
+  if(a.outro&&a.outro.ativo){ mes += a.outro.tipo==='valor_mes' ? _n(a.outro.valor) : salario*(_n(a.outro.valor)/100); }
+  return mes/horas;
+}
+
+/* Custo/HH total (base + adicionais) + linha de comissão estimada */
+function _calcCustoHH(){
+  var sal=_num('fSalario'), enc=_num('fEncargos'), ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
+  var a=_lerAdicionais();
+  document.getElementById('fCustoHH').value=_fmt(_calcHH(sal,enc,ben,hrs)+_calcAdicionaisHH(sal,hrs,a));
+  var ci=document.getElementById('fComissaoInfo');
+  if(ci){ if(a.comissao.ativo && _n(a.comissao.pct)>0){ ci.style.display=''; ci.textContent='Comissão estimada: '+_fmt(a.comissao.pct)+'% sobre '+(a.comissao.base==='lucro_bruto'?'lucro bruto':'faturamento')+' (não entra no Custo/HH)'; } else ci.style.display='none'; }
+}
+
+/* Helpers de UI dos adicionais */
+function _togSub(chkId,subId){ var s=document.getElementById(subId); if(s) s.style.display=_chk(chkId)?'':'none'; }
+function _togAdicionais(){ var w=document.getElementById('adicWrap'); if(w) w.style.display=(w.style.display==='none'?'':'none'); }
+function _plrLabel(){ var lbl=document.getElementById('aPlrValorLbl'); if(lbl) lbl.textContent=(_val('aPlrTipo')==='percentual'?'% do salário':'Valor anual (R$)'); }
+function _tipoRemChange(){ var lbl=document.getElementById('fSalarioLbl'); if(lbl) lbl.textContent='Salário base (R$)'+(_val('fTipoRem')==='comissao_pura'?'':' *'); }
+function _preencherAdicionais(a){
+  a=a||{};
+  var p=a.periculosidade||{}, i=a.insalubridade||{}, pl=a.plr||{}, c=a.comissao||{}, aj=a.ajuda_custo||{}, o=a.outro||{};
+  _setChk('aPericAtivo',p.ativo); _setVal('aPericPct', p.pct!=null?p.pct:30);
+  _setChk('aInsalAtivo',i.ativo); _setVal('aInsalGrau', i.grau||'minimo'); _setVal('aInsalBase', i.base||'salario_minimo');
+  _setChk('aPlrAtivo',pl.ativo); _setVal('aPlrTipo', pl.tipo||'valor'); _setVal('aPlrValor', pl.tipo==='percentual'?(pl.pct||0):(pl.valor_anual||0));
+  _setChk('aComAtivo',c.ativo); _setVal('aComPct', c.pct||0); _setVal('aComBase', c.base||'faturamento');
+  _setChk('aAjudaAtivo',aj.ativo); _setVal('aAjCombustivel',aj.combustivel||0); _setVal('aAjPedagio',aj.pedagio||0); _setVal('aAjAlimentacao',aj.alimentacao||0); _setVal('aAjOutros',aj.outros||0);
+  _setChk('aOutroAtivo',o.ativo); _setVal('aOutroNome',o.nome||''); _setVal('aOutroTipo',o.tipo||'percentual'); _setVal('aOutroValor',o.valor||0);
+  _togSub('aPericAtivo','subPeric'); _togSub('aInsalAtivo','subInsal'); _togSub('aPlrAtivo','subPlr');
+  _togSub('aComAtivo','subCom'); _togSub('aAjudaAtivo','subAjuda'); _togSub('aOutroAtivo','subOutro');
+  _plrLabel();
+}
 
 function abrirFormFuncao(id){
   _funcaoEdit=id||null;
@@ -227,6 +380,10 @@ function abrirFormFuncao(id){
   document.getElementById('fEncargos').value   = f?(f.encargos_pct!=null?f.encargos_pct:37.8):37.8;
   document.getElementById('fBeneficios').value = f?(f.beneficios_mes||0):0;
   document.getElementById('fHoras').value      = f?(f.horas_mes||220):220;
+  _setVal('fTipoRem', f?(f.tipo_remuneracao||'fixo'):'fixo');
+  _preencherAdicionais(f?f.adicionais:null);
+  _tipoRemChange();
+  document.getElementById('adicWrap').style.display='none';
   _calcCustoHH();
   document.getElementById('custoFormWrap').style.display='';
   document.getElementById('fNome').focus();
@@ -236,11 +393,15 @@ function fecharFormFuncao(){ _funcaoEdit=null; document.getElementById('custoFor
 async function salvarFuncao(){
   var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
   var nome=document.getElementById('fNome').value.trim(); var salario=_num('fSalario');
+  var tipoRem=_val('fTipoRem')||'fixo';
   if(!nome){ toast('Informe o nome da função.','err'); return; }
-  if(salario<=0){ toast('Informe o salário base.','err'); return; }
+  if(tipoRem!=='comissao_pura' && salario<=0){ toast('Informe o salário base.','err'); return; }
   var enc=_num('fEncargos'), ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
+  var adicionais=_lerAdicionais();
+  var custoHH=_calcHH(salario,enc,ben,hrs)+_calcAdicionaisHH(salario,hrs,adicionais);
   var row={ nome:nome, salario_base:salario, encargos_pct:enc, beneficios_mes:ben,
-            horas_mes:hrs, custo_hh:Math.round(_calcHH(salario,enc,ben,hrs)*10000)/10000,
+            horas_mes:hrs, custo_hh:Math.round(custoHH*10000)/10000,
+            tipo_remuneracao:tipoRem, adicionais:adicionais,
             atualizado_em:new Date().toISOString() };
   try{
     var res;
@@ -270,13 +431,26 @@ async function carregarFuncoes(){
   }catch(err){ if(box) box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
 }
 
+var _TIPO_REM_LABEL={ fixo:'Fixo', comissao_pura:'Comissão pura', fixo_mais_comissao:'Fixo + comissão' };
+function _badgesAdic(f){
+  var b=[], a=f.adicionais||{};
+  if(f.tipo_remuneracao && f.tipo_remuneracao!=='fixo') b.push(_TIPO_REM_LABEL[f.tipo_remuneracao]||f.tipo_remuneracao);
+  if(a.periculosidade&&a.periculosidade.ativo) b.push('Periculosidade');
+  if(a.insalubridade&&a.insalubridade.ativo) b.push('Insalubridade');
+  if(a.plr&&a.plr.ativo) b.push('PLR');
+  if(a.comissao&&a.comissao.ativo) b.push('Comissão');
+  if(a.ajuda_custo&&a.ajuda_custo.ativo) b.push('Ajuda de custo');
+  if(a.outro&&a.outro.ativo) b.push(a.outro.nome?esc(a.outro.nome):'Outro');
+  if(!b.length) return '';
+  return '<div class="adic-badges">'+b.map(function(x){return '<span class="mini-badge">'+x+'</span>';}).join('')+'</div>';
+}
 function _renderFuncoes(){
   var box=document.getElementById('custoLista'); if(!box) return;
   if(!_funcoes.length){ box.innerHTML='<div class="vazio">Nenhuma função cadastrada ainda.</div>'; return; }
   var linhas=_funcoes.map(function(f){
     var hh=f.custo_hh!=null?f.custo_hh:_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes);
     return '<tr class="'+(f.ativo?'':'inativo')+'">'+
-      '<td>'+esc(f.nome)+'</td>'+
+      '<td>'+esc(f.nome)+_badgesAdic(f)+'</td>'+
       '<td class="num">R$ '+_fmt(f.salario_base)+'</td>'+
       '<td class="num">'+_fmt(f.encargos_pct)+'%</td>'+
       '<td class="num">R$ '+_fmt(f.beneficios_mes)+'</td>'+
