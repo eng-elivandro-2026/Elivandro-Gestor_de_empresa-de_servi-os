@@ -190,8 +190,22 @@
       tipo: 'iframe',
       src: 'pages/gestao-a-vista.html',
       nav: [
+        { separator: true, label: 'Visão Geral' },
         { label: 'Indicadores',         icon: '📊', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','kpis');Router._setNavAtivo(this)" },
         { label: 'Fechamentos por Mês', icon: '📅', action: "Router.iframeMsg('gestao-a-vista','SCROLL_TO','fechmes');Router._setNavAtivo(this)" },
+        { separator: true, label: 'Financeiros' },
+        { label: 'Faturamento vs. Meta', icon: '💰', emBreve: true },
+        { label: 'Margem e Lucratividade', icon: '📈', emBreve: true },
+        { label: 'Inadimplência', icon: '⚠️', emBreve: true },
+        { separator: true, label: 'Comerciais' },
+        { label: 'Pipeline e Conversão', icon: '🔄', emBreve: true },
+        { label: 'Ticket Médio e Ciclo', icon: '🎯', emBreve: true },
+        { separator: true, label: 'Operacionais' },
+        { label: 'Obras e Entregas', icon: '🏗️', emBreve: true },
+        { label: 'HH e Produtividade', icon: '⏱️', emBreve: true },
+        { separator: true, label: 'Estratégico' },
+        { label: 'OKRs', icon: '🎯', emBreve: true },
+        { label: 'BSC', icon: '📊', emBreve: true },
       ]
     },
     {
@@ -222,6 +236,7 @@
       tipo: 'iframe',
       src: 'pages/recursos-produtividade.html',
       nav: [
+        { separator: true, label: 'HH e Alocação' },
         { label: 'Visão Geral',     icon: '📊', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','geral')" },
         { label: 'Por Colaborador', icon: '👤', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','colaborador')" },
         { label: 'Por Cliente',     icon: '🏢', action: "Router.ir('recursos-produtividade');Router.iframeMsg('recursos-produtividade','SHOW_SECTION','cliente')" },
@@ -237,6 +252,7 @@
       tipo: 'iframe',
       src: 'pages/gestao-tempo.html',
       nav: [
+        { separator: true, label: 'Gestão do Tempo' },
         { label: 'Registrar Atividades', icon: '📝', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','registrar')" },
         { label: 'Dashboard',            icon: '📊', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','dashboard')" },
         { label: 'Categorias',           icon: '🏷️', action: "Router.ir('gestao-tempo');Router.iframeMsg('gestao-tempo','SHOW_SECTION','categorias')" },
@@ -250,8 +266,10 @@
       tipo: 'iframe',
       src: 'pages/prospeccao.html',
       nav: [
+        { separator: true, label: 'Leads' },
         { label: 'Alvos',            icon: '📋', action: "Router.ir('prospeccao');Router.iframeMsg('prospeccao','SHOW_SECTION','alvos')" },
-        { label: 'Captura em massa', icon: '📥', action: "Router.ir('prospeccao');Router.iframeMsg('prospeccao','SHOW_SECTION','captura')" },
+        { label: 'Captura em Massa', icon: '📥', action: "Router.ir('prospeccao');Router.iframeMsg('prospeccao','SHOW_SECTION','captura')" },
+        { label: 'Qualificação de Lead', icon: '🎯', emBreve: true },
       ]
     },
     {
@@ -262,7 +280,10 @@
       tipo: 'iframe',
       src: 'pages/clientes.html',
       nav: [
-        { label: 'Lista de clientes', icon: '📋', action: "Router.ir('clientes')" },
+        { separator: true, label: 'Clientes' },
+        { label: 'Lista de Clientes', icon: '📋', action: "Router.ir('clientes')" },
+        { label: 'Ranking de Clientes', icon: '⭐', emBreve: true },
+        { label: 'Histórico por Cliente', icon: '📊', emBreve: true },
       ]
     },
     {
@@ -273,7 +294,10 @@
       tipo: 'iframe',
       src: 'pages/dashboard-estrategico.html',
       nav: [
+        { separator: true, label: 'Visão Estratégica' },
         { label: 'Visão Estratégica', icon: '📊', action: "Router.ir('dashboard-estrategico')" },
+        { label: 'OKRs — Progresso', icon: '🎯', emBreve: true },
+        { label: 'BSC — Perspectivas', icon: '📈', emBreve: true },
       ]
     },
     {
@@ -284,7 +308,7 @@
       init: function () { go('avisos'); if (typeof rAvisos === 'function') rAvisos(); },
       nav: [
         { label: 'Quadro', icon: '📌', action: "go('avisos',this);avAbrirQuadro()" },
-        { separator: true, label: 'Visualizacao' },
+        { separator: true, label: 'Visualização' },
         { label: 'Resolvidos', icon: '✅', action: "go('avisos',this);avAbrirResolvidos()" },
       ]
     },
