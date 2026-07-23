@@ -76,9 +76,11 @@ body.light .fld select{background:#ffffff;border-color:var(--border2)}
 .colap-btn{background:none;border:none;color:var(--emp-cor);font-size:.8rem;font-weight:700;cursor:pointer;padding:.4rem 0}
 /* Banco de Índices */
 .idx-grp-tit{font-size:.72rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .35rem}
-.idx-tbl input{width:110px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.3rem .45rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
-.idx-tbl input:focus{outline:none;border-color:var(--emp-bdr)}
-body.light .idx-tbl input{background:#ffffff;border-color:var(--border2)}
+.idx-tbl input[type=number]{width:110px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.3rem .45rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
+.idx-tbl input[type=number]:focus{outline:none;border-color:var(--emp-bdr)}
+body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--border2)}
+.idx-tbl td.sel{text-align:center;width:34px}
+.idx-tbl td.sel input{cursor:pointer}
 .idx-tbl td.uni{color:var(--text3);font-size:.72rem}
 .idx-tbl tr.tot td{border-top:1px solid var(--border2);border-bottom:none}
 .idx-tot{font-weight:800;color:var(--emp-cor)}
@@ -121,7 +123,7 @@ body.light .idx-tbl input{background:#ffffff;border-color:var(--border2)}
           <div class="form-grid">
             <div class="fld"><label>Nome da função *</label><input type="text" id="fNome" placeholder="Ex.: Engenheiro Pleno"></div>
             <div class="fld"><label id="fSalarioLbl">Salário base (R$) *</label><input type="number" id="fSalario" min="0" step="0.01" oninput="_calcCustoHH()"></div>
-            <div class="fld"><label>Encargos (%)</label><input type="number" id="fEncargos" min="0" step="0.001" value="37.8" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label>Encargos % (do Banco de Índices)</label><input type="text" id="fEncargos" readonly></div>
             <div class="fld"><label>Benefícios/mês (R$)</label><input type="number" id="fBeneficios" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Horas/mês</label><input type="number" id="fHoras" min="1" step="0.01" value="220" oninput="_calcCustoHH()"></div>
             <div class="fld"><label>Custo/HH (R$)</label><input type="text" id="fCustoHH" readonly></div>
@@ -308,6 +310,7 @@ async function _onTrocaEmpresa(d){
   var el=document.getElementById('empLabel'); if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   _aplicarGate();
   carregarSalMinimo();
+  carregarIndices();
   carregarFuncoes();
 }
 
@@ -315,6 +318,7 @@ async function _onTrocaEmpresa(d){
 var _funcoes = [];
 var _funcaoEdit = null;
 var _salMinimo = 1518.00, _salMinFallback = true;
+var _totalEncargos = 0;   // % total de encargos selecionados (Banco de Índices)
 
 function _num(id){ var v=parseFloat(document.getElementById(id).value); return isFinite(v)?v:0; }
 function _n(x){ return Number(x)||0; }
@@ -367,7 +371,7 @@ function _calcAdicionaisHH(salario, horas, a){
 
 /* Custo/HH total (base + adicionais) + linha de comissão estimada */
 function _calcCustoHH(){
-  var sal=_num('fSalario'), enc=_num('fEncargos'), ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
+  var sal=_num('fSalario'), enc=_totalEncargos, ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
   var a=_lerAdicionais();
   document.getElementById('fCustoHH').value=_fmt(_calcHH(sal,enc,ben,hrs)+_calcAdicionaisHH(sal,hrs,a));
   var ci=document.getElementById('fComissaoInfo');
@@ -399,7 +403,7 @@ function abrirFormFuncao(id){
   document.getElementById('custoFormTit').textContent=f?'Editar Função':'Nova Função';
   document.getElementById('fNome').value       = f?(f.nome||''):'';
   document.getElementById('fSalario').value    = f?(f.salario_base||0):'';
-  document.getElementById('fEncargos').value   = f?(f.encargos_pct!=null?f.encargos_pct:37.8):37.8;
+  document.getElementById('fEncargos').value   = _fmt(_totalEncargos);
   document.getElementById('fBeneficios').value = f?(f.beneficios_mes||0):0;
   document.getElementById('fHoras').value      = f?(f.horas_mes||220):220;
   _setVal('fTipoRem', f?(f.tipo_remuneracao||'fixo'):'fixo');
@@ -418,7 +422,7 @@ async function salvarFuncao(){
   var tipoRem=_val('fTipoRem')||'fixo';
   if(!nome){ toast('Informe o nome da função.','err'); return; }
   if(tipoRem!=='comissao_pura' && salario<=0){ toast('Informe o salário base.','err'); return; }
-  var enc=_num('fEncargos'), ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
+  var enc=_totalEncargos, ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
   var adicionais=_lerAdicionais();
   var custoHH=_calcHH(salario,enc,ben,hrs)+_calcAdicionaisHH(salario,hrs,adicionais);
   var row={ nome:nome, salario_base:salario, encargos_pct:enc, beneficios_mes:ben,
@@ -526,6 +530,7 @@ var _IDX_ENCARGOS = [
 ];
 function _idxTodos(){ var t=_IDX_GERAIS.slice(); _IDX_ENCARGOS.forEach(function(g){ t=t.concat(g.itens); }); return t; }
 function _idxInpId(ch){ return 'idx_'+ch; }
+function _idxSelId(ch){ return 'idxsel_'+ch; }
 /* Snapshot dos padrões (capturado antes de qualquer carga do banco) */
 var _DEFAULT_IDX = _idxTodos().map(function(i){ return { chave:i.chave, valor:i.valor }; });
 
@@ -535,34 +540,35 @@ async function carregarIndices(){
   if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
   var mapa={};
   try{
-    var res=await sb.from('precificacao_indices').select('chave,valor').eq('empresa_id',_empresaAtiva.id);
+    var res=await sb.from('precificacao_indices').select('chave,valor,selecionado').eq('empresa_id',_empresaAtiva.id);
     if(res.error) throw res.error;
-    (res.data||[]).forEach(function(r){ mapa[r.chave]=_n(r.valor); });
+    (res.data||[]).forEach(function(r){ mapa[r.chave]={ valor:_n(r.valor), sel:r.selecionado }; });
   }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; return; }
-  _idxTodos().forEach(function(i){ if(mapa[i.chave]!=null) i.valor=mapa[i.chave]; });
+  _idxTodos().forEach(function(i){ var m=mapa[i.chave]; if(m){ if(m.valor!=null) i.valor=m.valor; i.sel=(m.sel===false?false:true); } });
   _renderIndices();
 }
 
-function _idxLinha(i){
-  return '<tr><td>'+esc(i.rotulo)+'</td>'+
+function _idxLinha(i, comCheck){
+  var chk = comCheck ? '<td class="sel"><input type="checkbox" id="'+_idxSelId(i.chave)+'"'+(i.sel===false?'':' checked')+' onchange="_recalcIndices()"></td>' : '';
+  return '<tr>'+chk+'<td>'+esc(i.rotulo)+'</td>'+
          '<td class="num"><input type="number" step="0.01" min="0" id="'+_idxInpId(i.chave)+'" value="'+_n(i.valor)+'" oninput="_recalcIndices()"></td>'+
          '<td class="uni">'+esc(i.unidade)+'</td></tr>';
 }
 function _renderIndices(){
   var box=document.getElementById('indicesWrap'); if(!box) return;
   var html='';
-  // Bloco 1 — Parâmetros Gerais
+  // Bloco 1 — Parâmetros Gerais (sem seleção)
   html+='<div class="idx-grp-tit">Parâmetros Gerais</div>';
   html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Parâmetro</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
-  html+=_IDX_GERAIS.map(_idxLinha).join('');
+  html+=_IDX_GERAIS.map(function(i){ return _idxLinha(i,false); }).join('');
   html+='</tbody></table></div>';
-  // Bloco 2 — Encargos Sociais
+  // Bloco 2 — Encargos Sociais (com seleção)
   html+='<div class="idx-grp-tit" style="margin-top:1.3rem">Encargos Sociais (SINAPI 2026 · SP)</div>';
   _IDX_ENCARGOS.forEach(function(g){
     html+='<div class="idx-grp-tit">'+esc(g.titulo)+'</div>';
-    html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Encargo</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
-    html+=g.itens.map(_idxLinha).join('');
-    html+='<tr class="tot"><td class="idx-tot">Total '+esc(g.titulo.split('—')[0].trim())+'</td><td class="num idx-tot" id="idxTot'+g.id+'">—</td><td class="uni">%</td></tr>';
+    html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th class="sel">✓</th><th>Encargo</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
+    html+=g.itens.map(function(i){ return _idxLinha(i,true); }).join('');
+    html+='<tr class="tot"><td class="sel"></td><td class="idx-tot">Total '+esc(g.titulo.split('—')[0].trim())+'</td><td class="num idx-tot" id="idxTot'+g.id+'">—</td><td class="uni">%</td></tr>';
     html+='</tbody></table></div>';
   });
   html+='<div class="idx-geral"><span class="lab">TOTAL GERAL ENCARGOS</span><span class="val" id="idxTotGeral">—</span></div>';
@@ -571,13 +577,22 @@ function _renderIndices(){
 }
 
 function _recalcIndices(){
+  // Sincroniza DOM → modelo (quando a seção está renderizada)
+  _IDX_ENCARGOS.forEach(function(g){
+    g.itens.forEach(function(i){
+      var inp=document.getElementById(_idxInpId(i.chave)); if(inp) i.valor=_n(inp.value);
+      var cb=document.getElementById(_idxSelId(i.chave)); if(cb) i.sel=cb.checked;
+    });
+  });
+  // Recalcula: total do grupo = só selecionados; geral = grupos com ≥1 selecionado
   var geral=0;
   _IDX_ENCARGOS.forEach(function(g){
-    var s=0;
-    g.itens.forEach(function(i){ s+=_num(_idxInpId(i.chave)); });
+    var s=0, temSel=false;
+    g.itens.forEach(function(i){ if(i.sel!==false){ s+=_n(i.valor); temSel=true; } });
     var el=document.getElementById('idxTot'+g.id); if(el) el.textContent=_fmt(s)+'%';
-    geral+=s;
+    if(temSel) geral+=s;
   });
+  _totalEncargos=geral;
   var gl=document.getElementById('idxTotGeral'); if(gl) gl.textContent=_fmt(geral)+'%';
 }
 
@@ -586,7 +601,9 @@ async function salvarIndices(){
   var agora=new Date().toISOString();
   var rows=_idxTodos().map(function(i){
     i.valor=_num(_idxInpId(i.chave));
-    return { empresa_id:_empresaAtiva.id, chave:i.chave, rotulo:i.rotulo, valor:i.valor, unidade:i.unidade, atualizado_em:agora };
+    var cb=document.getElementById(_idxSelId(i.chave));
+    var sel = cb ? cb.checked : (i.sel!==false);
+    return { empresa_id:_empresaAtiva.id, chave:i.chave, rotulo:i.rotulo, valor:i.valor, unidade:i.unidade, selecionado:sel, atualizado_em:agora };
   });
   try{
     var res=await sb.from('precificacao_indices').upsert(rows,{ onConflict:'empresa_id,chave' });
@@ -597,8 +614,9 @@ async function salvarIndices(){
 }
 
 function restaurarIndicesPadrao(){
-  if(!window.confirm('Restaurar todos os índices para os padrões SINAPI 2026? Os valores no formulário voltarão ao padrão (salve para persistir).')) return;
+  if(!window.confirm('Restaurar todos os índices para os padrões SINAPI 2026? Os valores voltam ao padrão e todos os itens ficam selecionados (salve para persistir).')) return;
   _DEFAULT_IDX.forEach(function(d){ var el=document.getElementById(_idxInpId(d.chave)); if(el) el.value=d.valor; });
+  _IDX_ENCARGOS.forEach(function(g){ g.itens.forEach(function(i){ i.sel=true; var cb=document.getElementById(_idxSelId(i.chave)); if(cb) cb.checked=true; }); });
   _recalcIndices();
   toast('Padrões restaurados. Clique em Salvar Índices para persistir.');
 }
@@ -613,6 +631,7 @@ window.addEventListener('message', function(e){
 
 /* Init */
 _aplicarGate();
+_recalcIndices();   // semeia _totalEncargos com os padrões (67,69%) antes de qualquer carga
 try{ if(window.parent && window.parent.document.body.classList.contains('light')) document.body.classList.add('light'); }catch(e){}
 try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'RH_PEDIR_EMPRESA'}, '*'); }catch(e){}
 </script>
