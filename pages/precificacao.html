@@ -39,6 +39,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .kpi .k-val{font-size:1.45rem;font-weight:800;margin:.2rem 0 .1rem}
 .btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.42rem .8rem;font-size:.78rem;font-family:inherit;cursor:pointer}
 .btn:hover{border-color:var(--emp-bdr)}
+.btn.prim{background:var(--emp-cor);border-color:var(--emp-cor);color:#fff;font-weight:700}
+.btn.prim:hover{filter:brightness(1.08)}
+.btn-xs{padding:.25rem .55rem;font-size:.7rem}
+.acoes{display:flex;gap:.35rem;flex-wrap:wrap}
+/* Formulário */
+.form-row{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.8rem}
+.fld{display:flex;flex-direction:column;gap:.25rem}
+.fld label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.fld input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
+.fld input:focus{outline:none;border-color:var(--emp-bdr)}
+.fld input[readonly]{background:var(--bg);color:var(--emp-cor);font-weight:800}
+/* Tabela */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:.8rem}
+.tbl th{text-align:left;padding:.5rem .55rem;color:var(--text3);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:.5rem .55rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl tr.inativo{opacity:.5}
+.pill{display:inline-block;font-size:.63rem;font-weight:700;border-radius:20px;padding:.14rem .55rem;border:1px solid transparent}
+.pill.ativo{background:rgba(63,185,80,.14);color:var(--green);border-color:rgba(63,185,80,.35)}
+.pill.inativo{background:var(--bg3);color:var(--text3);border-color:var(--border)}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -61,9 +83,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <!-- 1 -->
     <section class="psec on" id="sec-custos">
       <div class="card">
-        <div class="sec-tit">🧱 Minha Estrutura de Custos</div>
-        <div class="sec-desc">Funções e seus custos (salário, encargos, benefícios, HH).</div>
-        <div class="vazio">Em construção.</div>
+        <div class="form-row">
+          <div>
+            <div class="sec-tit">🧱 Minha Estrutura de Custos</div>
+            <div class="sec-desc">Funções e seus custos (salário, encargos, benefícios, HH).</div>
+          </div>
+          <button class="btn prim" onclick="abrirFormFuncao()">+ Nova Função</button>
+        </div>
+
+        <!-- Formulário colapsável (fechado por padrão) -->
+        <div class="card" id="custoFormWrap" style="display:none;background:var(--bg3)">
+          <div class="sec-tit" id="custoFormTit" style="margin-bottom:.7rem">Nova Função</div>
+          <div class="form-grid">
+            <div class="fld"><label>Nome da função *</label><input type="text" id="fNome" placeholder="Ex.: Engenheiro Pleno"></div>
+            <div class="fld"><label>Salário base (R$) *</label><input type="number" id="fSalario" min="0" step="0.01" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label>Encargos (%)</label><input type="number" id="fEncargos" min="0" step="0.001" value="37.8" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label>Benefícios/mês (R$)</label><input type="number" id="fBeneficios" min="0" step="0.01" value="0" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label>Horas/mês</label><input type="number" id="fHoras" min="1" step="0.01" value="220" oninput="_calcCustoHH()"></div>
+            <div class="fld"><label>Custo/HH (R$)</label><input type="text" id="fCustoHH" readonly></div>
+          </div>
+          <div class="acoes">
+            <button class="btn prim" onclick="salvarFuncao()">Salvar</button>
+            <button class="btn" onclick="fecharFormFuncao()">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="tbl-wrap" id="custoLista"><div class="vazio">Carregando…</div></div>
       </div>
     </section>
     <!-- 2 -->
@@ -161,7 +206,89 @@ async function _onTrocaEmpresa(d){
   _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
   var el=document.getElementById('empLabel'); if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   _aplicarGate();
-  // carregarTudo();
+  carregarFuncoes();
+}
+
+/* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
+var _funcoes = [];
+var _funcaoEdit = null;
+
+function _num(id){ var v=parseFloat(document.getElementById(id).value); return isFinite(v)?v:0; }
+function _fmt(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _calcHH(sal,enc,ben,hrs){ hrs=hrs||0; if(hrs<=0) return 0; return (sal*(1+enc/100)+ben)/hrs; }
+function _calcCustoHH(){ document.getElementById('fCustoHH').value=_fmt(_calcHH(_num('fSalario'),_num('fEncargos'),_num('fBeneficios'),_num('fHoras'))); }
+
+function abrirFormFuncao(id){
+  _funcaoEdit=id||null;
+  var f=id?_funcoes.find(function(x){return x.id===id;}):null;
+  document.getElementById('custoFormTit').textContent=f?'Editar Função':'Nova Função';
+  document.getElementById('fNome').value       = f?(f.nome||''):'';
+  document.getElementById('fSalario').value    = f?(f.salario_base||0):'';
+  document.getElementById('fEncargos').value   = f?(f.encargos_pct!=null?f.encargos_pct:37.8):37.8;
+  document.getElementById('fBeneficios').value = f?(f.beneficios_mes||0):0;
+  document.getElementById('fHoras').value      = f?(f.horas_mes||220):220;
+  _calcCustoHH();
+  document.getElementById('custoFormWrap').style.display='';
+  document.getElementById('fNome').focus();
+}
+function fecharFormFuncao(){ _funcaoEdit=null; document.getElementById('custoFormWrap').style.display='none'; }
+
+async function salvarFuncao(){
+  var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
+  var nome=document.getElementById('fNome').value.trim(); var salario=_num('fSalario');
+  if(!nome){ toast('Informe o nome da função.','err'); return; }
+  if(salario<=0){ toast('Informe o salário base.','err'); return; }
+  var enc=_num('fEncargos'), ben=_num('fBeneficios'), hrs=_num('fHoras')||220;
+  var row={ nome:nome, salario_base:salario, encargos_pct:enc, beneficios_mes:ben,
+            horas_mes:hrs, custo_hh:Math.round(_calcHH(salario,enc,ben,hrs)*10000)/10000,
+            atualizado_em:new Date().toISOString() };
+  try{
+    var res;
+    if(_funcaoEdit){ res=await sb.from('precificacao_funcoes').update(row).eq('id',_funcaoEdit).eq('empresa_id',_empresaAtiva.id); }
+    else{ row.empresa_id=_empresaAtiva.id; res=await sb.from('precificacao_funcoes').insert(row); }
+    if(res.error) throw res.error;
+    toast(_funcaoEdit?'Função atualizada.':'Função criada.'); fecharFormFuncao(); carregarFuncoes();
+  }catch(err){ toast('Erro ao salvar: '+(err.message||err),'err'); }
+}
+
+async function toggleAtivoFuncao(id,novo){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{
+    var res=await sb.from('precificacao_funcoes').update({ativo:novo,atualizado_em:new Date().toISOString()}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error;
+    toast(novo?'Função ativada.':'Função desativada.'); carregarFuncoes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+
+async function carregarFuncoes(){
+  var sb=_sb(); var box=document.getElementById('custoLista');
+  if(!sb||!_empresaAtiva){ if(box) box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    var res=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id).order('nome',{ascending:true});
+    if(res.error) throw res.error;
+    _funcoes=res.data||[]; _renderFuncoes();
+  }catch(err){ if(box) box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _renderFuncoes(){
+  var box=document.getElementById('custoLista'); if(!box) return;
+  if(!_funcoes.length){ box.innerHTML='<div class="vazio">Nenhuma função cadastrada ainda.</div>'; return; }
+  var linhas=_funcoes.map(function(f){
+    var hh=f.custo_hh!=null?f.custo_hh:_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes);
+    return '<tr class="'+(f.ativo?'':'inativo')+'">'+
+      '<td>'+esc(f.nome)+'</td>'+
+      '<td class="num">R$ '+_fmt(f.salario_base)+'</td>'+
+      '<td class="num">'+_fmt(f.encargos_pct)+'%</td>'+
+      '<td class="num">R$ '+_fmt(f.beneficios_mes)+'</td>'+
+      '<td class="num">'+_fmt(f.horas_mes)+'</td>'+
+      '<td class="num">R$ '+_fmt(hh)+'</td>'+
+      '<td><span class="pill '+(f.ativo?'ativo':'inativo')+'">'+(f.ativo?'Ativo':'Inativo')+'</span></td>'+
+      '<td><div class="acoes">'+
+        '<button class="btn btn-xs" onclick="abrirFormFuncao(\''+f.id+'\')">Editar</button>'+
+        '<button class="btn btn-xs" onclick="toggleAtivoFuncao(\''+f.id+'\','+(f.ativo?'false':'true')+')">'+(f.ativo?'Desativar':'Ativar')+'</button>'+
+      '</div></td></tr>';
+  }).join('');
+  box.innerHTML='<table class="tbl"><thead><tr><th>Função</th><th class="num">Salário</th><th class="num">Encargos%</th><th class="num">Benefícios</th><th class="num">Horas/mês</th><th class="num">Custo/HH</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table>';
 }
 
 /* Protocolo do portal */
