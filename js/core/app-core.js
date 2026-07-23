@@ -2011,6 +2011,9 @@ window.addEventListener('propostas:loaded', function(e){
   try{
     if(e&&e.detail&&Array.isArray(e.detail.props)) props=e.detail.props;
     portalRecalcularComercial('propostas-loaded');
+    // Repovoa a Análise de Proposta se a seção estiver ativa (mesmo padrão do
+    // rAnaliseInt/Análise IA): cobre abrir o painel antes de props carregar.
+    if (Q('analise') && Q('analise').classList.contains('on') && typeof rAnalise === 'function') rAnalise();
   }catch(err){ console.error('[propostas:loaded] recalculo comercial:', err); }
 });
 
