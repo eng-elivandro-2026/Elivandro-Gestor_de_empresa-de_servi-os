@@ -2246,6 +2246,82 @@
     return r.data;
   }
 
+  // ============================================================
+  // FORNECEDORES (migration 077)
+  // Entidade central; antes era texto livre em contas a pagar,
+  // NFs de fornecedor e banco de preços.
+  // ============================================================
+
+  function _soDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+
+  async function sbListarFornecedores(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro Forn] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Procura fornecedor por CNPJ (ou CPF) dentro da empresa.
+   * Compara só dígitos, então aceita valores com ou sem máscara.
+   * Retorna o registro ou null.
+   */
+  async function sbBuscarFornecedorPorDocumento(empresaId, documento) {
+    if (!empresaId || !documento) return null;
+    var doc = _soDigitos(documento);
+    if (!doc) return null;
+    // Busca por CNPJ e CPF; filtra por dígitos no app para ignorar máscara.
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .select('*')
+      .eq('empresa_id', empresaId);
+    if (r.error) throw r.error;
+    var achado = (r.data || []).find(function (f) {
+      return _soDigitos(f.cnpj) === doc || _soDigitos(f.cpf) === doc;
+    });
+    return achado || null;
+  }
+
+  async function sbSalvarFornecedor(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro Forn] empresa_id obrigatorio.');
+    if (!dados.nome || !String(dados.nome).trim()) throw new Error('[Financeiro Forn] nome obrigatorio.');
+
+    // Evita duplicar por documento: se já existe fornecedor com o mesmo
+    // CNPJ/CPF na empresa, atualiza em vez de criar outro.
+    var doc = _soDigitos(dados.cnpj || dados.cpf);
+    if (doc) {
+      var existente = await sbBuscarFornecedorPorDocumento(dados.empresa_id, doc);
+      if (existente) return sbAtualizarFornecedor(existente.id, dados);
+    }
+
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarFornecedor(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
+    if (!id) throw new Error('[Financeiro Forn] id obrigatorio para atualizar fornecedor.');
+    var q = client()
+      .from('financeiro_fornecedores')
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
   async function sbListarAdquirentes(empresaId) {
     if (!empresaId) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
     var r = await client()
@@ -2489,6 +2565,12 @@
     listarFontesFinanceiras:         sbListarFontesFinanceiras,
     salvarFonteFinanceira:           sbSalvarFonteFinanceira,
     atualizarFonteFinanceira:        sbAtualizarFonteFinanceira,
+
+    // Fornecedores (migration 077)
+    listarFornecedores:              sbListarFornecedores,
+    buscarFornecedorPorDocumento:    sbBuscarFornecedorPorDocumento,
+    salvarFornecedor:                sbSalvarFornecedor,
+    atualizarFornecedor:             sbAtualizarFornecedor,
 
     // F3.4-B - Adquirentes e maquininhas
     listarAdquirentes:               sbListarAdquirentes,
