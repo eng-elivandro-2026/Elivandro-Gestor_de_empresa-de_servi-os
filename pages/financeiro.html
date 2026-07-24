@@ -764,6 +764,83 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </table>
   </div>
 
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- PR2 — PLANO DE PARCELAS a partir da proposta                 -->
+  <!-- Gera N contas a receber agrupadas por grupo_parcelamento_id. -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <div class="cp-form-wrap" id="pp-form-wrap">
+    <div class="cp-form-titulo">🧾 Plano de Parcelas</div>
+    <p class="cp-aviso">
+      Gera as contas a receber de uma proposta já ganha, divididas em parcelas.
+      A soma das parcelas precisa fechar <strong>exatamente</strong> com o valor da proposta,
+      e em cada linha <strong>serviço + produto = valor da parcela</strong>.
+    </p>
+
+    <div class="cp-form-row">
+      <label class="cp-form-label" for="pp-sel-proposta">Proposta *</label>
+      <select id="pp-sel-proposta" class="cp-form-input" onchange="ppOnProposta(this.value)">
+        <option value="">-- Selecione uma proposta --</option>
+      </select>
+    </div>
+
+    <div id="pp-info" class="kpi-row" style="display:none"></div>
+    <div id="pp-aviso-existente" class="status-msg" style="display:none"></div>
+
+    <div id="pp-editor" style="display:none">
+      <div class="cp-form-secao">Gerar plano</div>
+      <div class="cp-form-grid">
+        <div class="cp-form-row">
+          <label class="cp-form-label" for="pp-data-base">1º vencimento</label>
+          <input type="date" id="pp-data-base" class="cp-form-input">
+        </div>
+        <div class="cp-form-row">
+          <label class="cp-form-label" for="pp-intervalo">Intervalo (meses)</label>
+          <input type="number" id="pp-intervalo" class="cp-form-input" value="1" min="1" step="1">
+        </div>
+        <div class="cp-form-row">
+          <label class="cp-form-label" for="pp-qtd">Nº de parcelas</label>
+          <input type="number" id="pp-qtd" class="cp-form-input" value="3" min="1" step="1">
+        </div>
+        <div class="cp-form-row">
+          <label class="cp-form-label" for="pp-entrada">Entrada (R$)</label>
+          <input type="number" id="pp-entrada" class="cp-form-input" placeholder="0,00" min="0" step="0.01">
+        </div>
+      </div>
+
+      <div class="cp-form-grid" style="margin-top:.5rem">
+        <button class="btn-refresh" type="button" onclick="ppAplicarPreset('avista')">À vista</button>
+        <button class="btn-refresh" type="button" onclick="ppAplicarPreset('iguais')">N parcelas iguais</button>
+        <button class="btn-refresh" type="button" onclick="ppAplicarPreset('entrada')">Entrada + N</button>
+        <button class="btn-refresh" type="button" onclick="ppAdicionarLinha()">+ Linha</button>
+      </div>
+
+      <div class="cp-form-secao">Parcelas</div>
+      <div class="table-wrap" style="display:block">
+        <table class="fin-table" id="pp-table">
+          <thead>
+            <tr>
+              <th style="width:3rem">#</th>
+              <th>Vencimento</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-valor">Serviço</th>
+              <th class="col-valor">Produto</th>
+              <th style="width:3rem"></th>
+            </tr>
+          </thead>
+          <tbody id="pp-tbody"></tbody>
+          <tfoot id="pp-tfoot"></tfoot>
+        </table>
+      </div>
+
+      <div id="pp-validacao" style="margin-top:.6rem"></div>
+
+      <button class="btn-criar-cp" id="pp-btn-salvar" onclick="ppSalvar()" disabled>
+        💾 Gerar Parcelas
+      </button>
+      <div class="status-msg" id="pp-status"></div>
+    </div>
+  </div>
+
 </div><!-- /.wrap -->
 </div><!-- /#tab-contas -->
 
@@ -14806,6 +14883,348 @@ function printRelatorioConc() {
   printRelatorio('tab-fluxo', { titulo: '🔗 Conciliações Financeiras' });
 }
 // ── FIM IMPRESSÃO / PDF ────────────────────────────────────────────
+
+
+// ══════════════════════════════════════════════════════════════════
+// PR2 — PLANO DE PARCELAS
+//
+// Gera N contas a receber a partir de uma proposta, agrupadas por
+// grupo_parcelamento_id (migration 076). Toda a aritmética fica em
+// sbFinanceiro (funções puras, testadas isoladamente); aqui só há
+// leitura de formulário e renderização.
+//
+// Bloco autocontido: prefixo pp*, não altera nenhuma função existente.
+// ══════════════════════════════════════════════════════════════════
+
+var _ppPropostasCache = {};
+var _ppProposta       = null;  // proposta selecionada
+var _ppParcelas       = [];    // plano em edição (ainda não gravado)
+var _ppExistentes     = [];    // parcelas já gravadas desta proposta
+var _ppBloqueadas     = 0;     // quantas já possuem NF ou recebimento
+
+function _ppEl(id)  { return document.getElementById(id); }
+function _ppNum(v)  { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function _ppHoje()  { return new Date().toISOString().slice(0, 10); }
+
+// Esta página roda dentro de um iframe e a biblioteca do Financeiro é
+// carregada pelo shell pai — por isso reusa _sf(), que já trata o
+// fallback para window.parent. Olhar só window.sbFinanceiro deixaria a
+// tela muda dentro do app real.
+function _ppFin() {
+  return (typeof _sf === 'function') ? _sf() : (window.sbFinanceiro || null);
+}
+
+function _ppFmt(v) {
+  return (typeof _money === 'function') ? _money(v) : 'R$ ' + _ppNum(v).toFixed(2);
+}
+
+function _ppEsc(t) {
+  return (typeof _esc === 'function') ? _esc(t) : String(t == null ? '' : t);
+}
+
+// ── Popular o select de propostas ─────────────────────────────────
+function ppCarregarPropostas() {
+  var sel = _ppEl('pp-sel-proposta');
+  if (!sel || typeof _propsFinanceiroEmpresaAtiva !== 'function') return;
+
+  var todas = _propsFinanceiroEmpresaAtiva() || [];
+  var elegiveis = (typeof _nfPropostaElegivel === 'function')
+    ? todas.filter(_nfPropostaElegivel)
+    : todas;
+
+  _ppPropostasCache = {};
+  elegiveis = elegiveis.slice().sort(function (a, b) {
+    return String(a.num || '').localeCompare(String(b.num || ''));
+  });
+  elegiveis.forEach(function (p) { _ppPropostasCache[p.id] = p; });
+
+  var selecionada = sel.value;
+  sel.innerHTML = '<option value="">-- Selecione uma proposta --</option>';
+  elegiveis.forEach(function (p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = (p.num || '—') + ' — ' + (p.cli || '—') + '  [' + _ppFmt(p.val) + ']';
+    sel.appendChild(opt);
+  });
+  if (selecionada) sel.value = selecionada;
+}
+
+function _ppEsconderEditor() {
+  ['pp-info', 'pp-editor', 'pp-aviso-existente'].forEach(function (id) {
+    var el = _ppEl(id); if (el) el.style.display = 'none';
+  });
+}
+
+// ── Seleção de proposta ───────────────────────────────────────────
+async function ppOnProposta(propId) {
+  _ppParcelas   = [];
+  _ppExistentes = [];
+  _ppBloqueadas = 0;
+
+  if (!propId) { _ppProposta = null; _ppEsconderEditor(); return; }
+
+  _ppProposta = _ppPropostasCache[propId] || null;
+  if (!_ppProposta) { _ppEsconderEditor(); return; }
+
+  var p  = _ppProposta;
+  var fin = _ppFin();
+  var pctServico = (fin && typeof fin.proporcaoServicoProposta === 'function')
+    ? fin.proporcaoServicoProposta(p)
+    : 1;
+
+  var info = _ppEl('pp-info');
+  if (info) {
+    info.innerHTML =
+        '<div class="kpi-card destaque"><div class="kpi-label">Proposta</div>'
+      +   '<div class="kpi-valor emp">' + _ppEsc(p.num || '—') + '</div></div>'
+      + '<div class="kpi-card"><div class="kpi-label">Cliente</div>'
+      +   '<div class="kpi-valor">' + _ppEsc(p.cli || '—') + '</div></div>'
+      + '<div class="kpi-card destaque"><div class="kpi-label">Valor Vendido</div>'
+      +   '<div class="kpi-valor emp">' + _ppFmt(p.val) + '</div></div>'
+      + '<div class="kpi-card"><div class="kpi-label">Serviço / Produto</div>'
+      +   '<div class="kpi-valor">' + (pctServico * 100).toFixed(1) + '% / '
+      +   ((1 - pctServico) * 100).toFixed(1) + '%</div></div>';
+    info.style.display = '';
+  }
+
+  var dataBase = _ppEl('pp-data-base');
+  if (dataBase && !dataBase.value) {
+    dataBase.value = (p.tl && /^\d{4}-\d{2}-\d{2}$/.test(p.tl.prazoPgto || ''))
+      ? p.tl.prazoPgto
+      : _ppHoje();
+  }
+
+  // Já existe plano gravado para esta proposta?
+  var aviso = _ppEl('pp-aviso-existente');
+  if (fin && typeof fin.listarParcelasProposta === 'function' && _empresaAtiva && _empresaAtiva.id) {
+    try {
+      _ppExistentes = await fin.listarParcelasProposta(_empresaAtiva.id, propId);
+      if (_ppExistentes.length) {
+        var ids = _ppExistentes.map(function (x) { return x.id; });
+        var vinculos = await fin.verificarVinculosParcelas(_empresaAtiva.id, ids);
+        _ppBloqueadas = _ppExistentes.filter(function (x) {
+          var v = vinculos[String(x.id)];
+          return v && v.bloqueada;
+        }).length;
+
+        _ppParcelas = _ppExistentes.map(function (x, i) {
+          return {
+            parcela_numero:  x.parcela_numero || (i + 1),
+            data_vencimento: String(x.data_vencimento || '').slice(0, 10),
+            valor_previsto:  _ppNum(x.valor_previsto),
+            valor_servico:   _ppNum(x.valor_servico),
+            valor_produto:   _ppNum(x.valor_produto)
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('[PP] erro ao carregar parcelas existentes:', e);
+    }
+  }
+
+  if (aviso) {
+    if (_ppExistentes.length && _ppBloqueadas) {
+      aviso.className = 'status-msg err';
+      aviso.textContent = '🔒 Esta proposta já tem ' + _ppExistentes.length + ' parcela(s), e '
+        + _ppBloqueadas + ' já possui(em) NF ou recebimento. O plano não pode ser refeito.';
+      aviso.style.display = '';
+    } else if (_ppExistentes.length) {
+      aviso.className = 'status-msg';
+      aviso.textContent = 'ℹ️ Esta proposta já tem ' + _ppExistentes.length
+        + ' parcela(s) sem NF nem recebimento. Salvar substitui o plano atual.';
+      aviso.style.display = '';
+    } else {
+      aviso.style.display = 'none';
+    }
+  }
+
+  var editor = _ppEl('pp-editor');
+  if (editor) editor.style.display = '';
+  ppRenderTabela();
+}
+
+// ── Presets ───────────────────────────────────────────────────────
+function ppAplicarPreset(tipo) {
+  var fin = _ppFin();
+  if (!fin || !_ppProposta) return;
+
+  var total     = _ppNum(_ppProposta.val);
+  var dataBase  = (_ppEl('pp-data-base') || {}).value || _ppHoje();
+  var intervalo = parseInt((_ppEl('pp-intervalo') || {}).value, 10) || 1;
+  var qtd       = parseInt((_ppEl('pp-qtd') || {}).value, 10) || 1;
+  var entrada   = _ppNum((_ppEl('pp-entrada') || {}).value);
+  var pct       = fin.proporcaoServicoProposta(_ppProposta);
+
+  try {
+    if (tipo === 'avista') {
+      _ppParcelas = fin.presetAVista(total, dataBase, pct);
+    } else if (tipo === 'iguais') {
+      _ppParcelas = fin.presetParcelasIguais(total, qtd, dataBase, pct, intervalo);
+    } else if (tipo === 'entrada') {
+      _ppParcelas = fin.presetEntradaMaisN(total, entrada, qtd, dataBase, pct, intervalo);
+    }
+    _ppStatus('', '');
+  } catch (e) {
+    _ppStatus('err', '❌ ' + e.message);
+  }
+  ppRenderTabela();
+}
+
+function ppAdicionarLinha() {
+  var dataBase = (_ppEl('pp-data-base') || {}).value || _ppHoje();
+  _ppParcelas.push({
+    parcela_numero:  _ppParcelas.length + 1,
+    data_vencimento: dataBase,
+    valor_previsto:  0,
+    valor_servico:   0,
+    valor_produto:   0
+  });
+  ppRenderTabela();
+}
+
+function ppRemoverLinha(i) {
+  _ppParcelas.splice(i, 1);
+  _ppParcelas.forEach(function (p, idx) { p.parcela_numero = idx + 1; });
+  ppRenderTabela();
+}
+
+// ── Edição de célula ──────────────────────────────────────────────
+// O campo não editado absorve a diferença, então a linha nunca fecha
+// errado (ajustarSplitParcela cuida disso em centavos).
+function ppEditar(i, campo, valor) {
+  var fin = _ppFin();
+  var p = _ppParcelas[i];
+  if (!p || !fin) return;
+
+  if (campo === 'data') {
+    p.data_vencimento = valor;
+  } else if (campo === 'valor') {
+    var novo = _ppNum(valor);
+    var split = fin.ajustarSplitParcela(novo, 'servico', p.valor_servico);
+    p.valor_previsto = novo;
+    p.valor_servico  = split.valor_servico;
+    p.valor_produto  = split.valor_produto;
+  } else if (campo === 'servico' || campo === 'produto') {
+    var s = fin.ajustarSplitParcela(p.valor_previsto, campo, _ppNum(valor));
+    p.valor_servico = s.valor_servico;
+    p.valor_produto = s.valor_produto;
+  }
+  ppRenderTabela();
+}
+
+// ── Render ────────────────────────────────────────────────────────
+function ppRenderTabela() {
+  var tbody = _ppEl('pp-tbody');
+  var tfoot = _ppEl('pp-tfoot');
+  var fin   = _ppFin();
+  if (!tbody || !tfoot || !fin) return;
+
+  var travado = _ppBloqueadas > 0;
+  var dis = travado ? ' disabled' : '';
+
+  tbody.innerHTML = _ppParcelas.map(function (p, i) {
+    return '<tr>'
+      + '<td>' + (i + 1) + '</td>'
+      + '<td><input type="date" class="cp-form-input" value="' + _ppEsc(p.data_vencimento || '')
+      +   '" onchange="ppEditar(' + i + ',\'data\',this.value)"' + dis + '></td>'
+      + '<td class="col-valor"><input type="number" step="0.01" min="0" class="cp-form-input" value="'
+      +   _ppNum(p.valor_previsto).toFixed(2) + '" onchange="ppEditar(' + i + ',\'valor\',this.value)"' + dis + '></td>'
+      + '<td class="col-valor"><input type="number" step="0.01" min="0" class="cp-form-input" value="'
+      +   _ppNum(p.valor_servico).toFixed(2) + '" onchange="ppEditar(' + i + ',\'servico\',this.value)"' + dis + '></td>'
+      + '<td class="col-valor"><input type="number" step="0.01" min="0" class="cp-form-input" value="'
+      +   _ppNum(p.valor_produto).toFixed(2) + '" onchange="ppEditar(' + i + ',\'produto\',this.value)"' + dis + '></td>'
+      + '<td>' + (travado ? '' : '<button class="btn-limpar" type="button" onclick="ppRemoverLinha(' + i + ')">✕</button>') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var total = _ppProposta ? _ppNum(_ppProposta.val) : 0;
+  var v = fin.validarPlanoParcelas(_ppParcelas, total);
+  var cor = v.ok ? 'var(--green, #3fb950)' : '#f85149';
+
+  tfoot.innerHTML = '<tr style="font-weight:700">'
+    + '<td colspan="2">Soma (' + _ppParcelas.length + ' parcela' + (_ppParcelas.length === 1 ? '' : 's') + ')</td>'
+    + '<td class="col-valor" style="color:' + cor + '">' + _ppFmt(v.somaValor) + '</td>'
+    + '<td class="col-valor">' + _ppFmt(v.somaServico) + '</td>'
+    + '<td class="col-valor">' + _ppFmt(v.somaProduto) + '</td>'
+    + '<td></td></tr>'
+    + '<tr><td colspan="2">Total da proposta</td>'
+    + '<td class="col-valor">' + _ppFmt(total) + '</td>'
+    + '<td colspan="3" style="color:' + cor + '">'
+    +   (v.ok ? '✅ Fecha exatamente' : '⚠ Diferença de ' + _ppFmt(Math.abs(v.diferenca)))
+    + '</td></tr>';
+
+  var box = _ppEl('pp-validacao');
+  if (box) {
+    box.innerHTML = v.ok ? '' :
+      '<div class="status-msg err"><ul style="margin:.2rem 0 0 1rem;padding:0">'
+      + v.erros.map(function (e) { return '<li>' + _ppEsc(e) + '</li>'; }).join('')
+      + '</ul></div>';
+  }
+
+  var btn = _ppEl('pp-btn-salvar');
+  if (btn) {
+    btn.disabled = !v.ok || travado;
+    btn.textContent = _ppExistentes.length ? '💾 Substituir Plano' : '💾 Gerar Parcelas';
+  }
+}
+
+function _ppStatus(classe, texto) {
+  var el = _ppEl('pp-status');
+  if (!el) return;
+  el.className = 'status-msg' + (classe ? ' ' + classe : '');
+  el.textContent = texto;
+}
+
+// ── Salvar ────────────────────────────────────────────────────────
+async function ppSalvar() {
+  var fin = _ppFin();
+  if (!fin || !_ppProposta) return;
+  if (!_empresaAtiva || !_empresaAtiva.id) { _ppStatus('err', '❌ Nenhuma empresa ativa.'); return; }
+
+  var btn = _ppEl('pp-btn-salvar');
+  var p   = _ppProposta;
+  var dados = {
+    empresa_id:      _empresaAtiva.id,
+    proposta_app_id: p.id,
+    titulo_base:     p.num || 'Proposta',
+    cliente_nome:    p.cli || null,
+    total_proposta:  _ppNum(p.val),
+    parcelas:        _ppParcelas
+  };
+
+  if (btn) btn.disabled = true;
+  _ppStatus('loading', '⏳ Gravando parcelas…');
+  try {
+    var r = _ppExistentes.length
+      ? await fin.regerarParcelasProposta(dados)
+      : await fin.gerarParcelasProposta(dados);
+
+    _ppStatus('ok', '✅ ' + (r.parcelas || []).length + ' parcela(s) gravada(s).');
+    await ppOnProposta(p.id);
+    if (typeof recarregarContas === 'function') recarregarContas();
+  } catch (e) {
+    _ppStatus('err', '❌ ' + e.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Ciclo de vida ─────────────────────────────────────────────────
+window.addEventListener('empresa:changed', function () {
+  _ppProposta = null; _ppParcelas = []; _ppExistentes = []; _ppBloqueadas = 0;
+  var sel = _ppEl('pp-sel-proposta'); if (sel) sel.value = '';
+  _ppEsconderEditor();
+  ppCarregarPropostas();
+});
+
+(function _ppInit() {
+  function iniciar() { setTimeout(ppCarregarPropostas, 600); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciar);
+  } else {
+    iniciar();
+  }
+}());
+// ── FIM PLANO DE PARCELAS ──────────────────────────────────────────
 </script>
 
 <!-- ════════════════════════════════════════════════════════════ -->
