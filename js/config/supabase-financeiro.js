@@ -62,46 +62,108 @@
   }
 
   /**
+   * Lista NFs de VÁRIAS contas a receber de uma vez.
+   * Usado pelos resumos, que a partir do parcelamento (migration 076)
+   * podem envolver mais de uma conta.
+   */
+  async function _listarNotasFiscaisContas(empresaId, contaIds) {
+    if (!contaIds || !contaIds.length) return [];
+    var r = await client()
+      .from('financeiro_notas_fiscais')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .in('conta_receber_id', contaIds)
+      .order('data_emissao', { ascending: true });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Lista recebimentos de VÁRIAS contas a receber de uma vez.
+   */
+  async function _listarRecebimentosContas(empresaId, contaIds) {
+    if (!contaIds || !contaIds.length) return [];
+    var r = await client()
+      .from('financeiro_recebimentos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .in('conta_receber_id', contaIds)
+      .order('data_recebimento', { ascending: true });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Monta o resumo financeiro a partir de UMA OU MAIS contas a receber.
+   *
+   * Antes da migration 076 (parcelamento) uma proposta/obra tinha no máximo
+   * uma conta a receber, e os resumos usavam .maybeSingle() — que LANÇA ERRO
+   * quando a query devolve mais de uma linha. Como o modelo do parcelamento é
+   * "1 parcela = 1 linha em financeiro_contas_receber", qualquer proposta
+   * parcelada quebraria os consumidores do resumo (espelho financeiro e
+   * espelho operacional). Esta função substitui aquele caminho.
+   *
+   * Com uma única conta o retorno é idêntico ao de calcularResumoFinanceiroConta(),
+   * preservando o contrato usado hoje pelos consumidores.
+   * Com várias, devolve o mesmo formato com uma conta AGREGADA (soma das parcelas
+   * não canceladas) e expõe as parcelas individuais em .parcelas.
+   */
+  async function _montarResumoDeContas(empresaId, contas) {
+    if (!contas || !contas.length) return null;
+
+    var ids = contas.map(function (c) { return c.id; });
+    var notas = await _listarNotasFiscaisContas(empresaId, ids);
+    var recebimentos = await _listarRecebimentosContas(empresaId, ids);
+
+    // Caso simples — comportamento anterior preservado byte a byte.
+    if (contas.length === 1) {
+      var resumoUnico = calcularResumoFinanceiroConta(contas[0], notas, recebimentos);
+      resumoUnico.parcelas = [];
+      resumoUnico.totalParcelas = 0;
+      return resumoUnico;
+    }
+
+    var resumo = calcularResumoFinanceiroConta(
+      agregarContasEmConta(contas), notas, recebimentos
+    );
+    resumo.parcelas = contas;
+    resumo.totalParcelas = contas.length;
+    return resumo;
+  }
+
+  /**
    * Busca resumo financeiro de uma proposta específica.
-   * Retorna a conta a receber principal + NFs + recebimentos associados.
+   * Retorna a conta a receber (ou o agregado das parcelas) + NFs + recebimentos.
    */
   async function sbBuscarResumoFinanceiroProposta(empresaId, propostaAppId) {
-    var rConta = await client()
+    var r = await client()
       .from('financeiro_contas_receber')
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('proposta_app_id', propostaAppId)
-      .maybeSingle();
+      .order('parcela_numero', { ascending: true, nullsFirst: true })
+      .order('data_vencimento', { ascending: true, nullsFirst: false });
 
-    if (rConta.error) throw rConta.error;
-    if (!rConta.data) return null;
-
-    var conta = rConta.data;
-    var notas = await sbListarNotasFiscaisConta(empresaId, conta.id);
-    var recebimentos = await sbListarRecebimentosConta(empresaId, conta.id);
-
-    return calcularResumoFinanceiroConta(conta, notas, recebimentos);
+    if (r.error) throw r.error;
+    return _montarResumoDeContas(empresaId, r.data || []);
   }
 
   /**
    * Busca resumo financeiro de uma obra específica.
    */
   async function sbBuscarResumoFinanceiroObra(empresaId, obraId) {
-    var rConta = await client()
+    var r = await client()
       .from('financeiro_contas_receber')
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('obra_id', obraId)
-      .maybeSingle();
+      .order('parcela_numero', { ascending: true, nullsFirst: true })
+      .order('data_vencimento', { ascending: true, nullsFirst: false });
 
-    if (rConta.error) throw rConta.error;
-    if (!rConta.data) return null;
-
-    var conta = rConta.data;
-    var notas = await sbListarNotasFiscaisConta(empresaId, conta.id);
-    var recebimentos = await sbListarRecebimentosConta(empresaId, conta.id);
-
-    return calcularResumoFinanceiroConta(conta, notas, recebimentos);
+    if (r.error) throw r.error;
+    return _montarResumoDeContas(empresaId, r.data || []);
   }
 
   /**
@@ -442,6 +504,96 @@
   // ============================================================
   // CÁLCULOS LOCAIS (sem chamada ao banco)
   // ============================================================
+
+  /**
+   * Menor data_vencimento entre as parcelas ainda não quitadas.
+   * Cai para o menor vencimento geral se todas já estiverem recebidas.
+   */
+  function _menorVencimentoEmAberto(contas) {
+    var lista = contas || [];
+    function menor(itens) {
+      return itens.reduce(function (acc, c) {
+        var d = c.data_vencimento;
+        if (!d) return acc;
+        return (acc === null || String(d) < String(acc)) ? d : acc;
+      }, null);
+    }
+    var emAberto = lista.filter(function (c) {
+      return String(c.status || '').toLowerCase() !== 'recebido';
+    });
+    return menor(emAberto.length ? emAberto : lista);
+  }
+
+  /**
+   * Status consolidado de um conjunto de parcelas, usando o mesmo
+   * vocabulário das contas individuais (previsto | a_faturar | faturado |
+   * parcialmente_recebido | recebido | cancelado).
+   */
+  function _statusAgregado(contas) {
+    var lista = (contas || []).map(function (c) {
+      return String(c.status || '').toLowerCase();
+    });
+    var ativas = lista.filter(function (s) { return s !== 'cancelado'; });
+    if (!ativas.length) return 'cancelado';
+
+    var todasRecebidas = ativas.every(function (s) { return s === 'recebido'; });
+    if (todasRecebidas) return 'recebido';
+
+    var temRecebimento = ativas.some(function (s) {
+      return s === 'recebido' || s === 'parcialmente_recebido';
+    });
+    if (temRecebimento) return 'parcialmente_recebido';
+
+    if (ativas.indexOf('faturado')  !== -1) return 'faturado';
+    if (ativas.indexOf('a_faturar') !== -1) return 'a_faturar';
+    return 'previsto';
+  }
+
+  /**
+   * Condensa N parcelas em um objeto com o mesmo formato de uma conta a
+   * receber, para que os consumidores do resumo (espelho financeiro e
+   * espelho operacional) continuem lendo conta.valor_previsto,
+   * conta.valor_faturado, conta.valor_recebido, conta.valor_pendente e
+   * conta.status sem nenhuma alteração.
+   *
+   * Parcelas canceladas ficam fora das somas — mesma regra que
+   * calcularDREGerencial() já aplica à receita bruta.
+   *
+   * Função pura: não consulta o banco.
+   */
+  function agregarContasEmConta(contas) {
+    var lista = contas || [];
+    var ativas = lista.filter(function (c) {
+      return String(c.status || '').toLowerCase() !== 'cancelado';
+    });
+    var base = ativas.length ? ativas : lista;
+    var ref  = base[0] || {};
+
+    function soma(campo) {
+      return base.reduce(function (s, c) { return s + _num(c[campo]); }, 0);
+    }
+
+    return {
+      // Agregado não corresponde a nenhuma linha real da tabela.
+      id:                    null,
+      empresa_id:            ref.empresa_id            || null,
+      proposta_app_id:       ref.proposta_app_id       || null,
+      obra_id:               ref.obra_id               || null,
+      grupo_parcelamento_id: ref.grupo_parcelamento_id || null,
+      parcela_total:         ref.parcela_total         || base.length,
+      titulo:                ref.titulo                || null,
+      cliente_nome:          ref.cliente_nome          || null,
+      centro_custo:          ref.centro_custo          || null,
+      data_vencimento:       _menorVencimentoEmAberto(base),
+      valor_previsto:        soma('valor_previsto'),
+      valor_faturado:        soma('valor_faturado'),
+      valor_recebido:        soma('valor_recebido'),
+      valor_pendente:        soma('valor_pendente'),
+      valor_servico:         soma('valor_servico'),
+      valor_produto:         soma('valor_produto'),
+      status:                _statusAgregado(lista)
+    };
+  }
 
   /**
    * Calcula o resumo financeiro completo de uma conta a receber,
@@ -1728,6 +1880,7 @@
     // Cálculos locais
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
     calcularCardsFinanceirosBasicos: calcularCardsFinanceirosBasicos,
+    agregarContasEmConta:            agregarContasEmConta,
 
     // F4A — DRE Gerencial (novas funções — não alteram as anteriores)
     listarContasReceberPeriodo:      sbListarContasReceberPeriodo,
