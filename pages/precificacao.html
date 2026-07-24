@@ -194,6 +194,21 @@ body.light .adm-val input{background:#fff;border-color:var(--border2)}
 body.light .mat-row input{background:#fff;border-color:var(--border2)}
 .mat-row .mat-q,.mat-row .mat-v{text-align:right;font-variant-numeric:tabular-nums}
 .mat-row .mat-sub{font-size:.78rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--text2)}
+/* Análises */
+.ana-sech{font-size:.9rem;font-weight:800;color:var(--text);margin:.4rem 0 .6rem;display:flex;align-items:center;gap:.5rem}
+.ana-soon{font-size:.62rem;font-weight:700;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.05rem .45rem;text-transform:uppercase;letter-spacing:.03em}
+.ana-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.8rem;margin-bottom:1rem}
+.ana-wide{grid-column:1/-1}
+.ana-lock{opacity:.6;border-style:dashed}
+.ana-time{padding:.5rem 0;border-bottom:1px solid var(--border)}
+.ana-time:last-child{border-bottom:none}
+.ana-time-h{display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap;font-size:.82rem;margin-bottom:.35rem}
+.ana-time-h span{color:var(--text3);font-size:.72rem;font-variant-numeric:tabular-nums}
+.ana-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg3)}
+.ana-seg{height:100%}
+.ana-leg{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.35rem}
+.ana-legi{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;color:var(--text2)}
+.ana-legi i{width:9px;height:9px;border-radius:2px;display:inline-block}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -417,8 +432,9 @@ body.light .mat-row input{background:#fff;border-color:var(--border2)}
     <section class="psec" id="sec-analises">
       <div class="card">
         <div class="sec-tit">📈 Análises</div>
-        <div class="vazio">Em construção.</div>
+        <div class="sec-desc">Ranking de custos, composição por time e departamento, e projeções de crescimento.</div>
       </div>
+      <div id="anaWrap"><div class="vazio">Carregando…</div></div>
     </section>
   </div>
 </div>
@@ -450,6 +466,7 @@ function mostrarSecao(id){
   if(alvo && alvo.id==='sec-contratacao') carregarContratacao();
   if(alvo && alvo.id==='sec-rescisao') carregarRescisao();
   if(alvo && alvo.id==='sec-preco') carregarPreco();
+  if(alvo && alvo.id==='sec-analises') carregarAnalises();
 }
 
 /* Gate de acesso */
@@ -478,6 +495,7 @@ async function _onTrocaEmpresa(d){
   var sc=document.getElementById('sec-contratacao'); if(sc && sc.classList.contains('on')) carregarContratacao();
   var sr=document.getElementById('sec-rescisao'); if(sr && sr.classList.contains('on')) carregarRescisao();
   var sp=document.getElementById('sec-preco'); if(sp && sp.classList.contains('on')) carregarPreco();
+  var sa=document.getElementById('sec-analises'); if(sa && sa.classList.contains('on')) carregarAnalises();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
@@ -1787,6 +1805,99 @@ function _recalcPreco(){
     document.getElementById('precoM2Margem').textContent=_fmt(margemBruta)+'%';
     document.getElementById('precoM2VHH').textContent='R$ '+_fmt(vHH)+'/h';
   }
+}
+
+/* ── Análises ────────────────────────────────────────────────── */
+var _ANA_CORES=['#4DB748','#58a6ff','#f0a500','#bc8cff','#f85149','#3fb950','#d4a017','#6e7681'];
+var _anaCustoPessoa=0, _anaTotalEmp=0, _anaImp=0;
+
+async function carregarAnalises(){
+  var box=document.getElementById('anaWrap'); if(!box) return;
+  var sb=_sb(); if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    var rf=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id).order('nome',{ascending:true}); if(rf.error) throw rf.error; _funcoes=rf.data||[];
+    var rd=await sb.from('precificacao_departamentos').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true}); if(rd.error) throw rd.error; _departamentos=rd.data||[];
+    var rt=await sb.from('precificacao_times').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true}); if(rt.error) throw rt.error; _times=rt.data||[];
+    var rm=await sb.from('precificacao_time_membros').select('*').eq('empresa_id',_empresaAtiva.id); if(rm.error) throw rm.error; _membros=rm.data||[];
+    _anaImp=0;
+    try{ var ri=await sb.from('precificacao_indices').select('valor').eq('empresa_id',_empresaAtiva.id).eq('chave','aliquota_simples').maybeSingle(); if(!ri.error && ri.data && ri.data.valor!=null) _anaImp=_n(ri.data.valor); }catch(e){}
+    _renderAnalises();
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _funcHH(f){ return f.custo_hh!=null?_n(f.custo_hh):_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes); }
+function _timeHorasMes(id){ return _membrosDoTime(id).reduce(function(s,m){ var f=_funcById(m.funcao_id); return s+(f?_n(f.horas_mes):0)*_n(m.quantidade); },0); }
+function _anaComp(lab,v,tot){ var p=tot>0?v/tot*100:0; return '<div class="dl"><span>'+lab+'</span><span class="dv">R$ '+_fmt(v)+' ('+_fmt(p)+'%)</span></div>'; }
+function _anaDeptRow(nome,deptId,totalEmp){ var ts=_timesDoDepto(deptId).filter(function(t){return t.ativo;}); var pess=ts.reduce(function(s,t){return s+_timePessoas(t.id);},0); var custo=_deptCustoMes(deptId); var pct=totalEmp>0?custo/totalEmp*100:0; return '<tr><td>'+esc(nome)+'</td><td class="num">'+ts.length+'</td><td class="num">'+pess+'</td><td class="num">R$ '+_fmt(custo)+'</td><td class="num">R$ '+_fmt(custo*12)+'</td><td class="num">'+_fmt(pct)+'%</td></tr>'; }
+function _anaLock(titulo,msg,mod,label){ return '<div class="card ana-lock"><div class="sec-tit">🔒 '+esc(titulo)+'</div><div class="sec-desc">'+esc(msg)+'</div><button class="btn btn-xs" onclick="_anaIr(\''+mod+'\')">Ir para '+esc(label)+'</button></div>'; }
+function _anaIr(mod){ try{ if(window.parent && window.parent.Router && typeof window.parent.Router.ir==='function') window.parent.Router.ir(mod); }catch(e){} }
+
+function _renderAnalises(){
+  var box=document.getElementById('anaWrap'); if(!box) return;
+  var ativas=_funcoes.filter(function(f){return f.ativo;});
+  var timesAtivos=_times.filter(function(t){return t.ativo;});
+  var totalEmp=timesAtivos.reduce(function(s,t){return s+_timeCustoMes(t.id);},0);
+  var pessoasEmp=timesAtivos.reduce(function(s,t){return s+_timePessoas(t.id);},0);
+  _anaTotalEmp=totalEmp; _anaCustoPessoa=pessoasEmp>0?totalEmp/pessoasEmp:0;
+
+  // Card 1 — Ranking
+  var rank=ativas.map(function(f){ return {f:f,hh:_funcHH(f),mes:_funcCustoMes(f)}; }).sort(function(a,b){return b.hh-a.hh;});
+  var c1 = rank.length ? ('<table class="tbl"><thead><tr><th>Função</th><th class="num">Salário</th><th class="num">Encargos%</th><th class="num">Custo/HH</th><th class="num">Custo Mensal</th><th class="num">Custo Anual</th></tr></thead><tbody>'+
+    rank.map(function(r,i){ var tag=i===0?' <span class="mini-badge" style="color:var(--red);border-color:var(--red)">mais cara</span>':((i===rank.length-1 && rank.length>1)?' <span class="mini-badge" style="color:var(--green);border-color:var(--green)">mais barata</span>':'');
+      return '<tr><td>'+esc(r.f.nome)+tag+'</td><td class="num">R$ '+_fmt(r.f.salario_base)+'</td><td class="num">'+_fmt(r.f.encargos_pct)+'%</td><td class="num">R$ '+_fmt(r.hh)+'</td><td class="num">R$ '+_fmt(r.mes)+'</td><td class="num">R$ '+_fmt(r.mes*12)+'</td></tr>';
+    }).join('')+'</tbody></table>') : '<div class="vazio">Nenhuma função cadastrada.</div>';
+
+  // Card 2 — Composição por time
+  var c2 = timesAtivos.length ? timesAtivos.map(function(t){
+    var tot=_timeCustoMes(t.id), membros=_membrosDoTime(t.id);
+    var segs=membros.map(function(m,i){ var f=_funcById(m.funcao_id); var v=_funcCustoMes(f)*_n(m.quantidade); return {nome:f?f.nome:'(?)',pct:tot>0?v/tot*100:0,cor:_ANA_CORES[i%_ANA_CORES.length]}; });
+    var horas=_timeHorasMes(t.id), hhMed=horas>0?tot/horas:0;
+    var bar='<div class="ana-bar">'+segs.map(function(s){return '<div class="ana-seg" style="width:'+s.pct.toFixed(2)+'%;background:'+s.cor+'" title="'+esc(s.nome)+' '+_fmt(s.pct)+'%"></div>';}).join('')+'</div>';
+    var leg='<div class="ana-leg">'+segs.map(function(s){return '<span class="ana-legi"><i style="background:'+s.cor+'"></i>'+esc(s.nome)+' '+_fmt(s.pct)+'%</span>';}).join('')+'</div>';
+    return '<div class="ana-time"><div class="ana-time-h"><b>'+esc(t.nome)+'</b><span>'+_timePessoas(t.id)+' pessoa(s) · R$ '+_fmt(tot)+'/mês · R$ '+_fmt(hhMed)+'/HH</span></div>'+(segs.length?(bar+leg):'<div class="dep-vazio">Sem funções.</div>')+'</div>';
+  }).join('') : '<div class="vazio">Nenhum time ativo.</div>';
+
+  // Card 3 — Departamentos
+  var deptRows=_departamentos.map(function(d){ return _anaDeptRow(d.nome,d.id,totalEmp); }).join('');
+  if(_timesDoDepto(null).filter(function(t){return t.ativo;}).length) deptRows+=_anaDeptRow('Sem departamento',null,totalEmp);
+  var c3 = deptRows ? ('<table class="tbl"><thead><tr><th>Departamento</th><th class="num">Times</th><th class="num">Pessoas</th><th class="num">Custo Mensal</th><th class="num">Custo Anual</th><th class="num">% do total</th></tr></thead><tbody>'+deptRows+'</tbody></table>') : '<div class="vazio">Nenhum departamento/time.</div>';
+
+  // Card 4 — Componentes
+  var comp={sal:0,enc:0,ben:0,adi:0};
+  timesAtivos.forEach(function(t){ _membrosDoTime(t.id).forEach(function(m){ var f=_funcById(m.funcao_id); if(!f) return; var q=_n(m.quantidade), base=_n(f.salario_base), enc=base*_n(f.encargos_pct)/100, ben=_n(f.beneficios_mes), adi=_funcCustoMes(f)-(base+enc+ben); comp.sal+=base*q; comp.enc+=enc*q; comp.ben+=ben*q; comp.adi+=adi*q; }); });
+  var totC=comp.sal+comp.enc+comp.ben+comp.adi;
+  var c4 = totC>0 ? ('<div class="sim-det">'+_anaComp('Salários',comp.sal,totC)+_anaComp('Encargos',comp.enc,totC)+_anaComp('Benefícios',comp.ben,totC)+_anaComp('Adicionais',comp.adi,totC)+'<div class="dl forte"><span>Total</span><span class="dv">R$ '+_fmt(totC)+'</span></div></div>') : '<div class="vazio">Cadastre times para ver a composição.</div>';
+
+  // Card 5 — Crescimento
+  var c5 = '<div class="fld"><label>Crescimento da equipe</label><div class="sim-range"><input type="range" id="anaCresc" min="0" max="50" step="1" value="0" oninput="_anaCrescimento()"><span class="rv" id="anaCrescVal">+0</span></div></div>'+
+    '<div class="info-line" id="anaCrescMsg">Ajuste o slider para simular o impacto de contratar mais pessoas.</div>';
+
+  var h='';
+  h+='<div class="ana-sech">Análises internas</div><div class="ana-grid">'+
+     '<div class="card ana-wide"><div class="sec-tit">🏆 Ranking de Custo por Função</div><div class="tbl-wrap">'+c1+'</div></div>'+
+     '<div class="card ana-wide"><div class="sec-tit">🏢 Comparativo por Departamento</div><div class="tbl-wrap">'+c3+'</div></div>'+
+     '<div class="card"><div class="sec-tit">👥 Composição de Custo por Time</div>'+c2+'</div>'+
+     '<div class="card"><div class="sec-tit">🧩 Peso dos Componentes no Custo Total</div>'+c4+'</div>'+
+     '<div class="card"><div class="sec-tit">📈 Simulação de Crescimento</div>'+c5+'</div>'+
+     '</div>';
+  h+='<div class="ana-sech">Análises cruzadas <span class="ana-soon">aguardando dados</span></div><div class="ana-grid">'+
+     _anaLock('Margem por Obra','Quando você registrar obras encerradas em Execução, a margem real por obra aparecerá aqui.','operacional','Execução')+
+     _anaLock('Margem por Cliente','Quando você registrar propostas fechadas em Comercial, a margem por cliente aparecerá aqui.','comercial','Comercial')+
+     _anaLock('Orçado vs. Realizado','Compare o custo orçado de cada obra com o custo real executado.','operacional','Execução')+
+     _anaLock('Custo da Equipe vs. Faturamento','Compare o custo mensal da sua equipe com o faturamento real do período.','financeiro','Financeiro')+
+     _anaLock('Margem por Tipo de Serviço','Descubra quais tipos de serviço são mais lucrativos para sua empresa.','financeiro','Financeiro')+
+     '</div>';
+  box.innerHTML=h;
+  _anaCrescimento();
+}
+
+function _anaCrescimento(){
+  var msg=document.getElementById('anaCrescMsg'); if(!msg) return;
+  var x=_num('anaCresc'); var vv=document.getElementById('anaCrescVal'); if(vv) vv.textContent='+'+x;
+  if(x<=0 || _anaCustoPessoa<=0){ msg.textContent='Ajuste o slider para simular o impacto de contratar mais pessoas.'; return; }
+  var extra=x*_anaCustoPessoa;
+  var fat=_anaImp<100?extra/(1-_anaImp/100):extra;
+  msg.innerHTML='Com <b>+'+x+' pessoa(s)</b>, seu custo sobe <b>R$ '+_fmt(extra)+'/mês</b> (novo total R$ '+_fmt(_anaTotalEmp+extra)+'/mês) e você precisa faturar <b>R$ '+_fmt(fat)+'/mês</b> a mais.';
 }
 
 /* Protocolo do portal */
