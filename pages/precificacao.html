@@ -167,6 +167,16 @@ body.light .reg-row .reg-aliq input{background:#fff;border-color:var(--border2)}
 .reg-row .reg-dif.pos{color:var(--red)}
 .reg-row .reg-dif.neg{color:var(--green)}
 .reg-row .reg-badge:not(:empty){font-size:.6rem;font-weight:700;color:#fff;background:var(--green);border-radius:10px;padding:.1rem .45rem}
+/* Custo de Contratação */
+.adm-bloco{padding:0;overflow:hidden}
+.adm-hdr{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--bg3);cursor:pointer}
+.adm-hdr .chev{color:var(--text3);font-size:.7rem;width:.8rem}
+.adm-hdr .adm-tit{font-weight:800;font-size:.9rem;flex:1 1 auto}
+.adm-hdr .adm-sub{font-weight:800;color:var(--emp-cor);font-variant-numeric:tabular-nums}
+.adm-body{padding:.5rem 1rem .8rem}
+.adm-val{display:inline-flex;align-items:center;gap:.25rem;color:var(--text3);font-size:.78rem;white-space:nowrap}
+.adm-val input{width:90px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.28rem .4rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
+body.light .adm-val input{background:#fff;border-color:var(--border2)}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -342,9 +352,17 @@ body.light .reg-row .reg-aliq input{background:#fff;border-color:var(--border2)}
     <!-- 4 -->
     <section class="psec" id="sec-contratacao">
       <div class="card">
-        <div class="sec-tit">📝 Custo de Contratação</div>
-        <div class="vazio">Em construção.</div>
+        <div class="form-row">
+          <div>
+            <div class="sec-tit">📝 Custo de Contratação</div>
+            <div class="sec-desc">Quanto custa contratar uma pessoa? Exames, treinamentos, EPI, ferramentas e provisões.</div>
+          </div>
+          <div class="acoes">
+            <button class="btn" onclick="salvarPadroesAdm()">Salvar padrões</button>
+          </div>
+        </div>
       </div>
+      <div id="admWrap"><div class="vazio">Carregando…</div></div>
     </section>
     <!-- 5 -->
     <section class="psec" id="sec-rescisao">
@@ -410,6 +428,7 @@ function mostrarSecao(id){
   if(alvo && alvo.id==='sec-indices') carregarIndices();
   if(alvo && alvo.id==='sec-times') carregarTimes();
   if(alvo && alvo.id==='sec-simulador') carregarSimulador();
+  if(alvo && alvo.id==='sec-contratacao') carregarContratacao();
 }
 
 /* Gate de acesso */
@@ -435,6 +454,7 @@ async function _onTrocaEmpresa(d){
   carregarFuncoes();
   var st=document.getElementById('sec-times'); if(st && st.classList.contains('on')) carregarTimes();
   var ss=document.getElementById('sec-simulador'); if(ss && ss.classList.contains('on')) carregarSimulador();
+  var sc=document.getElementById('sec-contratacao'); if(sc && sc.classList.contains('on')) carregarContratacao();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
@@ -1261,6 +1281,184 @@ function _recalcSimulador(){
       } else hc.innerHTML='';
     }
   }
+}
+
+/* ── Custo de Contratação (precificacao_indices, chaves adm_*) ── */
+var _ADM_BLOCOS = [
+  { id:'exames', titulo:'1 · Exames Médicos (ASO completo)', grupos:[ { itens:[
+    { chave:'adm_exame_clinico', rotulo:'Exame Clínico', valor:80,  sel:true },
+    { chave:'adm_audiometria',   rotulo:'Audiometria',   valor:120, sel:true },
+    { chave:'adm_glicemia',      rotulo:'Glicemia',      valor:40,  sel:true },
+    { chave:'adm_psico',         rotulo:'Av. Psicológica/Psicossocial', valor:250, sel:true },
+    { chave:'adm_ecg',           rotulo:'Eletrocardiograma (ECG)', valor:150, sel:true },
+    { chave:'adm_eeg',           rotulo:'Eletroencefalograma (EEG)', valor:180, sel:true },
+    { chave:'adm_acuidade',      rotulo:'Acuidade Visual', valor:80, sel:true }
+  ] } ] },
+  { id:'nr', titulo:'2 · Treinamentos NR', grupos:[ { itens:[
+    { chave:'adm_nr10',       rotulo:'NR-10 Básico (40h)', valor:500, sel:true },
+    { chave:'adm_nr10sep',    rotulo:'NR-10 SEP (40h)',    valor:800, sel:false },
+    { chave:'adm_nr35',       rotulo:'NR-35 Trabalho em Altura', valor:300, sel:true },
+    { chave:'adm_nr12',       rotulo:'NR-12 Máquinas',     valor:250, sel:false },
+    { chave:'adm_plataforma', rotulo:'Plataforma Elevatória', valor:400, sel:false }
+  ] } ] },
+  { id:'epi', titulo:'3 · EPI', grupos:[ { itens:[
+    { chave:'adm_epi_cap',   rotulo:'Capacete Classe B',   valor:120, sel:true },
+    { chave:'adm_epi_luvi',  rotulo:'Luvas Isolantes',     valor:280, sel:true },
+    { chave:'adm_epi_luvr',  rotulo:'Luvas de Raspa',      valor:45,  sel:true },
+    { chave:'adm_epi_ocul',  rotulo:'Óculos de Proteção',  valor:35,  sel:true },
+    { chave:'adm_epi_bot',   rotulo:'Botina Isolante',     valor:320, sel:true },
+    { chave:'adm_epi_cinto', rotulo:'Cinto Paraquedista',  valor:380, sel:true },
+    { chave:'adm_epi_trava', rotulo:'Trava-quedas/Talabarte', valor:290, sel:true },
+    { chave:'adm_uniforme',  rotulo:'Uniforme (2 conjuntos)', valor:300, sel:true }
+  ] } ] },
+  { id:'ferramentas', titulo:'4 · Ferramentas', grupos:[
+    { sub:'Medição e diagnóstico', itens:[
+      { chave:'adm_f_multi',   rotulo:'Multímetro digital',  valor:450,  sel:true },
+      { chave:'adm_f_amper',   rotulo:'Alicate amperímetro', valor:500,  sel:true },
+      { chave:'adm_f_megger',  rotulo:'Megôhmetro',          valor:1200, sel:true },
+      { chave:'adm_f_detect',  rotulo:'Detector de tensão',  valor:250,  sel:true },
+      { chave:'adm_f_fasim',   rotulo:'Fasímetro',           valor:300,  sel:false },
+      { chave:'adm_f_testcab', rotulo:'Testador de cabos',   valor:200,  sel:false }
+    ] },
+    { sub:'Ferramentas manuais', itens:[
+      { chave:'adm_f_alic_uni', rotulo:'Alicate universal',   valor:100, sel:true },
+      { chave:'adm_f_alic_cor', rotulo:'Alicate de corte',    valor:80,  sel:true },
+      { chave:'adm_f_alic_bic', rotulo:'Alicate de bico',     valor:80,  sel:true },
+      { chave:'adm_f_alic_des', rotulo:'Alicate desencapador', valor:180, sel:true },
+      { chave:'adm_f_fenda',    rotulo:'Jogo chave de fenda',  valor:120, sel:true },
+      { chave:'adm_f_phil',     rotulo:'Jogo chave phillips',  valor:80,  sel:true },
+      { chave:'adm_f_allen',    rotulo:'Jogo chave allen',     valor:60,  sel:true },
+      { chave:'adm_f_torx',     rotulo:'Jogo chave torx',      valor:80,  sel:false },
+      { chave:'adm_f_ajust',    rotulo:'Chave ajustável 12"',  valor:120, sel:true }
+    ] },
+    { sub:'Instalação e painéis', itens:[
+      { chave:'adm_f_furad',  rotulo:'Furadeira/Parafusadeira', valor:500, sel:true },
+      { chave:'adm_f_crimp',  rotulo:'Alicate crimpador',       valor:150, sel:true },
+      { chave:'adm_f_prensa', rotulo:'Prensa terminal hidráulica', valor:600, sel:true },
+      { chave:'adm_f_serra',  rotulo:'Serra copo (jogo)',       valor:200, sel:true },
+      { chave:'adm_f_rebarb', rotulo:'Rebarbadora pequena',     valor:350, sel:false },
+      { chave:'adm_f_paqui',  rotulo:'Paquímetro',              valor:150, sel:true }
+    ] },
+    { sub:'Organização e transporte', itens:[
+      { chave:'adm_f_carrinho', rotulo:'Carrinho 2 gavetas 2 portas', valor:1200, sel:true },
+      { chave:'adm_f_maleta',   rotulo:'Maleta portátil 22"',   valor:400, sel:true },
+      { chave:'adm_f_cinto_f',  rotulo:'Cinto porta ferramentas', valor:200, sel:true },
+      { chave:'adm_f_bolsa',    rotulo:'Bolsa de lona',         valor:120, sel:false }
+    ] }
+  ] }
+];
+var _admCustoMensal = 0;
+
+function _admItens(b){ var t=[]; b.grupos.forEach(function(g){ t=t.concat(g.itens); }); return t; }
+function _admTodosItens(){ var t=[]; _ADM_BLOCOS.forEach(function(b){ t=t.concat(_admItens(b)); }); return t; }
+
+async function carregarContratacao(){
+  var box=document.getElementById('admWrap'); if(!box) return;
+  var sb=_sb(); if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    if(!_funcoes.length){ var rf=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id).order('nome',{ascending:true}); if(!rf.error) _funcoes=rf.data||[]; }
+    var _admProvPctDef=40;
+    var ri=await sb.from('precificacao_indices').select('chave,valor,selecionado').eq('empresa_id',_empresaAtiva.id);
+    if(ri.error) throw ri.error;
+    var mp={}; (ri.data||[]).forEach(function(r){ mp[r.chave]={ valor:_n(r.valor), sel:r.selecionado }; });
+    _admTodosItens().forEach(function(it){ var m=mp[it.chave]; if(m){ if(m.valor!=null) it.valor=m.valor; it.sel=(m.sel===false?false:true); } });
+    if(mp.adm_provisao_rescisao_pct && mp.adm_provisao_rescisao_pct.valor!=null) _admProvPctDef=mp.adm_provisao_rescisao_pct.valor;
+    _admCustoMensal=0;
+    _renderContratacao(_admProvPctDef);
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _admItemHTML(it){
+  return '<div class="sim-chk"><label class="schk-lab"><input type="checkbox" id="admChk_'+it.chave+'"'+(it.sel===false?'':' checked')+' onchange="_recalcAdm()"> <span class="snm">'+esc(it.rotulo)+'</span></label>'+
+    '<span class="adm-val">R$ <input type="number" min="0" step="0.01" id="admVal_'+it.chave+'" value="'+_n(it.valor)+'" oninput="_recalcAdm()"></span></div>';
+}
+function _renderContratacao(provPctDef){
+  var box=document.getElementById('admWrap'); if(!box) return;
+  var opts='<option value="">— selecione a função —</option>'+_funcoes.filter(function(f){return f.ativo;}).map(function(f){ return '<option value="'+f.id+'">'+esc(f.nome)+'</option>'; }).join('');
+  var h='';
+  // Seleção da função
+  h+='<div class="card"><div class="sec-tit">Função</div>'+
+     '<div class="form-grid">'+
+       '<div class="fld"><label>Função a contratar</label><select id="admFuncao" onchange="_admFuncaoChange()">'+opts+'</select></div>'+
+       '<div class="fld"><label>Custo mensal (da função)</label><input type="text" id="admCustoMensalTop" readonly value="R$ 0,00"></div>'+
+     '</div></div>';
+  // Blocos colapsáveis
+  _ADM_BLOCOS.forEach(function(b){
+    h+='<div class="card adm-bloco">'+
+       '<div class="adm-hdr" onclick="_togAdmBloco(\''+b.id+'\')"><span class="chev">▾</span><span class="adm-tit">'+esc(b.titulo)+'</span>'+
+       '<span class="adm-sub" id="admSub_'+b.id+'">R$ 0,00</span></div>'+
+       '<div class="adm-body" id="admBody_'+b.id+'">';
+    b.grupos.forEach(function(g){
+      if(g.sub) h+='<div class="idx-grp-tit">'+esc(g.sub)+'</div>';
+      h+=g.itens.map(_admItemHTML).join('');
+    });
+    h+='</div></div>';
+  });
+  // Bloco 5 — Resultado
+  h+='<div class="card sim-result"><div class="sec-tit">5 · Resultado</div>'+
+     '<div class="sim-big"><div class="lab">🧾 Total de admissão (itens selecionados)</div><div class="val" id="admTotal">R$ 0,00</div></div>'+
+     '<div class="form-grid" style="margin-top:.4rem"><div class="fld"><label>% provisão rescisão</label><input type="number" id="admProvPct" min="0" step="0.01" value="'+_n(provPctDef)+'" oninput="_recalcAdm()"></div>'+
+       '<div class="fld"><label>Receita estimada por mês (R$)</label><input type="number" id="admReceita" min="0" step="0.01" value="0" oninput="_recalcAdm()"></div></div>'+
+     '<div class="sim-det">'+
+       '<div class="dl"><span>Custo mensal (função)</span><span class="dv" id="admCustoMensal">R$ 0,00</span></div>'+
+       '<div class="dl"><span>Provisão rescisão/mês</span><span class="dv" id="admProvVal">R$ 0,00</span></div>'+
+       '<div class="dl forte"><span>Custo real 1º mês (admissão + mensal)</span><span class="dv" id="admMes1">R$ 0,00</span></div>'+
+       '<div class="dl"><span>Custo a partir do mês 2</span><span class="dv" id="admMes2">R$ 0,00</span></div>'+
+     '</div>'+
+     '<div class="aviso" id="admPayback" style="color:var(--blue);background:transparent;border:none;padding:.2rem 0">Informe a receita estimada por mês.</div>'+
+     '</div>';
+  box.innerHTML=h;
+  _recalcAdm();
+}
+
+function _togAdmBloco(id){ var b=document.getElementById('admBody_'+id); var hdr=b?b.previousElementSibling:null; if(!b) return; var fech=b.style.display==='none'; b.style.display=fech?'':'none'; if(hdr){ var c=hdr.querySelector('.chev'); if(c) c.textContent=fech?'▾':'▸'; } }
+
+function _admFuncaoChange(){
+  var id=_val('admFuncao'); var f=id?_funcoes.find(function(x){return x.id===id;}):null;
+  _admCustoMensal=f?_funcCustoMes(f):0;
+  var el=document.getElementById('admCustoMensalTop'); if(el) el.value='R$ '+_fmt(_admCustoMensal);
+  _recalcAdm();
+}
+
+function _recalcAdm(){
+  if(!document.getElementById('admTotal')) return;
+  var total=0;
+  _ADM_BLOCOS.forEach(function(b){
+    var sub=0;
+    _admItens(b).forEach(function(it){ var chk=document.getElementById('admChk_'+it.chave); if(!chk||chk.checked) sub+=_num('admVal_'+it.chave); });
+    var sel=document.getElementById('admSub_'+b.id); if(sel) sel.textContent='R$ '+_fmt(sub);
+    total+=sub;
+  });
+  document.getElementById('admTotal').textContent='R$ '+_fmt(total);
+  var cm=_admCustoMensal;
+  var prov=cm*_num('admProvPct')/100/12;
+  var recorrente=cm+prov;
+  document.getElementById('admCustoMensal').textContent='R$ '+_fmt(cm);
+  document.getElementById('admProvVal').textContent='R$ '+_fmt(prov)+'/mês';
+  document.getElementById('admMes1').textContent='R$ '+_fmt(total+cm);
+  document.getElementById('admMes2').textContent='R$ '+_fmt(cm);
+  var receita=_num('admReceita'), pb=document.getElementById('admPayback');
+  if(pb){
+    if(receita<=0){ pb.textContent='Informe a receita estimada por mês.'; }
+    else if(recorrente-receita>=-0.00001){ pb.textContent='⚠ A receita não cobre o custo mensal recorrente (R$ '+_fmt(recorrente)+'/mês) — não se paga.'; }
+    else { var meses=Math.ceil(total/(receita-recorrente)); pb.textContent='Com R$ '+_fmt(receita)+'/mês, esse colaborador cobre o custo de admissão (R$ '+_fmt(total)+') em '+meses+' mês(es).'; }
+  }
+}
+
+async function salvarPadroesAdm(){
+  var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
+  var agora=new Date().toISOString();
+  var rows=_admTodosItens().map(function(it){
+    it.valor=_num('admVal_'+it.chave);
+    var chk=document.getElementById('admChk_'+it.chave); var sel=chk?chk.checked:(it.sel!==false);
+    return { empresa_id:_empresaAtiva.id, chave:it.chave, rotulo:it.rotulo, valor:it.valor, unidade:'R$', selecionado:sel, atualizado_em:agora };
+  });
+  rows.push({ empresa_id:_empresaAtiva.id, chave:'adm_provisao_rescisao_pct', rotulo:'% provisão rescisão', valor:_num('admProvPct'), unidade:'%', selecionado:true, atualizado_em:agora });
+  try{
+    var res=await sb.from('precificacao_indices').upsert(rows,{ onConflict:'empresa_id,chave' });
+    if(res.error) throw res.error;
+    toast('Padrões salvos.');
+  }catch(err){ toast('Erro ao salvar: '+(err.message||err),'err'); }
 }
 
 /* Protocolo do portal */
