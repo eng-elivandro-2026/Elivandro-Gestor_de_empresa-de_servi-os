@@ -60,6 +60,13 @@
   /**
    * Lista todas as contas a receber da empresa.
    * Retorna ordenado por data_vencimento asc, nulls last.
+   *
+   * valor_faturado é derivado em runtime a partir das NFs vinculadas, e não
+   * lido do campo gravado: esse campo nunca era atualizado ao emitir NF, então
+   * ficava sempre 0 e zerava o KPI Faturado, a coluna Faturado da tabela e o
+   * espelho financeiro. A soma das NFs (exceto canceladas) é a fonte de verdade
+   * — a mesma que o espelho operacional já usava. Uma única query agregada
+   * para todas as contas, sem N+1.
    */
   async function sbListarContasReceber(empresaId) {
     var r = await client()
@@ -69,7 +76,30 @@
       .order('data_vencimento', { ascending: true, nullsFirst: false });
 
     if (r.error) throw r.error;
-    return r.data || [];
+    var contas = r.data || [];
+    return _enriquecerFaturado(empresaId, contas);
+  }
+
+  /**
+   * Preenche valor_faturado de cada conta com a soma das NFs não canceladas
+   * vinculadas a ela. Função de banco (1 query), mas a agregação em si é pura.
+   */
+  async function _enriquecerFaturado(empresaId, contas) {
+    if (!contas || !contas.length) return contas || [];
+    var ids = contas.map(function (c) { return c.id; }).filter(Boolean);
+    var notas = await _listarNotasFiscaisContas(empresaId, ids);
+
+    var faturadoPorConta = {};
+    (notas || []).forEach(function (nf) {
+      if (String(nf.status || '') === 'cancelada') return;
+      var k = String(nf.conta_receber_id);
+      faturadoPorConta[k] = (faturadoPorConta[k] || 0) + _num(nf.valor_nf);
+    });
+
+    contas.forEach(function (c) {
+      c.valor_faturado = faturadoPorConta[String(c.id)] || 0;
+    });
+    return contas;
   }
 
   /**
