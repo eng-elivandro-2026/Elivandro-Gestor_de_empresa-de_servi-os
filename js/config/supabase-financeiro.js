@@ -355,15 +355,77 @@
       : { valor_servico: _paraReais(editadoCent), valor_produto: _paraReais(outroCent) };
   }
 
-  function _montarParcela(numero, dataVencimento, valor, pctServico) {
-    var split = dividirServicoProduto(valor, pctServico);
-    return {
-      parcela_numero:  numero,
-      data_vencimento: dataVencimento,
-      valor_previsto:  valor,
-      valor_servico:   split.valor_servico,
-      valor_produto:   split.valor_produto
-    };
+  /**
+   * Distribui o total de SERVIÇO entre as parcelas, proporcionalmente ao
+   * valor de cada uma, com a sobra de centavos na última.
+   *
+   * Arredondar linha a linha (valor da parcela x percentual) faz a COLUNA
+   * de serviço divergir do serviço da proposta: 3 x 333,33 a 70% dava
+   * 699,99 em vez de 700,00. Como o PR3 emite NF de serviço e NF de
+   * produto separadas, esse centavo apareceria na nota. Distribuindo a
+   * coluna, serviço e produto fecham exatos nas duas direções.
+   *
+   * Respeita o teto de cada linha (serviço nunca excede o valor da
+   * parcela); se a sobra não couber na última, volta para as anteriores.
+   * Função pura.
+   */
+  function distribuirServicoNasParcelas(valores, totalServico) {
+    var valoresCent = (valores || []).map(_paraCentavos);
+    var n = valoresCent.length;
+    if (!n) return [];
+
+    var totalCent   = valoresCent.reduce(function (s, v) { return s + v; }, 0);
+    var servicoCent = Math.min(Math.max(0, _paraCentavos(totalServico)), totalCent);
+
+    var partes = [];
+    var acumulado = 0;
+    for (var i = 0; i < n - 1; i++) {
+      var parte = totalCent > 0 ? Math.floor(valoresCent[i] * servicoCent / totalCent) : 0;
+      if (parte > valoresCent[i]) parte = valoresCent[i];
+      partes.push(parte);
+      acumulado += parte;
+    }
+
+    var ultima = servicoCent - acumulado;
+    if (ultima > valoresCent[n - 1]) {
+      // A sobra não cabe na última linha — devolve o excedente às anteriores.
+      var excedente = ultima - valoresCent[n - 1];
+      ultima = valoresCent[n - 1];
+      for (var j = 0; j < n - 1 && excedente > 0; j++) {
+        var mover = Math.min(valoresCent[j] - partes[j], excedente);
+        partes[j] += mover;
+        excedente -= mover;
+      }
+    } else if (ultima < 0) {
+      ultima = 0;
+    }
+    partes.push(ultima);
+    return partes.map(_paraReais);
+  }
+
+  /**
+   * Monta o plano a partir dos valores e vencimentos já calculados,
+   * distribuindo a coluna de serviço. Garante, por construção:
+   *   serviço + produto === valor da parcela   (cada linha)
+   *   soma(serviço) === total x pctServico     (coluna)
+   *   soma(valor)   === total                  (coluna)
+   */
+  function _montarPlano(valores, datas, pctServico) {
+    var totalCent = valores.reduce(function (s, v) { return s + _paraCentavos(v); }, 0);
+    var pct = Math.min(1, Math.max(0, _num(pctServico)));
+    var servicos = distribuirServicoNasParcelas(valores, _paraReais(Math.round(totalCent * pct)));
+
+    return valores.map(function (valor, i) {
+      var valorCent   = _paraCentavos(valor);
+      var servicoCent = _paraCentavos(servicos[i]);
+      return {
+        parcela_numero:  i + 1,
+        data_vencimento: datas[i],
+        valor_previsto:  _paraReais(valorCent),
+        valor_servico:   _paraReais(servicoCent),
+        valor_produto:   _paraReais(valorCent - servicoCent)
+      };
+    });
   }
 
   /**
@@ -371,7 +433,7 @@
    * Função pura.
    */
   function presetAVista(total, dataBase, pctServico) {
-    return [_montarParcela(1, somarMeses(dataBase, 0), _paraReais(_paraCentavos(total)), pctServico)];
+    return _montarPlano([_paraReais(_paraCentavos(total))], [somarMeses(dataBase, 0)], pctServico);
   }
 
   /**
@@ -379,10 +441,10 @@
    * A primeira vence na data base. Função pura.
    */
   function presetParcelasIguais(total, n, dataBase, pctServico, intervaloMeses) {
-    var passo = parseInt(intervaloMeses, 10) || 1;
-    return distribuirValor(total, n).map(function (valor, i) {
-      return _montarParcela(i + 1, somarMeses(dataBase, i * passo), valor, pctServico);
-    });
+    var passo   = parseInt(intervaloMeses, 10) || 1;
+    var valores = distribuirValor(total, n);
+    var datas   = valores.map(function (_, i) { return somarMeses(dataBase, i * passo); });
+    return _montarPlano(valores, datas, pctServico);
   }
 
   /**
@@ -398,11 +460,10 @@
     if (entradaCent <= 0)         throw new Error('[Financeiro PR2] entrada deve ser maior que zero.');
     if (entradaCent >= totalCent) throw new Error('[Financeiro PR2] entrada deve ser menor que o total.');
 
-    var lista = [_montarParcela(1, somarMeses(dataBase, 0), _paraReais(entradaCent), pctServico)];
-    distribuirValor(_paraReais(totalCent - entradaCent), n).forEach(function (valor, i) {
-      lista.push(_montarParcela(i + 2, somarMeses(dataBase, (i + 1) * passo), valor, pctServico));
-    });
-    return lista;
+    var valores = [_paraReais(entradaCent)]
+      .concat(distribuirValor(_paraReais(totalCent - entradaCent), n));
+    var datas = valores.map(function (_, i) { return somarMeses(dataBase, i * passo); });
+    return _montarPlano(valores, datas, pctServico);
   }
 
   /**
@@ -2257,6 +2318,7 @@
     distribuirValor:                 distribuirValor,
     proporcaoServicoProposta:        proporcaoServicoProposta,
     dividirServicoProduto:           dividirServicoProduto,
+    distribuirServicoNasParcelas:    distribuirServicoNasParcelas,
     ajustarSplitParcela:             ajustarSplitParcela,
     presetAVista:                    presetAVista,
     presetParcelasIguais:            presetParcelasIguais,
