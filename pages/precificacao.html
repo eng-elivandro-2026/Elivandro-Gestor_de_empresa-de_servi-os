@@ -184,6 +184,16 @@ body.light .adm-val input{background:#fff;border-color:var(--border2)}
 .sim-cen.on .resc-tag{color:var(--emp-cor)}
 .sim-det .dl.neg .dv{color:var(--red)}
 .resc-prov{font-size:.95rem;font-weight:700;color:var(--emp-cor);line-height:1.4;text-align:center}
+/* Formação de Preço — lista de materiais */
+.mat-head,.mat-row{display:grid;grid-template-columns:1fr 68px 90px 90px 30px;gap:.4rem;align-items:center}
+.mat-head{font-size:.62rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;padding:.3rem 0;border-bottom:1px solid var(--border)}
+.mat-head span:nth-child(2),.mat-head span:nth-child(3),.mat-head span:nth-child(4){text-align:right}
+.mat-row{padding:.3rem 0;border-bottom:1px solid var(--border)}
+.mat-row:last-child{border-bottom:none}
+.mat-row input{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.28rem .4rem;font-size:.8rem;font-family:inherit}
+body.light .mat-row input{background:#fff;border-color:var(--border2)}
+.mat-row .mat-q,.mat-row .mat-v{text-align:right;font-variant-numeric:tabular-nums}
+.mat-row .mat-sub{font-size:.78rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--text2)}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -383,8 +393,9 @@ body.light .adm-val input{background:#fff;border-color:var(--border2)}
     <section class="psec" id="sec-preco">
       <div class="card">
         <div class="sec-tit">💲 Formação de Preço</div>
-        <div class="vazio">Em construção.</div>
+        <div class="sec-desc">Quanto cobrar? Por hora técnica ou por projeto (com BDI).</div>
       </div>
+      <div id="precoWrap"><div class="vazio">Carregando…</div></div>
     </section>
     <!-- 7 -->
     <section class="psec" id="sec-indices">
@@ -438,6 +449,7 @@ function mostrarSecao(id){
   if(alvo && alvo.id==='sec-simulador') carregarSimulador();
   if(alvo && alvo.id==='sec-contratacao') carregarContratacao();
   if(alvo && alvo.id==='sec-rescisao') carregarRescisao();
+  if(alvo && alvo.id==='sec-preco') carregarPreco();
 }
 
 /* Gate de acesso */
@@ -465,6 +477,7 @@ async function _onTrocaEmpresa(d){
   var ss=document.getElementById('sec-simulador'); if(ss && ss.classList.contains('on')) carregarSimulador();
   var sc=document.getElementById('sec-contratacao'); if(sc && sc.classList.contains('on')) carregarContratacao();
   var sr=document.getElementById('sec-rescisao'); if(sr && sr.classList.contains('on')) carregarRescisao();
+  var sp=document.getElementById('sec-preco'); if(sp && sp.classList.contains('on')) carregarPreco();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
@@ -1592,6 +1605,188 @@ function _recalcResc(){
   }).join('')+'</div>';
   var meses=c.mesesEmp>0?c.mesesEmp:1, prov=_rescTotal(c,'sjc')/meses;
   document.getElementById('rescProvisao').textContent='Para se preparar para uma rescisão sem justa causa, reserve cerca de R$ '+_fmt(prov)+'/mês (total SJC ÷ '+meses+' mês(es) de empresa).';
+}
+
+/* ── Formação de Preço (por hora / por projeto) ──────────────── */
+var _precoModo='hora';
+var _precoHVPessoa=0, _precoImpDef=0;
+var _precoBdiDef={ adm:5, risco:1.27, fin:1.23, lucro:7.4 };
+var _precoMateriais=[];
+
+async function carregarPreco(){
+  var box=document.getElementById('precoWrap'); if(!box) return;
+  var sb=_sb(); if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    if(!_funcoes.length){ var rf=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id); if(!rf.error) _funcoes=rf.data||[]; }
+    var rt=await sb.from('precificacao_times').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true});
+    if(rt.error) throw rt.error; _times=rt.data||[];
+    var rm=await sb.from('precificacao_time_membros').select('*').eq('empresa_id',_empresaAtiva.id);
+    if(rm.error) throw rm.error; _membros=rm.data||[];
+    _precoImpDef=0; _precoBdiDef={ adm:5, risco:1.27, fin:1.23, lucro:7.4 };
+    var jornada=44, semanas=4.33, redDef={reducao_faltas:2,reducao_afastamento:1,reducao_ociosidade:10,reducao_deslocamento:5,reducao_outros:0}, red=18;
+    var ri=await sb.from('precificacao_indices').select('chave,valor').eq('empresa_id',_empresaAtiva.id);
+    if(!ri.error){
+      var mp={}; (ri.data||[]).forEach(function(r){ mp[r.chave]=_n(r.valor); });
+      if(mp.aliquota_simples!=null) _precoImpDef=mp.aliquota_simples;
+      if(mp.bdi_adm!=null) _precoBdiDef.adm=mp.bdi_adm;
+      if(mp.bdi_risco!=null) _precoBdiDef.risco=mp.bdi_risco;
+      if(mp.bdi_fin!=null) _precoBdiDef.fin=mp.bdi_fin;
+      if(mp.bdi_lucro!=null) _precoBdiDef.lucro=mp.bdi_lucro;
+      if(mp.jornada_semanal!=null) jornada=mp.jornada_semanal;
+      if(mp.semanas_mes!=null) semanas=mp.semanas_mes;
+      red=Object.keys(redDef).reduce(function(s,k){ return s+(mp[k]!=null?mp[k]:redDef[k]); },0);
+    }
+    _precoHVPessoa=jornada*semanas*((100-red)/100);
+    _precoMateriais=[];
+    _renderPreco();
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _precoTimeOpts(){ return '<option value="">— manual —</option>'+_times.filter(function(t){return t.ativo;}).map(function(t){ return '<option value="'+t.id+'">'+esc(t.nome)+'</option>'; }).join(''); }
+function _precoCustoHoraTime(id){ var hv=_timePessoas(id)*_precoHVPessoa; return hv>0 ? _timeCustoMes(id)/hv : 0; }
+function _precoSetCustoHora(selId,inpId){ var sel=document.getElementById(selId), inp=document.getElementById(inpId); if(!sel||!inp) return; var id=sel.value; if(id){ inp.value=Math.round(_precoCustoHoraTime(id)*100)/100; inp.readOnly=true; } else { inp.readOnly=false; } _recalcPreco(); }
+function _precoTimeChange1(){ _precoSetCustoHora('precoTime1','precoCustoHora1'); }
+function _precoTimeChange2(){ _precoSetCustoHora('precoTime2','precoCustoHora2'); }
+
+function _precoSetModo(m){ _precoModo=m; _precoAtualizaModo(); }
+function _precoAtualizaModo(){
+  var m1=document.getElementById('precoM1'), m2=document.getElementById('precoM2');
+  if(m1) m1.style.display=_precoModo==='hora'?'':'none';
+  if(m2) m2.style.display=_precoModo==='projeto'?'':'none';
+  ['hora','projeto'].forEach(function(k){ var b=document.getElementById('precoBtn_'+k); if(b) b.classList.toggle('on',_precoModo===k); });
+}
+
+/* Materiais (Modo 2) */
+function _precoMatSet(i,campo,val){ if(_precoMateriais[i]) _precoMateriais[i][campo]=val; }
+function _precoMatAdd(){ _precoMateriais.push({desc:'',qtd:1,valunit:0}); _renderMateriais(); _recalcPreco(); }
+function _precoMatRemove(i){ _precoMateriais.splice(i,1); _renderMateriais(); _recalcPreco(); }
+function _renderMateriais(){
+  var box=document.getElementById('precoMatLista'); if(!box) return;
+  if(!_precoMateriais.length){ box.innerHTML='<div class="dep-vazio">Nenhum material. Clique em “+ Adicionar material”.</div>'; return; }
+  box.innerHTML=_precoMateriais.map(function(m,i){
+    return '<div class="mat-row">'+
+      '<input type="text" class="mat-desc" placeholder="Descrição" value="'+esc(m.desc||'')+'" oninput="_precoMatSet('+i+',\'desc\',this.value)">'+
+      '<input type="number" class="mat-q" min="0" step="0.01" value="'+_n(m.qtd)+'" oninput="_precoMatSet('+i+',\'qtd\',this.value);_recalcPreco()">'+
+      '<input type="number" class="mat-v" min="0" step="0.01" value="'+_n(m.valunit)+'" oninput="_precoMatSet('+i+',\'valunit\',this.value);_recalcPreco()">'+
+      '<span class="mat-sub" id="precoMatRow_'+i+'">R$ '+_fmt(_n(m.qtd)*_n(m.valunit))+'</span>'+
+      '<button type="button" class="btn btn-xs" onclick="_precoMatRemove('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function _renderPreco(){
+  var box=document.getElementById('precoWrap'); if(!box) return;
+  var opts=_precoTimeOpts(), b=_precoBdiDef, h='';
+  h+='<div class="card"><div class="resc-tipos">'+
+     '<button type="button" class="btn resc-tipo" id="precoBtn_hora" onclick="_precoSetModo(\'hora\')">⏱️ Por Hora</button>'+
+     '<button type="button" class="btn resc-tipo" id="precoBtn_projeto" onclick="_precoSetModo(\'projeto\')">🏗️ Por Projeto</button>'+
+     '</div></div>';
+  // MODO 1
+  h+='<div id="precoM1">'+
+     '<div class="card"><div class="sec-tit">Precificação por hora</div>'+
+       '<div class="form-grid">'+
+         '<div class="fld"><label>Time MOD (ou manual)</label><select id="precoTime1" onchange="_precoTimeChange1()">'+opts+'</select></div>'+
+         '<div class="fld"><label>Custo/hora vendável (R$)</label><input type="number" id="precoCustoHora1" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Impostos (%)</label><input type="number" id="precoImp1" min="0" step="0.01" value="'+_n(_precoImpDef)+'" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Overhead/indiretas (%)</label><input type="number" id="precoOver1" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+       '</div>'+
+       '<div class="fld"><label>Margem de lucro desejada</label><div class="sim-range"><input type="range" id="precoMargem1" min="0" max="60" step="1" value="25" oninput="_recalcPreco()"><span class="rv" id="precoMargem1Val">25%</span></div></div>'+
+     '</div>'+
+     '<div class="card sim-result"><div class="sec-tit">Resultado — Preço/hora</div>'+
+       '<div class="sim-big"><div class="lab">🏷️ Preço mínimo por hora</div><div class="val" id="precoM1Preco">—</div></div>'+
+       '<div id="precoM1Det"></div>'+
+       '<div class="sim-tot"><span>Arredondamento sugerido (próx. R$ 5)</span><span class="v" id="precoM1Arred">—</span></div>'+
+       '<div class="sec-desc">Tabela de preços por margem</div><div id="precoM1Tabela"></div>'+
+     '</div></div>';
+  // MODO 2
+  h+='<div id="precoM2" style="display:none">'+
+     '<div class="card"><div class="sec-tit">Mão de obra</div>'+
+       '<div class="form-grid">'+
+         '<div class="fld"><label>Time MOD (ou manual)</label><select id="precoTime2" onchange="_precoTimeChange2()">'+opts+'</select></div>'+
+         '<div class="fld"><label>HH estimado total (horas)</label><input type="number" id="precoHH2" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Custo/hora (R$)</label><input type="number" id="precoCustoHora2" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+       '</div><div class="sim-tot"><span>Subtotal MO</span><span class="v" id="precoMoSub">R$ 0,00</span></div></div>'+
+     '<div class="card"><div class="form-row"><div class="sec-tit">Materiais</div><button class="btn btn-xs" onclick="_precoMatAdd()">+ Adicionar material</button></div>'+
+       '<div class="mat-head"><span>Descrição</span><span>Qtd</span><span>Valor unit.</span><span>Subtotal</span><span></span></div>'+
+       '<div id="precoMatLista"></div>'+
+       '<div class="form-grid" style="margin-top:.5rem"><div class="fld"><label>Margem sobre materiais (%)</label><input type="number" id="precoMatMargem" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div></div>'+
+       '<div class="sim-tot"><span>Subtotal materiais (c/ margem)</span><span class="v" id="precoMatSub">R$ 0,00</span></div></div>'+
+     '<div class="card"><div class="sec-tit">Terceiros / Subcontratados</div>'+
+       '<div class="form-grid"><div class="fld"><label>Valor total (R$)</label><input type="number" id="precoTerVal" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Margem sobre terceiros (%)</label><input type="number" id="precoTerMargem" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div></div>'+
+       '<div class="sim-tot"><span>Subtotal terceiros</span><span class="v" id="precoTerSub">R$ 0,00</span></div></div>'+
+     '<div class="card"><div class="sec-tit">Logística</div>'+
+       '<div class="form-grid">'+
+         '<div class="fld"><label>Deslocamento (R$)</label><input type="number" id="precoLogDesloc" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Alimentação (R$)</label><input type="number" id="precoLogAlim" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Hospedagem (R$)</label><input type="number" id="precoLogHosp" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Outros (R$)</label><input type="number" id="precoLogOutros" min="0" step="0.01" value="0" oninput="_recalcPreco()"></div>'+
+       '</div><div class="sim-tot"><span>Subtotal logística</span><span class="v" id="precoLogSub">R$ 0,00</span></div></div>'+
+     '<div class="card"><div class="sec-tit">BDI — Benefícios e Despesas Indiretas</div>'+
+       '<div class="form-grid">'+
+         '<div class="fld"><label>Administração central (%)</label><input type="number" id="precoBdiAdm" min="0" step="0.01" value="'+_n(b.adm)+'" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Risco (%)</label><input type="number" id="precoBdiRisco" min="0" step="0.01" value="'+_n(b.risco)+'" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Despesas financeiras (%)</label><input type="number" id="precoBdiFin" min="0" step="0.01" value="'+_n(b.fin)+'" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Lucro (%)</label><input type="number" id="precoBdiLucro" min="0" step="0.01" value="'+_n(b.lucro)+'" oninput="_recalcPreco()"></div>'+
+         '<div class="fld"><label>Impostos (%)</label><input type="number" id="precoBdiImp" min="0" step="0.01" value="'+_n(_precoImpDef)+'" oninput="_recalcPreco()"></div>'+
+       '</div><div class="sim-tot"><span>Total BDI</span><span class="v" id="precoBdiTotal">—</span></div></div>'+
+     '<div class="card sim-result"><div class="sec-tit">Resultado — Preço do projeto</div>'+
+       '<div id="precoM2Direto"></div>'+
+       '<div class="sim-big"><div class="lab">💰 Preço total</div><div class="val" id="precoM2Preco">—</div></div>'+
+       '<div class="sim-det"><div class="dl"><span>Margem bruta</span><span class="dv" id="precoM2Margem">—</span></div>'+
+         '<div class="dl"><span>Valor/HH médio</span><span class="dv" id="precoM2VHH">—</span></div></div>'+
+     '</div></div>';
+  box.innerHTML=h;
+  _renderMateriais();
+  _precoAtualizaModo();
+  _recalcPreco();
+}
+
+function _recalcPreco(){
+  // MODO 1
+  if(document.getElementById('precoM1Preco')){
+    var ch=_num('precoCustoHora1'), imp=_num('precoImp1'), mar=_num('precoMargem1'), ov=_num('precoOver1');
+    var mv=document.getElementById('precoMargem1Val'); if(mv) mv.textContent=_fmt(mar)+'%';
+    var den=1-imp/100-mar/100-ov/100, ok=den>0, preco=ok?ch/den:0;
+    document.getElementById('precoM1Preco').textContent=ok?('R$ '+_fmt(preco)):'—';
+    document.getElementById('precoM1Det').innerHTML= ok ? ('<div class="sim-det">'+
+      _simDl('Custo/hora',ch,false)+_simDl('Overhead ('+_fmt(ov)+'%)',preco*ov/100,false)+
+      _simDl('Impostos ('+_fmt(imp)+'%)',preco*imp/100,false)+_simDl('Margem ('+_fmt(mar)+'%)',preco*mar/100,false)+
+      _simDl('Preço/hora',preco,true)+'</div>') : '<div class="aviso">⚠ Impostos + margem + overhead ≥ 100%.</div>';
+    document.getElementById('precoM1Arred').textContent=ok?('R$ '+_fmt(Math.ceil(preco/5)*5)):'—';
+    document.getElementById('precoM1Tabela').innerHTML='<div class="sim-cen-wrap">'+[20,25,30,35].map(function(mc){
+      var d=1-imp/100-mc/100-ov/100, p=d>0?ch/d:0;
+      return '<div class="sim-cen'+(mc===mar?' on':'')+'"><div class="cen-lab">'+mc+'% de margem</div><div class="cen-val">'+(d>0?('R$ '+_fmt(p)):'—')+'<span>/h</span></div></div>';
+    }).join('')+'</div>';
+  }
+  // MODO 2
+  if(document.getElementById('precoM2Preco')){
+    var ch2=_num('precoCustoHora2'), hh=_num('precoHH2'), moSub=ch2*hh;
+    var matBase=_precoMateriais.reduce(function(s,m){ return s+_n(m.qtd)*_n(m.valunit); },0);
+    _precoMateriais.forEach(function(m,i){ var el=document.getElementById('precoMatRow_'+i); if(el) el.textContent='R$ '+_fmt(_n(m.qtd)*_n(m.valunit)); });
+    var matSub=matBase*(1+_num('precoMatMargem')/100);
+    var terVal=_num('precoTerVal'), terSub=terVal*(1+_num('precoTerMargem')/100);
+    var log=_num('precoLogDesloc')+_num('precoLogAlim')+_num('precoLogHosp')+_num('precoLogOutros');
+    document.getElementById('precoMoSub').textContent='R$ '+_fmt(moSub);
+    document.getElementById('precoMatSub').textContent='R$ '+_fmt(matSub);
+    document.getElementById('precoTerSub').textContent='R$ '+_fmt(terSub);
+    document.getElementById('precoLogSub').textContent='R$ '+_fmt(log);
+    var subDireto=moSub+matSub+terSub+log;
+    var adm=_num('precoBdiAdm'), risco=_num('precoBdiRisco'), fin=_num('precoBdiFin'), luc=_num('precoBdiLucro'), impB=_num('precoBdiImp');
+    var bdi=(impB<100)?((1+adm/100+risco/100)*(1+fin/100)*(1+luc/100)/(1-impB/100)-1)*100:0;
+    document.getElementById('precoBdiTotal').textContent=(impB<100?_fmt(bdi)+'%':'—');
+    var preco2=subDireto*(1+bdi/100);
+    var custoReal=moSub+matBase+terVal+log;
+    var margemBruta=preco2>0?(preco2-custoReal)/preco2*100:0;
+    var vHH=hh>0?preco2/hh:0;
+    document.getElementById('precoM2Direto').innerHTML='<div class="sim-det">'+
+      _simDl('Mão de obra ('+_fmt(hh)+' HH)',moSub,false)+_simDl('Materiais',matSub,false)+
+      _simDl('Terceiros',terSub,false)+_simDl('Logística',log,false)+
+      _simDl('Subtotal direto',subDireto,true)+_simDl('BDI ('+_fmt(bdi)+'%)',preco2-subDireto,false)+'</div>';
+    document.getElementById('precoM2Preco').textContent='R$ '+_fmt(preco2);
+    document.getElementById('precoM2Margem').textContent=_fmt(margemBruta)+'%';
+    document.getElementById('precoM2VHH').textContent='R$ '+_fmt(vHH)+'/h';
+  }
 }
 
 /* Protocolo do portal */
