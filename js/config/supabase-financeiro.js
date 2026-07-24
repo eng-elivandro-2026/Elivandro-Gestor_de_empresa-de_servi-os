@@ -41,6 +41,17 @@
     return empresaId ? query.eq('empresa_id', empresaId) : query;
   }
 
+  /**
+   * Saldo em aberto de uma conta a receber: previsto - recebido, nunca negativo.
+   * Espelha a regra que contas a pagar já aplicava (previsto - pago).
+   * Trabalha em centavos para não acumular erro de ponto flutuante.
+   * Função pura.
+   */
+  function _pendenteReceber(valorPrevisto, valorRecebido) {
+    var centavos = Math.round(_num(valorPrevisto) * 100) - Math.round(_num(valorRecebido) * 100);
+    return Math.max(0, centavos) / 100;
+  }
+
 
   // ============================================================
   // CONTAS A RECEBER
@@ -49,6 +60,13 @@
   /**
    * Lista todas as contas a receber da empresa.
    * Retorna ordenado por data_vencimento asc, nulls last.
+   *
+   * valor_faturado é derivado em runtime a partir das NFs vinculadas, e não
+   * lido do campo gravado: esse campo nunca era atualizado ao emitir NF, então
+   * ficava sempre 0 e zerava o KPI Faturado, a coluna Faturado da tabela e o
+   * espelho financeiro. A soma das NFs (exceto canceladas) é a fonte de verdade
+   * — a mesma que o espelho operacional já usava. Uma única query agregada
+   * para todas as contas, sem N+1.
    */
   async function sbListarContasReceber(empresaId) {
     var r = await client()
@@ -58,7 +76,30 @@
       .order('data_vencimento', { ascending: true, nullsFirst: false });
 
     if (r.error) throw r.error;
-    return r.data || [];
+    var contas = r.data || [];
+    return _enriquecerFaturado(empresaId, contas);
+  }
+
+  /**
+   * Preenche valor_faturado de cada conta com a soma das NFs não canceladas
+   * vinculadas a ela. Função de banco (1 query), mas a agregação em si é pura.
+   */
+  async function _enriquecerFaturado(empresaId, contas) {
+    if (!contas || !contas.length) return contas || [];
+    var ids = contas.map(function (c) { return c.id; }).filter(Boolean);
+    var notas = await _listarNotasFiscaisContas(empresaId, ids);
+
+    var faturadoPorConta = {};
+    (notas || []).forEach(function (nf) {
+      if (String(nf.status || '') === 'cancelada') return;
+      var k = String(nf.conta_receber_id);
+      faturadoPorConta[k] = (faturadoPorConta[k] || 0) + _num(nf.valor_nf);
+    });
+
+    contas.forEach(function (c) {
+      c.valor_faturado = faturadoPorConta[String(c.id)] || 0;
+    });
+    return contas;
   }
 
   /**
@@ -178,9 +219,17 @@
       status: 'previsto',
       valor_previsto: 0,
       valor_faturado: 0,
-      valor_recebido: 0,
-      valor_pendente: 0
+      valor_recebido: 0
     }, dados);
+
+    // valor_pendente é derivado: previsto - recebido. Antes era default 0 e
+    // nunca calculado, então toda conta nascia com pendente zerado mesmo com
+    // valor previsto — o que zerava o "A Receber" do DRE e deixava a tela de
+    // recebimento sem nenhuma conta para baixar. Contas a pagar já derivava.
+    // Respeita valor_pendente explícito, se quem chamou informar.
+    if (dados.valor_pendente === undefined || dados.valor_pendente === null) {
+      payload.valor_pendente = _pendenteReceber(payload.valor_previsto, payload.valor_recebido);
+    }
 
     var r = await client()
       .from('financeiro_contas_receber')
@@ -201,6 +250,13 @@
     var empresaId = _empresaFiltro(dados);
     var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro] id obrigatório para atualizar.');
+
+    // Mesma regra de sbAtualizarContaPagar: se previsto ou recebido mudou e o
+    // chamador não informou o pendente, recalcula em vez de deixar defasado.
+    var mexeuNosValores = payload.valor_previsto !== undefined || payload.valor_recebido !== undefined;
+    if (mexeuNosValores && payload.valor_pendente === undefined) {
+      payload.valor_pendente = _pendenteReceber(payload.valor_previsto, payload.valor_recebido);
+    }
 
     var q = client()
       .from('financeiro_contas_receber')
@@ -1726,11 +1782,14 @@
     // Helper: valor numérico seguro
     function n(v) { return parseFloat(v) || 0; }
 
-    // Helper: data ISO (YYYY-MM-DD) está dentro do período?
-    // Se não há período definido, inclui tudo.
+    // Helper: data (YYYY-MM-DD) está dentro do período?
+    // Se não há período definido, inclui tudo. Usa _dataISO para aceitar
+    // tanto string ISO (PostgREST) quanto objeto Date (driver pg) — com
+    // String() cru, um Date viraria "Fri Mar 06 2026" e nunca cairia no
+    // intervalo, zerando o DRE silenciosamente.
     function noPeriodo(data) {
-      if (!data) return false; // sem data = exclui do período filtrado
-      var d = String(data).slice(0, 10);
+      var d = _dataISO(data);
+      if (!d) return false; // sem data = exclui do período filtrado
       if (dataInicio && d < dataInicio) return false;
       if (dataFim    && d > dataFim)    return false;
       return true;
@@ -2187,6 +2246,82 @@
     return r.data;
   }
 
+  // ============================================================
+  // FORNECEDORES (migration 077)
+  // Entidade central; antes era texto livre em contas a pagar,
+  // NFs de fornecedor e banco de preços.
+  // ============================================================
+
+  function _soDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+
+  async function sbListarFornecedores(empresaId) {
+    if (!empresaId) throw new Error('[Financeiro Forn] empresa_id obrigatorio.');
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nome', { ascending: true });
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Procura fornecedor por CNPJ (ou CPF) dentro da empresa.
+   * Compara só dígitos, então aceita valores com ou sem máscara.
+   * Retorna o registro ou null.
+   */
+  async function sbBuscarFornecedorPorDocumento(empresaId, documento) {
+    if (!empresaId || !documento) return null;
+    var doc = _soDigitos(documento);
+    if (!doc) return null;
+    // Busca por CNPJ e CPF; filtra por dígitos no app para ignorar máscara.
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .select('*')
+      .eq('empresa_id', empresaId);
+    if (r.error) throw r.error;
+    var achado = (r.data || []).find(function (f) {
+      return _soDigitos(f.cnpj) === doc || _soDigitos(f.cpf) === doc;
+    });
+    return achado || null;
+  }
+
+  async function sbSalvarFornecedor(dados) {
+    if (!dados || !dados.empresa_id) throw new Error('[Financeiro Forn] empresa_id obrigatorio.');
+    if (!dados.nome || !String(dados.nome).trim()) throw new Error('[Financeiro Forn] nome obrigatorio.');
+
+    // Evita duplicar por documento: se já existe fornecedor com o mesmo
+    // CNPJ/CPF na empresa, atualiza em vez de criar outro.
+    var doc = _soDigitos(dados.cnpj || dados.cpf);
+    if (doc) {
+      var existente = await sbBuscarFornecedorPorDocumento(dados.empresa_id, doc);
+      if (existente) return sbAtualizarFornecedor(existente.id, dados);
+    }
+
+    var payload = Object.assign({ ativo: true }, dados);
+    var r = await client()
+      .from('financeiro_fornecedores')
+      .insert(payload)
+      .select()
+      .single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function sbAtualizarFornecedor(id, dados) {
+    var empresaId = _empresaFiltro(dados);
+    var payload = _payloadSemEmpresa(dados);
+    if (!id) throw new Error('[Financeiro Forn] id obrigatorio para atualizar fornecedor.');
+    var q = client()
+      .from('financeiro_fornecedores')
+      .update(payload)
+      .eq('id', id);
+    q = _aplicarEmpresaFiltro(q, empresaId);
+    var r = await q.select().single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
   async function sbListarAdquirentes(empresaId) {
     if (!empresaId) throw new Error('[Financeiro F3.4-B] empresa_id obrigatorio.');
     var r = await client()
@@ -2430,6 +2565,12 @@
     listarFontesFinanceiras:         sbListarFontesFinanceiras,
     salvarFonteFinanceira:           sbSalvarFonteFinanceira,
     atualizarFonteFinanceira:        sbAtualizarFonteFinanceira,
+
+    // Fornecedores (migration 077)
+    listarFornecedores:              sbListarFornecedores,
+    buscarFornecedorPorDocumento:    sbBuscarFornecedorPorDocumento,
+    salvarFornecedor:                sbSalvarFornecedor,
+    atualizarFornecedor:             sbAtualizarFornecedor,
 
     // F3.4-B - Adquirentes e maquininhas
     listarAdquirentes:               sbListarAdquirentes,
