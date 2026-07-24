@@ -118,6 +118,7 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .mrow .mnm{font-size:.8rem;flex:1 1 160px}
 .mrow .mqtd{width:70px}
 .mrow .mcst{font-size:.74rem;color:var(--text2);font-variant-numeric:tabular-nums;min-width:120px;text-align:right}
+.madd-top{margin:.2rem 0 .5rem}
 .madd{display:flex;align-items:flex-end;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
 .madd select{flex:0 0 auto;min-width:150px;height:auto;align-self:stretch}
 .madd input{width:80px}
@@ -740,10 +741,26 @@ function _periodos(mensal, forte){
 function _togDept(id){ var k=id||'_sem'; var ab=_deptAberto[k]!==false; _deptAberto[k]=!ab; _renderTimes(); }
 function _togMembros(timeId){ _membrosAberto[timeId]=!_membrosAberto[timeId]; _renderTimes(); }
 
+function _togAddMembro(timeId){ var el=document.getElementById('madd_'+timeId); if(el) el.style.display=(el.style.display==='none'?'':'none'); }
+
 function _renderMembros(t){
   var membros=_membrosDoTime(t.id);
+  var jaTem={}; membros.forEach(function(m){ jaTem[m.funcao_id]=true; });
+  var opts=_funcoes.filter(function(f){ return f.ativo && !jaTem[f.id]; }).map(function(f){ return '<option value="'+f.id+'">'+esc(f.nome)+'</option>'; }).join('');
   var h='<div class="time-membros"><div class="mtit"><span>Composição — '+esc(t.nome)+'</span>'+
     '<button class="btn btn-xs" onclick="_togMembros(\''+t.id+'\')">✕ Fechar</button></div>';
+  // Adicionar membro (colapsável) no topo
+  if(opts){
+    h+='<div class="madd-top"><button class="btn prim btn-xs" onclick="_togAddMembro(\''+t.id+'\')">+ Adicionar Membro</button></div>';
+    h+='<div class="madd" id="madd_'+t.id+'" style="display:none">'+
+      '<div class="fld" style="flex:1 1 180px"><label>Adicionar função</label><select id="addFunc_'+t.id+'" size="1">'+opts+'</select></div>'+
+      '<div class="fld"><label>Qtd</label><input type="number" id="addQtd_'+t.id+'" min="1" step="1" value="1"></div>'+
+      '<button class="btn prim btn-xs" onclick="adicionarMembro(\''+t.id+'\')">Adicionar</button>'+
+    '</div>';
+  }else{
+    h+='<div class="dep-vazio">Todas as funções ativas já estão no time (ou não há funções ativas).</div>';
+  }
+  // Lista de membros
   if(!membros.length){ h+='<div class="dep-vazio">Nenhuma função neste time.</div>'; }
   membros.forEach(function(m){
     var f=_funcById(m.funcao_id);
@@ -755,17 +772,6 @@ function _renderMembros(t){
       '<button class="btn btn-xs" onclick="removerMembro(\''+m.id+'\')">Remover</button>'+
     '</div>';
   });
-  var jaTem={}; membros.forEach(function(m){ jaTem[m.funcao_id]=true; });
-  var opts=_funcoes.filter(function(f){ return f.ativo && !jaTem[f.id]; }).map(function(f){ return '<option value="'+f.id+'">'+esc(f.nome)+'</option>'; }).join('');
-  if(opts){
-    h+='<div class="madd">'+
-      '<div class="fld" style="flex:1 1 180px"><label>Adicionar função</label><select id="addFunc_'+t.id+'" size="1">'+opts+'</select></div>'+
-      '<div class="fld"><label>Qtd</label><input type="number" id="addQtd_'+t.id+'" min="1" step="1" value="1"></div>'+
-      '<button class="btn prim btn-xs" onclick="adicionarMembro(\''+t.id+'\')">Adicionar</button>'+
-    '</div>';
-  }else{
-    h+='<div class="dep-vazio">Todas as funções ativas já estão no time (ou não há funções ativas).</div>';
-  }
   h+='<div class="mtot">'+_periodos(_timeCustoMes(t.id),true)+'</div>';
   h+='<div class="medit"><button class="btn btn-xs" onclick="abrirFormTime(\''+t.id+'\')">✏️ Editar dados do time</button></div></div>';
   return h;
