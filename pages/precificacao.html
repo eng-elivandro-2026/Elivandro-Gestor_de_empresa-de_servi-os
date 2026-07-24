@@ -608,6 +608,16 @@ var _IDX_GERAIS = [
   { chave:'salario_minimo_sp',       rotulo:'Salário Mínimo SP',       valor:1700.00, unidade:'R$' },
   { chave:'horas_mes_padrao',        rotulo:'Horas/mês padrão',        valor:220,     unidade:'h'  }
 ];
+var _IDX_CAPACIDADE = [
+  { chave:'jornada_semanal',      rotulo:'Jornada semanal (h)',          valor:44,   unidade:'h' },
+  { chave:'semanas_mes',          rotulo:'Semanas por mês',              valor:4.33, unidade:''  },
+  { chave:'reducao_faltas',       rotulo:'Faltas médias',                valor:2,    unidade:'%' },
+  { chave:'reducao_afastamento',  rotulo:'Afastamentos',                 valor:1,    unidade:'%' },
+  { chave:'reducao_ociosidade',   rotulo:'Ociosidade/Improdutividade',   valor:10,   unidade:'%' },
+  { chave:'reducao_deslocamento', rotulo:'Deslocamentos',                valor:5,    unidade:'%' },
+  { chave:'reducao_outros',       rotulo:'Outros',                       valor:0,    unidade:'%' }
+];
+var _IDX_REDUCOES = ['reducao_faltas','reducao_afastamento','reducao_ociosidade','reducao_deslocamento','reducao_outros'];
 var _IDX_ENCARGOS = [
   { id:'A', titulo:'Grupo A — Encargos sobre folha', itens:[
     { chave:'enc_a_inss',    rotulo:'INSS',             valor:20.0, unidade:'%' },
@@ -639,7 +649,8 @@ var _IDX_ENCARGOS = [
     { chave:'enc_d_reinc', rotulo:'Reincidência A sobre B', valor:4.59, unidade:'%' }
   ]}
 ];
-function _idxTodos(){ var t=_IDX_GERAIS.slice(); _IDX_ENCARGOS.forEach(function(g){ t=t.concat(g.itens); }); return t; }
+function _idxTodos(){ var t=_IDX_GERAIS.concat(_IDX_CAPACIDADE); _IDX_ENCARGOS.forEach(function(g){ t=t.concat(g.itens); }); return t; }
+function _idxVal(ch){ var i=_idxTodos().find(function(x){return x.chave===ch;}); return i?_n(i.valor):0; }
 function _idxInpId(ch){ return 'idx_'+ch; }
 function _idxSelId(ch){ return 'idxsel_'+ch; }
 /* Snapshot dos padrões (capturado antes de qualquer carga do banco) */
@@ -673,6 +684,16 @@ function _renderIndices(){
   html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Parâmetro</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
   html+=_IDX_GERAIS.map(function(i){ return _idxLinha(i,false); }).join('');
   html+='</tbody></table></div>';
+  // Bloco 1b — Capacidade Produtiva
+  html+='<div class="idx-grp-tit" style="margin-top:1.3rem">Capacidade Produtiva</div>';
+  html+='<div class="tbl-wrap"><table class="tbl idx-tbl"><thead><tr><th>Parâmetro</th><th class="num">Valor</th><th>Un.</th></tr></thead><tbody>';
+  html+=_IDX_CAPACIDADE.map(function(i){ return _idxLinha(i,false); }).join('');
+  html+='</tbody></table></div>';
+  html+='<div class="sim-det" style="margin-top:.5rem">'+
+    '<div class="dl"><span>Total de redução</span><span class="dv" id="idxCapTotRed">—</span></div>'+
+    '<div class="dl forte"><span>Fator de aproveitamento</span><span class="dv" id="idxCapFator">—</span></div>'+
+    '<div class="dl forte"><span>Horas vendáveis/pessoa/mês</span><span class="dv" id="idxCapHV">—</span></div>'+
+    '</div>';
   // Bloco 2 — Encargos Sociais (com seleção)
   html+='<div class="idx-grp-tit" style="margin-top:1.3rem">Encargos Sociais (SINAPI 2026 · SP)</div>';
   _IDX_ENCARGOS.forEach(function(g){
@@ -705,6 +726,14 @@ function _recalcIndices(){
   });
   _totalEncargos=geral;
   var gl=document.getElementById('idxTotGeral'); if(gl) gl.textContent=_fmt(geral)+'%';
+  // Capacidade Produtiva (usa os inputs se renderizados, senão o modelo)
+  function _capv(ch){ var inp=document.getElementById(_idxInpId(ch)); return inp?_n(inp.value):_idxVal(ch); }
+  var totRed=_IDX_REDUCOES.reduce(function(s,ch){ return s+_capv(ch); },0);
+  var fator=100-totRed;
+  var hv=_capv('jornada_semanal')*_capv('semanas_mes')*(fator/100);
+  var e1=document.getElementById('idxCapTotRed'); if(e1) e1.textContent=_fmt(totRed)+'%';
+  var e2=document.getElementById('idxCapFator'); if(e2) e2.textContent=_fmt(fator)+'%';
+  var e3=document.getElementById('idxCapHV'); if(e3) e3.textContent=(fator>0?_fmt(hv)+' h':'—');
 }
 
 async function salvarIndices(){
@@ -761,6 +790,7 @@ function _funcById(id){ return _funcoes.find(function(f){return f.id===id;})||nu
 function _funcCustoMes(f){ if(!f) return 0; var hh=f.custo_hh!=null?f.custo_hh:_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes); return _n(hh)*_n(f.horas_mes); }
 function _membrosDoTime(timeId){ return _membros.filter(function(m){return m.time_id===timeId;}); }
 function _timeCustoMes(timeId){ return _membrosDoTime(timeId).reduce(function(s,m){ return s+_funcCustoMes(_funcById(m.funcao_id))*_n(m.quantidade); },0); }
+function _timePessoas(timeId){ return _membrosDoTime(timeId).reduce(function(s,m){ return s+_n(m.quantidade); },0); }
 function _timesDoDepto(deptId){ return _times.filter(function(t){ return (deptId===null? !t.departamento_id : t.departamento_id===deptId); }); }
 function _deptCustoMes(deptId){ return _timesDoDepto(deptId).filter(function(t){return t.ativo;}).reduce(function(s,t){ return s+_timeCustoMes(t.id); },0); }
 function _periodos(mensal, forte){
@@ -977,6 +1007,7 @@ async function atualizarQtdMembro(id,val){
 
 /* ── Simulador de Faturamento Mínimo ─────────────────────────── */
 var _simImpostosDefault = 0;
+var _simCapDef = { jornada:44, semanas:4.33, faltas:2, afastamento:1, ociosidade:10, deslocamento:5, outros:0 };
 
 async function carregarSimulador(){
   var box=document.getElementById('simWrap'); if(!box) return;
@@ -987,8 +1018,23 @@ async function carregarSimulador(){
     if(rt.error) throw rt.error; _times=rt.data||[];
     var rm=await sb.from('precificacao_time_membros').select('*').eq('empresa_id',_empresaAtiva.id);
     if(rm.error) throw rm.error; _membros=rm.data||[];
+    // Defaults do Banco de Índices (impostos + capacidade), numa query só
     _simImpostosDefault=0;
-    try{ var ri=await sb.from('precificacao_indices').select('valor').eq('empresa_id',_empresaAtiva.id).eq('chave','aliquota_simples').maybeSingle(); if(!ri.error && ri.data && ri.data.valor!=null) _simImpostosDefault=_n(ri.data.valor); }catch(e){}
+    _simCapDef={ jornada:44, semanas:4.33, faltas:2, afastamento:1, ociosidade:10, deslocamento:5, outros:0 };
+    try{
+      var ri=await sb.from('precificacao_indices').select('chave,valor').eq('empresa_id',_empresaAtiva.id);
+      if(!ri.error){
+        var mp={}; (ri.data||[]).forEach(function(r){ mp[r.chave]=_n(r.valor); });
+        if(mp.aliquota_simples!=null) _simImpostosDefault=mp.aliquota_simples;
+        if(mp.jornada_semanal!=null) _simCapDef.jornada=mp.jornada_semanal;
+        if(mp.semanas_mes!=null) _simCapDef.semanas=mp.semanas_mes;
+        if(mp.reducao_faltas!=null) _simCapDef.faltas=mp.reducao_faltas;
+        if(mp.reducao_afastamento!=null) _simCapDef.afastamento=mp.reducao_afastamento;
+        if(mp.reducao_ociosidade!=null) _simCapDef.ociosidade=mp.reducao_ociosidade;
+        if(mp.reducao_deslocamento!=null) _simCapDef.deslocamento=mp.reducao_deslocamento;
+        if(mp.reducao_outros!=null) _simCapDef.outros=mp.reducao_outros;
+      }
+    }catch(e){}
     _renderSimulador();
   }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
 }
@@ -1024,6 +1070,34 @@ function _renderSimulador(){
      '<div class="sec-desc">📊 Detalhamento</div><div id="simDetalhe"></div>'+
      '<div class="sec-desc">🎯 Cenários de margem</div><div id="simCenarios"></div>'+
      '<div id="simAlertas"></div></div>';
+
+  var modChks = ativos.length ? ativos.map(function(t){
+    return '<label class="sim-chk"><input type="checkbox" id="simMod_'+t.id+'" checked onchange="_recalcSimulador()">'+
+      '<span class="snm">'+esc(t.nome)+'</span>'+
+      '<span class="scst">'+_timePessoas(t.id)+' pessoa(s)</span></label>';
+  }).join('') : '<div class="dep-vazio">Nenhum time ativo.</div>';
+
+  h+='<div class="card sim-result"><div class="sec-tit">4 · Capacidade Produtiva (MOD)</div>'+
+     '<div class="sec-desc">Marque os times de Mão de Obra Direta e ajuste jornada e reduções (defaults do Banco de Índices).</div>'+
+     modChks+
+     '<div class="form-grid" style="margin-top:.7rem">'+
+       '<div class="fld"><label>Jornada semanal (h)</label><input type="number" id="simCapJornada" min="0" step="0.01" value="'+_n(_simCapDef.jornada)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Semanas por mês</label><input type="number" id="simCapSemanas" min="0" step="0.01" value="'+_n(_simCapDef.semanas)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Faltas (%)</label><input type="number" id="simCapFaltas" min="0" step="0.01" value="'+_n(_simCapDef.faltas)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Afastamentos (%)</label><input type="number" id="simCapAfast" min="0" step="0.01" value="'+_n(_simCapDef.afastamento)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Ociosidade (%)</label><input type="number" id="simCapOcios" min="0" step="0.01" value="'+_n(_simCapDef.ociosidade)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Deslocamentos (%)</label><input type="number" id="simCapDesloc" min="0" step="0.01" value="'+_n(_simCapDef.deslocamento)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Outros (%)</label><input type="number" id="simCapOutros" min="0" step="0.01" value="'+_n(_simCapDef.outros)+'" oninput="_recalcSimulador()"></div>'+
+     '</div>'+
+     '<div class="sim-det">'+
+       '<div class="dl"><span>Total de redução</span><span class="dv" id="simCapTotRed">—</span></div>'+
+       '<div class="dl"><span>Fator de aproveitamento</span><span class="dv" id="simCapFator">—</span></div>'+
+       '<div class="dl"><span>Horas brutas/mês por pessoa</span><span class="dv" id="simCapBrutas">—</span></div>'+
+       '<div class="dl"><span>Horas vendáveis/pessoa/mês</span><span class="dv" id="simCapHV">—</span></div>'+
+       '<div class="dl"><span>Total de horas vendáveis</span><span class="dv" id="simCapTotalHV">—</span></div>'+
+       '<div class="dl forte"><span>Custo/hora vendável</span><span class="dv" id="simCapCustoHora">—</span></div>'+
+     '</div>'+
+     '<div class="sim-big"><div class="lab">🏷️ Preço mínimo por hora (com impostos e margem)</div><div class="val" id="simCapPrecoHora">—</div></div></div>';
 
   box.innerHTML=h;
   _recalcSimulador();
@@ -1073,6 +1147,28 @@ function _recalcSimulador(){
     else{ al='<div class="info-line">Informe o ticket médio estimado para saber quantas propostas você precisa fechar.</div>'; }
   }
   document.getElementById('simAlertas').innerHTML=al;
+
+  // Bloco 4 — Capacidade Produtiva (MOD)
+  if(document.getElementById('simCapTotRed')){
+    var jornada=_num('simCapJornada'), semanas=_num('simCapSemanas');
+    var totRed=_num('simCapFaltas')+_num('simCapAfast')+_num('simCapOcios')+_num('simCapDesloc')+_num('simCapOutros');
+    var fator=100-totRed;
+    var brutas=jornada*semanas;
+    var hvPessoa=fator>0?brutas*(fator/100):0;
+    var pessoasMod=0, custoMod=0;
+    _times.filter(function(t){return t.ativo;}).forEach(function(t){ var cb=document.getElementById('simMod_'+t.id); if(cb&&cb.checked){ pessoasMod+=_timePessoas(t.id); custoMod+=_timeCustoMes(t.id); } });
+    var totalHV=pessoasMod*hvPessoa;
+    var okHV=fator>0 && totalHV>0;
+    var custoHora=okHV?custoMod/totalHV:0;
+    var precoHora=(okHV && denom>0)?custoHora/denom:0;
+    document.getElementById('simCapTotRed').textContent=_fmt(totRed)+'%';
+    document.getElementById('simCapFator').textContent=_fmt(fator)+'%';
+    document.getElementById('simCapBrutas').textContent=_fmt(brutas)+' h';
+    document.getElementById('simCapHV').textContent=(fator>0?_fmt(hvPessoa)+' h':'—');
+    document.getElementById('simCapTotalHV').textContent=(okHV?_fmt(totalHV)+' h':'—');
+    document.getElementById('simCapCustoHora').textContent=(okHV?'R$ '+_fmt(custoHora):'—');
+    document.getElementById('simCapPrecoHora').textContent=((okHV && denom>0)?'R$ '+_fmt(precoHora):'—');
+  }
 }
 
 /* Protocolo do portal */
