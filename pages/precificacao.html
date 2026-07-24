@@ -124,6 +124,32 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .madd input{width:80px}
 .mtot{margin-top:.5rem;text-align:right}
 .dep-vazio{font-size:.74rem;color:var(--text3);padding:.4rem 0}
+/* Simulador */
+.sim-chk{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.sim-chk:last-child{border-bottom:none}
+.sim-chk .snm{flex:1 1 auto}
+.sim-chk .scst{color:var(--text2);font-variant-numeric:tabular-nums;font-size:.76rem}
+.sim-tot{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);font-weight:800}
+.sim-tot .v{color:var(--emp-cor);font-variant-numeric:tabular-nums}
+.sim-range{display:flex;align-items:center;gap:.6rem}
+.sim-range input[type=range]{flex:1 1 auto;accent-color:var(--emp-cor)}
+.sim-range .rv{font-weight:800;color:var(--emp-cor);min-width:3rem;text-align:right;font-variant-numeric:tabular-nums}
+.sim-result{background:var(--emp-bg);border-color:var(--emp-bdr)}
+.sim-big{text-align:center;padding:.4rem 0 .8rem}
+.sim-big .lab{font-size:.78rem;font-weight:700;color:var(--text2)}
+.sim-big .val{font-size:2rem;font-weight:800;color:var(--emp-cor);font-variant-numeric:tabular-nums;margin:.2rem 0}
+.sim-det{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg2);padding:.5rem .7rem;margin:.6rem 0}
+.sim-det .dl{display:flex;justify-content:space-between;gap:1rem;padding:.28rem 0;font-size:.82rem;border-bottom:1px solid var(--border)}
+.sim-det .dl:last-child{border-bottom:none}
+.sim-det .dl.forte{font-weight:800;color:var(--emp-cor)}
+.sim-det .dl .dv{font-variant-numeric:tabular-nums}
+.sim-cen-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin:.6rem 0}
+.sim-cen{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.7rem .8rem;text-align:center}
+.sim-cen.on{border-color:var(--emp-bdr);background:var(--emp-bg);box-shadow:0 0 0 1px var(--emp-bdr)}
+.sim-cen .cen-lab{font-size:.72rem;color:var(--text3);font-weight:700}
+.sim-cen .cen-val{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;margin-top:.2rem}
+.sim-cen.on .cen-val{color:var(--emp-cor)}
+.sim-cen .cen-val span{font-size:.68rem;font-weight:600;color:var(--text3)}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -291,9 +317,10 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
     <!-- 3 -->
     <section class="psec" id="sec-simulador">
       <div class="card">
-        <div class="sec-tit">🧮 Simulador</div>
-        <div class="vazio">Em construção.</div>
+        <div class="sec-tit">🧮 Simulador de Faturamento Mínimo</div>
+        <div class="sec-desc">Quanto você precisa faturar para pagar os custos e ainda ter a margem de lucro desejada.</div>
       </div>
+      <div id="simWrap"><div class="vazio">Carregando…</div></div>
     </section>
     <!-- 4 -->
     <section class="psec" id="sec-contratacao">
@@ -365,6 +392,7 @@ function mostrarSecao(id){
   document.querySelectorAll('.psec').forEach(function(s){ s.classList.toggle('on', s===alvo); });
   if(alvo && alvo.id==='sec-indices') carregarIndices();
   if(alvo && alvo.id==='sec-times') carregarTimes();
+  if(alvo && alvo.id==='sec-simulador') carregarSimulador();
 }
 
 /* Gate de acesso */
@@ -389,6 +417,7 @@ async function _onTrocaEmpresa(d){
   carregarIndices();
   carregarFuncoes();
   var st=document.getElementById('sec-times'); if(st && st.classList.contains('on')) carregarTimes();
+  var ss=document.getElementById('sec-simulador'); if(ss && ss.classList.contains('on')) carregarSimulador();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
@@ -944,6 +973,106 @@ async function atualizarQtdMembro(id,val){
   try{ var res=await sb.from('precificacao_time_membros').update({quantidade:qtd}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
     if(res.error) throw res.error; carregarTimes();
   }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+
+/* ── Simulador de Faturamento Mínimo ─────────────────────────── */
+var _simImpostosDefault = 0;
+
+async function carregarSimulador(){
+  var box=document.getElementById('simWrap'); if(!box) return;
+  var sb=_sb(); if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    if(!_funcoes.length){ var rf=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id); if(!rf.error) _funcoes=rf.data||[]; }
+    var rt=await sb.from('precificacao_times').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true});
+    if(rt.error) throw rt.error; _times=rt.data||[];
+    var rm=await sb.from('precificacao_time_membros').select('*').eq('empresa_id',_empresaAtiva.id);
+    if(rm.error) throw rm.error; _membros=rm.data||[];
+    _simImpostosDefault=0;
+    try{ var ri=await sb.from('precificacao_indices').select('valor').eq('empresa_id',_empresaAtiva.id).eq('chave','aliquota_simples').maybeSingle(); if(!ri.error && ri.data && ri.data.valor!=null) _simImpostosDefault=_n(ri.data.valor); }catch(e){}
+    _renderSimulador();
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _renderSimulador(){
+  var box=document.getElementById('simWrap'); if(!box) return;
+  var ativos=_times.filter(function(t){return t.ativo;});
+  var chks = ativos.length ? ativos.map(function(t){
+    return '<label class="sim-chk"><input type="checkbox" id="simT_'+t.id+'" checked onchange="_recalcSimulador()">'+
+      '<span class="snm">'+esc(t.nome)+'</span>'+
+      '<span class="scst">R$ '+_fmt(_timeCustoMes(t.id))+'/mês</span></label>';
+  }).join('') : '<div class="dep-vazio">Nenhum time ativo. Cadastre times em “Meus Times”.</div>';
+
+  var h='';
+  h+='<div class="card"><div class="sec-tit">1 · Base de custo</div>'+
+     '<div class="sec-desc">Selecione os times que entram na simulação e some outras despesas fixas.</div>'+
+     chks+
+     '<div class="form-grid" style="margin-top:.7rem"><div class="fld"><label>Outras despesas fixas/mês (R$)</label>'+
+       '<input type="number" id="simDespesas" min="0" step="0.01" value="0" oninput="_recalcSimulador()"></div></div>'+
+     '<div class="sim-tot"><span>Custo total mensal</span><span class="v" id="simCustoTop">R$ 0,00</span></div></div>';
+
+  h+='<div class="card"><div class="sec-tit">2 · Parâmetros</div>'+
+     '<div class="form-grid">'+
+       '<div class="fld"><label>Impostos sobre faturamento (%)</label><input type="number" id="simImpostos" min="0" step="0.01" value="'+_n(_simImpostosDefault)+'" oninput="_recalcSimulador()"></div>'+
+       '<div class="fld"><label>Ticket médio estimado (R$)</label><input type="number" id="simTicket" min="0" step="0.01" value="0" oninput="_recalcSimulador()"></div>'+
+     '</div>'+
+     '<div class="fld" style="margin-top:.4rem"><label>Margem de lucro desejada</label>'+
+       '<div class="sim-range"><input type="range" id="simMargem" min="0" max="60" step="1" value="25" oninput="_recalcSimulador()"><span class="rv" id="simMargemVal">25%</span></div></div></div>';
+
+  h+='<div class="card sim-result"><div class="sec-tit">3 · Resultado</div>'+
+     '<div class="sim-big"><div class="lab">💰 Faturamento mínimo necessário</div>'+
+       '<div class="val" id="simFatBig">—</div><div class="per forte" id="simFatPer"></div></div>'+
+     '<div class="sec-desc">📊 Detalhamento</div><div id="simDetalhe"></div>'+
+     '<div class="sec-desc">🎯 Cenários de margem</div><div id="simCenarios"></div>'+
+     '<div id="simAlertas"></div></div>';
+
+  box.innerHTML=h;
+  _recalcSimulador();
+}
+
+function _simDl(lab,val,forte){ return '<div class="dl'+(forte?' forte':'')+'"><span>'+esc(lab)+'</span><span class="dv">R$ '+_fmt(val)+'</span></div>'; }
+
+function _recalcSimulador(){
+  if(!document.getElementById('simCustoTop')) return;
+  var custoTimes=0;
+  _times.filter(function(t){return t.ativo;}).forEach(function(t){ var cb=document.getElementById('simT_'+t.id); if(!cb||cb.checked) custoTimes+=_timeCustoMes(t.id); });
+  var outras=_num('simDespesas');
+  var custoTotal=custoTimes+outras;
+  var imp=_num('simImpostos'), mar=_num('simMargem');
+  var mv=document.getElementById('simMargemVal'); if(mv) mv.textContent=_fmt(mar)+'%';
+  document.getElementById('simCustoTop').textContent='R$ '+_fmt(custoTotal);
+
+  var denom=1-imp/100-mar/100;
+  var invalido=denom<=0;
+  var fat=invalido?0:custoTotal/denom;
+
+  document.getElementById('simFatBig').textContent=invalido?'—':('R$ '+_fmt(fat));
+  document.getElementById('simFatPer').innerHTML=invalido?'':_periodos(fat,true);
+
+  var impV=invalido?0:fat*imp/100, lucV=invalido?0:fat*mar/100;
+  document.getElementById('simDetalhe').innerHTML='<div class="sim-det">'+
+    _simDl('Custo total dos times',custoTimes,false)+
+    _simDl('Outras despesas',outras,false)+
+    _simDl('Total de custos',custoTotal,true)+
+    _simDl('Impostos ('+_fmt(imp)+'%)',impV,false)+
+    _simDl('Lucro desejado ('+_fmt(mar)+'%)',lucV,false)+
+    _simDl('Faturamento necessário',fat,true)+
+    '</div>';
+
+  var cens=[Math.max(0,mar-5),mar,Math.min(60,mar+5)];
+  document.getElementById('simCenarios').innerHTML='<div class="sim-cen-wrap">'+cens.map(function(mc){
+    var d=1-imp/100-mc/100; var f=d>0?custoTotal/d:0;
+    return '<div class="sim-cen'+(mc===mar?' on':'')+'"><div class="cen-lab">Para '+_fmt(mc)+'% de lucro</div>'+
+      '<div class="cen-val">'+(d>0?('R$ '+_fmt(f)):'—')+'<span>/mês</span></div></div>';
+  }).join('')+'</div>';
+
+  var al='';
+  if(invalido){ al='<div class="aviso">⚠ Impostos + margem somam ≥ 100%. Reduza um dos dois — o faturamento seria infinito.</div>'; }
+  else if(fat>0){
+    var ticket=_num('simTicket');
+    if(ticket>0){ al='<div class="aviso">🎯 Você precisa fechar '+Math.ceil(fat/ticket)+' proposta(s) de R$ '+_fmt(ticket)+' médio/mês para atingir esta meta.</div>'; }
+    else{ al='<div class="info-line">Informe o ticket médio estimado para saber quantas propostas você precisa fechar.</div>'; }
+  }
+  document.getElementById('simAlertas').innerHTML=al;
 }
 
 /* Protocolo do portal */
