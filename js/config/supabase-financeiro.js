@@ -1118,6 +1118,42 @@
   }
 
   /**
+   * Rede de segurança contra dupla contagem de receita por proposta.
+   *
+   * Quando uma proposta tem plano de parcelas (grupo_parcelamento_id), as
+   * parcelas SÃO a receita prevista. Uma conta avulsa da mesma proposta
+   * (ex.: vinda de uma NF) representa faturamento de algo já previsto nas
+   * parcelas — somá-la de novo dobraria a receita no DRE e nos KPIs.
+   *
+   * Esta função recebe uma lista de contas a receber e devolve a lista
+   * SEM as avulsas de propostas que têm parcelas. As parcelas ficam; as
+   * avulsas da mesma proposta saem. Contas sem proposta, e propostas sem
+   * parcelas, passam intactas.
+   *
+   * Função pura. Exige que as contas tragam proposta_app_id e
+   * grupo_parcelamento_id (ambos já vêm no select('*') dos carregamentos).
+   */
+  function deduplicarReceitaPorProposta(contas) {
+    var lista = contas || [];
+
+    // Propostas que possuem ao menos uma parcela.
+    var propostasComParcela = {};
+    lista.forEach(function (c) {
+      if (c.proposta_app_id && c.grupo_parcelamento_id) {
+        propostasComParcela[String(c.proposta_app_id)] = true;
+      }
+    });
+
+    // Mantém tudo, menos a conta avulsa (sem grupo) de uma proposta que
+    // tem parcelas.
+    return lista.filter(function (c) {
+      if (!c.proposta_app_id) return true;
+      if (!propostasComParcela[String(c.proposta_app_id)]) return true;
+      return !!c.grupo_parcelamento_id; // só as parcelas passam
+    });
+  }
+
+  /**
    * Calcula o resumo financeiro completo de uma conta a receber,
    * suas NFs e seus recebimentos.
    *
@@ -1694,9 +1730,11 @@
    */
   async function sbListarContasReceberPeriodo(empresaId, dataInicio, dataFim) {
     if (!empresaId) throw new Error('[Financeiro F4A] empresa_id obrigatório.');
+    // proposta_app_id e grupo_parcelamento_id vêm no select para o DRE poder
+    // de-duplicar receita por proposta (evita contar parcela + conta avulsa).
     var query = client()
       .from('financeiro_contas_receber')
-      .select('valor_previsto, valor_faturado, valor_recebido, valor_pendente, status, data_vencimento')
+      .select('valor_previsto, valor_faturado, valor_recebido, valor_pendente, status, data_vencimento, proposta_app_id, grupo_parcelamento_id')
       .eq('empresa_id', empresaId);
     if (dataInicio) query = query.gte('data_vencimento', dataInicio);
     if (dataFim)    query = query.lte('data_vencimento', dataFim);
@@ -1754,6 +1792,10 @@
    *   Margem Gerencial   = Resultado / Receita Bruta × 100  (null se Receita = 0)
    */
   function calcularDREGerencial(contas, recebimentos, contasPagar, dataInicio, dataFim) {
+    // Rede de segurança: se uma proposta tem parcelas, elas são a receita —
+    // uma conta avulsa da mesma proposta não soma de novo (dupla contagem).
+    contas = deduplicarReceitaPorProposta(contas || []);
+
     // Helper: valor numérico seguro
     function n(v) { return parseFloat(v) || 0; }
 
@@ -2501,6 +2543,7 @@
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
     calcularCardsFinanceirosBasicos: calcularCardsFinanceirosBasicos,
     agregarContasEmConta:            agregarContasEmConta,
+    deduplicarReceitaPorProposta:    deduplicarReceitaPorProposta,
 
     // F4A — DRE Gerencial (novas funções — não alteram as anteriores)
     listarContasReceberPeriodo:      sbListarContasReceberPeriodo,

@@ -75,6 +75,21 @@ ok('agregado aceita data_vencimento objeto Date',
     { status: 'aberta', valor_previsto: 100, data_vencimento: new Date(2026, 8, 30) }
   ]).data_vencimento === '2026-09-30');
 
+// Rede de segurança contra dupla contagem (rabo 2): proposta com parcelas +
+// conta avulsa não soma a avulsa de novo.
+(function () {
+  const dedup = F.deduplicarReceitaPorProposta([
+    { proposta_app_id: 'P', grupo_parcelamento_id: 'g', valor_previsto: 1000 },
+    { proposta_app_id: 'P', grupo_parcelamento_id: null, valor_previsto: 400 }
+  ]);
+  ok('dedup remove a conta avulsa de proposta com parcelas', dedup.length === 1 && dedup[0].grupo_parcelamento_id === 'g');
+  const dreDup = F.calcularDREGerencial([
+    { proposta_app_id: 'X', grupo_parcelamento_id: 'gx', valor_previsto: 1000, valor_pendente: 1000, status: 'aberta', data_vencimento: '2026-05-01' },
+    { proposta_app_id: 'X', grupo_parcelamento_id: null, valor_previsto: 400, valor_pendente: 400, status: 'aberta', data_vencimento: '2026-05-01' }
+  ], [], [], '2026-01-01', '2026-12-31');
+  ok('DRE não duplica receita da proposta (1000, não 1400)', dreDup.receitaBruta === 1000);
+})();
+
 // DRE aceita string ISO e objeto Date sem zerar (regressão)
 (function () {
   const contas = [{ valor_previsto: 1000, valor_pendente: 1000, status: 'aberta', data_vencimento: '2026-05-01' }];

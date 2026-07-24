@@ -3003,7 +3003,15 @@ function renderKpis(contas) {
   var totalPrevisto = 0, totalFaturado = 0, totalRecebido = 0, totalPendente = 0;
   var qtdVencidas = 0, valVencidas = 0, qtdAVencer = 0, valAVencer = 0;
 
-  (contas || []).forEach(function(c) {
+  // Rede de segurança contra dupla contagem: quando uma proposta tem parcelas,
+  // elas são a receita — a conta avulsa da mesma proposta não soma de novo.
+  // A TABELA continua mostrando tudo; só os totais dos KPIs são de-duplicados.
+  var sf = _sf();
+  var contasKpi = (sf && sf.deduplicarReceitaPorProposta)
+    ? sf.deduplicarReceitaPorProposta(contas || [])
+    : (contas || []);
+
+  (contasKpi || []).forEach(function(c) {
     totalPrevisto  += parseFloat(c.valor_previsto)  || 0;
     totalFaturado  += parseFloat(c.valor_faturado)  || 0;
     totalRecebido  += parseFloat(c.valor_recebido)  || 0;
@@ -13033,6 +13041,25 @@ async function salvarEditarNF() {
     }
     if (_meditTemRecebimento && trocouProposta) {
       _meditStatus('err', '❌ Troca de proposta bloqueada: esta conta já possui recebimentos.'); return;
+    }
+
+    // Guarda contra dupla contagem: se a proposta destino já tem plano de
+    // parcelas, as parcelas são a receita. Vincular esta conta avulsa a ela
+    // faria o DRE somar parcela + avulsa. Bloqueia e orienta a usar o Plano
+    // de Parcelas. Só checa quando está de fato vinculando (mudou a proposta).
+    if (trocouProposta && sf.listarParcelasProposta) {
+      try {
+        var _parcelasDestino = await sf.listarParcelasProposta(empId, novaPropId);
+        if (_parcelasDestino && _parcelasDestino.length) {
+          _meditStatus('err', '❌ Esta proposta já tem plano de parcelas (' + _parcelasDestino.length +
+            '). Para não contar a receita em dobro, fature pela tela Plano de Parcelas em vez de vincular esta NF avulsa.');
+          return;
+        }
+      } catch (e) {
+        console.warn('[EditarNF] falha ao checar parcelas da proposta destino:', e);
+        // Em caso de falha na checagem, não bloqueia — a rede de segurança
+        // no cálculo (deduplicarReceitaPorProposta) ainda evita a duplicidade.
+      }
     }
     if (_meditTemRecebimento && Math.abs(novoValor - (parseFloat(nf.valor_nf) || 0)) > 0.005) {
       _meditStatus('err', '❌ Alteração de valor bloqueada: esta conta já possui recebimentos.'); return;
