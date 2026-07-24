@@ -150,6 +150,23 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .sim-cen .cen-val{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;margin-top:.2rem}
 .sim-cen.on .cen-val{color:var(--emp-cor)}
 .sim-cen .cen-val span{font-size:.68rem;font-weight:600;color:var(--text3)}
+.schk-lab{display:flex;align-items:center;gap:.5rem;flex:1 1 auto;cursor:pointer;min-width:0}
+.sim-step{display:inline-flex;align-items:center;gap:.25rem}
+.sim-step button{width:24px;height:24px;padding:0;line-height:1;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:var(--r2);font-size:1rem;font-weight:700;cursor:pointer}
+.sim-step button:hover{border-color:var(--emp-bdr)}
+.sim-step input{width:48px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.25rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
+body.light .sim-step input{background:#fff;border-color:var(--border2)}
+.reg-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.5rem .6rem;border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.4rem}
+.reg-row.on{border-color:var(--green);box-shadow:0 0 0 1px var(--green);background:rgba(63,185,80,.08)}
+.reg-row .reg-nm{font-weight:700;font-size:.82rem;flex:1 1 130px}
+.reg-row .reg-aliq{display:inline-flex;align-items:center;gap:.2rem;color:var(--text3);font-size:.78rem}
+.reg-row .reg-aliq input{width:64px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);padding:.25rem .35rem;font-size:.8rem;font-family:inherit;font-variant-numeric:tabular-nums}
+body.light .reg-row .reg-aliq input{background:#fff;border-color:var(--border2)}
+.reg-row .reg-fat{font-weight:800;font-variant-numeric:tabular-nums;font-size:.84rem;min-width:130px;text-align:right}
+.reg-row .reg-dif{font-size:.72rem;font-variant-numeric:tabular-nums}
+.reg-row .reg-dif.pos{color:var(--red)}
+.reg-row .reg-dif.neg{color:var(--green)}
+.reg-row .reg-badge:not(:empty){font-size:.6rem;font-weight:700;color:#fff;background:var(--green);border-radius:10px;padding:.1rem .45rem}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -1008,6 +1025,18 @@ async function atualizarQtdMembro(id,val){
 /* ── Simulador de Faturamento Mínimo ─────────────────────────── */
 var _simImpostosDefault = 0;
 var _simCapDef = { jornada:44, semanas:4.33, faltas:2, afastamento:1, ociosidade:10, deslocamento:5, outros:0 };
+var _simQtd = {};   // timeId → quantidade simulada de pessoas (não persiste no cadastro)
+var _SIM_REGIMES = [ {k:'simples',nome:'Simples Nacional'}, {k:'presumido',nome:'Lucro Presumido'}, {k:'real',nome:'Lucro Real'} ];
+
+function _simQtdOf(id){ return _simQtd[id]!=null ? _simQtd[id] : _timePessoas(id); }
+function _timeCustoPessoa(id){ var p=_timePessoas(id); return p>0 ? _timeCustoMes(id)/p : 0; }
+function _timeCustoSim(id){ return _timeCustoPessoa(id)*_simQtdOf(id); }
+function _simSyncQtd(id){ var q=_simQtdOf(id); ['simQ_'+id,'simModQ_'+id].forEach(function(eid){ var el=document.getElementById(eid); if(el) el.value=q; }); }
+function _simSetQtd(id,val){ var q=parseInt(val,10); if(!(q>=1)) q=1; _simQtd[id]=q; _simSyncQtd(id); _recalcSimulador(); }
+function _simStepQtd(id,delta){ var q=_simQtdOf(id)+delta; if(q<1) q=1; _simQtd[id]=q; _simSyncQtd(id); _recalcSimulador(); }
+function _simStepHTML(id,pref){ return '<span class="sim-step"><button type="button" onclick="_simStepQtd(\''+id+'\',-1)">−</button>'+
+  '<input type="number" min="1" step="1" id="'+pref+'_'+id+'" value="'+_simQtdOf(id)+'" onchange="_simSetQtd(\''+id+'\',this.value)">'+
+  '<button type="button" onclick="_simStepQtd(\''+id+'\',1)">+</button></span>'; }
 
 async function carregarSimulador(){
   var box=document.getElementById('simWrap'); if(!box) return;
@@ -1042,10 +1071,11 @@ async function carregarSimulador(){
 function _renderSimulador(){
   var box=document.getElementById('simWrap'); if(!box) return;
   var ativos=_times.filter(function(t){return t.ativo;});
+  _simQtd={}; ativos.forEach(function(t){ _simQtd[t.id]=_timePessoas(t.id); });
   var chks = ativos.length ? ativos.map(function(t){
-    return '<label class="sim-chk"><input type="checkbox" id="simT_'+t.id+'" checked onchange="_recalcSimulador()">'+
-      '<span class="snm">'+esc(t.nome)+'</span>'+
-      '<span class="scst">R$ '+_fmt(_timeCustoMes(t.id))+'/mês</span></label>';
+    return '<div class="sim-chk"><label class="schk-lab"><input type="checkbox" id="simT_'+t.id+'" checked onchange="_recalcSimulador()"> <span class="snm">'+esc(t.nome)+'</span></label>'+
+      '<span class="scst" id="simCst_'+t.id+'">R$ '+_fmt(_timeCustoSim(t.id))+'/mês</span>'+
+      _simStepHTML(t.id,'simQ')+'</div>';
   }).join('') : '<div class="dep-vazio">Nenhum time ativo. Cadastre times em “Meus Times”.</div>';
 
   var h='';
@@ -1071,10 +1101,21 @@ function _renderSimulador(){
      '<div class="sec-desc">🎯 Cenários de margem</div><div id="simCenarios"></div>'+
      '<div id="simAlertas"></div></div>';
 
+  h+='<div class="card"><div class="sec-tit">3B · Comparativo de Regimes</div>'+
+     '<div class="sec-desc">Faturamento mínimo por regime tributário (usa a margem do Bloco 2).</div>'+
+     _SIM_REGIMES.map(function(r){
+       var def = r.k==='simples'?_n(_simImpostosDefault):(r.k==='presumido'?13.33:15);
+       return '<div class="reg-row" id="simRegRow_'+r.k+'">'+
+         '<span class="reg-nm">'+r.nome+'</span>'+
+         '<span class="reg-aliq"><input type="number" min="0" step="0.01" id="simRegAliq_'+r.k+'" value="'+def+'" oninput="_recalcSimulador()">%</span>'+
+         '<span class="reg-fat" id="simRegFat_'+r.k+'">—</span>'+
+         '<span class="reg-dif" id="simRegDif_'+r.k+'"></span>'+
+         '<span class="reg-badge" id="simRegBadge_'+r.k+'"></span></div>';
+     }).join('')+'</div>';
+
   var modChks = ativos.length ? ativos.map(function(t){
-    return '<label class="sim-chk"><input type="checkbox" id="simMod_'+t.id+'" checked onchange="_recalcSimulador()">'+
-      '<span class="snm">'+esc(t.nome)+'</span>'+
-      '<span class="scst">'+_timePessoas(t.id)+' pessoa(s)</span></label>';
+    return '<div class="sim-chk"><label class="schk-lab"><input type="checkbox" id="simMod_'+t.id+'" checked onchange="_recalcSimulador()"> <span class="snm">'+esc(t.nome)+'</span></label>'+
+      '<span class="scst">pessoas:</span>'+_simStepHTML(t.id,'simModQ')+'</div>';
   }).join('') : '<div class="dep-vazio">Nenhum time ativo.</div>';
 
   h+='<div class="card sim-result"><div class="sec-tit">4 · Capacidade Produtiva (MOD)</div>'+
@@ -1097,7 +1138,9 @@ function _renderSimulador(){
        '<div class="dl"><span>Total de horas vendáveis</span><span class="dv" id="simCapTotalHV">—</span></div>'+
        '<div class="dl forte"><span>Custo/hora vendável</span><span class="dv" id="simCapCustoHora">—</span></div>'+
      '</div>'+
-     '<div class="sim-big"><div class="lab">🏷️ Preço mínimo por hora (com impostos e margem)</div><div class="val" id="simCapPrecoHora">—</div></div></div>';
+     '<div class="sim-big"><div class="lab">🏷️ Preço mínimo por hora (com impostos e margem)</div><div class="val" id="simCapPrecoHora">—</div></div>'+
+     '<div class="sec-desc">📊 Composição do preço/hora</div><div id="simHoraDetalhe"></div>'+
+     '<div class="sec-desc">🎯 Cenários de margem por hora</div><div id="simHoraCenarios"></div></div>';
 
   box.innerHTML=h;
   _recalcSimulador();
@@ -1108,7 +1151,11 @@ function _simDl(lab,val,forte){ return '<div class="dl'+(forte?' forte':'')+'"><
 function _recalcSimulador(){
   if(!document.getElementById('simCustoTop')) return;
   var custoTimes=0;
-  _times.filter(function(t){return t.ativo;}).forEach(function(t){ var cb=document.getElementById('simT_'+t.id); if(!cb||cb.checked) custoTimes+=_timeCustoMes(t.id); });
+  _times.filter(function(t){return t.ativo;}).forEach(function(t){
+    var cs=_timeCustoSim(t.id);
+    var cel=document.getElementById('simCst_'+t.id); if(cel) cel.textContent='R$ '+_fmt(cs)+'/mês';
+    var cb=document.getElementById('simT_'+t.id); if(!cb||cb.checked) custoTimes+=cs;
+  });
   var outras=_num('simDespesas');
   var custoTotal=custoTimes+outras;
   var imp=_num('simImpostos'), mar=_num('simMargem');
@@ -1148,6 +1195,28 @@ function _recalcSimulador(){
   }
   document.getElementById('simAlertas').innerHTML=al;
 
+  // Bloco 3B — Comparativo de Regimes (baseline = Simples Nacional)
+  if(document.getElementById('simRegRow_simples')){
+    var regs=_SIM_REGIMES.map(function(r){ var a=_num('simRegAliq_'+r.k); var d=1-a/100-mar/100; return { k:r.k, valid:d>0, f:(d>0?custoTotal/d:0) }; });
+    var baseReg=regs.filter(function(r){return r.k==='simples';})[0];
+    var base=(baseReg&&baseReg.valid)?baseReg.f:null;
+    var validos=regs.filter(function(r){return r.valid;});
+    var minF=validos.length?Math.min.apply(null,validos.map(function(r){return r.f;})):null;
+    regs.forEach(function(r){
+      var fEl=document.getElementById('simRegFat_'+r.k); if(fEl) fEl.textContent=r.valid?('R$ '+_fmt(r.f)+'/mês'):'—';
+      var dEl=document.getElementById('simRegDif_'+r.k);
+      if(dEl){
+        if(!r.valid || base==null){ dEl.textContent=''; dEl.className='reg-dif'; }
+        else if(Math.abs(r.f-base)<0.005){ dEl.textContent='regime base'; dEl.className='reg-dif'; }
+        else { var dif=r.f-base; dEl.textContent=(dif>0?'+ R$ '+_fmt(dif)+' (mais caro)':'− R$ '+_fmt(-dif)+' (mais barato)'); dEl.className='reg-dif '+(dif>0?'pos':'neg'); }
+      }
+      var row=document.getElementById('simRegRow_'+r.k); var bd=document.getElementById('simRegBadge_'+r.k);
+      var isMin=r.valid && minF!=null && r.f===minF;
+      if(row) row.classList.toggle('on',isMin);
+      if(bd) bd.textContent=isMin?'Mais econômico':'';
+    });
+  }
+
   // Bloco 4 — Capacidade Produtiva (MOD)
   if(document.getElementById('simCapTotRed')){
     var jornada=_num('simCapJornada'), semanas=_num('simCapSemanas');
@@ -1156,7 +1225,7 @@ function _recalcSimulador(){
     var brutas=jornada*semanas;
     var hvPessoa=fator>0?brutas*(fator/100):0;
     var pessoasMod=0, custoMod=0;
-    _times.filter(function(t){return t.ativo;}).forEach(function(t){ var cb=document.getElementById('simMod_'+t.id); if(cb&&cb.checked){ pessoasMod+=_timePessoas(t.id); custoMod+=_timeCustoMes(t.id); } });
+    _times.filter(function(t){return t.ativo;}).forEach(function(t){ var cb=document.getElementById('simMod_'+t.id); if(cb&&cb.checked){ pessoasMod+=_simQtdOf(t.id); custoMod+=_timeCustoSim(t.id); } });
     var totalHV=pessoasMod*hvPessoa;
     var okHV=fator>0 && totalHV>0;
     var custoHora=okHV?custoMod/totalHV:0;
@@ -1168,6 +1237,29 @@ function _recalcSimulador(){
     document.getElementById('simCapTotalHV').textContent=(okHV?_fmt(totalHV)+' h':'—');
     document.getElementById('simCapCustoHora').textContent=(okHV?'R$ '+_fmt(custoHora):'—');
     document.getElementById('simCapPrecoHora').textContent=((okHV && denom>0)?'R$ '+_fmt(precoHora):'—');
+
+    // Composição do preço/hora
+    var hd=document.getElementById('simHoraDetalhe');
+    if(hd){
+      if(okHV && denom>0){
+        hd.innerHTML='<div class="sim-det">'+
+          _simDl('Custo/hora vendável',custoHora,false)+
+          _simDl('Impostos ('+_fmt(imp)+'%)',precoHora*imp/100,false)+
+          _simDl('Margem desejada ('+_fmt(mar)+'%)',precoHora*mar/100,false)+
+          _simDl('Preço mínimo/hora',precoHora,true)+'</div>';
+      } else hd.innerHTML='<div class="dep-vazio">Marque times MOD e ajuste a capacidade para ver a composição.</div>';
+    }
+    // Cenários de margem por hora
+    var hc=document.getElementById('simHoraCenarios');
+    if(hc){
+      if(okHV){
+        hc.innerHTML='<div class="sim-cen-wrap">'+[Math.max(0,mar-5),mar,Math.min(60,mar+5)].map(function(mc){
+          var d=1-imp/100-mc/100; var p=d>0?custoHora/d:0;
+          return '<div class="sim-cen'+(mc===mar?' on':'')+'"><div class="cen-lab">Para '+_fmt(mc)+'% de lucro</div>'+
+            '<div class="cen-val">'+(d>0?('R$ '+_fmt(p)):'—')+'<span>/h</span></div></div>';
+        }).join('')+'</div>';
+      } else hc.innerHTML='';
+    }
   }
 }
 
