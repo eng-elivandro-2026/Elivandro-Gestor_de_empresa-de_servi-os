@@ -1782,11 +1782,14 @@
     // Helper: valor numérico seguro
     function n(v) { return parseFloat(v) || 0; }
 
-    // Helper: data ISO (YYYY-MM-DD) está dentro do período?
-    // Se não há período definido, inclui tudo.
+    // Helper: data (YYYY-MM-DD) está dentro do período?
+    // Se não há período definido, inclui tudo. Usa _dataISO para aceitar
+    // tanto string ISO (PostgREST) quanto objeto Date (driver pg) — com
+    // String() cru, um Date viraria "Fri Mar 06 2026" e nunca cairia no
+    // intervalo, zerando o DRE silenciosamente.
     function noPeriodo(data) {
-      if (!data) return false; // sem data = exclui do período filtrado
-      var d = String(data).slice(0, 10);
+      var d = _dataISO(data);
+      if (!d) return false; // sem data = exclui do período filtrado
       if (dataInicio && d < dataInicio) return false;
       if (dataFim    && d > dataFim)    return false;
       return true;
