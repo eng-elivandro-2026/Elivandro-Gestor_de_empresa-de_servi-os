@@ -1326,6 +1326,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="bc-tab" id="bc-tab-btn-cartoes" onclick="bcMostrarSubtab('cartoes')">Cartões</button>
     <button class="bc-tab" id="bc-tab-btn-meios" onclick="bcMostrarSubtab('meios')">Meios de Pagamento</button>
     <button class="bc-tab" id="bc-tab-btn-fontes" onclick="bcMostrarSubtab('fontes')">Fontes Financeiras</button>
+    <button class="bc-tab" id="bc-tab-btn-fornecedores" onclick="bcMostrarSubtab('fornecedores')">Fornecedores</button>
     <button class="bc-tab" id="bc-tab-btn-adquirentes" onclick="bcMostrarSubtab('adquirentes')">Adquirentes</button>
     <button class="bc-tab" id="bc-tab-btn-maquininhas" onclick="bcMostrarSubtab('maquininhas')">Maquininhas</button>
     <button class="bc-tab" id="bc-tab-btn-categorias" onclick="bcMostrarSubtab('categorias')">Plano Gerencial</button>
@@ -1396,6 +1397,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       <table class="fin-table"><thead><tr><th>Fonte Financeira</th><th>Tipo</th><th>Vínculo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-fontes-tbody"></tbody></table>
     </div>
     <div class="estado" id="bc-fontes-vazio" style="display:none"><span class="estado-icon">🏦</span><div class="estado-msg">Nenhuma fonte financeira cadastrada.</div><div class="estado-sub">A fonte define onde o dinheiro entra ou sai, sem movimentação nesta fase.</div></div>
+  </section>
+  <section id="bc-subtab-fornecedores" style="display:none">
+    <div class="bc-actions">
+      <button class="bc-btn" id="bc-btn-novo-fornecedor" onclick="bcAbrirFornecedor()">+ Novo Fornecedor</button>
+      <input type="search" class="filtro-input busca" id="bc-busca-fornecedores" placeholder="Buscar nome, CNPJ, CPF ou contato..." oninput="bcRenderFornecedores()">
+      <span class="filtro-count" id="bc-count-fornecedores"></span>
+    </div>
+    <div class="table-wrap" id="bc-fornecedores-wrap" style="display:none">
+      <table class="fin-table"><thead><tr><th>Fornecedor</th><th>CNPJ / CPF</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody id="bc-fornecedores-tbody"></tbody></table>
+    </div>
+    <div class="estado" id="bc-fornecedores-vazio" style="display:none"><span class="estado-icon">🏭</span><div class="estado-msg">Nenhum fornecedor cadastrado.</div><div class="estado-sub">Cadastre fornecedores para reusar nome e CNPJ ao lançar contas a pagar.</div></div>
   </section>
   <section id="bc-subtab-adquirentes" style="display:none">
     <div class="bc-actions">
@@ -1812,7 +1824,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="cp-form-grid">
       <div class="cp-form-row">
         <label class="cp-form-label" for="cp-novo-fornecedor">Fornecedor</label>
-        <input type="text" id="cp-novo-fornecedor" class="cp-form-input" placeholder="Nome do fornecedor/credor">
+        <input type="text" id="cp-novo-fornecedor" class="cp-form-input" list="cp-fornecedores-datalist"
+          placeholder="Nome do fornecedor/credor" oninput="cpFornecedorAutocomplete()">
+        <datalist id="cp-fornecedores-datalist"></datalist>
       </div>
       <div class="cp-form-row">
         <label class="cp-form-label" for="cp-novo-cnpj">CNPJ (opcional)</label>
@@ -2366,6 +2380,7 @@ var _bcFontes         = [];   // financeiro_fontes_financeiras da empresa ativa
 var _bcAdquirentes    = [];   // financeiro_adquirentes da empresa ativa
 var _bcMaquininhas    = [];   // financeiro_maquininhas da empresa ativa
 var _bcCategorias     = [];   // financeiro_categorias_gerenciais da empresa ativa
+var _bcFornecedores   = [];   // financeiro_fornecedores da empresa ativa (migration 077)
 var _bcLoadToken      = 0;    // race condition guard
 var _catLoadToken     = 0;    // categorias usadas em CP/CR
 var _bcSubtab         = 'bancos';
@@ -9663,7 +9678,7 @@ function bcFmtPercent(v) {
 
 function bcAplicarPermissoes() {
   var pode = bcPodeEditar();
-  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte', 'bc-btn-nova-adquirente', 'bc-btn-nova-maquininha', 'bc-btn-nova-categoria'].forEach(function(id) {
+  ['bc-btn-novo-banco', 'bc-btn-nova-conta', 'bc-btn-novo-caixa', 'bc-btn-novo-cartao', 'bc-btn-novo-meio', 'bc-btn-nova-fonte', 'bc-btn-novo-fornecedor', 'bc-btn-nova-adquirente', 'bc-btn-nova-maquininha', 'bc-btn-nova-categoria'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = pode ? 'inline-flex' : 'none';
   });
@@ -9671,7 +9686,7 @@ function bcAplicarPermissoes() {
 }
 
 function bcMostrarSubtab(tipo) {
-  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes', 'adquirentes', 'maquininhas', 'categorias'];
+  var abas = ['bancos', 'contas', 'caixas', 'cartoes', 'meios', 'fontes', 'fornecedores', 'adquirentes', 'maquininhas', 'categorias'];
   _bcSubtab = abas.indexOf(tipo) >= 0 ? tipo : 'bancos';
   abas.forEach(function(a) {
     var sec = document.getElementById('bc-subtab-' + a);
@@ -9973,6 +9988,86 @@ function bcRenderFontes() {
   vazio.style.display = 'none';
 }
 
+// ── Fornecedores (migration 077) ──────────────────────────────
+function bcFornecedorPorId(id) {
+  return (_bcFornecedores || []).find(function(f) { return String(f.id) === String(id); }) || null;
+}
+
+function _fornDocumento(f) {
+  if (f.cnpj && String(f.cnpj).trim()) return f.cnpj;
+  if (f.cpf && String(f.cpf).trim()) return f.cpf;
+  return '';
+}
+
+function bcRenderFornecedores() {
+  bcAplicarPermissoes();
+  var busca = bcNormalizarBusca((document.getElementById('bc-busca-fornecedores') || {}).value || '');
+  var lista = (_bcFornecedores || []).filter(function(f) {
+    if (!busca) return true;
+    return bcNormalizarBusca([f.nome, f.cnpj, f.cpf, f.contato_nome, f.email, f.telefone].join(' ')).indexOf(busca) >= 0;
+  });
+  var body = document.getElementById('bc-fornecedores-tbody');
+  var wrap = document.getElementById('bc-fornecedores-wrap');
+  var vazio = document.getElementById('bc-fornecedores-vazio');
+  var count = document.getElementById('bc-count-fornecedores');
+  if (count) count.textContent = lista.length + (lista.length === 1 ? ' fornecedor' : ' fornecedores');
+  if (!body || !wrap || !vazio) return;
+  if (!lista.length) {
+    body.innerHTML = '';
+    wrap.style.display = 'none';
+    vazio.style.display = '';
+    return;
+  }
+  var pode = bcPodeEditar();
+  body.innerHTML = lista.map(function(f) {
+    var acoes = pode
+      ? '<button class="mini-btn" type="button" onclick="bcAbrirFornecedor(' + bcJsArg(f.id) + ')">Editar</button> '
+        + '<button class="mini-btn" type="button" onclick="bcAlternarExtra(' + bcJsArg('fornecedor') + ',' + bcJsArg(f.id) + ')">' + (f.ativo === false ? 'Ativar' : 'Inativar') + '</button>'
+      : '<span style="color:var(--text3);font-size:.72rem">Somente leitura</span>';
+    return '<tr>'
+      + '<td><strong>' + _esc(f.nome || '—') + '</strong></td>'
+      + '<td>' + _esc(_fornDocumento(f) || '—') + '</td>'
+      + '<td>' + _esc(f.contato_nome || '—') + '</td>'
+      + '<td>' + _esc(f.telefone || '—') + '</td>'
+      + '<td>' + _esc(f.email || '—') + '</td>'
+      + '<td>' + bcStatusBadge(f.ativo) + '</td>'
+      + '<td>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.style.display = '';
+  vazio.style.display = 'none';
+}
+
+function bcAbrirFornecedor(id) {
+  bcAbrirExtra('fornecedor', id);
+}
+
+// Preenche o datalist do campo Fornecedor no formulário de Conta a Pagar.
+function cpAtualizarDatalistFornecedores() {
+  var dl = document.getElementById('cp-fornecedores-datalist');
+  if (!dl) return;
+  dl.innerHTML = (_bcFornecedores || [])
+    .filter(function(f) { return f.ativo !== false; })
+    .map(function(f) {
+      var doc = _fornDocumento(f);
+      return '<option value="' + _esc(f.nome) + '"' + (doc ? ' label="' + _esc(doc) + '"' : '') + '></option>';
+    }).join('');
+}
+
+// Ao digitar/escolher um fornecedor cadastrado, preenche o CNPJ automaticamente.
+function cpFornecedorAutocomplete() {
+  var nome = (document.getElementById('cp-novo-fornecedor') || {}).value || '';
+  var cnpjEl = document.getElementById('cp-novo-cnpj');
+  if (!cnpjEl || !nome.trim()) return;
+  var f = (_bcFornecedores || []).find(function(x) {
+    return String(x.nome || '').trim().toLowerCase() === nome.trim().toLowerCase();
+  });
+  if (f) {
+    var doc = _fornDocumento(f);
+    if (doc && !cnpjEl.value.trim()) cnpjEl.value = doc;
+  }
+}
+
 function bcRenderAdquirentes() {
   bcAplicarPermissoes();
   bcRenderKpis();
@@ -10186,6 +10281,7 @@ async function carregarBancosContas(empresaId) {
     _bcAdquirentes = [];
     _bcMaquininhas = [];
     _bcCategorias = [];
+    _bcFornecedores = [];
     catAtualizarSelectsClassificacao();
     bcRenderBancos();
     bcRenderContas();
@@ -10193,6 +10289,7 @@ async function carregarBancosContas(empresaId) {
     bcRenderCartoes();
     bcRenderMeios();
     bcRenderFontes();
+    bcRenderFornecedores();
     bcRenderAdquirentes();
     bcRenderMaquininhas();
     bcRenderCategoriasGerenciais();
@@ -10214,7 +10311,10 @@ async function carregarBancosContas(empresaId) {
       sf.listarFontesFinanceiras(empresaId),
       sf.listarAdquirentes(empresaId),
       sf.listarMaquininhas(empresaId),
-      sf.listarCategoriasGerenciais(empresaId)
+      sf.listarCategoriasGerenciais(empresaId),
+      // Fornecedores (migration 077). Isolado com catch para não derrubar a
+      // carga inteira caso a lib em cache ainda não tenha a função.
+      (sf.listarFornecedores ? sf.listarFornecedores(empresaId).catch(function(){ return []; }) : Promise.resolve([]))
     ]);
     if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
     _bcBancos = Array.isArray(res[0]) ? res[0] : [];
@@ -10226,6 +10326,7 @@ async function carregarBancosContas(empresaId) {
     _bcAdquirentes = Array.isArray(res[6]) ? res[6] : [];
     _bcMaquininhas = Array.isArray(res[7]) ? res[7] : [];
     _bcCategorias = Array.isArray(res[8]) ? res[8] : [];
+    _bcFornecedores = Array.isArray(res[9]) ? res[9] : [];
     catAtualizarSelectsClassificacao();
     bcRenderBancos();
     bcRenderContas();
@@ -10233,9 +10334,11 @@ async function carregarBancosContas(empresaId) {
     bcRenderCartoes();
     bcRenderMeios();
     bcRenderFontes();
+    bcRenderFornecedores();
     bcRenderAdquirentes();
     bcRenderMaquininhas();
     bcRenderCategoriasGerenciais();
+    cpAtualizarDatalistFornecedores();
     bcSetStatus('', '');
   } catch(e) {
     if (token !== _bcLoadToken || empresaConsulta !== _empresaAtivaId()) return;
@@ -10397,6 +10500,7 @@ function bcRegistroExtra(tipo, id) {
   if (tipo === 'cartao') return bcCartaoPorId(id);
   if (tipo === 'meio') return bcMeioPorId(id);
   if (tipo === 'fonte') return bcFontePorId(id);
+  if (tipo === 'fornecedor') return bcFornecedorPorId(id);
   if (tipo === 'adquirente') return bcAdquirentePorId(id);
   if (tipo === 'maquininha') return bcMaquininhaPorId(id);
   if (tipo === 'categoria') return bcCategoriaPorId(id);
@@ -10404,8 +10508,9 @@ function bcRegistroExtra(tipo, id) {
 }
 
 function bcTituloExtra(tipo, editando) {
-  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira', adquirente: 'Adquirente', maquininha: 'Maquininha', categoria: 'Categoria Gerencial' };
-  return (editando ? 'Editar ' : 'Novo ') + (nomes[tipo] || 'Cadastro');
+  var nomes = { caixa: 'Caixa Interno', cartao: 'Cartão Empresarial', meio: 'Meio de Pagamento', fonte: 'Fonte Financeira', fornecedor: 'Fornecedor', adquirente: 'Adquirente', maquininha: 'Maquininha', categoria: 'Categoria Gerencial' };
+  var prefixo = (tipo === 'fonte' || tipo === 'categoria' || tipo === 'maquininha') ? 'Nova ' : 'Novo ';
+  return (editando ? 'Editar ' : prefixo) + (nomes[tipo] || 'Cadastro');
 }
 
 function bcCamposExtra(tipo, r) {
@@ -10447,6 +10552,17 @@ function bcCamposExtra(tipo, r) {
       + bcSelect('bc-fonte-adquirente', 'Adquirente', r.adquirente_id, bcOptions(_bcAdquirentes, r.adquirente_id, function(a) { return bcAdquirenteLabel(a.id); }, true), { rowId: 'bc-row-fonte-adquirente' })
       + bcStatusSelect('bc-fonte-ativo', r.ativo)
       + bcTextArea('bc-fonte-obs', 'Observação', r.observacao);
+  }
+  if (tipo === 'fornecedor') {
+    return bcCampo('bc-forn-nome', 'Nome / Razão social *', r.nome, 'Ex: RONDI E CIA LTDA')
+      + bcCampo('bc-forn-cnpj', 'CNPJ', r.cnpj, '00.000.000/0000-00')
+      + bcCampo('bc-forn-cpf', 'CPF', r.cpf, 'Para prestador autônomo')
+      + bcCampo('bc-forn-contato', 'Pessoa de contato', r.contato_nome, 'Ex: João (comercial)')
+      + bcCampo('bc-forn-telefone', 'Telefone', r.telefone, '(00) 00000-0000')
+      + bcCampo('bc-forn-email', 'E-mail', r.email, 'contato@fornecedor.com')
+      + bcStatusSelect('bc-forn-ativo', r.ativo)
+      + bcTextArea('bc-forn-obs', 'Observação', r.observacao)
+      + '<div class="bc-form-row full" style="font-size:.72rem;color:var(--text3)">O fornecedor cadastrado fica disponível ao lançar contas a pagar. CNPJ é único por empresa.</div>';
   }
   if (tipo === 'adquirente') {
     return bcCampo('bc-adq-nome', 'Nome *', r.nome, 'Ex: Stone, Cielo, PagSeguro')
@@ -10604,6 +10720,26 @@ function bcPayloadMeio() {
   };
 }
 
+function bcPayloadFornecedor() {
+  var soDig = function(v) { return String(v || '').replace(/\D/g, ''); };
+  var cnpj = bcValor('bc-forn-cnpj');
+  var cpf  = bcValor('bc-forn-cpf');
+  return {
+    empresa_id:   _empresaAtiva && _empresaAtiva.id,
+    nome:         (bcValor('bc-forn-nome') || '').trim(),
+    // grava só dígitos para o unique de CNPJ por empresa funcionar sem
+    // depender de máscara; vazio vira null.
+    cnpj:         soDig(cnpj) || null,
+    cpf:          soDig(cpf) || null,
+    contato_nome: bcNull(bcValor('bc-forn-contato')),
+    telefone:     bcNull(bcValor('bc-forn-telefone')),
+    email:        bcNull(bcValor('bc-forn-email')),
+    ativo:        bcBool(bcValor('bc-forn-ativo')),
+    observacao:   bcNull(bcValor('bc-forn-obs')),
+    atualizado_em: new Date().toISOString()
+  };
+}
+
 function bcPayloadFonte() {
   var tipo = bcValor('bc-fonte-tipo') || 'conta_bancaria';
   var contaId = tipo === 'conta_bancaria' ? bcNull(bcValor('bc-fonte-conta')) : null;
@@ -10699,6 +10835,12 @@ function bcValidarExtra(tipo, dados) {
     if (dados.tipo === 'conta_bancaria' && !dados.conta_bancaria_id) return 'Fonte do tipo conta bancária exige uma conta bancária.';
     if (dados.tipo === 'cartao_empresa' && !dados.cartao_empresa_id) return 'Fonte do tipo cartão empresarial exige um cartão.';
     if (dados.tipo === 'caixa' && !dados.caixa_interno_id) return 'Fonte do tipo caixa exige um caixa interno.';
+  }
+  if (tipo === 'fornecedor') {
+    if (!dados.nome) return 'Nome do fornecedor é obrigatório.';
+    var soDig = function(v) { return String(v || '').replace(/\D/g, ''); };
+    if (dados.cnpj && soDig(dados.cnpj).length !== 14) return 'CNPJ deve ter 14 dígitos.';
+    if (dados.cpf && soDig(dados.cpf).length !== 11) return 'CPF deve ter 11 dígitos.';
   }
   if (tipo === 'adquirente') {
     if (!dados.nome) return 'Nome da adquirente é obrigatório.';
@@ -10801,6 +10943,7 @@ function bcExtraApi(tipo) {
   if (tipo === 'cartao') return { criar: sf.salvarCartaoEmpresa, atualizar: sf.atualizarCartaoEmpresa, payload: bcPayloadCartao };
   if (tipo === 'meio') return { criar: sf.salvarMeioPagamento, atualizar: sf.atualizarMeioPagamento, payload: bcPayloadMeio };
   if (tipo === 'fonte') return { criar: sf.salvarFonteFinanceira, atualizar: sf.atualizarFonteFinanceira, payload: bcPayloadFonte };
+  if (tipo === 'fornecedor') return { criar: sf.salvarFornecedor, atualizar: sf.atualizarFornecedor, payload: bcPayloadFornecedor };
   if (tipo === 'adquirente') return { criar: sf.salvarAdquirente, atualizar: sf.atualizarAdquirente, payload: bcPayloadAdquirente };
   if (tipo === 'maquininha') return { criar: sf.salvarMaquininha, atualizar: sf.atualizarMaquininha, payload: bcPayloadMaquininha };
   if (tipo === 'categoria') return { criar: sf.salvarCategoriaGerencial, atualizar: sf.atualizarCategoriaGerencial, payload: bcPayloadCategoria };
