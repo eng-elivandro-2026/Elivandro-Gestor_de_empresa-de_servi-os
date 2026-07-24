@@ -841,41 +841,16 @@
   async function sbCriarPedidoCompra(dados) {
     if (!dados.empresa_id) throw new Error('[Financeiro] empresa_id obrigatório.');
 
-    // 1. Criar Conta a Receber para rastrear a PO
-    var contaPayload = {
-      empresa_id: dados.empresa_id,
-      titulo: 'PO ' + (dados.numero_po || 'sem número') + ' — ' + (dados.observacoes ?
-        (typeof dados.observacoes === 'string' ?
-          JSON.parse(dados.observacoes).vendedor_nome :
-          dados.observacoes.vendedor_nome) || 'Fornecedor'
-        : 'Fornecedor'),
-      cliente_nome: typeof dados.observacoes === 'string' ?
-        JSON.parse(dados.observacoes).comprador_nome || 'Cliente' :
-        (dados.observacoes?.comprador_nome || 'Cliente'),
-      data_vencimento: dados.data_emissao || new Date().toISOString().slice(0, 10),
-      valor_previsto: dados.valor_po || 0,
-      // PO NÃO é faturamento: este registro existe apenas porque
-      // financeiro_notas_fiscais.conta_receber_id é NOT NULL.
-      // origem='po' permite excluí-lo das telas/totais de Contas a Receber.
-      origem: 'po',
-      status: 'cancelado'
-    };
-
-    var contaResult = await client()
-      .from('financeiro_contas_receber')
-      .insert(contaPayload)
-      .select()
-      .single();
-
-    if (contaResult.error) throw contaResult.error;
-
-    // 2. Criar NF vinculada à Conta a Receber
+    // PO não é faturamento e não tem conta a receber real. Depois da
+    // migration 078, conta_receber_id é nullable, então a NF de PO nasce
+    // sem conta vinculada — em vez de criar uma conta a receber fantasma
+    // cancelada só para satisfazer um NOT NULL (o que fazia antes).
     var nfPayload = Object.assign({
       tipo_nf: 'po',
       status: 'ativa',
       valor_nf: dados.valor_po || 0,
       numero_nf: dados.numero_po || null,
-      conta_receber_id: contaResult.data.id
+      conta_receber_id: null
     }, dados);
 
     // Remover campos de PO específicos
@@ -892,7 +867,7 @@
 
     return {
       nf: nfResult.data,
-      conta_receber: contaResult.data
+      conta_receber: null
     };
   }
 
