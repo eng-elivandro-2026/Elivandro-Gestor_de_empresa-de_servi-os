@@ -108,7 +108,9 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .per b{color:var(--emp-cor)}
 .per.forte{font-size:.8rem;font-weight:700}
 .time-membros{background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .7rem;margin:.2rem 0 .6rem;width:100%}
-.time-membros .mtit{font-size:.68rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem}
+.time-membros .mtit{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.68rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem}
+.dept-grp.editando{border-color:var(--emp-bdr);box-shadow:0 0 0 1px var(--emp-bdr)}
+.time-row.editando{background:var(--emp-bg);box-shadow:inset 0 0 0 1px var(--emp-bdr);border-radius:var(--r2)}
 .mrow{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.3rem 0;border-bottom:1px solid var(--border)}
 .mrow .mnm{font-size:.8rem;flex:1 1 160px}
 .mrow .mqtd{width:70px}
@@ -737,7 +739,8 @@ function _togMembros(timeId){ _membrosAberto[timeId]=!_membrosAberto[timeId]; _r
 
 function _renderMembros(t){
   var membros=_membrosDoTime(t.id);
-  var h='<div class="time-membros"><div class="mtit">Composição — '+esc(t.nome)+'</div>';
+  var h='<div class="time-membros"><div class="mtit"><span>Composição — '+esc(t.nome)+'</span>'+
+    '<button class="btn btn-xs" onclick="_togMembros(\''+t.id+'\')">✕ Fechar</button></div>';
   if(!membros.length){ h+='<div class="dep-vazio">Nenhuma função neste time.</div>'; }
   membros.forEach(function(m){
     var f=_funcById(m.funcao_id);
@@ -766,7 +769,7 @@ function _renderMembros(t){
 
 function _renderTimeRow(t){
   var membros=_membrosDoTime(t.id);
-  var h='<div class="time-row'+(t.ativo?'':' inativo')+'">'+
+  var h='<div class="time-row'+(t.ativo?'':' inativo')+(_timeEdit===t.id?' editando':'')+'">'+
     '<span class="nm">'+esc(t.nome)+'</span>'+
     (t.descricao?'<span class="ct">'+esc(t.descricao)+'</span>':'')+
     '<span class="ct">'+membros.length+(membros.length===1?' função':' funções')+'</span>'+
@@ -775,6 +778,7 @@ function _renderTimeRow(t){
       '<button class="btn btn-xs" onclick="_togMembros(\''+t.id+'\')">Membros</button>'+
       '<button class="btn btn-xs" onclick="abrirFormTime(\''+t.id+'\')">Editar</button>'+
       '<button class="btn btn-xs" onclick="toggleAtivoTime(\''+t.id+'\','+(t.ativo?'false':'true')+')">'+(t.ativo?'Desativar':'Ativar')+'</button>'+
+      '<button class="btn btn-xs" onclick="excluirTime(\''+t.id+'\')">Excluir</button>'+
     '</div></div>';
   if(_membrosAberto[t.id]) h+=_renderMembros(t);
   return h;
@@ -789,7 +793,7 @@ function _renderTimes(){
   grupos.forEach(function(d){
     var deptId=d?d.id:null, k=deptId||'_sem', aberto=_deptAberto[k]!==false;
     var times=_timesDoDepto(deptId);
-    html+='<div class="dept-grp'+((d&&!d.ativo)?' inativo':'')+'">';
+    html+='<div class="dept-grp'+((d&&!d.ativo)?' inativo':'')+((d&&_deptEdit===d.id)?' editando':'')+'">';
     html+='<div class="dept-hdr'+(aberto?' aberto':'')+'" onclick="_togDept('+(d?("\'"+d.id+"\'"):'null')+')">'+
       '<span class="chev">▶</span><span class="nm">'+(d?esc(d.nome):'Sem departamento')+'</span>'+
       '<span class="ct">('+times.length+(times.length===1?' time':' times')+')</span>'+
@@ -798,6 +802,7 @@ function _renderTimes(){
       html+='<div class="acoes" onclick="event.stopPropagation()">'+
         '<button class="btn btn-xs" onclick="abrirFormDepto(\''+d.id+'\')">Editar</button>'+
         '<button class="btn btn-xs" onclick="toggleAtivoDepto(\''+d.id+'\','+(d.ativo?'false':'true')+')">'+(d.ativo?'Desativar':'Ativar')+'</button>'+
+        '<button class="btn btn-xs" onclick="excluirDepto(\''+d.id+'\')">Excluir</button>'+
       '</div>';
     }
     html+='</div>';
@@ -816,15 +821,16 @@ function _renderTimes(){
 
 /* CRUD Departamento */
 function abrirFormDepto(id){
-  _deptEdit=id||null;
+  _timeEdit=null; _deptEdit=id||null;
   var d=id?_departamentos.find(function(x){return x.id===id;}):null;
   document.getElementById('deptoFormTit').textContent=d?'Editar Departamento':'Novo Departamento';
   _setVal('dNome', d?d.nome:''); _setVal('dDesc', d?(d.descricao||''):''); _setVal('dOrdem', d?_n(d.ordem):0);
   document.getElementById('timeFormWrap').style.display='none';
   document.getElementById('deptoFormWrap').style.display='';
+  _renderTimes();
   document.getElementById('dNome').focus();
 }
-function fecharFormDepto(){ _deptEdit=null; document.getElementById('deptoFormWrap').style.display='none'; }
+function fecharFormDepto(){ _deptEdit=null; document.getElementById('deptoFormWrap').style.display='none'; _renderTimes(); }
 async function salvarDepto(){
   var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
   var nome=_val('dNome').trim(); if(!nome){ toast('Informe o nome do departamento.','err'); return; }
@@ -852,16 +858,17 @@ function _preencherSelectDepto(sel){
   el.innerHTML=opts; el.value=sel||'';
 }
 function abrirFormTime(id){
-  _timeEdit=id||null;
+  _deptEdit=null; _timeEdit=id||null;
   var t=id?_times.find(function(x){return x.id===id;}):null;
   document.getElementById('timeFormTit').textContent=t?'Editar Time':'Novo Time';
   _setVal('tNome', t?t.nome:''); _setVal('tDesc', t?(t.descricao||''):''); _setVal('tOrdem', t?_n(t.ordem):0);
   _preencherSelectDepto(t?(t.departamento_id||''):'');
   document.getElementById('deptoFormWrap').style.display='none';
   document.getElementById('timeFormWrap').style.display='';
+  _renderTimes();
   document.getElementById('tNome').focus();
 }
-function fecharFormTime(){ _timeEdit=null; document.getElementById('timeFormWrap').style.display='none'; }
+function fecharFormTime(){ _timeEdit=null; document.getElementById('timeFormWrap').style.display='none'; _renderTimes(); }
 async function salvarTime(){
   var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
   var nome=_val('tNome').trim(); if(!nome){ toast('Informe o nome do time.','err'); return; }
@@ -878,6 +885,31 @@ async function toggleAtivoTime(id,novo){
   var sb=_sb(); if(!sb||!_empresaAtiva) return;
   try{ var res=await sb.from('precificacao_times').update({ativo:novo,atualizado_em:new Date().toISOString()}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
     if(res.error) throw res.error; toast(novo?'Time ativado.':'Time desativado.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+async function excluirTime(id){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  var t=_times.find(function(x){return x.id===id;});
+  if(!window.confirm('Excluir o time '+(t?t.nome:'')+'? Os membros serão removidos.')) return;
+  try{
+    var r1=await sb.from('precificacao_time_membros').delete().eq('time_id',id).eq('empresa_id',_empresaAtiva.id);
+    if(r1.error) throw r1.error;
+    var r2=await sb.from('precificacao_times').delete().eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(r2.error) throw r2.error;
+    if(_timeEdit===id){ fecharFormTime(); }
+    toast('Time excluído.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+async function excluirDepto(id){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  var d=_departamentos.find(function(x){return x.id===id;});
+  if(_timesDoDepto(id).filter(function(t){return t.ativo;}).length){ window.alert('Desative ou exclua os times antes.'); return; }
+  if(!window.confirm('Excluir departamento '+(d?d.nome:'')+'?')) return;
+  try{
+    var res=await sb.from('precificacao_departamentos').delete().eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error;
+    if(_deptEdit===id){ fecharFormDepto(); }
+    toast('Departamento excluído.'); carregarTimes();
   }catch(err){ toast('Erro: '+(err.message||err),'err'); }
 }
 
