@@ -233,6 +233,417 @@
 
 
   // ============================================================
+  // PR2 — PARCELAMENTO DE CONTAS A RECEBER
+  //
+  // Modelo da migration 076: 1 parcela = 1 linha em
+  // financeiro_contas_receber, agrupadas por grupo_parcelamento_id.
+  //
+  // Toda a aritmética roda em CENTAVOS (inteiros) para nunca produzir
+  // valor inexistente em reais. A sobra da divisão cai sempre no ÚLTIMO
+  // item, tanto entre parcelas quanto dentro do split serviço/produto:
+  //
+  //   R$ 1.000,00 em 3      -> 333,33 / 333,33 / 333,34
+  //   parcela 333,33 meio a meio -> serviço 166,66 + produto 166,67
+  //
+  // Assim soma(parcelas) === total e serviço + produto === valor da
+  // parcela fecham por igualdade exata, sem tolerância de centavo.
+  // ============================================================
+
+  function _paraCentavos(v) { return Math.round(_num(v) * 100); }
+  function _paraReais(c)    { return Math.round(c) / 100; }
+  function _pad2(n)         { return (n < 10 ? '0' : '') + n; }
+
+  function _novoUuid() {
+    var c = window.crypto || window.msCrypto;
+    if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+    // Fallback RFC4122 v4 para contextos sem crypto.randomUUID.
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (ch) {
+      var r = Math.random() * 16 | 0;
+      var v = ch === 'x' ? r : ((r & 0x3) | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  /**
+   * Soma meses a uma data ISO (YYYY-MM-DD) preservando o fim do mês.
+   * 31/01 + 1 mês -> 28/02 (ou 29 em bissexto), nunca 03/03.
+   * Função pura.
+   */
+  function somarMeses(dataISO, meses) {
+    var partes = String(dataISO || '').slice(0, 10).split('-');
+    var ano = parseInt(partes[0], 10);
+    var mes = parseInt(partes[1], 10);
+    var dia = parseInt(partes[2], 10);
+    if (!ano || !mes || !dia) {
+      throw new Error('[Financeiro PR2] data base inválida — use YYYY-MM-DD.');
+    }
+    var total   = (mes - 1) + (parseInt(meses, 10) || 0);
+    var novoAno = ano + Math.floor(total / 12);
+    var novoMes = ((total % 12) + 12) % 12;
+    var ultimoDiaDoMes = new Date(Date.UTC(novoAno, novoMes + 1, 0)).getUTCDate();
+    return novoAno + '-' + _pad2(novoMes + 1) + '-' + _pad2(Math.min(dia, ultimoDiaDoMes));
+  }
+
+  /**
+   * Divide um total em n partes, com a sobra de centavos na ÚLTIMA.
+   * Função pura. Retorna array de números em reais.
+   */
+  function distribuirValor(total, n) {
+    var qtd = parseInt(n, 10);
+    if (!qtd || qtd < 1) throw new Error('[Financeiro PR2] número de parcelas deve ser >= 1.');
+    var totalCent = _paraCentavos(total);
+    if (totalCent < 0) throw new Error('[Financeiro PR2] total não pode ser negativo.');
+
+    var base  = Math.floor(totalCent / qtd);
+    var sobra = totalCent - (base * qtd);
+    var partes = [];
+    for (var i = 0; i < qtd; i++) partes.push(base);
+    partes[qtd - 1] += sobra;
+    return partes.map(_paraReais);
+  }
+
+  /**
+   * Proporção do valor da proposta que corresponde a SERVIÇO (0..1),
+   * usando vS/vM e os descontos vDS/vDM quando informados.
+   * Sem breakdown na proposta, assume 100% serviço.
+   * Função pura.
+   */
+  function proporcaoServicoProposta(proposta) {
+    var p = proposta || {};
+    var servico  = _num(p.vS);
+    var material = _num(p.vM);
+    if (servico + material <= 0) return 1;
+
+    var descServico  = _num(p.vDS);
+    var descMaterial = _num(p.vDM);
+    if (descServico || descMaterial) {
+      servico  = Math.max(0, servico  - descServico);
+      material = Math.max(0, material - descMaterial);
+    }
+    var liquido = servico + material;
+    if (liquido <= 0) return 1;
+    return Math.min(1, Math.max(0, servico / liquido));
+  }
+
+  /**
+   * Divide o valor de UMA parcela entre serviço e produto.
+   * A sobra de centavo vai para produto, garantindo igualdade exata.
+   * Função pura.
+   */
+  function dividirServicoProduto(valorParcela, pctServico) {
+    var totalCent = _paraCentavos(valorParcela);
+    var pct = Math.min(1, Math.max(0, _num(pctServico)));
+    var servicoCent = Math.floor(totalCent * pct);
+    return {
+      valor_servico: _paraReais(servicoCent),
+      valor_produto: _paraReais(totalCent - servicoCent)
+    };
+  }
+
+  /**
+   * Reequilibra a linha quando o usuário edita serviço OU produto:
+   * o campo não editado absorve a diferença. Impede que a UI produza
+   * uma linha onde serviço + produto != valor.
+   * campoEditado: 'servico' | 'produto'. Função pura.
+   */
+  function ajustarSplitParcela(valorParcela, campoEditado, novoValor) {
+    var totalCent  = _paraCentavos(valorParcela);
+    var editadoCent = Math.min(totalCent, Math.max(0, _paraCentavos(novoValor)));
+    var outroCent   = totalCent - editadoCent;
+    return campoEditado === 'produto'
+      ? { valor_servico: _paraReais(outroCent),   valor_produto: _paraReais(editadoCent) }
+      : { valor_servico: _paraReais(editadoCent), valor_produto: _paraReais(outroCent) };
+  }
+
+  function _montarParcela(numero, dataVencimento, valor, pctServico) {
+    var split = dividirServicoProduto(valor, pctServico);
+    return {
+      parcela_numero:  numero,
+      data_vencimento: dataVencimento,
+      valor_previsto:  valor,
+      valor_servico:   split.valor_servico,
+      valor_produto:   split.valor_produto
+    };
+  }
+
+  /**
+   * Preset — à vista: parcela única vencendo na data base.
+   * Função pura.
+   */
+  function presetAVista(total, dataBase, pctServico) {
+    return [_montarParcela(1, somarMeses(dataBase, 0), _paraReais(_paraCentavos(total)), pctServico)];
+  }
+
+  /**
+   * Preset — N parcelas iguais, espaçadas de intervaloMeses (padrão 1).
+   * A primeira vence na data base. Função pura.
+   */
+  function presetParcelasIguais(total, n, dataBase, pctServico, intervaloMeses) {
+    var passo = parseInt(intervaloMeses, 10) || 1;
+    return distribuirValor(total, n).map(function (valor, i) {
+      return _montarParcela(i + 1, somarMeses(dataBase, i * passo), valor, pctServico);
+    });
+  }
+
+  /**
+   * Preset — entrada + N parcelas iguais sobre o restante.
+   * A entrada vence na data base; as demais seguem o intervalo.
+   * Resultado tem N + 1 parcelas. Função pura.
+   */
+  function presetEntradaMaisN(total, entrada, n, dataBase, pctServico, intervaloMeses) {
+    var passo       = parseInt(intervaloMeses, 10) || 1;
+    var totalCent   = _paraCentavos(total);
+    var entradaCent = _paraCentavos(entrada);
+
+    if (entradaCent <= 0)         throw new Error('[Financeiro PR2] entrada deve ser maior que zero.');
+    if (entradaCent >= totalCent) throw new Error('[Financeiro PR2] entrada deve ser menor que o total.');
+
+    var lista = [_montarParcela(1, somarMeses(dataBase, 0), _paraReais(entradaCent), pctServico)];
+    distribuirValor(_paraReais(totalCent - entradaCent), n).forEach(function (valor, i) {
+      lista.push(_montarParcela(i + 2, somarMeses(dataBase, (i + 1) * passo), valor, pctServico));
+    });
+    return lista;
+  }
+
+  /**
+   * Valida um plano de parcelas contra o total da proposta.
+   * Compara em centavos — igualdade exata, sem tolerância.
+   * Retorna { ok, erros[], somaValor, somaServico, somaProduto, diferenca }.
+   * Função pura.
+   */
+  function validarPlanoParcelas(parcelas, totalProposta) {
+    var lista = parcelas || [];
+    var erros = [];
+    var totalCent = _paraCentavos(totalProposta);
+    var somaCent = 0, somaServicoCent = 0, somaProdutoCent = 0;
+
+    if (!lista.length) erros.push('Informe ao menos uma parcela.');
+
+    lista.forEach(function (p, i) {
+      var rotulo = 'Parcela ' + (p.parcela_numero || (i + 1));
+      var valorCent   = _paraCentavos(p.valor_previsto);
+      var servicoCent = _paraCentavos(p.valor_servico);
+      var produtoCent = _paraCentavos(p.valor_produto);
+
+      somaCent        += valorCent;
+      somaServicoCent += servicoCent;
+      somaProdutoCent += produtoCent;
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.data_vencimento || ''))) {
+        erros.push(rotulo + ': informe a data de vencimento.');
+      }
+      if (valorCent <= 0)   erros.push(rotulo + ': valor deve ser maior que zero.');
+      if (servicoCent < 0)  erros.push(rotulo + ': valor de serviço não pode ser negativo.');
+      if (produtoCent < 0)  erros.push(rotulo + ': valor de produto não pode ser negativo.');
+      if (servicoCent + produtoCent !== valorCent) {
+        erros.push(rotulo + ': serviço + produto (' +
+          _paraReais(servicoCent + produtoCent).toFixed(2) + ') difere do valor da parcela (' +
+          _paraReais(valorCent).toFixed(2) + ').');
+      }
+    });
+
+    var diferencaCent = somaCent - totalCent;
+    if (lista.length && diferencaCent !== 0) {
+      erros.push('A soma das parcelas (' + _paraReais(somaCent).toFixed(2) +
+        ') difere do total da proposta (' + _paraReais(totalCent).toFixed(2) +
+        ') em ' + _paraReais(Math.abs(diferencaCent)).toFixed(2) + '.');
+    }
+
+    return {
+      ok:          erros.length === 0,
+      erros:       erros,
+      somaValor:   _paraReais(somaCent),
+      somaServico: _paraReais(somaServicoCent),
+      somaProduto: _paraReais(somaProdutoCent),
+      diferenca:   _paraReais(diferencaCent)
+    };
+  }
+
+
+  // ── acesso ao banco ───────────────────────────────────────
+
+  /**
+   * Lista as parcelas de uma proposta, ordenadas por parcela_numero.
+   * Filtra por grupo_parcelamento_id NOT NULL: exclui contas avulsas e
+   * os registros-fantasma criados por sbCriarPedidoCompra.
+   */
+  async function sbListarParcelasProposta(empresaId, propostaAppId) {
+    if (!empresaId)     throw new Error('[Financeiro PR2] empresa_id obrigatório.');
+    if (!propostaAppId) throw new Error('[Financeiro PR2] proposta_app_id obrigatório.');
+
+    var r = await client()
+      .from('financeiro_contas_receber')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('proposta_app_id', propostaAppId)
+      .not('grupo_parcelamento_id', 'is', null)
+      .order('parcela_numero', { ascending: true });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Lista as parcelas de um grupo de parcelamento.
+   */
+  async function sbListarParcelasGrupo(empresaId, grupoParcelamentoId) {
+    if (!empresaId)           throw new Error('[Financeiro PR2] empresa_id obrigatório.');
+    if (!grupoParcelamentoId) throw new Error('[Financeiro PR2] grupo_parcelamento_id obrigatório.');
+
+    var r = await client()
+      .from('financeiro_contas_receber')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('grupo_parcelamento_id', grupoParcelamentoId)
+      .order('parcela_numero', { ascending: true });
+
+    if (r.error) throw r.error;
+    return r.data || [];
+  }
+
+  /**
+   * Para cada parcela informada, diz se já possui NF ou recebimento.
+   * Usado para bloquear regeração e para marcar na UI quais parcelas
+   * ainda estão livres para faturar.
+   * Retorna { <parcelaId>: { temNF, temRecebimento, bloqueada } }.
+   */
+  async function sbVerificarVinculosParcelas(empresaId, parcelaIds) {
+    var ids = parcelaIds || [];
+    var mapa = {};
+    ids.forEach(function (id) {
+      mapa[String(id)] = { temNF: false, temRecebimento: false, bloqueada: false };
+    });
+    if (!ids.length) return mapa;
+
+    var notas = await _listarNotasFiscaisContas(empresaId, ids);
+    var recebimentos = await _listarRecebimentosContas(empresaId, ids);
+
+    notas.forEach(function (nf) {
+      var k = String(nf.conta_receber_id);
+      if (mapa[k] && nf.status !== 'cancelada') {
+        mapa[k].temNF = true;
+        mapa[k].bloqueada = true;
+      }
+    });
+    recebimentos.forEach(function (rec) {
+      var k = String(rec.conta_receber_id);
+      if (mapa[k] && rec.status !== 'estornado') {
+        mapa[k].temRecebimento = true;
+        mapa[k].bloqueada = true;
+      }
+    });
+    return mapa;
+  }
+
+  /**
+   * Gera as parcelas de uma proposta em um único insert.
+   *
+   * dados: {
+   *   empresa_id, proposta_app_id, obra_id?, titulo_base, cliente_nome?,
+   *   total_proposta, parcelas: [{ parcela_numero, data_vencimento,
+   *   valor_previsto, valor_servico, valor_produto }], centro_custo?,
+   *   categoria_gerencial_id?, observacoes?
+   * }
+   *
+   * Valida o plano ANTES de tocar o banco e recusa se a proposta já
+   * tiver parcelas — nesse caso use sbRegerarParcelasProposta.
+   */
+  async function sbGerarParcelasProposta(dados) {
+    var d = dados || {};
+    if (!d.empresa_id)      throw new Error('[Financeiro PR2] empresa_id obrigatório.');
+    if (!d.proposta_app_id) throw new Error('[Financeiro PR2] proposta_app_id obrigatório.');
+
+    var parcelas = d.parcelas || [];
+    var validacao = validarPlanoParcelas(parcelas, d.total_proposta);
+    if (!validacao.ok) {
+      throw new Error('[Financeiro PR2] plano de parcelas inválido:\n- ' + validacao.erros.join('\n- '));
+    }
+
+    var existentes = await sbListarParcelasProposta(d.empresa_id, d.proposta_app_id);
+    if (existentes.length) {
+      throw new Error('[Financeiro PR2] esta proposta já possui ' + existentes.length +
+        ' parcela(s). Use regerarParcelasProposta para refazer o plano.');
+    }
+
+    var grupoId = _novoUuid();
+    var total   = parcelas.length;
+    var tituloBase = d.titulo_base || 'Proposta';
+
+    var payload = parcelas.map(function (p, i) {
+      return {
+        empresa_id:            d.empresa_id,
+        proposta_app_id:       d.proposta_app_id,
+        obra_id:               d.obra_id || null,
+        grupo_parcelamento_id: grupoId,
+        parcela_numero:        p.parcela_numero || (i + 1),
+        parcela_total:         total,
+        titulo:                tituloBase + ' — Parcela ' + (p.parcela_numero || (i + 1)) + '/' + total,
+        cliente_nome:          d.cliente_nome || null,
+        centro_custo:          d.centro_custo || null,
+        categoria_gerencial_id: d.categoria_gerencial_id || null,
+        data_vencimento:       p.data_vencimento,
+        valor_previsto:        p.valor_previsto,
+        valor_servico:         p.valor_servico,
+        valor_produto:         p.valor_produto,
+        valor_faturado:        0,
+        valor_recebido:        0,
+        valor_pendente:        p.valor_previsto,
+        status:                'previsto',
+        origem:                'parcela_proposta',
+        observacoes:           d.observacoes || null
+      };
+    });
+
+    var r = await client()
+      .from('financeiro_contas_receber')
+      .insert(payload)
+      .select();
+
+    if (r.error) throw r.error;
+    return { grupo_parcelamento_id: grupoId, parcelas: r.data || [] };
+  }
+
+  /**
+   * Refaz o plano de parcelas de uma proposta.
+   * Recusa se QUALQUER parcela já tiver NF ou recebimento — nesse caso
+   * apagar as linhas destruiria histórico financeiro.
+   */
+  async function sbRegerarParcelasProposta(dados) {
+    var d = dados || {};
+    if (!d.empresa_id)      throw new Error('[Financeiro PR2] empresa_id obrigatório.');
+    if (!d.proposta_app_id) throw new Error('[Financeiro PR2] proposta_app_id obrigatório.');
+
+    var validacao = validarPlanoParcelas(d.parcelas || [], d.total_proposta);
+    if (!validacao.ok) {
+      throw new Error('[Financeiro PR2] plano de parcelas inválido:\n- ' + validacao.erros.join('\n- '));
+    }
+
+    var existentes = await sbListarParcelasProposta(d.empresa_id, d.proposta_app_id);
+    if (existentes.length) {
+      var ids = existentes.map(function (p) { return p.id; });
+      var vinculos = await sbVerificarVinculosParcelas(d.empresa_id, ids);
+      var bloqueadas = existentes.filter(function (p) {
+        var v = vinculos[String(p.id)];
+        return v && v.bloqueada;
+      });
+      if (bloqueadas.length) {
+        throw new Error('[Financeiro PR2] não é possível refazer o plano: ' +
+          bloqueadas.length + ' parcela(s) já possuem NF ou recebimento.');
+      }
+
+      var del = await client()
+        .from('financeiro_contas_receber')
+        .delete()
+        .eq('empresa_id', d.empresa_id)
+        .in('id', ids);
+      if (del.error) throw del.error;
+    }
+
+    return sbGerarParcelasProposta(d);
+  }
+
+
+  // ============================================================
   // NOTAS FISCAIS
   // ============================================================
 
@@ -1840,6 +2251,24 @@
     criarContaReceber:               sbCriarContaReceber,
     atualizarContaReceber:           sbAtualizarContaReceber,
     atualizarCategoriaGerencialContaReceber: sbAtualizarCategoriaGerencialContaReceber,
+
+    // PR2 — Parcelamento: funções puras (sem banco, testáveis isoladas)
+    somarMeses:                      somarMeses,
+    distribuirValor:                 distribuirValor,
+    proporcaoServicoProposta:        proporcaoServicoProposta,
+    dividirServicoProduto:           dividirServicoProduto,
+    ajustarSplitParcela:             ajustarSplitParcela,
+    presetAVista:                    presetAVista,
+    presetParcelasIguais:            presetParcelasIguais,
+    presetEntradaMaisN:              presetEntradaMaisN,
+    validarPlanoParcelas:            validarPlanoParcelas,
+
+    // PR2 — Parcelamento: acesso ao banco
+    listarParcelasProposta:          sbListarParcelasProposta,
+    listarParcelasGrupo:             sbListarParcelasGrupo,
+    verificarVinculosParcelas:       sbVerificarVinculosParcelas,
+    gerarParcelasProposta:           sbGerarParcelasProposta,
+    regerarParcelasProposta:         sbRegerarParcelasProposta,
 
     // Notas fiscais
     listarNotasFiscaisEmpresa:       sbListarNotasFiscaisEmpresa,
