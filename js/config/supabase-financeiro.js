@@ -841,41 +841,16 @@
   async function sbCriarPedidoCompra(dados) {
     if (!dados.empresa_id) throw new Error('[Financeiro] empresa_id obrigatório.');
 
-    // 1. Criar Conta a Receber para rastrear a PO
-    var contaPayload = {
-      empresa_id: dados.empresa_id,
-      titulo: 'PO ' + (dados.numero_po || 'sem número') + ' — ' + (dados.observacoes ?
-        (typeof dados.observacoes === 'string' ?
-          JSON.parse(dados.observacoes).vendedor_nome :
-          dados.observacoes.vendedor_nome) || 'Fornecedor'
-        : 'Fornecedor'),
-      cliente_nome: typeof dados.observacoes === 'string' ?
-        JSON.parse(dados.observacoes).comprador_nome || 'Cliente' :
-        (dados.observacoes?.comprador_nome || 'Cliente'),
-      data_vencimento: dados.data_emissao || new Date().toISOString().slice(0, 10),
-      valor_previsto: dados.valor_po || 0,
-      // PO NÃO é faturamento: este registro existe apenas porque
-      // financeiro_notas_fiscais.conta_receber_id é NOT NULL.
-      // origem='po' permite excluí-lo das telas/totais de Contas a Receber.
-      origem: 'po',
-      status: 'cancelado'
-    };
-
-    var contaResult = await client()
-      .from('financeiro_contas_receber')
-      .insert(contaPayload)
-      .select()
-      .single();
-
-    if (contaResult.error) throw contaResult.error;
-
-    // 2. Criar NF vinculada à Conta a Receber
+    // PO não é faturamento e não tem conta a receber real. Depois da
+    // migration 078, conta_receber_id é nullable, então a NF de PO nasce
+    // sem conta vinculada — em vez de criar uma conta a receber fantasma
+    // cancelada só para satisfazer um NOT NULL (o que fazia antes).
     var nfPayload = Object.assign({
       tipo_nf: 'po',
       status: 'ativa',
       valor_nf: dados.valor_po || 0,
       numero_nf: dados.numero_po || null,
-      conta_receber_id: contaResult.data.id
+      conta_receber_id: null
     }, dados);
 
     // Remover campos de PO específicos
@@ -892,7 +867,7 @@
 
     return {
       nf: nfResult.data,
-      conta_receber: contaResult.data
+      conta_receber: null
     };
   }
 
@@ -1140,6 +1115,42 @@
       valor_produto:         soma('valor_produto'),
       status:                _statusAgregado(lista)
     };
+  }
+
+  /**
+   * Rede de segurança contra dupla contagem de receita por proposta.
+   *
+   * Quando uma proposta tem plano de parcelas (grupo_parcelamento_id), as
+   * parcelas SÃO a receita prevista. Uma conta avulsa da mesma proposta
+   * (ex.: vinda de uma NF) representa faturamento de algo já previsto nas
+   * parcelas — somá-la de novo dobraria a receita no DRE e nos KPIs.
+   *
+   * Esta função recebe uma lista de contas a receber e devolve a lista
+   * SEM as avulsas de propostas que têm parcelas. As parcelas ficam; as
+   * avulsas da mesma proposta saem. Contas sem proposta, e propostas sem
+   * parcelas, passam intactas.
+   *
+   * Função pura. Exige que as contas tragam proposta_app_id e
+   * grupo_parcelamento_id (ambos já vêm no select('*') dos carregamentos).
+   */
+  function deduplicarReceitaPorProposta(contas) {
+    var lista = contas || [];
+
+    // Propostas que possuem ao menos uma parcela.
+    var propostasComParcela = {};
+    lista.forEach(function (c) {
+      if (c.proposta_app_id && c.grupo_parcelamento_id) {
+        propostasComParcela[String(c.proposta_app_id)] = true;
+      }
+    });
+
+    // Mantém tudo, menos a conta avulsa (sem grupo) de uma proposta que
+    // tem parcelas.
+    return lista.filter(function (c) {
+      if (!c.proposta_app_id) return true;
+      if (!propostasComParcela[String(c.proposta_app_id)]) return true;
+      return !!c.grupo_parcelamento_id; // só as parcelas passam
+    });
   }
 
   /**
@@ -1719,9 +1730,11 @@
    */
   async function sbListarContasReceberPeriodo(empresaId, dataInicio, dataFim) {
     if (!empresaId) throw new Error('[Financeiro F4A] empresa_id obrigatório.');
+    // proposta_app_id e grupo_parcelamento_id vêm no select para o DRE poder
+    // de-duplicar receita por proposta (evita contar parcela + conta avulsa).
     var query = client()
       .from('financeiro_contas_receber')
-      .select('valor_previsto, valor_faturado, valor_recebido, valor_pendente, status, data_vencimento')
+      .select('valor_previsto, valor_faturado, valor_recebido, valor_pendente, status, data_vencimento, proposta_app_id, grupo_parcelamento_id')
       .eq('empresa_id', empresaId);
     if (dataInicio) query = query.gte('data_vencimento', dataInicio);
     if (dataFim)    query = query.lte('data_vencimento', dataFim);
@@ -1779,6 +1792,10 @@
    *   Margem Gerencial   = Resultado / Receita Bruta × 100  (null se Receita = 0)
    */
   function calcularDREGerencial(contas, recebimentos, contasPagar, dataInicio, dataFim) {
+    // Rede de segurança: se uma proposta tem parcelas, elas são a receita —
+    // uma conta avulsa da mesma proposta não soma de novo (dupla contagem).
+    contas = deduplicarReceitaPorProposta(contas || []);
+
     // Helper: valor numérico seguro
     function n(v) { return parseFloat(v) || 0; }
 
@@ -2526,6 +2543,7 @@
     calcularResumoFinanceiroConta:   calcularResumoFinanceiroConta,
     calcularCardsFinanceirosBasicos: calcularCardsFinanceirosBasicos,
     agregarContasEmConta:            agregarContasEmConta,
+    deduplicarReceitaPorProposta:    deduplicarReceitaPorProposta,
 
     // F4A — DRE Gerencial (novas funções — não alteram as anteriores)
     listarContasReceberPeriodo:      sbListarContasReceberPeriodo,
