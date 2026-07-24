@@ -8,3 +8,17 @@ package-lock.json
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Logs e processos do servidor local
+*.log
+*.pid
+
+# Arquivos temporarios de trabalho
+temp-*
+
+# Lixo do sistema operacional / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+.vscode/
