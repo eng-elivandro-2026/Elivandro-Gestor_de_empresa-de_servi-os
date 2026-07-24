@@ -41,6 +41,17 @@
     return empresaId ? query.eq('empresa_id', empresaId) : query;
   }
 
+  /**
+   * Saldo em aberto de uma conta a receber: previsto - recebido, nunca negativo.
+   * Espelha a regra que contas a pagar já aplicava (previsto - pago).
+   * Trabalha em centavos para não acumular erro de ponto flutuante.
+   * Função pura.
+   */
+  function _pendenteReceber(valorPrevisto, valorRecebido) {
+    var centavos = Math.round(_num(valorPrevisto) * 100) - Math.round(_num(valorRecebido) * 100);
+    return Math.max(0, centavos) / 100;
+  }
+
 
   // ============================================================
   // CONTAS A RECEBER
@@ -178,9 +189,17 @@
       status: 'previsto',
       valor_previsto: 0,
       valor_faturado: 0,
-      valor_recebido: 0,
-      valor_pendente: 0
+      valor_recebido: 0
     }, dados);
+
+    // valor_pendente é derivado: previsto - recebido. Antes era default 0 e
+    // nunca calculado, então toda conta nascia com pendente zerado mesmo com
+    // valor previsto — o que zerava o "A Receber" do DRE e deixava a tela de
+    // recebimento sem nenhuma conta para baixar. Contas a pagar já derivava.
+    // Respeita valor_pendente explícito, se quem chamou informar.
+    if (dados.valor_pendente === undefined || dados.valor_pendente === null) {
+      payload.valor_pendente = _pendenteReceber(payload.valor_previsto, payload.valor_recebido);
+    }
 
     var r = await client()
       .from('financeiro_contas_receber')
@@ -201,6 +220,13 @@
     var empresaId = _empresaFiltro(dados);
     var payload = _payloadSemEmpresa(dados);
     if (!id) throw new Error('[Financeiro] id obrigatório para atualizar.');
+
+    // Mesma regra de sbAtualizarContaPagar: se previsto ou recebido mudou e o
+    // chamador não informou o pendente, recalcula em vez de deixar defasado.
+    var mexeuNosValores = payload.valor_previsto !== undefined || payload.valor_recebido !== undefined;
+    if (mexeuNosValores && payload.valor_pendente === undefined) {
+      payload.valor_pendente = _pendenteReceber(payload.valor_previsto, payload.valor_recebido);
+    }
 
     var q = client()
       .from('financeiro_contas_receber')
