@@ -102,6 +102,9 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .time-row:last-child{border-bottom:none}
 .time-row.inativo{opacity:.5}
 .time-row .nm{font-weight:700;font-size:.84rem}
+.time-row .nm.clic{cursor:pointer}
+.time-row .nm.clic:hover{color:var(--emp-cor)}
+.time-membros .medit{margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border)}
 .time-row .ct{font-size:.7rem;color:var(--text3)}
 .time-row .per{margin-left:auto}
 .per{font-size:.72rem;color:var(--text2);font-variant-numeric:tabular-nums}
@@ -763,20 +766,19 @@ function _renderMembros(t){
   }else{
     h+='<div class="dep-vazio">Todas as funções ativas já estão no time (ou não há funções ativas).</div>';
   }
-  h+='<div class="mtot">'+_periodos(_timeCustoMes(t.id),true)+'</div></div>';
+  h+='<div class="mtot">'+_periodos(_timeCustoMes(t.id),true)+'</div>';
+  h+='<div class="medit"><button class="btn btn-xs" onclick="abrirFormTime(\''+t.id+'\')">✏️ Editar dados do time</button></div></div>';
   return h;
 }
 
 function _renderTimeRow(t){
   var membros=_membrosDoTime(t.id);
   var h='<div class="time-row'+(t.ativo?'':' inativo')+(_timeEdit===t.id?' editando':'')+'">'+
-    '<span class="nm">'+esc(t.nome)+'</span>'+
+    '<span class="nm clic" onclick="_togMembros(\''+t.id+'\')" title="Ver composição">'+(_membrosAberto[t.id]?'▾ ':'▸ ')+esc(t.nome)+'</span>'+
     (t.descricao?'<span class="ct">'+esc(t.descricao)+'</span>':'')+
     '<span class="ct">'+membros.length+(membros.length===1?' função':' funções')+'</span>'+
     _periodos(_timeCustoMes(t.id),false)+
     '<div class="acoes">'+
-      '<button class="btn btn-xs" onclick="_togMembros(\''+t.id+'\')">Membros</button>'+
-      '<button class="btn btn-xs" onclick="abrirFormTime(\''+t.id+'\')">Editar</button>'+
       '<button class="btn btn-xs" onclick="toggleAtivoTime(\''+t.id+'\','+(t.ativo?'false':'true')+')">'+(t.ativo?'Desativar':'Ativar')+'</button>'+
       '<button class="btn btn-xs" onclick="excluirTime(\''+t.id+'\')">Excluir</button>'+
     '</div></div>';
