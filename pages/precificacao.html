@@ -87,6 +87,37 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
 .idx-geral{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1rem;padding:.7rem .9rem;background:var(--emp-bg);border:1px solid var(--emp-bdr);border-radius:var(--r)}
 .idx-geral .lab{font-size:.8rem;font-weight:800;color:var(--text)}
 .idx-geral .val{font-size:1.2rem;font-weight:800;color:var(--emp-cor);font-variant-numeric:tabular-nums}
+/* Meus Times */
+.dept-grp{border:1px solid var(--border);border-radius:var(--r);margin-bottom:.7rem;overflow:hidden}
+.dept-grp.inativo{opacity:.5}
+.dept-hdr{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.6rem .8rem;background:var(--bg3);cursor:pointer}
+.dept-hdr .chev{color:var(--text3);font-size:.7rem;transition:transform .15s;width:.8rem}
+.dept-hdr.aberto .chev{transform:rotate(90deg)}
+.dept-hdr .nm{font-weight:800;font-size:.9rem}
+.dept-hdr .ct{font-size:.7rem;color:var(--text3)}
+.dept-hdr .per{margin-left:auto}
+.dept-hdr .acoes{flex:0 0 auto}
+.dept-body{padding:.4rem .8rem .7rem}
+.time-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.time-row:last-child{border-bottom:none}
+.time-row.inativo{opacity:.5}
+.time-row .nm{font-weight:700;font-size:.84rem}
+.time-row .ct{font-size:.7rem;color:var(--text3)}
+.time-row .per{margin-left:auto}
+.per{font-size:.72rem;color:var(--text2);font-variant-numeric:tabular-nums}
+.per b{color:var(--emp-cor)}
+.per.forte{font-size:.8rem;font-weight:700}
+.time-membros{background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:.6rem .7rem;margin:.2rem 0 .6rem;width:100%}
+.time-membros .mtit{font-size:.68rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem}
+.mrow{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.3rem 0;border-bottom:1px solid var(--border)}
+.mrow .mnm{font-size:.8rem;flex:1 1 160px}
+.mrow .mqtd{width:70px}
+.mrow .mcst{font-size:.74rem;color:var(--text2);font-variant-numeric:tabular-nums;min-width:120px;text-align:right}
+.madd{display:flex;align-items:flex-end;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.madd select{flex:1 1 180px;min-width:150px}
+.madd input{width:80px}
+.mtot{margin-top:.5rem;text-align:right}
+.dep-vazio{font-size:.74rem;color:var(--text3);padding:.4rem 0}
 .psec{display:none}.psec.on{display:block}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:.6rem 1rem;border-radius:var(--r);font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99}
 #toast.on{opacity:1}#toast.err{border-color:var(--red);color:var(--red)}
@@ -208,9 +239,47 @@ body.light .idx-tbl input[type=number]{background:#ffffff;border-color:var(--bor
     <!-- 2 -->
     <section class="psec" id="sec-times">
       <div class="card">
-        <div class="sec-tit">👥 Meus Times</div>
-        <div class="sec-desc">Composição de times a partir das funções.</div>
-        <div class="vazio">Em construção.</div>
+        <div class="form-row">
+          <div>
+            <div class="sec-tit">👥 Meus Times</div>
+            <div class="sec-desc">Departamentos, times e composição por função. Custo projetado mensal/trimestral/semestral/anual.</div>
+          </div>
+          <div class="acoes">
+            <button class="btn" onclick="abrirFormDepto()">+ Novo Departamento</button>
+            <button class="btn prim" onclick="abrirFormTime()">+ Novo Time</button>
+          </div>
+        </div>
+
+        <!-- Form Departamento (colapsável) -->
+        <div class="card" id="deptoFormWrap" style="display:none;background:var(--bg3)">
+          <div class="sec-tit" id="deptoFormTit" style="margin-bottom:.7rem">Novo Departamento</div>
+          <div class="form-grid">
+            <div class="fld"><label>Nome *</label><input type="text" id="dNome" placeholder="Ex.: Engenharia"></div>
+            <div class="fld"><label>Descrição</label><input type="text" id="dDesc" placeholder="Opcional"></div>
+            <div class="fld"><label>Ordem</label><input type="number" id="dOrdem" step="1" value="0"></div>
+          </div>
+          <div class="acoes">
+            <button class="btn prim" onclick="salvarDepto()">Salvar</button>
+            <button class="btn" onclick="fecharFormDepto()">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Form Time (colapsável) -->
+        <div class="card" id="timeFormWrap" style="display:none;background:var(--bg3)">
+          <div class="sec-tit" id="timeFormTit" style="margin-bottom:.7rem">Novo Time</div>
+          <div class="form-grid">
+            <div class="fld"><label>Nome *</label><input type="text" id="tNome" placeholder="Ex.: Time Estrutural"></div>
+            <div class="fld"><label>Descrição</label><input type="text" id="tDesc" placeholder="Opcional"></div>
+            <div class="fld"><label>Departamento</label><select id="tDepto"></select></div>
+            <div class="fld"><label>Ordem</label><input type="number" id="tOrdem" step="1" value="0"></div>
+          </div>
+          <div class="acoes">
+            <button class="btn prim" onclick="salvarTime()">Salvar</button>
+            <button class="btn" onclick="fecharFormTime()">Cancelar</button>
+          </div>
+        </div>
+
+        <div id="timesWrap"><div class="vazio">Carregando…</div></div>
       </div>
     </section>
     <!-- 3 -->
@@ -289,6 +358,7 @@ function mostrarSecao(id){
   var alvo=document.getElementById(id)||document.getElementById('sec-custos');
   document.querySelectorAll('.psec').forEach(function(s){ s.classList.toggle('on', s===alvo); });
   if(alvo && alvo.id==='sec-indices') carregarIndices();
+  if(alvo && alvo.id==='sec-times') carregarTimes();
 }
 
 /* Gate de acesso */
@@ -312,6 +382,7 @@ async function _onTrocaEmpresa(d){
   carregarSalMinimo();
   carregarIndices();
   carregarFuncoes();
+  var st=document.getElementById('sec-times'); if(st && st.classList.contains('on')) carregarTimes();
 }
 
 /* ── Minha Estrutura de Custos (precificacao_funcoes) ─────────── */
@@ -624,6 +695,215 @@ function restaurarIndicesPadrao(){
   _IDX_ENCARGOS.forEach(function(g){ g.itens.forEach(function(i){ i.sel=true; var cb=document.getElementById(_idxSelId(i.chave)); if(cb) cb.checked=true; }); });
   _recalcIndices();
   toast('Padrões restaurados. Clique em Salvar Índices para persistir.');
+}
+
+/* ── Meus Times (departamentos, times, composição) ──────────── */
+var _departamentos=[], _times=[], _membros=[];
+var _deptEdit=null, _timeEdit=null;
+var _deptAberto={}, _membrosAberto={};
+
+async function carregarTimes(){
+  var box=document.getElementById('timesWrap'); if(!box) return;
+  var sb=_sb();
+  if(!sb||!_empresaAtiva){ box.innerHTML='<div class="vazio">—</div>'; return; }
+  try{
+    if(!_funcoes.length){
+      var rf=await sb.from('precificacao_funcoes').select('*').eq('empresa_id',_empresaAtiva.id);
+      if(!rf.error) _funcoes=rf.data||[];
+    }
+    var rd=await sb.from('precificacao_departamentos').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true});
+    if(rd.error) throw rd.error;
+    var rt=await sb.from('precificacao_times').select('*').eq('empresa_id',_empresaAtiva.id).order('ordem',{ascending:true}).order('nome',{ascending:true});
+    if(rt.error) throw rt.error;
+    var rm=await sb.from('precificacao_time_membros').select('*').eq('empresa_id',_empresaAtiva.id);
+    if(rm.error) throw rm.error;
+    _departamentos=rd.data||[]; _times=rt.data||[]; _membros=rm.data||[];
+    _renderTimes();
+  }catch(err){ box.innerHTML='<div class="vazio">Erro ao carregar: '+esc(err.message||String(err))+'</div>'; }
+}
+
+function _funcById(id){ return _funcoes.find(function(f){return f.id===id;})||null; }
+function _funcCustoMes(f){ if(!f) return 0; var hh=f.custo_hh!=null?f.custo_hh:_calcHH(f.salario_base,f.encargos_pct,f.beneficios_mes,f.horas_mes); return _n(hh)*_n(f.horas_mes); }
+function _membrosDoTime(timeId){ return _membros.filter(function(m){return m.time_id===timeId;}); }
+function _timeCustoMes(timeId){ return _membrosDoTime(timeId).reduce(function(s,m){ return s+_funcCustoMes(_funcById(m.funcao_id))*_n(m.quantidade); },0); }
+function _timesDoDepto(deptId){ return _times.filter(function(t){ return (deptId===null? !t.departamento_id : t.departamento_id===deptId); }); }
+function _deptCustoMes(deptId){ return _timesDoDepto(deptId).filter(function(t){return t.ativo;}).reduce(function(s,t){ return s+_timeCustoMes(t.id); },0); }
+function _periodos(mensal, forte){
+  return '<span class="per'+(forte?' forte':'')+'">Mensal <b>R$ '+_fmt(mensal)+'</b> · Trim <b>R$ '+_fmt(mensal*3)+'</b> · Sem <b>R$ '+_fmt(mensal*6)+'</b> · Anual <b>R$ '+_fmt(mensal*12)+'</b></span>';
+}
+
+function _togDept(id){ var k=id||'_sem'; var ab=_deptAberto[k]!==false; _deptAberto[k]=!ab; _renderTimes(); }
+function _togMembros(timeId){ _membrosAberto[timeId]=!_membrosAberto[timeId]; _renderTimes(); }
+
+function _renderMembros(t){
+  var membros=_membrosDoTime(t.id);
+  var h='<div class="time-membros"><div class="mtit">Composição — '+esc(t.nome)+'</div>';
+  if(!membros.length){ h+='<div class="dep-vazio">Nenhuma função neste time.</div>'; }
+  membros.forEach(function(m){
+    var f=_funcById(m.funcao_id);
+    var custoMes=_funcCustoMes(f)*_n(m.quantidade);
+    h+='<div class="mrow">'+
+      '<span class="mnm">'+(f?esc(f.nome):'(função removida)')+'</span>'+
+      '<input class="mqtd" type="number" min="1" step="1" value="'+_n(m.quantidade)+'" onchange="atualizarQtdMembro(\''+m.id+'\',this.value)">'+
+      '<span class="mcst">R$ '+_fmt(custoMes)+'/mês</span>'+
+      '<button class="btn btn-xs" onclick="removerMembro(\''+m.id+'\')">Remover</button>'+
+    '</div>';
+  });
+  var jaTem={}; membros.forEach(function(m){ jaTem[m.funcao_id]=true; });
+  var opts=_funcoes.filter(function(f){ return f.ativo && !jaTem[f.id]; }).map(function(f){ return '<option value="'+f.id+'">'+esc(f.nome)+'</option>'; }).join('');
+  if(opts){
+    h+='<div class="madd">'+
+      '<div class="fld" style="flex:1 1 180px"><label>Adicionar função</label><select id="addFunc_'+t.id+'">'+opts+'</select></div>'+
+      '<div class="fld"><label>Qtd</label><input type="number" id="addQtd_'+t.id+'" min="1" step="1" value="1"></div>'+
+      '<button class="btn prim btn-xs" onclick="adicionarMembro(\''+t.id+'\')">Adicionar</button>'+
+    '</div>';
+  }else{
+    h+='<div class="dep-vazio">Todas as funções ativas já estão no time (ou não há funções ativas).</div>';
+  }
+  h+='<div class="mtot">'+_periodos(_timeCustoMes(t.id),true)+'</div></div>';
+  return h;
+}
+
+function _renderTimeRow(t){
+  var membros=_membrosDoTime(t.id);
+  var h='<div class="time-row'+(t.ativo?'':' inativo')+'">'+
+    '<span class="nm">'+esc(t.nome)+'</span>'+
+    (t.descricao?'<span class="ct">'+esc(t.descricao)+'</span>':'')+
+    '<span class="ct">'+membros.length+(membros.length===1?' função':' funções')+'</span>'+
+    _periodos(_timeCustoMes(t.id),false)+
+    '<div class="acoes">'+
+      '<button class="btn btn-xs" onclick="_togMembros(\''+t.id+'\')">Membros</button>'+
+      '<button class="btn btn-xs" onclick="abrirFormTime(\''+t.id+'\')">Editar</button>'+
+      '<button class="btn btn-xs" onclick="toggleAtivoTime(\''+t.id+'\','+(t.ativo?'false':'true')+')">'+(t.ativo?'Desativar':'Ativar')+'</button>'+
+    '</div></div>';
+  if(_membrosAberto[t.id]) h+=_renderMembros(t);
+  return h;
+}
+
+function _renderTimes(){
+  var box=document.getElementById('timesWrap'); if(!box) return;
+  if(!_departamentos.length && !_times.length){ box.innerHTML='<div class="vazio">Nenhum departamento ou time cadastrado ainda.</div>'; return; }
+  var grupos=_departamentos.map(function(d){ return d; });
+  if(_timesDoDepto(null).length) grupos.push(null);
+  var html='';
+  grupos.forEach(function(d){
+    var deptId=d?d.id:null, k=deptId||'_sem', aberto=_deptAberto[k]!==false;
+    var times=_timesDoDepto(deptId);
+    html+='<div class="dept-grp'+((d&&!d.ativo)?' inativo':'')+'">';
+    html+='<div class="dept-hdr'+(aberto?' aberto':'')+'" onclick="_togDept('+(d?("\'"+d.id+"\'"):'null')+')">'+
+      '<span class="chev">▶</span><span class="nm">'+(d?esc(d.nome):'Sem departamento')+'</span>'+
+      '<span class="ct">('+times.length+(times.length===1?' time':' times')+')</span>'+
+      _periodos(_deptCustoMes(deptId),true);
+    if(d){
+      html+='<div class="acoes" onclick="event.stopPropagation()">'+
+        '<button class="btn btn-xs" onclick="abrirFormDepto(\''+d.id+'\')">Editar</button>'+
+        '<button class="btn btn-xs" onclick="toggleAtivoDepto(\''+d.id+'\','+(d.ativo?'false':'true')+')">'+(d.ativo?'Desativar':'Ativar')+'</button>'+
+      '</div>';
+    }
+    html+='</div>';
+    if(aberto){
+      html+='<div class="dept-body">';
+      if(!times.length){ html+='<div class="dep-vazio">Nenhum time neste departamento.</div>'; }
+      times.forEach(function(t){ html+=_renderTimeRow(t); });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  var geral=_departamentos.reduce(function(s,d){ return s+(d.ativo?_deptCustoMes(d.id):0); },0)+_deptCustoMes(null);
+  html+='<div class="idx-geral"><span class="lab">TOTAL GERAL</span><span>'+_periodos(geral,true)+'</span></div>';
+  box.innerHTML=html;
+}
+
+/* CRUD Departamento */
+function abrirFormDepto(id){
+  _deptEdit=id||null;
+  var d=id?_departamentos.find(function(x){return x.id===id;}):null;
+  document.getElementById('deptoFormTit').textContent=d?'Editar Departamento':'Novo Departamento';
+  _setVal('dNome', d?d.nome:''); _setVal('dDesc', d?(d.descricao||''):''); _setVal('dOrdem', d?_n(d.ordem):0);
+  document.getElementById('timeFormWrap').style.display='none';
+  document.getElementById('deptoFormWrap').style.display='';
+  document.getElementById('dNome').focus();
+}
+function fecharFormDepto(){ _deptEdit=null; document.getElementById('deptoFormWrap').style.display='none'; }
+async function salvarDepto(){
+  var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
+  var nome=_val('dNome').trim(); if(!nome){ toast('Informe o nome do departamento.','err'); return; }
+  var row={ nome:nome, descricao:_val('dDesc').trim()||null, ordem:_num('dOrdem'), atualizado_em:new Date().toISOString() };
+  try{
+    var res;
+    if(_deptEdit){ res=await sb.from('precificacao_departamentos').update(row).eq('id',_deptEdit).eq('empresa_id',_empresaAtiva.id); }
+    else{ row.empresa_id=_empresaAtiva.id; res=await sb.from('precificacao_departamentos').insert(row); }
+    if(res.error) throw res.error;
+    toast(_deptEdit?'Departamento atualizado.':'Departamento criado.'); fecharFormDepto(); carregarTimes();
+  }catch(err){ toast('Erro ao salvar: '+(err.message||err),'err'); }
+}
+async function toggleAtivoDepto(id,novo){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{ var res=await sb.from('precificacao_departamentos').update({ativo:novo,atualizado_em:new Date().toISOString()}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error; toast(novo?'Departamento ativado.':'Departamento desativado.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+
+/* CRUD Time */
+function _preencherSelectDepto(sel){
+  var el=document.getElementById('tDepto'); if(!el) return;
+  var opts='<option value="">— Sem departamento —</option>';
+  _departamentos.filter(function(d){return d.ativo;}).forEach(function(d){ opts+='<option value="'+d.id+'">'+esc(d.nome)+'</option>'; });
+  el.innerHTML=opts; el.value=sel||'';
+}
+function abrirFormTime(id){
+  _timeEdit=id||null;
+  var t=id?_times.find(function(x){return x.id===id;}):null;
+  document.getElementById('timeFormTit').textContent=t?'Editar Time':'Novo Time';
+  _setVal('tNome', t?t.nome:''); _setVal('tDesc', t?(t.descricao||''):''); _setVal('tOrdem', t?_n(t.ordem):0);
+  _preencherSelectDepto(t?(t.departamento_id||''):'');
+  document.getElementById('deptoFormWrap').style.display='none';
+  document.getElementById('timeFormWrap').style.display='';
+  document.getElementById('tNome').focus();
+}
+function fecharFormTime(){ _timeEdit=null; document.getElementById('timeFormWrap').style.display='none'; }
+async function salvarTime(){
+  var sb=_sb(); if(!sb||!_empresaAtiva){ toast('Empresa não carregada.','err'); return; }
+  var nome=_val('tNome').trim(); if(!nome){ toast('Informe o nome do time.','err'); return; }
+  var row={ nome:nome, descricao:_val('tDesc').trim()||null, departamento_id:(_val('tDepto')||null), ordem:_num('tOrdem'), atualizado_em:new Date().toISOString() };
+  try{
+    var res;
+    if(_timeEdit){ res=await sb.from('precificacao_times').update(row).eq('id',_timeEdit).eq('empresa_id',_empresaAtiva.id); }
+    else{ row.empresa_id=_empresaAtiva.id; res=await sb.from('precificacao_times').insert(row); }
+    if(res.error) throw res.error;
+    toast(_timeEdit?'Time atualizado.':'Time criado.'); fecharFormTime(); carregarTimes();
+  }catch(err){ toast('Erro ao salvar: '+(err.message||err),'err'); }
+}
+async function toggleAtivoTime(id,novo){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{ var res=await sb.from('precificacao_times').update({ativo:novo,atualizado_em:new Date().toISOString()}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error; toast(novo?'Time ativado.':'Time desativado.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+
+/* Composição do time (membros) */
+async function adicionarMembro(timeId){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  var funcao=_val('addFunc_'+timeId); var qtd=parseInt(_val('addQtd_'+timeId),10); if(!(qtd>0)) qtd=1;
+  if(!funcao){ toast('Selecione uma função.','err'); return; }
+  try{
+    var res=await sb.from('precificacao_time_membros').insert({ empresa_id:_empresaAtiva.id, time_id:timeId, funcao_id:funcao, quantidade:qtd });
+    if(res.error) throw res.error;
+    _membrosAberto[timeId]=true; toast('Função adicionada.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+async function removerMembro(id){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  try{ var res=await sb.from('precificacao_time_membros').delete().eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error; toast('Função removida.'); carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
+}
+async function atualizarQtdMembro(id,val){
+  var sb=_sb(); if(!sb||!_empresaAtiva) return;
+  var qtd=parseInt(val,10); if(!(qtd>0)) qtd=1;
+  try{ var res=await sb.from('precificacao_time_membros').update({quantidade:qtd}).eq('id',id).eq('empresa_id',_empresaAtiva.id);
+    if(res.error) throw res.error; carregarTimes();
+  }catch(err){ toast('Erro: '+(err.message||err),'err'); }
 }
 
 /* Protocolo do portal */
