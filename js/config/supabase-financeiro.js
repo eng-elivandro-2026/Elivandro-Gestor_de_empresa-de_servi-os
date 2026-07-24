@@ -978,6 +978,25 @@
   // ============================================================
 
   /**
+   * Normaliza uma data para 'YYYY-MM-DD'.
+   *
+   * O PostgREST devolve colunas DATE como texto ISO, mas drivers como o
+   * node-postgres devolvem objeto Date. Comparar com String() nesse caso
+   * produziria 'Fri Oct 30 2026...' e a ordenação lexicográfica passaria
+   * a comparar nome de dia da semana ('Fri' < 'Wed'), escolhendo a data
+   * errada. Usa componentes locais em vez de toISOString() para não
+   * deslocar o dia por fuso.
+   */
+  function _dataISO(v) {
+    if (!v) return null;
+    if (typeof v.getFullYear === 'function' && typeof v.getTime === 'function') {
+      if (isNaN(v.getTime())) return null;
+      return v.getFullYear() + '-' + _pad2(v.getMonth() + 1) + '-' + _pad2(v.getDate());
+    }
+    return String(v).slice(0, 10);
+  }
+
+  /**
    * Menor data_vencimento entre as parcelas ainda não quitadas.
    * Cai para o menor vencimento geral se todas já estiverem recebidas.
    */
@@ -985,9 +1004,9 @@
     var lista = contas || [];
     function menor(itens) {
       return itens.reduce(function (acc, c) {
-        var d = c.data_vencimento;
+        var d = _dataISO(c.data_vencimento);
         if (!d) return acc;
-        return (acc === null || String(d) < String(acc)) ? d : acc;
+        return (acc === null || d < acc) ? d : acc;
       }, null);
     }
     var emAberto = lista.filter(function (c) {
