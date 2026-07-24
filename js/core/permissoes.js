@@ -94,8 +94,20 @@
     precificacao: {
       // Módulo 05 — Precificação (SOE). Estrutura de custos, times,
       // formação de preço e índices próprios. Acesso a dono/admin.
+      // `secoes`: controle granular das 8 telas (config armazenada; a
+      // aplicação efetiva por seção no iframe fica para etapa seguinte).
       ver:    ['dono', 'admin'],
-      editar: ['dono', 'admin']
+      editar: ['dono', 'admin'],
+      secoes: {
+        custos:      { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        times:       { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        simulador:   { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        contratacao: { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        rescisao:    { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        preco:       { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        indices:     { ver: ['dono', 'admin'], editar: ['dono', 'admin'] },
+        analises:    { ver: ['dono', 'admin'], editar: ['dono', 'admin'] }
+      }
     },
     prospeccao: {
       // Prospecção Comercial (Etapas 1-2) — EXCLUSIVO de dono/admin nesta
@@ -419,6 +431,7 @@
       result[modulo] = {};
       var mat = _getMatrizMod(modulo) || window.PERMISSOES_PADRAO[modulo];
       Object.keys(mat).forEach(function (acao) {
+        if (!Array.isArray(mat[acao])) return;   // pula sub-objetos (ex.: precificacao.secoes)
         result[modulo][acao] = window.podeAcao(modulo, acao);
       });
     });

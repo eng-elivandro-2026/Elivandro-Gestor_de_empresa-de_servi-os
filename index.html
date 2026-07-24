@@ -10236,6 +10236,19 @@ var _PERM_GRUPOS = [
     { key: 'aprovar_proposta', label: 'Aprovar Proposta' },
     { key: 'editar_margem',    label: 'Editar Margem' }
   ]},
+  { mod: 'precificacao', label: '🏷️ Precificação', actions: [
+    { key: 'ver',    label: 'Ver' },
+    { key: 'editar', label: 'Editar' }
+  ], secoes: [
+    { key: 'custos',      label: 'Minha Estrutura de Custos' },
+    { key: 'times',       label: 'Meus Times' },
+    { key: 'simulador',   label: 'Simulador' },
+    { key: 'contratacao', label: 'Custo de Contratação' },
+    { key: 'rescisao',    label: 'Simulação de Rescisão' },
+    { key: 'preco',       label: 'Formação de Preço' },
+    { key: 'indices',     label: 'Banco de Índices' },
+    { key: 'analises',    label: 'Análises' }
+  ]},
   { mod: 'historico', label: '💬 Relacionamento', actions: [
     { key: 'ver',    label: 'Ver' },
     { key: 'editar', label: 'Criar/Editar' }
@@ -10385,6 +10398,39 @@ function _renderTabelaPermissoes(matriz) {
       });
       html += '</tr>';
     });
+
+    // Sub-bloco de SEÇÕES (ex.: Precificação) — mesmo padrão, 1 ação/linha
+    if (grupo.secoes) {
+      var secMat = (matMod && matMod.secoes) ? matMod.secoes
+        : ((padrao && padrao.secoes) ? padrao.secoes : {});
+      html += '<tr><td colspan="' + (_PERM_PERFIS.length + 1) + '" style="padding:.32rem .7rem .32rem 1.2rem;'
+        + 'background:rgba(240,165,0,.06);border:1px solid var(--border);font-weight:700;'
+        + 'color:var(--text2);font-size:.68rem">🔸 Seções</td></tr>';
+      grupo.secoes.forEach(function (sec) {
+        var sm = secMat[sec.key] || {};
+        [{ key: 'ver', label: 'Ver' }, { key: 'editar', label: 'Editar' }].forEach(function (acao) {
+          var permitidos = sm[acao.key] || [];
+          html += '<tr>';
+          html += '<td style="padding:.26rem .7rem .26rem 2rem;border:1px solid var(--border);'
+            + 'color:var(--text2);background:var(--bg1);position:sticky;left:0;z-index:1;font-size:.68rem">↳ '
+            + sec.label + ' · ' + acao.label + '</td>';
+          _PERM_PERFIS.forEach(function (p) {
+            var isDono = p === 'dono';
+            var checked = isDono || (permitidos.indexOf(p) >= 0);
+            var cbId = 'cb_' + grupo.mod + '_sec_' + sec.key + '_' + acao.key + '_' + p;
+            html += '<td style="text-align:center;padding:.26rem;border:1px solid var(--border);'
+              + 'background:' + (isDono ? 'rgba(88,166,255,.03)' : 'var(--bg1)') + '">'
+              + '<input type="checkbox" id="' + cbId + '"'
+              + (checked ? ' checked' : '')
+              + (isDono ? ' disabled title="Dono sempre tem acesso"' : '')
+              + ' style="width:14px;height:14px;cursor:' + (isDono ? 'not-allowed' : 'pointer')
+              + ';accent-color:var(--blue)">'
+              + '</td>';
+          });
+          html += '</tr>';
+        });
+      });
+    }
   });
 
   html += '</tbody></table>';
@@ -10417,6 +10463,23 @@ async function salvarPermissoes() {
       });
       novaMatriz[grupo.mod][acao.key] = permitidos;
     });
+
+    // Seções granulares (ex.: Precificação) — preserva o sub-objeto secoes
+    if (grupo.secoes) {
+      novaMatriz[grupo.mod].secoes = {};
+      grupo.secoes.forEach(function (sec) {
+        novaMatriz[grupo.mod].secoes[sec.key] = {};
+        ['ver', 'editar'].forEach(function (acao) {
+          var permitidos = ['dono'];
+          _PERM_PERFIS.forEach(function (p) {
+            if (p === 'dono') return;
+            var cb = document.getElementById('cb_' + grupo.mod + '_sec_' + sec.key + '_' + acao + '_' + p);
+            if (cb && cb.checked) permitidos.push(p);
+          });
+          novaMatriz[grupo.mod].secoes[sec.key][acao] = permitidos;
+        });
+      });
+    }
   });
 
   // Segurança: garantir que dono não perde configurações críticas
