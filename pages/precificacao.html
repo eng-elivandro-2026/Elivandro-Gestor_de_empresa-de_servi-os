@@ -436,6 +436,14 @@ body.light .mat-row input{background:#fff;border-color:var(--border2)}
       </div>
       <div id="anaWrap"><div class="vazio">Carregando…</div></div>
     </section>
+    <!-- bloqueio de seção sem permissão -->
+    <section class="psec" id="sec-bloqueio">
+      <div class="card" style="text-align:center;padding:2.4rem 1rem">
+        <div style="font-size:2rem">🔒</div>
+        <div class="sec-tit" style="margin-top:.4rem">Sem permissão de acesso a esta seção</div>
+        <div class="sec-desc" style="margin-top:.3rem">Fale com o dono ou administrador da empresa para liberar o acesso.</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -469,6 +477,45 @@ function mostrarSecao(id){
   if(alvo && alvo.id==='sec-analises') carregarAnalises();
 }
 
+/* ── Permissões por seção ─────────────────────────────────────
+   O payload do SET_EMPRESA não carrega permissões; lemos a matriz
+   do parent (getMatrizAtiva / PERMISSOES_PADRAO) por perfil, no
+   evento de troca de empresa. Fallback: libera (não trava acesso). */
+var _ORDEM_SECOES = ['custos','times','simulador','contratacao','rescisao','preco','indices','analises'];
+var _secPerm = {};
+
+function _calcPermSecoes(){
+  var perfil=null, matPrec=null;
+  try{
+    var p=window.parent;
+    if(p && typeof p.getPerfilUsuario==='function') perfil=p.getPerfilUsuario();
+    var matriz=(p && typeof p.getMatrizAtiva==='function') ? p.getMatrizAtiva() : null;
+    matPrec=(matriz && matriz.precificacao) || (p && p.PERMISSOES_PADRAO && p.PERMISSOES_PADRAO.precificacao) || null;
+  }catch(e){}
+  var acessoMod=_temAcesso();
+  var res={};
+  _ORDEM_SECOES.forEach(function(k){
+    if(perfil==='dono'){ res[k]=true; return; }
+    var sec=matPrec && matPrec.secoes && matPrec.secoes[k];
+    if(!sec || !perfil){ res[k]=acessoMod; return; }   // sem config de seção → segue o gate do módulo
+    res[k]=(sec.ver||[]).indexOf(perfil)>=0;
+  });
+  return res;
+}
+function _primeiraSecaoPermitida(){ for(var i=0;i<_ORDEM_SECOES.length;i++){ if(_secPerm[_ORDEM_SECOES[i]]) return _ORDEM_SECOES[i]; } return null; }
+function _irSecao(key){
+  key=key||'custos';
+  if(_secPerm[key]===false){ mostrarSecao('sec-bloqueio'); return; }
+  mostrarSecao(_MAPA_SECAO[key]||'sec-custos');
+}
+function _ajustarSecaoInicial(){
+  var atual=null;
+  _ORDEM_SECOES.forEach(function(k){ var el=document.getElementById(_MAPA_SECAO[k]); if(el && el.classList.contains('on')) atual=k; });
+  if(atual && _secPerm[atual]) return;                 // seção visível já é permitida
+  var fk=_primeiraSecaoPermitida();
+  mostrarSecao(fk ? _MAPA_SECAO[fk] : 'sec-bloqueio');
+}
+
 /* Gate de acesso */
 function _temAcesso(){
   try{ if(window.parent && typeof window.parent.podeAcessarModulo==='function') return !!window.parent.podeAcessarModulo('precificacao'); }catch(e){}
@@ -487,6 +534,8 @@ async function _onTrocaEmpresa(d){
   _empresaAtiva={ id:d.empresaId, nome:d.empresaNome||'', nome_curto:d.empresaNomeCurto||'' };
   var el=document.getElementById('empLabel'); if(el) el.textContent=_empresaAtiva.nome_curto||_empresaAtiva.nome||'—';
   _aplicarGate();
+  _secPerm=_calcPermSecoes();
+  _ajustarSecaoInicial();
   carregarSalMinimo();
   carregarIndices();
   carregarFuncoes();
@@ -1905,7 +1954,7 @@ window.addEventListener('message', function(e){
   if(!e.data || !e.data.type) return;
   if(e.data.type==='SET_EMPRESA')  _onTrocaEmpresa(e.data);
   if(e.data.type==='SET_TEMA')     document.body.classList.toggle('light', e.data.tema==='light');
-  if(e.data.type==='SHOW_SECTION') mostrarSecao(_MAPA_SECAO[e.data.payload]||'sec-custos');
+  if(e.data.type==='SHOW_SECTION') _irSecao(e.data.payload);
 });
 
 /* Init */
